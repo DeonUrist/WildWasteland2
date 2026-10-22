@@ -7,7 +7,8 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols
 {
-    internal static class MotorcycleIntegration
+    /// <summary>Motorcycle chassis: ES3 prefab resolver, template, rear collider trim, body name; Vehicles part (Wave A split of Patrols Vehicles/MotorcycleIntegration.cs).</summary>
+    internal static partial class MotorcycleIntegration
     {
         internal const string Body = "Motorcycle";
         // WW: the ES3 prefab lookup is the shared Core.Hooks.GetPrefab dispatcher (keyed by id); MotorcycleMod.Factory.Template is a
@@ -15,26 +16,14 @@ namespace WildWasteland.Modules.Patrols
         internal static void Install(Core.IModule owner)
         {
             Core.Hooks.GetPrefab.Resolver(owner, ResolvePrefab);
-            // The optional standalone mod owns this same save identity. Fix its chassis too.
-            var external = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "MotorcycleMod");
-            var factory = external != null ? external.GetType("MotorcycleMod.Factory") : null;
-            var method = factory != null ? factory.GetMethod("Template", BindingFlags.Static | BindingFlags.Public) : null;
-            if (method != null) Core.Patches.Patch(owner, method, postfix: AccessTools.Method(typeof(MotorcycleIntegration), nameof(PrepareRearAccess)));
+            PatchMotorcycleMod(owner);   // Compatibility part (MotorcycleIntegration.MotorcycleMod.cs)
         }
         internal static GameObject Template()
         {
             // If the original mod is present, share its prefab/settings and existing save identity.
-            var external = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "MotorcycleMod");
-            var factory = external != null ? external.GetType("MotorcycleMod.Factory") : null;
-            var method = factory != null ? factory.GetMethod("Template", BindingFlags.Static | BindingFlags.Public) : null;
+            var method = MotorcycleModTemplate();   // Compatibility part (MotorcycleIntegration.MotorcycleMod.cs)
             if (method != null) return (GameObject)method.Invoke(null, null);
             return Motorcycles.Factory.Template();
-        }
-        private static void PrepareRearAccess(GameObject __result)
-        {
-            if (__result == null) return;
-            TrimRearCollision(__result);
-            if (__result.GetComponent<MotorcycleRearAccess>() == null) __result.AddComponent<MotorcycleRearAccess>();
         }
         internal static void TrimRearCollision(GameObject root)
         {
