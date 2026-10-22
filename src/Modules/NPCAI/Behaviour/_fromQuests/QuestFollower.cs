@@ -116,6 +116,5 @@ namespace WildWasteland.Modules.Quests
             _models = null; _modelKeys = null;
             _attack = null;
         }
-
     }
 }

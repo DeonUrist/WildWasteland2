@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Quests
 {
+    /// <summary>Quests item query memo, Loot part (Wave A, from Quests/QueryCache.cs): caches "does this item match the token" per FSM for 30 s.</summary>
     internal static partial class Game
     {
         sealed class MatchMemo { internal GameObject Go; internal string Name, Display; internal bool Result; internal float Until; }
@@ -21,28 +22,6 @@ namespace WildWasteland.Modules.Quests
             bool result = MatchUncached(go, itemNameFsm, token, out display);
             entries[id] = new MatchMemo { Go = go, Name = go.name, Display = display, Result = result, Until = Time.unscaledTime + 30f }; _matches++;
             return result;
-        }
-    }
-    internal static partial class Hire
-    {
-        sealed class RangedMemo { internal GameObject Go; internal string Names; internal bool Result; internal float Until; }
-        static readonly Dictionary<int, RangedMemo> Ranged = new Dictionary<int, RangedMemo>();
-        static string _nearestName; static float _nearestAt;
-        static bool IsRangedNpc(GameObject go)
-        {
-            if (go == null) return false;
-            if (madeRaycast != null && madeRaycast.transform.IsChildOf(go.transform)) return true;
-            RangedMemo memo; int id = go.GetInstanceID(); string names = rangedNames.Value;
-            if (Ranged.TryGetValue(id, out memo) && ReferenceEquals(memo.Go, go) && memo.Names == names && Time.unscaledTime < memo.Until) return memo.Result;
-            if (Ranged.Count > 64) Ranged.Clear();
-            bool result = RangedUncached(go); Ranged[id] = new RangedMemo { Go = go, Names = names, Result = result, Until = Time.unscaledTime + 1f }; return result;
-        }
-        static Transform NearestByName(string name, Vector3 from)
-        {
-            if (_nearestName == name && Time.unscaledTime < _nearestAt) return null;
-            var found = NearestUncached(name, from);
-            if (found == null) { _nearestName = name; _nearestAt = Time.unscaledTime + .25f; } else _nearestName = null;
-            return found;
         }
     }
 }

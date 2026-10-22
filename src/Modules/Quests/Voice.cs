@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Quests
         {
             string c = folderCfg != null ? (folderCfg.Value ?? "").Trim() : "";
             string[] tries = c.Length > 0 ? new[] { c, Path.Combine(c, "Voice Actors") } : new[] { Path.Combine(root, "Voice Actors"), Path.Combine(Path.GetDirectoryName(root) ?? root, "Voice Actors") };
-            foreach (string t in tries) if (Directory.Exists(t)) { if (!rootLogged) { rootLogged = true; Plugin.Log.LogInfo("Voice: using " + t); } return t; }
+            foreach (string t in tries) if (Directory.Exists(t)) { if (!rootLogged) { rootLogged = true; Plugin.Info("Voice: using " + t); } return t; }
             return null;
         }
 
@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.Quests
                     AudioClip clip = Load(path);
                     if (clip == null) continue;
                     Play(clip, npc);
-                    if (logged.Add(q.Id + "|" + line + "|" + a)) Plugin.Log.LogInfo("Voice: " + Path.GetFileName(a) + " says " + q.Id + "/" + line + ".");
+                    if (logged.Add(q.Id + "|" + line + "|" + a)) Plugin.Info("Voice: " + Path.GetFileName(a) + " says " + q.Id + "/" + line + ".");
                     return true;
                 }
             }
@@ -116,70 +116,22 @@ namespace WildWasteland.Modules.Quests
                 c = ReadWav(path);
                 if (c != null) { clips[path] = c; return c; }
             }
-            catch (Exception e) { Plugin.Log.LogWarning("Voice: cannot read " + path + ": " + e.Message); }
+            catch (Exception e) { Plugin.Warn("Voice: cannot read " + path + ": " + e.Message); }
             bad.Add(path);
             return null;
         }
 
-        // PCM 8/16/24/32-bit and 32-bit float WAV, any channel count and rate
+        /// <summary>
+        /// Decodes a WAV with the Core decoder (<see cref="Audio.ReadWav"/>: PCM 8/16/24/32-bit, float, any channel count and rate),
+        /// levels every recording the same (peak to 0.9) and boosts for Volume above 5 with a soft clip (<see cref="Audio.NormalizePeak"/>).
+        /// Replaces the Quests copy of the decoder (Wave A).
+        /// </summary>
         static AudioClip ReadWav(string path)
         {
-            byte[] b = File.ReadAllBytes(path);
-            if (b.Length < 44 || b[0] != 'R' || b[1] != 'I' || b[2] != 'F' || b[3] != 'F') throw new Exception("not a WAV file");
-            int fmtTag = 0, ch = 0, rate = 0, bits = 0, dataPos = -1, dataLen = 0;
-            int p = 12;
-            while (p + 8 <= b.Length)
-            {
-                string id = "" + (char)b[p] + (char)b[p + 1] + (char)b[p + 2] + (char)b[p + 3];
-                int len = BitConverter.ToInt32(b, p + 4);
-                int body = p + 8;
-                if (id == "fmt ")
-                {
-                    fmtTag = BitConverter.ToUInt16(b, body);
-                    ch = BitConverter.ToUInt16(b, body + 2);
-                    rate = BitConverter.ToInt32(b, body + 4);
-                    bits = BitConverter.ToUInt16(b, body + 14);
-                    if (fmtTag == 0xFFFE && len >= 26) fmtTag = BitConverter.ToUInt16(b, body + 24);       // extensible: the real tag
-                }
-                else if (id == "data")
-                {
-                    dataPos = body;
-                    dataLen = (len < 0 || body + len > b.Length) ? b.Length - body : len;
-                    break;
-                }
-                p = body + len + (len & 1);
-            }
-            if (dataPos < 0 || ch <= 0 || rate <= 0) throw new Exception("no audio data");
-            int bytes = bits / 8;
-            if (bytes <= 0) throw new Exception("bad bit depth");
-            int count = dataLen / bytes;
-            count -= count % ch;
-            var data = new float[count];
-            for (int i = 0; i < count; i++)
-            {
-                int o = dataPos + i * bytes;
-                float v;
-                if (fmtTag == 3 && bits == 32) v = BitConverter.ToSingle(b, o);
-                else if (bits == 8) v = (b[o] - 128) / 128f;
-                else if (bits == 16) v = BitConverter.ToInt16(b, o) / 32768f;
-                else if (bits == 24) v = (((b[o + 2] << 24) | (b[o + 1] << 16) | (b[o] << 8)) >> 8) / 8388608f;
-                else if (bits == 32) v = BitConverter.ToInt32(b, o) / 2147483648f;
-                else throw new Exception("unsupported format (" + bits + "-bit)");
-                data[i] = v;
-            }
-            // level every recording the same (peak to 0.9), then boost for Volume above 5 with a soft clip so it cannot crackle
-            float peak = 0f;
-            for (int i = 0; i < count; i++) { float a = Mathf.Abs(data[i]); if (a > peak) peak = a; }
-            float lvl = peak > 0.0005f ? 0.9f / peak : 1f;
-            float boost = Mathf.Max(1f, volume.Value / 5f);
-            for (int i = 0; i < count; i++)
-            {
-                float v = data[i] * lvl * boost;
-                data[i] = boost > 1f ? (float)Math.Tanh(v) : v;
-            }
-            AudioClip clip = AudioClip.Create(Path.GetFileNameWithoutExtension(path), count / ch, ch, rate, false);
-            clip.SetData(data, 0);
-            return clip;
+            int ch, rate;
+            float[] data = Audio.ReadWav(path, out ch, out rate);
+            Audio.NormalizePeak(data, 0.9f, Mathf.Max(1f, volume.Value / 5f));
+            return Audio.Clip(Path.GetFileNameWithoutExtension(path), data, ch, rate, false);
         }
         internal static void Shutdown()
         {

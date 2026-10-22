@@ -46,7 +46,6 @@ namespace WildWasteland.Modules.Quests
             try
             {
                 string path = FileName(slot);
-                if (!File.Exists(path)) path = Path.Combine(Path.Combine(Assets.ModuleConfigDir("QuestsCompat"), "Saves"), slot + ".crew.txt");
                 if (File.Exists(path)) foreach (string name in File.ReadAllLines(path)) if (!string.IsNullOrEmpty(name)) Names.Add(name);
             }
             catch (Exception e) { Log.Warn("[Quests] Could not load former crew: " + e.Message); }
@@ -58,8 +57,7 @@ namespace WildWasteland.Modules.Quests
             {
                 string path = FileName(slot); Directory.CreateDirectory(Path.GetDirectoryName(path));
                 File.WriteAllLines(path + ".tmp", names);
-                if (File.Exists(path)) File.Delete(path);
-                File.Move(path + ".tmp", path);
+                AtomicFile.Replace(path + ".tmp", path);
             }
             catch (Exception e) { Log.Warn("[Quests] Could not save former crew: " + e.Message); }
         }

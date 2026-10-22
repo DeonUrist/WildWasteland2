@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.Quests
 
         internal void Start(QuestsModule owner, HireSettings hiring, VoiceSettings voices)
         {
-            I = this; Log = new QuestLogger(); logged.Clear(); DataDir = owner.Dir; _generation++;
+            I = this; logStarted = true; logged.Clear(); DataDir = owner.Dir; _generation++;
             foreach (var file in QuestContent.Import(DataDir)) Core.Log.Always("[Quests] imported missing content: " + file);
             ApplyTakeoverSettings(); ApplyFactionSettings(); ParseGenTypes();
             Game.MinLiquidFraction = minLiquid.Value;
@@ -56,8 +56,12 @@ namespace WildWasteland.Modules.Quests
             bridge.InstallOptional(owner);
             Core.Log.Always("[Quests] Native Quests 1.8.2 ready: " + defs.Count + " authored quests; AQ1 / ApocalypterQuests retained; Talk optional.");
         }
-        static void Warn(string text) { Core.Log.Warn("[Quests] " + text); }
-        static void Info(string text) { Core.Log.Info("[Quests] " + text); }
+        /// <summary>Quests warning (always written, rate-limited); replaces QuestLogger.LogWarning.</summary>
+        internal static void Warn(string text) { Core.Log.Warn("[Quests] " + text); }
+        /// <summary>Quests level-1 line (written while the verbose level is 1 or more); replaces QuestLogger.LogInfo.</summary>
+        internal static void Info(string text) { Core.Log.Info("[Quests] " + text); }
+        /// <summary>Quests error (always written, rate-limited); replaces QuestLogger.LogError.</summary>
+        internal static void Error(string text) { Core.Log.Error("[Quests] " + text); }
         internal void ApplyConfig() { ApplyTakeoverSettings(); ApplyFactionSettings(); ParseGenTypes(); Game.MinLiquidFraction = minLiquid.Value; }
         static void Death(CreateObject action)
         {
