@@ -10,12 +10,12 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
-    // where the files live: the editor / baker writes config\WildWasteland\NPC\PoiNav\<type>.txt; a shipped pack may sit in
-    // plugins\WildWasteland\NPC\PoiNav\ (read when no config file exists)
+    /// <summary>Where the POI navigation files live (D13): the editor / baker writes config\WildWasteland\NPCAI\PoiNav\&lt;type&gt;.txt; the shipped
+    /// pack sits in plugins\WildWasteland\NPCAI\PoiNav\ (read when no config file exists). Loads are async (worker) and cached per type.</summary>
     internal static class PoiNavStore
     {
-        internal static string ConfigDir { get { return Path.Combine(Assets.ModuleConfigDir("NPC"), "PoiNav"); } }
-        internal static string ShippedDir { get { return Path.Combine(Assets.ModuleDir("NPC"), "PoiNav"); } }
+        internal static string ConfigDir { get { return Path.Combine(Assets.ModuleConfigDir("NPCAI"), "PoiNav"); } }
+        internal static string ShippedDir { get { return Path.Combine(Assets.ModuleDir("NPCAI"), "PoiNav"); } }
         static string FileName(string poi)
         {
             var sb = new StringBuilder();

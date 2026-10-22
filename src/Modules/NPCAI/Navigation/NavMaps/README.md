@@ -1,8 +1,8 @@
 # Persistent POI navigation maps (Testing)
 
-WW reads compatible vanilla maps from DLL resources `NPC.NavMaps.Vanilla.<filename>` first, then optionally from
-`BepInEx/plugins/WildWasteland/NPC/NavMaps/Vanilla/<prefab>-<signature>.wwnav`. These shipped maps are read-only at runtime.
-Missing/custom maps bake once and save to `BepInEx/config/WildWasteland/NPC/NavMaps/Custom/<prefab>-<signature>.wwnav`.
+WW reads compatible vanilla maps from DLL resources `NPCAI.NavMaps.Vanilla.<filename>` first, then optionally from
+`BepInEx/plugins/WildWasteland/NPCAI/NavMaps/Vanilla/<prefab>-<signature>.wwnav`. These shipped maps are read-only at runtime.
+Missing/custom maps bake once and save to `BepInEx/config/WildWasteland/NPCAI/NavMaps/Custom/<prefab>-<signature>.wwnav`.
 Further instances and future game sessions load the map at their own position, height and yaw. These are shared prefab templates,
 not per-slot or per-seed save data. Normal walkability, routing and clearance settings still apply.
 
@@ -22,7 +22,7 @@ does not add upper floors or ladder traversal.
 
 ## In-game verification (Denis)
 
-1. Enable NPC AI & navigation > Debug > VerboseLog ("Verbose NPC log" on AI overview also enables it).
+1. Set [Debug] VerboseLevel = 2 (deep log; the old NPC VerboseLog switch is retired).
 2. Approach a location without a shipped map and wait for `Nav: saved map <prefab>`. Confirm the named `.wwnav` file exists in Custom.
 3. Have an NPC follow around a wall/through an entrance, then save, quit the game completely and reload near the same POI.
 4. Expect `Nav: loaded map <prefab>` with the same dimensions/walkable count, without `Nav: baked <prefab>` for that instance.
@@ -32,8 +32,8 @@ does not add upper floors or ladder traversal.
 6. On NPC Debug, click **Reset custom pathfinding baked data**. Expect `Nav: Reset custom pathfinding:` with the file/live-map counts.
    Custom cache files are removed and nearby custom maps are rediscovered/rebaked; shipped maps remain in memory/on disk/in
    the DLL. The cache can refill immediately while the player stays near a custom POI. Failed file deletion is reported, not counted as success.
-7. For an embedded-pack test, restart with NPC VerboseLog on and visit a vanilla POI. Expect `Nav: loaded map` with `(vanilla)` and
-   `embedded:NPC.NavMaps.Vanilla.<filename>`, plus an increased vanilla count. Reset custom data again: the embedded map must remain
+7. For an embedded-pack test, restart with [Debug] VerboseLevel 2 and visit a vanilla POI. Expect `Nav: loaded map` with `(vanilla)` and
+   `embedded:NPCAI.NavMaps.Vanilla.<filename>`, plus an increased vanilla count. Reset custom data again: the embedded map must remain
    usable without a new physics bake. Check NPC movement around walls/through entrances and a different rotation/elevation.
 
 ## Capturing the release pack
@@ -51,10 +51,10 @@ Camp_10 and Building_7. Denis captured them on 2026-10-17/18 and requested their
 
 For future captures, with custom POI mods disabled and default navigation settings, visit the 39 native
 locations: Camp_1-16, Building_1-7, Cave_1-7, Wreck_1-8 and Starter_Area. NPC Debug > **Export vanilla pathfinding maps** collects matching
-native-name candidates into `config/WildWasteland/NPC/NavMaps/VanillaExport/` and logs missing locations. This does not designate a custom
+native-name candidates into `config/WildWasteland/NPCAI/NavMaps/VanillaExport/` and logs missing locations. This does not designate a custom
 replacement of a native prefab as vanilla: capture must use clean native geometry. Exports are retained by custom reset.
 
-After in-game acceptance, copy those `.wwnav` files to `src/Modules/NPC/Embedded/NavMaps/Vanilla/`. The existing build glob embeds them in
+After in-game acceptance, copy those `.wwnav` files to `src/Modules/NPCAI/Embedded/NavMaps/Vanilla/`. The existing build glob embeds them in
 the DLL automatically. Ship that DLL; users need no initial bake for matching geometry/settings. Missing variants still fall back to the
 custom cache. No binaries are fabricated by the build or by an agent running the game. Bump `MapVersion` in `Navigation/NavMaps.cs` when
 sampling/clearance/edge rules change; incompatible geometry/settings automatically select another signature. Custom layouts that are

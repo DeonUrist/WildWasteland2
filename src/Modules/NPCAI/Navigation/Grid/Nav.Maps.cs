@@ -70,10 +70,10 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>Logical name prefix of the embedded vanilla map pack (D13: module folder + path).</summary>
-        internal const string VanillaResourcePrefix = "NPC.NavMaps.Vanilla.";
+        internal const string VanillaResourcePrefix = "NPCAI.NavMaps.Vanilla.";
 
-        internal static string CustomMapDir { get { return System.IO.Path.Combine(NpcModule.DataDir, "NavMaps", "Custom"); } }
-        internal static string VanillaMapDir { get { return System.IO.Path.Combine(Core.Assets.ModuleDir("NPC"), "NavMaps", "Vanilla"); } }
+        internal static string CustomMapDir { get { return System.IO.Path.Combine(Core.Assets.ModuleConfigDir("NPCAI"), "NavMaps", "Custom"); } }
+        internal static string VanillaMapDir { get { return System.IO.Path.Combine(Core.Assets.ModuleDir("NPCAI"), "NavMaps", "Vanilla"); } }
         internal static string MapActionStatus;
 
         private struct MapHash
