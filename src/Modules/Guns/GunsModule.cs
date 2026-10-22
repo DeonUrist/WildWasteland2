@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.Guns
     /// Replaces Gunplay.Plugin: config statics keep their old names (Tracers.cs/Orbs.cs/Bosses.cs read them as GunsModule.X),
     /// the two runner MonoBehaviours became scheduler jobs, the reflection integrations became Core services.
     /// </summary>
-    public sealed class GunsModule : ModuleBase
+    public sealed partial class GunsModule : ModuleBase
     {
         public const string LegacyGuid = "com.denis.apocalypter.gunplay";
         public const string UnloaderGuid = "com.denis.apocalypter.apocaunloader";
@@ -35,14 +35,13 @@ namespace WildWasteland.Modules.Guns
         // ---------------- F6 (main cfg) : feature toggles, in feature order ----------------
         internal static ConfigEntry<bool> TracersEnabled;      // [Guns] Projectiles (ex [General] EnableGunplay)
         internal static ConfigEntry<bool> PerGunMagazines;     // new toggle (was always on)
-        internal static ConfigEntry<bool> BossHealth;          // new toggle (was always on)
         internal static ConfigEntry<bool> OrbsHitWalls;        // ex [Gunplay] MonsterProjectilesHitWalls
         internal static ConfigEntry<bool> MeleeOnWheels;       // new toggle (was always on)
         internal static ConfigEntry<bool> NpcAim;              // new toggle (was always on): gates NpcAimAtBody + LeadTargets
         internal static ConfigEntry<bool> IronsightWheelZoom, ToggleIronsights;
         internal static ConfigEntry<bool> SmoothWeaponSwitch;
         // ---------------- F6 values ----------------
-        internal static ConfigEntry<float> BulletSpeed, BoltSpeed, HeadshotMultiplier, BossHpPercent;
+        internal static ConfigEntry<float> BulletSpeed, BoltSpeed, HeadshotMultiplier;
         internal static ConfigEntry<bool> TracersDraw, PlayerGunTracers, VehicleDamage, WheelPopOff;
         internal static ConfigEntry<float> PistolRange, SmgRange, RifleRange, SniperRange, ShotgunRange, CrossbowRange;
         // ---------------- F7 (tools.cfg) : the 28 hidden Gunplay entries ----------------
@@ -81,8 +80,7 @@ namespace WildWasteland.Modules.Guns
                 "Drop excess ammo when switching to a smaller backpack or removing it. Failed drops retain the ammo and retry. (Gunplay: [Ammo] DropBackpackOverflow)");
             AmmoSettings.DropArmorOverflow = cfg.Player("", "ArmorOverflow", true,
                 "Drop one armor plate for each full 50 points of excess armor when switching to lower-capacity body armor. Excess below 50 produces no plate. Failed drops retain armor and retry. (Gunplay: [Ammo] DropArmorOverflow)");
-            BossHealth = cfg.Player("", "BossHealth", true,
-                "Adjust the health of the human bosses (Duke Ironjaw, Buzzgut) to [Guns / Bosses] AdjustHumanBossHP. Off = the game's own boss health.");
+            BindNpcaiToggles(cfg);
             OrbsHitWalls = cfg.Player("", "MonsterProjectilesHitWalls", true,
                 "Projectiles of monsters without guns (Arachnid, Teacher and the like) are stopped by walls, terrain and vehicles; car glass, grids, doors and plates let them through as often as a pistol bullet. Off = the game's own projectiles, which fly through everything. Needs Projectiles.");
             MeleeOnWheels = cfg.Player("", "MeleeOnWheels", true,
@@ -114,8 +112,7 @@ namespace WildWasteland.Modules.Guns
 
             AmmoSettings.HoldSeconds = cfg.Player("Ammo", "HoldSeconds", 0.35f,
                 "Seconds to hold Reload before unloading; a shorter press reloads on release.", new AcceptableValueRange<float>(0.1f, 2f));
-            BossHpPercent = cfg.Player("Bosses", "AdjustHumanBossHP", 50f,
-                "Health of the human bosses (Duke Ironjaw 1500, Buzzgut 600) in % of the game's own.", new AcceptableValueRange<float>(5f, 300f));
+            BindNpcaiValues(cfg);
             AmmoSettings.FallbackKey = cfg.Hotkey("Guns: unload fallback key", Key.R,
                 "Guns: key polled for hold-to-unload only if the game's Reload input axis cannot be read (normally the game's own Reload binding is used).");
 
@@ -174,12 +171,10 @@ namespace WildWasteland.Modules.Guns
             StabWeapons = cfg.Tool("Melee", "StabWeapons", "knife,shiv,machete",
                 "Melee weapons (name contains one of these) that use StabSound when hitting living actors or corpses instead of the game's knife hit. Every melee hit on a corpse shows blood.");
             StabSound = cfg.Tool("Melee", "StabSound", "Sounds/knifestab.wav",
-                "The stab sound for blades on living actors and corpses (WAV, relative to BepInEx\\plugins\\WildWasteland\\Guns\\; the old Gunplay plugin folder is used as a fallback). Missing file: the game's knife hit.");
+                "The stab sound for blades on living actors and corpses (WAV, relative to BepInEx\\plugins\\WildWasteland\\Guns\\). Missing file: the game's knife hit.");
 
             AmmoSettings.PhaseTimeout = cfg.Tool("Ammo", "AnimationTimeout", 4f,
                 "Seconds to wait for an unload animation phase before completing it.", new AcceptableValueRange<float>(1f, 10f));
-
-            LegacyConfig.Migrate(cfg);
 
             // live reactions
             TracersEnabled.SettingChanged += (s, a) => SyncHud();
@@ -198,7 +193,7 @@ namespace WildWasteland.Modules.Guns
 
             // shared targets: Core dispatchers (module init order NPC -> Guns keeps NPCAI's shot counting before the projectile prefix)
             Hooks.SensorRayHitEnter.Prefix(this, Tracers.BeforeRayHit);
-            Hooks.SensorDetectionsDo.Prefix(this, Bosses.BeforeGetDetections);
+            InitNpcaiHooks();
             Hooks.RaycastEnter.Prefix(this, Tracers.BeforeRaycast);
             Hooks.SetFsmFloatEnter.Postfix(this, Tracers.AfterSetFsmFloat);
             Hooks.CreateObjectEnter.Prefix(this, Tracers.BeforeMeleeEffect);
@@ -214,17 +209,15 @@ namespace WildWasteland.Modules.Guns
             Patch(typeof(SetAudioClip), "OnEnter", "AfterSetAudioClip", false);
             Patch(typeof(TranslatePosition), "OnFixedUpdate", "BeforeTranslatePosition", true);
             Core.Patches.ApplyClass(this, typeof(AmmoCapacity_Patch));
-            ApocaspawnerDamage.Install(this);
-            Core.Patches.ApplyClass(this, typeof(WeaponDamageText));
+            InitCompatibility();
+            InitHud();
             Core.Patches.ApplyClass(this, typeof(ArmorCapacityPatch));
             Core.Patches.ApplyClass(this, typeof(BackpackSlot_Patch));
-            Core.Patches.ApplyClass(this, typeof(MagazineSavePatch));
-            Core.Patches.ApplyClass(this, typeof(MagazineLoadPatch));
-            Core.Patches.ApplyClass(this, typeof(MagazineStorePatch));
+            InitSaves();
 
             // the two old runner components (Gunplay.Runner, Gunplay.Ammo.AmmoRunner), same order
             Scheduler.EveryFrame(this, "Tracers", TracersTick);
-            Scheduler.Interval(this, "Bosses", 0.5f, BossesTick);
+            InitNpcaiJobs();
             Scheduler.EveryFrame(this, "Ammo", AmmoRunner.Tick);
 
             _running = true;
@@ -243,7 +236,7 @@ namespace WildWasteland.Modules.Guns
         static void ResetAll()
         {
             Tracers.ResetAll();
-            Bosses.OnSceneLoaded();
+            ResetNpcai();
             BackpackOverflow.Reset();
             ArmorOverflow.Reset();
             AmmoRunner.ResetAll();
@@ -251,24 +244,21 @@ namespace WildWasteland.Modules.Guns
             Ironsights.Reset();
             WeaponTransition.Reset();
             PlayerRig.Reset();
-            _creates.Clear();
         }
 
         public override void Shutdown()
         {
             _running = false;
-            WeaponsPackSound.Shutdown();
-            BloodFxCompat.Shutdown();
+            ShutdownCompatibility();
             Ironsights.Shutdown();
             WeaponTransition.Shutdown();
             try { AmmoRunner.Unloader.CompleteForSwitch(); } catch (Exception e) { Core.Log.Error("[Guns] shutdown: unload", e); }
             Tracers.Shutdown();
-            Bosses.OnSceneLoaded();
+            ResetNpcai();
             BackpackOverflow.Reset();
             ArmorOverflow.Reset();
             AmmoRunner.ResetAll();
             PlayerRig.Reset();
-            _creates.Clear();
             var h = Services.Hud;
             if (h != null) { try { h.ExternalReporter = false; } catch (Exception e) { Core.Log.Warn("[Guns] HUD ExternalReporter: " + e.Message); } }
             if (Services.Guns is GunsApi) Services.Guns = null;
@@ -279,13 +269,12 @@ namespace WildWasteland.Modules.Guns
             Ironsights.Reset();
             WeaponTransition.Reset();
             Tracers.OnSceneLoaded();
-            Bosses.OnSceneLoaded();
+            ResetNpcai();
             BackpackOverflow.Reset();
             ArmorOverflow.Reset();
             PerGunAmmo.SceneChanged();
             GetButtonDown_Patch.Reset();     // (WW) keyed by the old scene's actions (Gunplay never swept it)
             PlayerRig.Reset();
-            _creates.Clear();
         }
 
         public override void OnWorldReady() { WeaponTransition.StartWorld(); Ironsights.StartWorld(); }
@@ -299,13 +288,6 @@ namespace WildWasteland.Modules.Guns
             try { Tracers.Tick(); } catch (Exception e) { Core.Log.Error("[Guns] Tracers", e); }
         }
 
-        static void BossesTick()
-        {
-            WeaponsPackSound.Ensure();
-            BloodFxCompat.Ensure();
-            try { Bosses.Tick(); } catch (Exception e) { Core.Log.Error("[Guns] Bosses", e); }
-        }
-
         /// <summary>HUD's vanilla observer stays quiet while this module reports hits (Services.Hud may appear after our Init).</summary>
         internal static void SyncHud()
         {
@@ -316,56 +298,41 @@ namespace WildWasteland.Modules.Guns
         }
 
         // ---------------------------------------------------------------- CreateObject postfix (was Plugin.AfterCreateObject)
-        // prefab instance id -> boss name (null = not a boss): GameObject.name allocates, so it is read once per prefab
-        static readonly Dictionary<int, string> _creates = new Dictionary<int, string>();
         static void AfterCreateObject(CreateObject __instance)
         {
             if (__instance.storeObject == null || __instance.gameObject == null) return;
             var made = __instance.storeObject.Value;
             var prefab = __instance.gameObject.Value;
-            if (prefab != null && made != null && BossHealth.Value)
-            {
-                // ItemSpawner uses the same variable for the prefab and the created instance.
-                if (ReferenceEquals(prefab, made)) Bosses.Registered(made);
-                else
-                {
-                    string boss;
-                    int id = prefab.GetInstanceID();
-                    if (!_creates.TryGetValue(id, out boss)) { boss = Bosses.BossName(prefab.name); _creates[id] = boss; }
-                    if (boss != null) Bosses.Spawned(made, boss);
-                }
-            }
+            BossCreated(prefab, made);
             Tracers.OrbSpawned(__instance, made);
             Tracers.BoltCorpseSpawned(__instance, made);
         }
 
+        // ---------------------------------------------------------------- Wave A partial parts (implemented in the target module folders)
+        /// <summary>NPCAI: binds the boss health toggle (F6 feature-toggle position).</summary>
+        partial void BindNpcaiToggles(ModuleConfig cfg);
+        /// <summary>NPCAI: binds [Guns / Bosses] AdjustHumanBossHP (F6 value position).</summary>
+        partial void BindNpcaiValues(ModuleConfig cfg);
+        /// <summary>NPCAI: boss SensorGetDetections hook.</summary>
+        partial void InitNpcaiHooks();
+        /// <summary>NPCAI: the "Bosses" interval job.</summary>
+        partial void InitNpcaiJobs();
+        /// <summary>NPCAI: resets the boss registry (Init, Shutdown, scene load).</summary>
+        static partial void ResetNpcai();
+        /// <summary>NPCAI: boss registration from the CreateObject postfix.</summary>
+        static partial void BossCreated(GameObject prefab, GameObject made);
+        /// <summary>Compatibility: Apocaspawner damage patch.</summary>
+        partial void InitCompatibility();
+        /// <summary>Compatibility: lazy Weapons Pack / BloodFX bridges (from the Bosses job).</summary>
+        static partial void EnsureCompatibility();
+        /// <summary>Compatibility: bridge teardown.</summary>
+        static partial void ShutdownCompatibility();
+        /// <summary>HUD: crossbow tooltip damage text patch.</summary>
+        partial void InitHud();
+        /// <summary>Saves: ES3 patches of the per-gun magazine ledger.</summary>
+        partial void InitSaves();
+
         // ---------------------------------------------------------------- F7
         public override IEnumerable<ToolPage> ToolPages() { return GunsPages.Create(this); }
-    }
-
-    /// <summary>
-    /// The player's first-person rig (PlayerCameraHolder/PlayerCamera/WeaponsArm/Parent), shared by the fitted-wheel swing scan and
-    /// the magazine/unload lookups. Found through Core.GameRefs (no GameObject.Find), retried every 2 s while missing, reset on scene load.
-    /// </summary>
-    internal static class PlayerRig
-    {
-        static Transform _cam, _arm, _parent;
-        static float _next;
-        internal static void Reset() { _cam = _arm = _parent = null; _next = 0f; }
-
-        static void Find()
-        {
-            if (_parent != null && _cam != null && _arm != null) return;
-            if (Time.unscaledTime < _next) return;
-            _next = Time.unscaledTime + 2f;
-            var holder = GameRefs.PlayerCameraHolder;
-            if (holder == null) return;
-            _cam = holder.transform.Find("PlayerCamera");
-            _arm = _cam != null ? _cam.Find("WeaponsArm") : null;
-            _parent = _arm != null ? _arm.Find("Parent") : null;
-        }
-        internal static Transform Camera { get { Find(); return _cam; } }
-        internal static Transform WeaponsArm { get { Find(); return _arm; } }
-        internal static Transform Parent { get { Find(); return _parent; } }
     }
 }
