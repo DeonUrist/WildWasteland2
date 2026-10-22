@@ -133,6 +133,7 @@ namespace WildWasteland.Modules.Patrols
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings;
             Running = false;
             LoadingProgress.Remove(this);
+            VehicleRoutingApi.Reset();
             Try("build queue", BuildQueue.Reset);
             Try("vehicle build cache", VehiclePreparation.Reset);
             PatrolLoadPreparation.Reset();
@@ -199,6 +200,7 @@ namespace WildWasteland.Modules.Patrols
             Scheduler.Sliced(this, "Patrols.Build", 1000, BuildQueue.Step);
             TrafficCompass.Clear();
             Scheduler.Interval(this, "Compass markers", .5f, TrafficCompass.Tick);
+            Scheduler.EveryFrame(this, "Patrols.Road publication", RoadPlanner.PublishCompleted);
             Scheduler.EveryFrame(this, "Patrols.Runtime", TickPatrol);
             Scheduler.Interval(this, "Patrols.CombatActivity", .25f, PublishCombatActivity);
             RegisterToolsTicks();
