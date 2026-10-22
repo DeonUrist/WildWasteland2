@@ -6,8 +6,8 @@ using UnityEngine.InputSystem;
 namespace WildWasteland.Modules.Guns
 {
     /// <summary>
-    /// Ammo settings (ex Gunplay.Ammo.AmmoSettings). The entries are bound by GunsModule.BindConfig in F6 order; the migration from
-    /// the standalone Apocaunloader cfg is in LegacyConfig. The Apocaunloader takeover (runtime patch + UnpatchSelf) is gone:
+    /// Ammo settings (ex Gunplay.Ammo.AmmoSettings). The entries are bound by GunsModule.BindConfig in F6 order (no migration from
+    /// the standalone Apocaunloader cfg: D12 fresh start). The Apocaunloader takeover (runtime patch + UnpatchSelf) is gone:
     /// GunsModule.ConflictsWith keeps the whole module off while the standalone Apocaunloader is installed (AGENTS.md 5.8).
     /// </summary>
     internal static class AmmoSettings

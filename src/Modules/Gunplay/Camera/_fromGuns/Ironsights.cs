@@ -4,7 +4,7 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Guns
 {
-    internal static class Ironsights
+    internal static partial class Ironsights
     {
         private static Camera _camera, _renderCamera;
         private static PlayMakerFSM _ads;
@@ -108,24 +108,6 @@ namespace WildWasteland.Modules.Guns
             }
             action.storeResult.Value = _buttonValue;
             return false;
-        }
-        private static void PreCull(Camera cam)
-        {
-            if (cam != _camera || !GunsModule.IronsightWheelZoom.Value || ThirdPerson || !GameRefs.InPlay || !Aiming || Mathf.Abs(_zoom - 1f) < .0001f) return;
-            Restore();
-            _renderCamera = cam; _transparentProjection = cam.useJitteredProjectionMatrixForTransparentRendering;
-            var projection = cam.projectionMatrix;
-            projection.m00 /= _zoom; projection.m11 /= _zoom;
-            cam.projectionMatrix = projection;
-            cam.useJitteredProjectionMatrixForTransparentRendering = true;
-            cam.ResetCullingMatrix();
-        }
-        private static void PostRender(Camera cam) { if (cam == _renderCamera) Restore(); }
-        private static void Restore()
-        {
-            if (_renderCamera == null) return;
-            _renderCamera.useJitteredProjectionMatrixForTransparentRendering = _transparentProjection;
-            _renderCamera.ResetProjectionMatrix(); _renderCamera.ResetCullingMatrix(); _renderCamera = null;
         }
     }
 }

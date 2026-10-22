@@ -922,15 +922,9 @@ namespace WildWasteland.Modules.Guns
             string path = System.IO.Path.IsPathRooted(rel) ? rel : System.IO.Path.Combine(GunsModule.AssetDir ?? "", rel);
             try
             {
-                // (WW) fallback: the sound shipped with the standalone Gunplay (BepInEx\plugins\Gunplay\Sounds\knifestab.wav)
-                if (!System.IO.File.Exists(path) && !System.IO.Path.IsPathRooted(rel))
-                {
-                    string old = System.IO.Path.Combine(Assets.LegacyPluginDir("Gunplay"), rel);
-                    if (System.IO.File.Exists(old)) path = old;
-                }
                 if (!System.IO.File.Exists(path)) { Core.Log.Warn("[Guns] Tracers: no stab sound at " + path + " - blades get the game's knife sound"); return null; }
                 int ch, rate;
-                float[] smp = Wav.Read(System.IO.File.ReadAllBytes(path), out ch, out rate);
+                float[] smp = Core.Audio.DecodeWav(System.IO.File.ReadAllBytes(path), out ch, out rate);
                 // AudioPlay sets source volume to 0.5; amplify the clip for an effective 1.5 (source volume clamps at 1).
                 for (int i = 0; i < smp.Length; i++) smp[i] *= 1.5f / 0.5f;
                 _stab = AudioClip.Create("knifestab", Math.Max(1, smp.Length / ch), ch, rate, false);

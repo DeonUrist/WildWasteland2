@@ -5,7 +5,7 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Guns
 {
-    internal static class WeaponTransition
+    internal static partial class WeaponTransition
     {
         private static PlayMakerFSM _handler, _switcher;
         // (WW perf) their plain Fsm objects, refreshed once a frame in Tick: the hooks (every FSM event / every ActivateGameObject in the
@@ -38,11 +38,6 @@ namespace WildWasteland.Modules.Guns
             Restore();
             if (_pending != null && _handler != null && GameRefs.InPlay) Replay();
             Reset();
-        }
-        private static void Restore()
-        {
-            if (_posed != null) { _posed.localPosition = _position; _posed.localRotation = _rotation; }
-            _posed = null;
         }
         private static void Replay()
         {
@@ -108,15 +103,6 @@ namespace WildWasteland.Modules.Guns
             _weight = _lowering ? ease : 1f - ease;
             if (_lowering && t >= 1f && _pending != null && _handler != null)
             { _lowering = false; _at = Time.time; Replay(); }
-        }
-        private static void Pose()
-        {
-            if (!GunsModule.SmoothWeaponSwitch.Value || _handler == null || _weight <= .001f || !GameRefs.InPlay) return;
-            var parent = PlayerRig.Parent;
-            if (parent == null) return;
-            _posed = parent; _position = parent.localPosition; _rotation = parent.localRotation;
-            parent.localPosition += new Vector3(0f, -.45f, -.12f) * _weight;
-            parent.localRotation *= Quaternion.Euler(25f * _weight, 0f, 0f);
         }
     }
 }

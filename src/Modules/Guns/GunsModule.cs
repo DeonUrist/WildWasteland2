@@ -174,12 +174,10 @@ namespace WildWasteland.Modules.Guns
             StabWeapons = cfg.Tool("Melee", "StabWeapons", "knife,shiv,machete",
                 "Melee weapons (name contains one of these) that use StabSound when hitting living actors or corpses instead of the game's knife hit. Every melee hit on a corpse shows blood.");
             StabSound = cfg.Tool("Melee", "StabSound", "Sounds/knifestab.wav",
-                "The stab sound for blades on living actors and corpses (WAV, relative to BepInEx\\plugins\\WildWasteland\\Guns\\; the old Gunplay plugin folder is used as a fallback). Missing file: the game's knife hit.");
+                "The stab sound for blades on living actors and corpses (WAV, relative to BepInEx\\plugins\\WildWasteland\\Guns\\). Missing file: the game's knife hit.");
 
             AmmoSettings.PhaseTimeout = cfg.Tool("Ammo", "AnimationTimeout", 4f,
                 "Seconds to wait for an unload animation phase before completing it.", new AcceptableValueRange<float>(1f, 10f));
-
-            LegacyConfig.Migrate(cfg);
 
             // live reactions
             TracersEnabled.SettingChanged += (s, a) => SyncHud();
