@@ -172,8 +172,6 @@ namespace WildWasteland.Modules.NPC
 
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { ResetAll(); Gungirl.OnSceneLoaded(); }
         public override void OnWorldReady() { Gungirl.BeginScan(); }
-        // public override void OnSaveBegin(string slot) { ChainsawLimbs.Saving(true); } // Dismemberment disabled.
-        // public override void OnSaveEnd(string slot) { ChainsawLimbs.Saving(false); }
         public override void OnLoadBegin(string slot) { WeaponsPackCompat.Reset(); }
 
         // ------------------------------------------------------------------ floating origin

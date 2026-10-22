@@ -20,8 +20,6 @@ namespace WildWasteland.Modules.NPC
     // mouse-over label). So a Gungirl is simply NAMED Gungirl: the hook renames the fresh instance "Flexa(Clone)" ->
     // "Gungirl(Clone)" before the game's spawner appends its itemNameID number ("Gungirl(Clone)281"), the corpse likewise
     // ("Gungirl_Dead(Clone)N"), and after a load the scan finds Gungirl* / Gungirl_Dead* roots and swaps their body again.
-    // Versions before 0.6.0 marked her with a root scale x = y * (1 + 1/4096) instead; such Flexas from older saves are
-    // renamed on sight (the scale is left alone - harmless).
     //
     // 1.7.0: the same for Sprokka -> Shoota (Models/Sprokka_female.glb + sprokka_female.png, her armour vest hidden), both at
     // [General] FemalePopulation %. Each female type is a Variant: base prefab name, own name, model, texture, parts to hide.
@@ -139,16 +137,6 @@ namespace WildWasteland.Modules.NPC
                 if (v.IsBase(n)) { go.name = v.Female + n.Substring(v.Base.Length); return v; }
             }
             return null;
-        }
-
-        // the pre-0.6.0 marker (root scale x = y * (1 + 1/4096)) - read only, to convert Gungirls from older saves
-        private static bool IsOldMarked(Transform t)
-        {
-            if (t == null) return false;
-            var s = t.localScale;
-            if (Mathf.Abs(s.y) < 1e-6f) return false;
-            float r = s.x / s.y;
-            return r > 1.0001f && r < 1.0005f;
         }
 
         // ---------- public API for other mods (reflection-friendly) ----------
@@ -379,7 +367,7 @@ namespace WildWasteland.Modules.NPC
             string path = ModPath(v.ModelCfg.Value);
             try
             {
-                v.Model = Gltf.Load(path);
+                v.Model = Gltf.Load(path, "NPC");
                 NpcModule.Log.LogInfo(v.Female + " model: " + Path.GetFileName(path) + " - " + v.Model.Info);
             }
             catch (Exception e) { NpcModule.Log.LogError(v.Female + " model " + path + " could not be loaded: " + e.Message); v.Model = null; }
@@ -569,7 +557,7 @@ namespace WildWasteland.Modules.NPC
             return depth > 0f ? depth : 1f;
         }
 
-        // NPC detection registered an NPC: a Gungirl from a save (or a pre-0.6.0 marked Flexa) is dressed now
+        // NPC detection registered an NPC: a Gungirl from a save is dressed now
         internal static void Registered(GameObject owner)
         {
             try
@@ -578,7 +566,6 @@ namespace WildWasteland.Modules.NPC
                 string n = owner.name;
                 var fv = FemaleOf(n);
                 if (fv != null) Queue(owner, fv);
-                else if (IsFlexa(n) && IsOldMarked(owner.transform)) { Rename(owner); Queue(owner, Variants[0]); }
             }
             catch (Exception e) { NpcModule.Log.LogError("Gungirl: " + e); }
         }

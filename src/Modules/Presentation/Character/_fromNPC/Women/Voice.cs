@@ -39,7 +39,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<Pending> _pending = new List<Pending>();
         private static readonly Dictionary<Type, FieldInfo[]> _fields = new Dictionary<Type, FieldInfo[]>();
 
-        // Loads every .wav and .ogg once per game start. WAV is decoded here (Wav.cs); OGG by Unity's own decoder through a
+        // Loads every .wav and .ogg once per game start. WAV is decoded here (Core Audio.DecodeWav); OGG by Unity's own decoder through a
         // file:// UnityWebRequest, which needs a coroutine. Same name in both formats: the .ogg wins (the shipped .wav files
         // are Flexa's originals, a .ogg next to one is the replacement).
         public static void EnsureLoading()
@@ -71,7 +71,7 @@ namespace WildWasteland.Modules.NPC
                 try
                 {
                     int ch, rate;
-                    float[] s = Wav.Read(File.ReadAllBytes(path), out ch, out rate);
+                    float[] s = Audio.DecodeWav(File.ReadAllBytes(path), out ch, out rate);
                     var clip = AudioClip.Create(name, Math.Max(1, s.Length / ch), ch, rate, false);
                     clip.SetData(s, 0);
                     clip.hideFlags = HideFlags.DontUnloadUnusedAsset;
@@ -302,11 +302,11 @@ namespace WildWasteland.Modules.NPC
                 {
                     if (original.loadState != AudioDataLoadState.Loaded) original.LoadAudioData();
                     var o = new float[original.samples * original.channels];
-                    if (o.Length > 0 && original.GetData(o, 0)) target = Level.ActiveRms(o);
+                    if (o.Length > 0 && original.GetData(o, 0)) target = Audio.Level(o);
                     else NpcModule.Log.LogWarning("Gungirl voice: could not read the game's " + original.name + " to match its loudness (only VoiceVolume applies)");
                 }
                 int limited;
-                double gain = Level.Process(d, target, volume, out limited);
+                double gain = Audio.Process(d, target, volume, out limited);
                 if (Math.Abs(gain - 1.0) < 1e-4) return mine;
                 var c = AudioClip.Create(mine.name, mine.samples, mine.channels, mine.frequency, false);
                 c.SetData(d, 0);

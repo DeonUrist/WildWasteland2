@@ -84,6 +84,9 @@ namespace WildWasteland.Modules.NPC
             catch (Exception ex) { Core.Log.Warn("[NPC] could not carry over " + e.Definition.Key + ": " + ex.Message); }
         }
 
+        /// <summary>Presentation part of BindConfig: Women of Wasteland entries (src/Modules/Presentation/Character/_fromNPC/Women/NpcModule.Women.cs).</summary>
+        static partial void BindWomen(ModuleConfig cfg);
+
         public override void BindConfig(ModuleConfig cfg)
         {
             _cfg = cfg;

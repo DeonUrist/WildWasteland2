@@ -381,4 +381,12 @@ namespace WildWasteland.Modules.NPC
         }
         internal static void OnSceneLoaded() { Drivers.Clear(); }
     }
+
+    /// <summary>Seat offsets of a riding companion dog (merged from DogCompanionSeating.cs; only used by DogCompanionCompat.AfterRideTick).</summary>
+    internal static class DogCompanionSeating
+    {
+        // Lower the whole seated dog instead of translating the chest bones or
+        // bending the neck. Preserve its original sitting proportions.
+        internal const float ForwardOffset = .45f, UpOffset = -.125f;
+    }
 }

@@ -5,6 +5,7 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
+    /// <summary>NpcModule part owned by Presentation: Women of Wasteland config (female population, models, voices, spawn key).</summary>
     public sealed partial class NpcModule
     {
         internal static ConfigEntry<bool> EnableFemaleNpc, FemaleCrew, GungirlVoiceMatch;
@@ -13,22 +14,15 @@ namespace WildWasteland.Modules.NPC
         internal static ConfigEntry<string> GungirlModel, GungirlTexture, GungirlVoice, GungirlHideParts, ShootaModel, ShootaTexture, ShootaHideParts;
         internal static ConfigEntry<Key> FemaleSpawnKey;
 
+        /// <summary>Binds one Women of Wasteland player setting; the old "General" section maps to [NPC / Women of Wasteland].</summary>
         private static ConfigEntry<T> Woman<T>(ModuleConfig cfg, string section, string key, T value, string description, AcceptableValueBase range = null)
         {
             string sub = section == "General" ? "Women of Wasteland" : section;
-            bool saved = Legacy.Get(cfg.Main.ConfigFilePath, cfg.Section(sub), key) != null;
-            var entry = range == null ? cfg.Player(sub, key, value, description) : cfg.Player(sub, key, value, description, range);
-            if (!saved)
-            {
-                string raw = Legacy.Get(WomenFeature.GUID + ".cfg", section, key)
-                    ?? Legacy.Get("com.denis.apocalypter.apocaraider.cfg", section, key);
-                if (raw != null) try { entry.SetSerializedValue(raw); }
-                    catch (Exception e) { Warn("Could not migrate female setting " + key + ": " + e.Message); }
-            }
-            return entry;
+            return range == null ? cfg.Player(sub, key, value, description) : cfg.Player(sub, key, value, description, range);
         }
 
-        private static void BindWomen(ModuleConfig cfg)
+        /// <summary>Presentation part of NpcModule.BindConfig (Women of Wasteland entries and the debug spawn key); called first.</summary>
+        static partial void BindWomen(ModuleConfig cfg)
         {
             EnableFemaleNpc = Woman(cfg, "General", "EnableFemaleNpc", true, "Convert a share of newly spawned Flexa and Sprokka raiders to Gungirl and Shoota. Existing females keep their identity when off.");
             FemalePopulation = Woman(cfg, "General", "FemalePopulation", 33, "Percentage of eligible new raiders and crew converted to female variants.", new AcceptableValueRange<int>(0, 100));

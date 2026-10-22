@@ -24,9 +24,7 @@ namespace WildWasteland.Modules.NPC
         }
         static string PlayerAsset(string file)
         {
-            string path = Path.Combine(Assets.ModuleDir("NPC"), file);
-            string legacy = Path.Combine(Assets.LegacyPluginDir("WomenOfWasteland"), file);
-            return File.Exists(path) || !File.Exists(legacy) ? path : legacy;
+            return Path.Combine(Assets.ModuleDir("NPC"), file);
         }
 
 
@@ -70,18 +68,6 @@ namespace WildWasteland.Modules.NPC
 
         private static void InstallAssets(string directory)
         {
-            string legacyRoot = Assets.LegacyPluginDir("WomenOfWasteland");
-            foreach (string folder in new[] { "Models", "Sounds" })
-            {
-                string old = Path.Combine(legacyRoot, folder);
-                if (!Directory.Exists(old)) continue;
-                foreach (string source in Directory.GetFiles(old, "*", SearchOption.AllDirectories))
-                {
-                    string target = Path.Combine(directory, source.Substring(legacyRoot.Length + 1));
-                    if (File.Exists(target)) continue;
-                    Directory.CreateDirectory(Path.GetDirectoryName(target)); File.Copy(source, target);
-                }
-            }
             const string prefix = "NPC.WomenOfWasteland.";
             var assembly = typeof(WomenFeature).Assembly;
             foreach (var resource in WildWasteland.Core.DiskResources.Names)
@@ -94,9 +80,7 @@ namespace WildWasteland.Modules.NPC
                 string target = Path.Combine(directory, relative);
                 if (File.Exists(target)) continue;
                 Directory.CreateDirectory(Path.GetDirectoryName(target));
-                string legacy = Path.Combine(Assets.LegacyPluginDir("WomenOfWasteland"), relative);
-                if (File.Exists(legacy)) File.Copy(legacy, target);
-                else using (var input = WildWasteland.Core.DiskResources.Open(resource))
+                using (var input = WildWasteland.Core.DiskResources.Open(resource))
                     using (var output = File.Create(target)) input.CopyTo(output);
             }
         }

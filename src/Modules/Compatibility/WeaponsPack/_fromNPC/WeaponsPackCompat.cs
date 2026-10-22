@@ -37,7 +37,6 @@ namespace WildWasteland.Modules.NPC
                 if (pair.Value.Done || Time.time > pair.Value.Until) expired.Add(pair.Key);
             foreach (var action in expired) cuts.Remove(action);
             expired.Clear();
-            // ChainsawLimbs.Tick(); // Dismemberment disabled.
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -179,10 +178,9 @@ namespace WildWasteland.Modules.NPC
             if (hit.Done) return;
             hit.Done = true;
             Brain.ChainsawWitnesses(hit.Corpse);
-            // ChainsawLimbs.Cut(hit.Corpse, hit.Point); // Dismemberment disabled.
         }
 
-        internal static void Reset() { cuts.Clear(); expired.Clear(); burning.Clear(); /* ChainsawLimbs.Clear(); */ ChainsawDrawn = false; }
+        internal static void Reset() { cuts.Clear(); expired.Clear(); burning.Clear(); ChainsawDrawn = false; }
         internal static void Shutdown() { Reset(); installed = unavailable = false; actor = drawn = null; }
     }
 }
