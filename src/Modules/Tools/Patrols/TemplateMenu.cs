@@ -43,11 +43,15 @@ namespace WildWasteland.Modules.Tools
             if (_session.Open || EditorSession.Busy || !Application.isFocused) return false;
             if (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay) return false;
             if (!_session.Acquire()) return false;
+            try
+            {
             Skin.EnsureGameFont();
             PatrolEditor.Load(); _modal = ""; _dropdown.Close();
             _selectedGroup = _selectedTemplate = ""; _expanded.Clear();
             _leftScroll = _carScroll = _truckScroll = Vector2.zero;
             return true;
+            }
+            catch { Close(); throw; }
         }
         private void EnsureSelection()
         {

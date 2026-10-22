@@ -73,6 +73,8 @@ namespace WildWasteland.Modules.Tools
             if (nearest == null) { _status = "No ready custom POI within 200 m. Approach the gas station, or wait for dressing to finish."; Log.Warn("[Towns] POI dresser: " + _status); return; }
             if (nearest.Error != null) { _status = "Layout error: " + nearest.Error + ". Existing file retained."; Log.Warn("[Towns] POI dresser: " + _status); return; }
             if (!_session.Acquire()) return;
+            try
+            {
             _camera = camera; var t = camera.transform; _cameraParent = t.parent;
             _cameraLocal = t.localPosition; _cameraPosition = t.position; _cameraRotation = t.localRotation;
             _view = t.position; _yaw = t.eulerAngles.y; _pitch = t.eulerAngles.x; if (_pitch > 180) _pitch -= 360;
@@ -82,6 +84,8 @@ namespace WildWasteland.Modules.Tools
             _runtime.RegisterSession(_owner, BuildPreview, () => Close(true));
             NewPreview(); _catalog.Start(); Ledger.ClearNumbers();
             _status = "Choose a mesh on the left to place it. SAVE writes this POI type's layout.";
+            }
+            catch { if (Opened) Close(true); else _session.Close(true); throw; }
         }
         private void NewPreview()
         {
@@ -248,7 +252,7 @@ namespace WildWasteland.Modules.Tools
                 else t.position = _cameraPosition;
             }
             try { _runtime.SetDressingVisible(_site.Id, true); } catch (Exception e) { Log.Warn("[Tools] POI preview restoration: " + e.Message); }
-            _runtime.ReleaseSession(_owner);
+            try { _runtime.ReleaseSession(_owner); } catch (Exception e) { Log.Warn("[Tools] POI session release: " + e.Message); }
             if (_preview != null) { _preview.SetActive(false); Object.Destroy(_preview); }
             if (_outline != null) Object.Destroy(_outline.gameObject);
             if (_outlineMaterial != null) Object.Destroy(_outlineMaterial);

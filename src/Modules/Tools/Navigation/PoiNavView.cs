@@ -33,7 +33,7 @@ namespace WildWasteland.Modules.Tools
             if (want) Camera.onPostRender += Draw; else Camera.onPostRender -= Draw;
             _hooked = want;
         }
-        internal static void Unhook() { if (_hooked) Camera.onPostRender -= Draw; _hooked = false; EditData = null; EditRoot = null; }
+        internal static void Unhook() { if (_hooked) Camera.onPostRender -= Draw; _hooked = false; EditData = null; EditRoot = null; if (_mat != null) UnityEngine.Object.Destroy(_mat); _mat = null; }
 
         static bool Material()
         {

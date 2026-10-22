@@ -270,10 +270,10 @@ namespace WildWasteland.Modules.Tools
                 Ledger.Label(new Rect(x + width - 56, y, 14, 40), "%"); y += 48;
                 Ledger.Label(new Rect(x + 9, y, 185, 34), "Truck bed texture", Ledger.Small, Ledger.Muted);
                 var texture = new Rect(x + 204, y, width - 204, 34);
-                if (Ledger.Dropdown(texture, string.IsNullOrEmpty(profile.TextureKey) ? "None" : (profile.TextureKey.StartsWith("cargo_", StringComparison.OrdinalIgnoreCase) ? profile.TextureKey : ModApi.Get<ICargoArtwork>().File(profile.TextureKey)) + ".png"))
+                if (Ledger.Dropdown(texture, string.IsNullOrEmpty(profile.TextureKey) ? "None" : (profile.TextureKey.StartsWith("cargo_", StringComparison.OrdinalIgnoreCase) ? profile.TextureKey : (ModApi.Get<ICargoArtwork>()?.File(profile.TextureKey) ?? profile.TextureKey)) + ".png"))
                 {
                     var global = texture; global.position += new Vector2(26, 143 - _lootScroll.y);
-                    _dropdown.Open(global, new[] { new KeyValuePair<string, string>("", "None") }.Concat((ModApi.Get<ICargoArtwork>()?.Textures() ?? new string[0]).Select(name => new KeyValuePair<string, string>(name, name + ".png"))).ToList(), string.IsNullOrEmpty(profile.TextureKey) ? "" : ModApi.Get<ICargoArtwork>().File(profile.TextureKey), value => { profile.TextureKey = value; Dirty(); }, _rect.height - 84);
+                    _dropdown.Open(global, new[] { new KeyValuePair<string, string>("", "None") }.Concat((ModApi.Get<ICargoArtwork>()?.Textures() ?? new string[0]).Select(name => new KeyValuePair<string, string>(name, name + ".png"))).ToList(), string.IsNullOrEmpty(profile.TextureKey) ? "" : (ModApi.Get<ICargoArtwork>()?.File(profile.TextureKey) ?? profile.TextureKey), value => { profile.TextureKey = value; Dirty(); }, _rect.height - 84);
                 }
                 y += 48;
             }
