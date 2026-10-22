@@ -5,7 +5,7 @@ cd "$(dirname "$0")/../.."
 M=${MANAGED:-/home/claude/refs/Apocalypter_Data/Managed}
 B=${BEPCORE:-/home/claude/refs/BepInEx/core}
 OUT=${1:-/tmp/ww2-build-$$}
-mkdir -p "$OUT"
+mkdir -p "$OUT"; rm -f "$OUT/WildWasteland.dll"
 REFS=""
 for d in mscorlib System System.Core netstandard \
   UnityEngine UnityEngine.CoreModule UnityEngine.PhysicsModule UnityEngine.IMGUIModule UnityEngine.TextRenderingModule \

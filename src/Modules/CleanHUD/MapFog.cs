@@ -280,7 +280,7 @@ namespace WildWasteland.Modules.CleanHUD
                 Directory.CreateDirectory(_saves);
                 string path = Path.Combine(_saves, Path.GetFileName(slot) + ".fog.bin");
                 File.WriteAllBytes(path + ".tmp", data);
-                if (File.Exists(path)) File.Replace(path + ".tmp", path, null); else File.Move(path + ".tmp", path);
+                AtomicFile.Replace(path + ".tmp", path);
                 CleanHudModule.Log("Fog of war saved: " + Path.GetFileName(path) + " (" + Chunks.Count + " chunks, " + data.Length + " bytes)");
             }
             catch (Exception e) { Core.SaveBus.ReportFailure("Fog of war save failed: " + e.Message); CleanHudModule.Warn("Fog of war could not be saved: " + e.Message); }

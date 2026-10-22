@@ -16,3 +16,5 @@ fsm_detail.txt
 # Raw profiler captures (keep summaries in docs/perf-log.md)
 verification/perf/raw/
 verification/runtime*/
+__pycache__/
+*.pyc
