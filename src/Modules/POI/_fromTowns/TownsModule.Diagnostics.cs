@@ -20,7 +20,7 @@ namespace WildWasteland.Modules.Towns
         /// <summary>Vistas only: logs (on change) hole counts and height steps at the edges of the starting tile when a tile next to the origin is applied.</summary>
         partial void TraceStartingTerrain(TerrainTile applied, string source)
         {
-            if (!VistasWorldGen.Present || applied == null || applied.mapMagic == null || Mathf.Abs(applied.coord.x) + Mathf.Abs(applied.coord.z) > 1) return;
+            if (!Log.L2 || ModApi.Get<IWorldGenFacts>() == null || !ModApi.Get<IWorldGenFacts>().Present || applied == null || applied.mapMagic == null || Mathf.Abs(applied.coord.x) + Mathf.Abs(applied.coord.z) > 1) return;
             try
             {
                 var map = applied.mapMagic; var start = map.tiles[new Coord(0, 0)];
@@ -50,16 +50,9 @@ namespace WildWasteland.Modules.Towns
                     state += " neighbourHeight=" + next.size.y.ToString("F1", CultureInfo.InvariantCulture) + " maxStep=" + step.ToString("F1", CultureInfo.InvariantCulture) + "m";
                 }
                 if (state == _startingTerrainState) return;
-                _startingTerrainState = state; Log.Always("[Towns] Starting terrain (" + source + "): " + state);
+                _startingTerrainState = state; Log.Deep(this, "Starting terrain (" + source + "): " + state);
             }
             catch (Exception e) { Log.Warn("[Towns] Starting terrain trace failed: " + e.Message); }
-        }
-        internal void Draw(ToolLayout layout)
-        {
-            layout.Value("Towns", _sites.Count.ToString()); layout.Value("Saved chunk decisions", _records.Count.ToString());
-            layout.Value("Generation", _blocked ? "BLOCKED - see [Towns] log" : "ready");
-            foreach (var live in _sites) layout.Value(live.Site.Plan.Key,
-                live.Site.Plan.Condition + ", " + live.Site.NextLot + "/" + live.Site.Plan.LotCount + " lots, " + (live.Site.Navigation != null && live.Site.Navigation.Ready ? "connected" : "waiting for bakes"));
         }
         /// <summary>Forgets the last starting-terrain trace so the next applied tile logs again.</summary>
         partial void ClearDebug() { _startingTerrainState = null; }

@@ -17,8 +17,11 @@ namespace WildWasteland.Modules.Debug
     {
         private static Task<string> _writer;
         private static readonly CultureInfo C = CultureInfo.InvariantCulture;
+        /// <summary>Escapes one CSV cell while preserving embedded quotes.</summary>
         private static string Csv(string text) { return "\"" + (text ?? "").Replace("\"", "\"\"") + "\""; }
+        /// <summary>Formats a round-trip invariant numeric measurement for exported files.</summary>
         private static string F(double value) { return value.ToString("R", C); }
+        /// <summary>Copies capture data on the main thread then writes the unique report directory on a worker task.</summary>
         internal static void Export(DebugRuntime runtime)
         {
             if (_writer != null) { runtime.Status = "A capture is already being written."; return; }
@@ -75,7 +78,9 @@ namespace WildWasteland.Modules.Debug
             });
             runtime.Status = "Writing capture in background...";
         }
+        /// <summary>Computes the MD5 of the exact loaded WW assembly for capture build identity.</summary>
         private static string Hash(string path) { using (var stream = File.OpenRead(path)) using (var md5 = MD5.Create()) return BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", ""); }
+        /// <summary>Publishes background export completion/failure on the main thread and releases the completed task.</summary>
         internal static void Poll(DebugRuntime runtime)
         {
             if (_writer == null || !_writer.IsCompleted) return;

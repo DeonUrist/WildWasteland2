@@ -19,11 +19,13 @@ namespace WildWasteland.Modules.Debug
         internal bool Visible, Recording = true, Rebinding;
         private float _captureStart = -1, _captureEnd = -1;
         private bool _captureBaseline;
+        /// <summary>Closes the dashboard, waits five seconds and then records a thirty-second A/B sample.</summary>
         internal void ScheduleCapture(bool baseline)
         {
             _captureBaseline = baseline; _captureStart = Time.realtimeSinceStartup + 5; _captureEnd = -1;
             Close(); Status = "Capture starts in 5 seconds; then records 30 seconds and exports automatically."; Core.Log.Main(DebugModule.Instance, Status);
         }
+        /// <summary>Starts a labeled bounded capture immediately and refuses overlapping or invalid durations.</summary>
         internal bool StartCapture(string label, float seconds)
         {
             if (Capturing || float.IsNaN(seconds) || float.IsInfinity(seconds) || seconds <= 0) return false;
@@ -42,6 +44,7 @@ namespace WildWasteland.Modules.Debug
         private bool _openTools;
         private ToolPage _toolsPage;
         private string _lastFault;
+        /// <summary>Initializes shared measurement/probe catalogs once after chainloading on the Core scheduler.</summary>
         private void Initialize()
         {
             try
@@ -55,6 +58,7 @@ namespace WildWasteland.Modules.Debug
         }
         private bool _initialized;
         internal bool Capturing { get { return _captureStart >= 0 || _captureEnd >= 0; } }
+        /// <summary>Runs Debug's measurement/capture lifecycle once per scheduled frame; probes remain opt-in and bounded.</summary>
         internal void Tick()
         {
             if (!_initialized) { _initialized = true; Initialize(); return; }
@@ -114,25 +118,32 @@ namespace WildWasteland.Modules.Debug
             }
             _ownTicks += Stopwatch.GetTimestamp() - begin; _ownFrames++;
         }
+        /// <summary>Draws the dashboard only while its Core editor session is open and tracks its own GUI cost.</summary>
         internal void Draw()
         {
             if (!Visible) return; long begin = Stopwatch.GetTimestamp();
             Dashboard.Draw(this); _ownTicks += Stopwatch.GetTimestamp() - begin;
         }
+        /// <summary>Acquires the non-pausing editor session or closes the dashboard without changing gameplay modules.</summary>
         internal void Toggle()
         {
             if (Visible) { Close(); return; }
             if (Session.Acquire(false, true)) Visible = true;
             else { Status = "Close the other editor/menu first."; Core.Log.Main(DebugModule.Instance, Status); }
         }
+        /// <summary>Closes the dashboard session and persists its Debug measurement settings.</summary>
         internal void Close() { Visible = false; Rebinding = false; Session.Close(); DebugModule.SettingsFile.Save(); }
+        /// <summary>Closes the dashboard and queues the shared tool window for the next unowned editor frame.</summary>
         internal void OpenTools() { Close(); _openTools = true; }
+        /// <summary>Queues a selected tool page and enables its existing Debug/Developer visibility gates.</summary>
         internal void OpenTool(ToolPage page)
         {
             WildWasteland.Plugin.EnableDebug.Value = true; WildWasteland.Plugin.DeveloperMode.Value = true;
             _toolsPage = page; Close(); _openTools = true;
         }
+        /// <summary>Retains the latest 512 diagnostic lines for capture export.</summary>
         internal void AddTrace(string line) { if (Trace.Count >= 512) Trace.RemoveAt(0); Trace.Add(line); }
+        /// <summary>Writes current frame/job/probe summaries through the shared log policy.</summary>
         internal void WriteSummary()
         {
             var c = CultureInfo.InvariantCulture;
@@ -148,6 +159,7 @@ namespace WildWasteland.Modules.Debug
             for (int i = 0; i < Math.Min(5, Measurements.Jobs.Count); i++) { var job = Measurements.Jobs[i]; string detail = "PERF-JOB " + job.System + "." + job.Name + " ms/s=" + job.Milliseconds.ToString("0.###", c); Core.Log.Main(DebugModule.Instance, detail); AddTrace(detail); }
         }
         private bool _disposed;
+        /// <summary>Releases the editor session, optional probes and engine counters on Debug shutdown.</summary>
         internal void Dispose()
         {
             if (_disposed) return; _disposed = true; Session.Close(true);

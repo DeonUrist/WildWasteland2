@@ -283,7 +283,7 @@ namespace WildWasteland.Modules.Survival
 
         internal static void Trace(Runtime.Pot pot, string text)
         {
-            if (SurvivalModule.Verbose.Value) WildWasteland.Core.Log.Always("[Survival] StewPot " + text + ": " + pot.Root.name);
+            if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(null, "[Survival] StewPot " + text + ": " + pot.Root.name);
         }
     }
 }

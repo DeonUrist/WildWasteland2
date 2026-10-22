@@ -13,11 +13,11 @@ namespace WildWasteland.Modules.Towns
             private readonly string _key;
             private readonly Stopwatch _time = Stopwatch.StartNew();
             private bool _done;
-            internal Work(string key) { _key = key; Log.Always("[Towns] generation started " + key); }
+            internal Work(string key) { _key = key; if (Log.L1) Log.Main(null, "[Towns] generation started " + key); }
             internal void Finish(string detail)
             {
                 lock (_time) { if (_done) return; _done = true; }
-                Log.Always("[Towns] generation ended " + _key + ": " + detail + "; " + _time.ElapsedMilliseconds + " ms");
+                if (Log.L1) Log.Main(null, "[Towns] generation ended " + _key + ": " + detail + "; " + _time.ElapsedMilliseconds + " ms");
                 Work ignored; WorkItems.TryRemove(_key, out ignored);
             }
         }

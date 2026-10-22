@@ -80,7 +80,7 @@ namespace WildWasteland.Modules.NPC
             sink.Write(new NavigationMapSnapshot { Name = s.Name, Tag = tag, Width = s.W, Height = s.H,
                 Npc = npc, Goal = goalCell, Exit = exit, ReferenceY = s.RefY, Cell = s.Cell, MaxStep = NpcModule.NavMaxStep.Value,
                 RootWorld = Origin.World(s.Root.position), RootScene = s.Root.position, GridOrigin = s.GridOrigin,
-                FloorY = (float[])s.FloorY.Clone(), Why = (byte[])s.Why.Clone(), Open = (bool[])s.Open.Clone(), Wall = wall, BigArea = big,
+                FloorY = (float[])s.FloorY.Clone(), Why = s.Why != null ? (byte[])s.Why.Clone() : new byte[count], Open = s.Open != null ? (bool[])s.Open.Clone() : new bool[count], Wall = wall, BigArea = big,
                 Area = area != null ? (float[])area.Clone() : null, Route = route != null ? route.ToArray() : null,
                 Trail = trail != null ? trail.ToArray() : null, TrailKind = trailKind != null ? trailKind.ToArray() : null });
         }

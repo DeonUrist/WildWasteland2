@@ -10,6 +10,11 @@ namespace WildWasteland.Modules.NPC
     public sealed partial class NpcModule
     {
         internal static BepInEx.Configuration.ConfigEntry<bool> HighlightUnbakedMapPois;
+        /// <summary>Binds the map bake collection aid in the Tools-owned configuration section.</summary>
+        static partial void BindNavigationDiagnostics()
+        {
+            HighlightUnbakedMapPois = _cfg.Tools.Bind("Tools / Navigation", "Highlight unbaked POIs", false, "Show POIs without saved bakes in light purple on the map.");
+        }
         /// <summary>Registers the developer setup / bake queue job (before PoiNav.Build, as before).</summary>
         partial void InitToolsPoiNavSetup()
         {
