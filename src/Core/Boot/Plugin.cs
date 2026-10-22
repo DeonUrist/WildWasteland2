@@ -95,7 +95,6 @@ namespace WildWasteland
                 Core.ColorGrading.Init();
                 Core.ITweenGuard.Init();
                 Core.QuietFsm.Install();
-                Core.VistasWorldGen.Init();
                 Core.SaveRuntime.Install();
                 Core.SaveSystem.Install();
                 Core.SaveSystem.RecoverFiles();

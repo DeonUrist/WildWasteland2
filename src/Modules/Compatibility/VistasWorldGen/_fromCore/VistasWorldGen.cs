@@ -32,13 +32,16 @@ namespace WildWasteland.Core
         private static ManualLogSource _logger;
         private static string _assemblyId;
         private static ConfigEntry<float> _bannerHeight;
+        private static IModule _owner;
+        internal static string CurrentPlace, CurrentPlaceKind;
         internal static float BannerHeight { get { return _bannerHeight != null ? _bannerHeight.Value : .18f; } }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void Init()
+        internal static void Init(IModule owner)
         {
             PluginInfo info;
             if (!Chainloader.PluginInfos.TryGetValue("apocalypter.worldamp", out info) || info.Instance == null) return;
+            _owner = owner;
             Present = true;
             TerrainEdited += WorldTiles.EditedSource;   // W0B-3: Core WorldTiles "Edited" channel (no subscribers until Wave B)
             var assembly = info.Instance.GetType().Assembly;
@@ -75,7 +78,16 @@ namespace WildWasteland.Core
                 Hook(Find(assembly.GetType("ApocalpyterWorldAmp.WorldAmpDriver", true), "ClearWorld", typeof(void)), postfix: "ClearRoads");
                 Log.Always("[Vistas] " + info.Metadata.Version + " compatibility ready: overlay defaults off; WW scouting, CleanHUD banners, WW sandstorms and replacement-road capture; routine logging follows WW VerboseLog.");
             }
-            catch (Exception e) { Log.Error("[Vistas] Compatibility installation failed", e); }
+            catch (Exception e) { throw new InvalidOperationException("Vistas compatibility installation failed", e); }
+        }
+        /// <summary>Detaches external config and terrain callbacks before module-owned patches are removed.</summary>
+        internal static void Shutdown()
+        {
+            if (_config != null) _config.SettingChanged -= SettingsChanged;
+            TerrainEdited -= WorldTiles.EditedSource;
+            Present = false; _config = null; _assembly = null; _logger = null; _assemblyId = null;
+            _bannerHeight = null; _placeName = _placeKind = _landmarkName = null; _owner = null;
+            CurrentPlace = CurrentPlaceKind = null; RoadIdentity = ""; ClearRoads();
         }
         private static bool QuietLog(ManualLogSource __instance, LogLevel __0)
         { return !ReferenceEquals(__instance, _logger) || Log.Verbose || (__0 & ~(LogLevel.Info | LogLevel.Debug)) != 0; }
@@ -123,7 +135,7 @@ namespace WildWasteland.Core
         }
         private static void Hook(MethodInfo original, string prefix = null, string postfix = null, string transpiler = null)
         {
-            if (!Patches.Patch(null, original, prefix: prefix == null ? null : AccessTools.Method(typeof(VistasWorldGen), prefix),
+            if (!Patches.Patch(_owner, original, prefix: prefix == null ? null : AccessTools.Method(typeof(VistasWorldGen), prefix),
                 postfix: postfix == null ? null : AccessTools.Method(typeof(VistasWorldGen), postfix),
                 transpiler: transpiler == null ? null : AccessTools.Method(typeof(VistasWorldGen), transpiler)))
                 throw new InvalidOperationException("Cannot patch " + original.DeclaringType.FullName + "." + original.Name);
@@ -185,7 +197,7 @@ namespace WildWasteland.Core
             }
         }
         private static void Notify(string name, string detail)
-        { var handler = PlaceEntered; if (handler != null) handler(name, detail); }
+        { CurrentPlace = name; CurrentPlaceKind = detail; var handler = PlaceEntered; if (handler != null) handler(name, detail); }
         private static void RoadCreated(double[] __0, double[] __1)
         {
             if (__0 == null || __1 == null || __0.Length < 2 || __0.Length > 20000 || __0.Length != __1.Length || Roads.Count >= 4096) return;
