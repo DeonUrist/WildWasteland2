@@ -84,6 +84,7 @@ namespace WildWasteland.Modules.Gunplay
 
             // ex HUD: the vanilla player-hit observer feeding hit feedback while projectiles are off (prefix, observe only)
             Hooks.SetFsmFloatEnter.Prefix(this, VanillaHits.BeforeSetFsmFloat);
+            Scheduler.EveryFrame(this, "Gunplay.Vanilla hit results", VanillaHits.Flush, Phase.LateUpdate);
 
             // the two old runner components (Gunplay.Runner, Gunplay.Ammo.AmmoRunner), same order; then the ex NPC sweep
             Scheduler.EveryFrame(this, "Gunplay.Tracers", TracersTick);
@@ -123,12 +124,14 @@ namespace WildWasteland.Modules.Gunplay
             WeaponTransition.Reset();
             WeaponRanges.OnSceneLoaded();
             VanillaEvents.OnSceneLoaded();
+            VanillaHits.Clear();
         }
 
         /// <summary>Stops every part: camera/input parts, an unload in progress completes, bullets vanish, HUD observer resumes.</summary>
         public override void Shutdown()
         {
             _running = false;
+            VanillaHits.Clear();
             Ironsights.Shutdown();
             WeaponTransition.Shutdown();
             try { AmmoRunner.Unloader.CompleteForSwitch(); } catch (Exception e) { Log.Error(this, "shutdown: unload", e); }
@@ -157,13 +160,14 @@ namespace WildWasteland.Modules.Gunplay
             WeaponState.Instance.Clear();
             WeaponRanges.OnSceneLoaded();
             VanillaEvents.OnSceneLoaded();
+            VanillaHits.Clear();
         }
 
         /// <summary>World ready: weapons holstered and ironsights off once the native FSMs run; impact effect prefabs looked up.</summary>
         public override void OnWorldReady() { WeaponTransition.StartWorld(); Ironsights.StartWorld(); Tracers.WarmEffects(); }
 
         /// <summary>FloatingOrigin jump: bullets in flight and landed bolts move with the world.</summary>
-        public override void OnOriginShift(Vector3 delta) { Tracers.OriginShift(delta); }
+        public override void OnOriginShift(Vector3 delta) { Tracers.OriginShift(delta); VanillaHits.Shift(delta); }
 
         /// <summary>F7 pages (group Weapons &amp; HUD).</summary>
         public override IEnumerable<ToolPage> ToolPages() { return GunplayPages.Create(this); }

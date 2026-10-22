@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using UnityEngine;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.HUD
 {
     internal static class VehicleHud
     {
@@ -14,10 +14,10 @@ namespace WildWasteland.Modules.PlayerBody
             try
             {
                 var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (texture.LoadImage(File.ReadAllBytes(PlayerBodyModule.ModPath("Models/Hud/" + file)))) return texture;
+                if (texture.LoadImage(File.ReadAllBytes(Path.Combine(Core.Assets.ModuleDir("HUD"), "Icons/" + file)))) return texture;
                 UnityEngine.Object.Destroy(texture);
             }
-            catch (Exception e) { PlayerBodyModule.Warn("Vehicle HUD icon: " + e.Message); }
+            catch (Exception e) { HudModule.Warn("Vehicle HUD icon: " + e.Message); }
             return null;
         }
 

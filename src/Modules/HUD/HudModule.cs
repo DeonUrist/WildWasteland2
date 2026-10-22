@@ -74,9 +74,16 @@ namespace WildWasteland.Modules.HUD
         }
 
         private TrafficMapView _trafficMap;
+        private CharacterPortraitBank _portraitBank;
+        private CursorPresentation _cursors;
         public override void Init()
         {
             InitClean();
+            Scheduler.Gui(this, "Vehicle cockpit hints", VehicleHints.Draw, VehicleHints.Wanted);
+            _portraitBank = new CharacterPortraitBank();
+            ModApi.Provide<ICharacterPortraits>(this, _portraitBank);
+            _cursors = new CursorPresentation(); ModApi.Provide<ICursorPresentation>(this, _cursors);
+            Scheduler.EveryFrame(this, "TAB portrait", InventoryModel.Tick, Phase.LateUpdate);
             _trafficMap = new TrafficMapView();
             Scheduler.Gui(this, "Traffic map", _trafficMap.Gui, _trafficMap.GuiWanted);
             var questFallback = new QuestFallbackView();
@@ -91,9 +98,8 @@ namespace WildWasteland.Modules.HUD
             // Guns initialises before HUD (module order) and cannot set ExternalReporter while Services.Hud is null: seed it here.
             var guns = Services.Guns;
             if (guns != null) HitFeedbackService.External = guns.ProjectilesEnabled;
-            VanillaHits.UpdateFlags();
 
-            InitGunplay();
+            Patches.ApplyClass(this, typeof(WeaponDamageText));
 
             // old Runner: Update = crosshair + headshot audio, LateUpdate = VanillaHits.Flush + HitFeedbackOverlay.Flush, OnGUI = HitFeedbackOverlay.OnGUI
             _crosshairJob = Scheduler.Interval(this, "Crosshair", 0.25f, CrosshairController.Tick);
@@ -103,37 +109,39 @@ namespace WildWasteland.Modules.HUD
             Core.Log.Info("[HUD] Combat HUD (ex Gunplay HUD 1.2.2) started");
         }
 
-        static void FlushHits() { VanillaHits.Flush(); HitFeedbackOverlay.Flush(); }
+        static void FlushHits() { HitFeedbackOverlay.Flush(); }
 
         static void OnFeedbackSettingChanged()
         {
             if (!_running) return;
-            VanillaHits.UpdateFlags();
             HeadshotAudio.Refresh();
         }
 
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             SavingPresentation.Clear();
+            InventoryModel.Reset();
+            if (_cursors != null) _cursors.Restore();
             SceneLoadedClean(scene, mode);
             if (_trafficMap != null) _trafficMap.Reset();
-            VanillaHits.Clear(); HitFeedbackOverlay.OnSceneLoaded(); CrosshairController.OnSceneLoaded(); HeadshotAudio.Stop();
+            HitFeedbackOverlay.OnSceneLoaded(); CrosshairController.OnSceneLoaded(); HeadshotAudio.Stop();
             HeadshotAudio.Refresh();
             if (_crosshairJob != null) _crosshairJob.RunNow();
         }
 
-        public override void OnOriginShift(Vector3 delta) { OriginShiftClean(delta); HitFeedbackOverlay.Shift(delta); VanillaHits.Shift(delta); }
+        public override void OnOriginShift(Vector3 delta) { OriginShiftClean(delta); HitFeedbackOverlay.Shift(delta); }
 
         public override void Shutdown()
         {
             SavingPresentation.Clear();
+            InventoryModel.Off();
+            if (_portraitBank != null) _portraitBank.Dispose(); _portraitBank = null;
+            if (_cursors != null) _cursors.Restore(); _cursors = null;
             if (_trafficMap != null) _trafficMap.Dispose(); _trafficMap = null;
             ShutdownClean();
             _running = false;
             if (Services.Hud is HitFeedbackService) Services.Hud = null;
             HitFeedbackService.External = false;
-            VanillaHits.Clear();
-            VanillaHits.UpdateFlags();
             CrosshairController.Shutdown();
             HeadshotAudio.Shutdown();
             HitFeedbackOverlay.Shutdown();
@@ -167,8 +175,6 @@ namespace WildWasteland.Modules.HUD
             }
         }
 
-        /// <summary>Gunplay: the vanilla hit observer hook (implemented in Gunplay/HitDetection/_fromHUD/HudModule.Gunplay.cs).</summary>
-        partial void InitGunplay();
 
         // ------------------------------------------------------------------ F7
 
@@ -194,7 +200,7 @@ namespace WildWasteland.Modules.HUD
                 l.Heading("Status");
                 l.Value("Crosshair UI", CrosshairController.Status);
                 l.Value("Headshot sound", HeadshotAudio.Status);
-                l.Value("Hit source", !on ? "-" : VanillaHits.Quiet ? "Guns module (projectiles)" : VanillaHits.Observing ? "vanilla hits (SetFsmFloat observer)" : "none (feedback off)");
+                l.Value("Hit source", !on ? "-" : HitFeedbackService.External && ModApi.Get<IGunsApi>() != null ? "Gunplay module (projectiles)" : Services.Hud != null && Services.Hud.Enabled ? "vanilla hits (SetFsmFloat observer)" : "none (feedback off)");
                 l.Space(4);
                 l.Text("Tests close this window and fake one hit in front of the camera with the current settings.");
                 int b = l.Buttons("TEST HIT", "TEST HEADSHOT");
@@ -222,7 +228,7 @@ namespace WildWasteland.Modules.HUD
         public bool ExternalReporter
         {
             get { return External; }
-            set { if (External == value) return; External = value; VanillaHits.Clear(); VanillaHits.UpdateFlags(); }
+            set { External = value; }
         }
     }
 }

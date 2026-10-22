@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.PlayerBody
     internal static partial class BodyRunner
     {
         // the same conditions GunPose.OnGUI / Car.OnGUI draw under (an editor hint, or seated in a car)
-        internal static bool GuiWanted() { return !string.IsNullOrEmpty(GunPose.HintText) || Car.GuiWanted || WheelArms.EditorVisible; }
-        internal static void Gui() { try { GunPose.OnGUI(); Car.OnGUI(); WheelArms.DrawEditorHint(); } catch (Exception) { } }
+        internal static bool GuiWanted() { return !string.IsNullOrEmpty(GunPose.HintText) || WheelArms.EditorVisible; }
+        internal static void Gui() { try { GunPose.OnGUI(); WheelArms.DrawEditorHint(); } catch (Exception) { } }
     }
 }

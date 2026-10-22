@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.HUD
+namespace WildWasteland.Modules.Gunplay
 {
     // The vanilla player Attack FSM writes Bodypart.Damage before sending Damage.
     // Observe that write without changing the FSM, then measure its Health/Condition
@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.HUD
     // running) this observer stays quiet, so one shot never produces feedback twice. First line of the handler is a static
     // bool (feedback off / external reporter), then the 1.2.2 string filters; GetComponents use a reused list (no alloc).
     /// <summary>Gunplay part of the vanilla hit observer: notes the player's vanilla gun hits and flushes measured damage to the HUD hit feedback while projectiles are off.</summary>
-    internal static partial class VanillaHits
+    internal static class VanillaHits
     {
         private sealed class Hit
         {
@@ -32,7 +32,8 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Core.Hooks.SetFsmFloatEnter prefix (every SetFsmFloat.OnEnter): notes the player's vanilla gun hits (Bodypart.Damage) for hit feedback while projectiles are off. Observe only, never skips.</summary>
         public static bool BeforeSetFsmFloat(SetFsmFloat __instance)
         {
-            if (!Observing || GunplaySettings.ProjectilesEnabled) return true;     // projectiles report their own hits (ex HitFeedbackService.External && Guns running)
+            var feedback = ModApi.Get<IHitFeedback>();
+            if (feedback == null || !feedback.Enabled || GunplaySettings.ProjectilesEnabled) return true;     // projectiles report their own hits (ex HitFeedbackService.External && Guns running)
             if (__instance.fsmName == null || __instance.fsmName.Value != "Bodypart" ||
                 __instance.variableName == null || __instance.variableName.Value != "Damage") return true;
             var fsm = __instance.Fsm;
@@ -129,6 +130,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Late in the frame (HUD job): measured damage of the noted hits goes to the hit feedback (IHitFeedback).</summary>
         public static void Flush()
         {
+            if (GunplaySettings.ProjectilesEnabled) { Pending.Clear(); return; }
             if (Pending.Count == 0) return;
             var hud = Services.Hud;
             foreach (var hit in Pending)

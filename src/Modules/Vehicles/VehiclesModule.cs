@@ -59,6 +59,7 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Installs hooks, patches and jobs in the order the Patrols and PlayerBody entries used, then marks the module running.</summary>
         public override void Init()
         {
+            ModApi.Provide<IVehicleHudData>(this, new VehicleHudData());
             // Patrols part (old PatrolsModule.InitInner order): suspension hook, ram damage, motorcycle resolver, War Rig
             Suspension.Hook(this);
             Hooks.SetFsmFloatEnter.Postfix(this, Ram.ScaleNpcRamDamage);
