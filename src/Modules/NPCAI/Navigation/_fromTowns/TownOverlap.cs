@@ -1,9 +1,8 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
@@ -12,7 +11,7 @@ namespace WildWasteland.Modules.Towns
     {
         private sealed class Grid
         {
-            internal object Native;
+            internal Nav.Structure Native;
             internal int W, H;
             internal float Cell, AnchorY;
             internal Vector3 Origin, Right, Forward;
@@ -51,14 +50,10 @@ namespace WildWasteland.Modules.Towns
                 return ax == bx || az == bz || Step(a, az * W + bx, false) && Step(a, bz * W + ax, false);
             }
         }
-        private static readonly Dictionary<Transform, object> Native = new Dictionary<Transform, object>();
-        private static readonly Dictionary<object, TownOverlap> Owners = new Dictionary<object, TownOverlap>();
-        private static readonly Dictionary<string, FieldInfo> Fields = new Dictionary<string, FieldInfo>();
-        private static FieldInfo[] _caches;
-        private static MethodInfo _masks, _return;
-        private static MethodInfo _beginBake, _bakeStep;
-        private static Action _pickReset;
+        private static readonly Dictionary<Transform, Nav.Structure> Native = new Dictionary<Transform, Nav.Structure>();
+        private static readonly Dictionary<Nav.Structure, TownOverlap> Owners = new Dictionary<Nav.Structure, TownOverlap>();
         private static float _step;
+        private static IModule _ownerModule { get { return NavRuntime.Owner; } }
         private readonly TownSite _site;
         private Grid[] _grids;
         private int _grid, _cell, _phase, _blocked, _edges;
@@ -71,44 +66,44 @@ namespace WildWasteland.Modules.Towns
         // Walls/towers/props arrived after the first overlay (ownership confirmed later): redo it with the dressing boxes.
         internal void Reapply(bool dressing)
         { Restore(); _grids = null; _grid = _cell = _phase = _blocked = _edges = 0; _dressing = dressing; _warming = false; _retry = 0; Ready = false; }
-        internal static void Install(TownsModule owner, Type nav)
+        /// <summary>Hooks the town overlay into the NPCAI baker (ex Harmony patches on Nav.Make / BeginBake / CreateMap).</summary>
+        internal static void Install()
         {
-            var structure = nav.GetNestedType("Structure", BindingFlags.NonPublic);
-            foreach (string name in new[] { "Root", "Baked", "W", "H", "Cell", "GridOrigin", "GridRight", "GridForward", "FloorY", "Why", "Edges", "Near", "Comp", "CompSize", "Fields", "Mv", "Hop", "MvB", "HopB", "MaskNext", "Phase" })
-                Fields[name] = structure.GetField(name, BindingFlags.Instance | BindingFlags.Public);
-            var caches = new List<FieldInfo>();
-            foreach (string name in new[] { "_outPlans", "_outMemo", "_exits", "_relaxedFields", "_compRing" }) caches.Add(nav.GetField(name, BindingFlags.Static | BindingFlags.NonPublic));
-            _caches = caches.ToArray(); _masks = Patches.Method(nav, "QueueMasks"); _return = Patches.Method(nav, "Return");
-            _beginBake = Patches.Method(nav, "BeginBake"); _bakeStep = Patches.Method(nav, "BakeStep");
-            _pickReset = (Action)Delegate.CreateDelegate(typeof(Action), Patches.Method(nav, "PickReset"));
-            _step = Mathf.Max(.1f, TownBakeBridge.Tuning("NavMaxStep", .45f));
-            if (!Patches.Patch(owner, Patches.Method(nav, "Make"), postfix: typeof(TownOverlap).GetMethod("Made", BindingFlags.Static | BindingFlags.NonPublic))
-                || !Patches.Patch(owner, Patches.Method(nav, "BeginBake"), prefix: typeof(TownOverlap).GetMethod("BeforeBake", BindingFlags.Static | BindingFlags.NonPublic))
-                || !Patches.Patch(owner, Patches.Method(nav, "CreateMap"), prefix: typeof(TownOverlap).GetMethod("Writable", BindingFlags.Static | BindingFlags.NonPublic)))
-                throw new InvalidOperationException("Town overlap bridge could not be installed.");
+            _step = NavSettings.Step;
+            Nav.Made += Made; Nav.BeforeBake += BeforeBake; Nav.MapWritable = Writable;
         }
-        private static bool Writable(object __0, ref bool __result)
+
+        /// <summary>Removes the hooks (Towns stopped).</summary>
+        internal static void Uninstall()
         {
-            if (!TownMarkers.Owns(Fields["Root"].GetValue(__0) as Transform)) return true;
+            Nav.Made -= Made; Nav.BeforeBake -= BeforeBake;
+            if (Nav.MapWritable == (Func<Nav.Structure, bool>)Writable) Nav.MapWritable = null;
+        }
+
+        /// <summary>A town instance's rebake must never replace a reusable standalone building template on disk.</summary>
+        private static bool Writable(Nav.Structure s)
+        {
+            if (!TownMarkers.Owns(s.Root)) return true;   // refs-ok: REFACTOR-REQUEST B08-6 (POI town ownership query)
             // A manual rebake here sees neighbouring town geometry through physics. It may be used
             // for this instance, but must never replace a reusable standalone building template.
-            __result = false;
-            Log.Always("[Towns] instance bake kept in memory; reusable template file preserved."); return false;
+            Log.Main(_ownerModule, "instance bake kept in memory; reusable template file preserved."); return false;
         }
-        private static void Made(Transform root, object __result) { if (__result != null && TownMarkers.Owns(root)) Native[root] = __result; }
+
+        /// <summary>Remembers the structure made for a town building (the overlay grids read it).</summary>
+        private static void Made(Transform root, Nav.Structure s) { if (s != null && TownMarkers.Owns(root)) Native[root] = s; }   // refs-ok: REFACTOR-REQUEST B08-6
+        /// <summary>Forgets the structure remembered for a removed town building.</summary>
         internal static void Forget(Transform root)
         {
-            object native;
+            Nav.Structure native;
             if (Native.TryGetValue(root, out native)) { Native.Remove(root); Owners.Remove(native); }
         }
-        private static void BeforeBake(object __0)
+        /// <summary>A town building's map is rebaked: its overlay is undone and planned again; street routing restarts.</summary>
+        private static void BeforeBake(Nav.Structure s)
         {
             TownOverlap owner;
-            if (Owners.TryGetValue(__0, out owner))
+            if (Owners.TryGetValue(s, out owner))
             { owner.Restore(); owner._grids = null; owner._grid = owner._cell = owner._phase = 0; owner.Ready = false; owner._site.Navigation = new TownNavigation(owner._site); }
         }
-        private static object Get(Grid grid, string name) { return Fields[name].GetValue(grid.Native); }
-        private static void Set(Grid grid, string name, object value) { Fields[name].SetValue(grid.Native, value); }
         private bool Capture()
         {
             _warming = false;
@@ -116,16 +111,16 @@ namespace WildWasteland.Modules.Towns
             {
                 if (_site.Plan.Lots[lot].IsParking || _site.Plan.Lots[lot].Skipped || _site.Buildings[lot] == null) continue;
                 var building = _site.Buildings[lot];
-                object native;
+                Nav.Structure native;
                 if (building == null || !Native.TryGetValue(building.transform, out native)) return false;
-                if (!(bool)Fields["Baked"].GetValue(native))
+                if (!native.Baked)
                 {
                     // Load the matching native template in its existing sliced pipeline, even when
                     // a distant town lies outside the player-driven bake discovery radius.
-                    if (Fields["FloorY"].GetValue(native) == null) _beginBake.Invoke(null, new object[] { native, true });
-                    if ((int)Fields["Phase"].GetValue(native) == 0)
+                    if (native.FloorY == null) Nav.BeginBake(native, true);
+                    if (native.Phase == 0)
                         throw new InvalidOperationException("Matching saved bake unavailable for " + building.name + "; refusing an in-town physics bake during loading");
-                    _bakeStep.Invoke(null, new[] { native }); _warming = true; return false;
+                    Nav.BakeStep(native); _warming = true; return false;
                 }
             }
             var lots = new List<int>(); for (int lot = 0; lot < _site.Buildings.Length; lot++)
@@ -136,9 +131,9 @@ namespace WildWasteland.Modules.Towns
             {
                 var g = new Grid { Native = Native[_site.Buildings[lots[i]].transform], AnchorY = _site.Anchor.position.y, Lot = lots[i] };
                 grids[i] = g;
-                g.W = (int)Get(g, "W"); g.H = (int)Get(g, "H"); g.Cell = (float)Get(g, "Cell");
-                g.Origin = (Vector3)Get(g, "GridOrigin") - _site.Anchor.position;
-                g.Right = (Vector3)Get(g, "GridRight"); g.Forward = (Vector3)Get(g, "GridForward");
+                g.W = g.Native.W; g.H = g.Native.H; g.Cell = g.Native.Cell;
+                g.Origin = g.Native.GridOrigin - _site.Anchor.position;
+                g.Right = g.Native.GridRight; g.Forward = g.Native.GridForward;
                 g.Bounds = new Vector4(float.PositiveInfinity, float.PositiveInfinity, float.NegativeInfinity, float.NegativeInfinity);
                 for (int c = 0; c < 4; c++)
                 {
@@ -146,8 +141,8 @@ namespace WildWasteland.Modules.Towns
                     g.Bounds.x = Mathf.Min(g.Bounds.x, p.x - g.Cell); g.Bounds.y = Mathf.Min(g.Bounds.y, p.z - g.Cell);
                     g.Bounds.z = Mathf.Max(g.Bounds.z, p.x + g.Cell); g.Bounds.w = Mathf.Max(g.Bounds.w, p.z + g.Cell);
                 }
-                g.Original = (float[])Get(g, "FloorY"); g.OriginalWhy = (byte[])Get(g, "Why"); g.OriginalEdges = (byte[])Get(g, "Edges");
-                g.OriginalNear = (bool[])Get(g, "Near"); g.OriginalComp = (int[])Get(g, "Comp"); g.OriginalSizes = (int[])Get(g, "CompSize");
+                g.Original = g.Native.FloorY; g.OriginalWhy = g.Native.Why; g.OriginalEdges = g.Native.Edges;
+                g.OriginalNear = g.Native.Near; g.OriginalComp = g.Native.Comp; g.OriginalSizes = g.Native.CompSize;
                 g.Local = new float[g.Original.Length]; for (int c = 0; c < g.Local.Length; c++) g.Local[c] = g.Original[c] - g.AnchorY;
                 g.Floor = (float[])g.Local.Clone(); g.Why = (byte[])g.OriginalWhy.Clone(); g.Edges = (byte[])g.OriginalEdges.Clone();
                 g.Near = new bool[g.Floor.Length]; g.Comp = new int[g.Floor.Length]; for (int c = 0; c < g.Comp.Length; c++) g.Comp[c] = -1;
@@ -181,12 +176,12 @@ namespace WildWasteland.Modules.Towns
         }
         internal static int PortalCandidates(Transform root, Vector3 entrance, List<Vector3> into, out bool known, out bool baked)
         {
-            into.Clear(); object native; known = Native.TryGetValue(root, out native); baked = known && (bool)Fields["Baked"].GetValue(native);
+            into.Clear(); Nav.Structure native; known = Native.TryGetValue(root, out native); baked = known && native.Baked;
             if (!baked) return 0;
-            var floor = (float[])Fields["FloorY"].GetValue(native); if (floor == null) return 0;
-            var comp = (int[])Fields["Comp"].GetValue(native);
-            int w = (int)Fields["W"].GetValue(native), h = (int)Fields["H"].GetValue(native); float cell = (float)Fields["Cell"].GetValue(native);
-            var origin = (Vector3)Fields["GridOrigin"].GetValue(native); var right = (Vector3)Fields["GridRight"].GetValue(native); var forward = (Vector3)Fields["GridForward"].GetValue(native);
+            var floor = native.FloorY; if (floor == null) return 0;
+            var comp = native.Comp;
+            int w = native.W, h = native.H; float cell = native.Cell;
+            var origin = native.GridOrigin; var right = native.GridRight; var forward = native.GridForward;
             var delta = entrance - origin; int x = Mathf.FloorToInt(Vector3.Dot(delta, right) / cell), z = Mathf.FloorToInt(Vector3.Dot(delta, forward) / cell);
             int entry = x >= 0 && z >= 0 && x < w && z < h ? z * w + x : -1;
             int component = entry >= 0 && comp != null && !float.IsNaN(floor[entry]) ? comp[entry] : -1;
@@ -306,36 +301,27 @@ namespace WildWasteland.Modules.Towns
         private void Apply(Grid g)
         {
             for (int i = 0; i < g.Floor.Length; i++) g.Floor[i] += _site.Anchor.position.y;
-            Set(g, "FloorY", g.Floor); Set(g, "Why", g.Why); Set(g, "Edges", g.Edges); Set(g, "Near", g.Near);
-            Set(g, "Comp", g.Comp); Set(g, "CompSize", g.Sizes.ToArray()); g.Applied = true;
+            g.Native.FloorY = g.Floor; g.Native.Why = g.Why; g.Native.Edges = g.Edges; g.Native.Near = g.Near;
+            g.Native.Comp = g.Comp; g.Native.CompSize = g.Sizes.ToArray(); g.Applied = true;
             Reset(g);
         }
-        private static void ReturnFields(IDictionary fields)
-        { foreach (object field in fields.Values) _return.Invoke(null, new[] { field }); fields.Clear(); }
-        private static void Reset(Grid g)
-        {
-            ReturnFields((IDictionary)Get(g, "Fields"));
-            foreach (string name in new[] { "Mv", "Hop", "MvB", "HopB" }) Set(g, name, null);
-            Set(g, "MaskNext", 0); _masks.Invoke(null, new[] { g.Native });
-        }
-        private static void Invalidate()
-        {
-            _pickReset();
-            foreach (var field in _caches)
-            { var dict = (IDictionary)field.GetValue(null); if (field.Name == "_relaxedFields") ReturnFields(dict); else dict.Clear(); }
-        }
+        /// <summary>The structure's arrays changed: cached route fields and move masks go, masks are queued again.</summary>
+        private static void Reset(Grid g) { Nav.ResetDerived(g.Native); }
+
+        /// <summary>Every structure-independent route cache goes (exit picks, out plans, memos, relaxed fields, ring areas).</summary>
+        private static void Invalidate() { Nav.InvalidateRouteCaches(); }
         private void Restore()
         {
             if (_grids == null) return;
             foreach (var g in _grids)
             {
                 Owners.Remove(g.Native);
-                if (!g.Applied || !ReferenceEquals(Get(g, "FloorY"), g.Floor)) continue;
+                if (!g.Applied || !ReferenceEquals(g.Native.FloorY, g.Floor)) continue;
                 // The detached original array stopped participating in native floating-origin shifts.
                 float anchorY = _site.Anchor != null ? _site.Anchor.position.y : g.AnchorY;
                 for (int i = 0; i < g.Original.Length; i++) g.Original[i] = g.Local[i] + anchorY;
-                Set(g, "FloorY", g.Original); Set(g, "Why", g.OriginalWhy); Set(g, "Edges", g.OriginalEdges);
-                Set(g, "Near", g.OriginalNear); Set(g, "Comp", g.OriginalComp); Set(g, "CompSize", g.OriginalSizes);
+                g.Native.FloorY = g.Original; g.Native.Why = g.OriginalWhy; g.Native.Edges = g.OriginalEdges;
+                g.Native.Near = g.OriginalNear; g.Native.Comp = g.OriginalComp; g.Native.CompSize = g.OriginalSizes;
                 g.Applied = false; Reset(g);
             }
             Invalidate();

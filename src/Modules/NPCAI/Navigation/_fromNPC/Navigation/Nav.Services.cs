@@ -191,6 +191,25 @@ namespace WildWasteland.Modules.NPC
             _relaxedFields.Clear();
         }
 
+        /// <summary>s's map arrays were replaced (town overlay): its cached route fields and move masks go, masks are queued again.</summary>
+        internal static void ResetDerived(Structure s)
+        {
+            foreach (var f in s.Fields.Values) Return(f);
+            s.Fields.Clear();
+            s.Mv = s.Hop = s.MvB = s.HopB = null; s.MaskNext = 0;
+            QueueMasks(s);
+        }
+
+        /// <summary>Drops the structure-independent route caches: exit picks, out plans and memos, exit memos, relaxed fields (returned to
+        /// the pool), the ring-area cache.</summary>
+        internal static void InvalidateRouteCaches()
+        {
+            PickReset();
+            _outPlans.Clear(); _outMemo.Clear(); _exits.Clear();
+            foreach (var f in _relaxedFields.Values) Return(f);
+            _relaxedFields.Clear(); _compRing.Clear();
+        }
+
         // ------------------------------------------------------------------ queries (NavApi)
 
         /// <summary>The public view of the structure whose footprint contains p (nearest base height), refreshed; null outside every footprint.</summary>

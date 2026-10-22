@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
@@ -33,13 +34,12 @@ namespace WildWasteland.Modules.Towns
             cell = Mathf.Max(cell, Mathf.Max(spec.HalfX * 2 + margin * 2, spec.HalfZ * 2 + margin * 2) / 600f);
             int w = Mathf.Max(2, Mathf.CeilToInt((spec.HalfX * 2 + margin * 2) / cell));
             int h = Mathf.Max(2, Mathf.CeilToInt((spec.HalfZ * 2 + margin * 2) / cell));
-            string prefix = "NPC.NavMaps.Vanilla." + spec.Name + "-";
-            var assembly = typeof(Services).Assembly;
+            string prefix = Nav.VanillaResourcePrefix + spec.Name + "-";
             foreach (string resource in WildWasteland.Core.DiskResources.Names)
                 if (resource.StartsWith(prefix, StringComparison.Ordinal) && resource.EndsWith(".wwnav", StringComparison.Ordinal))
                 { using (var stream = WildWasteland.Core.DiskResources.Open(resource)) { var map = Read(stream, resource, spec, w, h, cell, margin, strict); if (map != null) return map; } }
-            foreach (string directory in new[] { Path.Combine(Assets.ModuleDir("NPC"), "NavMaps", "Vanilla"),
-                Path.Combine(Assets.ModuleConfigDir("NPC"), "NavMaps", "Custom"), Path.Combine(Assets.ModuleDir("NPC"), "NavMaps") })
+            // the folders of the grid baker (Nav): plugin vanilla pack, then the custom cache (A3-1 / D12: the old plugin NavMaps root is gone)
+            foreach (string directory in new[] { Nav.VanillaMapDir, Nav.CustomMapDir })
             {
                 if (!Directory.Exists(directory)) continue;
                 var files = Directory.GetFiles(directory, spec.Name + "-*.wwnav"); Array.Sort(files, StringComparer.Ordinal);

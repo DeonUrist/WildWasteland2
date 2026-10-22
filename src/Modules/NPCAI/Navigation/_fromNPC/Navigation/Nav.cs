@@ -367,7 +367,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>Starts (or restarts) the bake of s: fresh arrays, then the saved/template map when one matches, else the base height ray.</summary>
-        private static void BeginBake(Structure s, bool loadMap = true)
+        internal static void BeginBake(Structure s, bool loadMap = true)
         {
             if (BeforeBake != null) BeforeBake(s);
             s.OverlayChecked = false; s.Overlaid = false;
@@ -382,7 +382,7 @@ namespace WildWasteland.Modules.NPC
             if (Physics.Raycast(new Vector3(p.x, p.y + 2f, p.z), Vector3.down, out h, 12f, BakeMask, QueryTriggerInteraction.Ignore)) s.RefY = h.point.y;
         }
 
-        private static void BakeStep(Structure s)
+        internal static void BakeStep(Structure s)
         {
             if (s.Root == null) { _baking = null; return; }
             _sw.Reset(); _sw.Start();

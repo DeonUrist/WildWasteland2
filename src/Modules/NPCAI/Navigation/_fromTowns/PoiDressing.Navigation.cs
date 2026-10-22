@@ -1,10 +1,5 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
-using WildWasteland.Core;
-using Object = UnityEngine.Object;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
@@ -15,11 +10,17 @@ namespace WildWasteland.Modules.Towns
     /// </summary>
     internal sealed partial class PoiDressing
     {
+        /// <summary>The make gate as a delegate (registered with Nav by TownBakeBridge.Install).</summary>
+        internal static readonly System.Func<Transform, bool> MapGate = BeforeMap;
+
+        /// <summary>Holds a custom POI's structure back until its static dressing exists (false = not now). Still Harmony-patched onto Nav.Make
+        /// by POI PoiDressing.Install (request B08-5: drop that patch, the gate is registered through Nav.AddMakeGate).</summary>
         private static bool BeforeMap(Transform root)
         {
             if (_current == null || !Custom(root)) return true;
             var site = _current.Attach(root); return site == null || site.Ready;
         }
+        /// <summary>Waypoint hint: the cheapest exit marker of the ready custom POI the NPC stands in when its goal lies outside it.</summary>
         internal static bool Exit(Vector3 position, Vector3 goal, out Vector3 waypoint)
         {
             waypoint = goal; if (_current == null) return false;
@@ -44,31 +45,11 @@ namespace WildWasteland.Modules.Towns
         }
     }
 
-    // Wave A (A6): moved with the partial above (README file-map: DELETE once B08 provides INavApi.ForgetStructure(root)).
-    // Rare explicit authoring transaction only. Reflection is never used by prop spawning or normal frame ticks.
+    /// <summary>Forgets the navigation structure of a custom POI being (re)dressed (rare authoring transaction): <see cref="Nav.Forget"/>.
+    /// Wave A (A6) moved it here; README file-map: delete once POI calls INavApi.ForgetStructure (request B08-5).</summary>
     internal static class PoiDressNavigation
     {
-        private static readonly Type Nav = typeof(Services).Assembly.GetType("WildWasteland.Modules.NPC.Nav", true);
-        private const BindingFlags Static = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
-        private const BindingFlags Instance = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-        private static object Field(string name) { return Nav.GetField(name, Static).GetValue(null); }
-        internal static void Forget(Transform root)
-        {
-            var rows = (IList)Field("_structures"); var known = (HashSet<int>)Field("_known");
-            var floor = (HashSet<int>)Field("_floorCols"); var queue = (IList)Field("_maskQueue");
-            for (int i = rows.Count - 1; i >= 0; i--)
-            {
-                object row = rows[i]; var type = row.GetType();
-                if ((Transform)type.GetField("Root", Instance).GetValue(row) != root) continue;
-                Nav.GetMethod("CloseMap", Static).Invoke(null, new[] { row });
-                foreach (string name in new[] { "_baking", "_needed" }) if (ReferenceEquals(Field(name), row)) Nav.GetField(name, Static).SetValue(null, null);
-                var colliders = type.GetField("MapColliders", Instance).GetValue(row) as Collider[];
-                if (colliders != null) foreach (var c in colliders) if (c != null) floor.Remove(c.GetInstanceID());
-                queue.Remove(row); rows.RemoveAt(i);
-            }
-            known.Remove(root.GetInstanceID()); Nav.GetMethod("PickReset", Static).Invoke(null, null);
-            foreach (string name in new[] { "_compRing", "_outPlans", "_outMemo", "_exits", "_relaxedFields", "_debug" })
-            { var value = Field(name); value.GetType().GetMethod("Clear").Invoke(value, null); }
-        }
+        /// <summary>Drops root's structure; the sweep / Discover maps it again once the dressing is ready.</summary>
+        internal static void Forget(Transform root) { Nav.Forget(root); }
     }
 }

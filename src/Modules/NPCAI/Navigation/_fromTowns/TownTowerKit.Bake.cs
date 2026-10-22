@@ -1,78 +1,45 @@
 using System;
-using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
     /// <summary>
-    /// Isolated navigation bake of the extracted small tower (reflection into NPC Nav: Make/BeginBake/BakeStep/CloseMap).
-    /// Wave A (A6): partial split of Towns/TownTowerKit.cs; B08 turns it into an NPCAI ModAPI BakeIsolated(prefab).
+    /// Isolated navigation bake of the extracted small tower: one <see cref="Nav.IsolatedBake"/> of the kit's prefab (ex reflection into
+    /// Nav Make/BeginBake/BakeStep/CloseMap). Wave A (A6): partial split of Towns/TownTowerKit.cs; the POI part loads the kit.
     /// </summary>
     internal sealed partial class TownTowerKit
     {
-        private GameObject _stage;
-        private object _bake;
-        private MethodInfo _make, _begin, _step, _close;
-        private FieldInfo _baked, _current;
+        private Nav.IsolatedBake _bake;
+
+        /// <summary>The tower's reusable map is published (or navigation is off).</summary>
         internal bool Ready { get; private set; }
-        internal float Progress
-        {
-            get
-            {
-                if (Ready) return 1; if (_bake == null) return 0;
-                var type = _bake.GetType(); int phase = (int)type.GetField("Phase").GetValue(_bake);
-                float next = (int)type.GetField("Next").GetValue(_bake) / (float)Mathf.Max(1, (int)type.GetField("W").GetValue(_bake) * (int)type.GetField("H").GetValue(_bake));
-                return phase < 0 ? .1f : phase == 0 ? .1f + .5f * next : phase == 1 ? .6f + .25f * next : phase == 2 ? .85f : .9f;
-            }
-        }
+
+        /// <summary>Bake progress 0..1.</summary>
+        internal float Progress { get { return Ready ? 1 : _bake == null ? 0 : _bake.Progress; } }
+
+        /// <summary>One slice of the isolated bake; false when nothing (more) to do. Throws like the baker when the tower can't be mapped.</summary>
         internal bool Step()
         {
             if (Ready || !Available) return false;
             if (!TownBakeBridge.Enabled) { Ready = true; return true; }
-            if (_stage == null)
+            if (_bake == null) _bake = new Nav.IsolatedBake(Prefab);
+            _bake.Step();
+            if (_bake.Ready)
             {
-                _stage = new GameObject("Towns isolated tower bake"); _stage.transform.position = new Vector3(0, -128, 0);
-                var floor = new GameObject("Temporary flat bake ground"); floor.transform.SetParent(_stage.transform, false);
-                var box = floor.AddComponent<BoxCollider>(); box.center = new Vector3(0, -.25f, 0); box.size = new Vector3(64, .5f, 64);
-                var tower = UnityEngine.Object.Instantiate(Prefab, _stage.transform, false); tower.name = Prefab.name; tower.SetActive(true);
-                foreach (var renderer in tower.GetComponentsInChildren<Renderer>(true)) renderer.forceRenderingOff = true;
-                Physics.SyncTransforms();
-                var nav = typeof(Services).Assembly.GetType("WildWasteland.Modules.NPC.Nav", true);
-                _make = Patches.Method(nav, "Make"); _begin = Patches.Method(nav, "BeginBake"); _step = Patches.Method(nav, "BakeStep"); _close = Patches.Method(nav, "CloseMap");
-                _current = nav.GetField("_baking", BindingFlags.Static | BindingFlags.NonPublic);
-                _bake = _make.Invoke(null, new object[] { tower.transform });
-                if (_bake == null) throw new InvalidOperationException("Tower has no navigation geometry");
-                _baked = _bake.GetType().GetField("Baked"); _begin.Invoke(null, new object[] { _bake, true });
-                return true;
-            }
-            // Reuse the existing budgeted baker and disk cache without replacing its current town/building job.
-            var current = _current.GetValue(null);
-            try { _step.Invoke(null, new[] { _bake }); }
-            finally { _current.SetValue(null, current); }
-            if ((bool)_baked.GetValue(_bake))
-            {
-                var file = _bake.GetType().GetField("MapFile").GetValue(_bake) as string;
-                if (file == null || !System.IO.File.Exists(file)) throw new InvalidOperationException("Reusable tower navigation cache was not published");
-                Ready = true; ReleaseBake();
-                Log.Always("[Towns] isolated small-tower navigation ready; shared reusable map: " + file);
+                Ready = true;
+                Log.Main(NavRuntime.Owner, "isolated small-tower navigation ready; shared reusable map: " + _bake.MapFile);
+                _bake = null;
             }
             return true;
         }
+
+        /// <summary>Drops a running isolated bake (kit disposed).</summary>
         private void ReleaseBake()
         {
-            if (_bake != null && _close != null) _close.Invoke(null, new[] { _bake });
-            if (_bake != null && _stage != null)
-            {
-                var nav = _bake.GetType().DeclaringType;
-                var floors = nav.GetField("_floorCols", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null) as HashSet<int>;
-                if (floors != null) foreach (var collider in _stage.GetComponentsInChildren<Collider>()) floors.Remove(collider.GetInstanceID());
-                var masks = nav.GetField("_maskQueue", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null) as System.Collections.IList;
-                if (masks != null) masks.Remove(_bake);
-            }
+            if (_bake != null) _bake.Release();
             _bake = null;
-            if (_stage != null) { _stage.SetActive(false); UnityEngine.Object.Destroy(_stage); _stage = null; }
         }
     }
 }
