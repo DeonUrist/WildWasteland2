@@ -1,100 +1,63 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using ES3Internal;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols
 {
-    // =============================================================== prefab lookup
-    // Asset prefabs = GameObjects without a scene. Matched by prefab name first, then by the in-game name
-    // (ItemName FSM: variable ItemName, or the text of its UiTextSetText actions), exact then contains.
+    /// <summary>Patrol-specific prefab kind/display matching over the shared Core asset index.</summary>
     internal static class Prefabs
     {
+        /// <summary>Derived patrol matching metadata for one shared asset root.</summary>
         private class Entry { public GameObject Go; public string Name; public string Display; public string Kind; }
         private static List<Entry> _all;
         private static List<GameObject> _roots;                                   // every asset root with a PlayMaker FSM (crew, carcasses, loot...)
         private static Dictionary<string, GameObject> _byName;
-        private static Dictionary<string, GameObject> _exact;
-        private static Dictionary<string, GameObject> _folded;
-        private static ES3ReferenceMgrBase[] _managers;
-        private static int[] _managerCounts;
-        internal static int Generation;
+        private static int _classifiedGeneration = -1;
+        /// <summary>The shared prefab generation used to invalidate availability caches.</summary>
+        internal static int Generation { get { return Core.PrefabCatalog.Generation; } }
 
-        internal static void Invalidate() { _all = null; _roots = null; _byName = null; _exact = null; _folded = null; _managers = null; _managerCounts = null; Generation++; }
-        internal static void Install(Core.IModule owner)
-        {
-            if (!Core.Patches.Patch(owner, Core.Patches.Method(typeof(ES3ReferenceMgrBase), "AddPrefab", new[] { typeof(ES3Prefab) }),
-                postfix: Core.Patches.Method(typeof(Prefabs), "AfterAddPrefab"))) throw new InvalidOperationException("Prefab registration hook failed");
-            if (!Core.Patches.Patch(owner, Core.Patches.Method(typeof(ES3ReferenceMgrBase), "Awake"),
-                postfix: Core.Patches.Method(typeof(Prefabs), "AfterManagerAwake"))) throw new InvalidOperationException("Prefab manager hook failed");
-        }
-        private static void AfterAddPrefab(bool __result) { if (PatrolsModule.Running && __result) Invalidate(); }
-        private static void AfterManagerAwake() { if (PatrolsModule.Running) Invalidate(); }
-
-        // Warm after scene loading, never in Plugin.Awake. Counts also catch mods that append directly to ES3's public list.
+        /// <summary>Invalidates shared asset names and the patrol-specific classification.</summary>
+        internal static void Invalidate() { Core.PrefabCatalog.Invalidate(); ClearClassification(); }
+        /// <summary>Enables Core registration invalidation without installing module-specific copies of the hooks.</summary>
+        internal static void Install(Core.IModule owner) { Core.PrefabCatalog.TrackRegistrations(); }
+        /// <summary>Refreshes factory contributions and shares Core's ES3-list size checks and asset scan.</summary>
         internal static void Refresh()
         {
             if (!PatrolsModule.Running) return;
-            ModVehicles.Refresh();
-            if (_managers != null)
-                for (int i = 0; i < _managers.Length; i++)
-                    if ((_managers[i] != null && _managers[i].prefabs != null ? _managers[i].prefabs.Count : -1) != _managerCounts[i])
-                    { Invalidate(); break; }
-            if (_exact == null) ScanExact();
-            if (_all == null) Scan();
+            ModVehicles.Refresh(); Core.PrefabCatalog.Refresh(); EnsureClassification();
         }
-
-        private static void ScanExact()
+        /// <summary>Releases only the derived display/kind index; Core owns the source asset snapshots.</summary>
+        private static void ClearClassification() { _all = null; _roots = null; _byName = null; _classifiedGeneration = -1; }
+        /// <summary>Rebuilds kind/display rows once for each shared asset generation.</summary>
+        private static void EnsureClassification()
         {
-            _exact = new Dictionary<string, GameObject>(StringComparer.Ordinal);
-            foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
-                if (go != null && !go.scene.IsValid() && go.transform.parent == null && !_exact.ContainsKey(go.name)) _exact[go.name] = go;
-            _managers = Resources.FindObjectsOfTypeAll<ES3ReferenceMgrBase>();
-            _managerCounts = new int[_managers.Length];
-            for (int i = 0; i < _managers.Length; i++)
-            {
-                var manager = _managers[i];
-                _managerCounts[i] = manager != null && manager.prefabs != null ? manager.prefabs.Count : -1;
-                if (_managerCounts[i] < 0) continue;
-                foreach (var prefab in manager.prefabs) if (prefab != null) _exact[prefab.name] = prefab.gameObject;
-            }
-            // Keep the old stable preference for ES3-backed roots when asset names differ only by case.
-            _folded = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
-            foreach (var pair in _exact)
-            {
-                GameObject previous;
-                if (!_folded.TryGetValue(pair.Key, out previous) || previous == null
-                    || (pair.Value.GetComponent<ES3Prefab>() != null && previous.GetComponent<ES3Prefab>() == null)) _folded[pair.Key] = pair.Value;
-            }
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Prefab name index: " + _exact.Count + " names (generation " + Generation + ")");
+            if (_all != null && _classifiedGeneration == Generation) return;
+            Scan(); _classifiedGeneration = Generation;
         }
-
-        // Exported names must resolve exactly: a missing mod must never spawn a similarly named vanilla frame.
-        // Runtime factories are shared with the exporter, availability checks and the builder.
+        /// <summary>Resolves an authored exact name or registered vehicle factory without fuzzy substitution.</summary>
         internal static GameObject Exact(string query)
         {
             if (string.IsNullOrWhiteSpace(query)) return null;
             string name = query.Trim();
-            GameObject hit;
-            if (_exact != null && _exact.TryGetValue(name, out hit) && hit != null) return hit;
+            if (Core.PrefabCatalog.Ready)
+            {
+                var exact = Core.PrefabCatalog.Exact(name); if (exact != null) return exact;
+            }
             if (MotorcycleIntegration.IsBody(name)) return MotorcycleIntegration.Template();
             var mod = ModVehicles.Template(name);
-            if (mod != null) return mod;
-            if (_exact == null) ScanExact();
-            if (_exact.TryGetValue(name, out hit)) return hit;
-            return _folded.TryGetValue(name, out hit) ? hit : null;
+            return mod != null ? mod : Core.PrefabCatalog.Find(name);
         }
 
+        /// <summary>Resolves vehicle/item names and display labels with the existing kind-first fallback order.</summary>
         internal static GameObject Find(string query, string kind)
         {
             if (string.IsNullOrEmpty(query)) return null;
             if (MotorcycleIntegration.IsBody(query)) return MotorcycleIntegration.Template();
             { var mod = ModVehicles.Template(query); if (mod != null) return mod; }
-            if (_all == null) Scan();
+            EnsureClassification();
             string q = query.Trim();
             Entry e = _all.FirstOrDefault(x => x.Kind == kind && string.Equals(x.Name, q, StringComparison.OrdinalIgnoreCase))
                    ?? _all.FirstOrDefault(x => string.Equals(x.Name, q, StringComparison.OrdinalIgnoreCase))
@@ -114,16 +77,18 @@ namespace WildWasteland.Modules.Patrols
 
         // Any asset root prefab by name (carcasses, enemies ... anything with a PlayMaker FSM), exact then contains — from the
         // cached scan. Only scene / prefab registration changes invalidate it; misses never trigger another scan.
+        /// <summary>Resolves a root with a PlayMaker FSM by exact or partial name, including registered vehicle factories.</summary>
         internal static GameObject FindAny(string query)
         {
             if (string.IsNullOrEmpty(query)) return null;
             if (MotorcycleIntegration.IsBody(query)) return MotorcycleIntegration.Template();
             { var mod = ModVehicles.Template(query); if (mod != null) return mod; }
             string q = CrewAppearance.BasePrefab(query.Trim());
-            if (_all == null) Scan();
+            EnsureClassification();
             return Lookup(q);
         }
 
+        /// <summary>Matches the cached root name before applying the original case-insensitive contains fallback.</summary>
         private static GameObject Lookup(string q)
         {
             GameObject go;
@@ -137,13 +102,14 @@ namespace WildWasteland.Modules.Patrols
             return null;
         }
 
+        /// <summary>Classifies Core-cached asset FSM roots into patrol vehicle/item display rows without a second scene scan.</summary>
         private static void Scan()
         {
             _all = new List<Entry>();
             _roots = new List<GameObject>();
             _byName = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
             var byGo = new Dictionary<GameObject, List<PlayMakerFSM>>();
-            foreach (var f in Resources.FindObjectsOfTypeAll<PlayMakerFSM>())
+            foreach (var f in Core.PrefabCatalog.AssetFsms)
             {
                 if (f == null || f.gameObject == null) continue;
                 var go = f.gameObject;
@@ -169,6 +135,7 @@ namespace WildWasteland.Modules.Patrols
             if (Core.Log.Verbose) PatrolsModule.Verbose("Prefab scan: " + _all.Count + " vehicles/items, " + _roots.Count + " prefabs with FSMs");
         }
 
+        /// <summary>Reads the native ID category used by existing patrol item matching.</summary>
         private static string IdOf(List<PlayMakerFSM> fsms)
         {
             var id = fsms.FirstOrDefault(f => f.FsmName == "ID");
@@ -176,6 +143,7 @@ namespace WildWasteland.Modules.Patrols
             return v != null && !string.IsNullOrEmpty(v.Value) ? v.Value : null;
         }
 
+        /// <summary>Reads ItemName or its literal native UI action text as the display fallback.</summary>
         private static string DisplayOf(List<PlayMakerFSM> fsms)
         {
             var f = fsms.FirstOrDefault(x => x.FsmName == "ItemName");

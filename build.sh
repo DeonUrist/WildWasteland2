@@ -14,6 +14,14 @@ SRC=$(find src -name '*.cs' | sort)
 [ -n "$SRC" ] || { echo "build.sh: no .cs files under src/" >&2; exit 1; }
 mkdir -p "$OUTDIR/RuntimeAssets"
 : > "$OUTDIR/RuntimeAssets/asset-index.tsv"
+find src/Core/Embedded ! -name '*.md' -type f | sort | while IFS= read -r f; do
+  rel=${f#src/Core/Embedded/}
+  key=$(printf 'Core.%s' "$rel" | tr / .)
+  target="Core/$rel"
+  mkdir -p "$OUTDIR/RuntimeAssets/$(dirname "$target")"
+  cp "$f" "$OUTDIR/RuntimeAssets/$target"
+  printf '%s\t%s\n' "$key" "$target" >> "$OUTDIR/RuntimeAssets/asset-index.tsv"
+done
 find src/Modules -path '*/Embedded/*' ! -name '*.md' -type f | sort | while IFS= read -r f; do
   mod=$(printf '%s' "$f" | cut -d/ -f3)
   rel=${f#src/Modules/$mod/Embedded/}

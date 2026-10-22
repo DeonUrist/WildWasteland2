@@ -26,6 +26,15 @@ def main():
 
     # The same external payload paths as the Windows/cloud builds; no personal config/save files are collected.
     payloads, index, destinations = {}, [], set()
+    for source in sorted((repo / "src/Core/Embedded").rglob("*")):
+        if not source.is_file() or source.suffix.lower() == ".md":
+            continue
+        relative = source.relative_to(repo / "src/Core/Embedded").as_posix()
+        target = "Core/" + relative
+        name = "WildWasteland/" + target
+        destinations.add(name.lower())
+        payloads[name] = source.read_bytes()
+        index.append("Core." + relative.replace("/", ".") + "\t" + target)
     aliases = (("NPC/WomenOfWasteland/", "NPC/"), ("CleanHUD/LoadingScreens/", "LoadingScreens/"),
                ("PlayerBody/Portraits/", "PlayerBody/LegacyPortraits/"),
                ("PlayerBody/CharacterPortraits/", "PlayerBody/Portraits/"),
@@ -46,7 +55,7 @@ def main():
         payloads[name] = source.read_bytes()
         index.append(key + "\t" + target)
     payloads["WildWasteland/asset-index.tsv"] = ("\n".join(index) + "\n").encode("utf-8")
-    runtime_roots = {"theme", "PlayerBody", "NPC", "Guns", "HUD", "CleanHUD",
+    runtime_roots = {"Core", "theme", "PlayerBody", "NPC", "Guns", "HUD", "CleanHUD",
                      "Patrols", "Survival", "Weather", "LoadingScreens", "Quests", "Towns"}
 
     def runtime(name):
@@ -83,7 +92,7 @@ def main():
     screens = sorted(artwork.glob("Screen*.png"))
     if {p.name for p in screens} != {"Screen%d.png" % i for i in range(1, 19)}:
         raise ValueError("Expected the complete 18-screen artwork set")
-    for path in screens + [artwork / "BG_MAIN.png", artwork / "screens.json"]:
+    for path in screens + [artwork / "screens.json"]:
         replacements["WildWasteland/LoadingScreens/" + path.name] = path.read_bytes()
 
     retained, removed, written = {}, [], set()
