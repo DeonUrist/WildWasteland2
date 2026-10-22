@@ -12,15 +12,15 @@ Branch `refactor/W0-A`, worktree `/home/claude/wt/W0-A`.
 - [x] 7. Delete SaveTypes old-assembly aliases; Sidecars registry + SaveBus.Key + typed SaveBus events
 - [x] 8. SettingsShell API (contribution path next to existing rows)
 - [x] 8b. Plugin.VERSION = "2.0.0"
-- [ ] 9. Skeleton modules (Debug, Presentation, NPCAI, Gunplay, Vehicles, Loot, Tools, Developer, Compatibility, Saves) registered after existing ones
-- [ ] 10. tools/refactor/*.py work against new layout
+- [x] 9. Skeleton modules (Debug, Presentation, NPCAI, Gunplay, Vehicles, Loot, Tools, Developer, Compatibility, Saves) registered after existing ones
+- [x] 10. tools/refactor/*.py work against new layout
 - [ ] Report docs/refactor/reports/W0-A.md, ownership check
 
 ## Last good compile (commit)
-steps 1-8b, COMPILE OK
+steps 1-10, COMPILE OK
 
 ## Next action
-Step 9: skeleton modules + Boot/ModuleRegistry.cs. Then 10 (tools), comments check, report.
+Write docs/refactor/reports/W0-A.md, run check_ownership, final commit.
 
 ## Blockers / questions for Denis
 - csproj has no NoWarn for CS0618: the [Obsolete] Services/Log wrappers will produce many warnings in `dotnet build` (compile.sh suppresses 618). Request: add `<NoWarn>$(NoWarn);CS0618</NoWarn>` to WildWasteland.csproj until Wave C (see requests/W0-A.md).
@@ -34,4 +34,6 @@ Step 9: skeleton modules + Boot/ModuleRegistry.cs. Then 10 (tools), comments che
 - Hooks: table-driven (HookBase + Handlers<D> snapshots); new dispatchers SetAudioClipEnter, UiTextSetTextEnter, DoMousePick (RefHook<MousePickArgs>), GetGameObjectFsm, FsmAwake, FsmInnerEnable, FsmDisable, FsmDestroy, FsmPhysicsCallback, ExplosionShouldApplyForce - no subscribers yet, so never patched.
 - Scheduler: RemoveAll marks Removed; Interval NextAt += Interval (reset to now+Interval when behind); job name check logs once per name at level 1; Job.ToString no longer doubles an owner prefix.
 - SaveTypes.cs deleted (D12: only old-assembly aliases; no other user of the ES3Reflection.GetType prefix) -> one Core patch less in the startup summary. Persistence/Sidecars.cs (Register/PathFor/PathsFor, pattern with {slot}), Persistence/SaveKeys.cs (SaveKey via SaveBus.Key), SaveBus publishes LoadBegin/WorldReady/SaveBegin/SaveEnd events (Kind = Manual from Core).
+- GameRefs.cs/Origin.cs stay in src/Core/ (ownership.json gives W0-A only src/Core/Game/EntityRegistry*.cs in Game/); B01 moves them to Game/ in Wave B.
+- Tools: _common.RELOCATED maps file-map paths to the W0 locations; check_module_refs allows Boot/Plugin.cs. False positives silenced with `// refs-ok:` on enum lines in contracts.
 - W0-B creates src/Core/Util/** and src/Core/Game/{WorldIndex,WorldTiles,FsmIndex,FsmPause,PrefabCatalog,ItemSpawner,Factions,Clock,Names,Layers,CameraArbiter,PlayerState}.cs - never create those.

@@ -15,13 +15,19 @@ namespace WildWasteland.Core
         static int _inGameFrame = -1;
         static bool _inGame;
 
+        /// <summary>The player GameObject (looked up at most once per second while missing).</summary>
         public static GameObject Player { get { Refresh(); return _player; } }
         /// <summary>"PlayerCameraHolder" (the first-person camera rig).</summary>
         public static GameObject PlayerCameraHolder { get { Refresh(); return _camera; } }
+        /// <summary>"GameManager".</summary>
         public static GameObject GameManager { get { Refresh(); return _gm; } }
+        /// <summary>"NewGOArrayList" (saved object arrays).</summary>
         public static GameObject NewGOArrayList { get { Refresh(); return _arrays; } }
+        /// <summary>"ItemNameID" (unique saved names).</summary>
         public static GameObject ItemNameId { get { Refresh(); return _itemId; } }
+        /// <summary>The Menu FSM.</summary>
         public static PlayMakerFSM Menu { get { Refresh(); return _menu; } }
+        /// <summary>The SaveLoadGame FSM (read by SaveBus once per frame).</summary>
         public static PlayMakerFSM SaveLoadGame { get { Refresh(); return _saveLoad; } }
 
         static Camera _cam; static int _camFrame = -1;
@@ -62,6 +68,7 @@ namespace WildWasteland.Core
 
         public static string SaveLoadState { get { var f = SaveLoadGame; return f != null ? f.ActiveStateName : null; } }
 
+        /// <summary>Looks up missing references at most once per second.</summary>
         static void Refresh()
         {
             if (_player != null && _gm != null && _menu != null && _saveLoad != null && _camera != null && _arrays != null && _itemId != null) return;
@@ -77,6 +84,7 @@ namespace WildWasteland.Core
             if (_itemId == null) _itemId = GameObject.Find("itemNameID");
         }
 
+        /// <summary>Clears every cached reference on scene load.</summary>
         internal static void OnSceneLoaded(Scene s, LoadSceneMode m)
         {
             _player = _camera = _gm = _slg = _arrays = _itemId = null; _menu = _saveLoad = null; _next = 0; _inGameFrame = -1; _inPlayFrame = -1; _cam = null;
@@ -87,6 +95,7 @@ namespace WildWasteland.Core
     public static class FsmUtil
     {
         static readonly System.Collections.Generic.List<PlayMakerFSM> _buf = new System.Collections.Generic.List<PlayMakerFSM>(8);
+        /// <summary>FSM named <paramref name="fsmName"/> on <paramref name="go"/> (GetComponents loop; no FindFsmOnGameObject warnings), or null.</summary>
         public static PlayMakerFSM Find(GameObject go, string fsmName)
         {
             if (go == null) return null;

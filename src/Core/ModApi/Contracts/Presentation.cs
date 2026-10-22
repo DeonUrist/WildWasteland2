@@ -188,7 +188,7 @@ namespace WildWasteland.Core
         /// <summary>Speed cap requested by the driver, m/s (0 = none).</summary>
         public float SpeedCap;
         /// <summary>Stance flags.</summary>
-        public bool Crouched, Aiming, Firing, Airborne, Crawling, Seated;
+        public bool Crouched, Aiming, Firing, Airborne, Crawling, Seated;   // refs-ok: enum values / field names, not module types
         /// <summary>Locomotion options.</summary>
         public bool TurnInPlace, WalkToStop;
     }
@@ -337,7 +337,7 @@ namespace WildWasteland.Core
     }
 
     /// <summary>Camera view modes.</summary>
-    public enum CameraViewMode { FirstPerson, ThirdPerson, Peek, Orbit, Map, Binoculars, Scope }
+    public enum CameraViewMode { FirstPerson, ThirdPerson, Peek, Orbit, Map, Binoculars, Scope }   // refs-ok: enum values / field names, not module types
 
     /// <summary>Camera rig queries (README P2). Projection/FOV writes go through Core CameraArbiter.</summary>
     public interface ICameraRig

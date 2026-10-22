@@ -55,6 +55,7 @@ namespace WildWasteland
         public static ConfigEntry<int> VerboseLevel;
         public static ConfigEntry<float> FrameBudgetMs;
 
+        /// <summary>BepInEx entry: binds Core config, registers and binds modules, creates the runner, installs Core fixes and starts the modules (AGENTS 5.2).</summary>
         void Awake()
         {
             Instance = this;
@@ -129,6 +130,7 @@ namespace WildWasteland
         /// <summary>SettingChanged handler of both log entries: re-applies the level live.</summary>
         static void OnLogSettingChanged(object sender, EventArgs args) { ApplyLogLevel(); }
 
+        /// <summary>Sets the real audio voice count before any module creates clips (setting bound by Patrols until Wave B).</summary>
         static void ApplyAudioVoices(int want)
         {
             try
@@ -144,11 +146,13 @@ namespace WildWasteland
             catch (Exception e) { Core.Log.Warn("[Core] Audio: could not set the voice count: " + e.Message); }
         }
 
+        /// <summary>Registers the per-frame Core job.</summary>
         static void RegisterCoreJobs()
         {
             Core.Scheduler.EveryFrame(null, "Core.Frame", CoreFrame, Core.Phase.EarlyUpdate);
         }
 
+        /// <summary>Core.Frame job (EarlyUpdate): editor session, SaveBus watcher, hotkeys, tool window.</summary>
         static void CoreFrame()
         {
             Core.UI.EditorSession.Tick();
@@ -157,6 +161,7 @@ namespace WildWasteland
             Core.UI.ToolWindow.Tick();
         }
 
+        /// <summary>SceneManager.sceneLoaded: resets Core caches (refs, origin, entities, save watcher, log limits) and forwards to modules.</summary>
         static void OnSceneLoaded(Scene s, LoadSceneMode m)
         {
             Core.ReplacementGuard.SceneLoaded(s);

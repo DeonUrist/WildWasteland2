@@ -12,16 +12,22 @@ namespace WildWasteland.Core
         {
             internal float Fraction;
             internal string Detail;
+            /// <summary>Progress of one source.</summary>
             internal Work(float fraction, string detail) { Fraction = fraction; Detail = detail; }
         }
         private static readonly Dictionary<IModule, Func<Work?>> Sources = new Dictionary<IModule, Func<Work?>>();
         private static MapMagicObject _map;
         internal static bool ScreenVisible;
+        /// <summary>Menus must not open (loading screen, save running).</summary>
         internal static bool MenusBlocked { get { return ScreenVisible || SaveBus.Busy || SinglePlayerSaving.Serializing; } }
+        /// <summary>Adds a progress source of a module.</summary>
         internal static void Register(IModule owner, Func<Work?> source) { Sources[owner] = source; }
+        /// <summary>Removes a module's progress source.</summary>
         internal static void Remove(IModule owner) { Sources.Remove(owner); }
+        /// <summary>Shows the loading screen progress from now on.</summary>
         internal static void Begin() { _map = null; ScreenVisible = true; }
 
+        /// <summary>Combined progress and detail text of every source.</summary>
         internal static void Read(bool saving, out float fraction, out string detail)
         {
             string state = SaveBus.State;

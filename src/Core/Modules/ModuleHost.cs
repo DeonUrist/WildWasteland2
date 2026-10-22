@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 
 namespace WildWasteland.Core
 {
+    /// <summary>Lifecycle state of a module.</summary>
     public enum ModuleState { NotStarted, Running, OffByConfig, OffConflict, InitFailed, DisabledAfterErrors }
 
     /// <summary>
@@ -29,12 +30,16 @@ namespace WildWasteland.Core
             internal float WindowStart; internal int WindowErrors; internal int Logged;
         }
 
+        /// <summary>Save/world lifecycle broadcasts.</summary>
         public enum Event { WorldReady, SaveBegin, SaveEnd, LoadBegin }
 
         static readonly List<Entry> _entries = new List<Entry>();
         static readonly Dictionary<IModule, Entry> _byModule = new Dictionary<IModule, Entry>();
+        /// <summary>Every module entry in registration order.</summary>
         public static IList<Entry> Entries { get { return _entries; } }
+        /// <summary>Entry of a module or null.</summary>
         public static Entry Of(IModule m) { Entry e; return m != null && _byModule.TryGetValue(m, out e) ? e : null; }
+        /// <summary>True while the module runs.</summary>
         public static bool IsRunning(IModule m) { var e = Of(m); return e != null && e.State == ModuleState.Running; }
 
         /// <summary>The module whose Init/ProvideApis/Shutdown (or deferred init) is running right now, else null. Lets the
@@ -44,6 +49,7 @@ namespace WildWasteland.Core
         const int ErrorWindowLimit = 40;      // errors per 10 s that disable a module
         static bool _quitting;
 
+        /// <summary>Registers a module (ModuleRegistry only).</summary>
         public static void Add(IModule m)
         {
             var e = new Entry { Module = m, State = ModuleState.NotStarted };
@@ -73,6 +79,7 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Starts every enabled module without a standalone conflict, then applies used dispatchers.</summary>
         internal static void StartAll()
         {
             foreach (var e in _entries)
@@ -92,6 +99,7 @@ namespace WildWasteland.Core
             Hotkeys.CheckConflicts();
         }
 
+        /// <summary>Description of a loaded standalone plugin this module replaces, or null.</summary>
         static string FindConflict(IModule m)
         {
             var c = m.ConflictsWith;
@@ -105,6 +113,7 @@ namespace WildWasteland.Core
             return null;
         }
 
+        /// <summary>Init + ProvideApis inside try/catch; a failed Init is shut down and cleaned up.</summary>
         static void Start(Entry e)
         {
             var m = e.Module;
@@ -130,6 +139,7 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Shutdown + Core cleanup, then sets the new state.</summary>
         static void Stop(Entry e, ModuleState newState)
         {
             var m = e.Module;
@@ -144,6 +154,7 @@ namespace WildWasteland.Core
             Log.Always("[" + m.Id + "] stopped (" + newState + ")");
         }
 
+        /// <summary>Removes everything Core tracks for a module: jobs, hooks, hotkeys, patches, ModAPI providers, event handlers, old Services event handlers.</summary>
         static void Cleanup(IModule m)
         {
             SetActive(m, false);
@@ -169,6 +180,7 @@ namespace WildWasteland.Core
         /// <summary>Sets ModuleBase.Active.</summary>
         static void SetActive(IModule m, bool on) { var mb = m as ModuleBase; if (mb != null) mb.Active = on; }
 
+        /// <summary>Runtime on/off from the [&lt;Id&gt;] Enabled entry.</summary>
         static void OnEnabledChanged(Entry e)
         {
             if (_quitting) return;
@@ -189,6 +201,7 @@ namespace WildWasteland.Core
             Stop(e, ModuleState.OffByConfig); Start(e); Hooks.ApplyUsed();
         }
         // Modules without a standalone ordering dependency can finish initialization after chainloading.
+        /// <summary>Finishes a module initialization after chainloading (conflict re-check first).</summary>
         internal static bool DeferredInit(IModule module, Action initialize)
         {
             var entry = Of(module); if (entry == null || entry.State != ModuleState.Running) return false;
@@ -214,11 +227,13 @@ namespace WildWasteland.Core
 
         // ---------------------------------------------------------------- broadcasts
 
+        /// <summary>Forwards scene loads to running modules.</summary>
         internal static void SceneLoaded(Scene s, LoadSceneMode mode)
         {
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "OnSceneLoaded", () => en.Module.OnSceneLoaded(s, mode)); }
         }
 
+        /// <summary>Forwards a save/world lifecycle hook to running modules.</summary>
         internal static void Broadcast(Event ev, string slot)
         {
             foreach (var e in _entries)
@@ -235,11 +250,13 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Forwards a floating-origin jump to running modules.</summary>
         internal static void OriginShift(Vector3 delta)
         {
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "OnOriginShift", () => en.Module.OnOriginShift(delta)); }
         }
 
+        /// <summary>Shuts every running module down on application quit.</summary>
         internal static void Quit()
         {
             if (_quitting) return;
@@ -247,6 +264,7 @@ namespace WildWasteland.Core
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "Shutdown", () => en.Module.Shutdown()); }
         }
 
+        /// <summary>Runs a lifecycle hook, counting exceptions toward the module error rule.</summary>
         static void Safe(Entry e, string what, Action a)
         {
             try { a(); }
@@ -261,8 +279,10 @@ namespace WildWasteland.Core
         /// logged per module but do not disable the module; only hook / lifecycle failures do.
         /// </summary>
         internal static void ReportJobException(Job j, Exception ex) { Fail(Of(j.Owner), "job " + j.Name, ex, false); }
+        /// <summary>Counts a hook/event handler exception toward the module error rule.</summary>
         internal static void ReportHookException(IModule m, string target, Exception ex) { Fail(Of(m), target, ex, true); }
 
+        /// <summary>Logs (first 5) and counts an error; 40 counted errors in 10 s disable the module.</summary>
         static void Fail(Entry e, string where, Exception ex, bool countsTowardsDisable)
         {
             if (e == null) { Log.Error("[Core] " + where, ex); return; }
@@ -280,6 +300,7 @@ namespace WildWasteland.Core
 
         // ---------------------------------------------------------------- summary
 
+        /// <summary>Startup summary: every module with state and patch counts plus the Core hooks.</summary>
         public static string Summary()
         {
             var sb = new StringBuilder();

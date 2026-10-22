@@ -12,6 +12,7 @@ namespace WildWasteland.Core
         public static Runner Instance { get; private set; }
         public static GameObject Host { get; private set; }
 
+        /// <summary>Creates the runner GameObject (HideAndDontSave + DontDestroyOnLoad) when it is missing.</summary>
         public static void Ensure()
         {
             if (Instance != null) return;
@@ -25,23 +26,31 @@ namespace WildWasteland.Core
         }
         internal static GuiRunner Gui;
 
+        /// <summary>Runs Update jobs.</summary>
         void Update() { Scheduler.Run(Phase.Update); }
+        /// <summary>Runs LateUpdate jobs.</summary>
         void LateUpdate() { Scheduler.Run(Phase.LateUpdate); }
+        /// <summary>Runs FixedUpdate jobs.</summary>
         void FixedUpdate() { Scheduler.Run(Phase.FixedUpdate); }
+        /// <summary>Shuts every module down on quit.</summary>
         void OnApplicationQuit() { ModuleHost.Quit(); }
+        /// <summary>Clears the instance when destroyed.</summary>
         void OnDestroy() { if (Instance == this) Instance = null; }
     }
 
     [DefaultExecutionOrder(-1000)]
     internal sealed class EarlyRunner : MonoBehaviour
     {
+        /// <summary>Runs EarlyUpdate jobs (execution order -1000).</summary>
         void Update() { Scheduler.Run(Phase.EarlyUpdate); }
+        /// <summary>Runs EarlyFixedUpdate jobs.</summary>
         void FixedUpdate() { Scheduler.Run(Phase.EarlyFixedUpdate); }
     }
 
     [DefaultExecutionOrder(20000)]
     internal sealed class LateRunner : MonoBehaviour
     {
+        /// <summary>Runs LateUpdateLast jobs and enables the GUI runner only while some Gui job or the window wants to draw.</summary>
         void LateUpdate()
         {
             Scheduler.Run(Phase.LateUpdateLast);
@@ -60,6 +69,7 @@ namespace WildWasteland.Core
     /// <summary>The runner's OnGUI (Phase.Gui jobs, then the F7 window). Enabled by <see cref="LateRunner"/>.</summary>
     internal sealed class GuiRunner : MonoBehaviour
     {
+        /// <summary>Runs Gui jobs and draws the settings window.</summary>
         void OnGUI() { Scheduler.Run(Phase.Gui); UI.ToolWindow.Draw(); }
     }
 }

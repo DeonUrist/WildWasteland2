@@ -6,7 +6,7 @@ namespace WildWasteland.Core
     public enum SaveKind { Manual, Auto, Exit, Quick }
 
     /// <summary>Phase of the save framework shown by HUD presentation.</summary>
-    public enum SavePhase { Idle, Saving, Loading, Recovering }
+    public enum SavePhase { Idle, Saving, Loading, Recovering }   // refs-ok: enum values / field names, not module types
 
     /// <summary>Save framework state (named slots, journaled saves, autosave + combat deferral).</summary>
     public interface ISaves

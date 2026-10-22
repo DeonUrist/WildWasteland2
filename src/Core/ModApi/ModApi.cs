@@ -89,6 +89,7 @@ namespace WildWasteland.Core
             internal static IModule Owner;
             static Slot<T> _registered;
 
+            /// <summary>Contract type of the slot.</summary>
             public Type Contract { get { return typeof(T); } }
             IModule ISlot.Owner { get { return Owner; } }
             object ISlot.Value { get { return Value; } }

@@ -73,6 +73,27 @@ def changed_files(base_ref):
     return sorted(set(a) | set(b) | set(c))
 
 
+# W0-A moved these kernel files into Core area folders (README 3.3); filemap.json keeps the original paths.
+RELOCATED = {
+    'Core/Plugin.cs': 'Core/Boot/Plugin.cs', 'Core/Runner.cs': 'Core/Boot/Runner.cs',
+    'Core/ModuleBase.cs': 'Core/Modules/ModuleBase.cs', 'Core/ModuleHost.cs': 'Core/Modules/ModuleHost.cs',
+    'Core/ModuleConfig.cs': 'Core/Modules/ModuleConfig.cs',
+    'Core/Scheduler.cs': 'Core/Scheduling/Scheduler.cs', 'Core/WorldWork.cs': 'Core/Scheduling/WorldWork.cs',
+    'Core/LoadingProgress.cs': 'Core/Scheduling/LoadingProgress.cs',
+    'Core/Hooks.cs': 'Core/Harmony/Hooks.cs', 'Core/Patches.cs': 'Core/Harmony/Patches.cs',
+    'Core/Services.cs': 'Core/ModApi/Services.cs', 'Core/QuestServices.cs': 'Core/ModApi/Contracts/Quests.cs',
+    'Core/Hotkeys.cs': 'Core/Input/Hotkeys.cs', 'Core/SaveBus.cs': 'Core/Persistence/SaveBus.cs',
+    'Core/Log.cs': 'Core/Log/Log.cs',
+}
+# W0-A deleted these (D12): SaveTypes.cs held only the old-assembly ES3 aliases.
+DELETED_W0 = {'Core/SaveTypes.cs'}
+
+
+def current_path(p):
+    """src-relative path of a file-map row after the W0 relocations."""
+    return RELOCATED.get(p, p)
+
+
 def module_of(path):
     """Module folder a source file belongs to: 'Core' or the folder under src/Modules."""
     m = re.match(r'src/Modules/([^/]+)/', path)

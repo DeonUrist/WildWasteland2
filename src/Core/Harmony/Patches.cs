@@ -17,6 +17,7 @@ namespace WildWasteland.Core
         public sealed class Record
         {
             public string Owner; public string Target; public string Kind; public string Patch; public bool Ok; public string Error;
+            /// <summary>"owner: kind target" plus the failure.</summary>
             public override string ToString() { return Owner + ": " + Kind + " " + Target + (Ok ? "" : " FAILED " + Error); }
         }
 
@@ -24,8 +25,10 @@ namespace WildWasteland.Core
         static readonly List<Record> _records = new List<Record>();
         static readonly Dictionary<string, string> _owners = new Dictionary<string, string>(); // target+kind -> owner
         public static int Conflicts;
+        /// <summary>Every recorded patch.</summary>
         public static IEnumerable<Record> Records { get { return _records; } }
 
+        /// <summary>Harmony instance of a module (id GUID.ModuleId; Core = GUID).</summary>
         public static Harmony For(IModule m)
         {
             string id = m == null ? Plugin.GUID : Plugin.GUID + "." + m.Id;
@@ -45,6 +48,7 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Applies one [HarmonyPatch] class for a module, recording each target; returns the number of patched methods.</summary>
         public static int ApplyClass(IModule m, Type patchClass)
         {
             var owner = m == null ? "Core" : m.Id;
@@ -104,11 +108,13 @@ namespace WildWasteland.Core
             try { return args == null ? AccessTools.Method(t, name) : AccessTools.Method(t, name, args); }
             catch { return null; }
         }
+        /// <summary>Method by type name (any loaded assembly) or null.</summary>
         public static MethodInfo Method(string typeName, string name, Type[] args = null)
         {
             return Method(AccessTools.TypeByName(typeName), name, args);
         }
 
+        /// <summary>Removes every patch of a module (ModuleHost.Cleanup).</summary>
         public static void Unpatch(IModule m)
         {
             string id = Plugin.GUID + "." + m.Id;
@@ -121,12 +127,15 @@ namespace WildWasteland.Core
             foreach (var k in dead) _owners.Remove(k);
         }
 
+        /// <summary>"Type.Method" of a patch method.</summary>
         static string Name(MethodInfo mi) { return mi == null ? "?" : mi.DeclaringType.Name + "." + mi.Name; }
+        /// <summary>"Type.Method" of a target.</summary>
         public static string Describe(MethodBase mb)
         {
             return mb == null ? "?" : (mb.DeclaringType != null ? mb.DeclaringType.FullName : "") + "." + mb.Name;
         }
 
+        /// <summary>Records a patch and detects direct double patches (CONFLICT).</summary>
         static void Note(string owner, MethodBase target, string patch, string kind, bool ok, string error)
         {
             string t = target == null ? patch : Describe(target);
@@ -142,10 +151,12 @@ namespace WildWasteland.Core
             else _owners[key] = owner;
         }
 
+        /// <summary>Successful patches of an owner.</summary>
         public static int Count(string owner)
         {
             int n = 0; foreach (var r in _records) if (r.Owner == owner && r.Ok) n++; return n;
         }
+        /// <summary>Failed patches of an owner.</summary>
         public static int Failed(string owner)
         {
             int n = 0; foreach (var r in _records) if (r.Owner == owner && !r.Ok) n++; return n;

@@ -39,8 +39,10 @@ namespace WildWasteland.Core
         [Obsolete("refactor: use SaveBus.ReportFailure(owner, message)")]
         public static void ReportFailure(string message) { ReportFailure(null, message); }
         internal static event Action<UI.ToolLayout> CleanupSettings;
+        /// <summary>Draws the cleanup settings contributed by modules (Saves page).</summary>
         internal static void DrawCleanupSettings(UI.ToolLayout layout) { var draw = CleanupSettings; if (draw != null) draw(layout); }
         internal static event Action SaveCancelled;
+        /// <summary>Aborts the running native save and returns SaveLoadGame to isPlay.</summary>
         internal static void CancelSave()
         {
             _after.Clear(); Saving = false; _saveSlot = null;
@@ -96,6 +98,7 @@ namespace WildWasteland.Core
         /// <summary>Run <paramref name="a"/> once, <paramref name="delay"/> unscaled seconds after the next isPlay following a save.</summary>
         public static void AfterSave(Action a, float delay = 1f) { _after.Add(new KeyValuePair<float, Action>(-delay, a)); }
 
+        /// <summary>Resets the watcher on scene load (new generation, world ready pending).</summary>
         internal static void OnSceneLoaded() { Generation++; State = null; Saving = Loading = false; _pendingWorldReady = true; _after.Clear(); }
 
         /// <summary>Called once per frame by Core (EarlyUpdate).</summary>
@@ -123,6 +126,7 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Handles a SaveLoadGame state change: StateChanged handlers, module hooks and typed save events.</summary>
         static void Changed(string prev, string now)
         {
             if (Log.L1) Log.Main(null, "SaveLoadGame: " + (prev ?? "-") + " -> " + now);

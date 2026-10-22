@@ -639,8 +639,10 @@ namespace WildWasteland.Core
         [HarmonyPatch(typeof(Fsm), "ProcessEvent")] static class P_ProcessEvent { static bool Prefix(Fsm __instance, FsmEvent fsmEvent, FsmEventData eventData) { return ProcessEvent.Run(__instance, fsmEvent, eventData); } }
         [HarmonyPatch(typeof(Fsm), "EnterState")] static class P_EnterState { static bool Prefix(Fsm __instance, FsmState state) { return EnterState.RunPrefix(__instance, state); } static void Postfix(Fsm __instance, FsmState state) { EnterState.RunPostfix(__instance, state); } }
         [HarmonyPatch(typeof(ES3Internal.ES3ReferenceMgrBase), "GetPrefab", typeof(long), typeof(bool))]
+        /// <summary>Forwards ES3ReferenceMgrBase.GetPrefab to the resolver chain (original runs when no resolver answers).</summary>
         static class P_GetPrefab { static bool Prefix(long id, ref ES3Internal.ES3Prefab __result) { if (GetPrefab.PrefixCount == 0) return true; var p = GetPrefab.Run(id); if (p == null) return true; __result = p; return false; } }
         [HarmonyPatch(typeof(NWH.Common.FloatingOrigin.FloatingOrigin), "Jump")]
+        /// <summary>Forwards FloatingOrigin.Jump to Origin and the dispatcher.</summary>
         static class P_OriginJump { static bool Prefix(NWH.Common.FloatingOrigin.FloatingOrigin __instance) { Origin.BeforeJump(__instance); return OriginJump.RunPrefix(__instance); } static void Postfix(NWH.Common.FloatingOrigin.FloatingOrigin __instance) { OriginJump.RunPostfix(__instance); Origin.AfterJump(__instance); } }
 
         [HarmonyPatch(typeof(SetAudioClip), "OnEnter")]

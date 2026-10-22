@@ -52,7 +52,9 @@ namespace WildWasteland.Core
     {
         public abstract string Id { get; }
         public abstract string DisplayName { get; }
+        /// <summary>Default: no standalone conflicts.</summary>
         public virtual string[] ConflictsWith { get { return Empty; } }
+        /// <summary>Default: enabled.</summary>
         public virtual bool DefaultEnabled { get { return true; } }
         public bool Active { get; internal set; }
         /// <summary>Config helper for this module; set by Core before BindConfig.</summary>
@@ -61,15 +63,25 @@ namespace WildWasteland.Core
         public string Dir { get { return Assets.ModuleDir(Id); } }
         static readonly string[] Empty = new string[0];
 
+        /// <summary>Binds every config entry (see IModule.BindConfig).</summary>
         public abstract void BindConfig(ModuleConfig cfg);
+        /// <summary>Starts the module (see IModule.Init).</summary>
         public abstract void Init();
+        /// <summary>Default: nothing.</summary>
         public virtual void OnSceneLoaded(Scene scene, LoadSceneMode mode) { }
+        /// <summary>Default: nothing.</summary>
         public virtual void OnWorldReady() { }
+        /// <summary>Default: nothing.</summary>
         public virtual void OnSaveBegin(string slot) { }
+        /// <summary>Default: nothing.</summary>
         public virtual void OnSaveEnd(string slot) { }
+        /// <summary>Default: nothing.</summary>
         public virtual void OnLoadBegin(string slot) { }
+        /// <summary>Default: nothing.</summary>
         public virtual void OnOriginShift(Vector3 delta) { }
+        /// <summary>Default: nothing.</summary>
         public virtual void Shutdown() { }
+        /// <summary>Default: no pages.</summary>
         public virtual IEnumerable<ToolPage> ToolPages() { return null; }
         /// <summary>Default: provides nothing.</summary>
         public virtual void ProvideApis() { }

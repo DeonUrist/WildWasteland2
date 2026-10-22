@@ -10,6 +10,7 @@ namespace WildWasteland.Core
         private static readonly int[] Requested = { -100, -100, -100 };
         private static int _frame = -1, _owner = -1, _last = -1;
         private static float _next;
+        /// <summary>True when <paramref name="owner"/> may run one heavy world-preparation slice this frame (round-robin, budget and save guards).</summary>
         internal static bool Try(int owner)
         {
             int frame = Time.frameCount; Requested[owner] = frame;

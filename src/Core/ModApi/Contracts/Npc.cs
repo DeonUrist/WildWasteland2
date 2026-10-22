@@ -75,7 +75,7 @@ namespace WildWasteland.Core
     // ------------------------------------------------------------------ new (Wave B NPCAI)
 
     /// <summary>High-level behaviour mode of an NPC (published with NpcStateChanged).</summary>
-    public enum NpcMode { Idle, Travel, Investigate, Search, Combat, Cover, Flee, Follow, Seated, Hide, Dead }
+    public enum NpcMode { Idle, Travel, Investigate, Search, Combat, Cover, Flee, Follow, Seated, Hide, Dead }   // refs-ok: enum values / field names, not module types
 
     /// <summary>Perception parameters of a player-sight query (patrol crews, traffic agents, sentries).</summary>
     public struct PerceptionProfile

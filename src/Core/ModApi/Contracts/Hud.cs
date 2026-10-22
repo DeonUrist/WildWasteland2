@@ -122,7 +122,7 @@ namespace WildWasteland.Core
     }
 
     /// <summary>Notification categories (style/priority).</summary>
-    public enum NotificationKind { Info, Quest, Save, Warning, Combat, World }
+    public enum NotificationKind { Info, Quest, Save, Warning, Combat, World }   // refs-ok: enum values, not module types
 
     /// <summary>On-screen notices (replaces direct CleanHUD MessageHook.Push calls).</summary>
     public interface INotifications

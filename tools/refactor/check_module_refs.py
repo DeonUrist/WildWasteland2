@@ -20,7 +20,7 @@ KEYWORDS = {'new', 'return', 'is', 'as', 'case', 'throw', 'else', 'in', 'out', '
 QUALIFIED = re.compile(r'(?<![\w".])(?:WildWasteland\.)?Modules\.(\w+)\.\w')
 SIBLING = re.compile(r'\b([A-Z]\w*)\.[A-Z]\w*')
 REFLECT = re.compile(r'WildWasteland\.Modules\.(\w+)')
-ALLOW_CORE = {'src/Core/Boot/ModuleRegistry.cs', 'src/Core/Plugin.cs'}
+ALLOW_CORE = {'src/Core/Boot/ModuleRegistry.cs', 'src/Core/Boot/Plugin.cs', 'src/Core/Plugin.cs'}
 
 
 def top_level_types(code):

@@ -77,9 +77,11 @@ namespace WildWasteland.Core
         const int JobErrorLimit = 20;   // errors per 10 s that switch one job off
         public static double MaxFrameMs;
         public static long Frames;
+        /// <summary>Average WW managed time per frame since the last reset, ms.</summary>
         public static double AvgFrameMs { get { return Frames > 0 ? _sumFrameMs / Frames : 0; } }
         static double _sumFrameMs;
 
+        /// <summary>One job list per phase.</summary>
         static List<Job>[] NewLists()
         {
             var a = new List<Job>[Enum.GetValues(typeof(Phase)).Length];
