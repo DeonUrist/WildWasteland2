@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Core
 {
     /// <summary>
     /// (WW) Pre-recorded POI navigation, one file per POI type, all positions POI-local (root.InverseTransformPoint):
@@ -19,12 +19,12 @@ namespace WildWasteland.Modules.NPC
     /// Climb (From = below the ledge, To = on top) and Drop (jump down). Manual links come from the editor and survive rebakes;
     /// Off links (also baked ones switched off in the editor) are kept but never used.
     /// </summary>
-    internal enum PoiLinkKind { Ladder, Climb, Drop }
+    public enum PoiLinkKind { Ladder, Climb, Drop }
 
     /// <summary>One walkable node: POI-local position, surface (level) index, terrain node flag (re-projected per instance).</summary>
-    internal sealed class PoiNavNode { public Vector3 Pos; public int Surface; public bool Terrain; }
+    public sealed class PoiNavNode { public Vector3 Pos; public int Surface; public bool Terrain; }
     /// <summary>A traversal link (ladder, climb, drop) between two surfaces.</summary>
-    internal sealed class PoiNavLink
+    public sealed class PoiNavLink
     {
         public PoiLinkKind Kind; public bool Manual, Off;
         public Vector3 From, To, LineBottom, LineTop; public float Yaw;   // Yaw: POI-local facing while traversing (towards the ladder / wall)
@@ -34,18 +34,18 @@ namespace WildWasteland.Modules.NPC
     }
 
     /// <summary>Pre-recorded navigation of one POI type: nodes, edges, links (POI-local).</summary>
-    internal sealed class PoiNavData
+    public sealed class PoiNavData
     {
-        internal const int Version = 1;
-        internal string Poi = "", Signature = "";
-        internal readonly List<PoiNavNode> Nodes = new List<PoiNavNode>();
-        internal readonly List<int> Edges = new List<int>();            // pairs a, b
-        internal readonly List<PoiNavLink> Links = new List<PoiNavLink>();
-        internal Bounds Box;                                            // local bounds of the nodes (computed)
-        internal int Surfaces;
+        public const int Version = 1;
+        public string Poi = "", Signature = "";
+        public readonly List<PoiNavNode> Nodes = new List<PoiNavNode>();
+        public readonly List<int> Edges = new List<int>();            // pairs a, b
+        public readonly List<PoiNavLink> Links = new List<PoiNavLink>();
+        public Bounds Box;                                            // local bounds of the nodes (computed)
+        public int Surfaces;
 
         /// <summary>Deep copy of the data (editor drafts).</summary>
-        internal PoiNavData Copy()
+        public PoiNavData Copy()
         {
             var d = new PoiNavData { Poi = Poi, Signature = Signature, Box = Box, Surfaces = Surfaces };
             foreach (var n in Nodes) d.Nodes.Add(new PoiNavNode { Pos = n.Pos, Surface = n.Surface, Terrain = n.Terrain });
@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>Recomputes the local bounds (nodes and link ends, +2 m) and the surface count.</summary>
-        internal void Recompute()
+        public void Recompute()
         {
             Surfaces = 0;
             if (Nodes.Count == 0) { Box = new Bounds(); return; }
@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.NPC
         static string V(Vector3 v) { return F(v.x) + " " + F(v.y) + " " + F(v.z); }
 
         /// <summary>The hand-editable text form (header, nodes, edges, links).</summary>
-        internal string Write()
+        public string Write()
         {
             var sb = new StringBuilder();
             sb.Append("WWPOINAV ").Append(Version).Append('\n');
@@ -93,7 +93,7 @@ namespace WildWasteland.Modules.NPC
         static Vector3 PV(string[] w, int i) { return new Vector3(P(w[i]), P(w[i + 1]), P(w[i + 2])); }
 
         /// <summary>Parses the text form; throws on bad data (edges to missing nodes).</summary>
-        internal static PoiNavData Read(string text)
+        public static PoiNavData Read(string text)
         {
             var d = new PoiNavData();
             var lines = text.Split('\n');
