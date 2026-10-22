@@ -55,32 +55,22 @@ namespace WildWasteland.Modules.NPC
         partial void InitGunplayJobs();
         /// <summary>Core (Hotkeys): the player's shout key (empty since B07: NPCAIModule registers it).</summary>
         partial void InitCoreShout();
-        /// <summary>Tools: the POI pathfinding setup job.</summary>
-        partial void InitToolsPoiNavSetup();
-        /// <summary>Tools: the POI navigation data view, its editor jobs and the editor hotkey.</summary>
-        partial void InitToolsPoiNavEditor();
         /// <summary>Presentation: Women of Wasteland shutdown step.</summary>
         static partial void ShutdownPresentationWomen();
         /// <summary>Compatibility: Weapons Pack shutdown step (empty since B17).</summary>
         static partial void ShutdownCompatibility();
         /// <summary>Gunplay: VanillaEvents shutdown step (empty since B09).</summary>
         static partial void ShutdownGunplay();
-        /// <summary>Tools: closes the POI navigation editor, unhooks the data view and resets the setup mode.</summary>
-        static partial void ShutdownTools();
         /// <summary>Compatibility: Weapons Pack reset (empty since B17).</summary>
         static partial void ResetCompatibility();
         /// <summary>Gunplay: WeaponRanges / VanillaEvents scene caches (empty since B09).</summary>
         static partial void ResetGunplay();
-        /// <summary>Tools: POI navigation editor close + setup reset.</summary>
-        static partial void ResetTools();
         /// <summary>Presentation: Gungirl scene caches.</summary>
         static partial void SceneLoadedPresentation();
         /// <summary>Presentation: Gungirl world scan when the world is ready.</summary>
         static partial void WorldReadyPresentation();
         /// <summary>Compatibility: Weapons Pack reset when a save starts loading (empty since B17).</summary>
         static partial void LoadBeginCompatibility();
-        /// <summary>Tools: origin shift of the POI navigation setup copies and the editor.</summary>
-        static partial void ShiftTools(Vector3 delta);
         /// <summary>Gunplay: vanilla shot / damage observers (empty since B09).</summary>
         partial void InstallHooksGunplay();
         /// <summary>Presentation: CreateObject postfix of Pounce.</summary>
@@ -114,8 +104,6 @@ namespace WildWasteland.Modules.NPC
                 InitPresentationJobs();         // "NPC.Rigs" + the LateUpdate visual ticks
                 InitGunplayJobs();
                 InitCoreShout();
-                InitToolsPoiNavSetup();         // "PoiNav.Setup"
-                InitToolsPoiNavEditor();        // "PoiNav.View", "PoiNav.Editor", "PoiNav.EditorCamera", "PoiNav.EditorGui", editor key
             }
             catch (Exception)
             {
@@ -127,7 +115,6 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Stops the remaining parts (Tools editor first, then Women of Wasteland, then the emptied parts).</summary>
         public override void Shutdown()
         {
-            Step("POI navigation tools", ShutdownToolsStep);
             ShutdownPresentationWomen();
             ShutdownCompatibility();
             ShutdownGunplay();
@@ -136,7 +123,6 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>The "POI navigation tools" shutdown step (editor, view, setup).</summary>
-        static void ShutdownToolsStep() { ShutdownTools(); }
 
         /// <summary>Runs one shutdown step; an exception is logged and the next step still runs (also used by the Presentation part).</summary>
         static void Step(string what, Action a)
@@ -145,7 +131,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>Clears the remaining parts' caches (Init, Shutdown, scene load).</summary>
-        static void ResetAll() { ResetCompatibility(); ResetGunplay(); ResetTools(); }
+        static void ResetAll() { ResetCompatibility(); ResetGunplay(); }
 
         /// <summary>Scene load: caches reset, then the Presentation (Gungirl) caches.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { ResetAll(); SceneLoadedPresentation(); }
@@ -154,7 +140,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>A save starts loading: the Compatibility part is reset.</summary>
         public override void OnLoadBegin(string slot) { LoadBeginCompatibility(); }
         /// <summary>Floating origin: the Tools part's cached positions.</summary>
-        public override void OnOriginShift(Vector3 delta) { ShiftTools(delta); }
+
 
         /// <summary>Patches target.method with patchType.patchMethod as a prefix or postfix through Core.Patches (used by the Presentation part).</summary>
         internal bool Patch(Type target, string method, Type patchType, string patchMethod, bool prefix)

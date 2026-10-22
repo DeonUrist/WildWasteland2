@@ -57,8 +57,10 @@ namespace WildWasteland.Modules.Quests
         public bool NoRecipient;          // Deliver, not saved: you are at the camp and nobody there will take the goods
         public float NoRecipientSince = -1f;
 
+        /// <summary>Copies an authored quest before filling world-specific values.</summary>
         public Quest Clone() { return (Quest)MemberwiseClone(); }
 
+        /// <summary>Tests whether an authored giver filter accepts this NPC name.</summary>
         public bool GiverMatches(string npcName)
         {
             return Util.NameMatches(Giver, npcName);
@@ -67,6 +69,7 @@ namespace WildWasteland.Modules.Quests
 
     internal static class Util
     {
+        /// <summary>Normalizes authored names for matching.</summary>
         public static string Norm(string s)
         {
             if (string.IsNullOrEmpty(s)) return "";
@@ -81,6 +84,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // "merchant, elder" or "*" against an NPC name like "Merchant"
+        /// <summary>Matches a quest target token against a native name.</summary>
         public static bool NameMatches(string pattern, string npcName)
         {
             if (string.IsNullOrEmpty(pattern) || pattern.Trim() == "*") return true;
@@ -95,11 +99,13 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
+        /// <summary>Tests normalized native names for equality.</summary>
         public static bool SameName(string a, string b)
         {
             return Norm(a) == Norm(b) && Norm(a).Length > 0;
         }
 
+        /// <summary>Formats the compass direction of a horizontal displacement.</summary>
         public static string Compass(float dx, float dz)
         {
             // +Z is treated as north, +X as east
@@ -110,12 +116,14 @@ namespace WildWasteland.Modules.Quests
             return names[idx];
         }
 
+        /// <summary>Escapes one journal field for the current text format.</summary>
         public static string Esc(string s)
         {
             if (s == null) return "";
             return s.Replace("\\", "\\\\").Replace("|", "\\p").Replace("\n", "\\n").Replace("\r", "");
         }
 
+        /// <summary>Decodes an escaped journal field.</summary>
         public static string Unesc(string s)
         {
             var sb = new StringBuilder(s.Length);
@@ -155,6 +163,7 @@ namespace WildWasteland.Modules.Quests
         public string HireName = "", HireFaction = "", HireKind = "";
         public double HireUntil;
 
+        /// <summary>Clears all current journal, hire and cooldown state.</summary>
         public void Clear()
         {
             Active.Clear();
@@ -168,10 +177,16 @@ namespace WildWasteland.Modules.Quests
             HireName = ""; HireFaction = ""; HireKind = ""; HireUntil = 0.0;
         }
 
+        /// <summary>Formats one finite floating-point journal field invariantly.</summary>
         static string F(float v) { return v.ToString("R", CultureInfo.InvariantCulture); }
-        static float PF(string s) { float r; return float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out r) ? r : 0f; }
-        static int PI(string s) { int r; return int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out r) ? r : 0; }
+        /// <summary>Parses a finite current-format floating-point field without silently repairing corrupt state.</summary>
+        static float PF(string s) { float r = float.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture); if (float.IsNaN(r) || float.IsInfinity(r)) throw new InvalidDataException("Non-finite quest journal field"); return r; }
+        /// <summary>Parses a current-format integer field without an empty-state fallback.</summary>
+        static int PI(string s) { return int.Parse(s, NumberStyles.Integer, CultureInfo.InvariantCulture); }
+        /// <summary>Parses a finite double-precision game time in the current journal format.</summary>
+        static double PD(string s) { double value = double.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture); if (double.IsNaN(value) || double.IsInfinity(value)) throw new InvalidDataException("Non-finite quest journal time"); return value; }
 
+        /// <summary>Serializes the current AQ1 quest journal and saved companion contract.</summary>
         public string Serialize()
         {
             var sb = new StringBuilder();
@@ -229,6 +244,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Returns false (and leaves the book untouched) if the data is not a format we know.
+        /// <summary>Parses the current AQ1 journal without accepting older format migrations.</summary>
         public bool Deserialize(string data)
         {
             if (string.IsNullOrEmpty(data)) return false;
@@ -245,19 +261,25 @@ namespace WildWasteland.Modules.Quests
             int total = 0;
             string hireName = "", hireFaction = "", hireKind = "";
             double hireUntil = 0.0;
+            var identities = new HashSet<string>(StringComparer.Ordinal);
+            bool totalSeen = false;
             for (int i = 1; i < lines.Length; i++)
             {
                 string line = lines[i];
                 if (line.Length == 0) continue;
                 string[] p = line.Split('|');
+                int fields = p[0] == "T" || p[0] == "D" ? 2 : p[0] == "C" || p[0] == "O" ? 3 : p[0] == "R" ? 4 : p[0] == "H" ? 5 : p[0] == "W" ? 6 : p[0] == "Q" ? 39 : 0;
+                if (fields == 0 || p.Length != fields) throw new InvalidDataException("Unsupported or malformed quest journal row " + i);
+                string identity = p[0] == "H" || p[0] == "T" ? p[0] : p[0] + "|" + p[1];
+                if (!identities.Add(identity)) throw new InvalidDataException("Duplicate quest journal record " + identity);
+                if (p[0] == "T") totalSeen = true;
                 if (p[0] == "T" && p.Length >= 2) total = PI(p[1]);
                 else if (p[0] == "D" && p.Length >= 2) done.Add(Util.Unesc(p[1]));
-                else if (p[0] == "C" && p.Length >= 3) { long tk; if (long.TryParse(p[2], out tk)) stamps[Util.Unesc(p[1])] = tk; }
+                else if (p[0] == "C") stamps.Add(Util.Unesc(p[1]), long.Parse(p[2], CultureInfo.InvariantCulture));
                 else if (p[0] == "H" && p.Length >= 5)
                 {
                     hireName = Util.Unesc(p[1]);
-                    double hu;
-                    hireUntil = double.TryParse(p[2], NumberStyles.Float, CultureInfo.InvariantCulture, out hu) ? hu : 0.0;
+                    hireUntil = PD(p[2]);
                     hireFaction = Util.Unesc(p[3]);
                     hireKind = Util.Unesc(p[4]);
                 }
@@ -266,8 +288,7 @@ namespace WildWasteland.Modules.Quests
                 {
                     string rk = Util.Unesc(p[1]);
                     rep[rk] = PI(p[2]);
-                    double rs;
-                    if (p.Length >= 4 && double.TryParse(p[3], NumberStyles.Float, CultureInfo.InvariantCulture, out rs)) repStamp[rk] = rs;
+                    repStamp[rk] = PD(p[3]);
                 }
                 else if (p[0] == "W" && p.Length >= 5) walks.Add(new SavedWalk { Name = Util.Unesc(p[1]), TargetRel = new Vector3(PF(p[2]), PF(p[3]), PF(p[4])), CampKey = p.Length >= 6 ? Util.Unesc(p[5]) : "" });
                 else if (p[0] == "Q" && p.Length >= 27)
@@ -295,21 +316,17 @@ namespace WildWasteland.Modules.Quests
                     q.Accept = Util.Unesc(p[24]);
                     q.Remind = Util.Unesc(p[25]);
                     q.Done = Util.Unesc(p[26]);
-                    q.Home = p.Length >= 28 ? Util.Unesc(p[27]) : "";
-                    q.GiverId = p.Length >= 29 ? Util.Unesc(p[28]) : "";
-                    if (p.Length >= 33 && PI(p[29]) != 0) { q.HasGiverPos = true; q.GiverPos = new Vector3(PF(p[30]), PF(p[31]), PF(p[32])); }
-                    if (p.Length >= 35) { q.TimeLeft = PF(p[33]); q.Place = Util.Unesc(p[34]); }
-                    if (p.Length >= 39)
-                    {
-                        double dl;
-                        if (double.TryParse(p[35], NumberStyles.Float, CultureInfo.InvariantCulture, out dl)) q.Deadline = dl;
-                        q.RepGain = PI(p[36]);
-                        q.Chain = Util.Unesc(p[37]);
-                        q.Checkup = PI(p[38]) != 0;
-                    }
+                    q.Home = Util.Unesc(p[27]); q.GiverId = Util.Unesc(p[28]);
+                    q.HasGiverPos = PI(p[29]) != 0; q.GiverPos = new Vector3(PF(p[30]), PF(p[31]), PF(p[32]));
+                    q.TimeLeft = PF(p[33]); q.Place = Util.Unesc(p[34]); q.Deadline = PD(p[35]);
+                    q.RepGain = PI(p[36]); q.Chain = Util.Unesc(p[37]); q.Checkup = PI(p[38]) != 0;
+                    if (q.Id.Length == 0 || q.Type < QType.Fetch || q.Type > QType.Deliver || q.Count < 0 || q.Progress < 0 || q.Reward < 0)
+                        throw new InvalidDataException("Invalid quest journal objective");
+                    foreach (int flag in new[] {13,20,21,22,29,38}) if (p[flag] != "0" && p[flag] != "1") throw new InvalidDataException("Invalid quest journal flag");
                     active.Add(q);
                 }
             }
+            if (!totalSeen || total < 0) throw new InvalidDataException("Missing or invalid quest completion total");
             Active.Clear();
             Active.AddRange(active);
             DoneIds.Clear();
@@ -334,6 +351,7 @@ namespace WildWasteland.Modules.Quests
     // ----------------------------------------------------------------------------------
     internal static class QuestFile
     {
+        /// <summary>Loads authored quest definitions and reports invalid sections.</summary>
         public static List<Quest> Load(string path, Action<string> warn)
         {
             var result = new List<Quest>();
@@ -366,6 +384,7 @@ namespace WildWasteland.Modules.Quests
             return result;
         }
 
+        /// <summary>Applies one authored quest field to the current definition.</summary>
         static void Apply(Quest q, string key, string val, int lineNo, Action<string> warn)
         {
             switch (key)
@@ -426,6 +445,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Validates and publishes one completed authored quest definition.</summary>
         static void Finish(Quest q, List<Quest> into, Action<string> warn)
         {
             if (q == null) return;
@@ -468,8 +488,11 @@ namespace WildWasteland.Modules.Quests
             into.Add(q);
         }
 
+        /// <summary>Parses an authored integer option with its default.</summary>
         static int ParseInt(string s, int d) { int r; return int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out r) ? r : d; }
+        /// <summary>Parses an authored floating-point option with its default.</summary>
         static float ParseFloat(string s, float d) { float r; return float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out r) ? r : d; }
+        /// <summary>Parses an authored boolean option with its default.</summary>
         static bool ParseBool(string s, bool d)
         {
             string v = s.Trim().ToLowerInvariant();
@@ -635,11 +658,13 @@ namespace WildWasteland.Modules.Quests
             "Not today.",
         };
 
+        /// <summary>Chooses a seeded authored dialogue variant.</summary>
         public static string Pick(string[] pool, System.Random r)
         {
             return pool[r.Next(pool.Length)];
         }
 
+        /// <summary>Fills missing dialogue from the quest category’s existing phrase lists.</summary>
         public static void FillDefaults(Quest q, System.Random r)
         {
             string[] o, rem, d;
@@ -682,6 +707,7 @@ namespace WildWasteland.Modules.Quests
         class Item
         {
             public string Prefab, Name; public int Value, Min, Max, Weight;
+            /// <summary>Creates one weighted generated-item catalog row.</summary>
             public Item(string p, string n, int v, int a, int b, int w) { Prefab = p; Name = n; Value = v; Min = a; Max = b; Weight = w; }
         }
         class Foe { public string Token, Name; public int Each, Min, Max; public Foe(string t, string n, int e, int a, int b) { Token = t; Name = n; Each = e; Min = a; Max = b; } }
@@ -759,6 +785,7 @@ namespace WildWasteland.Modules.Quests
 
         // A friendly camp (the giver's faction or an ally) between minD and maxD from the giver, never the giver's own,
         // and not one an active delivery or a neighbour's offer already points at. Picked at random.
+        /// <summary>Chooses a friendly delivery destination camp in the requested range.</summary>
         public static Poi PickDeliveryCamp(Faction giver, Vector3 giverWorld, float minD, float maxD, List<Quest> active, HashSet<string> blocked, System.Random rng)
         {
             if (giver == null) return null;
@@ -796,6 +823,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Points a delivery quest at a camp: position, place name and the time limit.
+        /// <summary>Sets the selected delivery destination and recipient policy.</summary>
         public static void AimDelivery(Quest q, Poi camp, Vector3 giverWorld, float minutesBase, float minutesPerKm)
         {
             Faction owner = Factions.OwnerOfPoi(camp);
@@ -808,6 +836,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Full time limit from the giver to the camp (called again when the job is accepted, so the clock starts then).
+        /// <summary>Resets generated-delivery clock bookkeeping at a world boundary.</summary>
         public static void ResetClock(Quest q, Vector3 giverWorld, float minutesBase, float minutesPerKm)
         {
             float km = q.HasPos ? Game.HDist(Game.Abs(q.Pos), giverWorld) / 1000f : 1f;
@@ -816,6 +845,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // A generated delivery, or null when there is no friendly camp in range.
+        /// <summary>Creates a generated delivery objective from giver and destination.</summary>
         public static Quest MakeDelivery(string giverName, System.Random rng, Faction giver, Vector3 giverWorld, float minD, float maxD,
                                          List<Quest> active, HashSet<string> blocked, float minutesBase, float minutesPerKm, float radius)
         {
@@ -851,6 +881,7 @@ namespace WildWasteland.Modules.Quests
         public static Func<string, int> ItemsAround;
 
         // A random item that is really out there (and not already offered by a neighbour); null if none is.
+        /// <summary>Chooses a generated item with currently available nearby goods.</summary>
         static Item PickAvailableItem(System.Random rng, HashSet<string> blocked, out int available)
         {
             available = 0;
@@ -865,6 +896,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         static int totalWeight = -1;
+        /// <summary>Chooses a weighted generated-item catalog entry.</summary>
         static Item PickItem(System.Random rng)
         {
             if (totalWeight < 0) { totalWeight = 0; for (int i = 0; i < Items.Length; i++) totalWeight += Items[i].Weight; }
@@ -903,18 +935,21 @@ namespace WildWasteland.Modules.Quests
         const int DefaultKillValue = 30;   // people of the human factions carry guns
 
         // a check-up is only a look at somewhere that is already ours: less than half of what a new place pays
+        /// <summary>Computes the reward for a generated camp checkup.</summary>
         public static int CheckupReward(float dist)
         {
             return Math.Max(5, (int)(Math.Round((20f + dist * 0.05f) * 0.4f / 5.0) * 5.0));
         }
 
         // Kinds of enemy that no kill job is made for (lizards are everywhere and nobody pays for them).
+        /// <summary>Tests whether an enemy is excluded from generated kill objectives.</summary>
         public static bool NoKillQuest(string enemyName)
         {
             return Util.Norm(enemyName).Contains("lizard");
         }
 
         // reputation for finishing a job: grows with the reward (the unscaled worth of the job), a bit more for a camp takeover
+        /// <summary>Computes generated reputation reward for the quest value.</summary>
         public static int RepFor(Quest q, int baseReward)
         {
             if (q.Type == QType.Goto && q.Checkup) return 1;
@@ -923,6 +958,7 @@ namespace WildWasteland.Modules.Quests
             return Math.Max(1, Math.Min(6, r));
         }
 
+        /// <summary>Rounds a generated payment to the existing five-unit denomination.</summary>
         static int Round5(float v)
         {
             int r = (int)(Math.Round(v / 5.0) * 5.0);
@@ -930,6 +966,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Pretty plural for an enemy name such as "Spider_Small" or "Yard Hound".
+        /// <summary>Formats a counted objective label with its existing plural rule.</summary>
         public static string Plural(string name)
         {
             string n = name.Replace('_', ' ').Trim();
@@ -937,6 +974,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Nuts per kill: known enemies by name, a default for everything else.
+        /// <summary>Estimates the configured generated kill-objective value.</summary>
         public static int KillValue(string name)
         {
             string n = Util.Norm(name);
@@ -947,12 +985,14 @@ namespace WildWasteland.Modules.Quests
 
         // allowed = [fetch, kill, goto, talk, clear]. pois / foes are what really exists around the giver
         // (kill quests are only generated when there is something to kill within killRange).
+        /// <summary>Builds a stable objective-position reservation key.</summary>
         public static string PosKey(Vector3 rel)
         {
             return "pos:" + Mathf.RoundToInt(rel.x / 10f) * 10 + "," + Mathf.RoundToInt(rel.z / 10f) * 10;
         }
 
         // what a quest is "about", so neighbouring NPCs do not hand out the same one
+        /// <summary>Builds a reservation key for a generated objective target.</summary>
         public static string KeyOf(Quest q)
         {
             switch (q.Type)
@@ -968,8 +1008,10 @@ namespace WildWasteland.Modules.Quests
             return "";
         }
 
+        /// <summary>Tests whether an objective target is not reserved by another active quest.</summary>
         static bool Free(HashSet<string> blocked, string key) { return blocked == null || !blocked.Contains(key); }
 
+        /// <summary>Creates one eligible generated quest using current world candidates and policy.</summary>
         public static Quest Generate(string giverName, System.Random rng, Vector3 giverRel, Vector3 playerRel, bool[] allowed,
                                      List<Poi> pois, List<Poi> ownCamps, List<EnemyInfo> foes, float killRange, HashSet<string> blocked)
         {

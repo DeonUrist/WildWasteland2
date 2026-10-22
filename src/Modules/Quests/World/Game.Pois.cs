@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Quests
         // The game marks who a camp belongs to with child objects named after the faction: EnemySpawn_Coyotes_V1,
         // CoyotesMerchantSpawn_V1, EnemySpawn_Scrapyard_V1 ... Only human factions (see Factions.HumanFactions) count;
         // the wild / burrower spawners are animals and mutants.
+        /// <summary>Infers a native POI faction from its authored child spawner names.</summary>
         internal static string SpawnFactionOf(Transform poi)
         {
             for (int i = 0; i < poi.childCount; i++)
@@ -31,6 +32,7 @@ namespace WildWasteland.Modules.Quests
 
         // Camps, caves, buildings and wrecks in the loaded MapMagic tiles whose horizontal distance
         // from `center` is between minD and maxD. kindFilter ("" = any) is a word like "cave".
+        /// <summary>Returns loaded quest POIs matching kind and horizontal range.</summary>
         public static List<Poi> FindPois(Vector3 center, float minD, float maxD, string kindFilter)
         {
             var list = new List<Poi>(); string filter = Util.Norm(kindFilter);
@@ -48,6 +50,7 @@ namespace WildWasteland.Modules.Quests
         // World positions of the map markers that the game has turned yellow = places the player has visited (the game's
         // Visited FSM does this; Immersive Map reads it the same way). Found by type name so the TextMeshPro DLL is not needed.
 
+        /// <summary>Copies native visited map-icon positions for exploration objectives.</summary>
         public static List<Vector3> VisitedIcons()
         {
             var result = new List<Vector3>();
@@ -55,6 +58,7 @@ namespace WildWasteland.Modules.Quests
             return result;
         }
 
+        /// <summary>Tests whether a point lies near any supplied visited position.</summary>
         public static bool NearAny(List<Vector3> points, Vector3 p, float radius)
         {
             for (int i = 0; i < points.Count; i++) if (HDist(points[i], p) <= radius) return true;

@@ -70,6 +70,7 @@ namespace WildWasteland.Modules.Quests
 
         // ------------------------------------------------------------------
 
+        /// <summary>Applies the current takeover group, settlement and garrison policy.</summary>
         void ApplyTakeoverSettings()
         {
             Takeover.SpawnDistance = takeoverSpawnDist.Value;
@@ -82,6 +83,7 @@ namespace WildWasteland.Modules.Quests
             Takeover.PatrolAtCamp = patrolAtCamp.Value;
         }
 
+        /// <summary>Applies faction names, protected people and home-camp policy.</summary>
         void ApplyFactionSettings()
         {
             Factions.HomeRadius = homeRadius.Value;
@@ -93,6 +95,7 @@ namespace WildWasteland.Modules.Quests
             Factions.HumanFactions = hf.ToArray();
         }
 
+        /// <summary>Parses enabled generated quest categories.</summary>
         void ParseGenTypes()
         {
             for (int i = 0; i < allowedGen.Length; i++) allowedGen[i] = false;
@@ -120,13 +123,16 @@ namespace WildWasteland.Modules.Quests
         // ------------------------------------------------------------------
         // Per-frame work
         // ------------------------------------------------------------------
+        /// <summary>Runs companion late pose and delivery-item recovery.</summary>
         internal void LateFrame()
         {
             try { Hire.LateUpdate(); } catch (Exception e) { LogOnce("HireLateUpdate", e); }
         }
 
+        /// <summary>Advances interaction and hiring during active gameplay.</summary>
         internal void Frame()
         {
+            for (int i = toasts.Count - 1; i >= 0; i--) if (Time.unscaledTime > toasts[i].Until) toasts.RemoveAt(i);
             try { Game.WatchSpawns(); } catch (Exception) { }
             try
             {
@@ -152,6 +158,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { LogOnce("Update", e); }
         }
 
+        /// <summary>Queues a conversation action for safe engine processing.</summary>
         void Defer(Action a) { deferred.Enqueue(a); }
 
         // Fail-safe for takeover quests: the camp's people only exist while you are near, so a camp can turn out to
@@ -160,6 +167,7 @@ namespace WildWasteland.Modules.Quests
         readonly Dictionary<string, float> campEmptyFor = new Dictionary<string, float>();
         const float EmptyCampSeconds = 15f;
 
+        /// <summary>Rechecks an apparently empty takeover camp before resolving its objective.</summary>
         void CheckEmptyCamp(Quest q, Vector3 playerWorld)
         {
             Vector3 camp = Game.Abs(q.Pos);
@@ -190,6 +198,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Position-based objectives and the tracker text
+        /// <summary>Advances active objective counts, deadlines and delivery state.</summary>
         internal void Tick()
         {
             Transform pl = Game.Player();
@@ -223,6 +232,7 @@ namespace WildWasteland.Modules.Quests
         // ---- Immersive Map: a ! at each quest target, a check mark on a giver who is waiting for the hand-in ----
         float nextMapSync;
         readonly Dictionary<string, int> haveCache = new Dictionary<string, int>();     // fetch quests: how many the player has right now (set once a second by RefreshLines)
+        /// <summary>Updates map destinations from the same quest objective state as tracker text.</summary>
         internal void SyncMapMarkers()
         {
             if (!ready || Time.unscaledTime < nextMapSync) return;
@@ -252,6 +262,7 @@ namespace WildWasteland.Modules.Quests
             MapLink.Sync(want);
         }
 
+        /// <summary>Builds cached tracker and journal text from current objectives and reputation.</summary>
         void RefreshLines(Transform pl)
         {
             trackerLines.Clear();
@@ -288,6 +299,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // how long a job has left, in in-game time ("1d 6h", "7h", "<1h"); empty when it has no limit
+        /// <summary>Formats the remaining in-game delivery deadline.</summary>
         string DeadlineText(Quest q)
         {
             if (q.Type == QType.Deliver || q.Deadline <= 0.0) return "";
@@ -304,8 +316,10 @@ namespace WildWasteland.Modules.Quests
             return left < 1.0 ? "<1h" : (int)Math.Ceiling(left) + "h";
         }
 
+        /// <summary>Tests whether a takeover defender count is not yet known.</summary>
         static bool CountUnknown(Quest q) { return q.Type == QType.Takeover && q.Count <= 0; }
 
+        /// <summary>Formats concise current objective progress or distance.</summary>
         string ShortStatus(Quest q, int have, Transform pl)
         {
             if (q.ObjectiveDone && q.Type != QType.Fetch)
@@ -339,6 +353,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Formats the full journal objective instruction.</summary>
         string Objective(Quest q, int have, Transform pl)
         {
             if (Returning(q)) return "There was nobody to deliver to. Return all " + q.Count + " " + q.Label + " to the " + q.GiverName + ".";
@@ -378,9 +393,11 @@ namespace WildWasteland.Modules.Quests
         }
         readonly Dictionary<string, AimInfo> aimCache = new Dictionary<string, AimInfo>();
 
+        /// <summary>Tests whether the objective can now be handed in.</summary>
         static bool HandIn(Quest q, int have) { return q.Type == QType.Fetch ? have >= q.Count : q.ObjectiveDone; }
 
         // the next place to go for this job, worked out at most every 4 seconds (the scans walk the loaded world)
+        /// <summary>Finds and caches the next destination with a bounded refresh cadence.</summary>
         AimInfo Aim(Quest q, int have, Transform pl)
         {
             if (_aimFrame != Time.frameCount) { _aimFrame = Time.frameCount; _aimComputed = 0; }
@@ -398,6 +415,7 @@ namespace WildWasteland.Modules.Quests
             return a;
         }
 
+        /// <summary>Stores one objective destination in stable world coordinates.</summary>
         static void AimAt(AimInfo a, Vector3 world, string what)
         {
             a.Has = true;
@@ -405,6 +423,7 @@ namespace WildWasteland.Modules.Quests
             a.What = what;
         }
 
+        /// <summary>Computes the nearest relevant item, actor or place for a quest.</summary>
         void ComputeAim(Quest q, int have, Transform pl, AimInfo a)
         {
             Vector3 pp = pl.position;
@@ -486,8 +505,10 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Formats approximate distance to a destination.</summary>
         static string Far(int m) { return m >= 1000 ? (m / 1000f).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " km" : m + " m"; }
 
+        /// <summary>Formats a nearby place label for dialogue.</summary>
         static string Place(AimInfo a, Transform pl)
         {
             Vector3 t = Game.Abs(a.Rel);
@@ -495,6 +516,7 @@ namespace WildWasteland.Modules.Quests
             return d < 30 ? "right here" : Far(d) + " " + Util.Compass(t.x - pl.position.x, t.z - pl.position.z) + " of you";
         }
 
+        /// <summary>Adds sentence punctuation to authored dialogue fragments.</summary>
         static string Sentence(AimInfo a, Transform pl)
         {
             string w = a.What;
@@ -502,6 +524,7 @@ namespace WildWasteland.Modules.Quests
             return w + " is " + Place(a, pl) + ".";
         }
 
+        /// <summary>Formats the current compass and distance guidance line.</summary>
         string DirectionsLine(Quest q, int have, Transform pl)
         {
             if (pl == null) return "";
@@ -519,6 +542,7 @@ namespace WildWasteland.Modules.Quests
         // A takeover's head count is not known until the camp is in view. Once you are close enough for its people to have
         // loaded, count them (and keep counting while you have not killed anyone, since they appear as you come nearer).
         readonly HashSet<string> scouting = new HashSet<string>();
+        /// <summary>Counts local takeover defenders when the player first scouts the camp.</summary>
         void ScoutCamp(Quest q, Vector3 playerWorld)
         {
             if (q.Count <= 0) scouting.Add(q.Id);
@@ -540,6 +564,7 @@ namespace WildWasteland.Modules.Quests
         // ------------------------------------------------------------------
         // Rewards
         // ------------------------------------------------------------------
+        /// <summary>Pays an accepted reward through the canonical native currency variable.</summary>
         bool Pay(Quest q)
         {
             if (!Game.AddMoney(q.Reward, moneyVar.Value))
@@ -550,6 +575,7 @@ namespace WildWasteland.Modules.Quests
             return true;
         }
 
+        /// <summary>Commits quest completion, reputation and chain progress.</summary>
         void Complete(Quest q)
         {
             book.Active.Remove(q);
@@ -564,6 +590,7 @@ namespace WildWasteland.Modules.Quests
         // A once-only quest (or chain step) that ended without being completed can be picked up again: it was never marked
         // done, and the things that would hold it back (a neighbour's recent offer, the chain's 24 hour rule, the giver's
         // cooldown) are cleared.
+        /// <summary>Reopens the relevant conversation after an objective outcome.</summary>
         void Reopen(Quest q, bool clearCooldown = true)
         {
             if (q == null || !q.Once || string.IsNullOrEmpty(q.Id) || q.Id.StartsWith("gen:", StringComparison.Ordinal)) return;
@@ -577,12 +604,14 @@ namespace WildWasteland.Modules.Quests
 
         // The job ran out of time (or similar): it is removed and the giver's faction thinks a little less of you.
         // Reputation lost when a job fails or is given up: FailPenaltyMultiplier x what finishing it would have given.
+        /// <summary>Applies the configured reputation penalty for quest failure.</summary>
         int FailPenalty(Quest q)
         {
             if (failPenaltyMult.Value <= 0f) return 0;
             return Math.Max(1, (int)Math.Round(Math.Max(1, q.RepGain) * failPenaltyMult.Value));
         }
 
+        /// <summary>Fails an active quest and records its consequence.</summary>
         void FailQuest(Quest q, string why)
         {
             if (!book.Active.Remove(q)) return;
@@ -594,6 +623,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // The job is off through nobody's fault (the giver died): no reputation is lost.
+        /// <summary>Cancels an active quest and clears its runtime tracking.</summary>
         void CancelQuest(Quest q, string why)
         {
             if (Returning(q)) { FailQuest(q, why); return; }
@@ -605,6 +635,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Flags in Apocalypter Talk's story file, so dialogue files can react: quest_<id>_active / _done / _failed.
+        /// <summary>Builds the external dialogue flag prefix for an authored quest.</summary>
         static string FlagBase(Quest q)
         {
             if (q == null || q.Id.StartsWith("gen:", StringComparison.Ordinal)) return "";
@@ -613,6 +644,7 @@ namespace WildWasteland.Modules.Quests
             return sb.ToString();
         }
 
+        /// <summary>Publishes active, completed and failed flags through the optional conversation service.</summary>
         void SetQuestFlags(Quest q, string state)
         {
             string fb = FlagBase(q);
@@ -625,6 +657,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // what a job pays, relative to the normal reward, for the faction's reputation with you
+        /// <summary>Computes the reputation-adjusted quest reward multiplier.</summary>
         float PayMultiplier(string homeKey)
         {
             if (string.IsNullOrEmpty(homeKey) || payPerRep.Value == 0f) return 1f;
@@ -639,6 +672,7 @@ namespace WildWasteland.Modules.Quests
         // ------------------------------------------------------------------
         double lastGameHours = -1.0;
 
+        /// <summary>Tracks elapsed native game hours without counting a prior world’s clock.</summary>
         static string Clock(float seconds)
         {
             int m = Mathf.Max(0, Mathf.CeilToInt(seconds / 60f));      // in-game minutes
@@ -646,6 +680,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Hands the goods over when you talk to someone friendly at the destination camp. True when it handled the talk.
+        /// <summary>Advances delivery deadlines, cargo presence and recipient checks.</summary>
         bool TryDeliver(Quest[] active, string npc, Transform pl)
         {
             Transform t = bridge.Npc;
@@ -670,6 +705,7 @@ namespace WildWasteland.Modules.Quests
 
         // At the camp but nobody there will take the goods (empty camp, everyone dead, or it belongs to someone else): say so, and
         // let the job end without the theft penalty if the clock runs out. The giver takes the goods back ("Give back the goods").
+        /// <summary>Checks whether a delivery can be completed at its current recipient.</summary>
         void DeliveryRecipientCheck(Quest q, Vector3 pp)
         {
             bool returning = Returning(q);
@@ -694,6 +730,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // The clock ran out on a delivery that could not be made: no penalty, the giver may offer again.
+        /// <summary>Cancels deliveries that can no longer reach a valid recipient.</summary>
         void CancelStranded(Quest q)
         {
             if (!book.Active.Remove(q)) return;
@@ -703,6 +740,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Back at the giver: hand the goods back and call it off without a penalty.
+        /// <summary>Switches a delivery into its explicit return-goods objective.</summary>
         void ReturnGoods(Quest q)
         {
             if (!book.Active.Contains(q)) return;
@@ -723,6 +761,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Called off at the giver without the goods: same as running out of time.
+        /// <summary>Abandons a delivery and applies the configured consequences.</summary>
         void AbandonDelivery(Quest q)
         {
             if (Returning(q)) { CancelQuest(q, "called off"); return; }
@@ -732,6 +771,7 @@ namespace WildWasteland.Modules.Quests
             DeliveryStolen(q);
         }
 
+        /// <summary>Records goods taken from an abandoned or failed delivery.</summary>
         void DeliveryStolen(Quest q)
         {
             if (Returning(q)) { CancelQuest(q, "ran out of time returning the goods"); return; }
@@ -744,12 +784,14 @@ namespace WildWasteland.Modules.Quests
             if (!string.IsNullOrEmpty(q.Home) && repFail.Value != 0) ChangeRep(q.Home, -Math.Abs(repFail.Value), who);
         }
 
+        /// <summary>Reads the player’s recorded reputation with one faction.</summary>
         int RepOf(string key)
         {
             int r;
             return !string.IsNullOrEmpty(key) && book.Rep.TryGetValue(Util.Norm(key), out r) ? r : 0;
         }
 
+        /// <summary>Changes faction reputation and optionally formats a reason.</summary>
         void ChangeRep(string key, int delta, string who)
         {
             string k = Util.Norm(key);
@@ -768,6 +810,7 @@ namespace WildWasteland.Modules.Quests
             if (repHostile.Value < 0 && now <= repHostile.Value) AddToast(name + " now treat you as an enemy.");
         }
 
+        /// <summary>Formats current faction reputation for the journal.</summary>
         string ReputationText()
         {
             if (book.Rep.Count == 0) return "";
@@ -785,6 +828,7 @@ namespace WildWasteland.Modules.Quests
         // Slow recovery of bad reputation, and the game's hostility switch for factions you have angered enough.
         float nextRepTick;
         readonly HashSet<int> madeHostile = new HashSet<int>();
+        /// <summary>Advances configured reputation recovery using native game time.</summary>
         internal void ReputationTick()
         {
             if (Time.unscaledTime < nextRepTick) return;
@@ -821,6 +865,7 @@ namespace WildWasteland.Modules.Quests
             madeHostile.IntersectWith(alive);                                  // forget people who are gone
         }
 
+        /// <summary>Shows a quest notice through HUD or the retained fallback notice data.</summary>
         void AddToast(string text)
         {
             if (ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Notify(text)) { Core.Log.Always("[Quests] " + text); return; }
@@ -835,6 +880,7 @@ namespace WildWasteland.Modules.Quests
         // ------------------------------------------------------------------
         // Kills (called from the Harmony hook)
         // ------------------------------------------------------------------
+        /// <summary>Matches a kill objective against an enemy’s authored identity.</summary>
         static bool KillMatches(string target, string ownerName, string deadName)
         {
             if (string.IsNullOrEmpty(target) || target == "any" || target == "*") return true;
@@ -850,6 +896,7 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
+        /// <summary>Counts an observed enemy death toward eligible active objectives.</summary>
         internal void OnEnemyKilled(string ownerName, string deadName, Vector3 worldPos, string ownerTag, GameObject ownerGo)
         {
             if (!ready || book.Active.Count == 0) return;
@@ -910,6 +957,7 @@ namespace WildWasteland.Modules.Quests
         // ------------------------------------------------------------------
         // Dialogue
         // ------------------------------------------------------------------
+        /// <summary>Expands quest and NPC tokens in authored dialogue text.</summary>
         string Format(string tpl, Quest q, int have)
         {
             if (string.IsNullOrEmpty(tpl)) return "";
@@ -951,6 +999,7 @@ namespace WildWasteland.Modules.Quests
                       .Replace("{minutes}", HoursText(Math.Max(0f, q.TimeLeft) / 3600f));
         }
 
+        /// <summary>Begins quest dialogue for a native or optional external speaker.</summary>
         internal void OnTalkOpen(object inst)
         {
             if (inst != null) bridge.Bind(inst);
@@ -980,6 +1029,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Clears transient dialogue offers and current speaker context.</summary>
         internal void OnTalkClose()
         {
             pendingOffer = null;
@@ -993,6 +1043,7 @@ namespace WildWasteland.Modules.Quests
         bool uiDirty;
         readonly List<TalkBtn> wantButtons = new List<TalkBtn>();
 
+        /// <summary>Creates one keyed conversation action from its label and callback.</summary>
         TalkBtn Btn(string key, string text, Action act)
         {
             int generation = bridge.Generation;
@@ -1006,6 +1057,7 @@ namespace WildWasteland.Modules.Quests
 
         // Every frame while talking: make sure our choices are in Talk's list (Talk throws its list away and rebuilds it
         // whenever the player picks one of its own prompts, so they have to be put back).
+        /// <summary>Synchronizes current quest choices to the active conversation host.</summary>
         void SyncTalkUi()
         {
             if (!ready || !bridge.TalkingNow) return;
@@ -1015,6 +1067,7 @@ namespace WildWasteland.Modules.Quests
             if ((rebuilt && bridge.NativeOpen) || bridge.NeedsSync(wantButtons)) bridge.SyncButtons(wantButtons);
         }
 
+        /// <summary>Builds currently available quest, hire and reputation choices.</summary>
         void BuildButtons()
         {
             wantButtons.Clear();
@@ -1063,6 +1116,7 @@ namespace WildWasteland.Modules.Quests
 
         // ---- hired help -----------------------------------------------------------------------------------------
 
+        /// <summary>Adds hire or dismissal choices for the current friendly speaker.</summary>
         void AddHireButtons(string npc, Transform tr)
         {
             if (!Hire.Enabled || tr == null) return;
@@ -1079,6 +1133,7 @@ namespace WildWasteland.Modules.Quests
             wantButtons.Add(Btn("hire", "Hire " + shown + " for a day  (" + cost + " " + f.Name + " reputation)", delegate { HireNpc(f, cost, tr, shown); }));
         }
 
+        /// <summary>Checks price and availability before starting a hired companion contract.</summary>
         void HireNpc(Faction f, int cost, Transform tr, string shown)
         {
             if (tr == null || (ModApi.Get<IFollowerVehicles>() != null && ModApi.Get<IFollowerVehicles>().IsSeated(tr.gameObject))) return;
@@ -1098,11 +1153,13 @@ namespace WildWasteland.Modules.Quests
         }
 
         // the recorded voice line for a quest, if any voice actor made one (see Voice.cs)
+        /// <summary>Speaks a quest line using its retained authored voice/content path.</summary>
         void Speak(Quest q, string line)
         {
             Voice.Say(q, line, bridge.Npc, bridge.NpcName);
         }
 
+        /// <summary>Dismisses the current hired companion with the existing message.</summary>
         void DismissFollower()
         {
             bridge.You("Thanks, I can manage from here.");
@@ -1115,6 +1172,7 @@ namespace WildWasteland.Modules.Quests
         static readonly int[] RepSteps = { 1, 5, 25, 50 };
 
         // the faction whose reputation this NPC trades, or null
+        /// <summary>Resolves the faction represented by the reputation vendor.</summary>
         Faction RepShopFaction(string npc, Transform tr)
         {
             if (!repShopOn.Value || !Util.NameMatches(repShopNpcs.Value, npc) || repShopNpcs.Value.Trim().Length == 0) return null;
@@ -1125,6 +1183,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // how much reputation can be bought / sold right now
+        /// <summary>Computes allowable reputation purchase and sale quantities.</summary>
         void RepLimits(Faction f, out int canBuy, out int canSell)
         {
             int rep = RepOf(f.Key);
@@ -1137,6 +1196,7 @@ namespace WildWasteland.Modules.Quests
             canSell = rep > 0 ? Math.Min(rep, cap) : 0;
         }
 
+        /// <summary>Adds currently valid reputation vendor choices.</summary>
         void AddRepButtons(string npc, Transform tr)
         {
             Faction f = RepShopFaction(npc, tr);
@@ -1169,6 +1229,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Exchanges reputation and native currency after validating the transaction.</summary>
         void DealRep(Faction f, int n, bool buy)
         {
             int canBuy, canSell;
@@ -1194,6 +1255,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Tests whether an authored quest ID is already active.</summary>
         bool ActiveHasId(string id)
         {
             for (int i = 0; i < book.Active.Count; i++) if (book.Active[i].Id == id) return true;
@@ -1201,6 +1263,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // quests that must be done before this one may be offered (a chain step), compared without regard to case
+        /// <summary>Tests whether an authored quest chain’s required predecessors are complete.</summary>
         bool PrerequisitesDone(Quest d)
         {
             if (string.IsNullOrEmpty(d.After)) return true;
@@ -1217,6 +1280,7 @@ namespace WildWasteland.Modules.Quests
 
         // How many of an item (a quest target token) exist within ItemRange of a point; int.MaxValue when the check is off.
         readonly Dictionary<string, int> itemsAroundCache = new Dictionary<string, int>();
+        /// <summary>Counts matching loaded goods near a giver for offer eligibility.</summary>
         int ItemsAround(string token, Vector3 center)
         {
             if (itemRange.Value <= 0f) return int.MaxValue;
@@ -1227,6 +1291,7 @@ namespace WildWasteland.Modules.Quests
             return n;
         }
 
+        /// <summary>Chooses a suitable authored or generated quest for the current giver.</summary>
         Quest MakeOffer(string npc, Transform npcTr)
         {
             itemsAroundCache.Clear();
@@ -1328,6 +1393,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // The part every new offer shares: who gave it, where, and what it pays (reputation changes the pay).
+        /// <summary>Binds the selected offer to its giver, faction and origin.</summary>
         void FinishOffer(Quest q, string npc, Transform npcTr, Faction gf, Vector3 giverRel, Vector3 playerRel)
         {
             q.GiverName = npc;
@@ -1345,6 +1411,7 @@ namespace WildWasteland.Modules.Quests
         List<Vector3> visitedCache = new List<Vector3>();
         float visitedAt = -100f;
 
+        /// <summary>Tests whether an actor or destination is currently known to the player.</summary>
         bool IsFound(Vector3 world)
         {
             if (Time.unscaledTime - visitedAt > 5f)
@@ -1356,6 +1423,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // places the player has not been to or uncovered on the map, and that the giver's own side does not hold
+        /// <summary>Rejects an offer destination that exploration policy already reveals.</summary>
         List<Poi> Unfound(Faction gf, List<Poi> all)
         {
             var res = new List<Poi>();
@@ -1370,6 +1438,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // camps the giver's own faction holds (other than the one they stand in), for check-ups
+        /// <summary>Filters camps against current faction ownership.</summary>
         List<Poi> OwnCamps(Faction gf, Vector3 giverWorld)
         {
             var res = new List<Poi>();
@@ -1393,6 +1462,7 @@ namespace WildWasteland.Modules.Quests
         List<EnemyInfo> people = new List<EnemyInfo>();
         GameObject offerGiver;      // the NPC an offer is being made for (never a target of its own job)
 
+        /// <summary>Filters enemy candidates against faction protection rules.</summary>
         static List<EnemyInfo> NotProtected(Faction gf, List<EnemyInfo> all, GameObject giver)
         {
             var res = new List<EnemyInfo>();
@@ -1405,6 +1475,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Removes points of interest the giver's faction may not use, and ones an active go-to quest already points at.
+        /// <summary>Filters POIs already targeted by active objectives.</summary>
         List<Poi> FreePois(Faction gf, List<Poi> all)
         {
             var res = new List<Poi>();
@@ -1425,6 +1496,7 @@ namespace WildWasteland.Modules.Quests
 
         // Fills in a hand-written quest. Returns false when it cannot be done right now
         // (no matching enemy near the giver, no point of interest of the wanted kind).
+        /// <summary>Resolves authored conditions and fills a quest using currently available world targets.</summary>
         bool PrepareHandWritten(Quest q, Vector3 giverRel, Vector3 giverWorld, Faction gf)
         {
             float d = Mathf.Lerp(q.DistMin, q.DistMax, (float)rng.NextDouble());
@@ -1531,6 +1603,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // text about how full a container has to be, for fetch quests on cans (empty when the item is not a container)
+        /// <summary>Formats required liquid quantity in an objective hint.</summary>
         string LiquidNote(Quest q)
         {
             if (q.Type != QType.Fetch || minLiquid.Value <= 0f) return "";
@@ -1543,6 +1616,7 @@ namespace WildWasteland.Modules.Quests
         class Offered { public string Key; public string Giver; public Vector3 Rel; public double Hours; }
         readonly List<Offered> ledger = new List<Offered>();
 
+        /// <summary>Reads the canonical native game clock for offer timing.</summary>
         static double NowHours()
         {
             double g = WildWasteland.Core.Clock.GameHours;
@@ -1550,6 +1624,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // keys of quests that other NPCs near this one have offered recently
+        /// <summary>Builds reserved objective keys across active quests and nearby offers.</summary>
         HashSet<string> BlockedKeys(string giverKey, Vector3 giverRel)
         {
             var set = new HashSet<string>();
@@ -1566,11 +1641,13 @@ namespace WildWasteland.Modules.Quests
             return set;
         }
 
+        /// <summary>Tests whether an authored definition participates in a quest chain.</summary>
         static bool IsChainStep(Quest d) { return !string.IsNullOrEmpty(d.Chain) || !string.IsNullOrEmpty(d.After); }
 
         // chain step id -> (NPC that offered it, in-game hour); kept for the session
         readonly Dictionary<string, KeyValuePair<string, double>> chainOffers = new Dictionary<string, KeyValuePair<string, double>>();
 
+        /// <summary>Tests whether a nearby giver already offered the same chain step.</summary>
         bool ChainOfferedElsewhere(Quest d, string giverKey)
         {
             KeyValuePair<string, double> o;
@@ -1580,6 +1657,7 @@ namespace WildWasteland.Modules.Quests
             return o.Key != giverKey;              // the same NPC may offer it again (after its own cooldown)
         }
 
+        /// <summary>Remembers the accepted offer for repetition and neighbor suppression.</summary>
         void Remember(Quest q, string giverKey, Vector3 giverRel)
         {
             double now = NowHours();
@@ -1592,6 +1670,7 @@ namespace WildWasteland.Modules.Quests
         // Is this job one the NPC being talked to answers for? Only the very NPC that gave it (by its object name, which the
         // game keeps across saves). Jobs without a recorded giver (older saves, or started from a dialogue file without a
         // known NPC) fall back to any NPC of that name and faction.
+        /// <summary>Checks whether a quest belongs to the current speaker.</summary>
         bool IsMyQuest(Quest q, string npc, Transform tr)
         {
             if (!Util.SameName(q.GiverName, npc)) return false;
@@ -1604,9 +1683,11 @@ namespace WildWasteland.Modules.Quests
             return true;
         }
 
+        /// <summary>Builds a stable giver identity for cooldown tracking.</summary>
         static string GiverKey(Transform tr, string npc) { return tr != null ? tr.gameObject.name : npc; }
 
         // in-game hours until this NPC will give another quest, or 0. Stamps are game hours * 1000.
+        /// <summary>Computes remaining quest-offer cooldown for a giver.</summary>
         double CooldownLeft(string key)
         {
             long stamp;
@@ -1619,6 +1700,7 @@ namespace WildWasteland.Modules.Quests
             return left > 0.0 ? left : 0.0;
         }
 
+        /// <summary>Handles a request for work from the current speaker.</summary>
         void AskForWork()
         {
             if (CrewHistory.Blocked(bridge.Npc)) return;
@@ -1686,6 +1768,7 @@ namespace WildWasteland.Modules.Quests
 
         // An offer is kept on the NPC until you answer it, so it can go out of date (the same job taken from someone else,
         // a one-time job finished, the camp already taken). Returns why it can't be accepted any more, or null.
+        /// <summary>Explains why a previously built offer can no longer be accepted.</summary>
         string StaleReason(Quest q)
         {
             if (book.Active.Contains(q)) return "You already took that one.";
@@ -1703,9 +1786,11 @@ namespace WildWasteland.Modules.Quests
             return null;
         }
 
+        /// <summary>Validates and accepts the current pending conversation offer.</summary>
         void AcceptOffer() { AcceptQuest(pendingOffer, false); }
 
         // How many in-game hours a new job allows: at least MinimumHours, plus some for the distance involved.
+        /// <summary>Computes a delivery’s configured in-game time limit.</summary>
         float DeadlineHours(Quest q)
         {
             if (q.Type == QType.Deliver) return 0f;
@@ -1723,6 +1808,7 @@ namespace WildWasteland.Modules.Quests
             return Math.Max(minHours.Value, hours);
         }
 
+        /// <summary>Formats game hours for player-facing dialogue.</summary>
         static string HoursText(float h)
         {
             if (h >= 24f)
@@ -1735,6 +1821,7 @@ namespace WildWasteland.Modules.Quests
             return (int)Math.Ceiling(h) + " h";
         }
 
+        /// <summary>Assigns the accepted delivery deadline from native game time.</summary>
         void AssignDeadline(Quest q)
         {
             if (q.Type == QType.Deliver) return;
@@ -1744,6 +1831,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Takes a job: from the offer that was just accepted, or (scripted = true) started by a dialogue file.
+        /// <summary>Adds an accepted quest to the journal and applies its initial side effects.</summary>
         void AcceptQuest(Quest q, bool scripted)
         {
             if (CrewHistory.Blocked(bridge.Npc)) return;
@@ -1781,11 +1869,13 @@ namespace WildWasteland.Modules.Quests
         }
 
         // this NPC gives out nothing more for a while (after you took a job from them, or turned one down)
+        /// <summary>Records the current giver’s offer cooldown stamp.</summary>
         void StampGiver(Transform tr, string npc)
         {
             if (CooldownHours > 0f && WildWasteland.Core.Clock.GameHours >= 0.0) book.GiverStamp[GiverKey(tr, npc)] = (long)(WildWasteland.Core.Clock.GameHours * 1000.0);
         }
 
+        /// <summary>Declines and clears the pending offer.</summary>
         void DeclineOffer()
         {
             offers.Remove(pendingFor);
@@ -1796,6 +1886,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // giving a job up at the giver costs a little reputation
+        /// <summary>Abandons the selected active quest through normal consequences.</summary>
         void Abandon(Quest q)
         {
             if (!book.Active.Remove(q)) return;
@@ -1807,6 +1898,7 @@ namespace WildWasteland.Modules.Quests
             nextRefresh = 0f;
         }
 
+        /// <summary>Checks hand-in requirements before paying and completing a quest.</summary>
         void TurnIn(Quest q)
         {
             if (!book.Active.Contains(q)) return;      // already handed in (two clicks in one slow frame)
@@ -1874,6 +1966,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // the bodies of enemies this kill job asked for that lie near `center` (nearest first)
+        /// <summary>Finds eligible native actors for the requested quest target.</summary>
         List<GameObject> FindBodiesFor(Quest q, Vector3 center)
         {
             var res = new List<GameObject>();
@@ -1889,6 +1982,7 @@ namespace WildWasteland.Modules.Quests
         // ------------------------------------------------------------------
         // Actions from Talk's dialogue files ("action = quest.give:<id>", quest.complete:<id>, quest.abandon:<id>)
         // ------------------------------------------------------------------
+        /// <summary>Queues an optional external quest action for safe execution.</summary>
         internal void OnTalkAction(string action, string npc)
         {
             try
@@ -1904,6 +1998,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { LogOnce("OnTalkAction", e); }
         }
 
+        /// <summary>Looks up an active quest by authored ID.</summary>
         Quest ActiveById(string id)
         {
             for (int i = 0; i < book.Active.Count; i++)
@@ -1911,6 +2006,7 @@ namespace WildWasteland.Modules.Quests
             return null;
         }
 
+        /// <summary>Executes a supported external give, complete or abandon action.</summary>
         void RunTalkAction(string verb, string id)
         {
             if (verb == "give" && CrewHistory.Blocked(bridge.Npc)) return;
@@ -1960,6 +2056,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Forgets everything that belongs to the world that was just left (offers, who offered what, map markers).
+        /// <summary>Forgets current-world offers, markers, cooldown projections and session caches.</summary>
         void ResetSession()
         {
             deferred.Clear(); Voice.Stop();

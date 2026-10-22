@@ -115,13 +115,11 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Presentation: [NPC / Brain] ApocaplayerClips.</summary>
         static partial void BindPresentationClips();
         /// <summary>Tools owns the navigation bake collection aid setting.</summary>
-        static partial void BindNavigationDiagnostics();
 
         /// <summary>Binds the remaining parts' entries in their old relative order (the NPCAI entries are bound by NPCAIModule).</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             _cfg = cfg;
-            BindNavigationDiagnostics();
             BindWomen(cfg);
             BindPresentationToggles();
             BindPresentationDogPose();

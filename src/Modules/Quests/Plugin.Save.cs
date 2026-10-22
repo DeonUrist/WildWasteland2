@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.Quests
         const string SaveKey = "ApocalypterQuests";
 
         // Cooldown stamps that have run out are no use any more; dropping them keeps the saved data small over a long game.
+        /// <summary>Prunes expired giver and camp cooldown stamps before serialization.</summary>
         void PruneStamps()
         {
             double now = WildWasteland.Core.Clock.GameHours;

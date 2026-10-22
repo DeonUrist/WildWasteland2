@@ -30,23 +30,16 @@ namespace WildWasteland.Modules.Patrols.WarRig
             SpawnerIntegration.Install(owner);                    // refs-ok: REFACTOR-REQUEST B12-5 (Compatibility Apocaspawner bridge)
             DustStormBridge.Install(owner);                       // refs-ok: REFACTOR-REQUEST B12-5 (Compatibility ApocaDustStorm bridge)
                  // refs-ok: REFACTOR-REQUEST B12-6 (POI War Rig encounter)
-            Services.PoiChanged -= PoiEncounter.Register;         // refs-ok: REFACTOR-REQUEST B12-6
-            Services.PoiChanged += PoiEncounter.Register;         // refs-ok: REFACTOR-REQUEST B12-6
-            PoiEncounter.Register(Services.Poi);                  // refs-ok: REFACTOR-REQUEST B12-6
         }
 
         /// <summary>Old Patrols shutdown entry point: undoes the transitional foreign parts of <see cref="Install"/> (the Vehicles module stops the War Rig itself).</summary>
         [Obsolete("refactor: the Vehicles module stops the War Rig (WarRigFeature.Stop); owners remove their own War Rig parts")]
         internal static void Uninstall()
         {
-            Services.PoiChanged -= PoiEncounter.Register;         // refs-ok: REFACTOR-REQUEST B12-6
-            if (Services.Poi != null) Services.Poi.Remove("WarRig");   // refs-ok: REFACTOR-REQUEST B12-6
-            PoiEncounter.Reset();                                 // refs-ok: REFACTOR-REQUEST B12-6
         }
 
         /// <summary>Old Patrols scene entry point: per-scene reset of the transitional foreign parts (the Vehicles module resets the War Rig itself).</summary>
         [Obsolete("refactor: the Vehicles module resets the War Rig per scene (WarRigFeature.ResetForScene); owners reset their own parts")]
-        internal static void OnSceneLoaded() { PoiEncounter.ResetForScene(); }   // refs-ok: REFACTOR-REQUEST B12-4, B12-6
 
         /// <summary>Installs the War Rig prefab-id resolver and registers the rig as a template body.</summary>
         internal static void Start(IModule owner, string dir)

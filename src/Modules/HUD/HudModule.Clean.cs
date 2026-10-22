@@ -37,6 +37,7 @@ namespace WildWasteland.Modules.HUD
         private static readonly Dictionary<string, float> _throttle = new Dictionary<string, float>();
 
 
+        /// <summary>Binds HUD feature, layout, map and cockpit presentation settings.</summary>
         private void BindCleanConfig(ModuleConfig cfg)
         {
             VehicleStatusHint = cfg.Player("Vehicles", "VehicleStatusHint", true, "Show ignition off, handbrake and cassette state while driving.");
@@ -74,6 +75,7 @@ namespace WildWasteland.Modules.HUD
             MapEnabled.SettingChanged += MapChanged;
         }
 
+        /// <summary>Starts clean HUD services, native observers and owner-scoped display jobs.</summary>
         private void InitClean()
         {
             Running = true; _retry = 0; _throttle.Clear();
@@ -134,10 +136,15 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Forwards save phase changes to HUD-owned loading presentation.</summary>
         private void SavePresented(ref Core.Events.SavePresentation presentation) { if (_loadingScreen != null) _loadingScreen.Present(ref presentation); }
         private readonly WeatherMap _weatherMap = new WeatherMap();
+        /// <summary>Refreshes storm presentation on the map through the typed weather provider.</summary>
         private void TickWeatherMap() { _weatherMap.Tick(_questMap); }
+        /// <summary>Reloads user-edited HUD layout data when its polling deadline permits.</summary>
         private void PollLayout() { Layout.Poll(false); }
+        /// <summary>Applies changed map visibility while the HUD feature is running.</summary>
         private void MapChanged(object sender, EventArgs args) { if (Running && _questMap != null) _questMap.ApplyEnabled(); }
+        /// <summary>Refreshes marker artwork when the simple-icon option changes.</summary>
         private void SimpleIconsChanged(object sender, EventArgs args) { if (Running) LocationMarkers.RefreshIcons(); }
+        /// <summary>Retries native HUD attachment within the existing scene readiness and retry gates.</summary>
         private void AttachHud()
         {
             AttachCompatibility();
@@ -146,6 +153,7 @@ namespace WildWasteland.Modules.HUD
             if (_hud != null && !_hud.Valid) Release();
             if (_hud == null) _hud = HudView.TryCreate(Layout);
         }
+        /// <summary>Advances the attached HUD and clean menu while retaining native fallback behavior.</summary>
         private void TickHud()
         {
             if (!CleanHudEnabled.Value) return;
@@ -154,7 +162,9 @@ namespace WildWasteland.Modules.HUD
             try { _hud.Tick(); }
             catch { Release(); _retry = Time.unscaledTime + 5f; throw; }
         }
+        /// <summary>Disposes the attached replacement HUD so the native view can be restored.</summary>
         private void Release() { if (_hud != null) { _hud.Dispose(); _hud = null; } }
+        /// <summary>Updates cockpit status in the clean HUD, allowing the caller to fall back when unavailable.</summary>
         public bool TryShow(bool ignitionOff, bool handbrakeOn, bool playing, string volume)
         {
             if (!Running || !CleanHudEnabled.Value || _hud == null || !_hud.Valid) return false;
@@ -168,18 +178,21 @@ namespace WildWasteland.Modules.HUD
         bool ICompassMarkers.Remove(int id) { return Api.Compass.Remove(id); }
         void ICompassMarkers.Identify(int id) { foreach (var entry in Api.Compass.Entries) if (entry.Id == id) { entry.Identified = true; break; } }
         void ICompassMarkers.RemoveAll(string owner) { Api.Compass.RemoveAll(owner); }
+        /// <summary>Applies the clean HUD feature switch and restores native graphics when disabled.</summary>
         private void HudChanged(object sender, EventArgs args)
         {
             if (!Running) return;
             if (!CleanHudEnabled.Value) Release(); else if (_attach != null) _attach.RunNow();
             if (_questMap != null) _questMap.FindMap();
         }
+        /// <summary>Applies the menu feature switch and restores native menu controls when disabled.</summary>
         private void MenuChanged(object sender, EventArgs args)
         {
             if (!Running || MenuEnabled.Value) return;
             if (_menu != null) _menu.Teardown();
             if (_loadingScreen != null) _loadingScreen.End();
         }
+        /// <summary>Resolves scene loaded clean for the clean HUD feature.</summary>
         private void SceneLoadedClean(Scene scene, LoadSceneMode mode)
         {
             _weatherMap.Clear();
@@ -192,9 +205,13 @@ namespace WildWasteland.Modules.HUD
             _loadingScreen.SceneLoaded();
             _retry = 0; _attach.RunNow();
         }
+        /// <summary>Clears scene-dependent UI and discoveries before loading another save.</summary>
         private void LoadBeginClean(string slot) { VantageDiscovery.Reset(); VistasBanners.Reset(); InventoryStyle.Restore(); LocationMarkers.Begin(false); MapFog.Reset(); QuestJournal.Hide(); _loadingScreen.Begin(); Release(); Bindings.Clear(); MessageHook.Clear(); Assets.SceneLoaded(); }
+        /// <summary>Adjusts fog and discovery sampling after the native floating-origin jump.</summary>
         private void OriginShiftClean(Vector3 delta) { MapFog.OriginShifted(); VantageDiscovery.OriginShifted(delta); }
+        /// <summary>Loads selected-world discoveries and attaches HUD resources after world loading.</summary>
         private void WorldReadyClean() { LocationMarkers.WorldReady(SaveBus.Slot); WorldReadySaves(); WorldReadyCore(); _attach.RunNow(); }
+        /// <summary>Restores native UI, unsubscribes feature handlers and releases owned clean HUD resources.</summary>
         private void ShutdownClean()
         {
             ShutdownCompatibilityEarly();
@@ -269,12 +286,16 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Saves: fog-of-war sidecar read at world ready.</summary>
         partial void WorldReadySaves();
 
+        /// <summary>Enumerates HUD layout and map tooling pages.</summary>
         private IEnumerable<ToolPage> CleanToolPages()
         {
             yield return new ConfigPage(this, ToolGroups.Weapons, "Clean HUD & menus", Config.Main, "HUD / HUD", "HUD / Menu");
         }
+        /// <summary>Resolves log for the clean HUD feature.</summary>
         internal static void Log(string s) { Core.Log.Always("[CleanHUD] " + s); }
+        /// <summary>Resolves warn for the clean HUD feature.</summary>
         internal static void Warn(string s) { Core.Log.Warn("[CleanHUD] " + s); }
+        /// <summary>Logs repeated UI exceptions only after the per-key throttle interval.</summary>
         internal static void Throttled(string key, Exception e)
         {
             float next;

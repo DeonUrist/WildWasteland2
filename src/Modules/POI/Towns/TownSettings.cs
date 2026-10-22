@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.POI
     {
         internal ConfigEntry<int> Min, Max, Chance, Inhabited;
         internal ConfigEntry<float> Width, Setback, Jitter, Relief, Earthwork, Grade, Feather;
-        internal ConfigEntry<string> Prefabs, RoadLayer;
+        internal ConfigEntry<string> BuildingPrefabs, RoadLayer;
         internal ConfigEntry<float> EntrySetback, Gap;
         internal ConfigEntry<int> PopulationMinPercent, PopulationMaxPercent, LootMinPercent, LootMaxPercent;
         internal ConfigEntry<float> PathWidth, AccessWidth, AccessLength;
@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.POI
             Earthwork = Float(file, "Maximum cut or fill", 3, .25f, 10, "Preferred terrain-to-pad elevation difference. Ensure selected towns permits more for the flattest available fallback site.");
             Grade = Float(file, "Maximum original grade", .15f, .01f, .4f, "Preferred original neighbour rise/run before flattening. .15 means 15 percent. A strict limit only with Ensure selected towns off.");
             Feather = Float(file, "Pad transition width", 35, 10, 100, "Width in metres of the smooth transition from the level town to the unchanged landscape.");
-            Prefabs = file.Bind("POI / Assets", "Test building prefabs", "", "Comma-separated existing Building_N names; blank uses all Building_N prefabs in the current MapMagic graph. Restart after changing. Native prefab geometry, scales and bake identities are preserved.");
+            BuildingPrefabs = file.Bind("POI / Assets", "Test building prefabs", "", "Comma-separated existing Building_N names; blank uses all Building_N prefabs in the current MapMagic graph. Restart after changing. Native prefab geometry, scales and bake identities are preserved.");
             RoadLayer = file.Bind("POI / Assets", "Road terrain layer", "", "Optional exact TerrainLayer name. Blank follows the graph's roadStroke texture input. Missing/ambiguous road artwork rejects town generation instead of inventing a texture. Restart after changing.");
             PopulationMinPercent = Percent(file, "Minimum population (%)", 10, "Minimum percentage of the whole town's original native enemy total. One town roll is distributed evenly across buildings and groups. 100 restores native amounts, 0 pauses pending spawns.");
             PopulationMaxPercent = Percent(file, "Maximum population (%)", 20, "Maximum percentage of native enemy spawn amounts per town, inclusive. Faction restrictions still apply. 500 is five times the native amounts.");

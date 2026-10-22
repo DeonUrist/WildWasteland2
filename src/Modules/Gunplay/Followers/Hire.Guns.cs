@@ -326,7 +326,7 @@ namespace WildWasteland.Modules.Quests
                     if (Log.L2) GunplayLog.Deep("Hire: " + displayName + " reloads (" + reloadSecs.ToString("0.#") + " s).");
                 }
             }
-            QuestFollower.Shot();   // refs-ok: REFACTOR-REQUEST B09-4 (follower AI shot pacing lives in NPCAI QuestFollower)
+            if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Shot();   // refs-ok: REFACTOR-REQUEST B09-4 (follower AI shot pacing lives in NPCAI QuestFollower)
         }
 
         // while reloading, Apocapatrol's gunner is told it cannot fire, so his own Attack FSM stays off and the arms come down
@@ -384,7 +384,7 @@ namespace WildWasteland.Modules.Quests
                 if (RealShotFired()) { realFireAt = Time.time; PlayShotAnim(); CountShot(); }
                 lastAtkState = st;
                 if (flashOff > 0f && Time.time > flashOff) { flashOff = 0f; if (flashObjs != null) foreach (GameObject g in flashObjs) if (g != null) g.SetActive(false); }
-                if (animBack > 0f && Time.time > animBack && npcAnim != null) { animBack = 0f; QuestFollower.Play(npcAnim, "idle", 0, 0f); }   // refs-ok: REFACTOR-REQUEST B09-4
+                if (animBack > 0f && Time.time > animBack && npcAnim != null) { animBack = 0f; if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Play(npcAnim, "idle", 0, 0f); else npcAnim.Play("idle", 0, 0f); }   // refs-ok: REFACTOR-REQUEST B09-4
             }
             catch (Exception e) { Plugin.LogOnce("HireWatchShots", e); }
         }

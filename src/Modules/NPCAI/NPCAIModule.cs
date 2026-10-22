@@ -10,7 +10,7 @@ using WildWasteland.Modules.Guns;
 using WildWasteland.Modules.NPC;
 using WildWasteland.Modules.Patrols;
 using WildWasteland.Modules.Quests;
-using WildWasteland.Modules.POI;
+
 
 namespace WildWasteland.Modules.NPCAI
 {
@@ -37,6 +37,7 @@ namespace WildWasteland.Modules.NPCAI
         public override string[] ConflictsWith { get { return _conflicts; } }
 
         bool _subscribed;
+        private readonly TownNavigationApi _townNavigation=new TownNavigationApi();
 
         /// <summary>Binds every entry of the module (main part, then Navigation).</summary>
         public override void BindConfig(ModuleConfig cfg)
@@ -80,7 +81,8 @@ namespace WildWasteland.Modules.NPCAI
 
             // the old NPCAI.Runner, in its order (load-bearing: Brain/Idle body hand-over, DogAnimations restore in Update / sample in LateUpdate)
             Scheduler.EveryFrame(this, "NPCAI.Senses", Senses.Tick);
-            InitNavigation();                              // B08: "Nav" here (between Senses and Brain, as before), Passthrough, PoiNav jobs
+            InitNavigation();
+            _townNavigation.Start(this); ModApi.Provide<ITownNavigation>(this,_townNavigation);                              // B08: "Nav" here (between Senses and Brain, as before), Passthrough, PoiNav jobs
             Scheduler.EveryFrame(this, "NPCAI.Brain", Brain.Tick);
             Scheduler.EveryFrame(this, "NPCAI.Idle", Idle.Tick);
             Scheduler.EveryFrame(this, "NPCAI.Burrow", Burrow.Tick);
@@ -107,6 +109,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Stops the module: every NPC is handed back to the game (Navigation part first, then the behaviour in reverse dependency order).</summary>
         public override void Shutdown()
         {
+            _townNavigation.Stop();
             // first: every handler / On property sees the module off (FSM events sent below re-enter our hooks synchronously)
             NpcaiRuntime.Running = false;
 
@@ -119,6 +122,7 @@ namespace WildWasteland.Modules.NPCAI
             }
             Step("Population", InteriorPopulation.ReleaseDeferred);   // deferred native spawn events run before the hooks go (ex Towns shutdown)
             Step("Navigation", ShutdownNavigation);
+            Step("Follower body", QuestFollower.Release);
             Step("Pounce", Pounce.Shutdown);
             Step("Burrow", Burrow.Shutdown);
             Step("DogBite", DogBite.Shutdown);          // + DogAnimations + Dog Companion drivers
@@ -250,6 +254,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Registers ModAPI providers: the NPC API, the private diagnostics source for Debug, then the Navigation part.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<INativePopulation>(this,new NativePopulationApi());
             var api = new NpcApi();
             ModApi.Provide<INpcApi>(this, api);
             ModApi.Provide<INpcControl>(this, api);

@@ -19,6 +19,7 @@ namespace WildWasteland.Modules.POI
         {
             internal Transform Root;
             internal TownSite Town;
+            internal PopulationArea PopulationArea;
             internal List<GameObject> Population;
             internal string Type, Error;
             internal PoiDressLayout Layout;
@@ -38,16 +39,12 @@ namespace WildWasteland.Modules.POI
         private readonly Queue<Site> _pending = new Queue<Site>();
         private readonly List<NavStructure> _structures = new List<NavStructure>();
         private int _frame = -1;
-        internal PoiDresser Editor;
         internal PoiAuthoringApi Authoring;
         internal void Install(TownRuntime owner)
         {
             _current = this;
             _owner = owner;
             Authoring = new PoiAuthoringApi(this); ModApi.Provide<IPoiAuthoring>(owner.Owner,Authoring);
-            var nav = typeof(Services).Assembly.GetType("WildWasteland.Modules.NPC.Nav", true);
-            if (!Patches.Patch(owner.Owner, Patches.Method(nav, "Make"), prefix: typeof(PoiDressing).GetMethod("BeforeMap", BindingFlags.Static | BindingFlags.NonPublic)))
-                throw new InvalidOperationException("POI dressing navigation gate could not be installed");
             Scheduler.Sliced(owner.Owner, "POI static dressing", 500, Step);
             Scheduler.Interval(owner.Owner, "POI dressing cleanup", 5f, Sweep, Phase.Update, false);
             Scheduler.Sliced(owner.Owner, "POI marker catalog", 500, Markers.Catalog.Step);
@@ -100,7 +97,6 @@ namespace WildWasteland.Modules.POI
         {
             // Catalog enumeration is cheap and may use the rest of the scheduler slice. Object activation is capped separately.
             if (Authoring != null && Authoring.BuildPreview()) return true;
-            if (Editor != null && Editor.Opened && Editor.BuildPreview()) return true;
             if (_frame != Time.frameCount && !SaveBus.Saving)
             {
                 int left = _pending.Count;
@@ -161,16 +157,16 @@ namespace WildWasteland.Modules.POI
         private void Sweep()
         {
             for (int i = Sites.Count - 1; i >= 0; i--)
-                if (Sites[i].Root == null) Sites.RemoveAt(i);
+                if (Sites[i].Root == null) { if(Sites[i].PopulationArea!=null)ModApi.Get<INativePopulation>()?.Forget(Sites[i].PopulationArea); Sites.RemoveAt(i); }
             _roots.Clear(); foreach (var site in Sites) if (site.Root != null) _roots[site.Root.GetInstanceID()] = site;
         }
         internal void Clear()
         {
             Authoring?.Close();
-            if (Editor != null) Editor.Close(true);
             Markers.Clear(false);
             foreach (var site in Sites) if (site.Dressing != null)
             { if (site.Root != null) PoiDressNavigation.Forget(site.Root); site.Dressing.SetActive(false); Object.Destroy(site.Dressing); }
+            foreach(var site in Sites) if(site.PopulationArea!=null)ModApi.Get<INativePopulation>()?.Forget(site.PopulationArea);
             Sites.Clear(); _roots.Clear(); _layouts.Clear(); _pending.Clear(); _structures.Clear(); Catalog.Dispose();
         }
         public void Dispose() { Clear(); if (ReferenceEquals(_current, this)) _current = null; }

@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.Quests
         public bool HostileSet;
         public bool Hostile;                                // at war with the player: its people give no quests
 
+        /// <summary>Tests authored normalized words against a name.</summary>
         static bool HasWord(List<string> list, string name)
         {
             string n = Util.Norm(name);
@@ -29,9 +30,11 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
+        /// <summary>Tests whether this faction permits the enemy name.</summary>
         public bool HasEnemy(string name) { return HasWord(Enemies, name) || HasWord(Npcs, name); }
 
         // exact object name (Camp_11), or a prefix with a trailing * (Camp_1*)
+        /// <summary>Tests whether this faction permits the POI name.</summary>
         public bool HasPoi(string poiName)
         {
             string n = Util.Norm(poiName);
@@ -60,6 +63,7 @@ namespace WildWasteland.Modules.Quests
         // camps taken over by quests: camp key (name@x,z, origin-relative) -> faction name. Saved with the quests.
         public static readonly Dictionary<string, string> Overrides = new Dictionary<string, string>();
 
+        /// <summary>Builds the stable key of a faction name.</summary>
         public static string KeyOf(Poi p)
         {
             Vector3 r = Game.Rel(p.Pos);
@@ -69,9 +73,11 @@ namespace WildWasteland.Modules.Quests
         public static float HomeRadius = 120f;          // a person without a faction tag counts as living at the nearest POI within this distance
         public static string[] PeopleWords = new string[0];
 
+        /// <summary>Number of faction records currently resolved.</summary>
         public static int Count { get { return file.Count; } }
 
         // Re-reads factions.txt when it has been saved since the last look, so edits apply without restarting.
+        /// <summary>Reloads authored faction definitions when their file changes.</summary>
         public static void Refresh(string path, Action<string> warn)
         {
             DateTime stamp = File.Exists(path) ? File.GetLastWriteTimeUtc(path) : DateTime.MinValue;
@@ -81,6 +87,7 @@ namespace WildWasteland.Modules.Quests
             byKey.Clear();
         }
 
+        /// <summary>Parses authored faction sections and relationships.</summary>
         public static void Load(string path, Action<string> warn)
         {
             file.Clear();
@@ -116,6 +123,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Splits comma-separated authored names into normalized values.</summary>
         static List<string> Split(string v)
         {
             var res = new List<string>();
@@ -129,6 +137,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // The faction with this name (made on demand; picks up its entry in factions.txt if there is one).
+        /// <summary>Resolves a faction by name with native lore defaults.</summary>
         public static Faction Get(string name)
         {
             string k = Util.Norm(name);
@@ -144,12 +153,14 @@ namespace WildWasteland.Modules.Quests
             return f;
         }
 
+        /// <summary>Resolves a faction by its normalized key.</summary>
         public static Faction ByKey(string key) { return Get(key); }
 
         // true when `giver` must not send the player after this one. Animals and mutants are always fair game. People are
         // only targets when their faction is hostile to the player or at war with the giver's faction: a giver never sends
         // you after its own side or its allies, and nobody sends you after traders, wanderers or a neutral faction.
         // `go` (may be null) lets the game itself say whether a person without a faction is hostile to the player.
+        /// <summary>Rejects quest targets protected by faction friendship or neutrality.</summary>
         public static bool Protected(Faction giver, string tag, string enemyName, Vector3 enemyWorld, GameObject go)
         {
             Faction ef = OfObject(tag, enemyName, enemyWorld);
@@ -162,12 +173,14 @@ namespace WildWasteland.Modules.Quests
         }
 
         // a point of interest may be used unless it belongs to a faction that is not friendly with the giver's
+        /// <summary>Allows a POI only when its owner is friendly to the giver.</summary>
         public static bool PoiAllowed(Faction giver, Poi p, List<EnemyInfo> unused)
         {
             if (giver == null) return true;
             Faction owner = OwnerOfPoi(p);
             return owner == null || Friendly(giver, owner);
         }
+        /// <summary>Clears authored faction caches and current-world overrides.</summary>
         internal static void Reset() { file.Clear(); byKey.Clear(); Overrides.Clear(); fileStamp = DateTime.MinValue; }
     }
 }

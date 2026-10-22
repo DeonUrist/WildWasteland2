@@ -18,14 +18,6 @@ namespace WildWasteland.Modules.NPC
         /// <summary>[NPCAI / POI pathfinding] NpcLadderSpeed, m/s (bound by <see cref="NavSettings.Bind"/>).</summary>
         internal static ConfigEntry<float> LadderSpeed;
 
-        /// <summary>Tools part of Bind: the developer setup / display switches, the editor key and the baker tuning (PoiNav.Tools.cs).</summary>
-        static partial void BindTools(ModuleConfig cfg);
-
-        /// <summary>Old NPC-entry bind point (called from NpcModule.BindConfig): binds only the Tools-owned entries now. The runtime switch
-        /// and the ladder speed moved to <see cref="NavSettings.Bind"/> ([NPCAI / ...], D12) and the LadderSpeed 1 -> 2 rewrite is gone (README 9).</summary>
-        [System.Obsolete("refactor: NPCAI binds its navigation entries in NavSettings.Bind; Tools binds its own (B16)")]
-        internal static void Bind(ModuleConfig cfg) { BindTools(cfg); }
-
         // ------------------------------------------------------------------ graph per data
         /// <summary>The node/edge/link graph of one POI data set (built a step at a time).</summary>
         internal sealed class Graph
@@ -128,7 +120,7 @@ namespace WildWasteland.Modules.NPC
             if (!force && now < _nextScan) return;
             _nextScan = now + 1f;
             Nav.Roots(_roots);
-            PoiNavSetup.Roots(_roots);   // refs-ok: REFACTOR-REQUEST B08-7
+            NavigationAuthoringApi.AppendSetupRoots(_roots);
             _dead.Clear();
             foreach (var kv in _inst) if (kv.Value.Root == null || !kv.Value.Root.gameObject.activeInHierarchy) _dead.Add(kv.Key);
             foreach (int k in _dead) _inst.Remove(k);
@@ -250,7 +242,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 p = pos + dir * Mathf.Min(speed * dt, to.magnitude);
             // the floor under the new spot: the highest surface from half a step above the feet down to 1.5 m below them
             float feet = pos.y - w.FeetOff, best = float.MinValue;
-            int count = Physics.RaycastNonAlloc(new Vector3(p.x, feet + .55f, p.z), Vector3.down, _walkHits, 2.05f, PoiNavBake.Mask, QueryTriggerInteraction.Ignore);
+            int count = Physics.RaycastNonAlloc(new Vector3(p.x, feet + .55f, p.z), Vector3.down, _walkHits, 2.05f, Layers.NavSolid, QueryTriggerInteraction.Ignore);
             if (count == _walkHits.Length) { Release(id); return false; }   // truncated, unordered hits: let normal movement handle it
             for (int k = 0; k < count; k++) { var h = _walkHits[k]; if (h.collider == null || h.collider.attachedRigidbody == w.Rb || h.normal.y < .5f) continue; if (h.point.y > best) best = h.point.y; }
             if (best == float.MinValue) { Release(id); return false; }   // no floor: let it fall
@@ -648,7 +640,7 @@ namespace WildWasteland.Modules.NPC
         static bool Clear(Vector3 a, Vector3 b)
         {
             Vector3 up = Vector3.up * .6f;
-            return !Physics.Linecast(a + up, b + up, PoiNavBake.Mask, QueryTriggerInteraction.Ignore);
+            return !Physics.Linecast(a + up, b + up, Layers.NavSolid, QueryTriggerInteraction.Ignore);
         }
 
         // ------------------------------------------------------------------ lifecycle

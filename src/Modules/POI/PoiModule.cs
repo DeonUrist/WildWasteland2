@@ -56,12 +56,13 @@ namespace WildWasteland.Modules.POI
                 "Chance for each added POI in each generated 5 km terrain slice. 100 guarantees one site per slice for debugging. Changes affect newly generated slices.", new AcceptableValueRange<int>(0, 100));
         }
         /// <summary>Publishes custom POI registration and detached town geometry/traffic services.</summary>
-        public override void ProvideApis() { ModApi.Provide<IWorldLocations>(this,_locations); ModApi.Provide<IWorldDiscovery>(this,_locations); ModApi.Provide<ICampStatus>(this,_locations); ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
+        public override void ProvideApis() { ModApi.Provide<IEncounterNotices>(this,new EncounterNotices()); ModApi.Provide<IWorldLocations>(this,_locations); ModApi.Provide<IWorldDiscovery>(this,_locations); ModApi.Provide<ICampStatus>(this,_locations); ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
         public override void Init()
         {
             _running = true;
             Services.Poi = this;
             _towns.Init();
+            PoiEncounter.Register(this);
             TrafficCamps.Install(this);
             Scheduler.EveryFrame(this,"World discovery",Discover);
             Scheduler.Interval(this,"Camp state",1f,CheckCamps,Phase.Update,true);
@@ -140,7 +141,7 @@ namespace WildWasteland.Modules.POI
                         locations.Avoid = avoid.ToArray(); locations.Radius = definition.Radius;
                         int seed = 17; foreach (char c in definition.Id) seed = unchecked(seed * 31 + c); locations.Seed = seed & 32767;
                         graph.Add(locations); registration.Added.Add(locations); graph.Link(before, locations.Heights);
-                        if (!VistasWorldGen.Present)
+                        if (!WorldGeneration.Present)
                         {
                             var pad = (Flatten200)Generator.Create(typeof(Flatten200));
                             pad.radius = definition.Radius; pad.hardness = 1f; pad.noiseFallof = false;
@@ -244,6 +245,7 @@ namespace WildWasteland.Modules.POI
         public override void OnWorldReady()
         {
             _towns.OnWorldReady();
+            PoiEncounter.Prepare();
             if (!_loaded || _slot != SaveBus.Slot) Load(SaveBus.Slot);
             _sites.RemoveAll(Missing); foreach (var site in _sites) TrySpawn(site);
         }
@@ -271,11 +273,12 @@ namespace WildWasteland.Modules.POI
             _loaded = true; _loadFailed = false;
         }
         public override void OnLoadBegin(string slot) { _towns.OnLoadBegin(slot); Load(slot); }
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; _towns.OnSceneLoaded(scene, mode); _sites.Clear(); _captures.Clear(); _spawned.Clear(); _locations.Reset(); _loaded = false; }
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; PoiEncounter.ResetForScene(); EncounterNotices.Clear(); _towns.OnSceneLoaded(scene, mode); _sites.Clear(); _captures.Clear(); _spawned.Clear(); _locations.Reset(); _loaded = false; }
         public override void Shutdown()
         {
             _running = false;
             _towns.Shutdown();
+            PoiEncounter.Reset(); EncounterNotices.Clear();
             _locations.Reset();
             TerrainTile.OnBeforeTilePrepare -= Prepare; TerrainTile.OnTileApplied -= Applied;
             TerrainTile.OnTileFinalized -= Finalized;

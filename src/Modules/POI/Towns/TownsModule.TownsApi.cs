@@ -111,7 +111,7 @@ namespace WildWasteland.Modules.POI
             {
                 var site = live.Site; if (site.Anchor == null || site.Walls == null) continue;
                 Vector3 next;
-                if (!site.Walls.Vehicles.Waypoint(site.Anchor.InverseTransformPoint(position) - site.Plan.WorldCenter,
+                if (!site.Walls.VehicleRoutes.Waypoint(site.Anchor.InverseTransformPoint(position) - site.Plan.WorldCenter,
                     site.Anchor.InverseTransformPoint(goal) - site.Plan.WorldCenter, out next, out hold)) continue;
                 waypoint = site.Ground(site.Anchor.TransformPoint(site.Plan.WorldCenter + next)); return true;
             }

@@ -37,6 +37,7 @@ namespace WildWasteland.Modules.HUD
         private static Sprite _previewFallbackSprite;
         private static Rect _previewUv = new Rect(0, 0, 1, 1);
 
+        /// <summary>Resolves native graphics for the crosshair settings preview.</summary>
         internal static void PreparePreview()
         {
             LoadAssets();
@@ -60,6 +61,7 @@ namespace WildWasteland.Modules.HUD
             LoadLines();
         }
 
+        /// <summary>Draws one crosshair mode in its settings preview rectangle.</summary>
         internal static void DrawPreview(Rect rect, int mode)
         {
             if (mode == 0) return;
@@ -89,6 +91,7 @@ namespace WildWasteland.Modules.HUD
             }
         }
 
+        /// <summary>Updates the crosshair styling.</summary>
         internal static void Tick()
         {
             if ((_dot == null || _cross == null) && Time.unscaledTime >= _nextLook)
@@ -149,6 +152,7 @@ namespace WildWasteland.Modules.HUD
             _appliedMode = mode;
         }
 
+        /// <summary>Resolves attach for the crosshair styling.</summary>
         private static void Attach(Transform dot, Transform cross)
         {
             if (_dot != dot)
@@ -167,6 +171,7 @@ namespace WildWasteland.Modules.HUD
             if (_raw != null) { _originalTexture = _raw.texture; _originalUv = _raw.uvRect; }
             if (Log.Verbose) Log.Info("[HUD] crosshair UI attached: " + (cross != null ? cross.name : "-") + " / " + (dot != null ? dot.name : "-"));
         }
+        /// <summary>Restores the native crosshair texture, tint, size and aspect settings.</summary>
         private static void RestoreCross()
         {
             if (_image != null) _image.color = _originalColor;
@@ -192,18 +197,21 @@ namespace WildWasteland.Modules.HUD
             DestroyAsset(ref _previewFallbackSprite, ref _previewFallbackTexture);
             _assetsAttempted = false; _unsupportedWarned = false;
         }
+        /// <summary>Destroys an owned crosshair sprite and backing texture together.</summary>
         private static void DestroyAsset(ref Sprite sprite, ref Texture2D texture)
         {
             if (sprite != null) UnityEngine.Object.Destroy(sprite);
             if (texture != null) UnityEngine.Object.Destroy(texture);
             sprite = null; texture = null;
         }
+        /// <summary>Loads assets for the crosshair styling.</summary>
         private static void LoadAssets()
         {
             if (_assetsAttempted) return;
             _assetsAttempted = true;
             Load("crosshair_dot.png", out _dotTexture, out _dotSprite);
         }
+        /// <summary>Builds or loads the line-style crosshair artwork once.</summary>
         private static void LoadLines()
         {
             if (_linesTexture != null) return;
@@ -236,6 +244,7 @@ namespace WildWasteland.Modules.HUD
             }
             finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(buffer); }
         }
+        /// <summary>Loads the crosshair styling.</summary>
         private static void Load(string name, out Texture2D texture, out Sprite sprite)
         {
             texture = null; sprite = null;

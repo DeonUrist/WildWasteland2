@@ -18,22 +18,35 @@ namespace WildWasteland.Modules.PlayerBody
     {
         /// <summary>Native cockpit validity, excluding dead and paused frames.</summary>
         public bool Active { get { return VehiclesModule.Running && PlayerState.Ready && PlayerState.InCar && !PlayerState.Dead && !PlayerState.Paused; } }
+        /// <summary>Reports an attached ignition whose engine is stopped.</summary>
         public bool IgnitionOff { get { return Car.HudIgnitionOff; } }
+        /// <summary>Reports the current cockpit handbrake state.</summary>
         public bool HandbrakeOn { get { return Car.HudHandbrakeOn; } }
+        /// <summary>Reports active cassette playback.</summary>
         public bool Playing { get { return Car.HudRadioPlaying; } }
+        /// <summary>Formats cassette volume only when its value changes.</summary>
         public string Volume { get { return Car.VolumeText; } }
+        /// <summary>Returns cached controls labels generated from current cockpit bindings.</summary>
         public string Hint { get { return Car.HudHint; } }
+        /// <summary>Returns the native ignition hint font.</summary>
         public Font Font { get { return Car.HudFont; } }
+        /// <summary>Returns the style of the native ignition hint.</summary>
         public FontStyle FontStyle { get { return Car.HudFontStyle; } }
+        /// <summary>Returns the opaque native ignition hint tint.</summary>
         public Color HintColor { get { return Car.HudHintColor; } }
+        /// <summary>Computes the native hint size at the current canvas scale.</summary>
         public int FontSize { get { return Car.HudFontSize; } }
     }
     internal static partial class Car
     {
+        /// <summary>Exposes the cached handbrake state.</summary>
         internal static bool HudHandbrakeOn { get { return _brakeOn; } }
+        /// <summary>Exposes the cached cassette state.</summary>
         internal static bool HudRadioPlaying { get { return _musicPlaying; } }
         internal static bool HudIgnitionOff { get { return _start != null && !_running; } }
+        /// <summary>Exposes the cached controls hint string.</summary>
         internal static string HudHint { get { return _hint; } }
+        /// <summary>Exposes the captured native hint font.</summary>
         internal static Font HudFont { get { return _font; } }
         internal static FontStyle HudFontStyle { get { return _font != null && _gameText != null ? _gameText.fontStyle : FontStyle.Normal; } }
         internal static Color HudHintColor { get { return _gameText != null ? new Color(_gameText.color.r, _gameText.color.g, _gameText.color.b, 1f) : Color.white; } }
@@ -49,12 +62,14 @@ namespace WildWasteland.Modules.PlayerBody
                 return _volText;
             }
         }
+        /// <summary>Appends one explicit cockpit key label to the hint builder.</summary>
         private static void AddHint(StringBuilder hints, KeyCode key, string text)
         {
             if (key == KeyCode.None) return;
             if (hints.Length > 0) hints.Append('\n');
             hints.Append(KeyName(key)).Append(" - ").Append(text);
         }
+        /// <summary>Appends a native rebindable action label to the hint builder.</summary>
         private static void AddActionHint(StringBuilder hints, string action, KeyCode fallback, string text)
         {
             var label = GameBindings.Label(action, fallback);
@@ -67,12 +82,14 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly int[] _sigNow = new int[10], _sigLast = new int[10];
         private static bool _sigValid;
         private static string _hintText = "";
+        /// <summary>Captures both bindings of a native action for hint cache invalidation.</summary>
         private static void BindingSig(int i, string action, KeyCode fallback)
         {
             var a = GameBindings.Find(action);
             _sigNow[i] = a != null ? (int)a.Key : -1 - (int)fallback;
             _sigNow[i + 1] = a != null ? (int)a.AlternativeKey : -1;
         }
+        /// <summary>Refreshes cockpit readings and rebuilds hint text only when state or bindings change.</summary>
         private static void UpdateHints()
         {
             string ignitionState = _start != null ? _start.ActiveStateName ?? "" : "";
@@ -111,6 +128,7 @@ namespace WildWasteland.Modules.PlayerBody
             _hint = _hintText;
         }
         // the Text the START FSM writes its hint into (UiTextSetText actions): the game's hint font
+        /// <summary>Captures the native ignition hint label and its font from the START FSM.</summary>
         private static void FindGameText()
         {
             if (_gameText != null) return;
@@ -130,6 +148,7 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception) { }
         }
 
+        /// <summary>Formats numeric and plus/minus cockpit keys for the hint display.</summary>
         private static string KeyName(KeyCode k)
         {
             if (k == KeyCode.Equals || k == KeyCode.Plus) return "+";
