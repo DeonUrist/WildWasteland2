@@ -6,7 +6,7 @@ namespace WildWasteland.Modules.PlayerBody
     // The old Apocaplayer Runner MonoBehaviour, as plain static job methods registered by PlayerBodyModule.Init (Update -> Tick,
     // LateUpdate -> LateTick, OnGUI -> Gui, ModApiRunner.LateUpdate -> ModApiTick, Start's end-of-frame
     // coroutine -> EndOfFrameLoop). The old "Enabled off" branch is Shutdown -> TearDown (the jobs are removed by Core).
-    internal static class BodyRunner
+    internal static partial class BodyRunner
     {
         private static Body _body;
         private static Vector3 _jumpHeadPlayerPosition;
@@ -202,20 +202,5 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
 
-        // the same conditions GunPose.OnGUI / Car.OnGUI draw under (an editor hint, or seated in a car)
-        internal static bool GuiWanted() { return !string.IsNullOrEmpty(GunPose.HintText) || Car.GuiWanted || WheelArms.EditorVisible; }
-        internal static void Gui() { try { GunPose.OnGUI(); Car.OnGUI(); WheelArms.DrawEditorHint(); } catch (Exception) { } }
-
-        // after the frame is drawn: the camera's real matrices back (the game's mouse picks next frame cast from the eye)
-        internal static System.Collections.IEnumerator EndOfFrameLoop()
-        {
-            var eof = new WaitForEndOfFrame();
-            while (true)
-            {
-                yield return eof;
-                if (!PlayerBodyModule.Running) yield break;
-                try { ThirdPerson.EndOfFrame(); } catch (Exception) { }
-            }
-        }
     }
 }
