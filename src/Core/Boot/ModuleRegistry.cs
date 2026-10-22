@@ -16,8 +16,11 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.Compatibility.CompatibilityModule());
             ModuleHost.Add(new Modules.Saves.SavesModule());
             ModuleHost.Add(new Modules.PlayerBody.PlayerBodyModule());
+            ModuleHost.Add(new Modules.Presentation.PresentationModule());
             ModuleHost.Add(new Modules.NPC.NpcModule());
+            ModuleHost.Add(new Modules.NPCAI.NPCAIModule());
             ModuleHost.Add(new Modules.Guns.GunsModule());
+            ModuleHost.Add(new Modules.Gunplay.GunplayModule());
             ModuleHost.Add(new Modules.HUD.HudModule());
             ModuleHost.Add(new Modules.CleanHUD.CleanHudModule());
             ModuleHost.Add(new Modules.Patrols.PatrolsModule());
@@ -27,9 +30,6 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.Survival.SurvivalModule());
             ModuleHost.Add(new Modules.Towns.TownsModule());
             // Remaining target module entries are completed by their Wave B owners.
-            ModuleHost.Add(new Modules.Presentation.PresentationModule());
-            ModuleHost.Add(new Modules.NPCAI.NPCAIModule());
-            ModuleHost.Add(new Modules.Gunplay.GunplayModule());
             ModuleHost.Add(new Modules.Vehicles.VehiclesModule());
             ModuleHost.Add(new Modules.Loot.LootModule());
             ModuleHost.Add(new Modules.Tools.ToolsModule());
