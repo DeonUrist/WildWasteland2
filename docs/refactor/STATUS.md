@@ -13,11 +13,19 @@ Reference DLLs for compile.sh: copy `Apocalypter_Data/Managed` and `BepInEx/core
 ## Waves
 | wave | package | branch | state | merged | notes |
 |---|---|---|---|---|---|
-| W0 | W0-A Core kernel | refactor/W0-A | not started | | |
-| W0 | W0-B Core utilities | refactor/W0-B | not started | | |
+| W0 | W0-A Core kernel | refactor/W0-A | done | 37c5df5 | contracts frozen; requests in requests/W0-A.md |
+| W0 | W0-B Core utilities | refactor/W0-B | done | 67f9b61 | requests in requests/W0-B.md |
 | A | A1..A8 | | not started | | |
 | B | B01..B18 | | not started | | |
 | C | C | | not started | | |
+
+## Coordinator decisions
+- 2026-10-22: WW 1.0.10 MapFog AtomicFile fix ported (e942e98); rule D17 (no File.Replace / File.Move over existing files) added to README.
+- 2026-10-22: CS0618 suppressed in csproj until Wave C (W0-A request).
+- 2026-10-22: W0-B questions: KeyMap.FromKeyCodeName deleted in Wave C if unused (D12); broader WAV decoder accepted.
+
+## Device mirror
+`V:\Repos\Apocalypter\WildWasteland2` is a git repo whose `refactor/main` is reset to the cloud branch at each checkpoint (git bundle via `.sync/`, ignored). Do not edit it while the refactor runs; edits there would be overwritten (tell the coordinator instead). Last mirrored: 67f9b61.
 
 ## Open questions for Denis
 (none)

@@ -140,6 +140,7 @@ Coordinator gate A: merge all eight (any order; ownership is disjoint); build 0 
 ## Wave B - unification by TARGET module (18 agents in parallel)
 
 Common rules for Wave B:
+- Read every `docs/refactor/requests/*.md` and `docs/refactor/reports/*.md` entry addressed to your package or your module (W0-A/W0-B/A* requests name B01, B02, B04 ... explicitly) and handle them; record what you did in your report.
 - You own your target folder(s) including every `_from*` subfolder in them, plus the old entry partial files placed there in Wave A, plus the old entry core file assigned to you below.
 - Goal per package: (1) the new module entry owns lifecycle/config binding/pages for everything in your folder (move from the old entry partials; leave the old partial methods empty), with `StorageId`/`LegacySections`/`AbsorbedModules` per P1; (2) flatten `_from*` folders into the final structure; (3) unify duplicated systems assigned to you (README 6); (4) provide your contracts via `ModApi.Provide` and publish your events; (5) replace every cross-module call in your files with ModAPI/events (old members used by others stay `[Obsolete]`); (6) performance items of README 8 assigned to you; (7) logging to levels; (8) `///` comments on everything you own; (9) bugs of README 9 assigned to you.
 - Hooks: subscribe via Core dispatchers; move direct patches on shared targets (README 4.1 list) to the new dispatchers.
