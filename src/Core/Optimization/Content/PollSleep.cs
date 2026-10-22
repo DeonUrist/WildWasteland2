@@ -67,8 +67,6 @@ namespace WildWasteland.Core.Optimization
             if (_users > 0 && --_users == 0 && _job != null) _job.Enabled = false;
         }
 
-        /// <summary>Called from SubscribeHooks of each user feature (Core removes the subscriptions when the module stops). Several
-        /// subscriptions of the same handler are harmless: the first call wakes, later ones find nothing asleep.</summary>
         static bool _subscribed;
         /// <summary>Registers the shared state-entry wake handler once for the Core optimization lifetime.</summary>
         internal static void Hook(OptimizationRuntime m)
@@ -90,7 +88,7 @@ namespace WildWasteland.Core.Optimization
             _all.Add(s); _byFsm[fsm] = s;
         }
 
-        /// <summary>Drops a sleeper from the ordered list and identity lookup, adjusting the current cursor.</summary>
+        /// <summary>Drops a sleeper by swapping the final entry into its slot and updates its identity/index bookkeeping.</summary>
         static void RemoveAt(int i)
         {
             var s = _all[i];
