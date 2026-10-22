@@ -29,10 +29,10 @@ namespace WildWasteland.Modules.CleanHUD
             string json;
             using (var s = WildWasteland.Core.DiskResources.Open("CleanHUD." + name + "_meta.json"))
             using (var r = new StreamReader(s)) json = r.ReadToEnd();
-            var d = (Dictionary<string, object>)Json.Parse(json);
-            f.Size = Json.Num(d, "size", 96); f.Ascent = Json.Num(d, "ascent", 58); f.Descent = Json.Num(d, "descent", 17);
-            f.AtlasW = Json.Num(d, "w", 1024); f.AtlasH = Json.Num(d, "h", 512);
-            var gl = Json.Obj(d, "glyphs");
+            var d = (Dictionary<string, object>)Core.Json.Parse(json);
+            f.Size = Core.Json.Num(d, "size", 96); f.Ascent = Core.Json.Num(d, "ascent", 58); f.Descent = Core.Json.Num(d, "descent", 17);
+            f.AtlasW = Core.Json.Num(d, "w", 1024); f.AtlasH = Core.Json.Num(d, "h", 512);
+            var gl = Core.Json.Obj(d, "glyphs");
             foreach (var kv in gl)
             {
                 var a = (List<object>)kv.Value;

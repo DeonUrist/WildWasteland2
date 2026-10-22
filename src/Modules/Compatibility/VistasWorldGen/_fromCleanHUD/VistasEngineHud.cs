@@ -23,9 +23,9 @@ namespace WildWasteland.Modules.CleanHUD
             try
             {
                 var asm = info.Instance.GetType().Assembly; var heat = asm.GetType("ApocalpyterWorldAmp.EngineHeat", true);
-                _active = OptionalAccess.Read<object>(AccessTools.Field(heat, "Active"));
-                _temperature = OptionalAccess.Call<Func<object, float>>(AccessTools.PropertyGetter(heat, "Temperature"), typeof(float), typeof(object));
-                _stalled = OptionalAccess.Call<Func<object, bool>>(AccessTools.PropertyGetter(heat, "Stalled"), typeof(bool), typeof(object));
+                _active = Access.Read<object>(AccessTools.Field(heat, "Active"));
+                _temperature = Access.Call<Func<object, float>>(AccessTools.PropertyGetter(heat, "Temperature"), typeof(float), typeof(object));
+                _stalled = Access.Call<Func<object, bool>>(AccessTools.PropertyGetter(heat, "Stalled"), typeof(bool), typeof(object));
                 ConfigEntry<bool> enabled;
                 if (!info.Instance.Config.TryGetEntry<bool>(new ConfigDefinition("Vehicles", "EngineHeat"), out enabled)) throw new MissingMemberException("Vehicles.EngineHeat");
                 _enabled = enabled;

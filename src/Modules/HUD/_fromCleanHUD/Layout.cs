@@ -43,36 +43,36 @@ namespace WildWasteland.Modules.CleanHUD
         internal static Layout Parse(string text)
         {
             var l = Defaults();
-            var root = Json.Parse(text) as Dictionary<string, object>;
+            var root = Core.Json.Parse(text) as Dictionary<string, object>;
             if (root == null) throw new FormatException("layout.json must be a JSON object");
-            var style = Json.Obj(root, "style");
+            var style = Core.Json.Obj(root, "style");
             if (style != null)
             {
-                l.IconTint = Hex(Json.Text(style, "iconTint", "#e2bf6c"));
-                l.HpColor = Hex(Json.Text(style, "hpColor", "#d8492f"));
-                l.ArmorColor = Hex(Json.Text(style, "armorColor", "#9fb3bf"));
-                l.InactiveTint = Json.Text(style, "inactiveSlotIcons", "white") == "tint";
+                l.IconTint = Hex(Core.Json.Text(style, "iconTint", "#e2bf6c"));
+                l.HpColor = Hex(Core.Json.Text(style, "hpColor", "#d8492f"));
+                l.ArmorColor = Hex(Core.Json.Text(style, "armorColor", "#9fb3bf"));
+                l.InactiveTint = Core.Json.Text(style, "inactiveSlotIcons", "white") == "tint";
             }
-            var cmp = Json.Obj(root, "compass");
+            var cmp = Core.Json.Obj(root, "compass");
             if (cmp != null)
             {
-                l.VisibleArc = Mathf.Clamp(Json.Num(cmp, "visibleArcDeg", 160f), 60f, 300f);
-                l.EightPoint = Json.Text(cmp, "labels", "cardinal") == "8-point";
-                l.HeadingCaret = Json.Bool(cmp, "headingCaret", false);
-                l.PinOffArc = Json.Text(cmp, "offArcMarkers", "hide") == "clamp";
+                l.VisibleArc = Mathf.Clamp(Core.Json.Num(cmp, "visibleArcDeg", 160f), 60f, 300f);
+                l.EightPoint = Core.Json.Text(cmp, "labels", "cardinal") == "8-point";
+                l.HeadingCaret = Core.Json.Bool(cmp, "headingCaret", false);
+                l.PinOffArc = Core.Json.Text(cmp, "offArcMarkers", "hide") == "clamp";
             }
-            var els = Json.Arr(root, "elements");
+            var els = Core.Json.Arr(root, "elements");
             if (els != null)
                 foreach (var o in els)
                 {
                     var e = o as Dictionary<string, object>;
-                    var id = Json.Text(e, "id", "");
+                    var id = Core.Json.Text(e, "id", "");
                     Placement p;
                     if (e == null || !l.Elements.TryGetValue(id, out p)) continue;
-                    p.X = Json.Num(e, "x", p.X);
-                    p.Y = Json.Num(e, "y", p.Y);
-                    p.Scale = Mathf.Clamp(Json.Num(e, "scale", 1f), 0.4f, 2f);
-                    p.CenterX = Json.Bool(e, "centerX", p.CenterX);
+                    p.X = Core.Json.Num(e, "x", p.X);
+                    p.Y = Core.Json.Num(e, "y", p.Y);
+                    p.Scale = Mathf.Clamp(Core.Json.Num(e, "scale", 1f), 0.4f, 2f);
+                    p.CenterX = Core.Json.Bool(e, "centerX", p.CenterX);
                 }
             return l;
         }
