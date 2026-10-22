@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.PlayerBody
     // The weapon in her hand in third person = the game's own NPC prop for that weapon (Flexa's akm_trash_model, Sprokka's 22_pipe_pistol,
     // Lugnut's slamberg_500_chopped ...), at the exact spot the NPC prefab holds it on its mixamorig:LeftHand (guns) / RightHand (blades).
     // Same skeleton, same animations -> it sits in her hand like in theirs.
-    internal static class Props
+    internal static partial class Props
     {
         // Item = the weapon's own world model (the item you pick up), used when no NPC carries the weapon; Ref = the stand-in NPC prop that
         // gives it its starting place in the hand
@@ -17,28 +17,6 @@ namespace WildWasteland.Modules.PlayerBody
 
         private static readonly Dictionary<string, Prop> _catalog = new Dictionary<string, Prop>();
         private static bool _built;
-
-        public enum Kind { None, Rifle, Pistol, Melee, Throw }
-
-        // (WW perf) memo per weapon name (asked per frame; ToLowerInvariant made a string per call). Pure function of the name.
-        private static readonly Dictionary<string, Kind> _kinds = new Dictionary<string, Kind>();
-        public static Kind KindOf(string weapon)
-        {
-            if (string.IsNullOrEmpty(weapon) || weapon == "hands") return Kind.None;
-            Kind k;
-            if (_kinds.TryGetValue(weapon, out k)) return k;
-            if (_kinds.Count > 512) _kinds.Clear();
-            return _kinds[weapon] = KindOfName(weapon);
-        }
-        private static Kind KindOfName(string weapon)
-        {
-            string w = weapon.ToLowerInvariant();
-            if (w.Contains("blastlance") || w.Contains("grenade")) return Kind.Throw;
-            if (w.Contains("shiv") || w.Contains("knife") || w.Contains("machete") || w.Contains("wrench") || w.Contains("pipe_wrench")) return Kind.Melee;
-            // SMGs (borz_smg, 22_pipe_smg) are held and animated like pistols (Pistol* clips, PistolReload)
-            if (w.Contains("pistol") || w.Contains("revolver") || w.Contains("folk_17") || w.Contains("smg") || w.Contains("borz")) return Kind.Pistol;
-            return Kind.Rifle;
-        }
 
         internal static string Norm(string n)
         {
