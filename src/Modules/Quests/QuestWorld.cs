@@ -8,7 +8,9 @@ namespace WildWasteland.Modules.Quests
     /// <summary>Quest-owned projections of Core's single world/FSM/prefab discovery indexes.</summary>
     internal static class QuestWorld
     {
+        /// <summary>Shared native FSM snapshot retained for quest projections.</summary>
         internal static List<PlayMakerFSM> All { get { return FsmIndex.All; } }
+        /// <summary>Shared ItemName FSM snapshot retained for quest item queries.</summary>
         internal static List<PlayMakerFSM> Items { get { return FsmIndex.ByName("ItemName"); } }
         internal static readonly List<PlayMakerFSM> People = new List<PlayMakerFSM>();
         internal static readonly List<GameObject> Objects = new List<GameObject>();
@@ -77,8 +79,10 @@ namespace WildWasteland.Modules.Quests
             if (SetOwners.TryGetValue(id, out owner) && owner == gameObject && Sets.TryGetValue(id, out result)) return result;
             result = gameObject.GetComponents<PlayMakerFSM>(); Sets[id] = result; SetOwners[id] = gameObject; return result;
         }
+        /// <summary>Uses the quest-owned nonallocating ray buffer and returns an exact-length cached result array.</summary>
         internal static RaycastHit[] RaycastAll(Vector3 start, Vector3 direction, float length)
         { return RaycastAll(start, direction, length, ~0, QueryTriggerInteraction.UseGlobal); }
+        /// <summary>Uses the quest-owned nonallocating ray buffer and returns an exact-length cached result array.</summary>
         internal static RaycastHit[] RaycastAll(Vector3 start, Vector3 direction, float length, int mask, QueryTriggerInteraction triggers)
         {
             int count;

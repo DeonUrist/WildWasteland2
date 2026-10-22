@@ -12,6 +12,8 @@ namespace WildWasteland.Core
             AudioVoices = TunedSettings.Bind(tools, "Core / Audio", "AudioVoices", 64,
                 new ConfigDescription("Unity real sound voices. 0 preserves the native value; applied on game start.",
                     new AcceptableValueList<int>(0, 32, 48, 64, 96, 128)));
+            UI.SettingsShell.Shared.Row(null, UI.SettingsShell.Page.System, "Audio", AudioVoices, "Real sound voices (restart required)", 10);
+            UI.SettingsShell.Shared.Resettable(null, UI.SettingsShell.Page.System, AudioVoices);
         }
     }
 }

@@ -74,6 +74,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Shared native first-person enter/exit interaction state machine.</summary>
         public static PlayMakerFSM DriveUse { get { return Core.PlayerState.DriveUse; } }
 
+        /// <summary>Builds the complete slash-separated transform hierarchy path.</summary>
         public static string PathOf(Transform t)
         {
             if (t == null) return "";
@@ -82,6 +83,7 @@ namespace WildWasteland.Modules.PlayerBody
             return p;
         }
 
+        /// <summary>Finds a named transform recursively in the existing child order.</summary>
         public static Transform FindDeep(Transform t, string name)
         {
             if (t == null) return null;

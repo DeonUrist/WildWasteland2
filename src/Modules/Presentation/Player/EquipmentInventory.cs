@@ -19,8 +19,10 @@ namespace WildWasteland.Modules.PlayerBody
         public int Drawn = -1;
         private Transform _camera;
         // (WW perf) the vanilla Weapons FSM's state (its state's name: the same string object until it changes), a cheap per-frame change signal
+        /// <summary>Shared native weapons state used to detect held-item changes.</summary>
         public string WeaponState { get { return Core.PlayerInventory.WeaponState; } }
         // False preserves previous mount assignments during transactions and saves.
+        /// <summary>Reads optional inventory ownership when available, otherwise uses shared native slot data and existing extra holders.</summary>
         public bool Read()
         {
             if (_camera != Game.PlayerCamera)

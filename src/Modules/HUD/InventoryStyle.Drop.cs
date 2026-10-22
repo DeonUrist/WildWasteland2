@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.CleanHUD
     /// <summary>Equipment drop through the native TakeItem/Visibility recipe plus the armor/backpack capacity resets (Wave A split; B01 -> a Core inventory service IInventory.DropEquipment, overlapping Gunplay BackpackOverflow).</summary>
     internal static partial class InventoryStyle
     {
+        /// <summary>Drops equipped or stacked inventory contents through the appropriate Core transaction while preserving the native slot rules.</summary>
         private static void Drop(Slot slot)
         {
             if (!Session.Open || !Application.isFocused || !slot.CanDrop || slot.Take == null || slot.State == null || slot.Item == null) return;
