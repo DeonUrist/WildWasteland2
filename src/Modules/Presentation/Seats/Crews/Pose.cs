@@ -32,7 +32,7 @@ namespace WildWasteland.Modules.Patrols
         // Sitting/standing is independent of platform: roof turrets turn freely; motorcycle turrets retain BikeArc.
         private bool _turret, _turretSeated;
         private bool _turretBike,_turretWarboy;
-        private RiderGuard _turretRider;
+        private RiderGuard _turretRider;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
         private float _turretYaw;
         // 2.6.1: a roof gunner animated by Apocaplayer's ModAPI (PlayerAnims): the player's crouch with the gun in the right hand, aiming; this
         // class then only turns the whole body to the target and keeps its feet on the spot. null = the bone squat below (bike seats always)
@@ -121,7 +121,7 @@ namespace WildWasteland.Modules.Patrols
         internal void ConfigureTurret(bool standing,bool bike,bool warboy=false)
         {
             _turret = true; _turretSeated = !standing;_turretBike=bike;_turretWarboy=warboy;
-            if(warboy)_turretRider=GetComponent<RiderGuard>();
+            if(warboy)_turretRider=GetComponent<RiderGuard>();   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
             _lockSeatRotation = false;
             _turretYaw = 0f;
             if (!warboy && (standing || !bike) && _body == null && PlayerAnims.Available)
@@ -282,12 +282,12 @@ namespace WildWasteland.Modules.Patrols
                 if (flat > 0.001f)
                 {
                     wantedYaw = Mathf.Clamp(Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg,
-                        -PatrolsModule.FireArc.Value, PatrolsModule.FireArc.Value);
+                        -PatrolsModule.FireArc.Value, PatrolsModule.FireArc.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
                     wantedPitch = Mathf.Clamp(Mathf.Atan2(local.y, flat) * Mathf.Rad2Deg,
-                        -PatrolsModule.MaxAimPitch.Value, PatrolsModule.MaxAimPitch.Value);
+                        -PatrolsModule.MaxAimPitch.Value, PatrolsModule.MaxAimPitch.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
                 }
             }
-            float step = PatrolsModule.AimTurnSpeed.Value * Time.deltaTime;
+            float step = PatrolsModule.AimTurnSpeed.Value * Time.deltaTime;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
             _aimYaw = Mathf.MoveTowardsAngle(_aimYaw, wantedYaw, step);
             _aimPitch = Mathf.MoveTowardsAngle(_aimPitch, wantedPitch, step);
             AimSpine(_spine, 0.25f, up, right);
@@ -326,12 +326,12 @@ namespace WildWasteland.Modules.Patrols
                 if (flat > 0.001f)
                 {
                     wantedYaw = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
-                    if (_turretBike) wantedYaw = Mathf.Clamp(wantedYaw, -Rider.BikeArc, Rider.BikeArc);
-                    wantedPitch = Mathf.Clamp(Mathf.Atan2(local.y, flat) * Mathf.Rad2Deg, -PatrolsModule.MaxAimPitch.Value, PatrolsModule.MaxAimPitch.Value);
+                    if (_turretBike) wantedYaw = Mathf.Clamp(wantedYaw, -Rider.BikeArc, Rider.BikeArc);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                    wantedPitch = Mathf.Clamp(Mathf.Atan2(local.y, flat) * Mathf.Rad2Deg, -PatrolsModule.MaxAimPitch.Value, PatrolsModule.MaxAimPitch.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
                 }
             }
             else wantedYaw = _turretBike ? 0f : _turretYaw * 0.995f;
-            float step = PatrolsModule.AimTurnSpeed.Value * Time.deltaTime;
+            float step = PatrolsModule.AimTurnSpeed.Value * Time.deltaTime;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
             _turretYaw = Mathf.MoveTowardsAngle(_turretYaw, wantedYaw, step);
             _aimPitch = Mathf.MoveTowardsAngle(_aimPitch, wantedPitch, step);
             // roof: the whole body turns; motorcycle seat: the body sits straight, the upper body turns (spine, at most BikeArc)
