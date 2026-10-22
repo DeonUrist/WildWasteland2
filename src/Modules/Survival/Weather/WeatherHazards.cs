@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Survival
         private bool _announced, _overflow;
         private const int Mask=(1<<6)|(1<<8)|(1<<9)|(1<<10);
 
+        /// <summary>Applies native damage and force only to nearby hurricane wall contacts.</summary>
         internal void Tick(WeatherRegion region,int regionIndex,WeatherNative.Storm storm,Vector3[] columns,int count,WeatherVisuals visuals,WeatherNative native)
         {
             if (!storm.Ready || !region.Hurricane || visuals==null) { storm.Contacts(); return; }
@@ -94,6 +95,7 @@ namespace WildWasteland.Modules.Survival
                 Log.Info("[Weather] Hazard contacts: lift applications="+_forces+", player wall entries="+_players+", NPC wall entries="+_npcs+"; native shelter filters retained.");
             }
         }
+        /// <summary>Tests the shared bent annular wall profile and returns its radial limits.</summary>
         private static bool Wall(Vector3 local,int slot,float width,out Vector3 axis,out float outer)
         {
             axis=Vector3.zero; outer=0;
@@ -109,6 +111,7 @@ namespace WildWasteland.Modules.Survival
             float distance=radial.sqrMagnitude;
             return distance>=inner*inner && distance<=outer*outer;
         }
+        /// <summary>Clears contact lookup, ground-probe timing and diagnostic counters.</summary>
         internal void Reset()
         {
             System.Array.Clear(_hits,0,_hits.Length); System.Array.Clear(_groundAt,0,_groundAt.Length); _bodies.Clear();

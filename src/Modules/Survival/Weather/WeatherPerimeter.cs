@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.Survival
         internal readonly float[] Spans = new float[48];
         private Vector2 _radii;
         internal int Count;
+        /// <summary>Rebuilds evenly spaced perimeter sections only when the region radii change.</summary>
         internal void Update(WeatherRegion region)
         {
             if (Count > 0 && _radii == region.Radii) return;
@@ -32,6 +33,7 @@ namespace WildWasteland.Modules.Survival
                 Spans[i] = spacing; // Arc length overlaps the straight chord at rounded corners.
             }
         }
+        /// <summary>Interpolates the cached boundary at a requested arc length.</summary>
         private Vector2 Point(float distance)
         {
             for (int i=1;i<=64;i++) if (distance <= _lengths[i])

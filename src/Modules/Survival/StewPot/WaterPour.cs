@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.Survival
         readonly Vector2[] uv = new Vector2[Rows * Sides];
         readonly float phase;
 
+        /// <summary>Builds the reusable transient pouring sheet beneath the runtime effects parent.</summary>
         internal WaterPour(Transform parent)
         {
             if (material == null) CreateMaterial();
@@ -40,6 +41,7 @@ namespace WildWasteland.Modules.Survival
             mesh.vertices = vertices; mesh.triangles = triangles;
         }
 
+        /// <summary>Updates the existing stream mesh from flow direction, quantity and contents.</summary>
         internal void Draw(Vector3 start, Vector3 across, float distance, float litres, float rate, int contents)
         {
             Material flow = contents == (int)Contents.Meat ? meatMaterial
@@ -77,10 +79,13 @@ namespace WildWasteland.Modules.Survival
             renderer.enabled = true;
         }
 
+        /// <summary>Shows or hides the stream renderer without rebuilding its mesh.</summary>
         internal void SetVisible(bool value) { renderer.enabled = value; }
 
+        /// <summary>Destroys the transient sheet object and its private mesh.</summary>
         internal void Dispose() { Object.Destroy(go); Object.Destroy(mesh); }
 
+        /// <summary>Creates the shared liquid-sheet materials and procedural texture.</summary>
         static void CreateMaterial()
         {
             const int width = 64, height = 128;
@@ -123,6 +128,7 @@ namespace WildWasteland.Modules.Survival
             otherStewMaterial = OpaqueStew(stewTexture, "VegetableMushroomMixed", new Color(.9f, .36f, .055f, 1f));
         }
 
+        /// <summary>Creates an opaque stew variant using the supplied shared texture.</summary>
         static Material OpaqueStew(Texture2D texture, string name, Color color)
         {
             var stew = new Material(Shader.Find("Standard")) { name = "StewPot.Poured" + name, mainTexture = texture, color = color };

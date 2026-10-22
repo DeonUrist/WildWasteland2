@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.Survival
         private Core.Audio.Load _load;
         private bool _attempted;
         private float _nextSample, _target, _volume;
+        /// <summary>Retains storm and thunder paths and precomputes the shared boundary samples.</summary>
         internal WeatherAudio(string path)
         {
             _path = path;
@@ -25,6 +26,7 @@ namespace WildWasteland.Modules.Survival
             var unit = new WeatherRegion { Radii = Vector2.one };
             for (int i = 0; i < _edge.Length; i++) _edge[i] = unit.Boundary(i);
         }
+        /// <summary>Requests storm and thunder audio once per runtime scope.</summary>
         internal void Load()
         {
             _thunder.Load();
@@ -45,7 +47,9 @@ namespace WildWasteland.Modules.Survival
                 _source.spatialBlend = 0; _source.dopplerLevel = 0; _source.volume = 0; _source.clip = _clip;
                 Log.Always("[Weather] Storm sound loaded: sound/sandstorm.wav; silent beyond 1200 m, full volume within 150 m and inside; one shared loop.");
         }
+        /// <summary>Queues the sound corresponding to a visual lightning strike.</summary>
         internal void Strike(float clock, Vector3 position, Vector3 eye, float strength) { _thunder.Strike(clock,position,eye,strength); }
+        /// <summary>Samples nearby region volume and advances the shared storm loop.</summary>
         internal void Tick(WeatherRegion[] regions, float[] ages, int count, Camera camera, float clock)
         {
             _thunder.Tick(clock,camera);
@@ -82,12 +86,14 @@ namespace WildWasteland.Modules.Survival
             if (volume==0 && _target==0) { if (_source.isPlaying) _source.Pause(); }
             else if (!_source.isPlaying) { if (_source.time>0) _source.UnPause(); else _source.Play(); }
         }
+        /// <summary>Stops weather audio and clears accumulated volume state.</summary>
         internal void Stop()
         {
             _thunder.Stop();
             _target = 0; _volume = 0; _nextSample = 0;
             if (_source != null) { _source.Stop(); _source.volume = 0; }
         }
+        /// <summary>Cancels unfinished decoding and destroys owned audio objects and clips.</summary>
         public void Dispose()
         {
             Stop();

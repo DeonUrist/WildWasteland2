@@ -9,6 +9,7 @@ using Object = UnityEngine.Object;
 
 namespace WildWasteland.Modules.Survival
 {
+    /// <summary>Native pot content categories stored in the existing save variables.</summary>
     public enum Contents { Empty, Water, Meat, Vegetable, Mushroom, Mixed }
 
     internal static class Factory
@@ -24,11 +25,13 @@ namespace WildWasteland.Modules.Survival
         internal static Mesh ColliderMesh;
         static Material potMaterial;
 
+        /// <summary>Finds one named FSM on the specified object.</summary>
         internal static PlayMakerFSM Fsm(GameObject go, string name)
         {
             return WildWasteland.Core.FsmUtil.Find(go, name);
         }
 
+        /// <summary>Builds and retains the native-save-compatible pot template on first demand.</summary>
         internal static GameObject Template()
         {
             if (Cached != null) return Cached;
@@ -131,6 +134,7 @@ namespace WildWasteland.Modules.Survival
             catch { Object.Destroy(copy); throw; }
         }
 
+        /// <summary>Removes inherited actions that must not run on the pot clone.</summary>
         static void EmptyActions(PlayMakerFSM fsm)
         {
             foreach (var state in fsm.FsmStates)
@@ -140,6 +144,7 @@ namespace WildWasteland.Modules.Survival
             }
         }
 
+        /// <summary>Loads the owned pot meshes and material assets once.</summary>
         static void LoadModels()
         {
             if (potMesh != null) return;
@@ -166,11 +171,13 @@ namespace WildWasteland.Modules.Survival
             WildWasteland.Core.Log.Always("[Survival] StewPot GLBs loaded from " + SurvivalModule.Assets + "; stewpot_collider.glb: single convex mesh.");
         }
 
+        /// <summary>Uses an optional texture when installed, otherwise retains the supplied material.</summary>
         static Material OptionalMaterial(string file, Material fallback)
         {
             return File.Exists(Path.Combine(SurvivalModule.Assets, file)) ? Material(file, .55f) : fallback;
         }
 
+        /// <summary>Creates the pot material with the original readable mipmapped albedo settings.</summary>
         static Material Material(string file, float smoothness)
         {
             var texture = Core.Textures.FromFile(Path.Combine(SurvivalModule.Assets, file),
@@ -182,6 +189,7 @@ namespace WildWasteland.Modules.Survival
             return material;
         }
 
+        /// <summary>Registers stable object and component references beneath the pot prefab.</summary>
         static void RegisterRefs(ES3Prefab es3, Transform node, string path)
         {
             es3.localRefs[node.gameObject] = Id(path + ":go");
@@ -190,6 +198,7 @@ namespace WildWasteland.Modules.Survival
             foreach (Transform child in node) RegisterRefs(es3, child, path + "/" + child.name);
         }
 
+        /// <summary>Registers a material under its stable local reference name.</summary>
         static void RegisterMaterial(ES3Prefab es3, Material material, string name)
         {
             if (material == null) return;
@@ -197,6 +206,7 @@ namespace WildWasteland.Modules.Survival
             if (material.mainTexture != null) es3.localRefs[material.mainTexture] = Id("asset:texture:" + name);
         }
 
+        /// <summary>Derives a deterministic native reference identifier from an authored path.</summary>
         static long Id(string text)
         {
             ulong hash = 14695981039346656037UL;
