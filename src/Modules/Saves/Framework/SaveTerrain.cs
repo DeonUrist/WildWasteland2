@@ -1,3 +1,6 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.IO;
@@ -5,7 +8,7 @@ using Den.Tools.Tasks;
 using MapMagic.Core;
 using UnityEngine;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     internal static class SaveTerrain
     {
@@ -16,8 +19,9 @@ namespace WildWasteland.Core
             if (!Patches.Patch(owner, Patches.Method(typeof(MapMagicObject), "Update"), prefix: Patches.Method(typeof(SaveTerrain), "MapUpdate"))
                 || !Patches.Patch(owner, Patches.Method(typeof(CoroutineManager), "Update"), prefix: Patches.Method(typeof(SaveTerrain), "ApplyUpdate")))
                 throw new InvalidOperationException("Terrain save barrier could not be installed");
-            Log.Always("[System] Terrain save barrier ready: drain pending work, hold streaming until publication completes");
+            Log.Main(owner, "Terrain save barrier ready: drain pending work, hold streaming until publication completes");
         }
+        /// <summary>Holds new terrain admission while allowing queued applications to drain.</summary>
         static bool MapUpdate()
         {
             if (!_held) return true;
@@ -25,7 +29,9 @@ namespace WildWasteland.Core
             if (_draining) CoroutineManager.Update();
             return false;
         }
+        /// <summary>Allows terrain applications only before the publication barrier fully closes.</summary>
         static bool ApplyUpdate() { return !_held || _draining; }
+        /// <summary>Drains terrain to two quiet observations with timeout and generation checks.</summary>
         internal static IEnumerator Prepare()
         {
             _held = _draining = true;
@@ -38,12 +44,13 @@ namespace WildWasteland.Core
                 if (quiet >= 2)
                 {
                     _draining = false;
-                    Log.Always("[System] Terrain settled; streaming held for world save");
+                    Log.Deep(SavesModule.Instance, "Terrain settled; streaming held for world save");
                     yield break;
                 }
                 yield return null;
             }
         }
+        /// <summary>Releases terrain admission and queued-application barriers.</summary>
         internal static void Release() { _held = _draining = false; }
     }
 }

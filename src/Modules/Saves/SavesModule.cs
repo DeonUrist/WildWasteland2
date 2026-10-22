@@ -11,11 +11,15 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Name displayed by the module shell.</summary>
         public override string DisplayName { get { return "Saves"; } }
         bool _running, _recovering;
+        /// <summary>The registered Saves entry, used as the log owner by the static framework classes (bound before Init).</summary>
+        internal static SavesModule Instance { get; private set; }
 
         /// <summary>Binds save and cleanup policy even when the module is disabled.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
+            Instance = this;
             SaveSystem.Bind(cfg);
+            CompanionPolicy.RegisterDefaults(this);
             // ModuleHost attaches its toggle handler after BindConfig: restore the switch before it can stop a live transaction.
             cfg.Enabled.SettingChanged += EnabledChanged;
         }
@@ -35,6 +39,8 @@ namespace WildWasteland.Modules.Saves
             SaveSystem.Install(this);
             SaveBus.FailureReported += FailureReported;
             ModEvents.Subscribe<Core.Events.CombatActivity>(this, CombatActivity);
+            ModEvents.Subscribe<Core.Events.WeaponFired>(this, WeaponFired);
+            ModEvents.Subscribe<Core.Events.NpcStateChanged>(this, NpcStateChanged);
             _recovering = true;
             try { SaveSystem.RecoverFiles(); }
             finally { _recovering = false; }
@@ -48,9 +54,15 @@ namespace WildWasteland.Modules.Saves
             _running = false;
             SaveBus.FailureReported -= FailureReported;
             ModEvents.Unsubscribe<Core.Events.CombatActivity>(this, CombatActivity);
+            ModEvents.Unsubscribe<Core.Events.WeaponFired>(this, WeaponFired);
+            ModEvents.Unsubscribe<Core.Events.NpcStateChanged>(this, NpcStateChanged);
             try { SaveRoutines.StopAll(); }
             finally { try { SaveSystem.Shutdown(); } finally { SaveRuntime.Shutdown(); _recovering = false; } }
         }
+        /// <summary>Defers autosaving after typed weapon activity, including while custom NPC AI is disabled.</summary>
+        static void WeaponFired(ref Core.Events.WeaponFired shot) { SaveCombat.Activity(); }
+        /// <summary>Defers autosaving when a typed NPC transition enters combat.</summary>
+        static void NpcStateChanged(ref Core.Events.NpcStateChanged change) { if (change.New == NpcMode.Combat) SaveCombat.Activity(); }
         /// <summary>Transfers sidecar failure into the current transaction's failure latch.</summary>
         static void FailureReported(IModule owner, string message) { SaveSystem.Fail(message); }
         /// <summary>Extends autosave combat deferral for activity from other modules.</summary>

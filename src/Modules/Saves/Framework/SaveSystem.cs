@@ -1,3 +1,7 @@
+using Patches = WildWasteland.Core.Patches;
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,7 +13,7 @@ using HarmonyLib;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // The active native file is a working location. Published manual saves and autosaves have separate identities.
     internal static class SaveSystem
@@ -21,21 +25,34 @@ namespace WildWasteland.Core
             internal string World;
             internal float? Kilometres;
             internal bool Automatic { get { return Kind == "auto"; } }
+            /// <summary>Formats recorded distance while retaining the existing missing-distance label.</summary>
             internal string Distance { get { return Kilometres.HasValue ? Kilometres.Value.ToString("0.0", CultureInfo.InvariantCulture) + " km" : "Distance not recorded"; } }
         }
         internal static ConfigEntry<bool> Autosave, ExitSave, WhileDriving, Screenshots;
         internal static ConfigEntry<int> Interval, Warning, AutoKeep, BackupKeep;
         internal static string Status = "", RecoveryError;
-        internal static bool ReloadRequired;
+        static bool _reloadRequired;
+        static int _failureGeneration = -1, _installedGeneration = -1;
+        /// <summary>Retains same-world failures across toggles while rejecting stale latches after an off-module world change.</summary>
+        internal static bool ReloadRequired
+        {
+            get { return _reloadRequired && _failureGeneration == SaveBus.Generation; }
+            set { _reloadRequired = value; _failureGeneration = SaveBus.Generation; }
+        }
         internal static bool Busy { get { return _transaction != null; } }
+        /// <summary>Reports whether the current save request is automatic.</summary>
         internal static bool AutomaticSaving { get { return _automatic; } }
+        /// <summary>Reports an accepted request waiting for serialization or publication.</summary>
         internal static bool Requested { get { return _requested; } }
+        /// <summary>Reports ownership of an exit-save or return-to-menu flow.</summary>
         internal static bool Exiting { get { return _quitting; } }
         internal static bool Ready;
         internal static bool Installed;
         internal static bool LocalWorld { get { return !SaveRuntime.InMainMenu && GameRefs.Player != null && GameRefs.SaveLoadGame != null; } }
         internal static bool LocalReady { get { return LocalWorld && SaveBus.State == "isPlay"; } }
+        /// <summary>Returns the live selected world identity, falling back to the native save bus slot.</summary>
         internal static string ActiveFile { get { return SaveRuntime.ActiveFile ?? SaveBus.Slot; } }
+        /// <summary>Resolves the current generation name from session metadata or the native seed.</summary>
         internal static string CurrentWorldName { get { if (_localGeneration == SaveBus.Generation && _localWorldName != null) return _localWorldName; string file = ActiveFile; if (file != null && File.Exists(SaveFiles.MetaPath(file))) return Info(file).World; var seed = GameRefs.SaveLoadGame != null ? GameRefs.SaveLoadGame.FsmVariables.FindFsmInt("seed") : null; return seed != null ? "World " + seed.Value : "My world"; } }
         internal static int CatalogueVersion;
         static bool _requested, _automatic, _quitting, _scheduled;
@@ -70,6 +87,12 @@ namespace WildWasteland.Core
         internal static void Install(IModule owner)
         {
             _owner = owner;
+            if (_installedGeneration != SaveBus.Generation)
+            {
+                _session = _pendingNotice = null;
+                if (!ReloadRequired && RecoveryError == null) Status = "";
+            }
+            _installedGeneration = SaveBus.Generation;
             Autosave.SettingChanged += ScheduleChanged; Interval.SettingChanged += ScheduleChanged; Warning.SettingChanged += ScheduleChanged; WhileDriving.SettingChanged += ScheduleChanged;
             _health = SaveRuntime.Health;
             Hooks.ActivateGameObjectDo.Prefix(owner, VehicleSaveButton);
@@ -78,14 +101,15 @@ namespace WildWasteland.Core
             if (!Patches.Patch(_owner, AccessTools.Method(typeof(ES3Internal.ES3IO), "CommitBackup"), finalizer: AccessTools.Method(typeof(SaveSystem), "StorageError"))) throw new InvalidOperationException("Native disk failure observation hook failed");
             if (!Patches.Patch(_owner, AccessTools.Method(typeof(ES3PlayMaker.PMDataWrapper), "ApplyVariables"), postfix: AccessTools.Method(typeof(SaveSystem), "LoadedPath"))) throw new InvalidOperationException("Save identity hook failed");
             SaveCleanup.Install(owner);
-            SaveCombat.Install(owner); SaveWarning.Install(owner);
+            SaveCombat.Install(owner);
+            Core.SaveWarning.Install(owner);
             SinglePlayerSaving.Install(owner);
             WorldHistory.Install(owner); SaveCompatibility.Install(owner);
             SaveBus.StateChanged += StateChanged;
             Scheduler.Interval(owner, "Singleplayer autosave warning", .25f, Tick);
-            Log.Always("[System] Autosave warnings: game-font compass countdown, 30/15-second notices, combat deferral and 3-second final warning");
+            Log.Main(owner, "Autosave warnings: game-font compass countdown, 30/15-second notices, combat deferral and 3-second final warning");
             Installed = true;
-            Log.Always("[System] Singleplayer saves ready: separate manual/autosaves, complete backups and interrupted-write recovery");
+            Log.Main(owner, "Singleplayer saves ready: separate manual/autosaves, complete backups and interrupted-write recovery");
         }
         /// <summary>Releases save event/config listeners after owned coroutines have been disposed.</summary>
         internal static void Shutdown()
@@ -117,9 +141,11 @@ namespace WildWasteland.Core
         {
             if (Autosave == null) return;
             try { SaveFiles.Recover(); Ready = true; RecoveryError = null; }
-            catch (Exception error) { Ready = false; RecoveryError = "Save recovery needs attention: " + error.Message; Log.Error("[System] " + RecoveryError, error); }
+            catch (Exception error) { Ready = false; RecoveryError = "Save recovery needs attention: " + error.Message; Log.Error(SavesModule.Instance, RecoveryError, error); }
         }
+        /// <summary>Latches native disk commit errors into the active save transaction.</summary>
         static Exception StorageError(Exception __exception) { if (__exception != null) Fail("World persistence failed: " + __exception.Message); return __exception; }
+        /// <summary>Blocks unjournaled writes to protected world slots while preserving unrelated ES3 files.</summary>
         static bool BeforeSync(ES3Settings settings)
         {
             if (!Installed) return true;
@@ -129,10 +155,13 @@ namespace WildWasteland.Core
             if (LocalWorld && file == ActiveFile) ProtectedSlots.Add(file);
             return !ProtectedSlots.Contains(file) || Busy && file == ActiveFile;
         }
+        /// <summary>Clears stale state when the native save flow crosses a load or new-world boundary.</summary>
         static void StateChanged(string previous, string current)
         { if (current == "LoadGame" || current == "setSeed") { ReloadRequired = false; _session = null; _pendingNotice = null; } }
+        /// <summary>Installs a mandatory module-owned native observer or fails initialization.</summary>
         static void Require(Type type, string method, string prefix)
         { if (!Patches.Patch(_owner, AccessTools.Method(type, method), prefix: AccessTools.Method(typeof(SaveSystem), prefix))) throw new InvalidOperationException("System save hook failed: " + method); }
+        /// <summary>Preserves the explicitly selected snapshot identity after native global restoration.</summary>
         static void LoadedPath(Fsm fsm)
         {
             VehicleLoadPlacement.Loaded();
@@ -143,16 +172,24 @@ namespace WildWasteland.Core
             var variable = fsm.Variables.FindFsmString("SaveFile"); if (variable != null) variable.Value = file;
             ES3Settings.defaultSettings.path = file;
         }
+        /// <summary>Handles expected new-site history misses and records other native save errors.</summary>
         static bool NativeError(string msg) { if (WorldHistory.NativeError(msg)) return false; Fail("Native save error: " + msg); return true; }
+        /// <summary>Records the first failure of an active save transaction.</summary>
         internal static void Fail(string message) { if (Busy && _error == null) _error = message; }
-        internal static void Notify(string text) { Status = text; Log.Always("[System] " + text); _pendingNotice = text; }
+        /// <summary>Retains the latest save notice for delivery through the HUD notification API.</summary>
+        internal static void Notify(string text) { Status = text; Log.Main(SavesModule.Instance, text); _pendingNotice = text; }
+        /// <summary>Delivers a pending notice only when gameplay presentation and a HUD provider are ready.</summary>
         static void DeliverNotice()
         {
             if (_pendingNotice == null || !LocalReady || LoadingProgress.MenusBlocked) return;
+            var notices = ModApi.Get<INotifications>();
+            if (notices != null) { if (notices.Push(_pendingNotice, NotificationKind.Save, 0)) _pendingNotice = null; return; }
+            // No INotifications provider yet: keep the old message-log delivery until HUD provides it (B10).
             var text = _pendingNotice; _pendingNotice = null;
-            Modules.CleanHUD.MessageHook.Push(text);
+            Modules.CleanHUD.MessageHook.Push(text); // refs-ok: REFACTOR-REQUEST B04-4 (HUD provides INotifications; then delete this fallback)
         }
         
+        /// <summary>Reads the unchanged save-description format while retaining unreadable world files.</summary>
         internal static SaveInfo Info(string file, string fallback = null)
         {
             var info = new SaveInfo { File = file, Name = fallback ?? Path.GetFileNameWithoutExtension(file), World = "World not recorded", Kind = "legacy", Date = "" };
@@ -170,17 +207,20 @@ namespace WildWasteland.Core
                 }
             }
             else if (File.Exists(SaveFiles.WorldPath(file))) info.Date = File.GetLastWriteTime(SaveFiles.WorldPath(file)).ToString("yyyy-MM-dd HH:mm"); }
-            catch (Exception error) { Log.Warn("[System] Save description unreadable; world retained: " + file + ": " + error.Message); }
+            catch (Exception error) { Log.Warn(SavesModule.Instance, "Save description unreadable; world retained: " + file + ": " + error.Message); }
             return info;
         }
+        /// <summary>Resolves the original world lineage from published metadata.</summary>
         internal static string Lineage(string file)
         {
             string path = SaveFiles.MetaPath(file);
             if (File.Exists(path)) { var lines = File.ReadAllLines(path); if (lines.Length >= 5 && SaveRuntime.IsSaveFile(lines[4])) return lines[4]; }
             return file;
         }
+        /// <summary>Encodes the existing WW-SAVE-1 metadata fields in their original order.</summary>
         static byte[] Description(string name, string kind, string lineage)
         { return Encoding.UTF8.GetBytes(string.Join("\n", new[] { "WW-SAVE-1", Convert.ToBase64String(Encoding.UTF8.GetBytes(name)), kind, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"), lineage, _kilometres >= 0 ? _kilometres.ToString("R", CultureInfo.InvariantCulture) : "", Convert.ToBase64String(Encoding.UTF8.GetBytes(_world ?? "My world")), "sp", "" })); }
+        /// <summary>Reads a finite native world-distance value for published metadata.</summary>
         static float DistanceTravelled()
         {
             var fsm = GameRefs.GameManager != null ? FsmUtil.Find(GameRefs.GameManager, "DistanceTravelled") : null;
@@ -188,6 +228,7 @@ namespace WildWasteland.Core
             float km = distance != null ? distance.Value : -1;
             return km >= 0 && !float.IsInfinity(km) ? km : -1;
         }
+        /// <summary>Validates and queues a single save without bypassing recovery or player-health rules.</summary>
         internal static bool Request(string name, string overwrite = null, bool automatic = false, bool scheduled = false, string worldName = null)
         {
             if (!Installed || !LocalReady || Busy || _requested || _quitting) return false;
@@ -205,6 +246,7 @@ namespace WildWasteland.Core
             return true;
         }
         // Recheck immediately before freezing: combat can begin during the warning.
+        /// <summary>Rechecks combat immediately before a scheduled autosave freezes gameplay.</summary>
         internal static bool DeferScheduledSave()
         {
             if (!_scheduled || !SaveCombat.Check()) return false;
@@ -213,6 +255,7 @@ namespace WildWasteland.Core
             return true;
         }
         // Called after local time/input freeze, before the native serializer starts.
+        /// <summary>Prepares the complete undo journal before serialization or cleanup can mutate files.</summary>
         internal static void Begin()
         {
             if (RecoveryError != null || ReloadRequired) throw new IOException(RecoveryError ?? "Reload required after a failed save");
@@ -226,6 +269,7 @@ namespace WildWasteland.Core
             if (Screenshots.Value) CapturePicture();
             SaveCleanup.Prepare();
         }
+        /// <summary>Merges streamed history and marks the native cache for later verification.</summary>
         internal static void Stamp()
         {
             WorldHistory.Merge(); var settings = new ES3Settings(ActiveFile) { location = ES3.Location.Cache };
@@ -233,6 +277,7 @@ namespace WildWasteland.Core
 
             SaveCleanup.SaveProtection(); SaveCompatibility.SavePoses();
         }
+        /// <summary>Captures the existing thumbnail size and restores camera/render targets in all paths.</summary>
         static void CapturePicture()
         {
             var camera = GameRefs.MainCamera; if (camera == null || Application.isBatchMode) return;
@@ -242,9 +287,10 @@ namespace WildWasteland.Core
                 image = RenderTexture.GetTemporary(480, 270, 24); camera.targetTexture = image; camera.Render(); RenderTexture.active = image;
                 pixels = new Texture2D(480, 270, TextureFormat.RGB24, false); pixels.ReadPixels(new Rect(0, 0, 480, 270), 0, 0); pixels.Apply(); _picture = pixels.EncodeToPNG();
             }
-            catch (Exception error) { Log.Warn("[System] Save thumbnail unavailable: " + error.Message); }
+            catch (Exception error) { Log.Warn(SavesModule.Instance, "Save thumbnail unavailable: " + error.Message); }
             finally { camera.targetTexture = target; RenderTexture.active = old; if (image != null) RenderTexture.ReleaseTemporary(image); if (pixels != null) UnityEngine.Object.Destroy(pixels); }
         }
+        /// <summary>Checks the published world, transaction stamp and retained old key set.</summary>
         static void Validate(string file, string stamp)
         {
             var settings = SaveFiles.Disk(file); var keys = new HashSet<string>(ES3.GetKeys(settings), StringComparer.Ordinal);
@@ -254,6 +300,7 @@ namespace WildWasteland.Core
 
             if (file == ActiveFile) foreach (string key in _oldKeys) if (!keys.Contains(key) && !SaveCleanup.RemovesKey(key)) throw new IOException("Previous save record was lost: " + key);
         }
+        /// <summary>Flushes, verifies and publishes the save before committing cleanup and retention.</summary>
         internal static bool Complete()
         {
             if (!Busy) return false;
@@ -278,23 +325,22 @@ namespace WildWasteland.Core
                 _transaction = null; _requested = false; Schedule();
                 CatalogueVersion++;
                 WorldHistory.Accepted();
-                try { SaveCleanup.Commit(); } catch (Exception cleanup) { SaveSystem.ReloadRequired = true; Log.Error("[System] Save committed, but cleanup could not finish; reload before saving", cleanup); }
+                try { SaveCleanup.Commit(); } catch (Exception cleanup) { SaveSystem.ReloadRequired = true; Log.Error(SavesModule.Instance, "Save committed, but cleanup could not finish; reload before saving", cleanup); }
                 Status = (_automatic ? "Autosave" : "Save") + " completed: " + _name;
-                Log.Always("[System] " + Status);
+                Log.Main(SavesModule.Instance, Status);
                 try { SaveFiles.Prune(source, BackupKeep.Value); SaveFiles.Prune(target, BackupKeep.Value); if (_automatic) PruneAutosaves(Lineage(target), target); }
-                catch (Exception error) { Log.Warn("[System] Retention deferred; saves retained: " + error.Message); }
+                catch (Exception error) { Log.Warn(SavesModule.Instance, "Retention deferred; saves retained: " + error.Message); }
                 return true;
             }
             catch (Exception error) { Abort(error); return false; }
         }
+        /// <summary>Stages every included native and companion file before publishing a new save identity.</summary>
         static void PublishSnapshot(string source, string target)
         {
             var copies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (string path in SaveFiles.Participants(source)) if (File.Exists(path))
             {
-                // The verified embedded record is authoritative; do not create Towns sidecars for new snapshots.
-                if (path.StartsWith(Path.Combine(Assets.ConfigDir, "Towns", "Saves") + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
-                    && ES3.KeyExists("WildWasteland.Towns.World.v1", SaveFiles.Disk(source))) continue;
+                if (!CompanionPolicy.IncludeInSnapshot(path, source)) continue;
                 // Native .bak and checkpoint files are recovery history, not the new snapshot's authority.
                 if (path.EndsWith(".wwsave", StringComparison.Ordinal) || path.EndsWith(".wwsave.png", StringComparison.Ordinal) || Path.GetFileName(path).IndexOf(".bak", StringComparison.OrdinalIgnoreCase) >= 0 || path.EndsWith(".player-checkpoint.txt", StringComparison.Ordinal)) continue;
                 copies[SaveFiles.Remap(path, source, target)] = path;
@@ -308,12 +354,7 @@ namespace WildWasteland.Core
                 foreach (var pair in copies)
                 {
                     string path = Path.Combine(tx.DirectoryPath, "new-" + i++ + ".bin"); SaveFiles.CopyVerified(pair.Value, path);
-                    if (pair.Value.EndsWith(".senses.txt", StringComparison.Ordinal))
-                    {
-                        string text = File.ReadAllText(path), header = "v1 " + source;
-                        if (!text.StartsWith(header + "\n", StringComparison.Ordinal) && !text.StartsWith(header + "\r\n", StringComparison.Ordinal)) throw new IOException("NPC senses companion identity is invalid");
-                        SaveFiles.WriteDurable(path, Encoding.UTF8.GetBytes("v1 " + target + text.Substring(header.Length)));
-                    }
+                    CompanionPolicy.RemapStaged(pair.Value, path, source, target);
                     stages[pair.Key] = path;
                 }
                 foreach (var pair in stages) SaveFiles.Publish(pair.Value, pair.Key);
@@ -325,6 +366,7 @@ namespace WildWasteland.Core
             }
             catch { try { tx.Rollback(); } catch (Exception error) { RecoveryError = "Snapshot recovery required: " + error.Message; } throw; }
         }
+        /// <summary>Cancels native save state and rolls back all prepared participants after failure.</summary>
         internal static void Abort(Exception error)
         {
             var tx = _transaction;
@@ -335,8 +377,9 @@ namespace WildWasteland.Core
             // A failed write leaves live module state ahead of disk. Require a reload before another world write.
             if (tx != null) ReloadRequired = true;
             _requested = false; _picture = null; Status = "Save failed: " + error.Message;
-            Log.Error("[System] " + Status, error); _pendingNotice = Status;
+            Log.Error(SavesModule.Instance, Status, error); _pendingNotice = Status;
         }
+        /// <summary>Backs up all save participants before deleting a selected published snapshot.</summary>
         internal static void Delete(string file, bool expiredAutosave = false)
         {
             if (Busy || _requested || (LocalWorld && file == ActiveFile)) throw new IOException("Cannot delete the running world's source save");
@@ -345,6 +388,7 @@ namespace WildWasteland.Core
             try { foreach (var entry in tx.Entries) if (File.Exists(entry.Path)) File.Delete(entry.Path); tx.Commit(); ES3File.cachedFiles.Remove(file); CatalogueVersion++; }
             catch { tx.Rollback(); throw; }
         }
+        /// <summary>Lists complete prepared backup journals for a slot.</summary>
         internal static List<string> Backups(string file)
         {
             var result = new List<string>(); string directory = Path.Combine(SaveFiles.BackupRoot, file);
@@ -353,6 +397,7 @@ namespace WildWasteland.Core
                 { var backup = SaveFiles.Read(path); foreach (var entry in backup.Entries) if (entry.Path == SaveFiles.WorldPath(file) && entry.Existed) { result.Add(path); break; } }
             result.Sort(StringComparer.Ordinal); result.Reverse(); return result;
         }
+        /// <summary>Lists retained deleted-save journals whose published world is absent.</summary>
         internal static List<string> DeletedBackups()
         {
             var result = new List<string>(); if (!Directory.Exists(SaveFiles.BackupRoot)) return result;
@@ -363,6 +408,7 @@ namespace WildWasteland.Core
             }
             return result;
         }
+        /// <summary>Restores and validates a selected complete backup from the title menu.</summary>
         internal static void RestoreBackup(string directory)
         {
             if (!SaveRuntime.InMainMenu || Busy || _requested) throw new IOException("Restore backups from the title menu only");
@@ -386,11 +432,13 @@ namespace WildWasteland.Core
             }
             catch { undo.Rollback(); throw; }
         }
+        /// <summary>Returns to title after recovery or reload-required failure without writing a save.</summary>
         internal static void LeaveWithoutSaving()
         {
             if (Busy || !LocalWorld || (!ReloadRequired && RecoveryError == null)) return;
             UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
         }
+        /// <summary>Applies per-lineage automatic-save retention while retaining manual and active worlds.</summary>
         static void PruneAutosaves(string lineage, string newest)
         {
             var files = new List<string>();
@@ -402,9 +450,13 @@ namespace WildWasteland.Core
             files.Sort(CompareNewest); int kept = 0;
             foreach (string file in files) { if (kept++ < AutoKeep.Value || file == newest || file == ActiveFile) continue; Delete(file, true); SaveFiles.Prune(file, 0); }
         }
+        /// <summary>Orders published saves by descending native file modification time.</summary>
         static int CompareNewest(string a, string b) { return File.GetLastWriteTimeUtc(SaveFiles.WorldPath(b)).CompareTo(File.GetLastWriteTimeUtc(SaveFiles.WorldPath(a))); }
+        /// <summary>Restarts the configured autosave interval and clears its warning state.</summary>
         static void Schedule() { _nextAuto = Time.unscaledTime + Interval.Value * 60f; _countdown = _lastWarning = _saveNow = -1; _scheduled = false; SaveWarning.Show(0); }
+        /// <summary>Reschedules future autosaves when a bound policy changes.</summary>
         static void ScheduleChanged(object sender, EventArgs args) { Schedule(); }
+        /// <summary>Checks safety, warning thresholds and final admission at the existing autosave cadence.</summary>
         static void Tick()
         {
             DeliverNotice();
@@ -434,6 +486,7 @@ namespace WildWasteland.Core
                 Notify("Autosave in " + seconds + " seconds.");
             _lastWarning = seconds;
         }
+        /// <summary>Enables native save-menu access in vehicles while the framework is ready.</summary>
         static bool VehicleSaveButton(HutongGames.PlayMaker.Actions.ActivateGameObject action)
         {
             if (!Ready || action.Fsm == null || action.Fsm.Name != "InCar" || action.Fsm.GameObject != GameRefs.Player) return true;
@@ -446,6 +499,7 @@ namespace WildWasteland.Core
         /// <summary>Uses the exit-save policy while enabled; disabled Saves leaves the caller's native exit untouched.</summary>
         internal static void SaveBeforeExit(Action then)
         { if (!Installed) { then(); return; } if (!_quitting) { _quitting = true; SaveRoutines.Start(Quit(then)); } }
+        /// <summary>Waits for existing work and invokes native exit only after any requested save succeeds.</summary>
         static IEnumerator Quit(Action leave)
         {
             try

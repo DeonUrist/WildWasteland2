@@ -1,3 +1,6 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,24 +10,36 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // Standalone native-menu adapters. No multiplayer assembly, player identity or redirected save root.
-    // The temporary HUD partial is owner-bound until B10 moves its presentation to the Saves events.
     // Canonical player/placement queries belong to Core; native save menu interception belongs to Saves.
-    internal static partial class SaveRuntime
+    internal static class SaveRuntime
     {
-        /// <summary>HUD part: registers the SAVING overlay GUI job.</summary>
-        static partial void InstallHud(IModule owner);
         static readonly Regex FileName = new Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", RegexOptions.IgnoreCase);
         internal static string ActiveFile, SelectedFile;
+        static readonly FsmEvent Clicked = FsmEvent.GetFsmEvent("Clicked");
         static bool _leaving;
         static int _latestVersion = -1;
         static string _latestFile;
-        /// <summary>True in the MainMenu scene.</summary>
-        internal static bool InMainMenu { get { return SceneManager.GetActiveScene().name == "MainMenu"; } }
+        static int _menuFrame = -1;
+        static bool _inMenu;
+        /// <summary>True in the MainMenu scene; the scene name (an allocating native call) is read at most once per frame.</summary>
+        internal static bool InMainMenu
+        {
+            get
+            {
+                int frame = Time.frameCount;
+                if (frame != _menuFrame) { _menuFrame = frame; _inMenu = SceneManager.GetActiveScene().name == "MainMenu"; }
+                return _inMenu;
+            }
+        }
         /// <summary>True for WW save identities (SaveGame1..10.es3, WW_live/save/auto-<32 hex>.es3).</summary>
         internal static bool IsSaveFile(string file) { return file != null && FileName.IsMatch(file); }
+        /// <summary>Native player in-vehicle transition state (canonical Core PlayerState).</summary>
+        internal static bool InCar { get { return PlayerState.InVehicleTransition; } }
+        /// <summary>Current player health from the shared cached native state (canonical Core PlayerState).</summary>
+        internal static float Health() { return PlayerState.Health; }
         /// <summary>Distance from position to the player (infinity without a player).</summary>
         internal static float PlayerDistance(Vector3 position, Transform player) { return player != null ? Vector3.Distance(position, player.position) : float.PositiveInfinity; }
         /// <summary>Sets the active save file (validated identity).</summary>
@@ -36,13 +51,13 @@ namespace WildWasteland.Core
             Hooks.ProcessEvent.Prefix(owner, NativeMenuEvent);
             SaveBus.StateChanged += StateChanged;
             SceneManager.sceneLoaded += SceneLoaded;
-            InstallHud(owner);
+            Core.SaveRuntime.InstallPresentation(owner);
         }
         /// <summary>Detaches scene/native state observation; current-world identity survives a runtime toggle.</summary>
         internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; SceneManager.sceneLoaded -= SceneLoaded; SelectedFile = null; _leaving = false; _latestVersion = -1; }
         /// <summary>Clears cached player FSMs; the main menu clears the active file and bumps the save catalogue.</summary>
         static void SceneLoaded(Scene scene, LoadSceneMode mode)
-        { if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }
+        { _menuFrame = -1; if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }
         /// <summary>LoadGame makes the selected (or native slot) file active; isPlay clears the selection.</summary>
         static void StateChanged(string previous, string current)
         {
@@ -89,7 +104,7 @@ namespace WildWasteland.Core
         /// <summary>ProcessEvent prefix: redirects native save/load/quit menu clicks to the WW save library, exit save and newest-snapshot load.</summary>
         static bool NativeMenuEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
-            if (!SaveSystem.Installed || fsm == null || ev == null || ev.Name != "Clicked" || fsm.GameObject == null || SinglePlayerSaving.Serializing) return true;
+            if (!SaveSystem.Installed || fsm == null || ev == null || !ReferenceEquals(ev, Clicked) || fsm.GameObject == null || SinglePlayerSaving.Serializing) return true;
             string name = fsm.GameObject.name;
             if (SaveSystem.LocalReady && fsm.Name == "Continue" && (name.StartsWith("save_game_", StringComparison.Ordinal) || name == "savegame" || name == "Yes_Save" || name == "Save_Game_slots" || name == "Save_Game"))
             { WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); return false; }
