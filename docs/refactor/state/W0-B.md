@@ -20,7 +20,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 14. PrefabCatalog
 - [x] 15. ItemSpawner.RegisterSaved
 - [x] 16. Clock
-- [ ] 17. Names
+- [x] 17. Names
 - [ ] 18. Layers
 - [ ] 19. Factions
 - [ ] 20. CameraArbiter
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-4536ec7 (COMPILE OK; state line updated in next commit)
+65a6d1f (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 17 Names: read the 6 (Clone) strippers.
+Item 18 Layers: collect layer numbers used across modules.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -53,3 +53,4 @@ Item 17 Names: read the 6 (Clone) strippers.
 - PrefabCatalog: Patrols ScanExact name rules (exact, ES3 override, fold preferring ES3Prefab) + ById(prefabId) + AssetFsms + Item(name); sliced warm 'Core.PrefabCatalog', sync completion on early query; invalidated on scene load / ES3 count change (Refresh). Domain catalogs (Patrols kinds, Towns spawn profiles) stay in their modules on top of it.
 - ItemSpawner: Counter/List(Items|Cars)/NextId/Name/RegisterSaved/Unregister; numbering IncrementFirst (5 copies) vs UseThenIncrement (Quests) selectable; list = exact name then contains rule; cached per instance.
 - Clock: GameHours (Quests semantics, -1), Day, HourOfDay, Ready (TrafficReinforcements' Initialized check), Dark (Patrols DayLight verbatim); cached vars, throttled 1 s lookup, reset on scene load. Quests' QuestWorld.All fallback dropped (GameManager is always the owner).
+- Names: Base (Quests), StripClone (SaveCleanup), RenderBase (RenderShared k>0+TrimEnd), RemoveClone (Nav), CloneNumber (LastIndexOf+TryParse), BaseEquals/BaseStartsWith non-allocating.
