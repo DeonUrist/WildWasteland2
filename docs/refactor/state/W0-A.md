@@ -3,7 +3,7 @@
 Branch `refactor/W0-A`, worktree `/home/claude/wt/W0-A`.
 
 ## Checklist (brief steps)
-- [ ] 1. Move kernel files into `Core/<Area>/` folders (README 3.3), namespace unchanged
+- [x] 1. Move kernel files into `Core/<Area>/` folders (README 3.3), namespace unchanged
 - [ ] 2. ModApi, ModEvents, EntityId/Entities, IEventTransport, BroadcastAttribute; ModuleHost.Cleanup calls RemoveAll
 - [ ] 3. All contracts + events of core-modapi.md 8-9; Services/QuestServices interfaces moved; Services.* [Obsolete] forwarders
 - [ ] 4. Log levels/generic overloads, old wrappers [Obsolete]; Log.Error no SaveSystem.Fail; SaveBus.ReportFailure; Trace stub; [Debug] VerboseLevel
@@ -17,13 +17,14 @@ Branch `refactor/W0-A`, worktree `/home/claude/wt/W0-A`.
 - [ ] Report docs/refactor/reports/W0-A.md, ownership check
 
 ## Last good compile (commit)
-(none yet)
+step 1 (folders moved), COMPILE OK
 
 ## Next action
-Step 1.
+Step 2: ModApi/ModEvents/Entities in src/Core/ModApi/.
 
 ## Blockers / questions for Denis
 (none)
 
 ## Notes for a resuming agent
+- Step 1 moved: Boot/{Plugin,Runner}, Modules/{ModuleBase,ModuleHost,ModuleConfig}, Scheduling/{Scheduler,WorldWork,LoadingProgress}, Harmony/{Hooks,Patches}, ModApi/{Services,QuestServices}, Game/{GameRefs,Origin}, Input/Hotkeys, Persistence/{SaveBus,SaveTypes}, Log/Log. Assets.cs and TunedSettings.cs stay (B01/A1).
 - W0-B creates src/Core/Util/** and src/Core/Game/{WorldIndex,WorldTiles,FsmIndex,FsmPause,PrefabCatalog,ItemSpawner,Factions,Clock,Names,Layers,CameraArbiter,PlayerState}.cs - never create those.
