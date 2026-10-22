@@ -33,13 +33,14 @@ namespace WildWasteland.Core.Optimization
         readonly UndoLog _undo = new UndoLog();
         internal static long Writes, Skips;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { On = true; FsmEdits.Watch(this, "Movement", "Player", Ready); }
         /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; FsmEdits.Unwatch(this); _undo.RevertAll(); }
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _undo.Prune(); }
 
+        /// <summary>Checks the native capsule-height property writes before installing change-only action wrappers.</summary>
         void Ready(PlayMakerFSM f)
         {
             if (f.gameObject.name != "Player") return;
@@ -58,6 +59,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Verifies that a SetProperty action writes the expected player capsule height variable.</summary>
         static bool Height(SetProperty s, string varName)
         {
             var p = s.targetProperty;
@@ -68,7 +70,9 @@ namespace WildWasteland.Core.Optimization
         /// <summary>#3: vanilla on enter; its per-frame write is dead (overwritten by #5 in the same update pass).</summary>
         sealed class OverwrittenWrite : ProxyAction
         {
+            /// <summary>Wraps the earlier height assignment that the same native state immediately overwrites.</summary>
             public OverwrittenWrite(SetProperty s) : base(s) { }
+            /// <summary>Executes the retained height assignment only when its effective native value needs updating.</summary>
             protected override void Tick() { if (On) { Skips++; return; } base.Tick(); }
         }
 
@@ -76,7 +80,9 @@ namespace WildWasteland.Core.Optimization
         sealed class ChangedWrite : ProxyAction
         {
             readonly SetProperty _s;
+            /// <summary>Keeps the original final height setter for writes whose value actually changes.</summary>
             public ChangedWrite(SetProperty s) : base(s) { _s = s; }
+            /// <summary>Executes the retained height assignment only when its effective native value needs updating.</summary>
             protected override void Tick()
             {
                 if (!On) { base.Tick(); return; }
@@ -88,7 +94,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Height writes / skipped", Writes + " / " + Skips); }
     }
 }

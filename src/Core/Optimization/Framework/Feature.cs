@@ -76,7 +76,7 @@ namespace WildWasteland.Core.Optimization
         public virtual void OnWorldReady() { }
         /// <summary>Adjusts cached positions after the floating origin moves.</summary>
         public virtual void OnOriginShift(Vector3 delta) { }
-        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
+        /// <summary>Restores this feature's saved-object state before the native save transaction.</summary>
         public virtual void OnSaveBegin() { }
         /// <summary>Resumes feature work after the native save transaction has completed.</summary>
         public virtual void OnSaveEnd() { }
@@ -85,6 +85,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Live numbers / state lines on the Performance tab (cheap, no allocations beyond the strings drawn).</summary>
         public virtual void DrawStats(ToolLayout l) { }
 
+        /// <summary>Starts a non-running feature, normalizes unsupported Shadow mode and cleans up partial initialization failures.</summary>
         internal void Start(FeatureMode mode)
         {
             if (Running != FeatureMode.Off || mode == FeatureMode.Off) return;
@@ -98,6 +99,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Stops an active feature once, isolating native restoration failures and recording its final mode.</summary>
         internal void Stop()
         {
             if (Running == FeatureMode.Off) return;
@@ -139,6 +141,7 @@ namespace WildWasteland.Core.Optimization
         readonly float[] _values;   // index = (int)PerfPreset
         public readonly ConfigEntry<float> Override;
         public readonly Feature Owner;
+        /// <summary>Binds a nonnegative override or the selected preset's default and forwards live changes to its feature.</summary>
         internal Knob(Feature owner, ModuleConfig cfg, string key, string desc, float low, float balanced, float max, float vanilla)
         {
             Owner = owner;

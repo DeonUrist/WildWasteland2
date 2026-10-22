@@ -14,6 +14,7 @@ namespace WildWasteland.Core.Optimization
     {
         internal readonly Dictionary<string, string> Entries = new Dictionary<string, string>(StringComparer.Ordinal);
         internal readonly string Root;
+        /// <summary>Loads and validates the optional WWLOD catalog and source-file fingerprints before accepting mesh entries.</summary>
         internal GeneratedLodPack(string root)
         {
             Root = root;
@@ -41,6 +42,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Accepts only the lowercase 64-character hexadecimal hashes used by generated mesh payloads.</summary>
         static bool IsHash(string value)
         {
             if (value.Length != 64) return false;
@@ -48,6 +50,7 @@ namespace WildWasteland.Core.Optimization
             return true;
         }
 
+        /// <summary>Computes the lowercase SHA-256 identity shared with the offline LOD generator and Tools export.</summary>
         internal static string Hash(byte[] bytes)
         {
             using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
@@ -65,6 +68,7 @@ namespace WildWasteland.Core.Optimization
             return Hash(Encoding.UTF8.GetBytes(text.ToString()));
         }
 
+        /// <summary>Holds one decoded vertex channel's kind, dimension and numeric values before main-thread mesh upload.</summary>
         internal sealed class Channel { internal int Kind, Dimension; internal float[] Values; }
         internal sealed class Level
         {
@@ -73,6 +77,7 @@ namespace WildWasteland.Core.Optimization
             internal Matrix4x4[] Bindposes;
             internal int[][] Indices;
 
+            /// <summary>Creates one Unity mesh on the main thread from validated decoded channels/indices and original bounds.</summary>
             internal Mesh Create(Bounds bounds)
             {
                 var mesh = new Mesh { name = "WWLOD_generated", indexFormat = Count > 65535 ? IndexFormat.UInt32 : IndexFormat.UInt16 };
@@ -148,6 +153,7 @@ namespace WildWasteland.Core.Optimization
         }
 
         // Runs on a worker: file IO, hash verification and decoding only, no Unity object calls.
+        /// <summary>Validates and decodes both generated LOD levels from one payload without touching Unity objects on the worker.</summary>
         internal Level[] Read(string payload, int originalVertices, int submeshes)
         {
             string path = Path.Combine(Root, payload + ".wwlod");

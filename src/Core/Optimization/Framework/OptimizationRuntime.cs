@@ -19,25 +19,31 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class OptimizationRuntime : ModuleBase, IWeatherVisualPolicy
     {
+        /// <summary>Uses Core as the optimization resource owner without adding a gameplay module registry entry.</summary>
         public override string Id { get { return "Core"; } }
+        /// <summary>Name used for Core optimization diagnostic attribution.</summary>
         public override string DisplayName { get { return "Core optimization"; } }
 
         public static readonly OptimizationRuntime Instance = new OptimizationRuntime();
         public static PerfPreset Preset { get { return _preset != null ? _preset.Value : PerfPreset.Vanilla; } }
         static ConfigEntry<PerfPreset> _preset;
         static ConfigEntry<bool> _enabled;
+        /// <summary>Shared preset entry used by Core settings and Debug's feature controls.</summary>
         public static ConfigEntry<PerfPreset> PresetEntry { get { return _preset; } }
         /// <summary>Core optimization master in Performance / Preset, independent of ModuleHost switches.</summary>
         public static ConfigEntry<bool> EnabledEntry { get { return _enabled; } }
 
         readonly List<Feature> _features = new List<Feature>();
+        /// <summary>Stable read-only view of the explicitly registered feature instances.</summary>
         public IList<Feature> Features { get { return _featuresView ?? (_featuresView = _features.AsReadOnly()); } }
         IList<Feature> _featuresView;
         readonly HashSet<string> _patched = new HashSet<string>();
         bool _running, _initialized;
+        /// <summary>Whether the Core optimization master is active, including deferred scene startup.</summary>
         public bool Running { get { return _running; } }
         public WeatherVisualDetail WeatherDetail { get { return Preset == PerfPreset.Low ? WeatherVisualDetail.Low : Preset == PerfPreset.Max ? WeatherVisualDetail.Max : WeatherVisualDetail.Balanced; } }
 
+        /// <summary>Creates the one Core lifetime owner without accessing scene objects.</summary>
         private OptimizationRuntime() { }
 
         /// <summary>Binds Core optimization before ordinary module settings; no Unity scene work is performed.</summary>
@@ -48,6 +54,7 @@ namespace WildWasteland.Core.Optimization
             Instance.BindConfig(Instance.Config);
         }
 
+        /// <summary>Binds the optimization master, quality preset and explicit feature entries without legacy migration.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             _enabled = cfg.Player("Preset", "Enabled", true, "Enable Core's base-game optimizations. Changes apply immediately.");
@@ -75,6 +82,7 @@ namespace WildWasteland.Core.Optimization
             if (_enabled.Value) StartRuntime(); else StopRuntime();
         }
 
+        /// <summary>Instantiates the 43 approved features explicitly and retains their category/order/plan-id sorting.</summary>
         void DiscoverFeatures()
         {
             _features.Clear();
@@ -101,6 +109,7 @@ namespace WildWasteland.Core.Optimization
             });
         }
 
+        /// <summary>Marks Core optimization initialized and starts it only when its master entry is enabled.</summary>
         public override void Init()
         {
             if (_initialized) return;
@@ -143,6 +152,7 @@ namespace WildWasteland.Core.Optimization
         }
 
         bool _deferred;
+        /// <summary>Applies the effective feature modes after scene-dependent startup becomes safe.</summary>
         void StartFeatures()
         {
             _deferred = false;
@@ -151,6 +161,7 @@ namespace WildWasteland.Core.Optimization
             if (Log.L1) Log.Main(OptimizationRuntime.Instance, "started: " + on + "/" + _features.Count + " optimizations active, preset " + Preset);
         }
 
+        /// <summary>Ends the Core optimization lifetime and restores every active feature.</summary>
         public override void Shutdown()
         {
             _initialized = false;
@@ -176,6 +187,7 @@ namespace WildWasteland.Core.Optimization
             _patched.Clear();   // Core unpatches the module after Shutdown
         }
 
+        /// <summary>Computes the effective feature mode, forcing preset-dependent features off under Vanilla.</summary>
         static FeatureMode Wanted(Feature f)
         {
             if (f.ModeEntry == null) return FeatureMode.Off;
@@ -183,6 +195,7 @@ namespace WildWasteland.Core.Optimization
             return f.ModeEntry.Value;
         }
 
+        /// <summary>Refreshes active preset-dependent features or applies changed effective feature modes.</summary>
         void ApplyAll(bool presetChanged)
         {
             foreach (var f in _features)
@@ -193,6 +206,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Transitions one feature between effective modes; deferred or stopped runtimes do no work.</summary>
         internal void Apply(Feature f, bool log)
         {
             if (!_running || _deferred) return;
@@ -203,17 +217,20 @@ namespace WildWasteland.Core.Optimization
             if (log && Log.L1) Log.Main(OptimizationRuntime.Instance, f.PlanId + " " + f.Key + " -> " + f.Running);
         }
 
+        /// <summary>Refreshes a running feature after one of its tuning overrides changes.</summary>
         internal void SettingsChanged(Feature f)
         {
             if (!_running || f.Running == FeatureMode.Off) return;
             SafeSettings(f);
         }
 
+        /// <summary>Contains an individual feature's settings failure and retains the error for Debug.</summary>
         static void SafeSettings(Feature f)
         {
             try { f.OnSettingsChanged(); } catch (Exception e) { f.LastError = e.Message; Log.Error(OptimizationRuntime.Instance, f.PlanId + " settings", e); }
         }
 
+        /// <summary>Installs the specified optimization-only patch once per runtime lifetime and records success.</summary>
         internal bool EnsurePatched(Type patchClass)
         {
             if (_patched.Contains(patchClass.FullName)) return true;
@@ -222,6 +239,7 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
+        /// <summary>Installs the specified optimization-only patch once per runtime lifetime and records success.</summary>
         internal bool EnsurePatched(MethodBase original, MethodInfo prefix, MethodInfo postfix, MethodInfo transpiler, MethodInfo finalizer)
         {
             if (original == null) return false;
@@ -232,6 +250,7 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
+        /// <summary>Forwards a lifecycle callback only to active features and contains each feature's failure.</summary>
         void Each(Action<Feature> a, string what)
         {
             if (!_running) return;
@@ -253,14 +272,16 @@ namespace WildWasteland.Core.Optimization
         public override void OnWorldReady() { Each(f => f.OnWorldReady(), "OnWorldReady"); }
         /// <summary>Adjusts cached positions after the floating origin moves.</summary>
         public override void OnOriginShift(Vector3 delta) { Each(f => f.OnOriginShift(delta), "OnOriginShift"); }
-        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
+        /// <summary>Restores this feature's saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin(string slot) { Each(f => f.OnSaveBegin(), "OnSaveBegin"); }
         /// <summary>Resumes feature work after the native save transaction has completed.</summary>
         public override void OnSaveEnd(string slot) { Each(f => f.OnSaveEnd(), "OnSaveEnd"); }
+        /// <summary>Debug owns typed load attribution; optimization has no additional load-begin mutation.</summary>
         public override void OnLoadBegin(string slot) { }
 
         /// <summary>MapMagic applied a tile (main or draft): features that edit spawned objects re-run on that tile.</summary>
         public static event Action<TerrainTile> TileAppliedEvent;
+        /// <summary>WorldTiles main-thread callback: forwards applied tiles to active feature handlers with isolated failures.</summary>
         void TileApplied(TerrainTile tile, TileData data, StopToken stop)
         {
             if (!_running) return;
@@ -272,6 +293,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Core registers the shared Performance tab directly; optimization contributes no module-owned pages.</summary>
         public override IEnumerable<ToolPage> ToolPages() { return null; }   // the Performance tab is registered by Core (CorePages)
     }
 }

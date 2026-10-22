@@ -42,6 +42,7 @@ namespace WildWasteland.Core.Optimization
             _dist = NewKnob(cfg, "Distance (m)", "Lamps farther from the camera keep their last intensity.", 120f, 200f, 300f, 0f);
         }
 
+        /// <summary>Retains one native light FSM's original state and transform for distance-based stepping.</summary>
         sealed class Lamp { public PlayMakerFSM Comp; public Fsm Fsm; public FsmState State; public Light Light; public Transform T; public float Next; }
         readonly List<Lamp> _lamps = new List<Lamp>(64);
         static bool On;
@@ -49,7 +50,7 @@ namespace WildWasteland.Core.Optimization
         float _interval, _dist2;
         internal static long Steps;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
@@ -59,6 +60,7 @@ namespace WildWasteland.Core.Optimization
             _job = Scheduler.EveryFrame(Module, "Core.Optimization.LightFlicker", Tick);
         }
 
+        /// <summary>Resolves the current preset's light flicker frequency and distance limits.</summary>
         void Apply()
         {
             float hz = Mathf.Max(1f, _hz.Value);
@@ -79,6 +81,7 @@ namespace WildWasteland.Core.Optimization
             _lamps.Clear();
         }
 
+        /// <summary>Registers only validated native flicker FSMs, retaining their original update behavior for restoration.</summary>
         void Ready(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -92,6 +95,7 @@ namespace WildWasteland.Core.Optimization
             _lamps.Add(lamp);
         }
 
+        /// <summary>Updates eligible nearby lights at the configured cadence and restores lights excluded by the feature.</summary>
         void Tick()
         {
             if (!On || _lamps.Count == 0) return;
@@ -122,7 +126,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             int held = 0; for (int i = 0; i < _lamps.Count; i++) if (_lamps[i].Comp != null && FsmPause.Held(_lamps[i].Fsm, FsmPause.Stepped)) held++;

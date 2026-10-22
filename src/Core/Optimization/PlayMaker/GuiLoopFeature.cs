@@ -75,7 +75,7 @@ namespace WildWasteland.Core.Optimization
         static readonly Dictionary<Type, bool> _guiType = new Dictionary<Type, bool>();
 
         // PlayMakerFSM.OnEnable is shared with Patrols and the registry: Core.Hooks.FsmEnable postfix
-        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
+        /// <summary>Registers the feature's shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks()
         {
             Hooks.FsmEnable.Postfix(Module, OnFsmEnabled);
@@ -93,8 +93,9 @@ namespace WildWasteland.Core.Optimization
             if (fsm != null) _isCand.Remove(fsm);
             return true;
         }
+        /// <summary>Shared native component-enable postfix: adds an eligible GUI receiver only while the feature is active.</summary>
         static void OnFsmEnabled(PlayMakerFSM f) { if (On) Added(f); }
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("PlayMakerGUI / visibility patches failed");
@@ -125,7 +126,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _isCand.Clear(); _dirty = true; _suspended = false; PruneProxies(); }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("GUI candidates / disabled OnGUI helpers", _cands.Count + " / " + _proxies.Count + (_suspended ? " (suspended)" : ""));
@@ -135,6 +136,7 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- candidates
 
+        /// <summary>Caches whether the exact action type has an observable OnGUI override.</summary>
         static bool OverridesOnGui(Type t)
         {
             bool v;
@@ -161,6 +163,7 @@ namespace WildWasteland.Core.Optimization
             return v;
         }
 
+        /// <summary>Classifies whether this native FSM can perform observable GUI work and must remain in the candidate pass.</summary>
         static bool Compute(Fsm fsm)
         {
             var subs = SubFsms(fsm);
@@ -202,6 +205,7 @@ namespace WildWasteland.Core.Optimization
             return true;
         }
 
+        /// <summary>Rebuilds the ordered GUI candidate set from the native enabled FSM list after membership changes.</summary>
         static void Rebuild()
         {
             _dirty = false;
@@ -217,6 +221,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Adds an enabled native component to the GUI candidate cache without duplicating it.</summary>
         static void Added(PlayMakerFSM pmf)
         {
             var fsm = PmfFsm(pmf);
@@ -226,6 +231,7 @@ namespace WildWasteland.Core.Optimization
             if (IsCandidate(fsm)) { _cands.Add(pmf); _candSet.Add(pmf); }
         }
 
+        /// <summary>Removes a disabled/destroyed component from the GUI candidates and marks their snapshot dirty.</summary>
         static void Removed(PlayMakerFSM pmf)
         {
             if (!_candSet.Remove(pmf)) return;
@@ -234,6 +240,7 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- the GUI pass (exact copy of PlayMakerGUI.OnGUI)
 
+        /// <summary>Runs the active state's GUI callbacks in native action order without scanning unrelated FSMs.</summary>
         static void CallOnGUI(Fsm fsm)
         {
             if (fsm.ActiveState == null) return;
@@ -245,6 +252,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Runs the native GUI pass over a reentrant candidate snapshot while retaining native GUI settings and labels.</summary>
         static void Pass(PlayMakerGUI gui)
         {
             GuiPasses++;
@@ -310,6 +318,7 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- PlayMakerOnGUI proxies
 
+        /// <summary>Disables only a supported PlayMakerOnGUI proxy whose callbacks can be emulated by the shared pass.</summary>
         static bool TryDisable(PlayMakerOnGUI p)
         {
             if (p == null || !p.enabled || _proxySet.Contains(p)) return false;
@@ -333,6 +342,7 @@ namespace WildWasteland.Core.Optimization
             _proxies.Add(p); _proxySet.Add(p);
         }
 
+        /// <summary>Finds eligible native GUI proxies once when the feature starts and records those it disables.</summary>
         static void DisableExistingProxies()
         {
             if (_suspended) return;
@@ -343,6 +353,7 @@ namespace WildWasteland.Core.Optimization
             if (n > 0 && Log.L2) Log.Deep(OptimizationRuntime.Instance, "PM5 disabled " + n + " PlayMakerOnGUI helpers (emulated)");
         }
 
+        /// <summary>Re-enables the native GUI proxies disabled by this feature and clears emulation ownership.</summary>
         static void RestoreProxies()
         {
             for (int i = 0; i < _proxies.Count; i++)
@@ -353,6 +364,7 @@ namespace WildWasteland.Core.Optimization
             _proxies.Clear(); _proxySet.Clear();
         }
 
+        /// <summary>Drops references to GUI proxies whose native components were destroyed.</summary>
         static void PruneProxies()
         {
             for (int i = _proxies.Count - 1; i >= 0; i--)
@@ -389,6 +401,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Once-per-second guard restores native proxies if the shared PlayMakerGUI pass stopped running.</summary>
         static void GuardTick()
         {
             if (!On || _proxies.Count == 0) return;
@@ -402,6 +415,7 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- visibility events
 
+        /// <summary>Skips a native visibility event only when its FSM has no handler for that event.</summary>
         static bool Visibility(PlayMakerFSM pmf, FsmEvent e)
         {
             var fsm = PmfFsm(pmf);
@@ -414,6 +428,7 @@ namespace WildWasteland.Core.Optimization
         [HarmonyPatch]
         static class Patch
         {
+            /// <summary>PlayMakerGUI prefix: yields while disabled or outside play, otherwise runs the ordered candidate pass.</summary>
             [HarmonyPatch(typeof(PlayMakerGUI), "OnGUI"), HarmonyPrefix]
             static bool OnGuiPre(PlayMakerGUI __instance)
             {
@@ -425,15 +440,19 @@ namespace WildWasteland.Core.Optimization
             }
 
 
+            /// <summary>Native sub-FSM creation postfix: invalidates GUI candidate classification only while the feature is active.</summary>
             [HarmonyPatch(typeof(Fsm), "CreateSubFsm"), HarmonyPostfix]
             static void CreateSubFsmPost(Fsm __instance) { if (On) { _isCand[__instance] = true; _dirty = true; } }
 
+            /// <summary>Native GUI-proxy startup postfix: admits supported proxies only while shared emulation is active.</summary>
             [HarmonyPatch(typeof(PlayMakerOnGUI), "Start"), HarmonyPostfix]
             static void ProxyStartPost(PlayMakerOnGUI __instance) { if (On && !_suspended) TryDisable(__instance); }
 
+            /// <summary>Native visible-event prefix: yields while disabled and preserves all handled visibility events.</summary>
             [HarmonyPatch(typeof(PlayMakerFSM), "OnBecameVisible"), HarmonyPrefix]
             static bool BecameVisiblePre(PlayMakerFSM __instance) { return !On || Visibility(__instance, FsmEvent.BecameVisible); }
 
+            /// <summary>Native invisible-event prefix: yields while disabled and preserves all handled visibility events.</summary>
             [HarmonyPatch(typeof(PlayMakerFSM), "OnBecameInvisible"), HarmonyPrefix]
             static bool BecameInvisiblePre(PlayMakerFSM __instance) { return !On || Visibility(__instance, FsmEvent.BecameInvisible); }
         }

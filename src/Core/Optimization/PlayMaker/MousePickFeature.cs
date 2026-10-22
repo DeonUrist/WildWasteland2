@@ -59,7 +59,7 @@ namespace WildWasteland.Core.Optimization
         static int _unionMask;
         static float _maxDist;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("ActionHelpers.DoMousePick patch failed");
@@ -71,14 +71,16 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _valid = false; _cam = null; _unionMask = 0; _maxDist = 0; Array.Clear(_hits, 0, _hits.Length); }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Union mask / distance", "0x" + _unionMask.ToString("X8") + " / " + _maxDist.ToString("0.#"));
         }
 
+        /// <summary>Separates cached ray answers for physics steps from rendered-frame input queries.</summary>
         static float PhaseKey() { return Time.inFixedTimeStep ? Time.fixedTime : -1f; }
 
+        /// <summary>Fills the reusable union-mask ray buffer, expanding only if native results were truncated.</summary>
         static void Cast(Camera cam, Ray ray)
         {
             for (;;)
@@ -113,6 +115,7 @@ namespace WildWasteland.Core.Optimization
             return best;
         }
 
+        /// <summary>Reuses a ray answer only when camera, phase, ray, layer mask and distance coverage still match.</summary>
         static bool Answer(Camera cam, Ray ray, float distance, int layerMask, out RaycastHit hit)
         {
             OptimizationMetrics.PickQueries++;
@@ -139,6 +142,7 @@ namespace WildWasteland.Core.Optimization
             return true;
         }
 
+        /// <summary>Checks collider identity and hit geometry for native-versus-optimized Shadow comparison.</summary>
         static bool SameHit(RaycastHit a, RaycastHit b)
         {
             // PhysX's single-hit and multi-hit terrain queries can differ in the last float bits. Require the same
@@ -151,6 +155,7 @@ namespace WildWasteland.Core.Optimization
         [HarmonyPatch]
         static class Patch
         {
+            /// <summary>Native mouse-pick prefix: yields while disabled and preserves the helper's native result fields and Shadow behavior.</summary>
             [HarmonyPatch(typeof(ActionHelpers), "DoMousePick"), HarmonyPrefix]
             static bool DoMousePickPre(float distance, int layerMask)
             {

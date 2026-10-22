@@ -37,7 +37,7 @@ namespace WildWasteland.Core.Optimization
         internal static bool On;
         public static long Created, FieldsSet, Fallbacks;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             // 0.1.26c transpiled ActionData.LoadActionField in place, which broke field loading in game ("ActionData: Missing
@@ -58,7 +58,7 @@ namespace WildWasteland.Core.Optimization
             if (_batchState == 2) if (Log.L1) Log.Main(OptimizationRuntime.Instance, "FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
             else WildWasteland.Core.Log.Warn(OptimizationRuntime.Instance, "FS4: batch compile failed, reflection stays (" + _batchError + ")");
         }
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Compiled accessors", _batchState == 2 ? _batchCtors + " constructors, " + _batchSetters + " field setters (" + _batchMs + " ms, background)" : _batchState == 1 ? "compiling..." : _batchState == 3 ? "failed: " + _batchError : "-");
@@ -76,6 +76,7 @@ namespace WildWasteland.Core.Optimization
         static readonly Dictionary<Type, int> _ctorIndex = new Dictionary<Type, int>();
         static readonly Dictionary<IntPtr, int> _fieldIndex = new Dictionary<IntPtr, int>();
 
+        /// <summary>Schedules construction of the action-field accessor batch outside gameplay's main-thread hot path.</summary>
         static void StartBatch()
         {
             if (_batchState != 0) return;
@@ -85,6 +86,7 @@ namespace WildWasteland.Core.Optimization
             t.Start();
         }
 
+        /// <summary>Builds constructors and field setters for supported action data types from the captured assembly list.</summary>
         static void BuildBatch(System.Reflection.Assembly[] asms)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -125,6 +127,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Adds one constructible action/value type and its fields to the compiled accessor batch once.</summary>
         static void AddType(Access.FieldBatch b, Type t, Dictionary<Type, int> ctorIdx, Dictionary<IntPtr, int> fieldIdx, HashSet<Type> seen, Queue<Type> queue)
         {
             if (Ctorable(t)) { var c = t.GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, Type.EmptyTypes, null); if (c != null) ctorIdx[t] = b.AddCtor(c); }
@@ -145,6 +148,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Rejects abstract/interface/open-generic types before generating a parameterless constructor delegate.</summary>
         static bool Ctorable(Type t)
         {
             return t != null && t.IsClass && !t.IsAbstract && !t.ContainsGenericParameters && !t.IsArray && !t.IsCOMObject
@@ -214,6 +218,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Checks receiver/value types before using a compiled field setter in place of reflection.</summary>
         static bool Exact(Setter s, object obj, object value)
         {
             if (obj == null) return false;
@@ -237,6 +242,7 @@ namespace WildWasteland.Core.Optimization
         static class Patch
         {
             // Always replaces the original once installed (the copy uses plain reflection while FS4 is off).
+            /// <summary>ActionData load prefix: runs the verified native-equivalent field loader while retaining reflection fallbacks.</summary>
             [HarmonyPatch(typeof(ActionData), "LoadActionField"), HarmonyPrefix]
             static bool Pre(ActionData __instance, Fsm fsm, object obj, FieldInfo field, int paramIndex)
             {

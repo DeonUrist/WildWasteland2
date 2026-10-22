@@ -43,7 +43,7 @@ namespace WildWasteland.Core.Optimization
         PlayMakerFSM _day; FsmState _dayState; float _nextDay;
         internal static long DaySteps, TextSkips;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
@@ -67,6 +67,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _undo.Prune(); }
 
+        /// <summary>Validates the native ammo-sheet text action before replacing hidden-sheet updates.</summary>
         void ReadyAmmo(PlayMakerFSM f)
         {
             var st = FsmEdits.State(f.Fsm, "ammo");
@@ -74,6 +75,7 @@ namespace WildWasteland.Core.Optimization
             WrapSheetTexts(f, st, "Ammo/ammo", 20);
         }
 
+        /// <summary>Validates the native armor-sheet text action before replacing hidden-sheet updates.</summary>
         void ReadyArmor(PlayMakerFSM f)
         {
             var st = FsmEdits.State(f.Fsm, "armor_backpack");
@@ -103,7 +105,9 @@ namespace WildWasteland.Core.Optimization
         {
             readonly Canvas _canvas; readonly int _phase;
             static int _seq;
+            /// <summary>Captures the native text action/canvas and staggers its hidden-sheet refresh phase.</summary>
             public SheetText(UiTextSetText t, Canvas c) : base(t) { _canvas = c; _phase = (_seq++ * 7) % 30; }
+            /// <summary>Updates the original text at full rate while visible and at the assigned hidden-sheet cadence otherwise.</summary>
             protected override void Tick()
             {
                 if (On && _canvas != null && !_canvas.enabled && (Time.frameCount + _phase) % 30 != 0) { TextSkips++; return; }
@@ -111,6 +115,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Captures and validates the native DayTime FSM before acquiring stepped updates.</summary>
         void ReadyDay(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -123,6 +128,7 @@ namespace WildWasteland.Core.Optimization
             _day = f; _dayState = FsmEdits.State(fsm, "day"); _nextDay = Time.unscaledTime;
         }
 
+        /// <summary>Steps the paused DayTime FSM at the established 0.2-second cadence while native gameplay is active.</summary>
         void DayTick()
         {
             if (!On || _day == null) return;
@@ -141,7 +147,7 @@ namespace WildWasteland.Core.Optimization
             if (fsm.ActiveState != _dayState) FsmPause.Clear(fsm, FsmPause.Stepped);   // day changed: wait2 etc. run vanilla
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Player-sheet text writes skipped", TextSkips.ToString());

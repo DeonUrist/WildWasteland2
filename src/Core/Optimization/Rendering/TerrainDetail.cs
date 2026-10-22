@@ -49,7 +49,7 @@ namespace WildWasteland.Core.Optimization
         bool _applied;
         public static long Tiles;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             OptimizationRuntime.TileAppliedEvent -= OnTile;
@@ -78,6 +78,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { if (_mm == null) Find(); Apply(true); }
 
+        /// <summary>Resolves the active MapMagic object during feature initialization/world refresh, not per gameplay frame.</summary>
         void Find()
         {
             if (_mm != null) return;
@@ -85,12 +86,14 @@ namespace WildWasteland.Core.Optimization
             for (int i = 0; i < all.Length; i++) if (all[i] != null && all[i].gameObject.scene.IsValid()) { Use(all[i]); break; }
         }
 
+        /// <summary>Captures the selected MapMagic terrain settings before applying preset quality values.</summary>
         void Use(MapMagicObject mm)
         {
             if (ReferenceEquals(_mm, mm)) return;
             _mm = mm; _applied = false;
         }
 
+        /// <summary>Applies terrain detail overrides and optionally propagates the updated settings to loaded tiles.</summary>
         void Apply(bool pushToTiles)
         {
             if (_mm == null) return;
@@ -104,6 +107,7 @@ namespace WildWasteland.Core.Optimization
             if (pushToTiles) { try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN4 apply: " + e.Message); } }
         }
 
+        /// <summary>Applied-tile callback: copies the selected detail settings to the tile's live terrain.</summary>
         void OnTile(TerrainTile tile)
         {
             if (tile == null) return;
@@ -115,6 +119,7 @@ namespace WildWasteland.Core.Optimization
             if (tile.draft != null) Set(tile.draft.terrain, s);
         }
 
+        /// <summary>Writes only the terrain detail properties owned by this feature.</summary>
         static void Set(Terrain t, TerrainSettings s)
         {
             if (t == null) return;
@@ -124,7 +129,7 @@ namespace WildWasteland.Core.Optimization
             t.detailObjectDensity = s.detailDensity;
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("MapMagic", _mm == null ? "not found" : "pixel error " + _mm.terrainSettings.pixelError + ", base map " + _mm.terrainSettings.baseMapDist + " m, grass " + _mm.terrainSettings.detailDistance.ToString("0") + " m x" + _mm.terrainSettings.detailDensity.ToString("0.0") + ", tiles " + Tiles);

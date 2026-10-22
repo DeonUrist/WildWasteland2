@@ -33,11 +33,12 @@ namespace WildWasteland.Core.Optimization
 
         ulong _orig; bool _set;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { Apply(); }
         /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged() { Apply(); }
 
+        /// <summary>Sets the supported incremental-GC time slice from the current preset/override.</summary>
         void Apply()
         {
             if (!GarbageCollector.isIncremental) return;
@@ -53,7 +54,7 @@ namespace WildWasteland.Core.Optimization
             _set = false;
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("GC", (GarbageCollector.isIncremental ? "incremental, slice " + (GarbageCollector.incrementalTimeSliceNanoseconds / 1000000.0).ToString("0.##") + " ms" : "not incremental (no change)")

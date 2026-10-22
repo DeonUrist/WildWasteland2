@@ -42,10 +42,10 @@ namespace WildWasteland.Core.Optimization
         internal static long Repeats, Delivered, Firsts;
         const string EventName = "FactionCoyotesEnemy";
 
-        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
+        /// <summary>Registers the feature's shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { Hooks.ProcessEvent.Prefix(Module, BeforeEvent); }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
@@ -56,6 +56,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _coyote = null; _undo.Prune(); }
 
+        /// <summary>Validates and replaces only the authored hostile-state broadcast action in the Coyote faction FSM.</summary>
         void Ready(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -71,6 +72,7 @@ namespace WildWasteland.Core.Optimization
         }
 
         // Hooks.ProcessEvent prefix (never skips): remember that FactionCoyotesEnemy reached the faction FSM while already hostile.
+        /// <summary>ProcessEvent prefix: records repeat hostility only for the active Coyote faction FSM; always allows native processing.</summary>
         static bool BeforeEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             if (!On || !ReferenceEquals(fsm, _coyote) || ev == null) return true;
@@ -85,7 +87,9 @@ namespace WildWasteland.Core.Optimization
         sealed class RepeatBroadcast : ProxyAction
         {
             readonly SendEvent _se;
+            /// <summary>Retains the original SendEvent action for the targeted repeat-broadcast wrapper.</summary>
             public RepeatBroadcast(SendEvent se) : base(se) { _se = se; }
+            /// <summary>Keeps the first native broadcast; repeat hostile hits target only receivers that still need the transition.</summary>
             protected override void Enter()
             {
                 var fsm = Fsm;
@@ -129,6 +133,7 @@ namespace WildWasteland.Core.Optimization
             _targets.Clear();
         }
 
+        /// <summary>Checks whether the event can change this receiver's state, preserving initial native startup handling.</summary>
         static bool WouldMove(Fsm fsm, string name)
         {
             if (!fsm.Started) return HasHandler(fsm, name);         // vanilla's ProcessEvent would also Start() it
@@ -141,6 +146,7 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
+        /// <summary>Checks global transitions on an unstarted receiver before targeting a repeat broadcast.</summary>
         static bool HasHandler(Fsm fsm, string name)
         {
             var g = fsm.GlobalTransitions;
@@ -148,7 +154,7 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("First broadcasts (vanilla) / repeats targeted", Firsts + " / " + Repeats);
