@@ -19,7 +19,7 @@ namespace WildWasteland.Modules.Saves
             if (!Patches.Patch(owner, Patches.Method(typeof(MapMagicObject), "Update"), prefix: Patches.Method(typeof(SaveTerrain), "MapUpdate"))
                 || !Patches.Patch(owner, Patches.Method(typeof(CoroutineManager), "Update"), prefix: Patches.Method(typeof(SaveTerrain), "ApplyUpdate")))
                 throw new InvalidOperationException("Terrain save barrier could not be installed");
-            Log.Always("[System] Terrain save barrier ready: drain pending work, hold streaming until publication completes");
+            Log.Main(owner, "Terrain save barrier ready: drain pending work, hold streaming until publication completes");
         }
         /// <summary>Holds new terrain admission while allowing queued applications to drain.</summary>
         static bool MapUpdate()
@@ -44,7 +44,7 @@ namespace WildWasteland.Modules.Saves
                 if (quiet >= 2)
                 {
                     _draining = false;
-                    Log.Always("[System] Terrain settled; streaming held for world save");
+                    Log.Deep(SavesModule.Instance, "Terrain settled; streaming held for world save");
                     yield break;
                 }
                 yield return null;

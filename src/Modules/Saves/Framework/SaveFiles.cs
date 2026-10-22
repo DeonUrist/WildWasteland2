@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.Saves
             Mark(Path.Combine(DirectoryPath, "committed")); Committed = true;
             // New-file staging is redundant after verified publication; old-* files remain the backup.
             try { foreach (string path in Directory.GetFiles(DirectoryPath, "new-*.bin")) File.Delete(path); }
-            catch (Exception error) { Log.Warn("[System] Retaining redundant save staging: " + error.Message); }
+            catch (Exception error) { Log.Warn(SavesModule.Instance, "Retaining redundant save staging: " + error.Message); }
         }
         /// <summary>Restores old participant bytes and removes transaction-created files.</summary>
         internal void Rollback(bool clearCache = true)
@@ -185,7 +185,7 @@ namespace WildWasteland.Modules.Saves
             {
                 string directory = Path.GetDirectoryName(journal);
                 if (Marked(Path.Combine(directory, "committed")) || Marked(Path.Combine(directory, "recovered"))) continue;
-                Read(directory).Rollback(); Log.Always("[System] Interrupted save recovered: " + directory);
+                Read(directory).Rollback(); Log.Warn(SavesModule.Instance, "Interrupted save recovered: " + directory);
             }
         }
         /// <summary>Matches supported complete-slot and seed-scoped companion filenames.</summary>

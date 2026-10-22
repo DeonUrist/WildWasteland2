@@ -11,10 +11,13 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Name displayed by the module shell.</summary>
         public override string DisplayName { get { return "Saves"; } }
         bool _running, _recovering;
+        /// <summary>The registered Saves entry, used as the log owner by the static framework classes (bound before Init).</summary>
+        internal static SavesModule Instance { get; private set; }
 
         /// <summary>Binds save and cleanup policy even when the module is disabled.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
+            Instance = this;
             SaveSystem.Bind(cfg);
             CompanionPolicy.RegisterDefaults(this);
             // ModuleHost attaches its toggle handler after BindConfig: restore the switch before it can stop a live transaction.

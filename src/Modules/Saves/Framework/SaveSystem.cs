@@ -107,9 +107,9 @@ namespace WildWasteland.Modules.Saves
             WorldHistory.Install(owner); SaveCompatibility.Install(owner);
             SaveBus.StateChanged += StateChanged;
             Scheduler.Interval(owner, "Singleplayer autosave warning", .25f, Tick);
-            Log.Always("[System] Autosave warnings: game-font compass countdown, 30/15-second notices, combat deferral and 3-second final warning");
+            Log.Main(owner, "Autosave warnings: game-font compass countdown, 30/15-second notices, combat deferral and 3-second final warning");
             Installed = true;
-            Log.Always("[System] Singleplayer saves ready: separate manual/autosaves, complete backups and interrupted-write recovery");
+            Log.Main(owner, "Singleplayer saves ready: separate manual/autosaves, complete backups and interrupted-write recovery");
         }
         /// <summary>Releases save event/config listeners after owned coroutines have been disposed.</summary>
         internal static void Shutdown()
@@ -141,7 +141,7 @@ namespace WildWasteland.Modules.Saves
         {
             if (Autosave == null) return;
             try { SaveFiles.Recover(); Ready = true; RecoveryError = null; }
-            catch (Exception error) { Ready = false; RecoveryError = "Save recovery needs attention: " + error.Message; Log.Error("[System] " + RecoveryError, error); }
+            catch (Exception error) { Ready = false; RecoveryError = "Save recovery needs attention: " + error.Message; Log.Error(SavesModule.Instance, RecoveryError, error); }
         }
         /// <summary>Latches native disk commit errors into the active save transaction.</summary>
         static Exception StorageError(Exception __exception) { if (__exception != null) Fail("World persistence failed: " + __exception.Message); return __exception; }
@@ -177,7 +177,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Records the first failure of an active save transaction.</summary>
         internal static void Fail(string message) { if (Busy && _error == null) _error = message; }
         /// <summary>Retains the latest save notice for delivery through the HUD notification API.</summary>
-        internal static void Notify(string text) { Status = text; Log.Always("[System] " + text); _pendingNotice = text; }
+        internal static void Notify(string text) { Status = text; Log.Main(SavesModule.Instance, text); _pendingNotice = text; }
         /// <summary>Delivers a pending notice only when gameplay presentation and a HUD provider are ready.</summary>
         static void DeliverNotice()
         {
@@ -207,7 +207,7 @@ namespace WildWasteland.Modules.Saves
                 }
             }
             else if (File.Exists(SaveFiles.WorldPath(file))) info.Date = File.GetLastWriteTime(SaveFiles.WorldPath(file)).ToString("yyyy-MM-dd HH:mm"); }
-            catch (Exception error) { Log.Warn("[System] Save description unreadable; world retained: " + file + ": " + error.Message); }
+            catch (Exception error) { Log.Warn(SavesModule.Instance, "Save description unreadable; world retained: " + file + ": " + error.Message); }
             return info;
         }
         /// <summary>Resolves the original world lineage from published metadata.</summary>
@@ -287,7 +287,7 @@ namespace WildWasteland.Modules.Saves
                 image = RenderTexture.GetTemporary(480, 270, 24); camera.targetTexture = image; camera.Render(); RenderTexture.active = image;
                 pixels = new Texture2D(480, 270, TextureFormat.RGB24, false); pixels.ReadPixels(new Rect(0, 0, 480, 270), 0, 0); pixels.Apply(); _picture = pixels.EncodeToPNG();
             }
-            catch (Exception error) { Log.Warn("[System] Save thumbnail unavailable: " + error.Message); }
+            catch (Exception error) { Log.Warn(SavesModule.Instance, "Save thumbnail unavailable: " + error.Message); }
             finally { camera.targetTexture = target; RenderTexture.active = old; if (image != null) RenderTexture.ReleaseTemporary(image); if (pixels != null) UnityEngine.Object.Destroy(pixels); }
         }
         /// <summary>Checks the published world, transaction stamp and retained old key set.</summary>
@@ -325,11 +325,11 @@ namespace WildWasteland.Modules.Saves
                 _transaction = null; _requested = false; Schedule();
                 CatalogueVersion++;
                 WorldHistory.Accepted();
-                try { SaveCleanup.Commit(); } catch (Exception cleanup) { SaveSystem.ReloadRequired = true; Log.Error("[System] Save committed, but cleanup could not finish; reload before saving", cleanup); }
+                try { SaveCleanup.Commit(); } catch (Exception cleanup) { SaveSystem.ReloadRequired = true; Log.Error(SavesModule.Instance, "Save committed, but cleanup could not finish; reload before saving", cleanup); }
                 Status = (_automatic ? "Autosave" : "Save") + " completed: " + _name;
-                Log.Always("[System] " + Status);
+                Log.Main(SavesModule.Instance, Status);
                 try { SaveFiles.Prune(source, BackupKeep.Value); SaveFiles.Prune(target, BackupKeep.Value); if (_automatic) PruneAutosaves(Lineage(target), target); }
-                catch (Exception error) { Log.Warn("[System] Retention deferred; saves retained: " + error.Message); }
+                catch (Exception error) { Log.Warn(SavesModule.Instance, "Retention deferred; saves retained: " + error.Message); }
                 return true;
             }
             catch (Exception error) { Abort(error); return false; }
@@ -377,7 +377,7 @@ namespace WildWasteland.Modules.Saves
             // A failed write leaves live module state ahead of disk. Require a reload before another world write.
             if (tx != null) ReloadRequired = true;
             _requested = false; _picture = null; Status = "Save failed: " + error.Message;
-            Log.Error("[System] " + Status, error); _pendingNotice = Status;
+            Log.Error(SavesModule.Instance, Status, error); _pendingNotice = Status;
         }
         /// <summary>Backs up all save participants before deleting a selected published snapshot.</summary>
         internal static void Delete(string file, bool expiredAutosave = false)

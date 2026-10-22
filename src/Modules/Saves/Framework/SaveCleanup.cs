@@ -93,7 +93,7 @@ namespace WildWasteland.Modules.Saves
                     if (System.IO.File.Exists(SaveFiles.WorldPath(SaveSystem.ActiveFile)) && ES3.KeyExists(ProtectionKey, settings)) foreach (string name in ES3.Load<string[]>(ProtectionKey, settings)) Touched.Add(name);
                     else { SnapshotObjects(); for (int i = 0; i < _observationCount; i++) { var existing = ObservationRoot(_observations[i]); if (existing != null) Touched.Add(existing.name); } }
                 }
-                catch (Exception error) { Log.Error("[System] Cleanup ownership data unreadable; cleanup disabled for this session", error); Enabled.Value = false; }
+                catch (Exception error) { Log.Error(SavesModule.Instance, "Cleanup ownership data unreadable; cleanup disabled for this session", error); Enabled.Value = false; }
             }
             if (!Enabled.Value) { Far.Clear(); _last = 0; _tracking = false; if (_observationCount != 0) Array.Clear(_observations, 0, _observations.Length); _observationCount = 0; return; }
             if (!GameRefs.InGame || SaveSystem.Busy) { _last = 0; return; }
@@ -188,7 +188,7 @@ namespace WildWasteland.Modules.Saves
         {
             foreach (var go in Candidates) if (go != null) { Removed.Add(go); Far.Remove(go); UnityEngine.Object.Destroy(go); }
             Registrations.Clear(); Candidates.Clear();
-            if (Removed.Count > 0) Log.Always("[System] Save cleanup removed " + Removed.Count + " verified disposable roots; unknown save keys retained");
+            if (Removed.Count > 0 && Log.L1) Log.Main(SavesModule.Instance, "Save cleanup removed " + Removed.Count + " verified disposable roots; unknown save keys retained");
             Removed.Clear();
         }
     }
