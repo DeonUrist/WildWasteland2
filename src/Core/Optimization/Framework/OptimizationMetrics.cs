@@ -19,16 +19,43 @@ namespace WildWasteland.Core.Optimization
         public static long Sleeps, Wakes, PickQueries, PickCasts;
 
         /// <summary>Lifecycle/cost tag raised for measurement consumers; no listener means no work.</summary>
-        public static event Action<string> Marked;
+        static Action<string>[] _marks = new Action<string>[0];
+        public static event Action<string> Marked
+        {
+            add { AddMark(value); }
+            remove { RemoveMark(value); }
+        }
+
+        /// <summary>Copies the observer array only when measurement ownership changes, never in a frame/slice tag.</summary>
+        static void AddMark(Action<string> handler)
+        {
+            if (handler == null) return;
+            var current = _marks;
+            var next = new Action<string>[current.Length + 1];
+            Array.Copy(current, next, current.Length);
+            next[current.Length] = handler;
+            _marks = next;
+        }
+
+        /// <summary>Drops the most recently registered matching observer without retaining a stopped Debug instance.</summary>
+        static void RemoveMark(Action<string> handler)
+        {
+            var current = _marks;
+            int index = Array.LastIndexOf(current, handler);
+            if (index < 0) return;
+            var next = new Action<string>[current.Length - 1];
+            Array.Copy(current, 0, next, 0, index);
+            Array.Copy(current, index + 1, next, index, current.Length - index - 1);
+            _marks = next;
+        }
 
         /// <summary>Publishes an attribution tag, isolating measurement failures from gameplay.</summary>
         public static void Mark(string tag)
         {
-            var handlers = Marked;
-            if (handlers == null) return;
-            foreach (Action<string> handler in handlers.GetInvocationList())
+            var handlers = _marks;
+            for (int i = 0; i < handlers.Length; i++)
             {
-                try { handler(tag); }
+                try { handlers[i](tag); }
                 catch (Exception ex) { Log.Error(null, "Optimization measurement tag", ex); }
             }
         }

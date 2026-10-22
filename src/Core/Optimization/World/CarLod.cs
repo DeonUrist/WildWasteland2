@@ -276,7 +276,7 @@ namespace WildWasteland.Core.Optimization
             FsmPause.Clear(fsm, FsmPause.CarLod);
         }
 
-        /// <summary>Captures input/gear and wheel simulation state before suspending eligible distant frozen-vehicle physics.</summary>
+        /// <summary>Captures parked input/gear, then suspends NWH and wheel simulation on an eligible distant frozen car.</summary>
         static void SleepNwh(Car car)
         {
             var vc = car.Vc;
@@ -288,7 +288,7 @@ namespace WildWasteland.Core.Optimization
             car.NwhOff = true; _nwhOffCount++; NwhSleeps++;
         }
 
-        /// <summary>Restores captured NWH/wheel simulation plus parked input and gear before native physics resumes.</summary>
+        /// <summary>Re-enables NWH's native wheel ownership and restores captured parked input/gear before physics resumes.</summary>
         static void WakeNwh(Car car)
         {
             if (!car.NwhOff) return;
