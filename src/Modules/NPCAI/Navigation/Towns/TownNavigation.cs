@@ -2,19 +2,23 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
+    /// <summary>Street routing of one town between separately baked buildings: plan street nodes + one portal per building, validated links, all-pairs routes.</summary>
     internal sealed class TownNavigation
     {
         // Same static-world layers as the existing baker; triggers, actors, cars and loose items are excluded.
-        internal const int Mask = ~((1 << 1) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 12) | (1 << 13) | (1 << 15) | (1 << 17) | (1 << 19) | (1 << 22));
-        private readonly TownSite _site;
-        private readonly TownOutline _outline;
+        /// <summary>Navigation solid mask (POI/Loot/Tools still read it; README A6-9: Core Layers is the final home, request B08-4).</summary>
+        internal const int Mask = NavMasks.Solid;
+        private readonly TownSite _site;   // refs-ok: REFACTOR-REQUEST B08-6
+        private readonly TownOutline _outline;   // refs-ok: REFACTOR-REQUEST B08-6
         private readonly List<Vector3> _cells = new List<Vector3>(256);
         private readonly Vector3[] _nodes; // map-anchor-relative positions, so origin jumps need no cached correction
         private readonly float[,] _distance;
         private readonly int[,] _hop;
+        /// <summary>One street-graph edge: target node and length.</summary>
         private struct Arc { internal int To; internal float Cost; }
         private readonly List<Arc>[] _links;
         private int _lot, _floyd = -1, _cellIndex = -1;
@@ -23,27 +27,32 @@ namespace WildWasteland.Modules.Towns
         private float _portalCost;
         private Vector3 _probeAnchor, _portal;
         private bool _streetsChecked, _synced;
+        /// <summary>A cached waypoint answer (0.4 s per 1.5 m cell pair).</summary>
         private struct Memo { internal bool Result; internal Vector3 Waypoint, Anchor; internal float At; }
         private readonly Dictionary<long, Memo> _memo = new Dictionary<long, Memo>();
         internal int Casts, Accepted;   // street edges rechecked with physics / accepted from the plan's numeric validation
         internal bool Ready { get; private set; }
+        /// <summary>Always false: street routing never gives up (POI still tests it).</summary>
         internal bool Failed { get { return false; } }
-        internal string FailureReason { get; private set; }
+        /// <summary>Preparation progress: street checks 30 %, building portals 30 %, all-pairs routes 40 %.</summary>
         internal float Progress { get { return Ready ? 1 : !_streetsChecked ? _edgeCheck / (float)Mathf.Max(1, _site.Plan.StreetEdges.Length) * .3f
             : _floyd < 0 ? .3f + .3f * _lot / _site.Plan.LotCount : .6f + .4f * _floyd / _nodes.Length; } }
-        internal TownNavigation(TownSite site)
+        /// <summary>Street nodes of the plan plus one portal node per lot, with empty distance / next-hop tables.</summary>
+        internal TownNavigation(TownSite site)   // refs-ok: REFACTOR-REQUEST B08-6
         {
-            _site = site; _outline = TownPerimeter.Outline(site.Plan); int n = site.Plan.StreetNodes.Length + site.Plan.LotCount;
+            _site = site; _outline = TownPerimeter.Outline(site.Plan); int n = site.Plan.StreetNodes.Length + site.Plan.LotCount;   // refs-ok: REFACTOR-REQUEST B08-6
             _nodes = new Vector3[n]; _distance = new float[n, n]; _hop = new int[n, n];
             _links = new List<Arc>[n]; for (int i = 0; i < n; i++) _links[i] = new List<Arc>();
             for (int a = 0; a < n; a++) for (int b = 0; b < n; b++)
             { _distance[a, b] = a == b ? 0 : float.PositiveInfinity; _hop[a, b] = -1; }
             for (int i = 0; i < site.Plan.StreetNodes.Length; i++) _nodes[i] = site.Plan.World(site.Plan.StreetNodes[i]);
         }
+        /// <summary>Scene position of node i (nodes are kept anchor-relative).</summary>
         private Vector3 Scene(int i) { return _site.Anchor.TransformPoint(_nodes[i]); }
+        /// <summary>One preparation step (needs the NPC module): recheck one street edge with physics, link one building portal from its baked map, or build the routes from one node; false when ready or waiting.</summary>
         internal bool Step()
         {
-            if (Ready || Services.Npc == null || Time.unscaledTime < _retry) return false;
+            if (Ready || ModApi.Get<INpcApi>() == null || Time.unscaledTime < _retry) return false;
             int streets = _site.Plan.StreetNodes.Length;
             if (!_streetsChecked)
             {
@@ -72,7 +81,7 @@ namespace WildWasteland.Modules.Towns
                     int count = TownOverlap.PortalCandidates(building.transform, Scene(_site.Plan.Lots[_lot].EntryNode), _cells, out known, out baked);
                     if (!known) TownBakeBridge.Discover(building);
                     if (!baked) { _retry = Time.unscaledTime + .5f; return false; }
-                    if (count == 0) Log.Warn("[Towns] no walkable cells beside measured entrance for " + building.name);
+                    if (count == 0) Log.Warn(NavRuntime.Owner, "Towns: no walkable cells beside measured entrance for " + building.name);
                     _probeAnchor = _site.Anchor.position; _portalCost = float.PositiveInfinity; _cellIndex = 0;
                 }
                 var lot = _site.Plan.Lots[_lot];
@@ -102,9 +111,10 @@ namespace WildWasteland.Modules.Towns
                 return true;
             }
             Ready = true;
-            Log.Always("[Towns] connected " + _site.Plan.Key + ": " + _site.Plan.LotCount + " separate baked buildings, " + _nodes.Length + " validated street/entrance nodes.");
+            if (Log.L1) Log.Main(NavRuntime.Owner, "Towns: connected " + _site.Plan.Key + ": " + _site.Plan.LotCount + " separate baked buildings, " + _nodes.Length + " validated street/entrance nodes.");
             return false;
         }
+        /// <summary>True when a planned street edge must be rechecked with physics (terrain ground, near the wall outline or dressing props).</summary>
         private bool NeedsCast(int a, int b)
         {
             if (_site.GroundTerrain != null) return true;
@@ -113,19 +123,21 @@ namespace WildWasteland.Modules.Towns
             foreach (var box in _site.DebrisBlockers)
             {
                 float lo = 0, hi = 1;
-                if (TownPerimeter.Clip(_nodes[a].x - box.center.x, _nodes[b].x - _nodes[a].x, box.extents.x + 3, ref lo, ref hi)
-                    && TownPerimeter.Clip(_nodes[a].z - box.center.z, _nodes[b].z - _nodes[a].z, box.extents.z + 3, ref lo, ref hi)) return true;
+                if (TownPerimeter.Clip(_nodes[a].x - box.center.x, _nodes[b].x - _nodes[a].x, box.extents.x + 3, ref lo, ref hi)   // refs-ok: REFACTOR-REQUEST B08-6
+                    && TownPerimeter.Clip(_nodes[a].z - box.center.z, _nodes[b].z - _nodes[a].z, box.extents.z + 3, ref lo, ref hi)) return true;   // refs-ok: REFACTOR-REQUEST B08-6
             }
             return false;
         }
+        /// <summary>Adds an undirected street-graph edge.</summary>
         private void Link(int a, int b)
         {
             float cost = Vector3.Distance(_nodes[a], _nodes[b]);
             _links[a].Add(new Arc { To = b, Cost = cost }); _links[b].Add(new Arc { To = a, Cost = cost });
         }
+        /// <summary>Dijkstra from one node: distances and first hops to every other node.</summary>
         private void BuildRoutes(int source)
         {
-            var closed = new bool[_nodes.Length]; var open = new TownPaths.Heap(); open.Push(source, 0);
+            var closed = new bool[_nodes.Length]; var open = new MinHeap.Heap(); open.Push(source, 0);
             while (open.Count > 0)
             {
                 int a = open.Pop(); if (closed[a]) continue; closed[a] = true;
@@ -138,6 +150,7 @@ namespace WildWasteland.Modules.Towns
                 }
             }
         }
+        /// <summary>Next street waypoint for an NPC inside the town radius toward goal (memoised 0.4 s per 1.5 m cell pair).</summary>
         internal bool Waypoint(Vector3 position, Vector3 goal, out Vector3 waypoint)
         {
             waypoint = goal;
@@ -154,6 +167,7 @@ namespace WildWasteland.Modules.Towns
             _memo[key] = new Memo { Result = result, Waypoint = waypoint, Anchor = anchor, At = now };
             return result;
         }
+        /// <summary>The street waypoint: out of the start building through its portal, along the street edge nearest to the NPC toward the goal's building or nearest street node; false when a local map or a straight line does it.</summary>
         private bool Compute(Vector3 position, Vector3 goal, out Vector3 waypoint)
         {
             waypoint = goal;
@@ -200,8 +214,10 @@ namespace WildWasteland.Modules.Towns
             waypoint = Scene(next);
             return Horizontal(waypoint, goal) > .25f;
         }
+        /// <summary>Lot index of a building root, or -1.</summary>
         private int Lot(Transform root)
         { if (root == null) return -1; for (int i = 0; i < _site.Buildings.Length; i++) if (_site.Buildings[i] != null && _site.Buildings[i].transform == root) return i; return -1; }
+        /// <summary>Street node nearest to a scene point.</summary>
         private int Nearest(Vector3 point)
         {
             int best = 0; float cost = float.PositiveInfinity;
@@ -209,16 +225,9 @@ namespace WildWasteland.Modules.Towns
             { float d = Horizontal(point, Scene(i)); if (d < cost) { cost = d; best = i; } }
             return best;
         }
+        /// <summary>Squared horizontal distance.</summary>
         private static float Horizontal(Vector3 a, Vector3 b) { float x = a.x - b.x, z = a.z - b.z; return x * x + z * z; }
-        internal static bool Clear(Vector3 a, Vector3 b)
-        {
-            var delta = b - a; float length = delta.magnitude;
-            if (Mathf.Abs(delta.y) > Mathf.Max(.5f, length * .2f)) return false;
-            var bottom = a + Vector3.up * .5f; var top = a + Vector3.up * 1.4f;
-            if (Physics.CheckCapsule(bottom, top, .25f, Mask, QueryTriggerInteraction.Ignore)) return false;
-            if (Physics.CheckCapsule(b + Vector3.up * .5f, b + Vector3.up * 1.4f, .25f, Mask, QueryTriggerInteraction.Ignore)) return false;
-            RaycastHit hit;
-            return length < .01f || !Physics.CapsuleCast(bottom, top, .25f, delta / length, out hit, length, Mask, QueryTriggerInteraction.Ignore);
-        }
+        /// <summary>A body-sized capsule passes straight from a to b (shared rule: <see cref="Nav.WaypointClear"/>).</summary>
+        internal static bool Clear(Vector3 a, Vector3 b) { return Nav.WaypointClear(a, b); }
     }
 }

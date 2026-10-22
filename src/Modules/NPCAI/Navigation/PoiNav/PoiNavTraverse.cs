@@ -5,9 +5,11 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
-    // (WW) A human NPC taking a POI navigation link: a scripted, kinematic move (the brain is put on Travel so it neither steers nor
-    // fights meanwhile) with the ladder / climb animation from PlayerBody. Ladder: line up at the foot, climb the rung line, step onto
-    // the platform. Climb: rise in front of the face, then forward onto the top. Drop: a short jump down. One NPC per ladder at a time.
+    /// <summary>
+    /// (WW) A human NPC taking a POI navigation link: a scripted, kinematic move (the brain is put on Travel so it neither steers nor
+    /// fights meanwhile) with the ladder / climb animation from PlayerBody. Ladder: line up at the foot, climb the rung line, step onto
+    /// the platform. Climb: rise in front of the face, then forward onto the top. Drop: a short jump down. One NPC per ladder at a time.
+    /// </summary>
     internal static class PoiNavTraverse
     {
         sealed class Run
@@ -26,11 +28,15 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<string, int> _ladders = new Dictionary<string, int>();
         private static readonly List<int> _done = new List<int>();
 
+        /// <summary>True while the NPC is on a ladder / climb / drop / unstick glide.</summary>
         internal static bool Busy(GameObject owner) { return owner != null && _runs.ContainsKey(owner.GetInstanceID()); }
+        /// <summary>Number of running traversals.</summary>
         internal static int Count { get { return _runs.Count; } }
 
-        // (WW) the stuck rescue: an NPC that has not moved on its POI route for a second slides (kinematic, through whatever holds its
-        // body) along the next route points - the route is known to be walkable, so the body's width is never what stops it
+        /// <summary>
+        /// (WW) the stuck rescue: an NPC that has not moved on its POI route for a second slides (kinematic, through whatever holds its
+        /// body) along the next route points - the route is known to be walkable, so the body's width is never what stops it
+        /// </summary>
         internal static bool Glide(GameObject owner, List<Vector3> feet)
         {
             if (owner == null || feet == null || feet.Count < 1 || Busy(owner)) return false;
@@ -66,9 +72,10 @@ namespace WildWasteland.Modules.NPC
             rb.useGravity = false; rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.Interpolate;
             NoShove(run, true);
             _runs[owner.GetInstanceID()] = run;
-            if (WildWasteland.Core.Log.L2) Log.Info("[NPC] " + owner.name + " was stuck on its POI route: slides " + len.ToString("0.0") + " m along it");
+            if (WildWasteland.Core.Log.L2) Log.Deep(NavRuntime.Owner, "" + owner.name + " was stuck on its POI route: slides " + len.ToString("0.0") + " m along it");
             return true;
         }
+        /// <summary>Moves an unstick glide along its points at 2.4 m/s; true when it reached the end.</summary>
         static bool StepGlide(Run r)
         {
             float d = Mathf.Min(r.GlideLen, r.T * 2.4f);
@@ -85,6 +92,7 @@ namespace WildWasteland.Modules.NPC
             return r.T * 2.4f >= r.GlideLen;
         }
 
+        /// <summary>Starts a link traversal (ladder up/down, climb, drop) for an NPC at its start; false when the ladder is taken or the link can't be used now.</summary>
         internal static bool Begin(GameObject owner, PoiNav.Inst inst, int link, bool down)
         {
             var l = inst.Data.Links[link];
@@ -106,7 +114,7 @@ namespace WildWasteland.Modules.NPC
             if (l.Kind == PoiLinkKind.Ladder)
             {
                 // the body stands off the rung line by the animation's hips-to-rung distance, on the climber's side
-                float depth = Services.Animation != null ? Services.Animation.LadderToeDepth : .44f;
+                float depth = ModApi.Get<IAnimationApi>() != null ? ModApi.Get<IAnimationApi>().LadderToeDepth : .44f;
                 Vector3 back = -(run.Facing * Vector3.forward) * depth;
                 // an NPC standing behind the ladder (or level with it) first walks round to the climbing side
                 Vector3 line = run.Bottom; Vector3 rel = run.Start - line; rel.y = 0f;
@@ -130,15 +138,15 @@ namespace WildWasteland.Modules.NPC
             rb.useGravity = false; rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.Interpolate;
             owner.transform.rotation = run.Facing;
             var anim = owner.GetComponentInChildren<Animator>();
-            if (Services.Animation != null && anim != null && l.Kind != PoiLinkKind.Drop)
-                run.Anim = Services.Animation.BeginNpcTraversal(anim, l.Kind == PoiLinkKind.Ladder ? "Ladder" : (run.To.y - run.From.y) > 1.25f ? "ClimbHigh" : "ClimbWaist");
+            if (ModApi.Get<IAnimationApi>() != null && anim != null && l.Kind != PoiLinkKind.Drop)
+                run.Anim = ModApi.Get<IAnimationApi>().BeginNpcTraversal(anim, l.Kind == PoiLinkKind.Ladder ? "Ladder" : (run.To.y - run.From.y) > 1.25f ? "ClimbHigh" : "ClimbWaist");
             NoShove(run, true); NoAttack(run, true);
             _runs[owner.GetInstanceID()] = run;
-            if (WildWasteland.Core.Log.L2) Log.Info("[NPC] " + owner.name + " takes the " + l.Kind + " of " + inst.Poi + " (" + (run.To.y - run.From.y).ToString("0.0") + " m)");
+            if (WildWasteland.Core.Log.L2) Log.Deep(NavRuntime.Owner, "" + owner.name + " takes the " + l.Kind + " of " + inst.Poi + " (" + (run.To.y - run.From.y).ToString("0.0") + " m)");
             return true;
         }
 
-        // on a ladder / mid-climb an NPC neither swings nor shoots: its attack FSMs are paused for the move (and resumed after)
+        /// <summary>on a ladder / mid-climb an NPC neither swings nor shoots: its attack FSMs are paused for the move (and resumed after)</summary>
         static void NoAttack(Run r, bool on)
         {
             try
@@ -154,7 +162,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
         }
 
-        // a kinematic body moved by MovePosition shoves anything dynamic out of its way with unlimited force: the player is left alone
+        /// <summary>a kinematic body moved by MovePosition shoves anything dynamic out of its way with unlimited force: the player is left alone</summary>
         static void NoShove(Run r, bool on)
         {
             try
@@ -181,6 +189,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
         }
 
+        /// <summary>Height of the NPC's pivot above its feet (collider bottom).</summary>
         internal static float FeetOffset(GameObject owner, Rigidbody rb)
         {
             float lowest = float.MaxValue;
@@ -190,7 +199,12 @@ namespace WildWasteland.Modules.NPC
         }
 
         // EarlyFixedUpdate: every traversal moves its body
-        internal static void Tick()
+        /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs "NPCAI.PoiNav.Traverse".</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Tick() { if (!NavRuntime.Active) Update(); }
+
+        /// <summary>Job "NPCAI.PoiNav.Traverse" (every frame, EarlyFixedUpdate): advances every running ladder / climb / drop traversal.</summary>
+        internal static void Update()
         {
             Services.LadderClimbers.Clear();
             if (_runs.Count == 0 || Time.timeScale < .01f) return;
@@ -205,12 +219,12 @@ namespace WildWasteland.Modules.NPC
                     if (Step(r, dt)) _done.Add(kv.Key);
                     else if (r.L != null && r.L.Kind == PoiLinkKind.Ladder) Services.LadderClimbers.Add(r.Owner.transform.position - Vector3.up * r.Lift);
                 }
-                catch (Exception e) { Log.Error("[NPC] POI traversal", e); _done.Add(kv.Key); }
+                catch (Exception e) { Log.Error(NavRuntime.Owner, "POI traversal", e); _done.Add(kv.Key); }
             }
             foreach (int k in _done) { Run r; if (_runs.TryGetValue(k, out r)) End(r, k); }
         }
 
-        // true when finished
+        /// <summary>true when finished</summary>
         static bool Step(Run r, float dt)
         {
             r.T += dt;
@@ -259,7 +273,7 @@ namespace WildWasteland.Modules.NPC
                         }
                         r.H = Mathf.Min(cap, r.H + dt * PoiNav.LadderSpeed.Value); float h = Mathf.Clamp(r.H, 0f, r.Climb);
                         Move(r, Vector3.Lerp(r.Bottom, r.Top, h / r.Climb));
-                        float rise = Services.Animation != null ? Services.Animation.LadderCycleRise : 1.24f;
+                        float rise = ModApi.Get<IAnimationApi>() != null ? ModApi.Get<IAnimationApi>().LadderCycleRise : 1.24f;
                         Phase(r, h / Mathf.Max(.2f, rise));
                         if (h >= r.Climb) { r.Stage = 2; r.T = 0f; if (r.Anim != null) { r.Anim.Dispose(); r.Anim = null; } }
                         return false;
@@ -297,10 +311,10 @@ namespace WildWasteland.Modules.NPC
                 }
             }
         }
-        // down a ladder: from the platform onto the top of the rung line, down the rungs (the animation plays backwards), off at the foot
+        /// <summary>down a ladder: from the platform onto the top of the rung line, down the rungs (the animation plays backwards), off at the foot</summary>
         static bool StepDown(Run r)
         {
-            float rise = Services.Animation != null ? Services.Animation.LadderCycleRise : 1.24f;
+            float rise = ModApi.Get<IAnimationApi>() != null ? ModApi.Get<IAnimationApi>().LadderCycleRise : 1.24f;
             if (r.Stage == 0)
             {
                 float u = Mathf.Clamp01(r.T / .5f);
@@ -346,7 +360,7 @@ namespace WildWasteland.Modules.NPC
             return v >= 1f;
         }
 
-        // the player on this ladder: an NPC climbing towards him stops a body length short (and waits there) instead of passing him
+        /// <summary>the player on this ladder: an NPC climbing towards him stops a body length short (and waits there) instead of passing him</summary>
         static float PlayerCap(Run r, bool up)
         {
             var ladder = Services.PlayerLadder; var player = GameRefs.Player;
@@ -358,14 +372,15 @@ namespace WildWasteland.Modules.NPC
             return up ? (feet > r.H ? feet - 1.85f : float.MaxValue) : (feet < r.H ? feet + 1.85f : float.MinValue);
         }
 
-        // feet against feet (Bottom / Top are the body's pivot, Lift above its feet)
+        /// <summary>feet against feet (Bottom / Top are the body's pivot, Lift above its feet)</summary>
         static float NpcFeet(Run r) { return Mathf.Lerp(r.Bottom.y, r.Top.y, Mathf.Clamp01(r.H / r.Climb)) - r.Lift; }
+        /// <summary>The player's feet height (collider bottom; ladder bottom when unknown).</summary>
         static float PlayerFeet(Run r)
         {
             var p = GameRefs.Player; if (p == null) return r.Bottom.y - r.Lift;
             var c = p.GetComponent<Collider>(); return c != null ? c.bounds.min.y : p.transform.position.y - .85f;
         }
-        // the player has been off every ladder for half a second (not the moment of a jump onto a platform)
+        /// <summary>the player has been off every ladder for half a second (not the moment of a jump onto a platform)</summary>
         static bool PlayerOff(Run r)
         {
             if (Services.PlayerLadder != null) { r.OffSince = -1f; return false; }
@@ -373,11 +388,14 @@ namespace WildWasteland.Modules.NPC
             return Time.time - r.OffSince > .5f;
         }
 
-        // down a ladder: a slide that speeds up to the player's slide speed (metres this step)
+        /// <summary>down a ladder: a slide that speeds up to the player's slide speed (metres this step)</summary>
         static float Slide(Run r, float dt) { r.SlideV = Mathf.Min(r.SlideV + 14f * dt, Services.LadderSlideSpeed); return r.SlideV * dt; }
+        /// <summary>Kinematic move of the body plus its facing.</summary>
         static void Move(Run r, Vector3 p) { r.Rb.MovePosition(p); r.Owner.transform.rotation = r.Facing; }
+        /// <summary>Sets the traversal animation phase when the lease is valid.</summary>
         static void Phase(Run r, float p) { if (r.Anim != null && r.Anim.Valid) r.Anim.Phase = p; }
 
+        /// <summary>Ends a traversal: ladder freed, animation lease disposed, body physics restored, travel flag off (reversed: route dropped).</summary>
         static void End(Run r, int key)
         {
             _runs.Remove(key);
@@ -393,10 +411,12 @@ namespace WildWasteland.Modules.NPC
             if (r.Reverse && r.Owner != null) PoiNav.DropRoute(r.Owner);   // turned back: plan again from here
         }
 
+        /// <summary>Floating origin: every running traversal's points move by d.</summary>
         internal static void Shift(Vector3 d)
         {
             foreach (var r in _runs.Values) { if (r.Glide != null) for (int i = 0; i < r.Glide.Count; i++) r.Glide[i] += d; r.Start += d; r.Around += d; r.From += d; r.To += d; r.Bottom += d; r.Top += d; }
         }
+        /// <summary>Ends every traversal (reset / shutdown).</summary>
         internal static void Clear()
         {
             var all = new List<KeyValuePair<int, Run>>(_runs);

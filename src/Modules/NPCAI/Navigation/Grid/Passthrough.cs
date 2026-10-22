@@ -3,16 +3,18 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.NPC
 {
-    // [Pathfinding] FriendsPassThrough: NPCs of the same faction walk through each other while they are busy - fighting, going to a spot
-    // they heard or saw something, searching, or walking home (Idle). Their solid colliders ignore each other (Physics.IgnoreCollision,
-    // pairwise); once BOTH are idle again (back home / standing) and no longer overlapping, the collisions are switched back on.
-    // Every 0.25 s over the registered NPCs; only pairs within 30 m are looked at (farther ones can't touch). Unity drops an ignore when a
-    // collider is deactivated, so the ignored pairs are re-applied every 3 s.
-    // (WW perf, N9) new pairs only within 6 m (two runners close at most ~3.5 m in one 0.25 s tick: a pair is made before they touch);
-    // the re-apply goes round: each tick 1/12 of the pairs (each pair every 3 s, as before), and only a pair within 3 m (farther ones
-    // can't touch; their turn comes again within 3 s).
-    // (1.1.0) Only in corridors: a pair is made when at least one of the two stands on a map cell next to a wall / obstacle (Nav.NearWall)
-    // - a doorway, a passage between huts, a cave tunnel. In the open they bump as before (the brain's AvoidFriends passes them).
+    /// <summary>
+    /// [Pathfinding] FriendsPassThrough: NPCs of the same faction walk through each other while they are busy - fighting, going to a spot
+    /// they heard or saw something, searching, or walking home (Idle). Their solid colliders ignore each other (Physics.IgnoreCollision,
+    /// pairwise); once BOTH are idle again (back home / standing) and no longer overlapping, the collisions are switched back on.
+    /// Every 0.25 s over the registered NPCs; only pairs within 30 m are looked at (farther ones can't touch). Unity drops an ignore when a
+    /// collider is deactivated, so the ignored pairs are re-applied every 3 s.
+    /// (WW perf, N9) new pairs only within 6 m (two runners close at most ~3.5 m in one 0.25 s tick: a pair is made before they touch);
+    /// the re-apply goes round: each tick 1/12 of the pairs (each pair every 3 s, as before), and only a pair within 3 m (farther ones
+    /// can't touch; their turn comes again within 3 s).
+    /// (1.1.0) Only in corridors: a pair is made when at least one of the two stands on a map cell next to a wall / obstacle (Nav.NearWall)
+    /// - a doorway, a passage between huts, a cave tunnel. In the open they bump as before (the brain's AvoidFriends passes them).
+    /// </summary>
     internal static class Passthrough
     {
         private static readonly Dictionary<int, Collider[]> _cols = new Dictionary<int, Collider[]>();
@@ -24,21 +26,34 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<Collider> _colBuf = new List<Collider>();
         private const float NewPairRange = 6f, ReapplyRange = 3f;
 
-        public static void OnSceneLoaded() { _cols.Clear(); _pairs.Clear(); }
+        /// <summary>Old NPC-entry reset: forwards to <see cref="ResetCore"/> unless the NPCAI entry owns navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        public static void OnSceneLoaded() { if (!NavRuntime.Active) ResetCore(); }
+
+        /// <summary>Forgets cached colliders and pairs (scene load: the objects are gone).</summary>
+        internal static void ResetCore() { _cols.Clear(); _pairs.Clear(); }
 
         // (WW) module shutdown: every pair collides again
-        internal static void Shutdown()
+        /// <summary>Old NPC-entry shutdown step: forwards to <see cref="ShutdownCore"/> unless the NPCAI entry owns navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Shutdown() { if (!NavRuntime.Active) ShutdownCore(); }
+
+        /// <summary>Module stop: every ignored pair collides again.</summary>
+        internal static void ShutdownCore()
         {
             foreach (var kv in _pairs) if (kv.Value.Key.Owner != null && kv.Value.Value.Owner != null) { try { Set(kv.Value.Key, kv.Value.Value, false); } catch (System.Exception) { } }
             _pairs.Clear(); _cols.Clear();
         }
+        /// <summary>Number of NPC pairs that currently walk through each other (debug page).</summary>
         internal static int Pairs { get { return _pairs.Count; } }
 
+        /// <summary>True while an NPC fights, searches, has a ghost or walks home (pairs are only made / kept while busy).</summary>
         private static bool Busy(Senses.Agent a)
         {
             return a.State != Senses.State.Idle || a.Target != null || a.Ghost != null || Idle.Busy(a.Owner);
         }
 
+        /// <summary>The NPC's solid colliders (cached per NPC).</summary>
         private static Collider[] Cols(Senses.Agent a)
         {
             Collider[] c;
@@ -53,15 +68,22 @@ namespace WildWasteland.Modules.NPC
             return c;
         }
 
+        /// <summary>Ignores (or restores) collisions between every solid collider of two NPCs.</summary>
         private static void Set(Senses.Agent a, Senses.Agent b, bool ignore)
         {
             var ca = Cols(a); var cb = Cols(b);
             for (int i = 0; i < ca.Length; i++) { var x = ca[i]; if (x == null) continue; for (int k = 0; k < cb.Length; k++) { var y = cb[k]; if (y != null) Physics.IgnoreCollision(x, y, ignore); } }
         }
 
+        /// <summary>Order-independent pair key of two instance ids.</summary>
         private static long Key(int a, int b) { if (a > b) { int t = a; a = b; b = t; } return ((long)a << 32) ^ (uint)b; }
 
-        public static void Tick()      // (WW) a 0.25 s Interval job (game time), was gated here
+        /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs "NPCAI.Passthrough".</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        public static void Tick() { if (!NavRuntime.Active) Update(); }
+
+        /// <summary>Job "NPCAI.Passthrough" (0.25 s game time): makes / re-applies / releases same-faction collision ignores in narrow places.</summary>
+        internal static void Update()
         {
             bool on = NpcModule.FriendsPassThrough.Value && Senses.On;
             if (!on)

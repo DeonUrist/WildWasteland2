@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Towns
     /// </summary>
     public sealed partial class TownsModule
     {
+        /// <summary>Town waypoint for an NPC: outside a walled town a detour round the wall or a gate entrance (approach = true), inside the street route or the walker gates.</summary>
         internal bool Waypoint(GameObject owner, Vector3 position, Vector3 goal, out Vector3 waypoint, out bool approach)
         {
             waypoint = goal; approach = false;

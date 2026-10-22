@@ -4,13 +4,16 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols
 {
-    // Foot long-route planner over an ElevationGrid (worker thread); NPCAI foot planning (Wave A split of Patrols Traffic/TrafficElevation.cs).
+    /// <summary>
+    /// Foot long-route planner over an ElevationGrid (worker thread); NPCAI foot planning (Wave A split of Patrols Traffic/TrafficElevation.cs).
+    /// </summary>
     internal static class TerrainWaypoints
     {
         private static readonly float[] Sides={-1400f,-1000f,-650f,-350f,-150f,0f,150f,350f,650f,1000f,1400f};
-        internal static Vector3[] Build(Vector3 a,Vector3 b,Vector3[][] hints,Bounds[] blocks,float influence,int seed,ElevationGrid[] grids,out bool[] roads)
+        /// <summary>Long foot route from a to b over the elevation grids: a dynamic-programming pick among lateral offsets and road hints per step (slopes, climbs and blocked boxes cost); falls back to RoadPlanner.Build without grids or route. roads flags the points taken from road hints.</summary>
+        internal static Vector3[] Build(Vector3 a,Vector3 b,Vector3[][] hints,Bounds[] blocks,float influence,int seed,ElevationGrid[] grids,out bool[] roads)   // refs-ok: REFACTOR-REQUEST B08-3
         {
-            if(grids.Length==0)return RoadPlanner.Build(a,b,hints,blocks,influence,seed,out roads);
+            if(grids.Length==0)return RoadPlanner.Build(a,b,hints,blocks,influence,seed,out roads);   // refs-ok: REFACTOR-REQUEST B08-3
             float length=TrafficLocations.FlatDistance(a,b);int steps=Mathf.Clamp(Mathf.CeilToInt(length/350f),6,16);
             var forward=b-a;forward.y=0f;forward.Normalize();var right=Vector3.Cross(Vector3.up,forward);
             const int choices=12;
@@ -23,7 +26,7 @@ namespace WildWasteland.Modules.Patrols
                 for(int j=0;j<Sides.Length;j++)
                 {
                     var p=center+right*(Sides[j]*Mathf.Min(1f,length/1600f));
-                    if(ElevationGrid.Sample(grids,p,out float height,out _))p.y=height;
+                    if(ElevationGrid.Sample(grids,p,out float height,out _))p.y=height;   // refs-ok: REFACTOR-REQUEST B08-3
                     points[i,j]=p;valid[i,j]=!Inside(blocks,p);
                 }
                 float best=influence*influence;Vector3 nearest=center;bool found=false;
@@ -34,7 +37,7 @@ namespace WildWasteland.Modules.Patrols
                     best=distance*distance;nearest=p;found=true;
                 }
                 if(found)
-                {if(ElevationGrid.Sample(grids,nearest,out float height,out _))nearest.y=height;points[i,11]=nearest;valid[i,11]=true;onRoad[i,11]=true;}
+                {if(ElevationGrid.Sample(grids,nearest,out float height,out _))nearest.y=height;points[i,11]=nearest;valid[i,11]=true;onRoad[i,11]=true;}   // refs-ok: REFACTOR-REQUEST B08-3
             }
             var costs=new float[steps+1,choices];var parent=new int[steps+1,choices];
             for(int i=0;i<=steps;i++)for(int j=0;j<choices;j++){costs[i,j]=float.PositiveInfinity;parent[i,j]=-1;}costs[0,0]=0f;
@@ -50,14 +53,16 @@ namespace WildWasteland.Modules.Patrols
                     if(cost<costs[i,j]){costs[i,j]=cost;parent[i,j]=previous;}
                 }
             }
-            if(parent[steps,0]<0)return RoadPlanner.Build(a,b,hints,blocks,influence,seed,out roads);
+            if(parent[steps,0]<0)return RoadPlanner.Build(a,b,hints,blocks,influence,seed,out roads);   // refs-ok: REFACTOR-REQUEST B08-3
             var route=new Vector3[steps+1];roads=new bool[steps+1];int pick=0;
             for(int i=steps;i>=0;i--){route[i]=points[i,pick];roads[i]=onRoad[i,pick];pick=parent[i,pick];}
             return route;
         }
+        /// <summary>True when the flat point lies in one of the blocked boxes.</summary>
         private static bool Inside(Bounds[] blocks,Vector3 p)
         {p.y=0f;foreach(var box in blocks)if(box.Contains(p))return true;return false;}
-        private static float Leg(Vector3 a,Vector3 b,Vector3 origin,Vector3 destination,ElevationGrid[] grids,Bounds[] blocks)
+        /// <summary>Cost of one leg: its length, crossing blocked boxes (infinite), climbing above the a-b baseline, height changes and slope samples.</summary>
+        private static float Leg(Vector3 a,Vector3 b,Vector3 origin,Vector3 destination,ElevationGrid[] grids,Bounds[] blocks)   // refs-ok: REFACTOR-REQUEST B08-3
         {
             var aa=a;var bb=b;aa.y=bb.y=0f;var delta=bb-aa;float length=delta.magnitude;
             foreach(var box in blocks)
@@ -67,7 +72,7 @@ namespace WildWasteland.Modules.Patrols
             for(int sample=1;sample<=8;sample++)
             {
                 var p=Vector3.Lerp(a,b,sample/8f);
-                if(!ElevationGrid.Sample(grids,p,out float height,out float slope)){cost+=30f;continue;}
+                if(!ElevationGrid.Sample(grids,p,out float height,out float slope)){cost+=30f;continue;}   // refs-ok: REFACTOR-REQUEST B08-3
                 float t=span>0f?Mathf.Clamp01(Vector3.Dot(p-origin,along)/span):0f;
                 float baseline=Mathf.Lerp(origin.y,destination.y,t);
                 cost+=Mathf.Max(0f,height-baseline-15f)*1.5f+Mathf.Abs(height-last)*3f+slope*slope*600f;

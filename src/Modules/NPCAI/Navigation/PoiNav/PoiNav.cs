@@ -6,29 +6,31 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
-    // (WW) Runtime POI navigation: human NPCs inside a POI whose type has pre-recorded data (PoiNavData) route over its node graph with
-    // A* (a few hundred nodes, no physics) and take its ladders, ledge climbs and drops as scripted traversals with the ladder / climb
-    // animations (Core.Services.Animation.BeginNpcTraversal). Outside such POIs, or for creatures, Nav's grid maps and feelers carry on.
+    /// <summary>
+    /// (WW) Runtime POI navigation: human NPCs inside a POI whose type has pre-recorded data (PoiNavData) route over its node graph with
+    /// A* (a few hundred nodes, no physics) and take its ladders, ledge climbs and drops as scripted traversals with the ladder / climb
+    /// animations (IAnimationApi.BeginNpcTraversal). Outside such POIs, or for creatures, Nav's grid maps and feelers carry on.
+    /// </summary>
     internal static partial class PoiNav
     {
+        /// <summary>[NPCAI / Pathfinding] PoiNavigation (bound by <see cref="NavSettings.Bind"/>; null = unbound = off).</summary>
         internal static ConfigEntry<bool> Enabled;
+        /// <summary>[NPCAI / POI pathfinding] NpcLadderSpeed, m/s (bound by <see cref="NavSettings.Bind"/>).</summary>
         internal static ConfigEntry<float> LadderSpeed;
 
         /// <summary>Tools part of Bind: the developer setup / display switches, the editor key and the baker tuning (PoiNav.Tools.cs).</summary>
         static partial void BindTools(ModuleConfig cfg);
 
-        internal static void Bind(ModuleConfig cfg)
-        {
-            Enabled = cfg.Main.Bind(cfg.Section("Pathfinding"), "PoiNavigation", true,
-                "Human NPCs use the pre-recorded navigation of POIs (every floor, roof and walkway; ladders and climbs) where it exists. Off = the grid maps only.");
-            BindTools(cfg);
-            LadderSpeed = cfg.Tool("POI pathfinding setup", "NpcLadderSpeed", 2f, "How fast NPCs climb ladders up, m/s (down they slide like the player).", new AcceptableValueRange<float>(.3f, 4f));
-            if (Mathf.Approximately(LadderSpeed.Value, 1f)) LadderSpeed.Value = 2f;   // the old default: twice as fast now
-        }
+        /// <summary>Old NPC-entry bind point (called from NpcModule.BindConfig): binds only the Tools-owned entries now. The runtime switch
+        /// and the ladder speed moved to <see cref="NavSettings.Bind"/> ([NPCAI / ...], D12) and the LadderSpeed 1 -> 2 rewrite is gone (README 9).</summary>
+        [System.Obsolete("refactor: NPCAI binds its navigation entries in NavSettings.Bind; Tools binds its own (B16)")]
+        internal static void Bind(ModuleConfig cfg) { BindTools(cfg); }
 
         // ------------------------------------------------------------------ graph per data
+        /// <summary>The node/edge/link graph of one POI data set (built a step at a time).</summary>
         internal sealed class Graph
         {
+            /// <summary>One graph arc: target node, cost, link code (-1 = walk).</summary>
             internal struct Arc { public int To; public float Cost; public int Link; }   // Link -1 = a walk, else link*2 (+1 = taken backwards: down a ladder)
             internal readonly PoiNavData Data;
             internal readonly List<Arc>[] Out;
@@ -36,11 +38,13 @@ namespace WildWasteland.Modules.NPC
             internal readonly Dictionary<long, List<int>> Buckets = new Dictionary<long, List<int>>();
             private int _node, _edge, _link;
             internal bool Ready;
+            /// <summary>An empty graph for one data set; built a node / edge / link at a time by Step.</summary>
             internal Graph(PoiNavData d)
             {
                 Data = d; int n = d.Nodes.Count;
                 Out = new List<Arc>[n]; LinkFrom = new int[d.Links.Count]; LinkTo = new int[d.Links.Count];
             }
+            /// <summary>One build step: bucket one node, add one edge pair, or resolve one link's end nodes; Ready after the last.</summary>
             internal void Step()
             {
                 var d = Data;
@@ -73,6 +77,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 Ready = true;
             }
+            /// <summary>Node nearest to a link end (within 2.5 m, height weighted, on the given surface when >= 0), or -1.</summary>
             private int Nearest(Vector3 p, int surface)
             {
                 int best = -1; float distance = 6.25f;
@@ -91,6 +96,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
         private static readonly Dictionary<PoiNavData, Graph> _graphs = new Dictionary<PoiNavData, Graph>();
+        /// <summary>The (shared) graph of a data set, created on first use (cache cleared beyond 128).</summary>
         internal static Graph GraphOf(PoiNavData d)
         {
             Graph g; if (!_graphs.TryGetValue(d, out g)) { if (_graphs.Count > 128) _graphs.Clear(); _graphs[d] = g = new Graph(d); }
@@ -98,11 +104,13 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ------------------------------------------------------------------ instances (one per live POI root with data)
+        /// <summary>One live POI instance with data: world node positions and bounds.</summary>
         internal sealed class Inst
         {
             internal Transform Root; internal string Poi; internal PoiNavData Data; internal Graph G;
             internal Vector3[] World; internal Bounds Box; internal Vector3 RootPos; internal int Id;
             internal int BuildIndex; internal bool Ready, Queued;
+            /// <summary>Scene position of a POI-local point.</summary>
             internal Vector3 W(Vector3 local) { return Root.TransformPoint(local); }
         }
         private static readonly Dictionary<int, Inst> _inst = new Dictionary<int, Inst>();
@@ -113,13 +121,14 @@ namespace WildWasteland.Modules.NPC
         private static float _nextScan;
         internal static Dictionary<int, Inst>.ValueCollection Instances { get { return _inst.Values; } }
 
+        /// <summary>At most once a second: drops dead instances/routes and creates or rebuilds the instance of every structure root whose POI type has data.</summary>
         internal static void Rescan(bool force = false)
         {
             float now = Time.unscaledTime;
             if (!force && now < _nextScan) return;
             _nextScan = now + 1f;
             Nav.Roots(_roots);
-            PoiNavSetup.Roots(_roots);
+            PoiNavSetup.Roots(_roots);   // refs-ok: REFACTOR-REQUEST B08-7
             _dead.Clear();
             foreach (var kv in _inst) if (kv.Value.Root == null || !kv.Value.Root.gameObject.activeInHierarchy) _dead.Add(kv.Key);
             foreach (int k in _dead) _inst.Remove(k);
@@ -144,6 +153,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>(Re)binds an instance to its data: world bounds now, node positions queued for the sliced build.</summary>
         internal static void Build(Inst inst, PoiNavData data)
         {
             inst.Ready = false; inst.BuildIndex = 0;
@@ -160,7 +170,12 @@ namespace WildWasteland.Modules.NPC
         }
 
         // One node per scheduler step; the ray allowance is shared by every POI in the frame.
-        internal static bool BuildStep()
+        /// <summary>Old NPC-entry sliced job body: forwards to <see cref="BuildSlice"/> unless the NPCAI entry runs "NPCAI.PoiNav.Build".</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static bool BuildStep() { return !NavRuntime.Active && BuildSlice(); }
+
+        /// <summary>Job "NPCAI.PoiNav.Build" (sliced, 500 us): one graph/node step of the queued POI instances; true = more work.</summary>
+        internal static bool BuildSlice()
         {
             if (_builds.Count == 0 || Enabled == null || !Enabled.Value) return false;
             if (_buildFrame != Time.frameCount) { _buildFrame = Time.frameCount; _buildNodes = _buildRays = 0; }
@@ -243,6 +258,7 @@ namespace WildWasteland.Modules.NPC
             w.Rb.MovePosition(p);
             return true;
         }
+        /// <summary>Gives a walker's body its physics and player collisions back.</summary>
         static void Release(int id)
         {
             Walker w; if (!_walkers.TryGetValue(id, out w)) return;
@@ -254,8 +270,12 @@ namespace WildWasteland.Modules.NPC
             }
             catch (Exception) { }
         }
-        /// <summary>Every frame: bodies nobody walked for 0.25 s (the brain stopped driving it: an attack, a stand) get their physics back.</summary>
-        internal static void WalkerTick()
+        /// <summary>Old NPC-entry job body: forwards to <see cref="UpdateWalkers"/> unless the NPCAI entry runs "NPCAI.PoiNav.Walkers".</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void WalkerTick() { if (!NavRuntime.Active) UpdateWalkers(); }
+
+        /// <summary>Job "NPCAI.PoiNav.Walkers" (every frame): bodies nobody walked for 0.25 s (the brain stopped driving it: an attack, a stand) get their physics back.</summary>
+        internal static void UpdateWalkers()
         {
             if (_walkers.Count == 0) return;
             _walkDone.Clear();
@@ -275,19 +295,23 @@ namespace WildWasteland.Modules.NPC
             if (PoiNavTraverse.Busy(owner)) return true;
             Route r; return Enabled != null && Enabled.Value && _routes.TryGetValue(owner.GetInstanceID(), out r) && r.HasNext && r.Inst.Ready && r.Inst.Root != null && r.Inst.Root.gameObject.activeInHierarchy;
         }
+        /// <summary>Stops following the current POI route point (the route stays for the next think).</summary>
         internal static void StopGuiding(GameObject owner)
         {
             Route r; if (owner == null) return; int id = owner.GetInstanceID();
             if (_routes.TryGetValue(id, out r)) r.HasNext = false;
             if (!PoiNavTraverse.Busy(owner)) Release(id);
         }
+        /// <summary>Forgets an NPC's route so the next think plans again from where it stands.</summary>
         internal static void DropRoute(GameObject owner)
         {
             Route r; if (owner == null || !_routes.TryGetValue(owner.GetInstanceID(), out r)) return;
             r.Steps.Clear(); r.Index = 0; r.HasNext = false; r.Pending = true; r.DirectSurface = -1;
         }
+        /// <summary>True when a point lies in the bounds of a POI instance with navigation data.</summary>
         internal static bool Inside(Vector3 p) { return Enabled != null && Enabled.Value && _inst.Count > 0 && At(p, false) != null; }
 
+        /// <summary>The (ready) instance whose bounds contain p, nearest centre first, or null.</summary>
         static Inst At(Vector3 p, bool readyOnly = true)
         {
             Inst best = null; float bd = float.MaxValue;
@@ -299,11 +323,12 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
-        // the node under these feet: within 4 m flat, from 1.2 m below to 0.6 m above them; level and in plain sight first
+        /// <summary>the node under these feet: within 4 m flat, from 1.2 m below to 0.6 m above them; level and in plain sight first</summary>
         static long Bucket(int x, int z) { return ((long)x << 32) | (long)(uint)z; }
         private static readonly List<int> _nearNodes = new List<int>();
-        // World terrain projection changes Y only. Tilted roots retain the exact full-search fallback.
+        /// <summary>World terrain projection changes Y only. Tilted roots retain the exact full-search fallback.</summary>
         static bool Planar(Inst inst) { Vector3 up = inst.Root.up; return Mathf.Abs(up.x) < .000001f && Mathf.Abs(up.z) < .000001f && up.y > 0f; }
+        /// <summary>Fills the near-node buffer with the nodes of the 2 m buckets within radius (every node for tilted roots), in node order.</summary>
         static void Nearby(Inst inst, Vector3 p, float radius)
         {
             _nearNodes.Clear();
@@ -324,6 +349,7 @@ namespace WildWasteland.Modules.NPC
             { List<int> nodes; if (inst.G.Buckets.TryGetValue(Bucket(x, z), out nodes)) _nearNodes.AddRange(nodes); }
             _nearNodes.Sort();   // preserve node order, including the existing line-of-sight preference
         }
+        /// <summary>The node the NPC stands on: within 4 m flat, from 1.2 m below to 0.6 m above its feet, level and in plain sight first.</summary>
         static int NearestStart(Inst inst, Vector3 feet)
         {
             int best = -1; float bd = float.MaxValue;
@@ -341,6 +367,7 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
+        /// <summary>Node nearest to a scene point within a distance (ground nodes only: flat distance), or -1.</summary>
         static int NearestWorld(Inst inst, Vector3 p, float within, bool groundOnly)
         {
             int best = -1; float bd = within * within;
@@ -416,6 +443,7 @@ namespace WildWasteland.Modules.NPC
             into.Reverse();
             return true;
         }
+        /// <summary>A* open list: push (binary heap on a list).</summary>
         static void Push(float f, int i)
         {
             // small binary heap on a list
@@ -423,6 +451,7 @@ namespace WildWasteland.Modules.NPC
             int c = _open.Count - 1;
             while (c > 0) { int p = (c - 1) / 2; if (_open[p].Key <= _open[c].Key) break; var t = _open[p]; _open[p] = _open[c]; _open[c] = t; c = p; }
         }
+        /// <summary>A* open list: pop the smallest key.</summary>
         static int Pop()
         {
             int r = _open[0].Value; int last = _open.Count - 1; _open[0] = _open[last]; _open.RemoveAt(last);
@@ -451,6 +480,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<int, Route> _routes = new Dictionary<int, Route>();
         private static int _planFrame = -1, _plansNow;
 
+        /// <summary>True for human NPCs without a creature sight cone (only they use POI navigation).</summary>
         static bool Human(GameObject owner)
         {
             var a = Senses.AgentFor(owner);
@@ -589,11 +619,12 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // a link step (-(code + 1), code = link * 2 + backwards): where it starts / lands
+        /// <summary>a link step (-(code + 1), code = link * 2 + backwards): where it starts / lands</summary>
         static Vector3 StartOf(Inst inst, int step) { int code = -step - 1; var l = inst.Data.Links[code >> 1]; return inst.W((code & 1) == 0 ? l.From : l.To); }
+        /// <summary>Scene point where a link step lands.</summary>
         static Vector3 EndOf(Inst inst, int step) { int code = -step - 1; var l = inst.Data.Links[code >> 1]; return inst.W((code & 1) == 0 ? l.To : l.From); }
 
-        // the ladder link the player is on (his goal is the player, he climbs one of this POI's ladders), or -1
+        /// <summary>the ladder link the player is on (his goal is the player, he climbs one of this POI's ladders), or -1</summary>
         static int PlayerLadderLink(Inst inst, Vector3 goal)
         {
             var player = GameRefs.Player;
@@ -613,6 +644,7 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
+        /// <summary>True when the line 0.6 m above both points hits nothing solid.</summary>
         static bool Clear(Vector3 a, Vector3 b)
         {
             Vector3 up = Vector3.up * .6f;
@@ -620,13 +652,19 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ------------------------------------------------------------------ lifecycle
+        /// <summary>Drops a POI type's cached data and every route (after an edit), then rescans.</summary>
         internal static void Forget(string poi)
         {
             PoiNavStore.Forget(poi);
             _routes.Clear();
             Rescan(true);
         }
-        internal static void Shift(Vector3 delta)
+        /// <summary>Old NPC-entry origin shift: forwards to <see cref="ShiftCore"/> unless the NPCAI entry shifts navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Shift(Vector3 delta) { if (!NavRuntime.Active) ShiftCore(delta); }
+
+        /// <summary>Floating origin: instance points, boxes, routes and running traversals move by delta.</summary>
+        internal static void ShiftCore(Vector3 delta)
         {
             foreach (var i in _inst.Values)
             {
@@ -636,7 +674,12 @@ namespace WildWasteland.Modules.NPC
             foreach (var r in _routes.Values) { r.Goal += delta; r.Next += delta; }
             PoiNavTraverse.Shift(delta);
         }
-        internal static void Reset()
+        /// <summary>Old NPC-entry reset: forwards to <see cref="ResetCore"/> unless the NPCAI entry owns navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Reset() { if (!NavRuntime.Active) ResetCore(); }
+
+        /// <summary>Releases walkers and traversals and forgets every instance, route, graph and loaded data (scene load, start/stop).</summary>
+        internal static void ResetCore()
         {
             foreach (int id in new List<int>(_walkers.Keys)) Release(id);
             PoiNavTraverse.Clear();
