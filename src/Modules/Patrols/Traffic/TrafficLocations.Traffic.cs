@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Patrols
 
         /// <summary>Checks the current player at condition for traffic locations.</summary>
         internal static bool PlayerAt(TrafficBase camp)
-        {var player=PlayerRef.Player;return player!=null&&Contains(camp,TrafficSpace.World(player.position));}
+        {var player=Core.PlayerState.Transform;return player!=null&&Contains(camp,TrafficSpace.World(player.position));}
         /// <summary>Checks the current patrol spawn allowed condition for traffic locations.</summary>
         internal static bool PatrolSpawnAllowed(Vector3 point)
         {foreach(var camp in Known.Values)if(PlayerAt(camp)&&Contains(camp,point,60f))return false;return true;}

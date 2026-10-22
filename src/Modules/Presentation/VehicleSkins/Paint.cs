@@ -21,22 +21,17 @@ namespace WildWasteland.Modules.Presentation
         private static string _dir;
         private static readonly Dictionary<string, Texture2D> _tex = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);   // null = no file
         
-        private static bool _configured, _preloaded;
+        private static bool _preloaded;
 
         /// <summary>Sets the texture folder (Presentation World part Init: <see cref="VehicleSkinSettings.TextureDir"/>); a new folder drops the decoded cache.</summary>
         internal static void Configure(string dir)
         {
             if (_dir != dir) { _tex.Clear(); _preloaded = false; }
-            _dir = dir; _configured = true;
+            _dir = dir; 
         }
 
         /// <summary>Old Patrols call (dataDir = plugins/WildWasteland/Patrols): ignored once Presentation configured the folder, else the old Textures folder.</summary>
-        [Obsolete("refactor: Presentation configures the folder (VehicleSkinSettings.TextureDir)")]
-        internal static void Init(string dataDir)
-        {
-            if (_configured) return;
-            _dir = Path.Combine(dataDir ?? ".", Folder);   // called early in Init: no logging here
-        }
+
 
         // Textures/<body>.png (poloska.png, tinytyrant.png, rustcargo.png, junker.png, rustliner.png) = that body's main paint texture, whatever the game
         // calls it; wins over a file named after the texture itself.

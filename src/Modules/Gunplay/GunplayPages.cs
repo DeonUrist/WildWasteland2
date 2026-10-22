@@ -3,7 +3,7 @@ using System.Globalization;
 using BepInEx.Configuration;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WildWasteland.Modules.Guns;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Gunplay
 {
@@ -50,7 +50,7 @@ namespace WildWasteland.Modules.Gunplay
             l.Value("Bullets in flight", I(Tracers.InFlight) + " / " + I(GunplaySettings.MaxTracers.Value));
             l.Value("Monster projectiles tracked", I(Tracers.OrbCount));
             l.Value("Player guns / NPC shooters known", I(Tracers.PlayerGunCount) + " / " + I(Tracers.ShooterCount));
-            var hud = Services.Hud;
+            var hud = Core.ModApi.Get<Core.IHitFeedback>();
             l.Value("Hit feedback (HUD module)", hud != null ? (hud.ExternalReporter ? "reported by Gunplay" : "HUD observes vanilla hits") : "HUD module off");
         }
 
@@ -58,7 +58,7 @@ namespace WildWasteland.Modules.Gunplay
         static void LiveAim(ToolLayout l)
         {
             l.Value("Body-centre aim / lead", On(GunplaySettings.AimAtBody) + " / " + On(GunplaySettings.Lead));
-            l.Value("Spread source", Services.Npc != null ? "NPC module" : "built-in (+10 % per 5 m beyond 5 m)");
+            l.Value("Spread source", Core.ModApi.Get<Core.INpcApi>() != null ? "NPC module" : "built-in (+10 % per 5 m beyond 5 m)");
             l.Value("NPC shooters known", I(Tracers.ShooterCount));
         }
 

@@ -12,7 +12,7 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Senses part: the Detection / Attack FSM hooks (SensorGetDetections, the burst line of sight) and the brain-facing state queries.</summary>
     internal static partial class Senses

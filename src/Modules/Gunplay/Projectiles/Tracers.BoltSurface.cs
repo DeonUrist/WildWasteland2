@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Modules.Gunplay;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Tracers part: where a crossbow bolt sticks in a creature (skin surface and bone) and its transfer to the corpse.</summary>
     internal static partial class Tracers

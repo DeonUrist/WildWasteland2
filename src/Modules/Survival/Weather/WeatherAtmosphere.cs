@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.Survival
                 camera.AddCommandBuffer(CameraEvent.BeforeForwardAlpha, _commands);
                 Camera.onPreCull += BeforeCamera;
                 _sky.Begin(camera,0);
-                Log.Always("[Weather] Depth-only atmosphere attached to " + camera.name + "; alpha blend before transparents, no camera-color read/copy; native weather retained.");
+                Log.Always(null,"[Weather] Depth-only atmosphere attached to " + camera.name + "; alpha blend before transparents, no camera-color read/copy; native weather retained.");
             }
         }
         /// <summary>Adds one region’s volume, age and critical intensity to the current frame.</summary>
@@ -140,7 +140,7 @@ namespace WildWasteland.Modules.Survival
             int state = _inside < .02f ? 0 : _inside > .9f ? 2 : 1;
             if (state == _insideState) return;
             _insideState = state;
-            if (Log.Verbose) Log.Info("[Weather] Local atmosphere: " + (state == 0 ? "outside" : state == 2 ? "interior" : "boundary transition"));
+            if (Log.L1) Log.Main(null,"[Weather] Local atmosphere: " + (state == 0 ? "outside" : state == 2 ? "interior" : "boundary transition"));
         }
         /// <summary>Releases camera subscriptions and clears active atmosphere presentation.</summary>
         internal void Suspend()

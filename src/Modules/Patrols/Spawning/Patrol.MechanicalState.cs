@@ -7,7 +7,6 @@ using ES3Internal;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols
 {

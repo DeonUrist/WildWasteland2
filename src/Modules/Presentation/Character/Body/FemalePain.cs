@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     internal static class FemalePain
     {

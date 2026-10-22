@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Third person on foot. The game only has a third-person camera in cars (DriveTrigger/3rdCamera, "Change Camera" button).
     // On foot we keep the PlayerCamera exactly where the game puts it (all shooting / picking / using raycasts start there) and only
@@ -36,7 +36,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>True while aiming down a scoped rifle / pistol (the game scope view replaces the third-person camera).</summary>
         private static bool ScopedAds()
         {
-            if (Game.Paused) return false;
+            if (Core.PlayerState.Paused) return false;
             string w = Game.DrawnWeapon;
             if (string.IsNullOrEmpty(w) || w.IndexOf("scope", System.StringComparison.OrdinalIgnoreCase) < 0) return false;
             var k = Props.KindOf(w);
@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.PlayerBody
             string w = Game.DrawnWeapon;
             var k = Props.KindOf(w);
             bool gun = k == Props.Kind.Rifle || k == Props.Kind.Pistol;
-            AimZoom = On && !Peek && !Game.Paused && !Game.Dead && gun && w.IndexOf("scope", System.StringComparison.OrdinalIgnoreCase) < 0 && Game.AimDownSights;
+            AimZoom = On && !Peek && !Core.PlayerState.Paused && !Core.PlayerState.Dead && gun && w.IndexOf("scope", System.StringComparison.OrdinalIgnoreCase) < 0 && Game.AimDownSights;
             _zoomK = Mathf.MoveTowards(_zoomK, AimZoom ? 1f : 0f, Time.unscaledDeltaTime * 6f);
             if (!On) _zoomK = 0f;
             Core.ModApi.Get<Core.ICursorPresentation>()?.SetAimZoom(AimZoom);
@@ -110,7 +110,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (kind == BtnNone) return true;
             try
             {
-                if (kind == BtnJump && Game.Player != null && __instance.buttonName != null && __instance.buttonName.Value == "Jump")
+                if (kind == BtnJump && Core.PlayerState.Player != null && __instance.buttonName != null && __instance.buttonName.Value == "Jump")
                 {
                     if (ModAPI.PlayerTraversalActive || ClimbingController.Instance != null && ClimbingController.Instance.TryJumpClimb()) return false;
                 }
@@ -127,7 +127,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             bool allowed = PresentationModule.WorldRunning && CameraSettings.ThirdPersonOnFoot.Value && Game.Ready && Game.FirstPersonCameraOn;
             bool pressed = false;
-            if (allowed && !Game.Paused && !Game.Dead)
+            if (allowed && !Core.PlayerState.Paused && !Core.PlayerState.Dead)
             {
                 // the game's Change Camera action (InsaneSystems InputManager: follows a rebind in the Controls screen); legacy axis only if unavailable
                 try { pressed = InsaneSystems.InputManager.InputController.GetKeyActionIsDown("Change Camera"); }
@@ -140,13 +140,13 @@ namespace WildWasteland.Modules.PlayerBody
                 if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Third person: " + (On ? "on" : "off"));
             }
             if (!allowed && On) On = false;
-            bool peek = On && !Game.Dead && (Game.Binoculars || ScopedAds());
+            bool peek = On && !Core.PlayerState.Dead && (Game.Binoculars || ScopedAds());
             if (Peek && !peek) { _dist = 0.3f; _nextScan = 0f; }   // binoculars down: the camera comes back out from behind her head, first-person renderers hidden again at once
             Peek = peek;
             // the observing key (RebindObserving, LeftAlt) - and the middle mouse button only with EnableMMB, the game rotates held items with it -
             // orbits the camera around the character: held (back behind it on release), or with "Toggle Observing" (ToggleMiddleMouse) a press turns it on / off
             bool click = false, held = false;
-            if (On && !Game.Paused && !Game.Dead)
+            if (On && !Core.PlayerState.Paused && !Core.PlayerState.Dead)
                 try
                 {
                     var key = CameraSettings.ObserveKeyCode;
@@ -160,7 +160,7 @@ namespace WildWasteland.Modules.PlayerBody
             Zoom();
             UpdateZoom();
             Orbiting = false;
-            if (On && !Game.Paused)
+            if (On && !Core.PlayerState.Paused)
             {
                 float mx = 0f, my = 0f;
                 try { mx = Input.GetAxis("Mouse X"); my = Input.GetAxis("Mouse Y"); } catch (System.Exception) { }
@@ -179,13 +179,13 @@ namespace WildWasteland.Modules.PlayerBody
             }
             if (!On) { _orbitYaw = _orbitPitch = 0f; }
             bool want = On || CarShift || ModAPI.PlayerTraversalCameraActive;
-            bool cullingWanted = On && !Peek && CameraSettings.OcclusionPrototype.Value && (!Game.InCar || CameraSettings.OcclusionInVehicle.Value);
+            bool cullingWanted = On && !Peek && CameraSettings.OcclusionPrototype.Value && (!Core.PlayerState.InCar || CameraSettings.OcclusionInVehicle.Value);
             Cave.Tick(cullingWanted);
             if (!cullingWanted || Cave.Inside) OcclusionCutaway.Stop();
             if (want && !_hooked) { Core.CameraArbiter.AddView(PresentationModule.WorldOwner, "Presentation.ThirdPerson", 200, WriteView, true); Core.CameraArbiter.AddProjection(PresentationModule.WorldOwner, "Presentation.ThirdPerson", 200, WriteProjection); _hooked = true; }
             if (On && !Peek) HideViewModel();
             else if (_hidden.Count > 0) ShowViewModel();
-            if (!want && _hooked) { if (Game.Cam != null) { Game.Cam.ResetWorldToCameraMatrix(); Game.Cam.ResetCullingMatrix(); } Core.CameraArbiter.Remove(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); _hooked = false; }
+            if (!want && _hooked) { if (Core.PlayerState.Camera != null) { Core.PlayerState.Camera.ResetWorldToCameraMatrix(); Core.PlayerState.Camera.ResetCullingMatrix(); } Core.CameraArbiter.Remove(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); _hooked = false; }
             CameraRigApi.Publish();
         }
 
@@ -206,14 +206,14 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Mouse wheel zoom of the camera distance (on foot and in cars separately), not while the map is open or an item is carried.</summary>
         private static void Zoom()
         {
-            if (!On || Peek || Game.Paused) { Save(); return; }
+            if (!On || Peek || Core.PlayerState.Paused) { Save(); return; }
             float w = 0f;
             try { w = Input.mouseScrollDelta.y; } catch (System.Exception) { }
             if (MapOpen()) w = 0f;   // the map zooms with the wheel
-            bool car = Game.InCar;
+            bool car = Core.PlayerState.InCar;
             if (w != 0f && !car)
             {
-                var hand = Game.PlayerCamera != null ? Game.PlayerCamera.Find("Hand") : null;
+                var hand = Core.PlayerState.PlayerCamera != null ? Core.PlayerState.PlayerCamera.Find("Hand") : null;
                 if (hand != null && hand.childCount > 0) w = 0f;
             }
             if (w != 0f)
@@ -265,7 +265,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             _viewFrame = Time.frameCount;
             _gameFov = cam.fieldOfView;
-            bool dead = Game.Dead;
+            bool dead = Core.PlayerState.Dead;
             if (dead && !_deathView) _deathRotation = HasView ? ViewRot : Quaternion.Euler(10f, t.eulerAngles.y, 0f);
             _deathView = dead;
             // orbit: the view direction turned about her by the middle-mouse offsets (yaw about up, pitch clamped)
@@ -274,7 +274,7 @@ namespace WildWasteland.Modules.PlayerBody
             var viewRot = dead ? _deathRotation : Quaternion.Euler(pitch, e.y + _orbitYaw, 0f);
             Vector3 fwd = viewRot * Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, fwd); if (right.sqrMagnitude < 1e-4f) right = viewRot * Vector3.right; right.Normalize();
-            Transform car = Game.InCar ? Game.CarRoot : null;
+            Transform car = Core.PlayerState.InCar ? Core.PlayerState.CarRoot : null;
             Vector3 pivot = t.position + Vector3.up * (car != null ? CameraSettings.ThirdCarHeight.Value : CameraSettings.ThirdHeight.Value);
             if (dead && BodyRunner.RagdollVisible) pivot = BodyRunner.DeathFocus + Vector3.up * 0.35f;
             float zk = ZoomEase;
@@ -283,7 +283,7 @@ namespace WildWasteland.Modules.PlayerBody
             Vector3 d = want - pivot;
             float max = d.magnitude;
             float dist = max;
-            bool cutaway = Game.Ready && CameraSettings.OcclusionPrototype.Value && (!Game.InCar || CameraSettings.OcclusionInVehicle.Value) && !Cave.Inside && OcclusionCutaway.Available;   // (2.2.9) not in caves   // (2.2.6) the same test as Tick's Stop   // driving: culling only with its own setting
+            bool cutaway = Game.Ready && CameraSettings.OcclusionPrototype.Value && (!Core.PlayerState.InCar || CameraSettings.OcclusionInVehicle.Value) && !Cave.Inside && OcclusionCutaway.Available;   // (2.2.9) not in caves   // (2.2.6) the same test as Tick's Stop   // driving: culling only with its own setting
             if (!cutaway)
             {
                 int n = Physics.SphereCastNonAlloc(pivot, 0.2f, d / Mathf.Max(max, 1e-4f), _hits, max, Mask, QueryTriggerInteraction.Ignore);   // (2.2.6) no array per frame
@@ -331,7 +331,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Contributes the current body/traversal eye to Core's camera view channel.</summary>
         private static bool WriteView(Camera cam, ref Matrix4x4 view)
         {
-            if (cam == null || cam != Game.Cam) return false;
+            if (cam == null || cam != Core.PlayerState.Camera) return false;
             if (Peek) { HasView = false; return false; }
             var t = cam.transform;
             if (!On)
@@ -339,7 +339,7 @@ namespace WildWasteland.Modules.PlayerBody
                 Vector3 eye;
                 if (!ModAPI.TryPlayerTraversalEye(out eye))
                 {
-                    if (!CarShift || Game.Player == null) return false;
+                    if (!CarShift || Core.PlayerState.Player == null) return false;
                     eye = CarShiftEye(t);
                 }
                 view = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(eye, t.rotation, Vector3.one).inverse;
@@ -354,7 +354,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Contributes the same zoom projection used to place the dynamic crosshair.</summary>
         private static bool WriteProjection(Camera cam, ref Matrix4x4 projection)
         {
-            if (cam == null || cam != Game.Cam || !On || Peek) return false;
+            if (cam == null || cam != Core.PlayerState.Camera || !On || Peek) return false;
             ComputeView(cam);
             if (Mathf.Abs(_vFov - _gameFov) <= 1e-3f) return false;
             projection = Projection(cam, _vFov);
@@ -384,8 +384,8 @@ namespace WildWasteland.Modules.PlayerBody
         public static void LateCrosshair()
         {
             HasCrosshair = false;
-            var cam = Game.Cam;
-            if (!CameraSettings.DynamicCrosshair.Value || !On || Peek || cam == null || Game.Dead || Game.Paused) { _dynK = 0f; Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
+            var cam = Core.PlayerState.Camera;
+            if (!CameraSettings.DynamicCrosshair.Value || !On || Peek || cam == null || Core.PlayerState.Dead || Core.PlayerState.Paused) { _dynK = 0f; Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
             // no weapon drawn: centred crosshair once the view has turned back to the aim point (placed with the drawn view until then)
             if (!DynamicWanted && _dynK <= 0f) { Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
             var t = cam.transform;
@@ -437,9 +437,9 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>True for the player, her camera rig and her car (the eye ray ignores them).</summary>
         private static bool Mine(Transform t)
         {
-            return Game.Player != null && t.IsChildOf(Game.Player.transform) || Game.PlayerCamera != null && t.IsChildOf(Game.PlayerCamera)
-                || Game.CameraHolder != null && t.IsChildOf(Game.CameraHolder)
-                || Game.InCar && Game.CarRoot != null && t.IsChildOf(Game.CarRoot);   // the gun mod / game ignore their own car too
+            return Core.PlayerState.Player != null && t.IsChildOf(Core.PlayerState.Player.transform) || Core.PlayerState.PlayerCamera != null && t.IsChildOf(Core.PlayerState.PlayerCamera)
+                || Core.PlayerState.CameraHolder != null && t.IsChildOf(Core.PlayerState.CameraHolder)
+                || Core.PlayerState.InCar && Core.PlayerState.CarRoot != null && t.IsChildOf(Core.PlayerState.CarRoot);   // the gun mod / game ignore their own car too
         }
 
 
@@ -447,7 +447,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>First person in the car with the body shown: the eye drawn CarCameraForward metres ahead along the seat facing.</summary>
         public static Vector3 CarShiftEye(Transform cam)
         {
-            Vector3 f = Game.Player != null ? Game.Player.transform.forward : cam.forward; f.y = 0f;
+            Vector3 f = Core.PlayerState.Player != null ? Core.PlayerState.Player.transform.forward : cam.forward; f.y = 0f;
             if (f.sqrMagnitude < 1e-4f) { f = cam.forward; f.y = 0f; }
             if (f.sqrMagnitude < 1e-4f) return cam.position;
             return cam.position + f.normalized * CarSeatSettings.CarCameraForward.Value;
@@ -461,16 +461,16 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Hides the first-person weapon / arm renderers under the player camera (rescanned twice a second; the carried item stays visible).</summary>
         private static void HideViewModel()
         {
-            if (Time.unscaledTime < _nextScan || Game.PlayerCamera == null) return;
+            if (Time.unscaledTime < _nextScan || Core.PlayerState.PlayerCamera == null) return;
             _nextScan = Time.unscaledTime + 0.5f;
-            var hand = Game.PlayerCamera.Find("Hand");   // the item being carried stays visible
+            var hand = Core.PlayerState.PlayerCamera.Find("Hand");   // the item being carried stays visible
             for (int i = _hidden.Count - 1; i >= 0; i--)
             {
                 var h = _hidden[i];
                 if (h == null) { _hidden.RemoveAt(i); continue; }
-                if (!h.transform.IsChildOf(Game.PlayerCamera) || hand != null && h.transform.IsChildOf(hand)) { h.forceRenderingOff = false; _hidden.RemoveAt(i); }   // dropped / picked up
+                if (!h.transform.IsChildOf(Core.PlayerState.PlayerCamera) || hand != null && h.transform.IsChildOf(hand)) { h.forceRenderingOff = false; _hidden.RemoveAt(i); }   // dropped / picked up
             }
-            Game.PlayerCamera.GetComponentsInChildren<Renderer>(true, _scanRenderers);   // (WW perf) List overload, no array per scan
+            Core.PlayerState.PlayerCamera.GetComponentsInChildren<Renderer>(true, _scanRenderers);   // (WW perf) List overload, no array per scan
             for (int i = 0; i < _scanRenderers.Count; i++)
             {
                 var r = _scanRenderers[i];
@@ -496,8 +496,8 @@ namespace WildWasteland.Modules.PlayerBody
             Core.ModApi.Get<Core.ICursorPresentation>()?.SetAimZoom(false);
             _deathView = false;
             ShowViewModel();
-            if (_hooked) { Core.CameraArbiter.Remove(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); _hooked = false; if (Game.Cam != null) Game.Cam.ResetCullingMatrix(); }
-            if (Game.Cam != null) Game.Cam.ResetWorldToCameraMatrix();
+            if (_hooked) { Core.CameraArbiter.Remove(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); _hooked = false; if (Core.PlayerState.Camera != null) Core.PlayerState.Camera.ResetCullingMatrix(); }
+            if (Core.PlayerState.Camera != null) Core.PlayerState.Camera.ResetWorldToCameraMatrix();
             CameraRigApi.Publish();
         }
     }

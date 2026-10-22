@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.Patrols
             {goal=TrafficSpace.Scene(journey.arrived?journey.route[journey.route.Length-1]:RoadPath.Target(journey.route,journey.leg,TrafficSpace.World(transform.position),journey.speed));cruise=journey.speed;stop=journey.arrived||journey.waitSeconds>0f;return true;}
             Vector3 player, velocity; GameObject car;
             player=velocity=Vector3.zero;car=null;
-            bool hasPlayer = TrafficFactions.PlayerHostile(journey.faction)&&PlayerRef.Target(out player, out velocity, out car) && !PlayerRef.GodMode
+            bool hasPlayer = TrafficFactions.PlayerHostile(journey.faction)&&Core.PlayerState.Target(out player, out velocity, out car) && !Core.PlayerState.GodMode
                 && Time.time >= _ignorePlayerUntil && !(journey.convoy && PatrolPoi.PlayerRoot != null);
             float distance = hasPlayer ? TrafficLocations.FlatDistance(journey.position, TrafficSpace.World(player)) : float.MaxValue;
             SensePlayer(journey, hasPlayer, player, car);   // NPCAI part: TrafficAgent.Sensing.cs (sight/hearing of the player)
@@ -94,11 +94,11 @@ namespace WildWasteland.Modules.Patrols
                 if (!journey.convoy)
                 {
                     var crew = GetComponent<Crew>();
-                    return !PlayerRef.GodMode&&(_detected||Time.time<SeenUntil||crew!=null&&crew.PoiExit&&crew.PoiEngaged);
+                    return !Core.PlayerState.GodMode&&(_detected||Time.time<SeenUntil||crew!=null&&crew.PoiExit&&crew.PoiEngaged);
                 }
                 if (PatrolPoi.PlayerRoot != null) return false;
-                var player = PlayerRef.Player;
-                return player != null && !PlayerRef.GodMode
+                var player = Core.PlayerState.Transform;
+                return player != null && !Core.PlayerState.GodMode
                     && TrafficLocations.FlatDistance(journey.position, TrafficSpace.World(player.position)) <= PatrolsModule.ConvoyGuardRange.Value;
             }
         }
@@ -202,7 +202,7 @@ namespace WildWasteland.Modules.Patrols
             if (_elapsed < .25f) return;
             float seconds = _elapsed; _elapsed = 0f;
             try { Tick(seconds); }
-            catch (Exception e) { Core.Log.Error("[Patrols] " + "World traffic: " + e); }
+            catch (Exception e) { Core.Log.Error(null,"[Patrols] " + "World traffic: " + e); }
         }
 
         private readonly List<TrafficJourney> _tickJourneys = new List<TrafficJourney>();
@@ -210,7 +210,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Advances scheduled work under the current save, pause and admission gates.</summary>
         private void Tick(float seconds)
         {
-            var player = PlayerRef.Player; if (player == null) return;
+            var player = Core.PlayerState.Transform; if (player == null) return;
             int nearby=TrafficLocations.NearbyCount(TrafficSpace.World(player.position),PatrolsModule.CampTrafficRange.Value);
             bool vehiclesAvailable=VehiclePreparation.Available;
             if(vehiclesAvailable){BattleTick(seconds,player);ExcludeClearedBases();TrimPopulation(player);}
@@ -239,7 +239,7 @@ namespace WildWasteland.Modules.Patrols
                         var car = pair.Value;
                         var marker = car != null ? car.GetComponent<PatrolMarker>() : null;
                         var crew = car != null ? car.GetComponent<Crew>() : null;
-                        if (marker == null || marker.PlayerEntered || PlayerRef.PlayerCar == car || marker.Exploded
+                        if (marker == null || marker.PlayerEntered || Core.PlayerState.Car == car || marker.Exploded
                             || crew == null || !crew.CrewAlive || crew.Phase == CrewPhase.Released)
                         {
                             if (crew != null && crew.Regroup != null) continue;   // its crew may still walk back (CrewReturn); retired once that ends
@@ -295,10 +295,10 @@ namespace WildWasteland.Modules.Patrols
             if (Time.time >= _nextFootSecond) { _nextFootSecond = Time.time + 1f; StrandedTick(1f); }
             if (!TrafficLocations.DiscoveryReady)
             {
-                if (_populationWait != 2 && Core.Log.Verbose) PatrolsModule.Verbose("Traffic: no new groups until camp discovery finishes (" + TrafficLocations.DiscoveryLeft + " transforms queued)");
+                if (_populationWait != 2 && Core.Log.L1) PatrolsModule.Verbose("Traffic: no new groups until camp discovery finishes (" + TrafficLocations.DiscoveryLeft + " transforms queued)");
                 _populationWait = 2; return;
             }
-            if (_populationWait != 0 && Core.Log.Verbose) PatrolsModule.Verbose("Traffic: camp discovery done (" + TrafficLocations.Known.Count + " camps known), new groups may leave");
+            if (_populationWait != 0 && Core.Log.L1) PatrolsModule.Verbose("Traffic: camp discovery done (" + TrafficLocations.Known.Count + " camps known), new groups may leave");
             _populationWait = 0;
             if (Time.time < _nextPopulation) return;
             _nextPopulation = Time.time + 1f;
@@ -365,7 +365,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 if(!pending.Job.Complete)return;
                 _departures.Remove(convoy);
-                if(pending.Job.Error!=null)Core.Log.Warn("[Patrols] " + "Road planning: "+pending.Job.Error);
+                if(pending.Job.Error!=null)Core.Log.Warn(null,"[Patrols] " + "Road planning: "+pending.Job.Error);
                 pending.Source=pending.Job.Source;pending.Destination=pending.Job.Destination;
                 var route=pending.Job.Route;
                 PatrolsModule.Verbose(route!=null?"Vehicle route certified: "+pending.Source.id+" -> "+pending.Destination.id+", "+route.Length+" waypoints":"Vehicle route deferred: no continuous known, even ground between candidate bases.");
@@ -380,7 +380,7 @@ namespace WildWasteland.Modules.Patrols
             }
             // At most one outstanding departure per role; failed pairs don't trigger a burst of graph searches.
             {
-                var player=PlayerRef.Player;
+                var player=Core.PlayerState.Transform;
                 var local=player!=null?TrafficLocations.NearbyBases(TrafficSpace.World(player.position),PatrolsModule.CampTrafficRange.Value):new TrafficBase[0];
                 if(!convoy)local=local.Where(c=>!TrafficLocations.PlayerAt(c)).ToArray();
                 if(local.Length==0&&(convoy||player==null))return;
@@ -705,14 +705,14 @@ namespace WildWasteland.Modules.Patrols
             _instance.CaptureFoot();
             foreach(var battle in _instance._battles)if(_instance._battleLive.TryGetValue(battle.id,out var live)&&!battle.resolved)
                 foreach(var car in live.Cars.Values)if(car!=null){var tag=car.GetComponent<BattleCar>();if(tag!=null)CaptureState(car,(tag.Side==0?battle.sideA:battle.sideB)[tag.Slot]);}
-            return TrafficCodec.Write(new TrafficSave { bases = TrafficLocations.Known.Values.ToArray(),pois=TrafficLocations.Points.Values.ToArray(), journeys = _instance._journeys.ToArray(),battles=_instance._battles.ToArray() });
+            return Core.RecordJson.WriteRecord(new TrafficSave { bases = TrafficLocations.Known.Values.ToArray(),pois=TrafficLocations.Points.Values.ToArray(), journeys = _instance._journeys.ToArray(),battles=_instance._battles.ToArray() });
         }
 
         /// <summary>Restores json for the current world traffic.</summary>
         internal static void RestoreJson(string json)
         {
             if (_instance == null || string.IsNullOrEmpty(json)) return;
-            var saved = TrafficCodec.Read(json);
+            var saved = Core.RecordJson.ReadRecord<TrafficSave>(json);
             if (saved == null || saved.version != 2 || saved.bases == null || saved.journeys == null
                 || saved.bases.Length > 512 || saved.journeys.Length > 128) throw new System.IO.InvalidDataException("Invalid world traffic save");
             foreach (var b in saved.bases) if (b != null && !string.IsNullOrEmpty(b.id)) TrafficLocations.Known[b.id] = b;

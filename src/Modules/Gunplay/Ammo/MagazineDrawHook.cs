@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// (WW) Handler of Core.Hooks.ActivateGameObjectEnter (prefix, never skips).
     internal static class MagazineDrawHook

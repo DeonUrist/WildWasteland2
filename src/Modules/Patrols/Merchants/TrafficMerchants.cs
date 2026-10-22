@@ -19,17 +19,17 @@ namespace WildWasteland.Modules.Patrols
         {return MerchantHost.All.Any(h=>h!=null&&h.Data!=null&&Find(h.GetComponent<PatrolMarker>()?.TrafficId)?.townResident!=true&&MerchantCatalog.Selected(h.Data.types)==type)||(_instance!=null&&(_instance._journeys.Any(j=>j.merchant&&!j.townResident&&j.vehicles.Any(v=>MerchantCatalog.Selected(v.merchantTypes)==type))||_instance._nearDepartures.Any(d=>d.Role==2&&d.Type==type)||_instance._townDepartures.Any(d=>d.Journey.merchant&&d.Journey.vehicles.Any(v=>MerchantCatalog.Selected(v.merchantTypes)==type))));}
         /// <summary>Checks the current debug departure condition for traffic merchants.</summary>
         internal static bool DebugDeparture(SpawnGroup group,int role)
-        {if(_instance==null||group==null||role<0||role>2||!PatrolsModule.ConvoyEnabled.Value){Core.Log.Warn("[Patrols] " + "Select New arrival or Fury road in Game > World > Enemy Vehicles and select a group before creating a route.");return false;}return _instance.QueueNearby(group,role);}
+        {if(_instance==null||group==null||role<0||role>2||!PatrolsModule.ConvoyEnabled.Value){Core.Log.Warn(null,"[Patrols] " + "Select New arrival or Fury road in Game > World > Enemy Vehicles and select a group before creating a route.");return false;}return _instance.QueueNearby(group,role);}
         /// <summary>Queues nearby for the current traffic merchants.</summary>
         private bool QueueNearby(SpawnGroup group,int role)
         {
-            if(role==2&&PatrolsModule.MerchantSpawnChance.Value<=0f){Core.Log.Warn("[Patrols] " + "Route not created: merchant spawn chance is zero.");return false;}
+            if(role==2&&PatrolsModule.MerchantSpawnChance.Value<=0f){Core.Log.Warn(null,"[Patrols] " + "Route not created: merchant spawn chance is zero.");return false;}
             int cap=role==2?PatrolsModule.MaxMerchants.Value:role==1?PatrolsModule.MaxConvoys.Value:PatrolsModule.MaxPatrols.Value;
             int manual=role==2?MerchantHost.All.Count(h=>h!=null&&!Owns(h.GetComponent<PatrolMarker>())):0;
-            if(RoleCount(role)+manual>=cap||RoleCount(0)+RoleCount(1)+RoleCount(2)>=PatrolsModule.TrafficMaxGroups.Value){Core.Log.Warn("[Patrols] " + "Route not created: maximum population reached.");return false;}
-            var player=PlayerRef.Player;if(player==null)return false;
+            if(RoleCount(role)+manual>=cap||RoleCount(0)+RoleCount(1)+RoleCount(2)>=PatrolsModule.TrafficMaxGroups.Value){Core.Log.Warn(null,"[Patrols] " + "Route not created: maximum population reached.");return false;}
+            var player=Core.PlayerState.Transform;if(player==null)return false;
             var type=MerchantCatalog.Selected(group.MerchantTypes);
-            if(role==2&&MerchantTypeInUse(type)){Core.Log.Warn("[Patrols] " + "A "+MerchantCatalog.Label(type)+" merchant already exists.");return false;}
+            if(role==2&&MerchantTypeInUse(type)){Core.Log.Warn(null,"[Patrols] " + "A "+MerchantCatalog.Label(type)+" merchant already exists.");return false;}
             var roster=role==2?group.Templates.Select(CarTemplate.Find).Where(t=>t!=null&&t.Available&&CrewFactions.Compatible(t,group.Faction)).OrderBy(t=>UnityEngine.Random.value).Take(1).Select(t=>t.CloneForSpawn()).ToList():EditorStore.ComposeFull(group,role==1,()=>UnityEngine.Random.value);
             if(roster.Count==0)return false;
             if(role==2)foreach(var car in roster){MerchantRuntime.Configure(car,group);car.MerchantTravelling=true;car.ReleaseHandbrake=true;}
@@ -42,7 +42,7 @@ namespace WildWasteland.Modules.Patrols
             if(role==2||(role==0&&TrafficFactions.Normalize(group.Faction)=="Coyotes"))
             {entry.apron=OffscreenTrafficPoint(middle.apron,-direction);exit.apron=OffscreenTrafficPoint(middle.apron,direction);}
             _nearDepartures.Add(new NearbyDeparture{Role=role,Name=group.Name,Faction=group.Faction,Type=type,Vehicles=roster.Select(Freeze).ToArray(),Incoming=RoadPlanner.RequestRoute(entry,middle,role!=0),Outgoing=RoadPlanner.RequestRoute(middle,exit,role!=0)});
-            Core.Log.Info("[Patrols] " + "Planning nearby route for "+group.Name);return true;
+            Core.Log.Main(null,"[Patrols] " + "Planning nearby route for "+group.Name);return true;
         }
         /// <summary>Advances queued nearby routes for the current traffic merchants.</summary>
         private void PumpNearbyRoutes()
@@ -94,9 +94,9 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Updates arrival and departure notifications from retained merchant journey state.</summary>
         private void MerchantSignals()
         {
-            var player=PlayerRef.Player;if(player==null)return;var keyboard=Keyboard.current;
+            var player=Core.PlayerState.Transform;if(player==null)return;var keyboard=Keyboard.current;
             if(keyboard!=null&&keyboard.qKey.wasPressedThisFrame&&(keyboard.leftAltKey.isPressed||keyboard.rightAltKey.isPressed))StopMerchants(TrafficSpace.World(player.position),30f);
-            var car=PlayerRef.PlayerCar;
+            var car=Core.PlayerState.Car;
             if(car!=_hornCar){_hornCar=car;_hornFsm=car!=null?car.GetComponentsInChildren<PlayMakerFSM>(true).FirstOrDefault(f=>f.FsmName=="INPUT_Horn"):null;_hornOn=false;}
             bool horn=_hornFsm!=null&&_hornFsm.ActiveStateName=="on";
             if(horn&&!_hornOn)StopMerchants(TrafficSpace.World(player.position),100f);_hornOn=horn;

@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.HUD
         private static Font _font;
         private static int _textCount;
 
-        // called by the Guns module (Services.Hud) for every player bullet that hits a creature (damage < 0 in the game's convention)
+        // called by the Guns module (Core.ModApi.Get<Core.IHitFeedback>()) for every player bullet that hits a creature (damage < 0 in the game's convention)
         /// <summary>Queues player damage and headshot feedback, merging nearby hits on one target.</summary>
         public static void PlayerHit(GameObject target, Vector3 point, float damage, bool head)
         {

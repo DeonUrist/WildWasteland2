@@ -1,4 +1,3 @@
-using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +6,6 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
-using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -250,7 +248,7 @@ namespace WildWasteland.Modules.Patrols
                 }
                 if (Core.Log.L1) PatrolsModule.Verbose("Rider: " + name + " blew up at " + at);
             }
-            catch (Exception e) { Core.Log.Warn("Rider: detonate: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(null,"Rider: detonate: " + e.Message); }
             if (_marker != null) _marker.DropRider(gameObject);
             Destroy(gameObject);
         }
@@ -294,7 +292,7 @@ namespace WildWasteland.Modules.Patrols
                 SimpleBanditBridge.Fight(mob);
                 TrafficFactions.Dismount(mob,_car);
                 mob.SetActive(true);
-                Register.Name(mob, prefab.name); CrewLooks.Transfer(gameObject, mob); Register.Add(mob, false);
+                Core.ItemSpawner.Name(mob, prefab.name); CrewLooks.Transfer(gameObject, mob); Core.ItemSpawner.AddExisting(mob, false);
                 if (health > 0f) { Patrol.SetHealth(mob, health); mob.AddComponent<Patrol.LateHealth>().Value = health; }
                 if (_car != null)   // it leaves the vehicle: never caught on it
                 {
@@ -353,10 +351,10 @@ namespace WildWasteland.Modules.Patrols
                 mob.SetActive(true);
                 var col = mob.GetComponent<Collider>();
                 if (col != null) mob.transform.position += Vector3.up * (at.y + 0.15f - col.bounds.min.y);
-                Register.Name(mob, prefab.name); CrewLooks.Transfer(gameObject, mob); Register.Add(mob, false);
+                Core.ItemSpawner.Name(mob, prefab.name); CrewLooks.Transfer(gameObject, mob); Core.ItemSpawner.AddExisting(mob, false);
                 if (health > 0f) { Patrol.SetHealth(mob, health); mob.AddComponent<Patrol.LateHealth>().Value = health; }
                 if (Core.Log.L1) PatrolsModule.Verbose("Rider: " + mob.name + " landed and fights on foot");
-                Core.Services.RaiseCrewBailedOut(_car, gameObject, mob);
+                var departed=new Core.Events.CrewBailedOut { Vehicle=Core.Entities.Of(_car),Passenger=Core.Entities.Of(gameObject),Npc=Core.Entities.Of(mob),Reason=Core.Events.CrewLeaveReason.Jump,WorldPos=Core.Origin.World(mob.transform.position) };Core.ModEvents.Publish(ref departed);
                 Dismounted(mob);
             }
             if (_marker != null) _marker.DropRider(gameObject);

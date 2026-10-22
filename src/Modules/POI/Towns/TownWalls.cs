@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.POI
             for (int i = Trees.Count - 1; i >= 0; i--)
             {
                 if (TownAssets.ColliderBox(Trees[i].transform, out box)) Dressing.TreeLocal.Insert(0, box);
-                else { Log.Warn("[POI] kit tree without colliders skipped: " + Trees[i].name); Trees.RemoveAt(i); }
+                else { Log.Warn(null,"[POI] kit tree without colliders skipped: " + Trees[i].name); Trees.RemoveAt(i); }
             }
             foreach (var prefab in prefabs) if (prefab.name == "Camp_14")
             {
@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.POI
                 break;
             }
             if (Available) { LoadGateTextures(); Log.Main(null, "[POI] perimeter kit: Camp_14 heavy metal fences and faction entrance banners; four open vehicle gates."); }
-            else Log.Warn("[POI] native Camp_14 perimeter kit missing; wall prototype unavailable (towns retained).");
+            else Log.Warn(null,"[POI] native Camp_14 perimeter kit missing; wall prototype unavailable (towns retained).");
         }
         /// <summary>Loads module-owned faction gate artwork and native shader materials.</summary>
         private void LoadGateTextures()
@@ -86,7 +86,7 @@ namespace WildWasteland.Modules.POI
                     _gateTextures[i] = texture; texture = null;
                     Log.Main(null, "[POI] gate texture loaded: " + path);
                 }
-                catch (Exception e) { Log.Warn("[POI] gate texture retained native banner: " + path + "; " + e.Message); }
+                catch (Exception e) { Log.Warn(null,"[POI] gate texture retained native banner: " + path + "; " + e.Message); }
                 finally { if (texture != null) UnityEngine.Object.Destroy(texture); }
             }
         }

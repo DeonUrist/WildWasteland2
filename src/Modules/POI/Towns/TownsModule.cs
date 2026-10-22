@@ -198,15 +198,15 @@ namespace WildWasteland.Modules.POI
                 // Draft and main must agree: draft only uses an existing saved/previously generated plan.
                 // An unseen draft stays natural; it never invents a differently positioned town.
                 if (data.isDraft && input.Saved == null) input.Chance = 0;
-                if (Services.Poi == null) input.Chance = 0;
-                if (Services.PoiNavSetup) input.Chance = 0;   // NPC POI pathfinding setup: no new towns while it runs
+                if (Core.ModApi.Get<Core.IPoiApi>()== null) input.Chance = 0;
+                if ((Core.ModApi.Get<Core.INavApi>()?.WorldGenerationSuspended==true)) input.Chance = 0;   // NPC POI pathfinding setup: no new towns while it runs
                 if (input.Saved != null && input.Saved.HasTown)
                     foreach (var lot in input.Saved.Lots) if (!lot.IsParking && !lot.Skipped && !registration.Assets.Buildings.ContainsKey(lot.Prefab))
                         throw new InvalidOperationException("Saved town requires unavailable prefab " + lot.Prefab + "; restore its catalog before loading.");
                 bool startingChunk = tile.coord.x == 0 && tile.coord.z == 0 && !_settings.PoiNearSpawn.Value;
                 _captures[data] = new Capture { Registration = registration, Input = input, Epoch = _epoch, GasStation = _gasStation.Capture(tile, data, key, startingChunk, registration.Assets) };
             }
-            catch (Exception e) { Log.Warn("[POI] skipped terrain preparation: " + e.Message); }
+            catch (Exception e) { Log.Warn(null,"[POI] skipped terrain preparation: " + e.Message); }
         }
         /// <summary>Captures worker products before MapMagic releases its generation buffers.</summary>
         private void Finalized(TerrainTile tile, TileData data, StopToken stop)
@@ -255,8 +255,8 @@ namespace WildWasteland.Modules.POI
             if (data == null || !_captures.TryRemove(data, out capture)) return;
             if (!_running || _blocked || data.isDraft || tile == null || capture.Epoch != _epoch || (stop != null && stop.stop)) return;
             try { _gasStation.Applied(capture.GasStation, tile, capture.Registration.Assets, _dressing); }
-            catch (Exception e) { Log.Warn("[POI] gas station placement stopped: " + e.Message); }
-            if (capture.Input.Error != null) { Log.Warn("[POI] skipped generation: " + capture.Input.Error); return; }
+            catch (Exception e) { Log.Warn(null,"[POI] gas station placement stopped: " + e.Message); }
+            if (capture.Input.Error != null) { Log.Warn(null,"[POI] skipped generation: " + capture.Input.Error); return; }
             if (capture.Plan == null) return;
             try
             {
@@ -273,7 +273,7 @@ namespace WildWasteland.Modules.POI
                 {
                     if (plan.Decision.StartsWith("town placement pending:", StringComparison.Ordinal))
                     {
-                        Log.Warn("[POI] unmet town request " + plan.Key + ": " + plan.Decision + "; retained for retry, no existing town moved.");
+                        Log.Warn(null,"[POI] unmet town request " + plan.Key + ": " + plan.Decision + "; retained for retry, no existing town moved.");
 
                     }
                     return;
@@ -287,7 +287,7 @@ namespace WildWasteland.Modules.POI
                 site.Loading = capture.Input.Progress;
                 _sites.Add(new Live { Tile = tile, Registration = capture.Registration, Site = site }); _revision++;
             }
-            catch (Exception e) { Log.Warn("[POI] stopped applying town; existing objects retained: " + e.Message); }
+            catch (Exception e) { Log.Warn(null,"[POI] stopped applying town; existing objects retained: " + e.Message); }
         }
         /// <summary>Builds the stable seed-and-tile identity of a town decision.</summary>
         private static string ChunkKey(int seed, int x, int z)
@@ -378,11 +378,11 @@ namespace WildWasteland.Modules.POI
                     catch (Exception e)
                     {
                         if (site.Staged != null) { UnityEngine.Object.Destroy(site.Staged); site.Staged = null; }
-                        Log.Warn("[POI] lot " + site.Plan.Key + "/" + site.NextLot + " attempt " + (++live.LotFailures) + ": " + e.Message);
+                        Log.Warn(null,"[POI] lot " + site.Plan.Key + "/" + site.NextLot + " attempt " + (++live.LotFailures) + ": " + e.Message);
                         if (live.LotFailures >= 2)
                         {
                             try { TownFactory.KeepGeometry(site, site.NextLot, live.Tile.objectsPool.transform); }
-                            catch (Exception keepError) { Log.Warn("[POI] retained partial lot: " + keepError.Message); }
+                            catch (Exception keepError) { Log.Warn(null,"[POI] retained partial lot: " + keepError.Message); }
                             site.NextLot++; live.LotFailures = 0; site.PopulationCounts = site.LootCounts = null;
                         }
                     }
@@ -414,7 +414,7 @@ namespace WildWasteland.Modules.POI
                     if (!TownBakeBridge.Enabled) { Finish(live, "NPC navigation off; placed objects and individual maps retained"); return true; }
                     if (site.PrepSteps > PrepStepLimit || Time.unscaledTime - live.PreparedAt >= 60)
                     {
-                        Log.Warn("[POI] preparation budget reached " + site.Plan.Key + " after " + site.PrepSteps + " steps / " + (Time.unscaledTime - live.PreparedAt).ToString("0", CultureInfo.InvariantCulture)
+                        Log.Warn(null,"[POI] preparation budget reached " + site.Plan.Key + " after " + site.PrepSteps + " steps / " + (Time.unscaledTime - live.PreparedAt).ToString("0", CultureInfo.InvariantCulture)
                             + " s; overlay " + (site.Overlap != null && site.Overlap.Ready ? "ready" : "partial") + ", street routing " + (site.Navigation != null && site.Navigation.Ready ? "ready" : "incomplete") + ".");
                         Finish(live, "preparation budget reached; placed objects and individual maps retained"); return true;
                     }
@@ -430,7 +430,7 @@ namespace WildWasteland.Modules.POI
                 }
                 catch (Exception e)
                 {
-                    Log.Warn("[POI] preparation " + site.Plan.Key + " attempt " + (++live.MapFailures) + ": " + e.Message);
+                    Log.Warn(null,"[POI] preparation " + site.Plan.Key + " attempt " + (++live.MapFailures) + ": " + e.Message);
                     if (live.MapFailures >= 2)
                     {
                         if (NeedsWalls(live)) { live.WallFailed = true; if (site.Walls != null) site.Walls.Dispose(); site.Walls = null; }
@@ -452,7 +452,7 @@ namespace WildWasteland.Modules.POI
         {
             _revision++; live.Finished = true; live.Site.NavigationStopped = true;
             if (live.Site.Overlap != null && !live.Site.Overlap.Ready)
-                try { live.Site.Overlap.FinishPartial(); } catch (Exception e) { Log.Warn("[POI] stopped partial overlap: " + e.Message); }
+                try { live.Site.Overlap.FinishPartial(); } catch (Exception e) { Log.Warn(null,"[POI] stopped partial overlap: " + e.Message); }
             if (live.Site.Loading != null) live.Site.Loading.Finish(reason);
         }
         /// <summary>Refreshes live state within the existing bounded update cadence.</summary>
@@ -547,7 +547,7 @@ namespace WildWasteland.Modules.POI
         internal void OnSaveBegin(string slot)
         {
             if (!_running || string.IsNullOrEmpty(slot)) return;
-            if (_blocked) { SaveBus.ReportFailure("Towns is blocked; its world data was not saved. See [POI] error."); return; }
+            if (_blocked) { SaveBus.ReportFailure(null,"Towns is blocked; its world data was not saved. See [POI] error."); return; }
             try
             {
                 foreach (var live in _sites) TownFactory.Capture(live.Site, _records[live.Site.Plan.Key], live.Registration.Assets);
@@ -555,7 +555,7 @@ namespace WildWasteland.Modules.POI
                 TownSaveRecord.Save(slot, _records);
                 if (_dressing != null) _dressing.Markers.Save(slot);
             }
-            catch (Exception e) { SaveBus.ReportFailure("Towns save failed: " + e.Message); Block("saving", e); }
+            catch (Exception e) { SaveBus.ReportFailure(null,"Towns save failed: " + e.Message); Block("saving", e); }
         }
         /// <summary>Restores the selected ES3 world records before generation resumes.</summary>
         internal void OnLoadBegin(string slot)
@@ -585,7 +585,7 @@ namespace WildWasteland.Modules.POI
         { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); foreach(var r in _graphs.Values)Undo(r);_graphs.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
         /// <summary>Latches a stage failure so corrupt or unavailable state cannot be silently overwritten.</summary>
         private void Block(string stage, Exception e)
-        { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[POI] blocked during " + stage + "; no replacement layout will be invented", e); }
+        { _blocked = true; TownLoading.Failed(e.Message); Log.Error(null,"[POI] blocked during " + stage + "; no replacement layout will be invented", e); }
         /// <summary>Restores original graph links and disposes the captured generation assets.</summary>
         private static void Undo(Registration registration)
         {

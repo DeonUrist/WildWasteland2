@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Updates the weather map overlay.</summary>
         internal void Tick(MapMarkers questMap)
         {
-            var weather = Services.Weather;
+            var weather = Core.ModApi.Get<Core.IWeatherRegions>();
             Camera camera; RectTransform map;
             bool shown = questMap != null && weather != null && weather.Count > 0 && weather.MapAreas;
             if (!shown || !questMap.TryWeatherView(out camera, out map))

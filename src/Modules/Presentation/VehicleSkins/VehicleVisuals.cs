@@ -1,6 +1,5 @@
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
 namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Applies actual authored faction paint, cargo artwork and frame renderer repair.</summary>

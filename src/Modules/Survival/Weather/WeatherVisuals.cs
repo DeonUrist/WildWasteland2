@@ -72,12 +72,12 @@ namespace WildWasteland.Modules.Survival
                 for (int i = 0; i < _properties.Length; i++) _properties[i] = new MaterialPropertyBlock();
                 Ready = _smokeMaterial.shader.isSupported && _core.shader.isSupported && _discharge.shader.isSupported && _atmosphere.Supported;
                 if (!Ready) throw new IOException("Weather shader unsupported on this graphics device");
-                Log.Always("[Weather] Cohesive front revision: solid regional dust, rolling wall/cloud bank, camera-scoped Azure sky and sunlight; 4/6/8 fog samples.");
-                Log.Always("[Weather] Vanilla local sand clouds selected; native motion/material preserved, desaturated brown tint; no managed particle simulation or terrain probes.");
-                Log.Always("[Weather] Continuous dust volume with spiral tops merging into wall-colored ceiling clouds; thick orbiting ground dust and open eye.");
-                Log.Always("[Weather] Width-correct density filtering; visible strikes flash camera-scoped world lighting and queue distance-delayed thunder.");
+                Log.Always(null,"[Weather] Cohesive front revision: solid regional dust, rolling wall/cloud bank, camera-scoped Azure sky and sunlight; 4/6/8 fog samples.");
+                Log.Always(null,"[Weather] Vanilla local sand clouds selected; native motion/material preserved, desaturated brown tint; no managed particle simulation or terrain probes.");
+                Log.Always(null,"[Weather] Continuous dust volume with spiral tops merging into wall-colored ceiling clouds; thick orbiting ground dust and open eye.");
+                Log.Always(null,"[Weather] Width-correct density filtering; visible strikes flash camera-scoped world lighting and queue distance-delayed thunder.");
             }
-            catch (Exception error) { Dispose(); Log.Error("[Weather] Preview assets failed", error); }
+            catch (Exception error) { Dispose(); Log.Error(null,"[Weather] Preview assets failed", error); }
         }
 
         /// <summary>Loads one required named asset from the installed weather bundle.</summary>
@@ -99,7 +99,7 @@ namespace WildWasteland.Modules.Survival
                 _smoke.Draw(region*48+section,Vector3.zero,rotation,_perimeter.Spans[section],0,detail,leading,_properties[0]);
             }
             _smoke.Suspend(); _vortexSmoke.Prepare(columns,detail);
-            Log.Always("[Weather] Storm assets and particle banks prepared at start/load; retained until Weather shutdown.");
+            Log.Always(null,"[Weather] Storm assets and particle banks prepared at start/load; retained until Weather shutdown.");
         }
         /// <summary>Prepares native dust and debris pools once their sources are available.</summary>
         internal bool PrepareNative()
@@ -115,7 +115,7 @@ namespace WildWasteland.Modules.Survival
             _drawing = 0; _clock = clock; _flash=0; _atmosphere.Begin(camera);
             _smoke.Begin(camera);
             _vortexSmoke.Begin(camera);
-            var policy = Services.WeatherVisualPolicy;
+            var policy = Core.ModApi.Get<Core.IWeatherVisualPolicy>();
             _debris.Begin(camera,policy != null ? policy.WeatherDetail : WeatherVisualDetail.Balanced);
             GeometryUtility.CalculateFrustumPlanes(camera, _frustum);
             Shader.SetGlobalFloat(Clock, clock);

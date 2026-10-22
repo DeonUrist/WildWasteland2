@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Prototype: a second view omits only blockers; a depth-tested, feathered
     // screen window composites it over their native appearance. No material edits.
@@ -145,7 +145,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static bool Mine(Transform target)
         {
             if (target == null) return true;
-            if (Game.Player != null && target.IsChildOf(Game.Player.transform) || Game.PlayerCamera != null && target.IsChildOf(Game.PlayerCamera)) return true;
+            if (Core.PlayerState.Player != null && target.IsChildOf(Core.PlayerState.Player.transform) || Core.PlayerState.PlayerCamera != null && target.IsChildOf(Core.PlayerState.PlayerCamera)) return true;
             return ModNamed(target);
         }
         // an object of this mod (its name starts with Apocaplayer, or a parent's does) - remembered per transform while its root stays the same
@@ -241,7 +241,7 @@ namespace WildWasteland.Modules.PlayerBody
             Vector3 head, feet;
             if (!BodyRunner.TryOcclusionPoints(out head, out feet))
             {
-                Vector3 center = Game.Player != null ? Game.Player.transform.position : _main.transform.position;
+                Vector3 center = Core.PlayerState.Player != null ? Core.PlayerState.Player.transform.position : _main.transform.position;
                 head = center + Vector3.up * .85f; feet = center - Vector3.up * .75f;
             }
             float now = Time.unscaledTime;
@@ -296,7 +296,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _composite.SetVector(IdEnds, new Vector4(a.x, a.y, b.x, b.y));
                 _composite.SetFloat(IdRadius, radius); _composite.SetFloat(IdAspect, _main.aspect);
                 _composite.SetFloat(IdStrength, _strength * (1f - CameraSettings.OcclusionOpacity.Value));
-                Vector3 character = Game.Player != null && !Game.Dead ? Game.Player.transform.position : (head + feet) * .5f;
+                Vector3 character = Core.PlayerState.Player != null && !Core.PlayerState.Dead ? Core.PlayerState.Player.transform.position : (head + feet) * .5f;
                 float stopDepth = Mathf.Max(_main.nearClipPlane + .01f, Vector3.Dot(character - pos, rotation * Vector3.forward) - .075f);
                 // Restore blockers, then render only the scene beyond the character
                 // plane. A single building/terrain mesh may contain both rear and
@@ -371,7 +371,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Main camera image effect: composites the clear view over the blockers inside the feathered window when prepared.</summary>
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            if (_prepared && ThirdPerson.On && !ThirdPerson.Peek && CameraSettings.OcclusionPrototype.Value && (!Game.InCar || CameraSettings.OcclusionInVehicle.Value)) Graphics.Blit(source, destination, _composite, 0);
+            if (_prepared && ThirdPerson.On && !ThirdPerson.Peek && CameraSettings.OcclusionPrototype.Value && (!Core.PlayerState.InCar || CameraSettings.OcclusionInVehicle.Value)) Graphics.Blit(source, destination, _composite, 0);
             else Graphics.Blit(source, destination);
             _prepared = false;
         }

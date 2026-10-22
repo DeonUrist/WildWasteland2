@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // A lease on the player's animation only. The caller owns collision detection,
     // physical movement and temporarily suspending the game's movement FSMs.
@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal float EyeForward = .06f, NeckBack;   // (ladders) the first-person eye towards the ladder, the neck tilted back, degrees
         internal float[] Rungs;                       // (ladders) rung heights (world, ascending): planted feet are bent / stretched onto them
         /// <summary>The player camera while the lease is active.</summary>
-        public Transform Camera { get { return Active ? Game.PlayerCamera : null; } }
+        public Transform Camera { get { return Active ? Core.PlayerState.PlayerCamera : null; } }
         /// <summary>The first-person eye following the head (no roll / pitch) while FollowHeadInFirstPerson.</summary>
         internal bool TryEye(out Vector3 eye)
         {
@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.PlayerBody
             // under the player's control. The small eye offset keeps the lens forward
             // of the skull pivot when the character leans over the ledge.
             Vector3 target = head.position + Facing * new Vector3(0, .075f, EyeForward);
-            eye = Game.PlayerCamera != null ? Vector3.Lerp(Game.PlayerCamera.position, target, Mathf.Clamp01(Seconds / .08f)) : target;
+            eye = Core.PlayerState.PlayerCamera != null ? Vector3.Lerp(Core.PlayerState.PlayerCamera.position, target, Mathf.Clamp01(Seconds / .08f)) : target;
             return true;
         }
         /// <summary>Sets the clip time and facing; false when the lease ended.</summary>

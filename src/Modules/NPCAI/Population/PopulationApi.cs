@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.NPCAI;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// IPopulation provider (README 6.2 population rules): interior roots registered by other modules join the interior population

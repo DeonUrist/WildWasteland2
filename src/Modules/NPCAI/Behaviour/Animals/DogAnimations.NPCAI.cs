@@ -10,7 +10,7 @@ using WildWasteland.Core;
 using Dog=WildWasteland.Core.CanineState;
 
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>NPC-owned canine attack, movement, idle and native damage decisions composed with the Presentation rig provider.</summary>
     internal sealed class CanineBehaviour : Core.ICanineBehaviour

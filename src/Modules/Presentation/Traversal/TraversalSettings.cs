@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Config entries of the Presentation traversal engine (ledge climbing, ladders). Bound by <see cref="PresentationModule"/> (World part)

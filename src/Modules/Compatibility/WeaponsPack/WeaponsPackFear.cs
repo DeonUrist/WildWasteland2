@@ -8,7 +8,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// Weapons Pack part serving NPC AI (no pack assembly reference; observes the pack's own attack and burning-status contracts):
@@ -91,7 +91,7 @@ namespace WildWasteland.Modules.NPC
                 if (target == null) return;
                 burning[__instance] = target.gameObject;
                 var player = GameRefs.Player;
-                Brain.FireRetreat(target.gameObject, player != null ? player.transform.position : target.position, true); // refs-ok: REFACTOR-REQUEST B17-2
+                ModApi.Get<INpcFear>()?.FireRetreat(target.gameObject, player != null ? player.transform.position : target.position, true); // refs-ok: REFACTOR-REQUEST B17-2
             }
             catch (Exception e) { Log.Warn(_owner, "Burning fear: " + e.GetBaseException().Message); }
         }
@@ -107,7 +107,7 @@ namespace WildWasteland.Modules.NPC
             GameObject target;
             if (!burning.TryGetValue(__instance, out target)) return;
             burning.Remove(__instance);
-            if (CompatibilityHost.Npc.Running && target != null) Brain.FireRetreat(target, target.transform.position, false); // refs-ok: REFACTOR-REQUEST B17-2
+            if (CompatibilityHost.Npc.Running && target != null) ModApi.Get<INpcFear>()?.FireRetreat(target, target.transform.position, false); // refs-ok: REFACTOR-REQUEST B17-2
         }
 
         /// <summary>Prefix of the pack's ProcessHit (per chainsaw contact): captures the target's corpse actions and death compares.</summary>
@@ -193,7 +193,7 @@ namespace WildWasteland.Modules.NPC
         {
             if (hit.Done) return;
             hit.Done = true;
-            Brain.ChainsawWitnesses(hit.Corpse); // refs-ok: REFACTOR-REQUEST B17-2
+            ModApi.Get<INpcFear>()?.ChainsawWitnesses(hit.Corpse); // refs-ok: REFACTOR-REQUEST B17-2
         }
 
         /// <summary>Forgets cuts, burning NPCs and the drawn flag (load begin, scene change).</summary>

@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Smooth weapon switch timing: slot events are held while the drawn weapon lowers (0.14 s) and replayed; the lowering pose is the Presentation part.</summary>
     internal static partial class WeaponTransition

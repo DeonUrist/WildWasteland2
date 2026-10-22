@@ -4,7 +4,7 @@ using BepInEx.Configuration;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Owns access to real stored navigation data and runtime graph views; no editor state lives here.</summary>
     internal sealed class NavigationAuthoringApi : INavigationAuthoring

@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// The ignition hotkey is a row in the game's own Controls screen ("Ignition", after Handbrake), not a config entry (2.3.2).

@@ -3,7 +3,7 @@ using System.Globalization;
 using BepInEx.Configuration;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>War Rig release tuning and layout (fixed constants) plus the two player switches, bound by Vehicles in [Vehicles / War Rig].</summary>
     internal static class S

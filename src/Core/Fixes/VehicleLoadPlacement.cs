@@ -85,7 +85,7 @@ namespace WildWasteland.Core
                 Stand(player); Release(); var body = player.GetComponent<Rigidbody>();
                 if (body != null) { body.velocity = Vector3.zero; body.angularVelocity = Vector3.zero; }
                 Physics.SyncTransforms(); _loading = _seated = false;
-                Log.Always("[System] In-vehicle save loaded: player standing beside parked " + _car.name); _car = null;
+                Log.Always(null,"[System] In-vehicle save loaded: player standing beside parked " + _car.name); _car = null;
                 return true;
             }
             return false; // Keep native loading/input freeze until main terrain and standing clearance exist.
@@ -94,7 +94,7 @@ namespace WildWasteland.Core
         static void Park()
         {
             _car.input.Throttle = 0; _car.input.Brakes = 1; _car.input.Handbrake = 1;
-            if (Services.VehicleIgnition == null || !Services.VehicleIgnition.TryStop(_car.gameObject)) _car.powertrain.engine.StopEngine();
+            if (Core.ModApi.Get<Core.IVehicleIgnition>()== null || !Core.ModApi.Get<Core.IVehicleIgnition>().TryStop(_car.gameObject)) _car.powertrain.engine.StopEngine();
             var brake = _car.transform.Find("handbrake"); var fsm = brake != null ? FsmUtil.Find(brake.gameObject, "Handbrake") : null;
             if (fsm != null && fsm.Fsm.Initialized && fsm.ActiveStateName != "HandbrakeOn") fsm.Fsm.SetState("HandbrakeOn");
             Bodies.Clear(); _car.GetComponentsInChildren(true, Bodies);
@@ -128,7 +128,7 @@ namespace WildWasteland.Core
                 if (anchor != null) holder.transform.position = anchor.position;
                 var look = FsmUtil.Find(player, "Look");
                 if (look != null && look.Fsm.Initialized) look.Fsm.SetState("Reset"); // MouseLook.OnEnter recaptures yaw/pitch.
-                Log.Always("[System] On-foot camera restored: previous parent=" + (parent != null ? parent.name : "none") + ", parent=none, look=" + (look != null ? look.ActiveStateName : "unavailable"));
+                Log.Always(null,"[System] On-foot camera restored: previous parent=" + (parent != null ? parent.name : "none") + ", parent=none, look=" + (look != null ? look.ActiveStateName : "unavailable"));
             }
             var body = player.GetComponent<Rigidbody>(); if (body != null && !body.isKinematic) { body.velocity = Vector3.zero; body.angularVelocity = Vector3.zero; }
         }

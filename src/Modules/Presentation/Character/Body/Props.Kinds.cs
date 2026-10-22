@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Props part (split from PlayerBody/Body/Props.cs in Wave A): the weapon-name classifier (Rifle / Pistol / Melee / Throw) the

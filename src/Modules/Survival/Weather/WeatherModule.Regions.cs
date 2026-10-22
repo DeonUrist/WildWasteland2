@@ -14,9 +14,9 @@ namespace WildWasteland.Modules.Survival
         private void Spawn(bool hurricane, bool here)
         {
             if (!_running || !_prepared || !GameRefs.InPlay || GameRefs.Player == null || GameRefs.MainCamera == null) return;
-            if (_count == _regions.Length) { Log.Warn("[Weather] Four previews are already active; clear them before spawning more."); return; }
+            if (_count == _regions.Length) { Log.Warn(null,"[Weather] Four previews are already active; clear them before spawning more."); return; }
             if (_visuals == null) _visuals = new WeatherVisuals(_audio);
-            if (!_visuals.Ready) { Log.Warn("[Weather] Preview assets unavailable. See the earlier Weather asset error."); return; }
+            if (!_visuals.Ready) { Log.Warn(null,"[Weather] Preview assets unavailable. See the earlier Weather asset error."); return; }
             _audio.Load();
             Vector3 forward = GameRefs.MainCamera.transform.forward; forward.y = 0;
             if (forward.sqrMagnitude < .01f) forward = GameRefs.Player.transform.forward;
@@ -33,7 +33,7 @@ namespace WildWasteland.Modules.Survival
             };
             _anchors[_count] = anchor; anchor.Selected = true;
             _criticalLogged[_count] = false; _ages[_count++] = 0; _draw.Enabled = true;
-            Log.Always("[Weather] Spawned " + (hurricane ? "critical" : "ordinary") + " rounded-front storm; movement 20 m/s; critical hurricane walls use native lifting/damage with safe eyes. Manual storms are not saved.");
+            Log.Always(null,"[Weather] Spawned " + (hurricane ? "critical" : "ordinary") + " rounded-front storm; movement 20 m/s; critical hurricane walls use native lifting/damage with safe eyes. Manual storms are not saved.");
         }
 
         /// <summary>Turns nearby native storm encounters into WW critical storm regions (natural storms keep native save bookkeeping); drops regions whose anchor vanished.</summary>
@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.Survival
                 _anchors[_count]=storm; _ages[_count]=storm.Age; _criticalLogged[_count]=true;
                 storm.Selected=true; _count++; _draw.Enabled=true;
                 if (_visuals!=null) _visuals.ClearGround();
-                Log.Always("[Weather] Natural encounter now drives a WW critical storm: "+storm.Root.name+"; native movement/save list retained.");
+                Log.Always(null,"[Weather] Natural encounter now drives a WW critical storm: "+storm.Root.name+"; native movement/save list retained.");
             }
         }
         /// <summary>Removes region index (swap with the last) and releases its native anchor.</summary>
@@ -116,7 +116,7 @@ namespace WildWasteland.Modules.Survival
             }
             for (int i = 0; i < _columnCount; i++) _columns[i].x -= occupied*.5f;
             for (int i = 0; i < _count; i++) { var region = _regions[i]; region.Radii = radii; _regions[i] = region; }
-            Log.Always("[Weather] Front layout: " + _lastWidth.ToString("0.#",CultureInfo.InvariantCulture) + " x " + _lastDepth.ToString("0.#",CultureInfo.InvariantCulture) + " km; " + area.ToString("0.##",CultureInfo.InvariantCulture) + " km²; " + _columnCount + " hurricanes placed of " + requested + " requested at " + _lastDensity.ToString("0.##",CultureInfo.InvariantCulture) + "/km²; varied widths, minimum top gap 350 m (critical phase only).");
+            Log.Always(null,"[Weather] Front layout: " + _lastWidth.ToString("0.#",CultureInfo.InvariantCulture) + " x " + _lastDepth.ToString("0.#",CultureInfo.InvariantCulture) + " km; " + area.ToString("0.##",CultureInfo.InvariantCulture) + " km²; " + _columnCount + " hurricanes placed of " + requested + " requested at " + _lastDensity.ToString("0.##",CultureInfo.InvariantCulture) + "/km²; varied widths, minimum top gap 350 m (critical phase only).");
         }
 
         /// <summary>LateUpdateLast job (enabled while regions exist): moves regions, ages them, drives audio and draws the storm visuals.</summary>
@@ -153,7 +153,7 @@ namespace WildWasteland.Modules.Survival
                 if (region.Hurricane && _ages[i] >= 20 && !_criticalLogged[i])
                 {
                     _criticalLogged[i] = true;
-                    Log.Always("[Weather] Preview entering critical phase: same-color columns forming inside the dust wall over 20 seconds.");
+                    Log.Always(null,"[Weather] Preview entering critical phase: same-color columns forming inside the dust wall over 20 seconds.");
                 }
                 if (anchor != null && !anchor.Owned) { _ages[i] = anchor.Age = 40; continue; }
                 if (_ages[i] >= 600) RemoveRegion(i);
@@ -185,7 +185,7 @@ namespace WildWasteland.Modules.Survival
             if (_audio != null) _audio.Stop();
             if (_visuals != null) { _visuals.Suspend(); _visuals.ClearGround(); }
             if (_draw != null) _draw.Enabled = false;
-            if (hadPreviews) Log.Always("[Weather] Cleared visual previews.");
+            if (hadPreviews) Log.Always(null,"[Weather] Cleared visual previews.");
         }
         /// <summary>Loads audio, lays out columns and prepares the storm visuals and native dust/debris pools.</summary>
         private void PrepareAssets()
@@ -201,7 +201,7 @@ namespace WildWasteland.Modules.Survival
         private void PrepareNativeAssets()
         {
             if (!_nativeAssetsReady && _visuals!=null && _visuals.PrepareNative())
-            { _nativeAssetsReady=true; Log.Always("[Weather] Native dust/debris pools ready before encounters; retained across loads."); }
+            { _nativeAssetsReady=true; Log.Always(null,"[Weather] Native dust/debris pools ready before encounters; retained across loads."); }
         }
     }
 }

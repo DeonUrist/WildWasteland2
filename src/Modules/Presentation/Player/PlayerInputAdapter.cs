@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Translates native player input and weapon FSM timing into the common humanoid driver.</summary>
     internal sealed class PlayerInputAdapter

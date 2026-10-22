@@ -9,7 +9,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// NWH Vehicle Physics 2 access for driven cars: typed where the NWH types are known, reflection as the fallback. The VehicleController

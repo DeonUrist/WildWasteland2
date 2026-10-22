@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     // (1.1.0) Monster projectiles stop at walls.
     //

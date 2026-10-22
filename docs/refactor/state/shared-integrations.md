@@ -1,5 +1,12 @@
 # Shared integrations handoff
 
+## Current checkpoint — 2026-10-23
+
+Shared steps 1–2 and Wave C source integration are implemented. Obsolete forwarders and the CS0618 suppression are removed; namespaces match module ownership. Runtime assets have been recovered into their canonical source owners, and packaging no longer depends on an old release ZIP. See reports/C.md for the final build, deployment and clean-setup receipt. The detailed older checkpoints below are historical and must not restart completed work.
+
+Denis requested a clean setup: existing saves/settings and the old plugin installation are archived before fresh assets are installed. Defaults regenerate at next startup. Gameplay acceptance remains with Denis. No game/harness, commit, push or published release is part of this finish.
+
+
 This is the next phase after the remaining Wave B owned packages. Denis authorized proceeding in one session without subagents. Source/package acceptance is separate from full-port and in-game acceptance.
 
 1. Player/humanoid NPC driver source unification is complete; see reports/shared-character-driver.md. Continue remaining rider/animal/vehicle/shared runtime separation. PassengerGuard, Hire, Takeover and external quest conversation integration are already consolidated as recorded below; do not restart those completed slices.

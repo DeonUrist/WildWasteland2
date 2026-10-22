@@ -154,7 +154,7 @@ namespace WildWasteland.Modules.Patrols
             if (_abandoned) return;
             if (_rb != null && _rb.isKinematic) return;     // the game's DistanceKinematic froze the car (far from the player after a load): hold, don't count as stuck
             if(Time.fixedTime<_nextDecision)return;
-            var player=PlayerRef.Player;float distance2=player!=null?(_tf.position-player.position).sqrMagnitude:float.MaxValue;
+            var player=Core.PlayerState.Transform;float distance2=player!=null?(_tf.position-player.position).sqrMagnitude:float.MaxValue;
             _nextDecision=Time.fixedTime+(distance2>80f*80f?0.1f:0.05f);
             float dt=Mathf.Clamp(Time.fixedTime-_lastDecision,Time.fixedDeltaTime,0.15f);_lastDecision=Time.fixedTime;
             _stateTime += dt;
@@ -271,7 +271,7 @@ namespace WildWasteland.Modules.Patrols
                     break;
             }
 
-            if (Core.Log.Verbose && Time.time >= _nextLog)
+            if (Core.Log.L1 && Time.time >= _nextLog)
             {
                 _nextLog = Time.time + 5f;
                 PatrolsModule.Verbose("Pilot: " + _state + " " + (speed * 3.6f).ToString("0") + " km/h (fwd " + (forwardSpeed * 3.6f).ToString("0") + ") gear " + Core.ModApi.Get<Core.IVehicleDrive>().Gear(_car)
@@ -349,7 +349,7 @@ namespace WildWasteland.Modules.Patrols
             throttle *= avoidThrottle; brakes = Mathf.Max(brakes, avoidBrake);
             LeanGuard(ref steer, ref throttle, ref brakes);
             Apply(throttle, steer, brakes);
-            if (Core.Log.Verbose && Time.time >= _nextEscortLog)
+            if (Core.Log.L1 && Time.time >= _nextEscortLog)
             {
                 _nextEscortLog = Time.time + 2f;
                 PatrolsModule.Verbose("Pilot: " + _car.name + " escorts the player for its rider: " + along.ToString("0") + " m " + (along >= 0f ? "ahead" : "behind")
@@ -527,7 +527,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Changes the runtime phase and resets its phase timing.</summary>
         private void Enter(PilotState s, string why)
         {
-            if (Core.Log.Verbose && (_state != s || _stateTime > 0f)) PatrolsModule.Verbose("Pilot: " + _state + " -> " + s + " (" + why + ")");
+            if (Core.Log.L1 && (_state != s || _stateTime > 0f)) PatrolsModule.Verbose("Pilot: " + _state + " -> " + s + " (" + why + ")");
             if (s == PilotState.Charge) _passSide = _angle > 1f ? 1f : _angle < -1f ? -1f : (UnityEngine.Random.value < 0.5f ? -1f : 1f);
             _state = s; _stateTime = 0f; _why = why; _turnSlow = 0f;
             if (s != PilotState.Recover) _stuckTime = 0f;
@@ -574,7 +574,7 @@ namespace WildWasteland.Modules.Patrols
                 _rollLimit = Mathf.Clamp(9.81f * (Mathf.Max(0.8f, track) * 0.5f) / h * 0.8f, 2.5f, 30f);
                 float maxAngle = Core.ModApi.Get<Core.IVehicleDrive>().MaxSteerAngle(_car);
                 _tanSteer = Mathf.Tan(Mathf.Clamp(maxAngle > 1f ? maxAngle : 35f, 10f, 60f) * Mathf.Deg2Rad);
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Pilot: " + _car.name + " track " + track.ToString("0.00") + " m, wheelbase " + _wheelbase.ToString("0.00") + " m, COM " + h.ToString("0.00") + " m up -> roll limit " + _rollLimit.ToString("0.0") + " m/s^2");
+                if (Core.Log.L1) PatrolsModule.Verbose("Pilot: " + _car.name + " track " + track.ToString("0.00") + " m, wheelbase " + _wheelbase.ToString("0.00") + " m, COM " + h.ToString("0.00") + " m up -> roll limit " + _rollLimit.ToString("0.0") + " m/s^2");
             }
             catch (Exception e) { PatrolsModule.Verbose("Pilot: geometry: " + e.Message); }
         }
@@ -772,14 +772,14 @@ namespace WildWasteland.Modules.Patrols
                 var body=c.attachedRigidbody;
                 return !(body!=null&&!body.isKinematic&&body.mass<PatrolsModule.AiIgnoreMassBelow.Value);
             }
-            int kind = PlayerRef.Kind(t);
+            int kind = Core.PlayerState.Kind(t);
             if (_travelling && kind != 0) return true; // convoy trucks and unalerted patrols avoid the player
             if (kind == 1) return _rams < RamTargets.Pedestrians;          // the player on foot
             if (kind == 2) return _rams < RamTargets.Cars;                 // the player's car
             bool creature = false;
             for (var a = t; a != null; a = a.parent)
             {
-                if (PlayerRef.HasVehicleController(a)) return _travelling || a.GetComponent<PatrolMarker>() != null || _rams < RamTargets.Cars;
+                if (Core.PlayerState.HasVehicleController(a)) return _travelling || a.GetComponent<PatrolMarker>() != null || _rams < RamTargets.Cars;
                 _fsmBuffer.Clear();
                 a.GetComponents(_fsmBuffer);
                 for (int i = 0; i < _fsmBuffer.Count; i++)
@@ -818,19 +818,19 @@ namespace WildWasteland.Modules.Patrols
             bool frontal = local.z > 0.3f && along < -0.3f;
             bool rear = local.z < -0.3f && along > 0.3f;
             if (!frontal && !rear) return;                                // glancing / side, not something in the way
-            int kind = PlayerRef.Kind(col.collider.transform);
+            int kind = Core.PlayerState.Kind(col.collider.transform);
             bool target = kind != 0 && !IsObstacle(col.collider);         // the player / their car, and we are allowed to ram it
             bool npc = !target && !IsObstacle(col.collider);
             if (npc) return;                                              // ran over a creature or a loose item: keep going
             if (rear)
             {
-                if (_state == PilotState.Recover && !target) { _rearHit = true; if (Core.Log.Verbose) PatrolsModule.Verbose("Pilot: backed into " + col.collider.name + " at " + rel.ToString("0.0") + " m/s"); }
+                if (_state == PilotState.Recover && !target) { _rearHit = true; if (Core.Log.L1) PatrolsModule.Verbose("Pilot: backed into " + col.collider.name + " at " + rel.ToString("0.0") + " m/s"); }
                 return;
             }
             _hitPending = true;
             _hitIsTarget = target && !_travelling;
             _hitSide = Mathf.Abs(local.x) > 0.6f ? Mathf.Sign(local.x) : 0f;
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Pilot: " + (target ? "rammed " : "hit ") + col.collider.name + " at " + rel.ToString("0.0") + " m/s, local " + local.ToString("0.0"));
+            if (Core.Log.L1) PatrolsModule.Verbose("Pilot: " + (target ? "rammed " : "hit ") + col.collider.name + " at " + rel.ToString("0.0") + " m/s, local " + local.ToString("0.0"));
         }
 
         // A slow, sustained frontal contact with an obstacle (shoving a parked car, leaning on a wall) is tracked here and

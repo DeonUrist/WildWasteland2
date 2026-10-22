@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Patrols
     {
         /// <summary>Materializes template for the current merchant runtime.</summary>
         internal static void SpawnTemplate(Patrol patrol,CarTemplate source,SpawnGroup group)
-        {if(source==null||!CrewFactions.Compatible(source,(group??MerchantCatalog.DefaultGroup()).Faction))return;group=group??MerchantCatalog.DefaultGroup();if(WorldTraffic.MerchantTypeInUse(MerchantCatalog.Selected(group.MerchantTypes))){Core.Log.Warn("[Patrols] " + "That merchant type already exists; remove its current bus before spawning another.");return;}var copy=source.CloneForSpawn();Configure(copy,group);copy.SetupOnly=true;patrol.Spawn(copy);}
+        {if(source==null||!CrewFactions.Compatible(source,(group??MerchantCatalog.DefaultGroup()).Faction))return;group=group??MerchantCatalog.DefaultGroup();if(WorldTraffic.MerchantTypeInUse(MerchantCatalog.Selected(group.MerchantTypes))){Core.Log.Warn(null,"[Patrols] " + "That merchant type already exists; remove its current bus before spawning another.");return;}var copy=source.CloneForSpawn();Configure(copy,group);copy.SetupOnly=true;patrol.Spawn(copy);}
         /// <summary>Binds the accepted authored merchant identity and native stock settings.</summary>
         internal static void Configure(CarTemplate template,SpawnGroup group)
         {template.Faction=TrafficFactions.Normalize(group.Faction);template.MerchantGroup=group.Name;template.MerchantTypes=MerchantCatalog.Selection(group.MerchantTypes);template.SpawnLoot=new Dictionary<string,int>();template.LootPreset="car-empty";template.ReleaseHandbrake=false;template.ConvoyMember=true;}
@@ -22,18 +22,18 @@ namespace WildWasteland.Modules.Patrols
         }
         /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
         internal static void Attach(GameObject car,CarTemplate template)
-        {if(template.MerchantTypes==null||template.MerchantTypes.Length==0)return;var host=car.GetComponent<MerchantHost>()??car.AddComponent<MerchantHost>();host.Data=!string.IsNullOrEmpty(template.MerchantSaveJson)?TrafficCodec.ReadRecord<MerchantSave>(template.MerchantSaveJson):null;host.Data=host.Data??new MerchantSave{template=template.Name,group=template.MerchantGroup,types=MerchantCatalog.Selection(template.MerchantTypes),travelling=template.MerchantTravelling};host.Park();}
+        {if(template.MerchantTypes==null||template.MerchantTypes.Length==0)return;var host=car.GetComponent<MerchantHost>()??car.AddComponent<MerchantHost>();host.Data=!string.IsNullOrEmpty(template.MerchantSaveJson)?Core.RecordJson.ReadRecord<MerchantSave>(template.MerchantSaveJson):null;host.Data=host.Data??new MerchantSave{template=template.Name,group=template.MerchantGroup,types=MerchantCatalog.Selection(template.MerchantTypes),travelling=template.MerchantTravelling};host.Park();}
         /// <summary>Rebinds recorded state to native objects without rerolling authored outcomes.</summary>
         internal static void Restore(GameObject car,string json)
         {
-            if(string.IsNullOrEmpty(json))return;var data=TrafficCodec.ReadRecord<MerchantSave>(json);
+            if(string.IsNullOrEmpty(json))return;var data=Core.RecordJson.ReadRecord<MerchantSave>(json);
             if(data==null||data.version!=1||data.types==null||data.types.Length>3||data.types.Any(t=>!MerchantCatalog.Known(t))||data.stock==null||data.stock.Length>36)return;
             if(data.stock.Any(s=>s==null||!data.types.Contains(s.type)||s.slot<0||s.slot>=4||string.IsNullOrEmpty(s.prefab))
                 ||data.stock.GroupBy(s=>s.type+":"+s.slot).Any(g=>g.Count()>1))return;
             if(data.demands==null)data.demands=new MerchantDemand[0];
             if(data.demands.Length>3||data.demands.Any(d=>d==null||!MerchantCatalog.Known(d.type)||d.names==null||d.prices==null||d.names.Length>64||d.names.Length!=d.prices.Length))return;
             if(data.turrets!=null&&(data.turrets.Length>7||data.turrets.Any(t=>t==null||t.slot<0||t.slot>=7||float.IsNaN(t.health)||float.IsInfinity(t.health)||float.IsNaN(t.maxHealth)||float.IsInfinity(t.maxHealth))||data.turrets.GroupBy(t=>t.slot).Any(g=>g.Count()>1)))return;
-            if(car.GetComponent<PatrolMarker>()==null){var marker=PatrolMarker.Attach(car,TemplateExporter.PrefabName(car.name),"",null,"",null,RamTargets.None);marker.TemplateName=data.template;marker.Faction=CarTemplate.Find(data.template)?.Faction??"Coyotes";}
+            if(car.GetComponent<PatrolMarker>()==null){var marker=PatrolMarker.Attach(car,Core.Names.Prefab(car.name),"",null,"",null,RamTargets.None);marker.TemplateName=data.template;marker.Faction=CarTemplate.Find(data.template)?.Faction??"Coyotes";}
             var host=car.GetComponent<MerchantHost>()??car.AddComponent<MerchantHost>();host.Data=data;host.Park();
         }
     }
@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Registers this component in its active runtime collection.</summary>
         private void OnEnable(){All.Add(this);}
         /// <summary>Releases this component runtime registrations and owned native state.</summary>
-        private void OnDestroy(){All.Remove(this);foreach(var pair in _stock)if(pair.Value!=null&&!pair.Key.purchased)Register.RemoveTree(pair.Value);}
+        private void OnDestroy(){All.Remove(this);foreach(var pair in _stock)if(pair.Value!=null&&!pair.Key.purchased)Core.ItemSpawner.RemoveTree(pair.Value);}
         // Perf: marker / crew / handbrake FSM resolved once (re-resolved while missing); was GetComponent x2 + a whole-bus
         // GetComponentsInChildren<PlayMakerFSM> per Park (2/s). Park still re-asserts every call (ignition off, handbrake, inputs).
         private PatrolMarker _marker;private Crew _crew;private PlayMakerFSM _handbrake;private float _handbrakeSearch=-1f;
@@ -87,7 +87,7 @@ namespace WildWasteland.Modules.Patrols
             var stock=Data.stock.ToList();
             foreach(var type in Data.types.Distinct())
             {
-                var prefab=Prefabs.FindAny(MerchantCatalog.Station(type));if(prefab==null){Core.Log.Warn("[Patrols] " + "Merchant station unavailable: "+type);continue;}
+                var prefab=Prefabs.FindAny(MerchantCatalog.Station(type));if(prefab==null){Core.Log.Warn(null,"[Patrols] " + "Merchant station unavailable: "+type);continue;}
                 var station=Instantiate(prefab,_root);station.name=type;station.transform.localPosition=new Vector3(0f,1.5f,-1.5f);station.transform.localRotation=Quaternion.identity;station.transform.localScale=Vector3.one*0.7f;
                 foreach(var f in station.GetComponentsInChildren<PlayMakerFSM>(true))f.enabled=false;
                 var list=station.GetComponents<PlayMakerFSM>().First(f=>f.FsmName=="ItemList");_lists.Add(list);
@@ -123,14 +123,14 @@ namespace WildWasteland.Modules.Patrols
             Data.stock=stock.ToArray();MerchantLayouts.Apply(this);
             var wanted=new HashSet<string>(Data.stock.Where(s=>!s.purchased&&!string.IsNullOrEmpty(s.nativeName)).Select(s=>s.nativeName));var existingItems=new Dictionary<string,GameObject>();
             if(wanted.Count>0||discarded.Count>0)foreach(var item in Resources.FindObjectsOfTypeAll<GameObject>())if(item!=null&&item.scene.IsValid())
-            {if(discarded.Contains(item.name)){Register.RemoveTree(item);Destroy(item);}else if(wanted.Contains(item.name))existingItems[item.name]=item;}
+            {if(discarded.Contains(item.name)){Core.ItemSpawner.RemoveTree(item);Destroy(item);}else if(wanted.Contains(item.name))existingItems[item.name]=item;}
             foreach(var record in Data.stock)
             {
                 if(record.purchased)continue;var sale=Objects.FirstOrDefault(o=>o.Id==record.type+"/sale/"+record.slot)?.Transform;if(sale==null)continue;
                 GameObject existing;existingItems.TryGetValue(record.nativeName??"",out existing);
                 var prefab=Prefabs.FindAny(record.prefab);if(existing==null&&prefab==null)continue;
                 var item=existing??Instantiate(prefab,sale.position,sale.rotation);item.transform.SetParent(sale,true);item.transform.localPosition=Vector3.zero;item.transform.localRotation=Quaternion.identity;
-                if(existing==null){Register.Name(item,prefab.name);Register.Add(item,false);Register.Commit(item);}record.nativeName=item.name;_stock[record]=item;
+                if(existing==null){Core.ItemSpawner.Name(item,prefab.name);Core.ItemSpawner.AddExisting(item,false);Core.ItemSpawner.Commit(item);}record.nativeName=item.name;_stock[record]=item;
                 var rb=item.GetComponent<Rigidbody>();if(rb!=null)rb.isKinematic=true;
                 foreach(var c in item.GetComponentsInChildren<Collider>(true))foreach(var car in _chassis)if(c!=null&&car!=null&&c!=car)Physics.IgnoreCollision(c,car,true);
                 yield return null;
@@ -163,7 +163,7 @@ namespace WildWasteland.Modules.Patrols
         private void CleanProbes()
         {
             if(_probes.Count==0||_lists.Any(f=>f!=null&&f.ActiveStateName!="done"))return;
-            foreach(var probe in _probes)if(probe!=null){Register.RemoveTree(probe);Destroy(probe);}
+            foreach(var probe in _probes)if(probe!=null){Core.ItemSpawner.RemoveTree(probe);Destroy(probe);}
             _probes.Clear();
         }
         /// <summary>Initializes native references and retained runtime state before scheduled work starts.</summary>
@@ -221,7 +221,7 @@ namespace WildWasteland.Modules.Patrols
             MerchantGuards.Capture(this);
             ObserveStock(Ready&&!TrafficFactions.PlayerHostile(GetComponent<PatrolMarker>()?.Faction));
             Data.demands=_lists.Select(f=>new MerchantDemand{type=f.gameObject.name,names=(f.FsmVariables.FindFsmArray("ItemNameArray")?.Values??new object[0]).Select(Convert.ToString).ToArray(),prices=(f.FsmVariables.FindFsmArray("ItemPriceArray")?.Values??new object[0]).Select(Convert.ToInt32).ToArray()}).Where(d=>d.names.Length>0&&d.names.Length==d.prices.Length).ToArray();
-            return TrafficCodec.WriteRecord(Data);
+            return Core.RecordJson.WriteRecord(Data);
         }
     }
     internal sealed class MerchantProbeAction : FsmStateAction

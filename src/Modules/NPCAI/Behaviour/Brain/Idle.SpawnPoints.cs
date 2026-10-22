@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Idle part: camp spawn points (homes) found from the structures' spawners.</summary>
     internal static partial class Idle

@@ -11,7 +11,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.HUD
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// ChaseCamera (local.apocalypter.chasecamera) part serving the HUD: observes the mod's own driving snapshot (transpiler on

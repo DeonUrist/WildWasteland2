@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.Survival
                 if (system.particleCount > 0 || Time.time >= _checkAt[slot])
                 {
                     _reported[slot] = true;
-                    Log.Always("[Weather] Dark stones live: slot="+slot+"; particles="+system.particleCount+"; size=3-9m; lifetime=2-4s; orbital=0.25-0.55rad/s; playing="+system.isPlaying+"; time="+system.time);
+                    Log.Always(null,"[Weather] Dark stones live: slot="+slot+"; particles="+system.particleCount+"; size=3-9m; lifetime=2-4s; orbital=0.25-0.55rad/s; playing="+system.isPlaying+"; time="+system.time);
                 }
             }
         }
@@ -93,7 +93,7 @@ namespace WildWasteland.Modules.Survival
                 var collision = _systems[slot].collision; collision.enabled = false;
                 var triggers = _systems[slot].trigger; triggers.enabled = false;
                 copy.SetActive(true);
-                Log.Always("[Weather] Visual stone pool ready: slot="+slot+"; native Stones sprite/orbit, no damage or physics.");
+                Log.Always(null,"[Weather] Visual stone pool ready: slot="+slot+"; native Stones sprite/orbit, no damage or physics.");
             }
             return true;
         }

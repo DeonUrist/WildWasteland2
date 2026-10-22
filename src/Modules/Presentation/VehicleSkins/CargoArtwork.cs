@@ -1,5 +1,4 @@
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
 namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Exposes real installed cargo artwork metadata without exposing paint implementation.</summary>

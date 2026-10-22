@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Updates the quest tracker.</summary>
         internal void Tick(RectTransform insanity, RectTransform compass)
         {
-            var api = Core.Services.Quests;
+            var api = Core.ModApi.Get<Core.IQuestApi>();
             bool visible = api != null && api.Ready && api.TrackerEnabled && !api.JournalOpen
                 && Core.GameRefs.InGame && !(Cursor.visible && Cursor.lockState != CursorLockMode.Locked);
             if (_root.gameObject.activeSelf != visible) _root.gameObject.SetActive(visible);

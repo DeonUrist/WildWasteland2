@@ -24,7 +24,7 @@ namespace WildWasteland.Modules.Patrols
                 var world=TrafficSpace.World(ray.GetPoint(distance));corners[corner]=new Vector2(world.x,world.z);
             }
             // CleanHUD's map zoom shrinks the camera view while the map is open: spawn points stay where the native (unzoomed) view ends
-            var mapApi=Core.Services.Map;
+            var mapApi=Core.ModApi.Get<Core.IMapMarkers>();
             if(mapApi!=null&&mapApi.Open)
             {
                 float zoom=mapApi.Zoom;
@@ -60,11 +60,11 @@ namespace WildWasteland.Modules.Patrols
         {bool known=reveal||TrafficCompass.Known(journey);return MapUnknown&&!known?"Unknown":(MapNames||known)&&!string.IsNullOrEmpty(journey.name)?journey.name:journey.merchant?"Merchant":journey.convoy?"Convoy":"Patrol";}
         // Map Routes and World traffic markers each use Off / Ambiguous / On for route lines and moving dots + names respectively.
         // Traffic ambiguity is independent of location markers. Without CleanHUD's map service the old debug switches decide both.
-        private static bool RoutesOn {get{var m=Core.Services.Map;return m!=null?m.Routes!=Core.MapDetail.Off:Core.RuntimeDiagnosticState.TrafficDebugMap;}}
-        private static bool MarkersOn {get{var m=Core.Services.Map;return m!=null?m.TrafficMarkers!=Core.MapDetail.Off:Core.RuntimeDiagnosticState.TrafficDebugMap;}}
-        private static bool InkUnknown {get{var m=Core.Services.Map;return m!=null?m.Routes==Core.MapDetail.Ambiguous:PatrolsModule.HideRouteType.Value;}}
-        private static bool MapUnknown {get{var m=Core.Services.Map;return m!=null?m.TrafficMarkers==Core.MapDetail.Ambiguous:PatrolsModule.HideRouteType.Value;}}
-        private static bool MapNames {get{var m=Core.Services.Map;return m!=null?m.TrafficMarkers!=Core.MapDetail.Ambiguous:PatrolsModule.RealPatrolNames.Value;}}
+        private static bool RoutesOn {get{var m=Core.ModApi.Get<Core.IMapMarkers>();return m!=null?m.Routes!=Core.MapDetail.Off:Core.RuntimeDiagnosticState.TrafficDebugMap;}}
+        private static bool MarkersOn {get{var m=Core.ModApi.Get<Core.IMapMarkers>();return m!=null?m.TrafficMarkers!=Core.MapDetail.Off:Core.RuntimeDiagnosticState.TrafficDebugMap;}}
+        private static bool InkUnknown {get{var m=Core.ModApi.Get<Core.IMapMarkers>();return m!=null?m.Routes==Core.MapDetail.Ambiguous:PatrolsModule.HideRouteType.Value;}}
+        private static bool MapUnknown {get{var m=Core.ModApi.Get<Core.IMapMarkers>();return m!=null?m.TrafficMarkers==Core.MapDetail.Ambiguous:PatrolsModule.HideRouteType.Value;}}
+        private static bool MapNames {get{var m=Core.ModApi.Get<Core.IMapMarkers>();return m!=null?m.TrafficMarkers!=Core.MapDetail.Ambiguous:PatrolsModule.RealPatrolNames.Value;}}
         /// <summary>Checks the current route color condition for traffic map.</summary>
         internal static Color32 RouteColor(TrafficJourney journey,bool unknown)
         {

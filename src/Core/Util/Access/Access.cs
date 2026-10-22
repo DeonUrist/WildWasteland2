@@ -82,7 +82,7 @@ namespace WildWasteland.Core
             }
         }
 
-        /// <summary>OptionalAccess.Read: compiled getter of field (castclass to the declaring type; castclass to T when it differs and T is not object).</summary>
+        /// <summary>Core.Access.Read: compiled getter of field (castclass to the declaring type; castclass to T when it differs and T is not object).</summary>
         public static Func<object, T> Read<T>(FieldInfo field)
         {
             using (var method = new DynamicMethodDefinition("WW_Read_" + field.Name, typeof(T), new[] { typeof(object) }))
@@ -97,7 +97,7 @@ namespace WildWasteland.Core
             }
         }
         /// <summary>
-        /// OptionalAccess.Call: delegate T calling target with the given generated signature (result, arguments; arguments[0]
+        /// Core.Access.Call: delegate T calling target with the given generated signature (result, arguments; arguments[0]
         /// is the target for instance methods and is cast to the declaring type; the rest are passed through unchanged).
         /// </summary>
         public static T Call<T>(MethodInfo target, Type result, params Type[] arguments) where T : class

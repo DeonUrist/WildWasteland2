@@ -26,14 +26,14 @@ namespace WildWasteland.Modules.Survival
         internal void Load()
         {
             if (_attempted) return; _attempted=true;
-            if (!File.Exists(_path)) { Log.Warn("[Weather] Thunder sound missing: "+_path); return; }
+            if (!File.Exists(_path)) { Log.Warn(null,"[Weather] Thunder sound missing: "+_path); return; }
             _load=Core.Audio.LoadAsync(_path, AudioType.MPEG, Loaded, decompress: true);
         }
         /// <summary>Creates the bounded thunder voice pool after Core decodes its file.</summary>
         private void Loaded(AudioClip clip, string error)
         {
                 _load=null;
-                if (clip==null) { Log.Warn("[Weather] Thunder load failed: "+error); return; }
+                if (clip==null) { Log.Warn(null,"[Weather] Thunder load failed: "+error); return; }
                 _clip=clip;
                 _clip.hideFlags=HideFlags.HideAndDontSave;
                 _host=new GameObject("WW.Weather.Thunder") { hideFlags=HideFlags.HideAndDontSave };
@@ -43,7 +43,7 @@ namespace WildWasteland.Modules.Survival
                     var source=_host.AddComponent<AudioSource>(); source.playOnAwake=false; source.loop=false;
                     source.spatialBlend=0; source.dopplerLevel=0; _voices[i]=source;
                 }
-                Log.Always("[Weather] Thunder loaded: sound/thunder.mp3; distance / 343 m/s delay, 16 bounded voices.");
+                Log.Always(null,"[Weather] Thunder loaded: sound/thunder.mp3; distance / 343 m/s delay, 16 bounded voices.");
         }
         /// <summary>Queues a bounded delayed thunder sound from distance and strike strength.</summary>
         internal void Strike(float clock, Vector3 position, Vector3 eye, float strength)
@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.Survival
             for (int i=0;i<_pending.Length;i++) if (!_pending[i].Used)
             {
                 _pending[i]=new Pending { Used=true,Due=clock+delay,World=Origin.World(position),Strength=strength };
-                if (Log.Verbose) Log.Info("[Weather] Lightning: distance="+distance.ToString("0")+" m; thunder delay="+delay.ToString("0.00")+" s");
+                if (Log.L1) Log.Main(null,"[Weather] Lightning: distance="+distance.ToString("0")+" m; thunder delay="+delay.ToString("0.00")+" s");
                 return;
             }
         }
@@ -78,7 +78,7 @@ namespace WildWasteland.Modules.Survival
                 Vector3 delta=Origin.Scene(pending.World)-eye; float distance=delta.magnitude;
                 source.panStereo=Vector3.Dot(delta/Mathf.Max(1,distance),view.MultiplyVector(Vector3.right))*.7f;
                 source.PlayOneShot(_clip,pending.Strength/(1+distance*distance/(1800f*1800f)));
-                if (Log.Verbose) Log.Info("[Weather] Thunder played at weather time "+clock.ToString("0.00")+" s");
+                if (Log.L1) Log.Main(null,"[Weather] Thunder played at weather time "+clock.ToString("0.00")+" s");
             }
         }
         /// <summary>Stops voices and clears pending strikes without destroying the pool.</summary>

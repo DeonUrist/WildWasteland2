@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Nests part: building a nest in slices (hanging web spots, ground webs, layout memory).</summary>
     internal static partial class Nests

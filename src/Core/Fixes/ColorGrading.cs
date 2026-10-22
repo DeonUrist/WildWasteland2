@@ -15,7 +15,7 @@ namespace WildWasteland.Core
         {
             if (_installed) return; _installed = true;
             Hooks.ActivateGameObjectDo.Prefix(Owner, BeforeActivate);
-            Log.Always("[Core] Color grading policy ready (native graphics option forced off)");
+            Log.Always(null,"[Core] Color grading policy ready (native graphics option forced off)");
         }
 
         /// <summary>Keeps the native color-grading volume and menu toggle disabled without bypassing the action lifecycle.</summary>

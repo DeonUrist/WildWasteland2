@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Model part: the skin (mesh + material) of a native or Women of Wasteland character body choice, built once per choice.</summary>
     internal static partial class Model

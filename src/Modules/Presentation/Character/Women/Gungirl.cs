@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Presentation
 {
     // Gungirl = a Flexa raider wearing the female body (Models/flexa_female.gltf + .png).
     //

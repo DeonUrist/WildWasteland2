@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
+using WildWasteland.Modules.Loot;
 namespace WildWasteland.Modules.Loot
 {
     /// <summary>Copies the actual Loot-owned pickup catalog into detached authoring rows.</summary>

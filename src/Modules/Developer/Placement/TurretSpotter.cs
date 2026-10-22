@@ -131,7 +131,7 @@ namespace WildWasteland.Modules.Developer
         }
 
         /// <summary>Displays a bounded placement status message and logs the result.</summary>
-        private void Say(string s) { _status = s; _statusUntil = Time.unscaledTime + 6f; Core.Log.Info("[Patrols] " + "Turret spot editor: " + s); }
+        private void Say(string s) { _status = s; _statusUntil = Time.unscaledTime + 6f; Core.Log.Main(null,"[Patrols] " + "Turret spot editor: " + s); }
         /// <summary>Formats the towing-vehicle or trailer turret slot label.</summary>
         private static string SlotLabel(int slot) { return slot < 3 ? "turret " + (slot + 1) : "trailer turret " + (slot - 3 + 1); }
 

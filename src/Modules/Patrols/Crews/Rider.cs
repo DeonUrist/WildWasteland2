@@ -1,4 +1,3 @@
-using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,8 +51,8 @@ namespace WildWasteland.Modules.Patrols
             bool gunner = IsGunner(who);
             string prefabName = gunner ? who.Trim() : string.Equals(who, Warboy, StringComparison.OrdinalIgnoreCase) ? WarboyPrefab : who.Trim();
             var prefab = Prefabs.FindAny(prefabName);
-            if (prefab == null) { Core.Log.Warn("[Patrols] " + "Human turret prefab not found: " + prefabName); return null; }
-            bool bike = !trailer && IsBikeBody(TemplateExporter.PrefabName(car.name));
+            if (prefab == null) { Core.Log.Warn(null,"[Patrols] " + "Human turret prefab not found: " + prefabName); return null; }
+            bool bike = !trailer && IsBikeBody(Core.Names.Prefab(car.name));
             var anchor = new GameObject("Apocapatrol.RiderPos" + (slot > 0 ? (slot + 1).ToString() : "")).transform;
             anchor.SetParent(car.transform, false);
             anchor.localPosition = localPos != null && localPos.Length == 3 ? new Vector3(localPos[0], localPos[1], localPos[2]) : AutoSpot(car, trailer ? slot - PatrolMarker.VehicleTurretSlots : slot, bike);

@@ -9,7 +9,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Where each weapon sits in her RIGHT HAND, per animation clip: ABSOLUTE local position (cm) and rotation (degrees, Euler x, y, z) of the
     // weapon model under the hand bone. Nothing in the game changes these: no AutoGrip, no base line, no follow-the-left-hand - only the numpad

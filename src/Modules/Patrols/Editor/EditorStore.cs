@@ -31,13 +31,13 @@ namespace WildWasteland.Modules.Patrols
             try { Data = EditorData.FromJson(File.ReadAllText(StatePath)); }
             catch (Exception e)
             {
-                File.Copy(StatePath, UniquePath(Root, "PatrolsAndLoot.invalid-" + DateTime.Now.ToString("yyyyMMddHHmmss"), ".json"));
-                Core.Log.Warn("[Patrols] " + "Editor settings invalid; preserved a copy and loaded defaults: " + e.Message);
+                File.Copy(StatePath, Core.AuthoringFiles.UniquePath(Root, "PatrolsAndLoot.invalid-" + DateTime.Now.ToString("yyyyMMddHHmmss"), ".json"));
+                Core.Log.Warn(null,"[Patrols] " + "Editor settings invalid; preserved a copy and loaded defaults: " + e.Message);
             }
         }
 
         /// <summary>Saves patrol group authoring and delegates cargo profile publication to its actual Loot owner.</summary>
-        internal static void Save() { var cargo=Core.ModApi.Get<Core.ICargoLoot>();if(cargo!=null)cargo.SaveProfiles(Data.CarLoot,Data.TruckLoot);var root=Core.Json.ParseObject(Data.ToJson());root.Remove("carLoot");root.Remove("truckLoot");AtomicWrite(StatePath,Core.Json.Write(root)); }
+        internal static void Save() { var cargo=Core.ModApi.Get<Core.ICargoLoot>();if(cargo!=null)cargo.SaveProfiles(Data.CarLoot,Data.TruckLoot);var root=Core.Json.ParseObject(Data.ToJson());root.Remove("carLoot");root.Remove("truckLoot");Core.AuthoringFiles.AtomicWrite(StatePath,Core.Json.Write(root)); }
         /// <summary>Refreshes editor views from the authoritative provider when Loot starts, restarts or changes its tables.</summary>
         internal static void CargoApiChanged(Type changed) { if(changed!=null&&changed!=typeof(Core.ICargoLoot)||Data==null)return;var api=Core.ModApi.Get<Core.ICargoLoot>();if(api!=null)api.Profiles(Data.CarLoot,Data.TruckLoot); }
 
@@ -115,8 +115,8 @@ namespace WildWasteland.Modules.Patrols
             {
                 foreach (string file in Directory.GetFiles(CarTemplates.Folder, "*.json"))
                 {
-                    string source = SafePath(CarTemplates.Folder, Path.GetFileName(file));
-                    string target = UniquePath(old, Path.GetFileNameWithoutExtension(file), ".json");
+                    string source = Core.AuthoringFiles.SafePath(CarTemplates.Folder, Path.GetFileName(file));
+                    string target = Core.AuthoringFiles.UniquePath(old, Path.GetFileNameWithoutExtension(file), ".json");
                     File.Move(source, target); moved.Add(new KeyValuePair<string, string>(source, target));
                 }
                 CarTemplates.RestoreDefaults();

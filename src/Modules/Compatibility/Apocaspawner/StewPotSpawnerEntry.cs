@@ -3,7 +3,7 @@ using System.Collections;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.Survival
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// Stew Pot part of the Apocaspawner bridge: lists the Stew Pot under Camp &amp; Farming (key "StewPot", category "stewpot") while the

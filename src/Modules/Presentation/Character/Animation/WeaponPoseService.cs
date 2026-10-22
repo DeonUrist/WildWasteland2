@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
-using WildWasteland.Modules.PlayerBody;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.Presentation
 {

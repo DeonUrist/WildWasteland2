@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.Loot
             {
                 var prefab = PrefabCatalog.Find(pair.Key); // refs-ok: REFACTOR-REQUEST B15-3
                 if (prefab != null && pair.Value > 0) slots.Add(new Slot { Prefab = prefab, Count = pair.Value });
-                else Log.Warn("[Patrols] " + "Loot prefab not found: " + pair.Key);
+                else Log.Warn(null,"[Patrols] " + "Loot prefab not found: " + pair.Key);
             }
             if (truck) yield return LoadBed(car, slots, items);
             else yield return LoadCar(car, slots, items);
@@ -95,7 +95,7 @@ namespace WildWasteland.Modules.Loot
             var boxes = lockGo != null ? lockGo.GetComponents<BoxCollider>() : null;
             if (boxes == null || boxes.Length < 1)
             {
-                Log.Warn("[Patrols] " + "Cargo: " + car.name + " has no parts/PhysicsLock box; no cargo");
+                Log.Warn(null,"[Patrols] " + "Cargo: " + car.name + " has no parts/PhysicsLock box; no cargo");
                 yield return LoadCar(car, slots, items); yield break;
             }
             // each BoxCollider is one lock zone (an item inside it, or up to 10 m above it, gets locked by its own LockPhysics raycasts);
@@ -114,7 +114,7 @@ namespace WildWasteland.Modules.Loot
                 Log.Deep(LootModule.Instance, "Cargo: volume x " + minX.ToString("0.00") + ".." + maxX.ToString("0.00") + " z " + minZ.ToString("0.00") + ".." + maxZ.ToString("0.00")
                     + " y " + floorY.ToString("0.00") + ".." + ceilY.ToString("0.00") + " (local, scale " + scale + ")");
             }
-            if (maxX <= minX || maxZ <= minZ || ceilY <= floorY) { Log.Warn("[Patrols] " + "Cargo: PhysicsLock volume is degenerate on " + car.name); yield break; }
+            if (maxX <= minX || maxZ <= minZ || ceilY <= floorY) { Log.Warn(null,"[Patrols] " + "Cargo: PhysicsLock volume is degenerate on " + car.name); yield break; }
 
             // scatter over the bed floor: random XZ that keeps clear of the items already placed (a few tries, then stack on top)
             var placedPos = new List<Vector3>(); var placedR = new List<float>(); var placedTop = new List<float>();

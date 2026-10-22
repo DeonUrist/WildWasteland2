@@ -72,7 +72,7 @@ namespace WildWasteland.Modules.POI
             }
             foreach (string file in Directory.GetFiles(DirectoryPath, "*.json"))
                 try { string id = Path.GetFileNameWithoutExtension(file); _templates[id] = TownTemplate.Parse(id, File.ReadAllText(file)); }
-                catch (Exception error) { Log.Warn("[POI] Template rejected " + Path.GetFileName(file) + ": " + error.Message); }
+                catch (Exception error) { Log.Warn(null,"[POI] Template rejected " + Path.GetFileName(file) + ": " + error.Message); }
             Publish();
         }
         /// <summary>Copies template ids for the editor.</summary>
@@ -83,7 +83,7 @@ namespace WildWasteland.Modules.POI
         internal bool Save(string id, string json)
         {
             try { var t = TownTemplate.Parse(id, json); Directory.CreateDirectory(DirectoryPath); string path = Path.Combine(DirectoryPath, id + ".json"); File.WriteAllText(path + ".tmp", Json.Write(t.Data)); AtomicFile.Replace(path + ".tmp", path, path + ".bak"); _templates[id] = t; Publish(); return true; }
-            catch (Exception error) { Log.Warn("[POI] Template not saved: " + error.Message); return false; }
+            catch (Exception error) { Log.Warn(null,"[POI] Template not saved: " + error.Message); return false; }
         }
         /// <summary>Builds an independent worker-visible array after a load or edit.</summary>
         private void Publish() { Snapshot = new List<TownTemplate>(_templates.Values).ToArray(); Array.Sort(Snapshot, (a, b) => string.CompareOrdinal(a.Id, b.Id)); }

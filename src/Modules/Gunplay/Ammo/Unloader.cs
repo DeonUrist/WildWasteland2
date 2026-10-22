@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// Drives the unload sequence by replaying the weapon's own Reload FSM events.
     internal class Unloader

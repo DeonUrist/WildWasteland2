@@ -36,8 +36,7 @@ namespace WildWasteland.Core
         }
 
         /// <summary>Old owner-less form of <see cref="ReportFailure(IModule,string)"/>.</summary>
-        [Obsolete("refactor: use SaveBus.ReportFailure(owner, message)")]
-        public static void ReportFailure(string message) { ReportFailure(null, message); }
+
         internal static event Action<UI.ToolLayout> CleanupSettings;
         /// <summary>Draws the cleanup settings contributed by modules (Saves page).</summary>
         internal static void DrawCleanupSettings(UI.ToolLayout layout) { var draw = CleanupSettings; if (draw != null) draw(layout); }
@@ -121,7 +120,7 @@ namespace WildWasteland.Core
                     if (kv.Key < 0) { _after[i] = new KeyValuePair<float, Action>(t - kv.Key, kv.Value); continue; }   // arm
                     if (t < kv.Key) continue;
                     _after.RemoveAt(i);
-                    try { kv.Value(); } catch (Exception e) { Log.Error("SaveBus AfterSave callback", e); }
+                    try { kv.Value(); } catch (Exception e) { Log.Error(null,"SaveBus AfterSave callback", e); }
                 }
             }
         }
@@ -132,7 +131,7 @@ namespace WildWasteland.Core
             Trace.Mark("SaveLoadGame." + now);
             if (Log.L1) Log.Main(null, "SaveLoadGame: " + (prev ?? "-") + " -> " + now);
             var h = StateChanged;
-            if (h != null) foreach (StateChange d in h.GetInvocationList()) { try { d(prev, now); } catch (Exception e) { Log.Error("SaveBus.StateChanged handler " + d.Method.DeclaringType + "." + d.Method.Name, e); } }
+            if (h != null) foreach (StateChange d in h.GetInvocationList()) { try { d(prev, now); } catch (Exception e) { Log.Error(null,"SaveBus.StateChanged handler " + d.Method.DeclaringType + "." + d.Method.Name, e); } }
 
             switch (now)
             {

@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Modules.Presentation;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // The old Apocaplayer Runner MonoBehaviour, as plain static job methods registered by PlayerBodyModule.Init (Update -> Tick,
     // LateUpdate -> LateTick, OnGUI -> Gui, ModApiRunner.LateUpdate -> ModApiTick, Start's end-of-frame

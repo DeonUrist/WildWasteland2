@@ -129,7 +129,7 @@ namespace WildWasteland.Modules.Quests
             if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
             fwd.Normalize();
             Vector3 right = Vector3.Cross(Vector3.up, fwd);
-            string baseName = BaseName(prefab.name);
+            string baseName = Core.Names.Base(prefab.name);
             int made = 0;
             for (int i = 0; i < count; i++)
             {

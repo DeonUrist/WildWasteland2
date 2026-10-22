@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// Template bodies that are not asset prefabs (Vehicles part of ModVehicles; the third-party assembly scan is the Compatibility part).

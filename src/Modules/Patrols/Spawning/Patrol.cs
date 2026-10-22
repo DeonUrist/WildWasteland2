@@ -1,4 +1,3 @@
-using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -14,7 +13,7 @@ namespace WildWasteland.Modules.Patrols
     internal partial class Patrol : MonoBehaviour
     {
         /// <summary>Clears previous-scene objects and starts a fresh runtime generation.</summary>
-        internal static void ResetForScene() { BuildQueue.Reset(); VehiclePreparation.Reset(); PatrolLoadPreparation.Reset(); Prefabs.Invalidate(); Register.Invalidate(); DayLight.Reset(); _lightState = -1; SceneGen++; WorldTraffic.ResetForScene(); }
+        internal static void ResetForScene() { BuildQueue.Reset(); VehiclePreparation.Reset(); PatrolLoadPreparation.Reset(); Prefabs.Invalidate(); Core.ItemSpawner.ResetRegistrations(); DayLight.Reset(); _lightState = -1; SceneGen++; WorldTraffic.ResetForScene(); }
 
         // bumped on every scene load: a build or a convoy that waited through a load does not continue in the new world
         internal static int SceneGen;
@@ -44,7 +43,7 @@ namespace WildWasteland.Modules.Patrols
             int n = 0;
             foreach (var m in PatrolMarker.All.ToArray())
             {
-                if (m == null || m.Exploded || m.PlayerEntered || Register.Pending(m.gameObject)) continue;
+                if (m == null || m.Exploded || m.PlayerEntered || Core.ItemSpawner.Pending(m.gameObject)) continue;
                 var crew = m.GetComponent<Crew>();
                 if (crew == null || !crew.CrewAlive) continue;
                 Headlights(m.gameObject, state == 1);
@@ -147,39 +146,39 @@ namespace WildWasteland.Modules.Patrols
             try
             {
                 yield return WaitForSave(gen, saveOk);   // the game is saving: spawn after it, never half-built into the save
-                if(!CrewFactions.Compatible(tpl,tpl.Faction)){Core.Log.Warn("[Patrols] " + "Template "+tpl.Name+" has crew from different factions; correct its driver, passenger or turret choices");yield break;}
+                if(!CrewFactions.Compatible(tpl,tpl.Faction)){Core.Log.Warn(null,"[Patrols] " + "Template "+tpl.Name+" has crew from different factions; correct its driver, passenger or turret choices");yield break;}
                 if (!saveOk[0]) { PatrolsModule.Verbose("Build of " + tpl.Name + " dropped: the game loaded or changed scene meanwhile"); yield break; }
                 if(!menu&&tpl.Origin!="POI"&&!EventBudget.Reserve(eventId))yield break;
                 reserved=!menu&&tpl.Origin!="POI";
                 string missing = tpl.MissingPrefab;
-                if (missing.Length > 0) { Core.Log.Warn("[Patrols] " + "Template " + tpl.Name + " unavailable: prefab not loaded: " + missing); yield break; }
+                if (missing.Length > 0) { Core.Log.Warn(null,"[Patrols] " + "Template " + tpl.Name + " unavailable: prefab not loaded: " + missing); yield break; }
                 Vector3 pos;
                 if (at.HasValue) pos = string.IsNullOrEmpty(tpl.TrafficId) ? at.Value : TrafficSpace.Scene(trafficSpawn);
                 else
                 {
                     Vector3 p, fwd;
-                    if (!PlayerPose(out p, out fwd)) { Core.Log.Warn("[Patrols] " + "No player found"); yield break; }
+                    if (!PlayerPose(out p, out fwd)) { Core.Log.Warn(null,"[Patrols] " + "No player found"); yield break; }
                     pos = p + fwd * PatrolsModule.SpawnDistance + Vector3.up * 1.0f;
                     rot = Quaternion.LookRotation(fwd);
                 }
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Building template " + tpl.Name + ": " + tpl.Describe());
+                if (Core.Log.L1) PatrolsModule.Verbose("Building template " + tpl.Name + ": " + tpl.Describe());
 
                 var body = Prefabs.Exact(tpl.Body);
-                if (body == null) { Core.Log.Warn("[Patrols] " + "Body prefab not found: " + tpl.Body); yield break; }
+                if (body == null) { Core.Log.Warn(null,"[Patrols] " + "Body prefab not found: " + tpl.Body); yield break; }
                 GameObject trailerBody = null;
                 if (tpl.Trailer != null)
                 {
                     trailerBody = Prefabs.Exact(tpl.Trailer.Body);
                     if (trailerBody == null || !Core.ModApi.Get<Core.IVehicleAttachments>().IsTrailer(trailerBody) || FindChild(body.transform, "hitch") == null || FindChild(trailerBody.transform, "attacher") == null)
-                    { Core.Log.Warn("[Patrols] " + "Cannot build " + tpl.Name + ": trailer prefab or towing hitch is missing"); yield break; }
-                    if (WarRig.WorldSpawning.IsTemplate(trailerBody))
+                    { Core.Log.Warn(null,"[Patrols] " + "Cannot build " + tpl.Name + ": trailer prefab or towing hitch is missing"); yield break; }
+                    if (Core.ModApi.Get<Core.IWarRigWorld>()?.IsTemplate(trailerBody)==true)
                     {
                         var hitchOffset = body.transform.InverseTransformPoint(FindChild(body.transform, "hitch").position);
                         var attacherOffset = trailerBody.transform.InverseTransformPoint(FindChild(trailerBody.transform, "attacher").position);
                         var trailerPos = pos + rot * (hitchOffset - attacherOffset);
                         float trailerY = trailerPos.y;
-                        if (tpl.Origin != "POI" && !WarRig.WorldSpawning.CanSpawnAt(ref trailerPos, rot))
-                        { Core.Log.Info("[Patrols] War Rig patrol spawn rejected: blocked clearance or unsuitable ground."); yield break; }
+                        if (tpl.Origin != "POI" && Core.ModApi.Get<Core.IWarRigWorld>()?.CanSpawnAt(ref trailerPos, rot)!=true)
+                        { Core.Log.Main(null,"[Patrols] War Rig patrol spawn rejected: blocked clearance or unsuitable ground."); yield break; }
                         pos.y += trailerPos.y - trailerY;
                     }
                 }
@@ -205,7 +204,7 @@ namespace WildWasteland.Modules.Patrols
                 if(!menu&&tpl.Origin!="POI")EncounterCar.Attach(car,eventId,tpl.ConvoyMember,true);
                 car.SetActive(true);
                 Core.ModApi.Get<Core.IVehicleVisuals>()?.Paint(car, body.name,tpl.Faction);
-                // The car, its parts and its cargo go into the game's save lists only once the car is complete (Register.Commit below):
+                // The car, its parts and its cargo go into the game's save lists only once the car is complete (Core.ItemSpawner.Commit below):
                 // a save during the build (autosave, the player) does not store a half-built car
                 // Spawn has already named/deferred the packed frame and each fitted part before activation.
                 PatrolsModule.Verbose("Car frame " + car.name + " at " + pos);
@@ -307,14 +306,14 @@ namespace WildWasteland.Modules.Patrols
                 // the lift kit's adjustment from the template (the kit's own FSM has set its lifted mounts by now)
                 if (tpl.SuspensionWidth != 1f || tpl.SuspensionHeight != 0f) Core.ModApi.Get<Core.IVehicleAuthoring>()?.ApplySuspension(car, tpl.SuspensionWidth, tpl.SuspensionHeight, "template");
                 marker.SuspensionWidth = tpl.SuspensionWidth; marker.SuspensionHeight = tpl.SuspensionHeight;
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Running gear of " + car.name + ": " + Core.ModApi.Get<Core.IVehicleAuthoring>()?.SuspensionDescription(car));
+                if (Core.Log.L1) PatrolsModule.Verbose("Running gear of " + car.name + ": " + Core.ModApi.Get<Core.IVehicleAuthoring>()?.SuspensionDescription(car));
                 if (DayLight.Dark) Headlights(car, true, carFsms);   // raiders drive with their lights on at night
                 RaiderMusic(car, carFsms);                            // a cassette in the template's radio: on, full volume ([General] Raider music)
                 yield return WaitForSave(gen, saveOk);
                 if (car == null) yield break;
-                int committed = Register.Commit(car);
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Registered " + car.name + " for saving: " + committed + " object(s)");
-                if (trailer != null) Register.Commit(trailer);
+                int committed = Core.ItemSpawner.Commit(car);
+                if (Core.Log.L1) PatrolsModule.Verbose("Registered " + car.name + " for saving: " + committed + " object(s)");
+                if (trailer != null) Core.ItemSpawner.Commit(trailer);
 
                 yield return BuildQueue.Assembled;
                 if(!tpl.SetupOnly&&(car.GetComponent<MerchantHost>()==null||car.GetComponent<MerchantHost>().Data?.travelling==true))yield return StartUp(car);
@@ -323,14 +322,14 @@ namespace WildWasteland.Modules.Patrols
             {
                 if(reserved){EventBudget.Release(eventId);if(car!=null)EncounterCar.Attach(car,eventId,tpl.ConvoyMember);}
                 // stopped early (a wreck, an error): what exists is registered as before; a destroyed car's list is dropped
-                if (car != null) { if (Register.Pending(car)) Register.Commit(car); }
-                else Register.Discard(car);
+                if (car != null) { if (Core.ItemSpawner.Pending(car)) Core.ItemSpawner.Commit(car); }
+                else Core.ItemSpawner.Discard(car);
                 if (trailer != null)
                 {
-                    if (car != null && Core.ModApi.Get<Core.IVehicleAttachments>().Connected(car, trailer)) { if (Register.Pending(trailer)) Register.Commit(trailer); }
-                    else { Register.Discard(trailer); Register.RemoveTree(trailer); UnityEngine.Object.Destroy(trailer); }
+                    if (car != null && Core.ModApi.Get<Core.IVehicleAttachments>().Connected(car, trailer)) { if (Core.ItemSpawner.Pending(trailer)) Core.ItemSpawner.Commit(trailer); }
+                    else { Core.ItemSpawner.Discard(trailer); Core.ItemSpawner.RemoveTree(trailer); UnityEngine.Object.Destroy(trailer); }
                 }
-                else Register.Discard(trailer);
+                else Core.ItemSpawner.Discard(trailer);
                 if (onDone != null) onDone(car);
             }
         }
@@ -376,9 +375,9 @@ namespace WildWasteland.Modules.Patrols
         internal static GameObject SeatDriver(GameObject car, string prefabName, bool randomize = true)
         {
             var prefab = Prefabs.FindAny(prefabName);
-            if (prefab == null) { Core.Log.Warn("[Patrols] " + "Driver prefab not found: " + prefabName); return null; }
+            if (prefab == null) { Core.Log.Warn(null,"[Patrols] " + "Driver prefab not found: " + prefabName); return null; }
             var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
-            if (sit == null) { Core.Log.Warn("[Patrols] " + "No sitPos on " + car.name); return null; }
+            if (sit == null) { Core.Log.Warn(null,"[Patrols] " + "No sitPos on " + car.name); return null; }
 
             var off = (Core.ModApi.Get<Core.ICrewSeats>()?.DriverOffset ?? Vector3.zero);
             var pos = sit.position + car.transform.right * off.x + car.transform.up * off.y + car.transform.forward * off.z;
@@ -411,7 +410,7 @@ namespace WildWasteland.Modules.Patrols
         internal static GameObject SeatLiveDriver(GameObject car, string prefabName, float health = -1f, CrewPhase phase = CrewPhase.Waiting, float seated = 0f, bool hold = false, bool randomize = true)
         {
             var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
-            if (sit == null) { Core.Log.Warn("[Patrols] " + "No sitPos on " + car.name); return null; }
+            if (sit == null) { Core.Log.Warn(null,"[Patrols] " + "No sitPos on " + car.name); return null; }
             var drv = SeatOccupant(car, prefabName, sit, "Driver", false, health, randomize);
             if (drv == null) return null;
             SimpleBanditBridge.Mark(drv);
@@ -430,7 +429,7 @@ namespace WildWasteland.Modules.Patrols
             var sit = FindChild(car.transform, "sitPos");
             var hd = FindChild(car.transform, "hinge_seat_driver");
             var hp = FindChild(car.transform, "hinge_seat_passenger");
-            if (sit == null || hd == null || hp == null) { Core.Log.Warn("[Patrols] " + "No sitPos / seat hinges for a passenger on " + car.name); return null; }
+            if (sit == null || hd == null || hp == null) { Core.Log.Warn(null,"[Patrols] " + "No sitPos / seat hinges for a passenger on " + car.name); return null; }
             var anchor = new GameObject("Apocapatrol.PassengerPos").transform;
             anchor.SetParent(car.transform, false);
             anchor.position = sit.position + (hp.position - hd.position);
@@ -448,7 +447,7 @@ namespace WildWasteland.Modules.Patrols
             }
             var pax = SeatOccupant(car, prefabName, anchor, "Passenger", true, health, randomize);
             if (pax == null) { UnityEngine.Object.Destroy(anchor.gameObject); return null; }
-            if(chair!=null||string.Equals(TemplateExporter.PrefabName(car.name),"Rustliner",System.StringComparison.OrdinalIgnoreCase))
+            if(chair!=null||string.Equals(Core.Names.Prefab(car.name),"Rustliner",System.StringComparison.OrdinalIgnoreCase))
                 Core.ModApi.Get<Core.ICrewSeats>()?.Find(pax)?.ConfigureBusPassenger();
             Core.ModApi.Get<Core.IOccupantCombat>()?.Attach(pax, car, anchor);
             return pax;
@@ -461,7 +460,7 @@ namespace WildWasteland.Modules.Patrols
         private static GameObject SeatOccupant(GameObject car, string prefabName, Transform anchor, string role, bool passenger, float health = -1f, bool randomize = true)
         {
             var prefab = Prefabs.FindAny(prefabName);
-            if (prefab == null) { Core.Log.Warn("[Patrols] " + role + " prefab not found: " + prefabName); return null; }
+            if (prefab == null) { Core.Log.Warn(null,"[Patrols] " + role + " prefab not found: " + prefabName); return null; }
 
             // along the anchor's axes (= the car's for every seat but the bus chair, which faces sideways)
             var off = (Core.ModApi.Get<Core.ICrewSeats>()?.DriverOffset ?? Vector3.zero);
@@ -522,7 +521,7 @@ namespace WildWasteland.Modules.Patrols
             if (_ignoreSignature.TryGetValue(who, out old) && old == sig) { _whoCols.Clear(); return 0; }
             _ignoreSignature[who] = sig;
             int n = IgnoreCore(who, _whoCols, carCols); _whoCols.Clear();
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Collision ignores re-applied for " + who.name + ": " + n + " pairs");
+            if (Core.Log.L1) PatrolsModule.Verbose("Collision ignores re-applied for " + who.name + ": " + n + " pairs");
             return n;
         }
 
@@ -619,7 +618,7 @@ namespace WildWasteland.Modules.Patrols
             pax.name = pax.name.Replace("(Passenger)", "(Driver)");
             if (guard) combat.Promote(pax,sit);
             Rider.KeepNoContacts(pax);   // already contact-free from its seat; covers props it picked up since
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Takeover: " + pax.name + " on " + sit.name);
+            if (Core.Log.L1) PatrolsModule.Verbose("Takeover: " + pax.name + " on " + sit.name);
             if (oldAnchor != null && oldAnchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(oldAnchor.gameObject);
             return pax;
         }
@@ -660,7 +659,7 @@ namespace WildWasteland.Modules.Patrols
             var facing = Vector3.ProjectOnPlane(car.transform.right * side, Vector3.up);
             // the Rustliner bus (2.3.8): everybody leaves through the door in the back (hinge_door_parent/hinge_door_L, the rear door), the
             // truck's exit distance behind it - a sideways exit lands them inside the bus
-            var rearDoor = TemplateExporter.PrefabName(car.name).Equals("Rustliner", StringComparison.OrdinalIgnoreCase) ? FindChild(car.transform, "hinge_door_parent") : null;
+            var rearDoor = Core.Names.Prefab(car.name).Equals("Rustliner", StringComparison.OrdinalIgnoreCase) ? FindChild(car.transform, "hinge_door_parent") : null;
             var frontDoor=CrewReturn.FrontDoor(car);
             if(frontDoor!=null){var crew=car.GetComponent<Crew>();from=CrewReturn.DoorOutside(car,frontDoor)+Vector3.up*1.5f+(crew!=null?crew.FrontExitOffset():Vector3.zero);facing=car.transform.right;}
             else if (rearDoor != null)
@@ -679,11 +678,10 @@ namespace WildWasteland.Modules.Patrols
 
             if (prefab == null)
             {
-                Core.Log.Warn("[Patrols] " + "Bail-out: prefab not found: " + prefabName + "; " + pax.name + " just disappears");
+                Core.Log.Warn(null,"[Patrols] " + "Bail-out: prefab not found: " + prefabName + "; " + pax.name + " just disappears");
                 UnityEngine.Object.Destroy(pax);
                 if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
                 PublishBailOut(car,pax,null);
-                Core.Services.RaiseCrewBailedOut(car, pax, null);   // WW: ex a Harmony postfix other mods put on this method
                 return null;
             }
             var mob = UnityEngine.Object.Instantiate(prefab, pos + Vector3.up * 0.5f, rot);
@@ -698,13 +696,12 @@ namespace WildWasteland.Modules.Patrols
                 mob.transform.position += Vector3.up * (groundY + 0.15f - bottom);
             }
             pos = mob.transform.position;
-            Register.Name(mob, prefab.name); CrewLooks.Transfer(pax, mob); Register.Add(mob, false);
+            Core.ItemSpawner.Name(mob, prefab.name); CrewLooks.Transfer(pax, mob); Core.ItemSpawner.AddExisting(mob, false);
             if (health > 0f) { SetHealth(mob, health); mob.AddComponent<LateHealth>().Value = health; }
             UnityEngine.Object.Destroy(pax);
             if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
             PatrolsModule.Verbose("Bail-out: " + mob.name + " got out of " + car.name + " with " + (health > 0f ? health.ToString("0") : "full") + " health at " + pos);
             PublishBailOut(car,pax,mob);
-            Core.Services.RaiseCrewBailedOut(car, pax, mob);   // WW: the NPC module subscribes (ex its Harmony postfix on Apocapatrol.Patrol.BailOut)
             // awareness handover + return-to-car membership (pax is destroyed at the end of the frame; its name still tells the seat)
             if(record)CrewReturn.Dismounted(car, mob, pax.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0 ? CrewReturn.RoleDriver : CrewReturn.RolePassenger, -1,
                 CrewLooks.Identity(mob, prefabName), null, null, false);

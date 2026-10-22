@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// (WW) A human NPC taking a POI navigation link: a scripted, kinematic move (the brain is put on Travel so it neither steers nor
@@ -200,13 +200,12 @@ namespace WildWasteland.Modules.NPC
 
         // EarlyFixedUpdate: every traversal moves its body
         /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs "NPCAI.PoiNav.Traverse".</summary>
-        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
-        internal static void Tick() { if (!NavRuntime.Active) Update(); }
+
 
         /// <summary>Job "NPCAI.PoiNav.Traverse" (every frame, EarlyFixedUpdate): advances every running ladder / climb / drop traversal.</summary>
         internal static void Update()
         {
-            Services.LadderClimbers.Clear();
+
             if (_runs.Count == 0 || Time.timeScale < .01f) return;
             float dt = Time.fixedDeltaTime;
             _done.Clear();
@@ -217,7 +216,7 @@ namespace WildWasteland.Modules.NPC
                 {
                     if (r.Owner == null || !r.Owner.activeInHierarchy || r.Rb == null || (r.L != null && r.Inst.Root == null)) { _done.Add(kv.Key); continue; }
                     if (Step(r, dt)) _done.Add(kv.Key);
-                    else if (r.L != null && r.L.Kind == PoiLinkKind.Ladder) Services.LadderClimbers.Add(r.Owner.transform.position - Vector3.up * r.Lift);
+                    else if (r.L != null && r.L.Kind == PoiLinkKind.Ladder) Core.ModApi.Get<Core.ITraversal>()?.SetLadderOccupant(Core.Entities.Of(r.Owner),r.Owner.transform.position-Vector3.up*r.Lift,true);
                 }
                 catch (Exception e) { Log.Error(NavRuntime.Owner, "POI traversal", e); _done.Add(kv.Key); }
             }
@@ -267,7 +266,7 @@ namespace WildWasteland.Modules.NPC
                         {
                             r.H -= Slide(r, dt); float hb = Mathf.Clamp(r.H, 0f, r.Climb);
                             Move(r, Vector3.Lerp(r.Bottom, r.Top, hb / r.Climb));
-                            Phase(r, Services.LadderSlidePhase);
+                            Phase(r, PlayerSlidePhase);
                             if (r.H <= 0f) { r.Stage = 3; r.T = 0f; if (r.Anim != null) { r.Anim.Dispose(); r.Anim = null; } }
                             return false;
                         }
@@ -342,7 +341,7 @@ namespace WildWasteland.Modules.NPC
                 if (down < cap) { down = cap; r.SlideV = 0f; }        // held up by the player below: waits there
                 r.H = down; float h = Mathf.Clamp(r.H, 0f, r.Climb);
                 Move(r, Vector3.Lerp(r.Bottom, r.Top, h / r.Climb));
-                Phase(r, Services.LadderSlidePhase);
+                Phase(r, PlayerSlidePhase);
                 if (h <= 0f) { r.Stage = 2; r.T = 0f; if (r.Anim != null) { r.Anim.Dispose(); r.Anim = null; } }
                 return false;
             }
@@ -363,7 +362,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>the player on this ladder: an NPC climbing towards him stops a body length short (and waits there) instead of passing him</summary>
         static float PlayerCap(Run r, bool up)
         {
-            var ladder = Services.PlayerLadder; var player = GameRefs.Player;
+            var ladder = PlayerLadder; var player = GameRefs.Player;
             if (ladder == null || player == null) return up ? float.MaxValue : float.MinValue;
             Vector3 p = player.transform.position;
             Vector3 onLine = Vector3.Lerp(r.Bottom, r.Top, Mathf.InverseLerp(r.Bottom.y, r.Top.y, p.y));
@@ -383,13 +382,19 @@ namespace WildWasteland.Modules.NPC
         /// <summary>the player has been off every ladder for half a second (not the moment of a jump onto a platform)</summary>
         static bool PlayerOff(Run r)
         {
-            if (Services.PlayerLadder != null) { r.OffSince = -1f; return false; }
+            if (PlayerLadder != null) { r.OffSince = -1f; return false; }
             if (r.OffSince < 0f) r.OffSince = Time.time;
             return Time.time - r.OffSince > .5f;
         }
 
         /// <summary>down a ladder: a slide that speeds up to the player's slide speed (metres this step)</summary>
-        static float Slide(Run r, float dt) { r.SlideV = Mathf.Min(r.SlideV + 14f * dt, Services.LadderSlideSpeed); return r.SlideV * dt; }
+        /// <summary>Reads current ladder metrics from the actual Presentation traversal owner.</summary>
+        private static Collider PlayerLadder { get { Collider ladder;Vector3 side;float phase,speed;return Core.ModApi.Get<Core.ITraversal>()?.TryPlayerLadder(out ladder,out side,out phase,out speed)==true?ladder:null; } }
+        /// <summary>Reads the held slide pose without duplicating Presentation tuning.</summary>
+        private static float PlayerSlidePhase { get { Collider ladder;Vector3 side;float phase,speed;var api=Core.ModApi.Get<Core.ITraversal>();if(api==null)return 0f;api.TryPlayerLadder(out ladder,out side,out phase,out speed);return phase; } }
+        /// <summary>Reads the current maximum slide speed with the native default while Presentation is disabled.</summary>
+        private static float PlayerSlideSpeed { get { Collider ladder;Vector3 side;float phase,speed;var api=Core.ModApi.Get<Core.ITraversal>();if(api==null)return 6f;api.TryPlayerLadder(out ladder,out side,out phase,out speed);return speed; } }
+        static float Slide(Run r, float dt) { r.SlideV = Mathf.Min(r.SlideV + 14f * dt, PlayerSlideSpeed); return r.SlideV * dt; }
         /// <summary>Kinematic move of the body plus its facing.</summary>
         static void Move(Run r, Vector3 p) { r.Rb.MovePosition(p); r.Owner.transform.rotation = r.Facing; }
         /// <summary>Sets the traversal animation phase when the lease is valid.</summary>

@@ -13,6 +13,8 @@ namespace WildWasteland.Core
     /// </summary>
     public static class Names
     {
+        /// <summary>Returns the complete native transform hierarchy for diagnostics.</summary>
+        public static string PathOf(UnityEngine.Transform transform) { if(transform==null)return "";string path=transform.name;for(var parent=transform.parent;parent!=null;parent=parent.parent)path=parent.name+"/"+path;return path; }
         /// <summary>Canonical held weapon key shared by animation and weapon catalogs.</summary>
         public static string Weapon(string name)
         {

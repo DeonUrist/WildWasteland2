@@ -172,7 +172,7 @@ namespace WildWasteland.Core
         /// <summary>Logs a writer failure (Log rate-limits repeats).</summary>
         static void Fail(Writer w, Exception e)
         {
-            Log.Warn("[" + (w.Owner != null ? w.Owner.Id : "Core") + "] camera writer " + w.Name + " failed: " + e.Message);
+            Log.Warn(null,"[" + (w.Owner != null ? w.Owner.Id : "Core") + "] camera writer " + w.Name + " failed: " + e.Message);
         }
     }
 }

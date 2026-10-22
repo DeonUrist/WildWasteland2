@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Quests
                 if (p.Obj == null || !p.Obj.gameObject.activeInHierarchy) continue;
                 p.Pos = p.Obj.position;
                 if (filter.Length > 0 && !Util.Norm(p.Name).Contains(filter) && !Util.Norm(p.Kind).Contains(filter)) continue;
-                float d = HDist(p.Pos, center); if (d >= minD && d <= maxD) list.Add(p);
+                float d = Core.WorldGeometry.HorizontalDistance(p.Pos, center); if (d >= minD && d <= maxD) list.Add(p);
             }
             return list;
         }
@@ -61,7 +61,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Tests whether a point lies near any supplied visited position.</summary>
         public static bool NearAny(List<Vector3> points, Vector3 p, float radius)
         {
-            for (int i = 0; i < points.Count; i++) if (HDist(points[i], p) <= radius) return true;
+            for (int i = 0; i < points.Count; i++) if (Core.WorldGeometry.HorizontalDistance(points[i], p) <= radius) return true;
             return false;
         }
     }

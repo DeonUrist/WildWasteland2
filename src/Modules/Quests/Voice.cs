@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.Quests
         public static void Init(VoiceSettings cfg, string dllDir)
         {
             enabled = cfg.enabled;
-            Core.Log.Always("[Quests] Quest voicelines temporarily disabled (recording set incomplete).");
+            Core.Log.Always(null,"[Quests] Quest voicelines temporarily disabled (recording set incomplete).");
             volume = cfg.volume;
 
             spatial = cfg.spatial;

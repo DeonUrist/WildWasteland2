@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Config entries of the Presentation camera rig (third person, observing / orbit, dynamic crosshair, pick assist, camera culling).

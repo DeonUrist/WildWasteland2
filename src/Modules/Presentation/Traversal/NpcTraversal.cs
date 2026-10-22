@@ -7,9 +7,9 @@ using WildWasteland.Core;
 
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
-    // (WW) Core.Services.Animation.BeginNpcTraversal: ladder and ledge-climb animations on humanoid NPC rigs, for the NPC module's POI
+    // (WW) Core.ModApi.Get<Core.IAnimationApi>().BeginNpcTraversal: ladder and ledge-climb animations on humanoid NPC rigs, for the NPC module's POI
     // navigation links. The NPC module owns the body's movement; this only animates.
     //   Ladder: the shared ClimbingLadder PoseClip written through a HumanPoseHandler after the Animator evaluated (LateUpdateLast).
     //   ClimbWaist / ClimbHigh: the player's climbing clips on a temporary PlayableGraph (the Rider.JumpClip precedent), time set by Phase.

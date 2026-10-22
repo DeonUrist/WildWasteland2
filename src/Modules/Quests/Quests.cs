@@ -796,10 +796,10 @@ namespace WildWasteland.Modules.Quests
                 Faction owner = Factions.OwnerOfPoi(p);
                 if (owner == null || !Factions.Friendly(giver, owner)) continue;
                 if (!HasFriendlyPeople(giver, p.Pos, 120f, true)) continue;          // people are loaded there and none is on the giver's side
-                Vector3 rel = Game.Rel(p.Pos);
+                Vector3 rel = Core.Origin.World(p.Pos);
                 bool taken = false;
                 for (int i = 0; i < active.Count; i++)
-                    if (active[i].Type == QType.Deliver && active[i].HasPos && Game.HDist(active[i].Pos, rel) < 5f) { taken = true; break; }
+                    if (active[i].Type == QType.Deliver && active[i].HasPos && Core.WorldGeometry.HorizontalDistance(active[i].Pos, rel) < 5f) { taken = true; break; }
                 if (blocked != null && blocked.Contains("deliver:" + PosKey(rel))) taken = true;
                 if (!taken) cands.Add(p);
             }
@@ -813,7 +813,7 @@ namespace WildWasteland.Modules.Quests
             int around = 0;
             foreach (EnemyInfo e in Game.FindPeople(Factions.PeopleWords))
             {
-                if (e.Go == null || Game.HDist(e.Pos, pos) > radius) continue;
+                if (e.Go == null || Core.WorldGeometry.HorizontalDistance(e.Pos, pos) > radius) continue;
                 around++;
                 if (Game.IsPlayerEnemy(e.Go)) continue;
                 Faction f = Factions.OfObject(e.Tag, e.Name, e.Pos);
@@ -829,7 +829,7 @@ namespace WildWasteland.Modules.Quests
             Faction owner = Factions.OwnerOfPoi(camp);
             q.Type = QType.Deliver;
             q.HasPos = true;
-            q.Pos = Game.Rel(camp.Pos);
+            q.Pos = Core.Origin.World(camp.Pos);
             q.Place = (owner != null ? owner.Name + " " : "") + "camp";
             q.ReturnToGiver = false;
             ResetClock(q, giverWorld, minutesBase, minutesPerKm);
@@ -839,7 +839,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Resets generated-delivery clock bookkeeping at a world boundary.</summary>
         public static void ResetClock(Quest q, Vector3 giverWorld, float minutesBase, float minutesPerKm)
         {
-            float km = q.HasPos ? Game.HDist(Game.Abs(q.Pos), giverWorld) / 1000f : 1f;
+            float km = q.HasPos ? Core.WorldGeometry.HorizontalDistance(Core.Origin.Scene(q.Pos), giverWorld) / 1000f : 1f;
             float minutes = q.Minutes > 0f ? q.Minutes : minutesBase + km * minutesPerKm;
             q.TimeLeft = Math.Max(60f, minutes * 60f);
         }
@@ -868,7 +868,7 @@ namespace WildWasteland.Modules.Quests
             q.Count = n;
             q.Radius = radius;
             AimDelivery(q, camp, giverWorld, minutesBase, minutesPerKm);
-            float dist = Game.HDist(camp.Pos, giverWorld);
+            float dist = Core.WorldGeometry.HorizontalDistance(camp.Pos, giverWorld);
             // the job pays for the trip, plus half the goods' value so delivering beats keeping them
             q.Reward = Round5(25f + dist * 0.06f + it.Value * n * 0.5f);
             q.Title = "Deliver " + n + " " + it.Name;
@@ -1020,27 +1020,27 @@ namespace WildWasteland.Modules.Quests
             if (foes != null)
                 for (int i = 0; i < foes.Count; i++)
                     if (Free(blocked, "kill:" + Util.Norm(foes[i].Name)) && !NoKillQuest(foes[i].Name)) freeFoes.Add(foes[i]);
-            freeFoes.Sort(delegate (EnemyInfo a, EnemyInfo b) { return Game.HDist(Game.Rel(a.Pos), giverRel).CompareTo(Game.HDist(Game.Rel(b.Pos), giverRel)); });
+            freeFoes.Sort(delegate (EnemyInfo a, EnemyInfo b) { return Core.WorldGeometry.HorizontalDistance(Core.Origin.World(a.Pos), giverRel).CompareTo(Core.WorldGeometry.HorizontalDistance(Core.Origin.World(b.Pos), giverRel)); });
             var freePois = new List<Poi>();
             if (pois != null)
                 for (int i = 0; i < pois.Count; i++)
-                    if (Free(blocked, PosKey(Game.Rel(pois[i].Pos)))) freePois.Add(pois[i]);
-            freePois.Sort(delegate (Poi a, Poi b) { return Game.HDist(a.Pos, Game.Abs(giverRel)).CompareTo(Game.HDist(b.Pos, Game.Abs(giverRel))); });
+                    if (Free(blocked, PosKey(Core.Origin.World(pois[i].Pos)))) freePois.Add(pois[i]);
+            freePois.Sort(delegate (Poi a, Poi b) { return Core.WorldGeometry.HorizontalDistance(a.Pos, Core.Origin.Scene(giverRel)).CompareTo(Core.WorldGeometry.HorizontalDistance(b.Pos, Core.Origin.Scene(giverRel))); });
             int nearHostiles = 0;                       // for a clear job: hostiles really standing within its radius
             for (int i = 0; i < freeFoes.Count; i++)
-                if (Game.HDist(Game.Rel(freeFoes[i].Pos), giverRel) <= 250f) nearHostiles++;
+                if (Core.WorldGeometry.HorizontalDistance(Core.Origin.World(freeFoes[i].Pos), giverRel) <= 250f) nearHostiles++;
             if (foes != null)
             {
                 nearHostiles = 0;
                 for (int i = 0; i < foes.Count; i++)
-                    if (Game.HDist(Game.Rel(foes[i].Pos), giverRel) <= 250f) nearHostiles++;
+                    if (Core.WorldGeometry.HorizontalDistance(Core.Origin.World(foes[i].Pos), giverRel) <= 250f) nearHostiles++;
             }
 
             var freeOwn = new List<Poi>();
             if (ownCamps != null)
                 for (int i = 0; i < ownCamps.Count; i++)
-                    if (Free(blocked, PosKey(Game.Rel(ownCamps[i].Pos)))) freeOwn.Add(ownCamps[i]);
-            freeOwn.Sort(delegate (Poi a, Poi b) { return Game.HDist(a.Pos, Game.Abs(giverRel)).CompareTo(Game.HDist(b.Pos, Game.Abs(giverRel))); });
+                    if (Free(blocked, PosKey(Core.Origin.World(ownCamps[i].Pos)))) freeOwn.Add(ownCamps[i]);
+            freeOwn.Sort(delegate (Poi a, Poi b) { return Core.WorldGeometry.HorizontalDistance(a.Pos, Core.Origin.Scene(giverRel)).CompareTo(Core.WorldGeometry.HorizontalDistance(b.Pos, Core.Origin.Scene(giverRel))); });
 
             var pool = new List<QType>();
             bool checkupPick = false;
@@ -1109,8 +1109,8 @@ namespace WildWasteland.Modules.Quests
                         if (checkupPick)
                         {
                             Poi poi = freeOwn[0];
-                            q.Pos = Game.Rel(poi.Pos);
-                            float d = Game.HDist(q.Pos, giverRel);
+                            q.Pos = Core.Origin.World(poi.Pos);
+                            float d = Core.WorldGeometry.HorizontalDistance(q.Pos, giverRel);
                             q.Radius = 80f;
                             q.Checkup = true;
                             q.Reward = CheckupReward(d);
@@ -1120,8 +1120,8 @@ namespace WildWasteland.Modules.Quests
                         else
                         {
                             Poi poi = freePois[0];             // the closest place nobody has looked at
-                            q.Pos = Game.Rel(poi.Pos);
-                            float d = Game.HDist(q.Pos, giverRel);
+                            q.Pos = Core.Origin.World(poi.Pos);
+                            float d = Core.WorldGeometry.HorizontalDistance(q.Pos, giverRel);
                             q.Radius = 80f;
                             q.Reward = Round5(20f + d * 0.05f);
                             q.Label = poi.Kind.ToLowerInvariant();

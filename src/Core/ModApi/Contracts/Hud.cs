@@ -127,6 +127,8 @@ namespace WildWasteland.Core
     /// <summary>On-screen notices (replaces direct CleanHUD MessageHook.Push calls).</summary>
     public interface INotifications
     {
+        /// <summary>The HUD currently owns notification presentation, including while a menu temporarily hides its canvas.</summary>
+        bool Enabled { get; }
         /// <summary>Shows a notice for <paramref name="seconds"/> (0 = default); false when not shown.</summary>
         bool Push(string text, NotificationKind kind, float seconds);
         /// <summary>Removes notices of a kind.</summary>

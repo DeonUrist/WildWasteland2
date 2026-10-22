@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Women of Wasteland (D9): female bodies and voices for Flexa/Sprokka raiders (Gungirl/Shoota), the female population roll on

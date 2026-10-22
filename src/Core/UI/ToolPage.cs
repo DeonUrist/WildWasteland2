@@ -372,7 +372,7 @@ namespace WildWasteland.Core.UI
                 string pending; bool dirty = _text.TryGetValue(key, out pending) && pending != e.GetSerializedValue();
                 if (Ledger.Button(new Rect(rr.xMax + 6, r.y, 60, r.height), "SET", dirty))
                 {
-                    try { e.SetSerializedValue(pending); _text.Remove(key); } catch (Exception ex) { Log.Warn("F7: " + label + ": " + ex.Message); }
+                    try { e.SetSerializedValue(pending); _text.Remove(key); } catch (Exception ex) { Log.Warn(null,"F7: " + label + ": " + ex.Message); }
                 }
             }
             var desc = e.Description != null ? e.Description.Description : null;

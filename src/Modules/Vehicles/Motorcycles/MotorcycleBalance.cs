@@ -2,7 +2,7 @@ using NWH.VehiclePhysics2;
 using UnityEngine;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols.Motorcycles
+namespace WildWasteland.Modules.Vehicles.Motorcycles
 {
     /// <summary>Saved component on motorcycle chassis: lean controller that keeps the two-wheeler upright and leans it into turns.</summary>
     [DefaultExecutionOrder(-100)]

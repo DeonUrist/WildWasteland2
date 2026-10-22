@@ -32,8 +32,8 @@ namespace WildWasteland.Modules.POI
            
             _zombie = PrefabCatalog.Exact("Zombie_Runner");
             _deadLugnut = PrefabCatalog.Exact("Lugnut_Dead");
-            if (_zombie == null) Core.Log.Warn("[Patrols] War Rig POI: Zombie_Runner prefab is missing.");
-            if (_deadLugnut == null) Core.Log.Warn("[Patrols] War Rig POI: Lugnut_Dead prefab is missing.");
+            if (_zombie == null) Core.Log.Warn(null,"[Patrols] War Rig POI: Zombie_Runner prefab is missing.");
+            if (_deadLugnut == null) Core.Log.Warn(null,"[Patrols] War Rig POI: Lugnut_Dead prefab is missing.");
             if (_template == null) using(var stream=DiskResources.Open("POI.Encounters.AbandonedWarRig.json")) using(var reader=new StreamReader(stream)) _template=reader.ReadToEnd();
             ModApi.Get<IAuthoredVehicleRequests>()?.Prepare(_template);
         }
@@ -54,7 +54,7 @@ namespace WildWasteland.Modules.POI
             {
                 if (truck == null) { Done(null); return; }
                 var rig = ModApi.Get<IVehicleAttachments>()?.Attached(truck);
-                if (rig == null) { Core.Log.Warn("[Patrols] War Rig POI: truck was built without its tanker."); Done(null); return; }
+                if (rig == null) { Core.Log.Warn(null,"[Patrols] War Rig POI: truck was built without its tanker."); Done(null); return; }
                 Wheels(truck, new[] { "hinge_wheel_FL", "hinge_wheel_FR", "hinge_wheel_RL", "hinge_wheel_RR" });
                 Wheels(rig, new[] {"hinge_wheel_L","hinge_wheel_R","hinge_wheel_L2","hinge_wheel_R2","hinge_wheel_L3","hinge_wheel_R3"});
                 // The builder can span an origin jump; derive positions from the live truck.
@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.POI
                         var actor = UnityEngine.Object.Instantiate(prefab, ground.point + Vector3.up * .5f, Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 360f), 0f));
                         if(!ItemSpawner.RegisterSaved(actor,prefab.name)){UnityEngine.Object.Destroy(actor);throw new InvalidOperationException("Native save registry unavailable for encounter actor");} actor.SetActive(true); placed = true;
                     }
-                    if (!placed) Core.Log.Warn("[Patrols] War Rig POI: no clear ground for " + prefab.name);
+                    if (!placed) Core.Log.Warn(null,"[Patrols] War Rig POI: no clear ground for " + prefab.name);
                 }
                 EncounterNotices.NoticeUntilValue = Time.unscaledTime + 10f;
                 Core.Log.Main(null, "[Patrols] WAR RIG SPAWNED: abandoned Rustchief + tanker, worn wheels, no engine, 3 zombies, 2 dead Lugnuts, tanker supplies.");

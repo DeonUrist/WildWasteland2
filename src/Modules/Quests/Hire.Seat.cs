@@ -254,7 +254,7 @@ namespace WildWasteland.Modules.Quests
 
             poseComp = null;
             if (ModApi.Get<IFollowerVehicles>() != null)
-                poseComp = ModApi.Get<IFollowerVehicles>().SeatPose(npc, mountObj.transform, Game.BaseName(npc.name), ArmTemplate(Game.BaseName(npc.name)));
+                poseComp = ModApi.Get<IFollowerVehicles>().SeatPose(npc, mountObj.transform, Core.Names.Base(npc.name), ArmTemplate(Core.Names.Base(npc.name)));
 
             // ranged followers shoot from the seat with Apocapatrol's own passenger gunner
             guardComp = null;
@@ -283,7 +283,7 @@ namespace WildWasteland.Modules.Quests
             inCarSince = -1f;
             DetachGuard();
             footSince = -1f;                               // keeps the car's target: on foot he goes on shooting at it (FootWatch)
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             try
             {
                 if (poseComp != null)

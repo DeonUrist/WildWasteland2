@@ -71,7 +71,7 @@ namespace WildWasteland.Modules.Tools
                     }
                 GL.End(); GL.PopMatrix();
             }
-            catch (Exception e) { Log.Warn("[NPC] POI navigation view: " + e.Message); }
+            catch (Exception e) { Log.Warn(null,"[NPC] POI navigation view: " + e.Message); }
         }
 
         /// <summary>Refreshes reusable detached views from the navigation owner.</summary>

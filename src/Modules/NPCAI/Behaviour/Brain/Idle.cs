@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // [Idle] EnableIdleBehavior: what camp raiders do when nothing is going on (prototype, 1.3.0). Separate from the fight logic: it only
     // drives an NPC while the senses have it Idle (no target, no ghost, not searching) and nothing is detected - the moment it sees or
@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.NPC
             public bool Follower, Merchant; public Order Ord;     // (crew AI) driven by a quest follower system (never travels); the travel order of its Travel leg
         }
 
-        // (crew AI) Services.Npc.Travel: another module (Patrols: crews back to their car, foot patrols) sends an NPC to a scene point. Walked
+        // (crew AI) Core.ModApi.Get<Core.INpcApi>().Travel: another module (Patrols: crews back to their car, foot patrols) sends an NPC to a scene point. Walked
         // as the way home is (camp / cave map to the exit, then straight with the feeler fan; cars are obstacles), paused while the NPC has a
         // target / ghost / search (the brain and the senses as usual) and resumed when it is idle again. State: 1 walking (or paused),
         // 2 within Radius, 3 gave up (got nowhere ReturnTries times in a row) or nobody drives it (no senses agent for 5 s, a quest follower).

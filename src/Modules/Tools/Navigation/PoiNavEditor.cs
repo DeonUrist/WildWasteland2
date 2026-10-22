@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.Tools
             if (NavigationTools.Source == null || Opened || !GameRefs.InPlay || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value) return;
             var camera = GameRefs.MainCamera; if (camera == null) return;
             var nearest = NearestRoot(camera.transform.position);
-            if (nearest == null) { _status = "No POI within 200 m."; Log.Warn("[NPC] POI navigation editor: " + _status); return; }
+            if (nearest == null) { _status = "No POI within 200 m."; Log.Warn(null,"[NPC] POI navigation editor: " + _status); return; }
             if (!_session.Acquire()) return;
             try
             {
@@ -239,9 +239,9 @@ namespace WildWasteland.Modules.Tools
                 NavigationTools.Source.Save(_draft);
                 NavigationTools.Source.Forget(_poi); _base = NavigationTools.Source.Get(_poi); _draft = _base != null ? _base.Copy() : _draft; PoiNavView.EditData = _draft; _dirty = false;
                 _status = "Saved. NPCs use it now.";
-                Log.Always("[NPC] POI navigation saved: " + _poi + " (" + _draft.Links.Count + " links) -> " + NavigationTools.Source.ConfigPath(_poi));
+                Log.Always(null,"[NPC] POI navigation saved: " + _poi + " (" + _draft.Links.Count + " links) -> " + NavigationTools.Source.ConfigPath(_poi));
             }
-            catch (Exception e) { _status = "Save failed: " + e.Message; Log.Warn("[NPC] POI navigation editor: " + _status); }
+            catch (Exception e) { _status = "Save failed: " + e.Message; Log.Warn(null,"[NPC] POI navigation editor: " + _status); }
         }
 
         /// <summary>Restores the camera, clears overlay references and releases the editor session.</summary>

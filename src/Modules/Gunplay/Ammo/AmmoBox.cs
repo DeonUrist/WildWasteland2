@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// Spawns an ammo box item (same save-compatible recipe as Apocaspawner) holding the rounds that
     /// did not fit in the backpack.

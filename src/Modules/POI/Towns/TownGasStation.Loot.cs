@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.POI
                     if (kind == 2 && kids < lootKids) { loot = node; lootKids = kids; }
                     if (kind == 1 && kids < enemyKids) { enemy = node; enemyKids = kids; }
                 }
-            if (loot == null && enemy == null) { Log.Warn("[POI] desert gas station: no native spawner templates in the catalog"); return; }
+            if (loot == null && enemy == null) { Log.Warn(null,"[POI] desert gas station: no native spawner templates in the catalog"); return; }
             var random = new System.Random(TownPlanner.Hash(station.Key + "/gasstation/population"));
             bool animals = random.Next(2) == 0;
             List<GameObject> pool;
@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.POI
             int n = 0;
             bool authoredLoot = false;
             try { foreach (var prop in PoiDressStore.Load("TownsGasStation").Props) if (prop.Kind == "Items" || prop.Kind == "CarParts") { authoredLoot = true; break; } }
-            catch (Exception e) { Log.Warn("[POI] gas station retains native loot: " + e.Message); }
+            catch (Exception e) { Log.Warn(null,"[POI] gas station retains native loot: " + e.Message); }
             for (int i = 0; !authoredLoot && i < LootPoints.Length && loot != null; i++, n++) Add(station, loot, LootPoints[i], "ItemSpawn_gas_" + i, 1 + random.Next(2), null, saved, n);
         }
 

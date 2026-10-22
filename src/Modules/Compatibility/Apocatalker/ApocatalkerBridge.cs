@@ -1,5 +1,5 @@
 using WildWasteland.Core;
-using WildWasteland.Modules.HUD;
+using WildWasteland.Modules.Compatibility;
 
 namespace WildWasteland.Modules.Compatibility
 {
@@ -16,7 +16,6 @@ namespace WildWasteland.Modules.Compatibility
         {
             _quests=ExternalQuestConversation.Start(scope);
             TalkDialogue.Install(scope);
-            Scheduler.EveryFrame(scope, "Compatibility.Apocatalker.Dialogue", TalkDialogue.Tick, Phase.LateUpdateLast);
         }
 
         /// <summary>Scene change: hides the mirror (was the HUD's scene step).</summary>

@@ -44,10 +44,10 @@ namespace WildWasteland.Modules.Quests
             if (Stamps.TryGetValue(key, out st) && now >= st / 1000.0 && now - st / 1000.0 < GarrisonCooldownHours) return;
             float last;
             if (campLastTry.TryGetValue(key, out last) && rt - last < 60f) return;
-            Vector3 campRel = Game.Rel(p.Pos);
+            Vector3 campRel = Core.Origin.World(p.Pos);
             if (pending.Count > 0) return;
             for (int i = 0; i < walkers.Count; i++)
-                if (!walkers[i].Patrol && Game.HDist(walkers[i].TargetRel, campRel) < 30f) return;     // the group is still on its way
+                if (!walkers[i].Patrol && Core.WorldGeometry.HorizontalDistance(walkers[i].TargetRel, campRel) < 30f) return;     // the group is still on its way
             Faction f = Factions.Get(ownerName);
             if (f == null || CountDefenders(p.Pos, f.Name, 120f) > 0) return;  // somebody is already home
             int made = SpawnAround(f, p.Pos, campRel, GarrisonSize, key);
@@ -80,7 +80,7 @@ namespace WildWasteland.Modules.Quests
                         if (hf.Length > 0 && hf != keep && n.Contains(hf)) { Suppress(ch.gameObject); break; }
                     }
                 }
-                float pd = Game.HDist(playerWorld, p.Pos);
+                float pd = Core.WorldGeometry.HorizontalDistance(playerWorld, p.Pos);
                 if (pd <= GarrisonTrigger) TryGarrison(p, ownerName);
                 else if (pd > GarrisonTrigger * 1.5f) campFirstNear.Remove("camp:" + Factions.KeyOf(p));
             }

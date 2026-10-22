@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Owns live street routes, per-instance overlays and NPC entrance decisions for supplied town geometry.</summary>
     internal sealed class TownNavigationApi : ITownNavigation,IForcedWaypointProvider

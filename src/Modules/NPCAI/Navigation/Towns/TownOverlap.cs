@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Instance overlays only: a town never edits or writes a prefab's reusable .wwnav map.

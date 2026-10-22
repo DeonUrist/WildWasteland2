@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.Events;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// Player cockpit controls (Vehicles part of Car; the driving hints part is HUD's Car.Hints.cs): cockpit entry facing forward,
@@ -39,8 +39,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly string[] RunningStates = { "Start", "wait", "off3", "over3" };
 
         /// <summary>Old per-frame entry called from PlayerBody's BodyRunner; the Vehicles job "Vehicles.Cockpit" runs <see cref="TickCockpit"/> instead.</summary>
-        [Obsolete("refactor: the Vehicles module ticks the cockpit itself (Car.TickCockpit)")]
-        public static void Tick() { }
+
 
         /// <summary>The player's current cockpit root (null when not seated or the module is off).</summary>
         internal static Transform Current { get { return _startCar; } }

@@ -54,7 +54,7 @@ namespace WildWasteland.Modules.Patrols
         internal void Tick()
         {
             try { Step(); }
-            catch (Exception e) { Core.Log.Error("[Patrols] " + "Convoy: " + e); }
+            catch (Exception e) { Core.Log.Error(null,"[Patrols] " + "Convoy: " + e); }
         }
 
         /// <summary>Performs the next bounded step of the current runtime state machine.</summary>
@@ -85,12 +85,12 @@ namespace WildWasteland.Modules.Patrols
             }
             if (km < 0f)
             {
-                var pl = PlayerRef.Player; var st = GameObject.Find("Starter_Area");
+                var pl = Core.PlayerState.Transform; var st = GameObject.Find("Starter_Area");
                 if (pl != null && st != null) km = Vector3.Distance(pl.position, st.transform.position) / 1000f;
             }
             if (km < 0f) return;
             _km = km;
-            _bosses = BossKills();
+            _bosses = Core.Progression.BossKills();
         }
 
         // [General] Fury Road: every group's minimum distance / boss kills count as met
@@ -131,7 +131,7 @@ namespace WildWasteland.Modules.Patrols
                 spots = Formation(center, facing, group.Count, convoy || group.Any(t => t.IsTruck));
                 where = (driving ? "ahead" : "behind") + (angle < -10f ? "-left" : angle > 10f ? "-right" : "") + " " + PatrolsModule.ConvoySpawnDistance.Value.ToString("0") + " m";
             }
-            if (spots == null) { Core.Log.Warn("[Patrols] " + "Convoy: no ground for " + definition.Name + " around the player"); return false; }
+            if (spots == null) { Core.Log.Warn(null,"[Patrols] " + "Convoy: no ground for " + definition.Name + " around the player"); return false; }
 
             PatrolsModule.Verbose("Convoy: " + definition.Name + (debug ? " (debug)" : "") + " (km " + _km.ToString("0.0") + ", bosses " + _bosses
                 + "), "
@@ -145,8 +145,8 @@ namespace WildWasteland.Modules.Patrols
         private static bool Heading(out Vector3 origin, out Vector3 dir, out bool driving)
         {
             origin = Vector3.zero; dir = Vector3.forward; driving = false;
-            var car = PlayerRef.PlayerCar;
-            var pl = PlayerRef.Player;
+            var car = Core.PlayerState.Car;
+            var pl = Core.PlayerState.Transform;
             var cam = Core.GameRefs.MainCamera;
             if (car != null)
             {

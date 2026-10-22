@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// The game's Reload FSMs poll GetButtonDown("Reload"). We take over that button: it no longer fires on press;
     /// instead we fire the action's event on a short tap (released before HoldSeconds).

@@ -11,7 +11,7 @@ using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 using Object = UnityEngine.Object;
 
-namespace WildWasteland.Modules.Patrols.Motorcycles
+namespace WildWasteland.Modules.Vehicles.Motorcycles
 {
     /// <summary>Motorcycle chassis factory: an inactive Crossbreed clone converted to two wheels (stable prefab id 735710202610050001), and fully equipped spawns.</summary>
     public static class Factory

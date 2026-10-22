@@ -206,7 +206,7 @@ namespace WildWasteland.Modules.HUD
         {
             Screen.SetResolution(W, H, (FullScreenMode)Mode);
             QualitySettings.SetQualityLevel(Quality, true);
-            Core.Log.Always("[CleanHUD] Display apply requested: " + ResText + " " + ModeNames[Mode] + ", quality " + QualityText);
+            Core.Log.Always(null,"[CleanHUD] Display apply requested: " + ResText + " " + ModeNames[Mode] + ", quality " + QualityText);
             try
             {
                 File.WriteAllText(PathXml, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<Settings xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n" +

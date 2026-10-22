@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>NPC-owned procedural bite timing; Presentation applies the requested bone and rig displacement.</summary>
     internal static partial class DogBite

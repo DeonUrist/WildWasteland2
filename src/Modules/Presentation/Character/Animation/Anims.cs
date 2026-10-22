@@ -4,7 +4,7 @@ using System.IO;
 using UnityEngine;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Optional humanoid clips from an AssetBundle (Models/apocaplayer_anims.bundle) built with Unity 2020.3.49f1 from Mixamo FBX files
     // (UnityAnims/ project in the repo). Clips are named after their FBX file: Idle, Walk, WalkBack, StrafeLeft, StrafeRight, Run,

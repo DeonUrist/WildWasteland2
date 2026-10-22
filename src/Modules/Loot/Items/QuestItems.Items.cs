@@ -263,7 +263,7 @@ namespace WildWasteland.Modules.Loot
                 else
                 {
                     if (h.Qty != null) h.Qty.Value = 0;
-                    if (Log.L1) Log.Info("[Quests] Handed in " + h.Go.name + (h.Held ? " (carried)" : " (" + h.Dist.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m away)"));
+                    if (Log.L1) Log.Main(null,"[Quests] Handed in " + h.Go.name + (h.Held ? " (carried)" : " (" + h.Dist.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m away)"));
                     UnityEngine.Object.Destroy(h.Go);       // the game's DeleteDestroyedItems FSM drops it from the save list
                 }
                 remaining -= take;

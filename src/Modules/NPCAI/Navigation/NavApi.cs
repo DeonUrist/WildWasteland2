@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// The one navigation service of NPCAI (README 6.2, P6), provided through <c>ModApi.Provide&lt;INavApi&gt;</c> by the NPCAI entry: grid
@@ -56,8 +56,8 @@ namespace WildWasteland.Modules.NPC
         /// <summary>"Setup POI pathfinding" developer mode: POI/Towns plan no new towns while true (shared Core flag, set by Tools).</summary>
         public bool WorldGenerationSuspended
         {
-            get { return Services.PoiNavSetup; }
-            set { Services.PoiNavSetup = value; }
+            get;
+            set;
         }
 
         /// <summary>Increments whenever structures, overlays or providers change.</summary>

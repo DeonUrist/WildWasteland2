@@ -10,7 +10,7 @@ using WildWasteland.Core;
 
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     internal sealed class ClimbingController
     {
@@ -127,7 +127,7 @@ namespace WildWasteland.Modules.PlayerBody
             var rb = player != null ? player.GetComponent<Rigidbody>() : null;
             if (rb == null) return false;
             if (body != rb) { body = rb; geometry = new ClimbGeometry(rb); }
-            var camera = Game.PlayerCamera;
+            var camera = Core.PlayerState.PlayerCamera;
             var forward = mantleForward.sqrMagnitude > 0f ? mantleForward : camera != null ? camera.forward : player.transform.forward;
             if (!geometry.Find(forward, minHeight.Value, Mathf.Max(minHeight.Value, maxHeight.Value), reach.Value, allowAirborne, out target))
             { if (LastReject != geometry.Rejection) Reject(geometry.Rejection); return false; }
@@ -158,7 +158,7 @@ namespace WildWasteland.Modules.PlayerBody
                 }
                 if (jumpTriggers.Value && GameBindings.Down("Jump", KeyCode.Space)) TryJumpClimb();
                 if (!climbing && jumpTriggers.Value && Time.time < jumpProbeUntil && Time.time >= nextJumpProbe && body != null
-                    && (Game.JumpState == "Jump" || Game.JumpState == "Falling" || Mathf.Abs(body.velocity.y) > .6f))
+                    && (Core.PlayerState.JumpState == "Jump" || Core.PlayerState.JumpState == "Falling" || Mathf.Abs(body.velocity.y) > .6f))
                 { nextJumpProbe = Time.time + .05f; TryStart(true); }
                 if (!climbing && GameBindings.KeyDown(TraversalSettings.ClimbKeyCode)) TryStart(false);
             }

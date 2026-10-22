@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Ironsights: optional toggle aiming and the wheel zoom target while aiming down sights (projection written through Core CameraArbiter).</summary>
     internal static partial class Ironsights
@@ -40,7 +40,7 @@ namespace WildWasteland.Modules.Guns
         /// <summary>World ready: toggle off, zoom 1, the native ADS FSM is reset once it runs.</summary>
         internal static void StartWorld()
         { _buttonValue = false; _buttonFrame = -1; _target = _zoom = 1f; _resetAim = true; }
-        private static bool ThirdPerson { get { return Services.Animation != null && Services.Animation.PlayerThirdPerson; } }
+        private static bool ThirdPerson { get { return Core.ModApi.Get<Core.IAnimationApi>() != null && Core.ModApi.Get<Core.IAnimationApi>().PlayerThirdPerson; } }
         /// <summary>Current zoom factor of the wheel zoom (1 = none, up to 3).</summary>
         internal static float ZoomFactor { get { return _zoom > 0.0001f ? 1f / _zoom : 1f; } }
         /// <summary>Aiming down sights with a drawn first-person weapon whose AimDownSights FSM is "on".</summary>
@@ -109,7 +109,7 @@ namespace WildWasteland.Modules.Guns
             if (!Aiming || ThirdPerson) { _target = _zoom = 1f; return; }
             else
             {
-                float wheel = Services.Map != null && Services.Map.Open ? 0f : Input.mouseScrollDelta.y;   // the map zooms with the wheel
+                float wheel = Core.ModApi.Get<Core.IMapMarkers>() != null && Core.ModApi.Get<Core.IMapMarkers>().Open ? 0f : Input.mouseScrollDelta.y;   // the map zooms with the wheel
                 if (wheel != 0f)
                 {
                     _target = Mathf.Clamp(_target * Mathf.Pow(.82f, wheel), 1f / 3f, 1f);

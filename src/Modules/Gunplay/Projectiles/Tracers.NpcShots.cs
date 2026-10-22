@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.Events;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>NPC shots (Wave A split of Tracers.cs, B09): the SensorGetDetectionRayHit prefix that fires a projectile, shooter info, muzzle, target velocity for the lead and the NPC weapon kind.</summary>
     internal static partial class Tracers

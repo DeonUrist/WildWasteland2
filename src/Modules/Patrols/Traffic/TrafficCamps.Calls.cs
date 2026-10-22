@@ -25,12 +25,12 @@ namespace WildWasteland.Modules.Patrols
             foreach(var resident in Residents)
             {
                 TrafficBase camp;if(!TrafficLocations.Known.TryGetValue(resident.Camp,out camp)||resident.Actor==null||resident.CallRolled||resident.Health<=0||resident.Actor.tag!=camp.faction)continue;
-                var target=resident.Target;var player=PlayerRef.Player;var car=PlayerRef.PlayerCar;if(target==null)continue;
+                var target=resident.Target;var player=Core.PlayerState.Transform;var car=Core.PlayerState.Car;if(target==null)continue;
                 bool playerTarget=player!=null&&(target.transform.IsChildOf(player)||(car!=null&&target.transform.IsChildOf(car.transform)));
                 var attacker=target.GetComponentInParent<TrafficActor>();
-                if(playerTarget?PlayerRef.GodMode||!TrafficFactions.PlayerHostile(camp.faction):attacker==null||!TrafficFactions.Opposed(camp.faction,attacker.Faction))continue;
+                if(playerTarget?Core.PlayerState.GodMode||!TrafficFactions.PlayerHostile(camp.faction):attacker==null||!TrafficFactions.Opposed(camp.faction,attacker.Faction))continue;
                 provider.MarkCallRolled(resident.Actor);bool success=UnityEngine.Random.value<.1f;
-                if(Core.Log.Verbose)PatrolsModule.Verbose("Patrol call roll: "+resident.Actor.name+" at "+camp.id+" "+(success?"passed":"failed"));
+                if(Core.Log.L1)PatrolsModule.Verbose("Patrol call roll: "+resident.Actor.name+" at "+camp.id+" "+(success?"passed":"failed"));
                 if(success)WorldTraffic.CallPatrol(camp);
             }
         }

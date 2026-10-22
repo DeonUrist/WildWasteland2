@@ -18,8 +18,8 @@ namespace WildWasteland.Modules.Quests
                 Walker w = walkers[i];
                 if (w.Go == null) { res.Add((w.Name ?? "?") + ": gone (destroyed or unloaded)"); continue; }
                 Vector3 p = w.Go.transform.position;
-                Vector3 camp = Game.Abs(w.TargetRel);
-                res.Add(w.Go.name + ": at (" + p.x.ToString("0") + ", " + p.y.ToString("0") + ", " + p.z.ToString("0") + ")  " + (int)Game.HDist(p, camp) + " m from camp, " + (int)Game.HDist(p, playerWorld) + " m from you");
+                Vector3 camp = Core.Origin.Scene(w.TargetRel);
+                res.Add(w.Go.name + ": at (" + p.x.ToString("0") + ", " + p.y.ToString("0") + ", " + p.z.ToString("0") + ")  " + (int)Core.WorldGeometry.HorizontalDistance(p, camp) + " m from camp, " + (int)Core.WorldGeometry.HorizontalDistance(p, playerWorld) + " m from you");
             }
             return res;
         }
@@ -113,7 +113,7 @@ namespace WildWasteland.Modules.Quests
                     float x = campWorld.x + (float)Math.Sin(ang) * dists[di];
                     float z = campWorld.z + (float)Math.Cos(ang) * dists[di];
                     Vector3 g;
-                    if (Game.GroundAt(x, z, out g)) { start = g; found = true; }
+                    if (Core.WorldGeometry.GroundAt(x, z, out g)) { start = g; found = true; }
                 }
             }
             if (!found) { Log("Takeover: no loaded ground found around the camp to spawn on."); return 0; }
@@ -145,7 +145,7 @@ namespace WildWasteland.Modules.Quests
                 walkers.Add(w);
                 made++;
             }
-            Log("Takeover: sent " + made + " " + f.Name + " people from " + (int)Game.HDist(start, campWorld) + " m away.");
+            Log("Takeover: sent " + made + " " + f.Name + " people from " + (int)Core.WorldGeometry.HorizontalDistance(start, campWorld) + " m away.");
             return made;
         }
 
@@ -200,7 +200,7 @@ namespace WildWasteland.Modules.Quests
             {
                 GameObject go = all[i];
                 if (go == null || go.transform.parent != null) continue;
-                string n = Game.BaseName(go.name);
+                string n = Core.Names.Base(go.name);
                 if (!string.Equals(n, name, StringComparison.OrdinalIgnoreCase)) continue;
                 if (!Usable(go)) continue;          // model only, no AI: would T-pose
                 if (!go.scene.IsValid())            // not in a scene = an asset / prefab
@@ -297,9 +297,9 @@ namespace WildWasteland.Modules.Quests
                     // destroyed while you are close = it was killed (far away it is just unloaded, which is not a death)
                     if (w.CampKey != null && Stamps != null)
                     {
-                        Transform plr = Game.Player();
+                        Transform plr = Core.PlayerState.Transform;
                         double gh = WildWasteland.Core.Clock.GameHours;
-                        if (plr != null && gh >= 0.0 && Game.HDist(plr.position, Game.Abs(w.TargetRel)) < 200f)
+                        if (plr != null && gh >= 0.0 && Core.WorldGeometry.HorizontalDistance(plr.position, Core.Origin.Scene(w.TargetRel)) < 200f)
                         {
                             Stamps[w.CampKey] = (long)(gh * 1000.0);
                             Log("Takeover: " + w.Name + " died at its camp; no refill for " + GarrisonCooldownHours + " game hours.");
@@ -314,7 +314,7 @@ namespace WildWasteland.Modules.Quests
                 PlayMakerFSM move = w.Move;
                 if (move != null && move.ActiveStateName == "Attack") continue;     // fighting: leave it to the game's own AI
 
-                Vector3 target = Game.Abs(w.TargetRel);
+                Vector3 target = Core.Origin.Scene(w.TargetRel);
                 Vector3 pos = w.Go.transform.position;
                 Vector3 to = target - pos; to.y = 0f;
                 float dist = to.magnitude;
@@ -341,7 +341,7 @@ namespace WildWasteland.Modules.Quests
                     if (now >= w.NextStuckCheck)
                     {
                         w.NextStuckCheck = now + 4f;
-                        stuck = Game.HDist(pos, w.LastPos) < 1f;
+                        stuck = Core.WorldGeometry.HorizontalDistance(pos, w.LastPos) < 1f;
                         w.LastPos = pos;
                     }
                     bool wall = pto.sqrMagnitude > 0.01f && Blocked(w.Go.transform, pto.normalized, 2.2f);   // a wall ahead: do not run into it, stop and wait
@@ -393,7 +393,7 @@ namespace WildWasteland.Modules.Quests
                 if (now >= w.NextStuckCheck)
                 {
                     w.NextStuckCheck = now + 5f;
-                    if (Game.HDist(pos, w.LastPos) < 2f)
+                    if (Core.WorldGeometry.HorizontalDistance(pos, w.LastPos) < 2f)
                     {
                         w.StuckCount++;
                         if (w.StuckCount >= 2)
@@ -405,7 +405,7 @@ namespace WildWasteland.Modules.Quests
                             {
                                 Vector3 hop = pos + Quaternion.Euler(0f, angs[ai], 0f) * to.normalized * 25f;
                                 Vector3 g;
-                                if (Game.GroundAt(hop.x, hop.z, out g) && RoomAt(g)) { w.Go.transform.position = g + Vector3.up; break; }
+                                if (Core.WorldGeometry.GroundAt(hop.x, hop.z, out g) && RoomAt(g)) { w.Go.transform.position = g + Vector3.up; break; }
                             }
                         }
                     }
@@ -423,7 +423,7 @@ namespace WildWasteland.Modules.Quests
             {
                 float ang = UnityEngine.Random.value * 6.2831f;
                 float r = 10f + k * 2f;
-                if (Game.GroundAt(campWorld.x + Mathf.Sin(ang) * r, campWorld.z + Mathf.Cos(ang) * r, out g) && RoomAt(g)) { go.transform.position = g + Vector3.up; return; }
+                if (Core.WorldGeometry.GroundAt(campWorld.x + Mathf.Sin(ang) * r, campWorld.z + Mathf.Cos(ang) * r, out g) && RoomAt(g)) { go.transform.position = g + Vector3.up; return; }
             }
         }
 
@@ -469,7 +469,7 @@ namespace WildWasteland.Modules.Quests
                 double ang = prng.NextDouble() * Math.PI * 2.0;
                 float r = minR + (float)prng.NextDouble() * (maxR - minR);
                 Vector3 g;
-                if (Game.GroundAt(centre.x + (float)Math.Sin(ang) * r, centre.z + (float)Math.Cos(ang) * r, out g) && RoomAt(g)) return g;
+                if (Core.WorldGeometry.GroundAt(centre.x + (float)Math.Sin(ang) * r, centre.z + (float)Math.Cos(ang) * r, out g) && RoomAt(g)) return g;
             }
             return centre;
         }

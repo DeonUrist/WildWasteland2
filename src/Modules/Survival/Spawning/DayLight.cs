@@ -33,7 +33,7 @@ namespace WildWasteland.Modules.Survival
                 if (_known && Time.unscaledTime < _nextEval) return _dark;
                 _nextEval = Time.unscaledTime + 2f;
                 try { Evaluate(); }
-                catch (Exception e) { Core.Log.Warn("[Survival] DayLight: " + e.Message); _azure = null; _nextFind = Time.unscaledTime + 30f; }
+                catch (Exception e) { Core.Log.Warn(null,"[Survival] DayLight: " + e.Message); _azure = null; _nextFind = Time.unscaledTime + 30f; }
                 return _dark;
             }
         }

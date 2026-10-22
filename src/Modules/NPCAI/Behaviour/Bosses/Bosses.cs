@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.NPCAI;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.NPCAI
 {
     // [Gunplay] AdjustHumanBossHP: the human bosses' health in % of the game's own (Duke Ironjaw 1500, Buzzgut 600; asset read 2026-10-02).
     // Bosses carry the FSM "BossUI" (it shows the Health number) and a "Health" FSM. Bosses are registered by NPC detection (Registered) and when the game spawns them
@@ -137,7 +137,7 @@ namespace WildWasteland.Modules.Guns
             try { Tick(); } catch (Exception e) { NpcaiRuntime.Error("Bosses", e); }
         }
 
-        /// <summary>(WW) scheduler job "Guns.Bosses" (Interval 0.5 s; the 3 s / 5 s / 60 s gates below are unchanged)</summary>
+        /// <summary>(WW) scheduler job "WildWasteland.Modules.NPCAI.Bosses" (Interval 0.5 s; the 3 s / 5 s / 60 s gates below are unchanged)</summary>
         public static void Tick()
         {
             if (!NpcaiSettings.BossHealth.Value) return;

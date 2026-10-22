@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.HUD
         internal static bool MissingBake(Func<Vector3> position)
         {
             var location = position.Target as Location;
-            return location != null && Services.Npc != null && Services.Npc.HighlightMissingPoiBake(location.Label);
+            return location != null && Core.ModApi.Get<Core.INpcApi>() != null && Core.ModApi.Get<Core.INpcApi>().HighlightMissingPoiBake(location.Label);
         }
         /// <summary>Resets discovery state and records whether this is a fresh world.</summary>
         internal static void Begin(bool fresh)
@@ -194,19 +194,19 @@ namespace WildWasteland.Modules.HUD
                     if (!location.Known && (delta.sqrMagnitude <= 10000f || spotted))
                     {
                         location.Known = true; Discovered.Add(location.Key);
-                        if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Location discovered: " + location.Key);
+                        if (Core.Log.L1) Core.Log.Main(null,"[CleanHUD] Location discovered: " + location.Key);
                     }
-                    if (!location.Cleared && location.Label.StartsWith("Camp_", StringComparison.OrdinalIgnoreCase) && location.Color.g < .5f && Services.Camps != null && Services.Camps.At(world, 120f) == CampState.Cleared)
+                    if (!location.Cleared && location.Label.StartsWith("Camp_", StringComparison.OrdinalIgnoreCase) && location.Color.g < .5f && Core.ModApi.Get<Core.ICampStatus>() != null && Core.ModApi.Get<Core.ICampStatus>().At(world, 120f) == CampState.Cleared)
                     {
                         location.Cleared = true;
                         if (location.Map != null) location.Map.Remove(location.MapMarker); location.MapMarker = 0;
                         if (location.Marker != 0) Api.Compass.Remove(location.Marker); location.Marker = 0;
-                        if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Location cleared: " + location.Key);
+                        if (Core.Log.L1) Core.Log.Main(null,"[CleanHUD] Location cleared: " + location.Key);
                     }
                 }
                 var color = location.Cleared ? Color.white : location.Color;
                 if (location.Native != null) location.Native.forceRenderingOff = hud && HudModule.MapEnabled.Value ? true : location.ForceOff;
-                if (location.Map != Services.Map) { if (location.Map != null) location.Map.Remove(location.MapMarker); location.Map = Services.Map; location.MapMarker = 0; }
+                if (location.Map != Core.ModApi.Get<Core.IMapMarkers>()) { if (location.Map != null) location.Map.Remove(location.MapMarker); location.Map = Core.ModApi.Get<Core.IMapMarkers>(); location.MapMarker = 0; }
                 bool excluded = ExcludedRoot(pair.Key);
                 bool onMap = !excluded && pair.Key != null && hud && HudModule.MapEnabled.Value && location.Map != null && location.Map.Markers != MapDetail.Off;
                 if (!onMap) { if (location.Map != null) location.Map.Remove(location.MapMarker); location.MapMarker = 0; }

@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>
     /// War Rig ground recovery ([Vehicles / War Rig] Ground recovery): rescues the rig, its hitched trucks, attached bodies and the player in

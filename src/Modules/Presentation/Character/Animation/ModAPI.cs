@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // ================================================================================================================================
     // (2.2.0) ModAPI - the player's animations for other mods.
@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.PlayerBody
     // throws, punches, melee swings and kicks, the weapon in the right hand at the player's tuned per-clip weapon poses, the aim lift.
     // Only the clips the player itself uses are offered (ClipNames); the bundle's other clips (death poses ...) are not part of the API.
     //
-    // (WW) Inside Wild Wasteland other modules use it through Core.Services.Animation (IAnimationApi / IAnimatedCharacter, see
+    // (WW) Inside Wild Wasteland other modules use it through Core.ModApi.Get<Core.IAnimationApi>() (IAnimationApi / IAnimatedCharacter, see
     // AnimationService.cs), never this class directly. The original standalone usage was (reference Apocaplayer.dll):
     //     if (ModAPI.Ready) {
     //         var c = ModAPI.Attach(npcAnimator);           // null: not a humanoid / no animation bundle

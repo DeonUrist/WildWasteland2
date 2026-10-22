@@ -99,9 +99,9 @@ namespace WildWasteland.Modules.HUD
             _menu = new Menu(_loadingScreen);
             InitCoreUpdateCheck();
             SaveBus.StateChanged += _loadingScreen.StateChanged;
-            Services.VehicleStatus = this;
-            Services.Compass = this;
-            _questMap = new MapMarkers(); Services.Map = _questMap;
+            Core.ModApi.Provide<IVehicleStatusDisplay>(Core.ModuleHost.Current,this);
+            Core.ModApi.Provide<ICompassMarkers>(Core.ModuleHost.Current,this);
+            _questMap = new MapMarkers(); Core.ModApi.Provide<IMapMarkers>(Core.ModuleHost.Current,_questMap);
 
             QuestNotifications.Install(this);
             QuestTracker.Install(this);
@@ -130,7 +130,7 @@ namespace WildWasteland.Modules.HUD
             Scheduler.EveryFrame(this, "HUD", TickHud, Phase.LateUpdateLast);
             Scheduler.EveryFrame(this, "Menus", _menu.Tick, Phase.LateUpdateLast);
             Scheduler.EveryFrame(this, "Loading screen", _loadingScreen.Tick, Phase.LateUpdateLast);
-            Core.Log.Always("[CleanHUD] CleanHUD 1.5.1 integrated; layout: " + Layout.Path);
+            Core.Log.Always(null,"[CleanHUD] CleanHUD 1.5.1 integrated; layout: " + Layout.Path);
         }
 
         /// <summary>Forwards save phase changes to HUD-owned loading presentation.</summary>
@@ -225,10 +225,10 @@ namespace WildWasteland.Modules.HUD
 
             QuestTracker.Clear();
             QuestJournal.Clear(); QuestDialogue.Dispose(); QuestNotifications.Clear();
-            if (ReferenceEquals(Services.Map, _questMap)) Services.Map = null;
+            if (ReferenceEquals(Core.ModApi.Get<Core.IMapMarkers>(), _questMap)) Core.ModApi.Withdraw<IMapMarkers>(Core.ModApi.OwnerOf<IMapMarkers>());
             if (_questMap != null) _questMap.Dispose(); _questMap = null;
-            if (ReferenceEquals(Services.VehicleStatus, this)) Services.VehicleStatus = null;
-            if (ReferenceEquals(Services.Compass, this)) Services.Compass = null;
+            if (ReferenceEquals(Core.ModApi.Get<Core.IVehicleStatusDisplay>(), this)) Core.ModApi.Withdraw<IVehicleStatusDisplay>(Core.ModApi.OwnerOf<IVehicleStatusDisplay>());
+            if (ReferenceEquals(Core.ModApi.Get<Core.ICompassMarkers>(), this)) Core.ModApi.Withdraw<ICompassMarkers>(Core.ModApi.OwnerOf<ICompassMarkers>());
             LocationMarkers.Shutdown();
             MapFrame.Restore(); MapFog.Shutdown();
             if (_menu != null) _menu.Teardown(); _menu = null;
@@ -270,16 +270,16 @@ namespace WildWasteland.Modules.HUD
             yield return new ConfigPage(this, ToolGroups.Weapons, "Clean HUD & menus", Config.Main, "HUD / HUD", "HUD / Menu");
         }
         /// <summary>Resolves log for the clean HUD feature.</summary>
-        internal static void Log(string s) { Core.Log.Always("[CleanHUD] " + s); }
+        internal static void Log(string s) { Core.Log.Always(null,"[CleanHUD] " + s); }
         /// <summary>Resolves warn for the clean HUD feature.</summary>
-        internal static void Warn(string s) { Core.Log.Warn("[CleanHUD] " + s); }
+        internal static void Warn(string s) { Core.Log.Warn(null,"[CleanHUD] " + s); }
         /// <summary>Logs repeated UI exceptions only after the per-key throttle interval.</summary>
         internal static void Throttled(string key, Exception e)
         {
             float next;
             if (_throttle.TryGetValue(key, out next) && Time.unscaledTime < next) return;
             _throttle[key] = Time.unscaledTime + 10f;
-            Core.Log.Error("[CleanHUD] " + key + " failed", e);
+            Core.Log.Error(null,"[CleanHUD] " + key + " failed", e);
         }
     }
 }

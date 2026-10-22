@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Senses part behind the NPCAI ModAPI (INpcControl, README 6.2): behaviour mode and target of an agent, hearing policy, player
@@ -116,7 +116,7 @@ namespace WildWasteland.Modules.NPC
             if (profile.HearingRange > 0f && d <= profile.HearingRange)
             {
                 var car = PlayerCar();
-                if ((car != null && Nwh.EngineRunning(car)) || _playerMoving) return true;
+                if ((car != null && Core.VehicleEngine.Running(car)) || _playerMoving) return true;
             }
             float range = profile.SightRange;
             if (profile.UseLight && !FlashlightOn())

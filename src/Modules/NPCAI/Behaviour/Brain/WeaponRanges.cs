@@ -4,9 +4,9 @@ using WildWasteland.Core;
 using UnityEngine;
 
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
-    // Small deterministic fallback kept consistent with Gunplay's version-one contract (Core.Services.Guns when the Guns module runs).
+    // Small deterministic fallback kept consistent with Gunplay's version-one contract (Core.ModApi.Get<Core.IGunsApi>() when the Guns module runs).
     /// <summary>NPC weapon kind/range queries (Gunplay's IGunsApi when it runs, else a small deterministic fallback).</summary>
     internal static class WeaponRanges
     {
@@ -16,17 +16,17 @@ namespace WildWasteland.Modules.NPC
         private sealed class Info { public GameObject Owner; public Transform Weapon; public Kind Kind; public bool IsGun; public int Tries; public float Retry; }
         private static readonly Dictionary<int, Info> _shooters = new Dictionary<int, Info>();
         private static readonly List<int> _deadShooters = new List<int>();
-        // (WW) Gunplay's version-one contract is Core.Services.Guns (the Guns module); null = Guns off = the fallback below, as when
+        // (WW) Gunplay's version-one contract is Core.ModApi.Get<Core.IGunsApi>() (the Guns module); null = Guns off = the fallback below, as when
         // Gunplay was not installed.
         internal static bool ProjectilesEnabled
         {
-            get { var g = Services.Guns; try { return g != null && g.ProjectilesEnabled; } catch (Exception) { return false; } }
+            get { var g = Core.ModApi.Get<Core.IGunsApi>(); try { return g != null && g.ProjectilesEnabled; } catch (Exception) { return false; } }
         }
 
         /// <summary>Effective range of a kind: Gunplay's when it runs, else the built-in table.</summary>
         internal static float RangeOf(Kind k)
         {
-            var g = Services.Guns;
+            var g = Core.ModApi.Get<Core.IGunsApi>();
             if (g != null)
                 try { float range = g.EffectiveRange((int)k); if (!float.IsNaN(range) && !float.IsInfinity(range)) return Mathf.Max(1f, range); }
                 catch (Exception e) { NpcaiRuntime.Warn("Gunplay range query failed: " + e.Message); }
@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.NPC
         {
             kind = Kind.Rifle;
             if (owner == null) return false;
-            var g = Services.Guns;
+            var g = Core.ModApi.Get<Core.IGunsApi>();
             if (g != null)
                 try { int found; bool gun = g.TryGetWeaponKind(owner, out found); if (found >= 0 && found <= 5) kind = (Kind)found; return gun; }
                 catch (Exception e) { NpcaiRuntime.Warn("Gunplay weapon query failed: " + e.Message); }

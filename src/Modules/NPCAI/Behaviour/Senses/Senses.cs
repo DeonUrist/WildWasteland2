@@ -12,7 +12,7 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // How NPCs notice things ("the senses"). Replaces the game's SensorToolkit detection for every NPC that stands on its own.
     //
@@ -93,7 +93,7 @@ namespace WildWasteland.Modules.NPC
             public GameObject FlankObj; public Vector3 FlankPos; public bool Flanking;   // (1.1.0) a human goes to a ghost via a point to one side of it first
             public readonly Dictionary<int, float> Done = new Dictionary<int, float>();   // ghosts it reached (id -> the ghost's Moved then): never given again unless the ghost has newer news
             public readonly HashSet<int> Heard = new HashSet<int>();   // ghosts it already got from a friend's shout, and enemy shouters (instance ids, negated) it already went to: a shout never re-sends them
-            public GameObject Fought; public float FoughtUntil; public bool MemTrack, Crew;   // (crew AI) whom it fought (the player), until when it knows where he is, sight lost but kept by that memory
+            public GameObject Fought; public float FoughtUntil; public bool MemTrack, Crew;   // (crew AI) whom it fought (the player), until when it knows where he is, sight lost but kept by that memory // refs-ok: Crew is an actor-state boolean, not the Patrols component.
             public Core.EntityId Id; public Core.NpcMode Published; public string PrefabName; public Vector3 LastPos;   // (WW) ModAPI events: entity id, last published mode, prefab and position for NpcDespawned
         }
 
@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.NPC
             SimpleBandits.Clear();
             foreach (var g in _ghosts) if (g.Obj != null) UnityEngine.Object.Destroy(g.Obj);
             foreach (var kv in _agents) if (kv.Value.FlankObj != null) UnityEngine.Object.Destroy(kv.Value.FlankObj);
-            _ghosts.Clear(); _agents.Clear(); _ignored.Clear(); _remember.Clear(); _hpOf.Clear(); _prefabOf.Clear(); _presentTags.Clear(); _presentNext.Clear(); _maintKeys.Clear(); _maintPos = 0; _engineAbout.Clear(); _engineRbCar = null; _engineRb = null; _flashMissUntil = 0f; Nwh.Clear();
+            _ghosts.Clear(); _agents.Clear(); _ignored.Clear(); _remember.Clear(); _hpOf.Clear(); _prefabOf.Clear(); _presentTags.Clear(); _presentNext.Clear(); _maintKeys.Clear(); _maintPos = 0; _engineAbout.Clear(); _engineRbCar = null; _engineRb = null; _flashMissUntil = 0f; 
             _player = null; _playerHead = null; _playerCar = null; _flashlight = null; _inCarFsm = null; _grabFsm = null; _thrown = null;
             foreach (var kv in _byTag) kv.Value.Clear(); _byTagFrame = -1;
             Storm.Reset();
@@ -449,7 +449,7 @@ namespace WildWasteland.Modules.NPC
             if (a.CaveWeb) { if ((tp - a.T.position).sqrMagnitude > 9f) return false; range = Mathf.Max(range, 3f); }
             // (WW) footsteps: the player walking within [Detection] FootstepRadius is heard whatever way the NPC faces and whatever the light,
             // as long as the usual sight lines are clear (the same obstruction check: a wall still hides him)
-            bool steps = isPlayer && _playerMoving && d <= NpcaiSettings.FootstepRadius.Value * (WeaponsPackCompat.ChainsawDrawn ? 3f : 1f) && !a.CaveWeb;   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
+            bool steps = isPlayer && _playerMoving && d <= NpcaiSettings.FootstepRadius.Value * (Core.ModApi.Get<Core.IEquipmentNoise>()?.FootstepScale ?? 1f) && !a.CaveWeb;   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
             if (d > range && !steps) { if (tracked) a.SightMiss = "outside light/storm sight range"; return false; }
             if (!tracked && !steps && Vector3.Angle(a.T.forward, flat) > Mathf.Clamp(ConeOf(a), 10f, 360f) * 0.5f) return false;
             Transform troot = target.transform.root;

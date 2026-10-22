@@ -62,7 +62,7 @@ namespace WildWasteland.Modules.Patrols
             var target = slot < PatrolMarker.VehicleTurretSlots ? file : file.trailer;
             if (target == null) return "template has no trailer";
             target.SetTurretPos(slot < PatrolMarker.VehicleTurretSlots ? slot : slot - PatrolMarker.VehicleTurretSlots, new[] { Round(p.x), Round(p.y), Round(p.z) });
-            EditorStore.AtomicWrite(t.SourcePath, file.ToJson());
+            Core.AuthoringFiles.AtomicWrite(t.SourcePath, file.ToJson());
             CarTemplates.Refresh(true);
             return "turret " + (slot + 1) + " spot " + WildWasteland.Modules.Patrols.Rider.FormatV3(p) + " saved into " + System.IO.Path.GetFileName(t.SourcePath);
         }

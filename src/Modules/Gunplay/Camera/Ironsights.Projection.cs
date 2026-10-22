@@ -1,7 +1,7 @@
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Module zoom policy; Core owns native camera matrix publication and restoration.</summary>
     internal static partial class Ironsights

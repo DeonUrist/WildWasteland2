@@ -2,7 +2,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Brain part behind the NPCAI ModAPI (INpcControl): follower / cover queries for the behaviour mode and the generic fright order.</summary>
     internal static partial class Brain

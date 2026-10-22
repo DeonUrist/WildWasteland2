@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // (2.2.9) no camera culling inside caves: there the cut-away views lose the rock's shadows and light leaks in as bright patches.
     // "Inside a cave" is the game's own flag: the Player's CaveDarkness FSM sets its CaveDarkness_bool when she passes a cave mouth's Cave_IN
@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (now < _next) return;
             _next = now + 0.25f;
             bool inside = false;
-            var player = Game.Player;
+            var player = Core.PlayerState.Player;
             if (player != null)
             {
                 if (_for != player || _fsm == null)

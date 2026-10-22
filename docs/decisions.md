@@ -1,5 +1,9 @@
 # Decisions
 
+## 2.0 authority
+
+For 2.0 the approved refactor decisions D12 and D20 in refactor/README.md override earlier migration and sidecar decisions below. WW2 starts fresh; world records, descriptions and thumbnails are contained in the selected ES3 transaction. Apocasaver is not a dependency. Authored assets/settings, derived caches and recovery journals remain external.
+
 Short records of choices that later sessions must not silently undo. Newest first.
 
 ## 2026-10-16 - Automatically disable replaced standalones through Apocasetter (Testing)

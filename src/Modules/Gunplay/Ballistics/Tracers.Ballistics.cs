@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.Events;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Ballistics (Wave A split of Tracers.cs, B09): flight steps, falloff, ranges, hit replay on targets and the world, head factor, the virtual player hitbox, car-part penetration and wheel pop-off.</summary>
     internal static partial class Tracers
@@ -363,7 +363,7 @@ namespace WildWasteland.Modules.Guns
             float headR = _headR, bodyR = _bodyR;
             Vector3 headC = top - up * headR;
             Vector3 animatedHead;
-            if (Services.Animation != null && Services.Animation.TryPlayerJumpHead(target, out animatedHead)) headC = animatedHead;
+            if (Core.ModApi.Get<Core.IAnimationApi>() != null && Core.ModApi.Get<Core.IAnimationApi>().TryPlayerJumpHead(target, out animatedHead)) headC = animatedHead;
             Vector3 neck = headC - up * headR;
             // body capsule: its rounded top ends exactly at the neck, so the head zone belongs to the head alone
             Vector3 bodyLo = feet + up * bodyR, bodyHi = neck - up * bodyR;
@@ -475,7 +475,7 @@ namespace WildWasteland.Modules.Guns
                 if (t.CompareTag("vehPart")) { part = t; break; }
             if (part == null) return;
 
-            Core.Services.RaiseVehiclePartHit(part.gameObject, s.ShooterRoot ?? s.Player);
+            { var observed=new Core.Events.PartAttackObserved { Part=Core.Entities.Of(part.gameObject),Attacker=Core.Entities.Of(s.ShooterRoot ?? s.Player) };Core.ModEvents.Publish(ref observed); }
             if (!GunplaySettings.VehicleDamage.Value) { CombatEvents.PartHit(part, s.ShooterRoot ?? s.Player, false, -1f, -1f, IsWheel(col.transform, part)); return; }
             float pct = Mathf.Abs(damage) / Mathf.Max(1f, GunplaySettings.VehicleDamagePer1.Value);   // [Tracers] VehicleDamagePer1 bullet damage = 1 % condition
             bool wheel = IsWheel(col.transform, part);

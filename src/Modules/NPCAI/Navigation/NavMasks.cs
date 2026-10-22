@@ -1,4 +1,4 @@
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Physics layer masks shared by every NPCAI navigation part (grid bake, POI walker ground checks, town street routing):
     /// one definition instead of three identical copies (Nav.BakeMask, PoiNavBake.Mask, TownNavigation.Mask).</summary>

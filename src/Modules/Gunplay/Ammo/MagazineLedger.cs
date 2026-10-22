@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// One magazine per save-stable item name. A vanilla type pool can be inherited only once.
     internal sealed class MagazineLedger

@@ -77,7 +77,7 @@ namespace WildWasteland.Modules.POI
             try
             {
                 int chance = _settings.DesertGasStationChance.Value;
-                if (chance > 0 && !Services.PoiNavSetup && !startingChunk && TownPlanner.Hash(key + "/gasstation") % 100 < chance && Available)
+                if (chance > 0 && !(Core.ModApi.Get<Core.INavApi>()?.WorldGenerationSuspended==true) && !startingChunk && TownPlanner.Hash(key + "/gasstation") % 100 < chance && Available)
                     (list = new List<Request>()).Add(new Request { Key = key, Desert = true, Scale = 1f, Radius = Radius(1f) });
                 CaptureTests(tile, data, assets, ref list);
             }
@@ -161,8 +161,8 @@ namespace WildWasteland.Modules.POI
             {
                 if (request.Failure != null)
                 {
-                    if (!request.Desert) { _status = request.Failure; Log.Warn("[POI] Gas station test: " + _status); }
-                    else Log.Info("[POI] desert gas station " + request.Key + " skipped: " + request.Failure);
+                    if (!request.Desert) { _status = request.Failure; Log.Warn(null,"[POI] Gas station test: " + _status); }
+                    else Log.Main(null,"[POI] desert gas station " + request.Key + " skipped: " + request.Failure);
                     continue;
                 }
                 if (request.Pad != null && request.Prefab != null) { if (_settings.TestCamp10.Value) PlaceCamp(request, tile); continue; }
@@ -190,7 +190,7 @@ namespace WildWasteland.Modules.POI
                     }
                     else Log.Main(null, "[POI] desert gas station " + request.Key + " at " + request.Pad.WorldCenter + ", facing its road; " + station.Spawners.Count + " native spawners.");
                 }
-                catch (Exception e) { Log.Warn("[POI] gas station " + request.Key + " placement: " + e.Message); Remove(request.Key, false); }
+                catch (Exception e) { Log.Warn(null,"[POI] gas station " + request.Key + " placement: " + e.Message); Remove(request.Key, false); }
             }
         }
         /// <summary>The bare station (render shell + collider), inactive, under `parent`. Used for desert stations and town parking lots.</summary>
@@ -268,8 +268,8 @@ namespace WildWasteland.Modules.POI
         {
             if (_stations.Count == 0 || !GameRefs.InGame || SaveBus.Busy || _failed) return;
             if (_test != null && !_settings.TestGasStation.Value) Remove(_test.Key, false);
-            if (_map != Services.Map) { if (_map != null) _map.RemoveAll(MarkerOwner); _map = Services.Map; foreach (var s in _stations) s.MapId = 0; }
-            if (_compass != Services.Compass) { if (_compass != null) _compass.RemoveAll(MarkerOwner); _compass = Services.Compass; foreach (var s in _stations) s.CompassId = 0; }
+            if (_map != Core.ModApi.Get<Core.IMapMarkers>()) { if (_map != null) _map.RemoveAll(MarkerOwner); _map = Core.ModApi.Get<Core.IMapMarkers>(); foreach (var s in _stations) s.MapId = 0; }
+            if (_compass != Core.ModApi.Get<Core.ICompassMarkers>()) { if (_compass != null) _compass.RemoveAll(MarkerOwner); _compass = Core.ModApi.Get<Core.ICompassMarkers>(); foreach (var s in _stations) s.CompassId = 0; }
             var player = GameRefs.Player;
             foreach (var s in _stations)
             {
@@ -334,7 +334,7 @@ namespace WildWasteland.Modules.POI
                     if (material == null && i > 0)
                     {
                         material = native["concrete_1"];      // a cosmetic part only: concrete rather than no gas station at all
-                        Log.Warn("[POI] Gas station: native texture " + names[i] + " not found, that part uses concrete_1");
+                        Log.Warn(null,"[POI] Gas station: native texture " + names[i] + " not found, that part uses concrete_1");
                     }
                     if (material == null) throw new InvalidDataException("Native material/texture not found: " + names[i]);
                 }
@@ -381,7 +381,7 @@ namespace WildWasteland.Modules.POI
         }
         /// <summary>Records an initialization failure without silently replacing valid world data.</summary>
         private void Fail(string stage, Exception e)
-        { _failed = true; _status = "Failed " + stage + ": " + e.Message; Log.Warn("[POI] Gas station " + _status); }
+        { _failed = true; _status = "Failed " + stage + ": " + e.Message; Log.Warn(null,"[POI] Gas station " + _status); }
         /// <summary>Removes the matching registration and releases its live presentation state.</summary>
         private void Remove(string key, bool capture)
         {

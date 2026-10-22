@@ -3,7 +3,7 @@ using BepInEx.Configuration;
 using UnityEngine.InputSystem;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Every config entry of the NPCAI module (README 6.2, D12 fresh start): F6 feature toggles and player settings in settings.cfg

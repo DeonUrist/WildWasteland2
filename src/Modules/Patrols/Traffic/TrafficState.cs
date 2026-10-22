@@ -14,9 +14,9 @@ namespace WildWasteland.Modules.Patrols
             var segments = new List<string>();
             while (node != null && node != root)
             {
-                string name = TemplateExporter.PrefabName(node.name); int ordinal = 0;
+                string name = Core.Names.Prefab(node.name); int ordinal = 0;
                 for (int i = 0; node.parent != null && i < node.GetSiblingIndex(); i++)
-                    if (TemplateExporter.PrefabName(node.parent.GetChild(i).name) == name) ordinal++;
+                    if (Core.Names.Prefab(node.parent.GetChild(i).name) == name) ordinal++;
                 segments.Add(name + "#" + ordinal); node = node.parent;
             }
             segments.Reverse(); return string.Join("/", segments.ToArray());
@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.Patrols
                 for (int i = 0, seen = 0; i < node.childCount; i++)
                 {
                     var child = node.GetChild(i);
-                    if (TemplateExporter.PrefabName(child.name) != name) continue;
+                    if (Core.Names.Prefab(child.name) != name) continue;
                     if (seen++ == wanted) { next = child; break; }
                 }
                 if (next == null) return null;
@@ -96,7 +96,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 if (fsm.FsmName != "LockPhysics" || fsm.CompareTag("vehPart") || Core.ModApi.Get<Core.IVehicleAttachments>()?.IsFreeAttachment(fsm.gameObject)==true) continue;
                 if (fsm.GetComponent<ES3Internal.ES3Prefab>() == null) continue;
-                string name = TemplateExporter.PrefabName(fsm.name); int count;
+                string name = Core.Names.Prefab(fsm.name); int count;
                 counts.TryGetValue(name, out count); counts[name] = count + 1;
             }
         }

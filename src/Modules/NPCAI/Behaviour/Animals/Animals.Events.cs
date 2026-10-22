@@ -2,7 +2,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Publishers of the NPCAI animal events (BurrowChanged, PounceLeap, DogBite) for Presentation/HUD consumers: entity ids and world

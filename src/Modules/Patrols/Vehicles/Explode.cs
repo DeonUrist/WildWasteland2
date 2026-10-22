@@ -42,7 +42,7 @@ namespace WildWasteland.Modules.Patrols
             var wreck=Wreck;if(wreck==null)yield break;
             if(!marker.ExplodeRolled){marker.ExplodeRolled=true;marker.ExplodeSelected=Roll(marker.ExplodeChance,PatrolsModule.SelfDestruct.Value,UnityEngine.Random.value);}
             if(!marker.ExplodeSelected&&!PatrolsModule.SelfDestruct.Value)yield break;
-            if (PlayerRef.PlayerCar == car) yield break;
+            if (Core.PlayerState.Car == car) yield break;
             marker.Exploded = true;
             PatrolsModule.Verbose("Explode: " + car.name + " (" + why + ")");
 
@@ -78,7 +78,7 @@ namespace WildWasteland.Modules.Patrols
                 wreck.StopTweens(p);
                 // the wrench's de_Attach: layer Item + tag vehPartRemoved -> the part's CheckTag FSM unparents it and adds a Rigidbody
                 p.gameObject.layer = 9;
-                try { p.tag = "vehPartRemoved"; } catch (Exception e) { Core.Log.Warn("[Patrols] " + "Explode: tag: " + e.Message); }
+                try { p.tag = "vehPartRemoved"; } catch (Exception e) { Core.Log.Warn(null,"[Patrols] " + "Explode: tag: " + e.Message); }
             }
             var cargo = truck ? new List<Transform>() : Cargo(car);   // a truck's cargo stays locked in the bed
             foreach (var c in cargo)
@@ -214,7 +214,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>The exploder zombie's blast without its damage: the game's own Explosion_BlastZombie prefab (AudioSource explosion_03, 0.7, 100 m, play-on-awake; `Explosion` FSM: ParticleSystemPlay BigExplosion with children (fireball, smoke, debris, embers, light, shockwave) + AudioPlay + a physics Explosion (force 3000, radius 5, which also helps throw the parts) + Wait 2 s + DestroySelf). Its damage FSMs, sensors and trigger collider are disabled before they Start; it is not registered, so the game never saves it.</summary>
         private static void Blast(GameObject car)
         {
-            Core.Services.RaiseVehicleExploded(car);   // WW: the NPC module subscribes (ex a Harmony patch on Apocapatrol.Explode.Blast)
+            var exploded=new Core.Events.VehicleExploded { Vehicle=Core.Entities.Of(car),WorldPos=Core.Origin.World(car.transform.position) };Core.ModEvents.Publish(ref exploded);   // WW: the NPC module subscribes (ex a Harmony patch on Apocapatrol.Explode.Blast)
             var rb = car.GetComponent<Rigidbody>();
             Wreck?.BlastAt((rb != null ? rb.worldCenterOfMass : car.transform.position) + Vector3.up * 0.3f);
         }

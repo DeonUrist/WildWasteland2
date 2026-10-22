@@ -28,17 +28,17 @@ namespace WildWasteland.Core
             if (_installed) return; _installed = true;
             var stop = AccessTools.Method(typeof(iTween), "Stop", new[] { typeof(GameObject), typeof(string) });
             if (Patches.Patch(Owner, stop, transpiler: AccessTools.Method(typeof(ITweenGuard), nameof(StopTranspiler))))
-                Log.Always("[Core] iTween stop guard ready (always on)");
+                Log.Always(null,"[Core] iTween stop guard ready (always on)");
             BepInEx.PluginInfo info;
             if (Chainloader.PluginInfos.TryGetValue(GUID, out info) && !ReferenceEquals(info.Instance, null))
             {
-                Log.Warn("[Core] iTween guard: " + ReplacementGuard.Status(GUID) + ". Built-in fix waits until restart.");
+                Log.Warn(null,"[Core] iTween guard: " + ReplacementGuard.Status(GUID) + ". Built-in fix waits until restart.");
                 return;
             }
             var target = AccessTools.Method(typeof(iTween), "TweenUpdate");
-            if (target == null) { Log.Warn("[Core] iTween guard: iTween.TweenUpdate not found; nothing patched"); return; }
+            if (target == null) { Log.Warn(null,"[Core] iTween guard: iTween.TweenUpdate not found; nothing patched"); return; }
             if (Patches.Patch(Owner, target, prefix: AccessTools.Method(typeof(ITweenGuard), nameof(Prefix))))
-                Log.Always("[Core] iTween guard ready (always on)");
+                Log.Always(null,"[Core] iTween guard ready (always on)");
         }
 
         /// <summary>Replaces the expected single Substring call with the short-name-safe equivalent.</summary>
@@ -72,10 +72,10 @@ namespace WildWasteland.Core
                 ___physics = false;
                 ___kinematic = false;   // iTween would also touch the missing body when the tween ends
                 _fixed++;
-                if (Log.Verbose && _fixed <= 20)
+                if (Log.L1 && _fixed <= 20)
                 {
                     string path = __instance.name; for (var p = __instance.transform.parent; p != null; p = p.parent) path = p.name + "/" + path;
-                    Log.Info("[Core] iTween guard: repaired a tween whose Rigidbody was removed: " + path);
+                    Log.Main(null,"[Core] iTween guard: repaired a tween whose Rigidbody was removed: " + path);
                 }
             }
             catch (Exception) { }

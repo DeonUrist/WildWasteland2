@@ -7,7 +7,7 @@ using WildWasteland.Core;
 
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Body part (split from PlayerBody/Body/Body.cs in Wave A): the seated pose in the driver's seat - gun arms from clips over the
@@ -81,12 +81,12 @@ namespace WildWasteland.Modules.PlayerBody
             if (!_inCar && _mixamo) StartPoseFade(0.3f, false);   // into the driver's seat: the standing pose eases into the seat
             LateCarInner(player, firstPerson);
             if (_mixamo) { ApplyPoseFade(dt, player); CapturePose(player); }
-            if (firstPerson && Game.PlayerCamera != null)
+            if (firstPerson && Core.PlayerState.PlayerCamera != null)
             {
                 Transform head;
                 if (Bones.TryGetValue("mixamorig:Head", out head))
                 {
-                    var camera = Game.PlayerCamera;
+                    var camera = Core.PlayerState.PlayerCamera;
                     var yaw = Quaternion.Euler(0f, camera.eulerAngles.y, 0f);
                     var eye = CharacterSettings.BodyInCar ? ThirdPerson.CarShiftEye(camera) : camera.position;
                     // Match the existing model eye height; only the local view moves after the seated pose was captured.
@@ -105,9 +105,9 @@ namespace WildWasteland.Modules.PlayerBody
             string weapon = Game.DrawnWeapon;
             var kind = Props.KindOf(weapon);
             float aimYaw = 0f, aimPitch = 0f;
-            if (Game.PlayerCamera != null)
+            if (Core.PlayerState.PlayerCamera != null)
             {
-                var l = Quaternion.Inverse(player.rotation) * Game.PlayerCamera.forward;
+                var l = Quaternion.Inverse(player.rotation) * Core.PlayerState.PlayerCamera.forward;
                 aimYaw = Mathf.Atan2(l.x, l.z) * Mathf.Rad2Deg;
                 aimPitch = -Mathf.Asin(Mathf.Clamp(l.y, -1f, 1f)) * Mathf.Rad2Deg;
             }

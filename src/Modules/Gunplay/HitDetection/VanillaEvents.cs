@@ -6,7 +6,7 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
-using WildWasteland.Modules.Guns;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Gunplay
 {
@@ -218,7 +218,7 @@ namespace WildWasteland.Modules.Gunplay
                         target.transform.position, player ? WeaponCatalog.Instance.Handle(fsm.GameObject.name) : -1, ActorQuery.IsHead(target), false);
                 }
                 if (!senses) return;
-                if(melee&&!player){Core.Services.RaiseNpcHurt(target,fsm.GameObject);return;}
+                if(melee&&!player){{ var observed=new Core.Events.AttackObserved { Victim=Core.Entities.Of(target),Attacker=Core.Entities.Of(fsm.GameObject) };Core.ModEvents.Publish(ref observed); }return;}
                 { var npc = ModApi.Get<INpcApi>(); if (npc != null) npc.Hurt(target, player ? Core.GameRefs.Player : fsm.GameObject); }
             }
             catch (Exception e) { GunplayLog.Warn("Vanilla hurt observation: " + e.Message); }

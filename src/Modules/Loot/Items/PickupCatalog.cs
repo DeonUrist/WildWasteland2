@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Loot
 {
     /// <summary>
     /// Item list of the loot editor: every pickable item prefab (asset root with an "ID" FSM and a Rigidbody, no vehicles/trailers,

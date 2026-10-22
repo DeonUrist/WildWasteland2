@@ -68,7 +68,7 @@ namespace WildWasteland.Core
                 e.Config = cfg;
                 var mb = m as ModuleBase; if (mb != null) mb.Config = cfg;
                 try { m.BindConfig(cfg); }
-                catch (Exception ex) { Log.Error("[" + m.Id + "] BindConfig failed", ex); e.LastError = ex.Message; SetState(e, ModuleState.InitFailed); }
+                catch (Exception ex) { Log.Error(null,"[" + m.Id + "] BindConfig failed", ex); e.LastError = ex.Message; SetState(e, ModuleState.InitFailed); }
                 if (e.State != ModuleState.InitFailed)
                 {
                     try { UI.SettingsShell.Shared.RemoveAll(m); m.Settings(UI.SettingsShell.Shared); }
@@ -89,7 +89,7 @@ namespace WildWasteland.Core
                 if (conflict != null)
                 {
                     e.Conflict = conflict; SetState(e, ModuleState.OffConflict);
-                    Log.Warn("[" + e.Module.Id + "] waiting for standalone replacement: " + conflict + ".");
+                    Log.Warn(null,"[" + e.Module.Id + "] waiting for standalone replacement: " + conflict + ".");
                     continue;
                 }
                 if (!e.Config.Enabled.Value) { SetState(e, ModuleState.OffByConfig); continue; }
@@ -124,16 +124,16 @@ namespace WildWasteland.Core
                 SetActive(m, true);
                 SetState(e, ModuleState.Running);
                 e.WindowErrors = 0;
-                Log.Always("[" + m.Id + "] started (" + Patches.Count(m.Id) + " patches" + (Patches.Failed(m.Id) > 0 ? ", " + Patches.Failed(m.Id) + " FAILED" : "") + ")");
+                Log.Always(null,"[" + m.Id + "] started (" + Patches.Count(m.Id) + " patches" + (Patches.Failed(m.Id) > 0 ? ", " + Patches.Failed(m.Id) + " FAILED" : "") + ")");
             }
             catch (Exception ex)
             {
                 e.LastError = ex.Message; SetState(e, ModuleState.InitFailed);
-                Log.Error("[" + m.Id + "] Init failed - module stays off (switch it off and on in F6 / the F7 Modules page to retry)", ex);
+                Log.Error(null,"[" + m.Id + "] Init failed - module stays off (switch it off and on in F6 / the F7 Modules page to retry)", ex);
                 // a half-run Init may have set its service field / Running flag / created objects: Shutdown undoes that (modules keep
                 // Shutdown safe to call after a partial Init), then Core removes patches, jobs, hooks and hotkeys
                 Current = m;
-                try { m.Shutdown(); } catch (Exception sx) { Log.Error("[" + m.Id + "] Shutdown after the failed Init", sx); }
+                try { m.Shutdown(); } catch (Exception sx) { Log.Error(null,"[" + m.Id + "] Shutdown after the failed Init", sx); }
                 finally { Current = null; }
                 Cleanup(m);
             }
@@ -146,12 +146,12 @@ namespace WildWasteland.Core
             if (e.State == ModuleState.Running)
             {
                 Current = m;
-                try { m.Shutdown(); } catch (Exception ex) { Log.Error("[" + m.Id + "] Shutdown", ex); }
+                try { m.Shutdown(); } catch (Exception ex) { Log.Error(null,"[" + m.Id + "] Shutdown", ex); }
                 finally { Current = null; }
             }
             Cleanup(m);
             SetState(e, newState);
-            Log.Always("[" + m.Id + "] stopped (" + newState + ")");
+            Log.Always(null,"[" + m.Id + "] stopped (" + newState + ")");
         }
 
         /// <summary>Releases every owner-scoped Core registration and resource after module shutdown or failed startup.</summary>
@@ -164,7 +164,7 @@ namespace WildWasteland.Core
             Patches.Unpatch(m);
             ModApi.RemoveAll(m);
             ModEvents.RemoveAll(m);
-            Services.RemoveHandlersOf(m);
+
             Textures.Release(m);
             WorldIndex.RemoveAll(m);
             WorldTiles.RemoveAll(m);
@@ -219,7 +219,7 @@ namespace WildWasteland.Core
             {
                 foreach (string guid in module.ConflictsWith) ReplacementGuard.LateConflict(guid);
                 conflict = FindConflict(module);
-                Stop(entry, ModuleState.OffConflict); entry.Conflict = entry.LastError = conflict; Log.Warn("[" + module.Id + "] " + conflict); return false;
+                Stop(entry, ModuleState.OffConflict); entry.Conflict = entry.LastError = conflict; Log.Warn(null,"[" + module.Id + "] " + conflict); return false;
             }
             try
             {
@@ -230,7 +230,7 @@ namespace WildWasteland.Core
             catch (Exception error)
             {
                 Stop(entry, ModuleState.InitFailed); entry.LastError = error.Message;
-                Log.Error("[" + module.Id + "] deferred initialization failed", error); return false;
+                Log.Error(null,"[" + module.Id + "] deferred initialization failed", error); return false;
             }
         }
 
@@ -309,15 +309,15 @@ namespace WildWasteland.Core
         /// <summary>Logs (first 5) and counts an error; 40 counted errors in 10 s disable the module.</summary>
         static void Fail(Entry e, string where, Exception ex, bool countsTowardsDisable)
         {
-            if (e == null) { Log.Error("[Core] " + where, ex); return; }
+            if (e == null) { Log.Error(null,"[Core] " + where, ex); return; }
             e.Errors++; e.LastError = where + ": " + ex.Message;
-            if (e.Logged < 5) { e.Logged++; Log.Error("[" + e.Module.Id + "] " + where, ex); }
+            if (e.Logged < 5) { e.Logged++; Log.Error(null,"[" + e.Module.Id + "] " + where, ex); }
             if (!countsTowardsDisable) return;
             float now = Time.unscaledTime;
             if (now - e.WindowStart > 10f) { e.WindowStart = now; e.WindowErrors = 0; }
             if (++e.WindowErrors >= ErrorWindowLimit && e.State == ModuleState.Running)
             {
-                Log.Error("[" + e.Module.Id + "] " + e.WindowErrors + " errors in 10 s - module DISABLED for this session (last: " + e.LastError + "). Re-enable it in the F6 menu or the F7 window to retry.");
+                Log.Error(null,"[" + e.Module.Id + "] " + e.WindowErrors + " errors in 10 s - module DISABLED for this session (last: " + e.LastError + "). Re-enable it in the F6 menu or the F7 window to retry.");
                 Stop(e, ModuleState.DisabledAfterErrors);
             }
         }

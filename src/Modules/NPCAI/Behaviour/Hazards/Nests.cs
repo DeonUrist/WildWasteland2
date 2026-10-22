@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // (1.7.0) Spider nests. A camp / cave / wreck where spiders are (the game spawns them when you come within 500 m, or they come back with
     // a save) becomes a nest: hanging webs where the place has openings to span (between beams, walls, wrecks, rocks: spots with surfaces

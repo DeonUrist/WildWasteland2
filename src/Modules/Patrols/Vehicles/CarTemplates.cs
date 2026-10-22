@@ -28,11 +28,11 @@ namespace WildWasteland.Modules.Patrols
             _defaults.Clear(); var asm = Assembly.GetExecutingAssembly();
             foreach (string resource in WildWasteland.Core.DiskResources.Names.Where(n => n.StartsWith(Prefix, StringComparison.Ordinal) && n.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
                 using (var stream = WildWasteland.Core.DiskResources.Open(resource)) using (var reader = new StreamReader(stream)) _defaults[resource.Substring(Prefix.Length, resource.Length - Prefix.Length - 5)] = reader.ReadToEnd();
-            foreach (var pair in _defaults) { string path = EditorStore.SafePath(Folder, pair.Key + ".json"); if (!File.Exists(path)) EditorStore.AtomicWrite(path, pair.Value); }
+            foreach (var pair in _defaults) { string path = Core.AuthoringFiles.SafePath(Folder, pair.Key + ".json"); if (!File.Exists(path)) Core.AuthoringFiles.AtomicWrite(path, pair.Value); }
             Refresh(true);
         }
         /// <summary>Restores defaults for the current car templates.</summary>
-        internal static void RestoreDefaults() { foreach (var pair in _defaults) EditorStore.AtomicWrite(EditorStore.SafePath(Folder, pair.Key + ".json"), pair.Value); }
+        internal static void RestoreDefaults() { foreach (var pair in _defaults) Core.AuthoringFiles.AtomicWrite(Core.AuthoringFiles.SafePath(Folder, pair.Key + ".json"), pair.Value); }
         /// <summary>Checks the current refresh condition for car templates.</summary>
         internal static void Refresh(bool force)
         {
@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var pair in _defaults)
             {
                 var t = Parse(pair.Value, pair.Key, "default", pair.Key); if (t == null) continue;
-                t.IsDefault = t.Favorite = true; t.SourcePath = EditorStore.SafePath(Folder, pair.Key + ".json"); list[t.Name] = t;
+                t.IsDefault = t.Favorite = true; t.SourcePath = Core.AuthoringFiles.SafePath(Folder, pair.Key + ".json"); list[t.Name] = t;
             }
             LoadFolder(Folder, true, list); LoadFolder(PlayerFolder, false, list);
             CarTemplate.Park = list.Values.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToArray();
@@ -79,7 +79,7 @@ namespace WildWasteland.Modules.Patrols
         internal static void Favorite(CarTemplate t)
         {
             if (t.IsDefault || t.SourcePath.Length == 0) return;
-            string source = ManagedPath(t.SourcePath), target = EditorStore.SafePath(t.Favorite ? PlayerFolder : Folder, Path.GetFileName(source));
+            string source = ManagedPath(t.SourcePath), target = Core.AuthoringFiles.SafePath(t.Favorite ? PlayerFolder : Folder, Path.GetFileName(source));
             if (File.Exists(target)) throw new IOException("That filename already exists in the destination folder");
             File.Move(source, target); Refresh(true);
         }
@@ -101,7 +101,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Moves the validated authored template to the native Recycle Bin.</summary>
         internal static void Recycle(string path) { string file = ManagedPath(path); if (File.Exists(file)) ShellRecycle.Move(file); }
         /// <summary>Reports an authoring or runtime warning through the owning logger.</summary>
-        private static void Warn(string message) { Core.Log.Warn("[Patrols] " + message); }
+        private static void Warn(string message) { Core.Log.Warn(null,"[Patrols] " + message); }
 
         /// <summary>Normalizes a nullable authored string to its trimmed representation.</summary>
         private static string S(string s) { return (s ?? "").Trim(); }
@@ -111,15 +111,15 @@ namespace WildWasteland.Modules.Patrols
         {
             TemplateFile f;
             try { f = TemplateFile.FromJson(json); }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Car template " + where + ": not valid JSON (" + e.Message + ")"); return null; }
-            if (f == null) { Core.Log.Warn("[Patrols] " + "Car template " + where + ": empty"); return null; }
-            if (S(f.body).Length == 0) { Core.Log.Warn("[Patrols] " + "Car template " + where + ": no \"body\""); return null; }
+            catch (Exception e) { Core.Log.Warn(null,"[Patrols] " + "Car template " + where + ": not valid JSON (" + e.Message + ")"); return null; }
+            if (f == null) { Core.Log.Warn(null,"[Patrols] " + "Car template " + where + ": empty"); return null; }
+            if (S(f.body).Length == 0) { Core.Log.Warn(null,"[Patrols] " + "Car template " + where + ": no \"body\""); return null; }
 
             var parts = (f.parts ?? new TemplatePart[0]).Where(p => p != null).ToArray();
-            if (parts.Length == 0 && !isTrailer) { Core.Log.Warn("[Patrols] " + "Car template " + where + ": no \"parts\" - skipped (a frame without parts would not drive)"); return null; }
+            if (parts.Length == 0 && !isTrailer) { Core.Log.Warn(null,"[Patrols] " + "Car template " + where + ": no \"parts\" - skipped (a frame without parts would not drive)"); return null; }
             for (int i = 0; i < parts.Length; i++)
             {
-                if (parts[i].parent >= i) { Core.Log.Warn("[Patrols] " + "Car template " + where + ": part [" + i + "] " + parts[i].prefab + " names parent [" + parts[i].parent + "], which is not an earlier part - attached to the frame instead"); parts[i].parent = -1; }
+                if (parts[i].parent >= i) { Core.Log.Warn(null,"[Patrols] " + "Car template " + where + ": part [" + i + "] " + parts[i].prefab + " names parent [" + parts[i].parent + "], which is not an earlier part - attached to the frame instead"); parts[i].parent = -1; }
                 parts[i].hinge = S(parts[i].hinge); parts[i].prefab = S(parts[i].prefab);
             }
 
@@ -158,7 +158,7 @@ namespace WildWasteland.Modules.Patrols
                 else if (p.hinge.EndsWith("hinge_seat_driver", StringComparison.Ordinal)) t.Seat = p.prefab;
                 else if (p.hinge.EndsWith("hinge_seat_passenger", StringComparison.Ordinal)) t.PassengerSeat = p.prefab;
             }
-            if (t.Driver.Length > 0 && t.Seat.Length == 0) Core.Log.Warn("[Patrols] " + "Car template " + t.Name + ": a driver but no part on hinge_seat_driver");
+            if (t.Driver.Length > 0 && t.Seat.Length == 0) Core.Log.Warn(null,"[Patrols] " + "Car template " + t.Name + ": a driver but no part on hinge_seat_driver");
             return t;
         }
 

@@ -32,7 +32,7 @@ namespace WildWasteland.Core
             }
             string raw; if (!values.TryGetValue(section + "\n" + key, out raw)) return fallback;
             try { return (T)TomlTypeConverter.ConvertToValue(raw, typeof(T)); }
-            catch (Exception error) { Log.Warn("[Settings] Retaining built-in default for " + section + "/" + key + ": " + error.Message); return fallback; }
+            catch (Exception error) { Log.Warn(null,"[Settings] Retaining built-in default for " + section + "/" + key + ": " + error.Message); return fallback; }
         }
         /// <summary>Binds a config entry with its packaged tuning default, retaining the supplied description and constraints.</summary>
         internal static ConfigEntry<T> Bind<T>(ConfigFile file, string section, string key, T fallback, string description)
@@ -45,7 +45,7 @@ namespace WildWasteland.Core
         /// <summary>Copies packaged module tuning profiles only when an installation does not already contain the target file.</summary>
         internal static void InstallProfiles(string owner)
         {
-            var assembly = typeof(Plugin).Assembly; string prefix = "CleanHUD.DefaultProfiles." + owner + ".";
+            var assembly = typeof(Plugin).Assembly; string prefix = owner + ".DefaultProfiles." + owner + ".";
             foreach (string resource in WildWasteland.Core.DiskResources.Names)
             {
                 if (!resource.StartsWith(prefix, StringComparison.Ordinal)) continue;

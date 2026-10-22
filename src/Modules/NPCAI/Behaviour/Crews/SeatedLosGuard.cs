@@ -1,6 +1,6 @@
 using System;
 using Micosmo.SensorToolkit.PlayMaker;
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.NPCAI
 {
     // A SensorToolkit line-of-sight action without a target object (seated crews): the stored outputs are cleared and the action
     // finishes instead of running the vanilla code. WW: Core.Hooks.LosEnter3D / LosUpdate3D prefixes.

@@ -83,7 +83,7 @@ namespace WildWasteland.Modules.Quests
         internal bool Begin(Transform npc)
         {
             if (NativeOpen || npc == null || !Session.Acquire()) return false;
-            Generation++; NativeOpen = true; _nativeNpc = npc; _nativeName = Game.BaseName(npc.name);
+            Generation++; NativeOpen = true; _nativeNpc = npc; _nativeName = Core.Names.Base(npc.name);
             _chat.Clear(); _choices.Clear(); _buttons.Clear(); _pending = false; Prompt = ""; _choiceSignature = ""; Revision++;
             AddLine("What do you need?"); Plugin.I.OnTalkOpen(null); return true;
         }
@@ -131,7 +131,7 @@ namespace WildWasteland.Modules.Quests
         {
             if (!bridge.NativeOpen) return;
             if (!Application.isFocused || !ready || !bridge.Session.Open || !GameRefs.InPlay || bridge.Npc == null
-                || GameRefs.Player == null || Game.HDist(bridge.Npc.position, GameRefs.Player.transform.position) > 8f || Input.GetKeyDown(KeyCode.Escape))
+                || GameRefs.Player == null || Core.WorldGeometry.HorizontalDistance(bridge.Npc.position, GameRefs.Player.transform.position) > 8f || Input.GetKeyDown(KeyCode.Escape))
             { bridge.Close(); deferred.Clear(); return; }
             bridge.Session.Maintain();
         }
@@ -146,10 +146,10 @@ namespace WildWasteland.Modules.Quests
             {
                 if (f == null || f.FsmName != "Health" || f.ActiveStateName != "health" || !f.gameObject.activeInHierarchy) continue;
                 var go = f.gameObject; if (go == GameRefs.Player || Game.IsPlayerEnemy(go) || (ModApi.Get<IFollowerVehicles>() != null && ModApi.Get<IFollowerVehicles>().IsSeated(go))) continue;
-                string name = Game.BaseName(go.name);
+                string name = Core.Names.Base(go.name);
                 if (!Person(name) || name.IndexOf("Dead", StringComparison.OrdinalIgnoreCase) >= 0) continue;
                 Vector3 aim = f.transform.position + Vector3.up * 1.2f, delta = aim - eye; float distance = delta.magnitude;
-                if (GameRefs.Player == null || Game.HDist(f.transform.position, GameRefs.Player.transform.position) > 4f || distance < .01f || Vector3.Dot(camera.transform.forward, delta / distance) < .85f) continue;
+                if (GameRefs.Player == null || Core.WorldGeometry.HorizontalDistance(f.transform.position, GameRefs.Player.transform.position) > 4f || distance < .01f || Vector3.Dot(camera.transform.forward, delta / distance) < .85f) continue;
                 var hp = f.FsmVariables.GetFsmFloat("Health"); if (hp == null || hp.Value <= 0) continue;
                 bool blocked = false;
                 int count = Physics.RaycastNonAlloc(eye, delta / distance, _interactionHits, distance, ~0, QueryTriggerInteraction.Ignore);
@@ -163,7 +163,7 @@ namespace WildWasteland.Modules.Quests
                 float score = 1f - Vector3.Dot(camera.transform.forward, delta / distance) + distance * .01f;
                 if (!blocked && score < best) { best = score; _interaction = f.transform; }
             }
-            if (_interaction != null) bridge.Prompt = "[" + QuestsModule.InteractKey.Value + "] Talk to " + Game.BaseName(_interaction.name);
+            if (_interaction != null) bridge.Prompt = "[" + QuestsModule.InteractKey.Value + "] Talk to " + Core.Names.Base(_interaction.name);
         }
         /// <summary>Tests whether an actor name supports quest or hiring interaction.</summary>
         static bool Person(string name)

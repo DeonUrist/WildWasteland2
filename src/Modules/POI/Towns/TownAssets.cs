@@ -107,7 +107,7 @@ namespace WildWasteland.Modules.POI
                     foreach (var child in prefab.GetComponentsInChildren<Transform>(true)) if (child.name.IndexOf("crane_big", StringComparison.OrdinalIgnoreCase) >= 0) spec.Crane = true;
                     spec.Bake = TownBakeData.Load(spec, margin, cell);
                     if (spec.Bake == null || !spec.Bake.FindEntry(spec))
-                    { Log.Warn("[POI] template excluded: " + prefab.name + "; " + (spec.Bake == null ? "no matching bake (" + TownBakeData.LastMiss + ")" : "no measured outward entrance in " + spec.Bake.Source) + ". Bake this prefab with current NPC settings first."); continue; }
+                    { Log.Warn(null,"[POI] template excluded: " + prefab.name + "; " + (spec.Bake == null ? "no matching bake (" + TownBakeData.LastMiss + ")" : "no measured outward entrance in " + spec.Bake.Source) + ". Bake this prefab with current NPC settings first."); continue; }
                     var paths = new List<string>();
                     var budgets = new List<TownPopulation.NativeBudget>();
                     var markers = new List<string>();
@@ -117,7 +117,7 @@ namespace WildWasteland.Modules.POI
                         {
                             paths.Add(Path(prefab.transform, fsm.transform));
                             try { budgets.Add(TownPopulation.Capture(fsm)); }
-                            catch (Exception e) { budgets.Add(new TownPopulation.NativeBudget { Kind = 6 }); Log.Warn("[POI] unsupported spawn group disabled on town clones: " + prefab.name + "/" + fsm.gameObject.name + "; " + e.Message); }
+                            catch (Exception e) { budgets.Add(new TownPopulation.NativeBudget { Kind = 6 }); Log.Warn(null,"[POI] unsupported spawn group disabled on town clones: " + prefab.name + "/" + fsm.gameObject.name + "; " + e.Message); }
                         }
                     foreach (var t in prefab.GetComponentsInChildren<Transform>(true)) if (t.name == "mapIcon") markers.Add(Path(prefab.transform, t));
                     spec.Frontages = new[] { TownFrontage.Make(spec, 0), TownFrontage.Make(spec, 1) };
@@ -131,7 +131,7 @@ namespace WildWasteland.Modules.POI
             }
             WallKit.Load(NativePoiPrefabs);
             bool anyMerchant = false; foreach (var b in Buildings.Values) if (b.Spec.Merchant) anyMerchant = true;
-            if (!anyMerchant) Log.Warn("[POI] no merchant camp in the town catalog (Camp_10 needs a bake): Coyotes towns keep only their merchant bus.");
+            if (!anyMerchant) Log.Warn(null,"[POI] no merchant camp in the town catalog (Camp_10 needs a bake): Coyotes towns keep only their merchant bus.");
             if (Buildings.Count == 0) throw new InvalidOperationException("No configured Building_N prefabs with solid geometry in the current graph.");
             if (allowed.Count > 0) foreach (string name in allowed)
                 if (!Buildings.ContainsKey(name)) throw new InvalidOperationException("Configured building missing from current graph: " + name);

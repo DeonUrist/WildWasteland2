@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// Bridges item identity to the reusable arm model before its activation actions run.
     /// Save data: ES3 key "Apocaunloader.Magazines" inside the game's own save file, injected into the ES3 cache right after the

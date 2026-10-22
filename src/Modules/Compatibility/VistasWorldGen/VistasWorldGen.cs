@@ -27,22 +27,22 @@ namespace WildWasteland.Core
         /// <summary>Place entered (name, kind or "LANDMARK DISCOVERED"); HUD banners subscribe.</summary>
         internal static event Action<string, string> PlaceEntered;
         /// <summary>Vistas edited a tile's terrain (Towns/Patrols subscribe; also forwarded to WorldTiles and the Core TerrainEdited event).</summary>
-        [Obsolete("refactor: use WorldTiles.OnEdited or the Core TerrainEdited event")]
+
         internal static event Action<TerrainTile> TerrainEdited;
         /// <summary>True while the bridge is installed.</summary>
-        [Obsolete("refactor: use ModApi.Get<IWorldGenFacts>()")]
+
         internal static bool Present;
         /// <summary>Changes whenever captured roads are added or cleared.</summary>
-        [Obsolete("refactor: use ModApi.Get<IWorldGenFacts>()")]
+
         internal static int RoadRevision;
         private static int _edits;
         private static FieldInfo _placeName, _placeKind, _landmarkName;
         private static readonly ConcurrentDictionary<string, Vector3[]> Roads = new ConcurrentDictionary<string, Vector3[]>();
         /// <summary>Captured road polylines (x,z; y = 0).</summary>
-        [Obsolete("refactor: use ModApi.Get<IWorldGenFacts>()")]
+
         internal static IEnumerable<Vector3[]> RoadLines { get { return Roads.Values; } }
         /// <summary>Assembly identity + terrain/road settings (route caches are keyed by it).</summary>
-        [Obsolete("refactor: use ModApi.Get<IWorldGenFacts>()")]
+
         internal static string RoadIdentity = "";
         private static ConfigFile _config;
         private static Assembly _assembly;
@@ -51,10 +51,10 @@ namespace WildWasteland.Core
         private static ConfigEntry<float> _bannerHeight;
         private static IModule _owner;
         /// <summary>Last place entered and its kind/caption.</summary>
-        [Obsolete("refactor: use ModApi.Get<IWorldGenFacts>()")]
+
         internal static string CurrentPlace, CurrentPlaceKind;
         /// <summary>The mod's banner height setting (0.18 when unavailable).</summary>
-        [Obsolete("refactor: use ModApi.Get<IWorldGenFacts>()")]
+
         internal static float BannerHeight { get { return _bannerHeight != null ? _bannerHeight.Value : .18f; } }
 
         /// <summary>Detects the mod and installs every hook under <paramref name="owner"/>; throws when a hook cannot be installed.</summary>

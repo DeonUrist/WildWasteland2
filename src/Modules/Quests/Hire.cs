@@ -139,7 +139,7 @@ namespace WildWasteland.Modules.Quests
                 string key = Util.Norm(part.Substring(0, eq));
                 int cost;
                 if (key.Length == 0 || !int.TryParse(part.Substring(eq + 1).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out cost)) continue;
-                if (cost > 0 && Util.Norm(Game.BaseName(npcName)).StartsWith(key, StringComparison.Ordinal)) return cost;
+                if (cost > 0 && Util.Norm(Core.Names.Base(npcName)).StartsWith(key, StringComparison.Ordinal)) return cost;
             }
             return -1;
         }
@@ -183,7 +183,7 @@ namespace WildWasteland.Modules.Quests
             magLeft = -1; footSetup = false; footShooting = false;
             fsmSnap.Clear();
             foreach (PlayMakerFSM f in QuestWorld.Fsms(go)) if (f != null) fsmSnap.Add(new KeyValuePair<PlayMakerFSM, bool>(f, f.enabled));
-            displayName = string.IsNullOrEmpty(book.HireKind) ? Game.BaseName(go.name) : book.HireKind;
+            displayName = string.IsNullOrEmpty(book.HireKind) ? Core.Names.Base(go.name) : book.HireKind;
             moveFsm = FindFsm(go, "Movement");
             healthFsm = FindFsm(go, "Health");
             target = null;
@@ -248,7 +248,7 @@ namespace WildWasteland.Modules.Quests
             RestoreCollisions();                // also after the hire has ended, so a dropped-off follower stops ignoring the car
             if (!Active) return;
 
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             if (pl == null) return;
 
             // after a load the saved follower has to be found again by name
@@ -279,7 +279,7 @@ namespace WildWasteland.Modules.Quests
                 else { Dismiss("{name}'s day is up. They head back."); return; }
             }
 
-            float dist = Game.HDist(npc.transform.position, pl.position);
+            float dist = Core.WorldGeometry.HorizontalDistance(npc.transform.position, pl.position);
             lastDistance = dist;
             float now = Time.time;
 

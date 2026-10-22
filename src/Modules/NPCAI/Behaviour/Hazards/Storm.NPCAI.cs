@@ -1,7 +1,7 @@
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Storm part owned by NPCAI: the sight / hearing factors NPC senses apply inside a storm ([NPCAI / Senses] StormSight / StormHearing)

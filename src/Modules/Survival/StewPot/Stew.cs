@@ -289,9 +289,9 @@ namespace WildWasteland.Modules.Survival
             _soundLoad = Core.Audio.LoadAsync(path, AudioType.MPEG, (clip, error) =>
             {
                 _soundLoad = null;
-                if (clip == null) { Core.Log.Warn("[Survival] StewPot boiling sound: " + error); return; }
+                if (clip == null) { Core.Log.Warn(null,"[Survival] StewPot boiling sound: " + error); return; }
                 BoilingClip = clip;
-                if (BoilingClip != null) { Object.DontDestroyOnLoad(BoilingClip); WildWasteland.Core.Log.Always("[Survival] StewPot boiling sound loaded: " + Path.GetFileName(path)); }
+                if (BoilingClip != null) { Object.DontDestroyOnLoad(BoilingClip); WildWasteland.Core.Log.Always(null,"[Survival] StewPot boiling sound loaded: " + Path.GetFileName(path)); }
             });
         }
 

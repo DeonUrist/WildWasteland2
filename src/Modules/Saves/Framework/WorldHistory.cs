@@ -156,7 +156,7 @@ namespace WildWasteland.Modules.Saves
             if (root == null || !Session()) return;
             var fsms = SiteFsms(root); if (fsms.Count == 0) return;
             Run(fsms, false); Site.Clear();
-            if (SaveSystem.Busy) SaveBus.ReportFailure("Terrain locations moved during the world save");
+            if (SaveSystem.Busy) SaveBus.ReportFailure(null,"Terrain locations moved during the world save");
         }
 
         /// <summary>Authored template FSM for a live save FSM (same child path and FSM name under the pool prefab), cached per instance.</summary>

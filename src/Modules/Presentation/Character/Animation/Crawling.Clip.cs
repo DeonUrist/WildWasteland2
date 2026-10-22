@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Low Crawl, animation side (split from PlayerBody/Animation/Crawling.cs in Wave A): the humanoid "LowCrawl" clip from the embedded

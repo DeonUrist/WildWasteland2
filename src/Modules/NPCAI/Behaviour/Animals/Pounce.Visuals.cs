@@ -5,7 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>NPC-owned leap-pose timing and native airborne carcass handoff. Presentation applies the requested rig pitch.</summary>
     internal static partial class Pounce

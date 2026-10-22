@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
-using WildWasteland.Modules.Patrols;
-using WarRig = WildWasteland.Modules.Patrols.WarRig;             // refs-ok: Vehicles-owned namespace until the Wave C rename
-using Motorcycles = WildWasteland.Modules.Patrols.Motorcycles;   // refs-ok: Vehicles-owned namespace until the Wave C rename
+using WildWasteland.Modules.Vehicles;
+using WarRig = WildWasteland.Modules.Vehicles.WarRig;             // refs-ok: Vehicles-owned namespace until the Wave C rename
+using Motorcycles = WildWasteland.Modules.Vehicles.Motorcycles;   // refs-ok: Vehicles-owned namespace until the Wave C rename
 
 namespace WildWasteland.Modules.Vehicles
 {

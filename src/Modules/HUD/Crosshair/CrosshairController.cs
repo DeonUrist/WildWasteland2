@@ -148,7 +148,7 @@ namespace WildWasteland.Modules.HUD
                 _raw.uvRect = mode >= 2 ? new Rect(0, 0, 1, 1) : _originalUv;
             }
             else if (mode >= 2 && !_unsupportedWarned)
-            { Log.Warn("[HUD] Weapon crosshair has no Image/RawImage component; keeping its vanilla graphic."); _unsupportedWarned = true; }
+            { Log.Warn(null,"[HUD] Weapon crosshair has no Image/RawImage component; keeping its vanilla graphic."); _unsupportedWarned = true; }
             _appliedMode = mode;
         }
 
@@ -169,7 +169,7 @@ namespace WildWasteland.Modules.HUD
             if (cross != null) _crossScale = cross.localScale == Vector3.zero ? Vector3.one : cross.localScale;
             if (_image != null) { _originalSprite = _image.sprite; _originalOverride = _image.overrideSprite; _originalAspect = _image.preserveAspect; }
             if (_raw != null) { _originalTexture = _raw.texture; _originalUv = _raw.uvRect; }
-            if (Log.Verbose) Log.Info("[HUD] crosshair UI attached: " + (cross != null ? cross.name : "-") + " / " + (dot != null ? dot.name : "-"));
+            if (Log.L1) Log.Main(null,"[HUD] crosshair UI attached: " + (cross != null ? cross.name : "-") + " / " + (dot != null ? dot.name : "-"));
         }
         /// <summary>Restores the native crosshair texture, tint, size and aspect settings.</summary>
         private static void RestoreCross()
@@ -240,7 +240,7 @@ namespace WildWasteland.Modules.HUD
             catch (Exception e)
             {
                 if (texture != null) UnityEngine.Object.Destroy(texture);
-                Log.Warn("[HUD] Vanilla horizontal crosshair: " + e.Message);
+                Log.Warn(null,"[HUD] Vanilla horizontal crosshair: " + e.Message);
             }
             finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(buffer); }
         }
@@ -259,7 +259,7 @@ namespace WildWasteland.Modules.HUD
             catch (Exception e)
             {
                 if (texture != null) UnityEngine.Object.Destroy(texture);
-                texture = null; Log.Warn("[HUD] Crosshair asset " + name + ": " + e.Message);
+                texture = null; Log.Warn(null,"[HUD] Crosshair asset " + name + ": " + e.Message);
             }
         }
     }

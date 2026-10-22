@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Brain part: mode changes, line of sight, map-leg checks and the brain-facing queries for Idle / Burrow / Pounce / DogBite.</summary>
     internal static partial class Brain
@@ -147,7 +147,7 @@ namespace WildWasteland.Modules.NPC
             var target = n.Target != null ? n.Target.Value : null;
             if (n.Ranged && !n.ToGhost && target != null && n.Dist <= WeaponRanges.RangeOf(n.Kind) && LineOfSight(n, target, target.transform.position))
             {
-                n.NextRecheck = now + global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax * R;   // refs-ok: own type NPC.Aim (the Brain.Aim method hides the simple name)
+                n.NextRecheck = now + global::WildWasteland.Modules.NPCAI.Aim.HoldRecheckMax * R;   // refs-ok: own type WildWasteland.Modules.NPCAI.Aim (the Brain.Aim method hides the simple name)
                 SetMode(n, Mode.Hold, "stuck, shoots from here");
                 return;
             }

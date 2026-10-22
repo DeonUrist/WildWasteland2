@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Compatibility.WarRig
 {
     /// <summary>
     /// War Rig part of the ApocaDustStorm bridge (no DustStorms code or binary is bundled): StormShelter.ContainsActor answers true inside
@@ -16,7 +16,6 @@ namespace WildWasteland.Modules.Patrols.WarRig
     /// </summary>
     internal static class DustStormBridge
     {
-        private static IModule _host;
         private static FieldInfo checkingShelter;
         private static GameObject lastPlayer;
         private static bool lastInside;
@@ -25,23 +24,15 @@ namespace WildWasteland.Modules.Patrols.WarRig
         /// <summary>True when the actor stands inside the tank of an active War Rig.</summary>
         internal static bool Inside(GameObject actor)
         {
-            if (actor == null) return false;
-            foreach (var rig in WarRigUnit.All) // refs-ok: REFACTOR-REQUEST B17-14
-            {
-                if (rig == null || !rig.gameObject.activeInHierarchy) continue;
-                Vector3 p = Quaternion.Inverse(Layout.Rot) * (rig.transform.InverseTransformPoint(actor.transform.position) - Layout.Off) / S.Scale; // refs-ok: REFACTOR-REQUEST B17-14
-                if (Tank.Contains(p)) return true;
-            }
-            return false;
+            return ModApi.Get<IWarRigWorld>()?.InsideTank(actor)==true;
         }
 
         private static bool broken = true;   // WW: one of the two patches failed (or not installed) -> both prefixes stand down
 
         /// <summary>Registration by the War Rig feature (WarRigFeature.Install): remembers the host module; no patching here any more (B17).</summary>
-        internal static void Install(IModule owner) { _host = owner; }
 
         /// <summary>True while the registering War Rig host runs.</summary>
-        private static bool HostRunning { get { return _host != null && ModuleHost.IsRunning(_host); } }
+        private static bool HostRunning { get { return ModApi.Get<IWarRigWorld>()?.Running==true; } }
 
         /// <summary>Resolves the shelter/hazard contract and patches it under <paramref name="scope"/> (no-op when the mod is absent).</summary>
         internal static void Install(IModule scope, BepInEx.PluginInfo info)

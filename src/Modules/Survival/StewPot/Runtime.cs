@@ -241,7 +241,7 @@ namespace WildWasteland.Modules.Survival
             if (Factory.Cached == null && cameraTransform != null)
             {
                 try { Factory.Template(); }
-                catch (Exception error) { if (!failureLogged) { failureLogged = true; WildWasteland.Core.Log.Warn("[Survival] StewPot model not ready: " + error); } }
+                catch (Exception error) { if (!failureLogged) { failureLogged = true; WildWasteland.Core.Log.Warn(null,"[Survival] StewPot model not ready: " + error); } }
             }
             if (drinkingClip == null && cameraTransform != null)
             {

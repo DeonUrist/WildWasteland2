@@ -15,7 +15,7 @@ namespace WildWasteland.Core
                 // Binocular TakeItem has no dropCurrent. Use the same detach/ItemDrop/Visibility recipe.
                 var camera = state.transform.parent.parent;
                 var point = camera.Find("ItemDrop"); var visibility = FsmUtil.Find(item, "Visibility");
-                if (point == null || visibility == null) { Log.Warn("[Core] " + "Inventory: binocular drop needs native ItemDrop and Visibility"); return false; }
+                if (point == null || visibility == null) { Log.Warn(null,"[Core] " + "Inventory: binocular drop needs native ItemDrop and Visibility"); return false; }
                 if (state.ActiveStateName == "use")
                 {
                     var anim = camera.Find("ItemAnim/Binocular Anim");
@@ -30,7 +30,7 @@ namespace WildWasteland.Core
                 // Cancel dropCurrent's next-frame takeWeapon continuation.
                 take.Fsm.SetState("dropCurrent"); take.Fsm.SetState("off");
             }
-            if (item.transform.parent == state.transform) { Log.Warn("[Core] " + "Inventory: native equipment drop did not detach the item"); return false; }
+            if (item.transform.parent == state.transform) { Log.Warn(null,"[Core] " + "Inventory: native equipment drop did not detach the item"); return false; }
             state.Fsm.SetState("empty");
             var capacity = FsmUtil.Find(GameRefs.GameManager, "ArmorBackpack");
             if (state.gameObject.name == "Armor_Item" && capacity != null)

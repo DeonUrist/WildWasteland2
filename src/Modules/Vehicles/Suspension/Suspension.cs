@@ -10,7 +10,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     // 2.3.0: a template's suspension adjustment (the Part Adjustment tool's wheel spacing x1..1.5 and assembly height) applied to a spawned
     // car - with or without the Part Adjustment mod. With it, the values go through its public SuspensionApi (reflection), so they live in
@@ -100,7 +100,7 @@ namespace WildWasteland.Modules.Patrols
         // WW: Core.Hooks.SetPositionDo postfix. First line: a static counter of live SuspensionTune components (0 = no raider car
         // carries our own lift kit -> nothing to do, no string compare on the game's SetPosition actions).
         /// <summary>Old Patrols entry point; the Vehicles module installs the hook itself (<see cref="Hook"/>).</summary>
-        [System.Obsolete("refactor: the Vehicles module installs the suspension hook (Suspension.Hook)")]
+
 
         /// <summary>Subscribes the SetPosition.DoSetPosition postfix (shared Core dispatcher) for the Vehicles module.</summary>
         internal static void Hook(IModule owner)

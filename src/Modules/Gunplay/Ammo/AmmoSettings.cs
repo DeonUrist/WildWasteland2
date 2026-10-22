@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using WildWasteland.Modules.Gunplay;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>
     /// Ammo settings (ex Gunplay.Ammo.AmmoSettings). The entries are bound by GunplaySettings.Bind in F6 order (no migration from

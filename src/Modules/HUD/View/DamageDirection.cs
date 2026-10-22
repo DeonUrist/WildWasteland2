@@ -31,10 +31,12 @@ namespace WildWasteland.Modules.HUD
             var canvas = go.GetComponent<Canvas>(); canvas.overrideSorting = false;
             var source = parent.GetComponentInParent<Canvas>(); if (source != null) canvas.additionalShaderChannels = source.additionalShaderChannels;
             for (int i = 0; i < 4; i++) _arrows.Add(Create());
-            Services.NpcHurt += Hurt;
+            ModEvents.Subscribe<Core.Events.AttackObserved>(HudModule.Instance,OnAttackObserved);
         }
 
         /// <summary>Resolves hurt for the attacker direction arrows.</summary>
+        /// <summary>Resolves tactical contact ids while the observed objects are still alive.</summary>
+        private void OnAttackObserved(ref Core.Events.AttackObserved evt) { Hurt(Entities.Find(evt.Victim),Entities.Find(evt.Attacker)); }
         private void Hurt(GameObject victim, GameObject attacker)
         {
             if (!HudModule.DamageDirection.Value || !GameRefs.InGame || !_parent.gameObject.activeInHierarchy) return;
@@ -102,6 +104,6 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Hides the attacker direction arrows.</summary>
         private void Hide(Arrow a) { a.Active = false; _active--; a.Attacker = null; a.Root.gameObject.SetActive(false); }
         /// <summary>Destroys owned attacker direction arrows resources and releases scene bindings.</summary>
-        public void Dispose() { Services.NpcHurt -= Hurt; _arrows.Clear(); _active = 0; }
+        public void Dispose() { ModEvents.Unsubscribe<Core.Events.AttackObserved>(HudModule.Instance,OnAttackObserved); _arrows.Clear(); _active = 0; }
     }
 }

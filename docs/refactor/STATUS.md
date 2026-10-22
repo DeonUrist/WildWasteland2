@@ -1,5 +1,12 @@
 # WW2 refactor - coordinator status
 
+## Current checkpoint — 2026-10-23
+
+Shared steps 1–2 and Wave C source integration are implemented. Obsolete forwarders and the CS0618 suppression are removed; namespaces match module ownership. Runtime assets have been recovered into their canonical source owners, and packaging no longer depends on an old release ZIP. See reports/C.md for the final build, deployment and clean-setup receipt. The detailed older checkpoints below are historical and must not restart completed work.
+
+Denis requested a clean setup: existing saves/settings and the old plugin installation are archived before fresh assets are installed. Defaults regenerate at next startup. Gameplay acceptance remains with Denis. No game/harness, commit, push or published release is part of this finish.
+
+
 Repo: local `V:\Repos\Apocalypter\WildWasteland2` (branch `refactor/main`), continued from the cloud Wave A checkpoint. Plan: `docs/refactor/README.md` (section 0 amendments first), `work-packages.md` (local execution override first).
 Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline compile: OK (39 warnings).
 

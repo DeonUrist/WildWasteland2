@@ -1,6 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core.Events;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>NPCAI-owned response to the shared player shout input event.</summary>
     internal static partial class Senses

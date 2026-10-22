@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>
     /// Saved component on every War Rig (spawned or loaded): keeps the model, materials and hulls bound after Easy Save writes, gates the

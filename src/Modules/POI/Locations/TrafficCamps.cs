@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.POI
                 if(!resident.WasAlive)return false;
                 if(!resident.Dead&&(resident.Health==null||resident.Health.Value>0f))return false;
             }
-            camp.cleared=true;TrafficLocations.Changed();Core.Log.Warn("Camp cleared: "+camp.name+" "+camp.id);return true;
+            camp.cleared=true;TrafficLocations.Changed();Core.Log.Warn(null,"Camp cleared: "+camp.name+" "+camp.id);return true;
         }
         /// <summary>Copies managed resident observations into detached consumer records.</summary>
         internal static void Residents(List<CampResidentInfo> into)
@@ -157,7 +157,7 @@ namespace WildWasteland.Modules.POI
                     if(root==null)return;
                     string id=TrafficLocations.Identity(root);Register(id,root);Bind(id,npc);
                 }
-                catch(Exception e){Core.Log.Warn("Camp resident hook: "+e.Message);}
+                catch(Exception e){Core.Log.Warn(null,"Camp resident hook: "+e.Message);}
             }
         }
     }

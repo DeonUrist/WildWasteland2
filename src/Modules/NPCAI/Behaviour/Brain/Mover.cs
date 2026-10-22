@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// The one body mover of the NPC drivers (README 6.2): the brain (combat: drives the game's Movement pedal through the SetVelocity hook)

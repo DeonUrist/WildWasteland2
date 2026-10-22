@@ -6,7 +6,7 @@ using WildWasteland.Core;
 
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // (WW) Ladders: the game's Player/UseLadder FSM still detects the ladder (its trigger tag "Ladder", state "input"); while it holds the
     // player this controller takes over: weapon stowed, the player centred on the ladder facing it, moved up / down by the Vertical axis
@@ -95,10 +95,9 @@ namespace WildWasteland.Modules.PlayerBody
                     if (!Cursor.visible && !Core.ApocasetterBridge.InputBlocked && GameBindings.Down("Jump", KeyCode.Space)) { Finish(Exit.Jump, "jumped off"); return; }
                     animation.Facing = facing;
                     // the cycle follows the rendered (interpolated) height every frame, not the 50 Hz physics steps
-                    Services.LadderSlidePhase = TraversalSettings.LadderSlidePose.Value; Services.LadderSlideSpeed = TraversalSettings.LadderSlideSpeed.Value;
                     // sliding down: one held pose (hands and feet on the rails, no rung steps); climbing: the cycle on the rungs
                     animation.Rungs = sliding || rungSource == "animation spacing" ? null : rungs;
-                    animation.Phase = sliding ? TraversalSettings.LadderSlidePose.Value : PhaseAt(body.transform.position.y - Game.StandingHeight * .5f);
+                    animation.Phase = sliding ? TraversalSettings.LadderSlidePose.Value : PhaseAt(body.transform.position.y - Core.PlayerState.StandingHeight * .5f);
                     return;
                 }
                 if (!TraversalSettings.Ladders.Value || Time.unscaledTime < cooldown) return;
@@ -156,11 +155,11 @@ namespace WildWasteland.Modules.PlayerBody
             float height = topY - bottomY;
 
             // climb on the player's side unless only the other side has room
-            float halfH = Game.StandingHeight * .5f;
+            float halfH = Core.PlayerState.StandingHeight * .5f;
             Vector3 p = body.position;
             Vector3 mine = Vector3.Dot(p - center, through) >= 0f ? through : -through;
             feetY = Mathf.Clamp(p.y - halfH, bottomY - 1f, topY);
-            float midFeet = Mathf.Clamp(feetY, bottomY, Mathf.Max(bottomY, topY - Game.StandingHeight));
+            float midFeet = Mathf.Clamp(feetY, bottomY, Mathf.Max(bottomY, topY - Core.PlayerState.StandingHeight));
             // a leaning ladder has one climbing side, the one its foot stands out to (the top rests against the wall): always that one
             Vector3 lean = axisUp; lean.y = 0f;
             if (lean.sqrMagnitude > .05f * .05f) mine = Vector3.Dot(-lean, through) >= 0f ? through : -through;
@@ -172,7 +171,7 @@ namespace WildWasteland.Modules.PlayerBody
 
             // the platform the ladder leads to: on the far side of the ladder, near its top
             hasPlatform = false;
-            Vector3 probe = OnLine(side, topY - Game.StandingHeight * .5f + .5f) - side * (Distance + .6f);
+            Vector3 probe = OnLine(side, topY - Core.PlayerState.StandingHeight * .5f + .5f) - side * (Distance + .6f);
             int n = Physics.RaycastNonAlloc(probe, Vector3.down, hits, height + 1.5f, ~0, QueryTriggerInteraction.Ignore);
             float best = float.NegativeInfinity;
             for (int i = 0; i < n; i++)
@@ -181,7 +180,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (h.collider == null || h.collider.attachedRigidbody == body || h.normal.y < .7f) continue;
                 if (h.point.y > bottomY + 1f && h.point.y <= topY + .5f && h.point.y > best) { best = h.point.y; hasPlatform = true; }
             }
-            platformY = hasPlatform ? best : topY - Game.StandingHeight * .5f;
+            platformY = hasPlatform ? best : topY - Core.PlayerState.StandingHeight * .5f;
 
             animation = ModAPI.BeginPlayerPoseTraversal(clip, facing);
             if (animation == null) { LastResult = "the body animation is busy"; return; }
@@ -192,7 +191,6 @@ namespace WildWasteland.Modules.PlayerBody
             FindRungs(t, center);
             animation.Phase = PhaseAt(feetY);
             active = true;   // from here every change is restored by Finish
-            Services.PlayerLadderSide = side; Services.PlayerLadder = ladder;   // obsolete raw fields, still read by NPCAI PoiNav until it uses ITraversal
             TraversalApi.PublishStarted(TraversalKind.Ladder, body.position, OnLine(side, platformY));
             oldKinematic = body.isKinematic; oldGravity = body.useGravity; oldInterpolation = body.interpolation;
             // the game's own ladder FSM sets the velocity every frame: paused here, sent "back" when the player lets go
@@ -301,7 +299,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Body centre for feet at a height: on the ladder centre line, Distance out on the climber side.</summary>
         Vector3 OnLine(Vector3 dir, float feet)
         {
-            float y = feet + Game.StandingHeight * .5f;
+            float y = feet + Core.PlayerState.StandingHeight * .5f;
             Vector3 p = axisPoint + axisUp * ((y - axisPoint.y) / Mathf.Max(.2f, axisUp.y)) + dir * Distance;
             p.y = y;
             return p;
@@ -324,7 +322,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (v < 0f) { slideV = Mathf.Min(slideV + 14f * dt, TraversalSettings.LadderSlideSpeed.Value); sliding = true; }
                 else { slideV = 0f; sliding = false; }
                 float dy = v < 0f ? -slideV * dt : v * Speed * dt;
-                float maxFeet = hasPlatform ? platformY + .02f : topY - Game.StandingHeight * .6f;
+                float maxFeet = hasPlatform ? platformY + .02f : topY - Core.PlayerState.StandingHeight * .6f;
                 float next = Mathf.Min(feetY + dy, maxFeet);
                 next = Blocked(feetY, next);
                 // the ground below ends a descent
@@ -359,7 +357,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (next == feet) return next;
             var list = occupants; var api = PresentationModule.Traversal;
-            if (api != null) api.LadderOccupants(list); else { list.Clear(); list.AddRange(Services.LadderClimbers); }
+            if (api != null) api.LadderOccupants(list); else list.Clear();
             if (list.Count == 0) return next;
             Vector3 me = OnLine(side, feet);
             for (int i = 0; i < list.Count; i++)
@@ -384,7 +382,7 @@ namespace WildWasteland.Modules.PlayerBody
         bool Ground(float feet, out float y)
         {
             y = float.NegativeInfinity;
-            Vector3 from = OnLine(side, feet) - Vector3.up * (Game.StandingHeight * .5f - .3f);
+            Vector3 from = OnLine(side, feet) - Vector3.up * (Core.PlayerState.StandingHeight * .5f - .3f);
             int n = Physics.RaycastNonAlloc(from, Vector3.down, hits, .5f, ~0, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < n; i++)
             {
@@ -400,7 +398,6 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (!active) { if (animation != null) { animation.Dispose(); animation = null; } return; }
             active = false;
-            Services.PlayerLadder = null;
             if (body != null)
             {
                 if (how == Exit.Top)

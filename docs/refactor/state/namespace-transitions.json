@@ -1,0 +1,1187 @@
+[
+  {
+    "source": "src/Modules/Compatibility/ApocaDustStorm/DustStormBridge.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Compatibility.WarRig"
+  },
+  {
+    "source": "src/Modules/Compatibility/Apocapocket/ApocapocketInventory.cs",
+    "old": "WildWasteland.Modules.HUD",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/Apocaspawner/ApocaspawnerDamage.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/Apocaspawner/SpawnerIntegration.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Compatibility.WarRig"
+  },
+  {
+    "source": "src/Modules/Compatibility/Apocaspawner/StewPotSpawnerEntry.cs",
+    "old": "WildWasteland.Modules.Survival",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/Apocatalker/TalkDialogue.cs",
+    "old": "WildWasteland.Modules.HUD",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/ChaseCamera/ChaseCameraCompat.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/ChaseCamera/ChaseCameraHud.cs",
+    "old": "WildWasteland.Modules.HUD",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/VistasWorldGen/VistasEngineHud.cs",
+    "old": "WildWasteland.Modules.HUD",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/WeaponsPack/WeaponsPackCompat.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/WeaponsPack/WeaponsPackFear.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/WeaponsPack/WeaponsPackIcons.cs",
+    "old": "WildWasteland.Modules.HUD",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Compatibility/WeaponsPack/WeaponsPackSound.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Compatibility"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/AmmoBox.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/AmmoCapacityPatch.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/AmmoRunner.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/AmmoSettings.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/ArmorCapacityPatch.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/ArmorOverflow.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/BackpackOverflow.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/BackpackSlotPatch.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/Magazine.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/MagazineDrawHook.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/MagazineLedger.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/MagazineStateHook.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/OverflowTransfer.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/PerGunAmmo.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/PerGunAmmo.Saves.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/ReloadTapHook.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/Unloader.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ammo/UnloadEventHook.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Api/Bridge.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Api/GunsApi.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Audio/EmptyGunSound.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Ballistics/Tracers.Ballistics.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Camera/Ironsights.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Camera/Ironsights.Projection.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Camera/WeaponTransition.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Effects/Tracers.ActorQuery.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Effects/Tracers.Effects.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Legacy/PlayerRig.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Melee/Tracers.Melee.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Projectiles/Tracers.Bolts.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Projectiles/Tracers.BoltSurface.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Projectiles/Tracers.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Projectiles/Tracers.NpcShots.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Projectiles/Tracers.Orbs.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Gunplay/Projectiles/Tracers.PlayerShots.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.Gunplay"
+  },
+  {
+    "source": "src/Modules/Loot/Items/PickupCatalog.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Loot"
+  },
+  {
+    "source": "src/Modules/Loot/Items/PickupItem.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Loot"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/NpcaiRuntime.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/NpcaiSettings.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/NpcApi.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Animals/Animals.Events.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Animals/Burrow.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Animals/Burrow.Visuals.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Animals/DogAnimations.NPCAI.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Animals/DogBite.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Animals/DogBite.Visuals.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Animals/Pounce.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Animals/Pounce.Visuals.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Bosses/Bosses.cs",
+    "old": "WildWasteland.Modules.Guns",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Aim.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Aim.Spread.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Ambush.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/AnimatedBody.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Animation.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Cover.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Hooks.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Magazines.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Modes.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Queries.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Registry.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Steering.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Brain.Weapons.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Idle.Animation.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Idle.Body.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Idle.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Idle.Queries.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Idle.SpawnPoints.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Idle.Think.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/Mover.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/NpcShotPolicy.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/SimpleBandits.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Brain/WeaponRanges.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Crews/OccupantCombatApi.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Crews/PassengerGuard.Attach.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Crews/PassengerGuard.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Crews/PassengerGuard.Visuals.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Crews/SeatedCombatApi.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Crews/SeatedLosGuard.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Diagnostics/Brain.Diagnostics.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Diagnostics/Idle.Diagnostics.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Diagnostics/NpcDiagnostics.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Diagnostics/Senses.Diagnostics.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Nests.Build.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Nests.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Nests.Events.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Nests.Places.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Nests.Sitters.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Nests.Touch.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Storm.Native.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Storm.NPCAI.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Hazards/Webs.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Pages/NpcPages.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/CrewOrders.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.DetectionFsm.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Handover.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Knowledge.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Noise.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Nwh.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Persist.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Queries.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Registry.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Shout.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Spiders.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Behaviour/Senses/Senses.Taunts.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/NavApi.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/NavMasks.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/NavRuntime.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/NavSettings.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Authoring/NavigationAuthoringApi.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Authoring/NavMapHighlight.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Authoring/NavMapTools.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Diagnostics/Nav.Diagnostics.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Grid/Nav.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Grid/Nav.IsolatedBake.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Grid/Nav.Maps.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Grid/Nav.Services.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Grid/Passthrough.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/PoiNav/PoiNav.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/PoiNav/PoiNavStore.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/PoiNav/PoiNavTraverse.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Towns/TownApproach.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Towns/TownNavigation.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Towns/TownNavigationApi.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Towns/TownOutline.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Towns/TownOverlap.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Navigation/Towns/TownPerimeter.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Population/InteriorPopulation.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Population/NativePoiPopulation.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Population/NativePopulationApi.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/NPCAI/Population/PopulationApi.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.NPCAI"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/Body.JumpHead.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/CameraEndOfFrame.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/CameraPage.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/CameraRigApi.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/CameraSettings.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/Cave.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/FirstPersonSway.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/OcclusionCutaway.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/PickAssist.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Camera/ThirdPerson.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/AimLift.Authoring.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/AimLift.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/AimTransition.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/AnimationService.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/Anims.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/BuiltinPoses.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/CharPlan.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/Crawling.Clip.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/GunPose.Authoring.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/GunPose.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/LocoPlan.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/ModAPI.Character.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Animation/ModAPI.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Arms.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Body.Authoring.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Body.Crawl.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Body.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/CharacterModels.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/CharacterPortraits.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Equipment.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/FemalePain.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Model.CharacterSkin.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Model.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/PlayerWeaponVisual.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Props.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Props.Kinds.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Body/Ragdoll.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Women/Gungirl.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Women/Voice.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Character/Women/WomenFeature.cs",
+    "old": "WildWasteland.Modules.NPC",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Player/Body.Character.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Player/Body.Input.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Player/BodyRunner.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Player/Crawling.Input.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Player/EquipmentInventory.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Player/Game.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Player/Game.Player.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Player/PlayerInputAdapter.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Seats/Body.Seat.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Seats/CarSeat.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Seats/CarSeatSettings.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Seats/WheelArms.Authoring.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Seats/WheelArms.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Seats/WheelArms.Stroke.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/Body.Traversal.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/ClimbGeometry.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/ClimbingController.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/ClimbingPage.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/ClimbPath.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/ClimbTarget.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/LadderController.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/ModAPI.Traversal.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/NpcTraversal.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/PlayerTraversal.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/PoseClip.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/TraversalApi.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/TraversalLease.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Presentation/Traversal/TraversalSettings.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Presentation"
+  },
+  {
+    "source": "src/Modules/Vehicles/Assembly/InputControl.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Assembly/Nwh.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Assembly/VehicleAttachments.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Controls/Car.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Controls/Car.HudData.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Controls/ExitSpeed.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Controls/IgnitionControl.cs",
+    "old": "WildWasteland.Modules.PlayerBody",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Motorcycles/Factory.cs",
+    "old": "WildWasteland.Modules.Patrols.Motorcycles",
+    "new": "WildWasteland.Modules.Vehicles.Motorcycles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Motorcycles/MotorcycleBalance.cs",
+    "old": "WildWasteland.Modules.Patrols.Motorcycles",
+    "new": "WildWasteland.Modules.Vehicles.Motorcycles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Motorcycles/MotorcycleIntegration.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Motorcycles/MotorcycleRearAccess.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Registry/ModVehicles.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Suspension/Suspension.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Suspension/SuspensionTune.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/Trailers/TrailerSupport.cs",
+    "old": "WildWasteland.Modules.Patrols",
+    "new": "WildWasteland.Modules.Vehicles"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/Factory.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/GroundRecovery.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/Layout.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/PrefabLookup.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/Props.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/S.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/WarRigFeature.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/WarRigUnit.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  },
+  {
+    "source": "src/Modules/Vehicles/WarRig/WorldSpawning.cs",
+    "old": "WildWasteland.Modules.Patrols.WarRig",
+    "new": "WildWasteland.Modules.Vehicles.WarRig"
+  }
+]

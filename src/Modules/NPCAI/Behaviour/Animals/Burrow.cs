@@ -5,7 +5,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // (1.3.0) Small scorpions burrow. A scorpion that is not aware of anything sinks into the sand (its body goes down, only the top - the eyes -
     // stays above the surface) and, every BurrowMin..BurrowMax seconds, comes up or goes down again, only ever on sand. Spawned on sand it burrows

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Idle part owned by Presentation: the run-in-place animation fix (RunInPlace). The run-clip restart inside Drive stays in NPCAI until Wave B (B05/B07 split Drive).</summary>
     internal static partial class Idle

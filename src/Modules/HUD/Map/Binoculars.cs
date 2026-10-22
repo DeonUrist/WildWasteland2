@@ -63,11 +63,11 @@ namespace WildWasteland.Modules.HUD
             Caption();
             if (!Raised) { _zoom = HudModule.BinocularZoom.Value; return; }
             if (!GameRefs.InGame || ApocasetterBridge.InputBlocked || !Application.isFocused) return;
-            float wheel = Services.Map != null && Services.Map.Open ? 0f : Input.mouseScrollDelta.y;
+            float wheel = Core.ModApi.Get<Core.IMapMarkers>() != null && Core.ModApi.Get<Core.IMapMarkers>().Open ? 0f : Input.mouseScrollDelta.y;
             if (wheel != 0f)
             {
                 HudModule.BinocularZoom.Value = Mathf.Clamp(HudModule.BinocularZoom.Value * Mathf.Pow(1f / .82f, wheel), 1f, 2f);
-                if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Binocular zoom target: " + HudModule.BinocularZoom.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "x");
+                if (Core.Log.L1) Core.Log.Main(null,"[CleanHUD] Binocular zoom target: " + HudModule.BinocularZoom.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "x");
             }
             _zoom = Mathf.Lerp(_zoom, HudModule.BinocularZoom.Value, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 16f));
             if (Mathf.Abs(_zoom - HudModule.BinocularZoom.Value) < .0001f) _zoom = HudModule.BinocularZoom.Value;
@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Observes the binocular discovery.</summary>
         internal static bool Observe(Transform target, string name, Color color)
         {
-            if (!GameRefs.InGame || Services.Map != null && Services.Map.Open || target == null || !Sees(target)) return false;
+            if (!GameRefs.InGame || Core.ModApi.Get<Core.IMapMarkers>() != null && Core.ModApi.Get<Core.IMapMarkers>().Open || target == null || !Sees(target)) return false;
             if (!HudModule.CleanHudEnabled.Value) return true;
             float now = Time.unscaledTime;
             if (now >= _roundUntil) { _roundUntil = now + .25f; _score = float.MaxValue; }
@@ -91,7 +91,7 @@ namespace WildWasteland.Modules.HUD
         private static void Caption()
         {
             bool shown = Raised && HudModule.CleanHudEnabled.Value && GameRefs.InGame && _subject != null
-                && Time.unscaledTime < _seenUntil && (Services.Map == null || !Services.Map.Open);
+                && Time.unscaledTime < _seenUntil && (Core.ModApi.Get<Core.IMapMarkers>()== null || !Core.ModApi.Get<Core.IMapMarkers>().Open);
             if (shown)
             {
                 var local = _camera.transform.InverseTransformPoint(_subject.position + Vector3.up * 2f);
@@ -110,7 +110,7 @@ namespace WildWasteland.Modules.HUD
             if (_caption.gameObject.activeSelf != shown) _caption.gameObject.SetActive(shown);
             if (shown)
             {
-                if (_caption.Text != _name && Core.Log.Verbose) Core.Log.Info("[CleanHUD] Optic caption: " + _name + " (binoculars, range 2x)");
+                if (_caption.Text != _name && Core.Log.L1) Core.Log.Main(null,"[CleanHUD] Optic caption: " + _name + " (binoculars, range 2x)");
                 _caption.Set(_name); if (_caption.color != _color) _caption.color = _color;
             }
         }

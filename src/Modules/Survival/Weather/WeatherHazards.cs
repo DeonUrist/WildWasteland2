@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.Survival
 
                 // Same 0-1150 m body, bend, eye and lobed radius as HurricaneSand. Wisps are harmless.
                 int found=Physics.OverlapBoxNonAlloc(origin+Vector3.up*550,new Vector3(750*width,555,750*width),_hits,rotation,Mask,QueryTriggerInteraction.Collide);
-                if (found==_hits.Length && !_overflow) { _overflow=true; Log.Warn("[Weather] Hurricane overlap buffer full (2048); excess contacts may be omitted."); }
+                if (found==_hits.Length && !_overflow) { _overflow=true; Log.Warn(null,"[Weather] Hurricane overlap buffer full (2048); excess contacts may be omitted."); }
                 bool pulse=force.isActiveAndEnabled && force.ActiveStateName=="tornado";
                 var previous=storm.Previous[column]; var current=storm.Current[column]; current.Clear();
                 for (int i=0;i<found;i++)
@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.Survival
                     Vector3 local=inverse*(hit.bounds.center-origin);
                     Vector3 axis; float outer;
                     if (!Wall(local,regionIndex*80+column,width,out axis,out outer)) continue;
-                    if (!_announced) { _announced=true; Log.Always("[Weather] Hurricane hazards active: sand wall only, safe eye; native 50 VelocityChange pulses and Bodypart damage -5 player / -5000 NPC."); }
+                    if (!_announced) { _announced=true; Log.Always(null,"[Weather] Hurricane hazards active: sand wall only, safe eye; native 50 VelocityChange pulses and Bodypart damage -5 player / -5000 NPC."); }
                     var target=hit.gameObject;
                     if (shelters != null && shelters.IsSheltered(target)) continue;
                     if (target.layer==6 || target.layer==10)
@@ -89,10 +89,10 @@ namespace WildWasteland.Modules.Survival
                 }
                 storm.Previous[column]=current; storm.Current[column]=previous; previous.Clear();
             }
-            if (Log.Verbose && Time.unscaledTime>=_report)
+            if (Log.L1 && Time.unscaledTime>=_report)
             {
                 _report=Time.unscaledTime+5;
-                Log.Info("[Weather] Hazard contacts: lift applications="+_forces+", player wall entries="+_players+", NPC wall entries="+_npcs+"; native shelter filters retained.");
+                Log.Main(null,"[Weather] Hazard contacts: lift applications="+_forces+", player wall entries="+_players+", NPC wall entries="+_npcs+"; native shelter filters retained.");
             }
         }
         /// <summary>Tests the shared bent annular wall profile and returns its radial limits.</summary>

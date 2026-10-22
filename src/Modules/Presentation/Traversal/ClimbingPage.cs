@@ -1,6 +1,6 @@
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>F7 "Climbing" page of the Presentation World part: climb / ladder state and settings.</summary>
     internal static class ClimbingPage

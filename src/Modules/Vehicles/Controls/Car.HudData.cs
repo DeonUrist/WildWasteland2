@@ -8,7 +8,7 @@ using UnityEngine.UI;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// Car part (split from PlayerBody/Vehicles/Car.cs in Wave A): the driving hints (vehicle hotkeys, cassette volume) drawn with the
@@ -142,7 +142,7 @@ namespace WildWasteland.Modules.PlayerBody
                         var od = f != null ? f.GetValue(a) as FsmOwnerDefault : null;
                         var go = od != null ? _start.Fsm.GetOwnerDefaultTarget(od) : null;
                         var t = go != null ? go.GetComponent<Text>() : null;
-                        if (t != null && t.font != null) { _gameText = t; _font = t.font; Core.Log.Deep(VehiclesModule.Instance,"Ignition hint font: " + t.font.name + " (" + Game.PathOf(t.transform) + ")"); return; }
+                        if (t != null && t.font != null) { _gameText = t; _font = t.font; Core.Log.Deep(VehiclesModule.Instance,"Ignition hint font: " + t.font.name + " (" + Core.Names.PathOf(t.transform) + ")"); return; }
                     }
             }
             catch (Exception) { }

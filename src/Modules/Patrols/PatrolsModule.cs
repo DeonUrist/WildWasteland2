@@ -1,4 +1,3 @@
-using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -25,6 +24,10 @@ namespace WildWasteland.Modules.Patrols
     public sealed partial class PatrolsModule : ModuleBase
     {
         /// <summary>Returns the stable current record identifier.</summary>
+        /// <summary>Delivers synchronous tactical creature contacts to the actual crew controller.</summary>
+        private static void OnAttackObserved(ref Core.Events.AttackObserved evt) { Crew.Attacked(Core.Entities.Find(evt.Victim),Core.Entities.Find(evt.Attacker)); }
+        /// <summary>Delivers fitted-part attacks before native detachment changes the hierarchy.</summary>
+        private static void OnPartAttackObserved(ref Core.Events.PartAttackObserved evt) { Crew.PartHit(Core.Entities.Find(evt.Part),Core.Entities.Find(evt.Attacker)); }
         public override string Id { get { return "Patrols"; } }
         /// <summary>Returns the current display name used by patrols module.</summary>
         public override string DisplayName { get { return "Patrols, traffic & War Rig"; } }
@@ -58,10 +61,10 @@ namespace WildWasteland.Modules.Patrols
             catch { Shutdown(); throw; }   // a failed start leaves nothing running (ModuleHost then removes hooks / jobs / patches)
             ModEvents.Subscribe<TownTrafficStopped>(this,OnTownTrafficStopped);
             Running = true;   // last: per-object loops only run once everything is in place
-            Services.FollowerVehicles = new QuestFollowers();
-            Services.Camps = new TrafficCamps.Status();
-            Services.NpcHurt-=Crew.Attacked;Services.NpcHurt+=Crew.Attacked;
-            Services.VehiclePartHit-=Crew.PartHit;Services.VehiclePartHit+=Crew.PartHit;
+            Core.ModApi.Provide<IFollowerVehicles>(Core.ModuleHost.Current,new QuestFollowers());
+            Core.ModApi.Provide<ICampStatus>(Core.ModuleHost.Current,new TrafficCamps.Status());
+            Core.ModEvents.Subscribe<Core.Events.AttackObserved>(this,OnAttackObserved);
+            Core.ModEvents.Subscribe<Core.Events.PartAttackObserved>(this,OnPartAttackObserved);
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings; SaveBus.CleanupSettings += DrawSaveCleanupSettings;
             LoadingProgress.Register(this, VehiclePreparation.LoadWork);
         }
@@ -83,7 +86,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var marker in PatrolMarker.All)
                 if (marker != null && marker.gameObject.activeInHierarchy && !marker.Exploded && !marker.SetupOnly
                     && marker.FactionTarget != null && marker.FactionTarget.activeInHierarchy && HasCombatCrew(marker)
-                    && ((PlayerRef.Player == null || marker.FactionTarget != PlayerRef.Player.gameObject) || (Core.GameRefs.Player != null ? Vector3.Distance(marker.transform.position, Core.GameRefs.Player.transform.position) : float.MaxValue) <= 600f)) return true;
+                    && ((Core.PlayerState.Transform == null || marker.FactionTarget != Core.PlayerState.Transform.gameObject) || (Core.GameRefs.Player != null ? Vector3.Distance(marker.transform.position, Core.GameRefs.Player.transform.position) : float.MaxValue) <= 600f)) return true;
             return false;
         }
 
@@ -100,7 +103,7 @@ namespace WildWasteland.Modules.Patrols
         {
             Instance = this;
             DataDir = Dir;
-            try { Directory.CreateDirectory(DataDir); } catch (Exception e) { Log.Warn("[Patrols] data folder: " + e.Message); }
+            try { Directory.CreateDirectory(DataDir); } catch (Exception e) { Log.Warn(null,"[Patrols] data folder: " + e.Message); }
 
             // Derived road cache only; world state is embedded in the ES3 save.
             var cfgDir = Assets.ModuleConfigDir(Id);
@@ -121,17 +124,16 @@ namespace WildWasteland.Modules.Patrols
             Core.ModApi.Changed-=EditorStore.CargoApiChanged;Core.ModApi.Changed+=EditorStore.CargoApiChanged;EditorStore.CargoApiChanged(null);
             CarTemplates.Init(DataDir);
             CarTemplates.Load();
-            Try("War Rig", () => WarRig.WarRigFeature.Install(this, Path.Combine(DataDir, "WarRig")));
 
             // per-scene state (fresh start, or a restart after Shutdown)
-            Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene();
+            Patrol.ResetForScene(); Core.PlayerState.Reset();PatrolPoi.Reset(); PatrolPersistence.ResetForScene();
             _onSaveState = PatrolPersistence.OnStateChanged;
             SaveBus.StateChanged += _onSaveState;
 
             EnsureRunner();
             RegisterJobs();
             RegisterHotkeys();
-            Log.Always("[Patrols] " + DisplayName + " ready (" + CarTemplates.Summary + ")");
+            Log.Always(null,"[Patrols] " + DisplayName + " ready (" + CarTemplates.Summary + ")");
         }
 
         /// <summary>Releases owned subscriptions, jobs, temporary objects and native state changes.</summary>
@@ -139,8 +141,8 @@ namespace WildWasteland.Modules.Patrols
         {
             Core.ModApi.Changed-=EditorStore.CargoApiChanged;
             Core.ModApi.Changed-=Crew.HeatApiChanged;
-            Services.NpcHurt-=Crew.Attacked;
-            Services.VehiclePartHit-=Crew.PartHit;
+            Core.ModEvents.Unsubscribe<Core.Events.AttackObserved>(this,OnAttackObserved);
+            Core.ModEvents.Unsubscribe<Core.Events.PartAttackObserved>(this,OnPartAttackObserved);
             CrewReturn.Reset();
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings;
             Running = false;
@@ -150,14 +152,13 @@ namespace WildWasteland.Modules.Patrols
             Try("build queue", BuildQueue.Reset);
             Try("vehicle build cache", VehiclePreparation.Reset);
             PatrolLoadPreparation.Reset();
-            if (Services.FollowerVehicles is QuestFollowers) Services.FollowerVehicles = null;
-            if (Services.Camps is TrafficCamps.Status) Services.Camps = null;
+            if (Core.ModApi.Get<Core.IFollowerVehicles>() is QuestFollowers) Core.ModApi.Withdraw<IFollowerVehicles>(Core.ModApi.OwnerOf<IFollowerVehicles>());
+            if (Core.ModApi.Get<Core.ICampStatus>() is TrafficCamps.Status) Core.ModApi.Withdraw<ICampStatus>(Core.ModApi.OwnerOf<ICampStatus>());
             TrafficCompass.Clear();
             Try("foot patrols", WorldTraffic.ReleaseFootAll);
             if (_onSaveState != null) { SaveBus.StateChanged -= _onSaveState; _onSaveState = null; }
             Try("persistence reset", PatrolPersistence.Uninstall);
             Try("road cache flush", () => { TrafficRoads.Flush(); TrafficRoads.Uninstall(); });
-            Try("War Rig", WarRig.WarRigFeature.Uninstall);
             Try("coroutines", StopObjectCoroutines);
             PatrolPersistence.Runner = null;
             // destroying the runner object closes the editors (their OnDestroy releases the pause), the spot / merchant markers and the
@@ -173,7 +174,7 @@ namespace WildWasteland.Modules.Patrols
         {
             WarRig.PatrolRetention.Clear();
             TrafficCompass.Clear();
-             PatrolVisibility.Reset(); EnsureRunner(); Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); Convoy.ResetForScene();
+             PatrolVisibility.Reset(); EnsureRunner(); Patrol.ResetForScene(); Core.PlayerState.Reset();PatrolPoi.Reset(); PatrolPersistence.ResetForScene(); Convoy.ResetForScene();
 
         }
 
@@ -253,13 +254,13 @@ namespace WildWasteland.Modules.Patrols
         static void Try(string what, Action a)
         {
             try { a(); }
-            catch (Exception e) { Log.Error("[Patrols] " + what + ": " + e); }
+            catch (Exception e) { Log.Error(null,"[Patrols] " + what + ": " + e); }
         }
 
         // ---------------------------------------------------------------- small helpers the old Plugin class provided
 
         /// <summary>Writes optional patrol diagnostics through the current verbosity gate.</summary>
-        internal static void Verbose(string msg) { if (Log.Verbose) Log.Info("[Patrols] " + msg); }
+        internal static void Verbose(string msg) { if (Log.L1) Log.Main(null,"[Patrols] " + msg); }
 
         // ---------------------------------------------------------------- per-target parts (Wave A split; implemented in the target module folders)
     }

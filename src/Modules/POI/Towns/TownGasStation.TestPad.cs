@@ -109,7 +109,7 @@ namespace WildWasteland.Modules.POI
                 _stations.Add(new Station { Key = request.Key, Root = go, Tile = tile, Request = request, Label = "Camp_10 test" });
                 Log.Main(null, "[POI] Camp_10 test placed on a level pad at " + request.Pad.WorldCenter + " (geometry only): stand near it until its navigation is baked.");
             }
-            catch (Exception e) { Log.Warn("[POI] Camp_10 test placement: " + e.Message); }
+            catch (Exception e) { Log.Warn(null,"[POI] Camp_10 test placement: " + e.Message); }
             finally { Object.Destroy(holder); }
         }
         /// <summary>Advances the navigation-gated developer test population.</summary>
@@ -117,7 +117,7 @@ namespace WildWasteland.Modules.POI
         {
             var root = _test.Root;
             if (root == null || !root.activeInHierarchy) return;
-            if (!TownBakeBridge.Enabled || Services.Npc == null) { _status = "Enable NPC navigation to bake the test station"; return; }
+            if (!TownBakeBridge.Enabled || Core.ModApi.Get<Core.INpcApi>()== null) { _status = "Enable NPC navigation to bake the test station"; return; }
             if (player == null || (player.transform.position - root.transform.position).sqrMagnitude > 500f * 500f) return;
             try
             {
@@ -148,7 +148,7 @@ namespace WildWasteland.Modules.POI
                         _spawnPoints.Add(_cells[best]); _cells.RemoveAt(best);
                     }
                     _pointsReady = true;
-                    if (_spawnPoints.Count < 3) { _status = "Bake has fewer than 3 spaced ground-floor spawn cells; check scale"; Log.Warn("[POI] Gas station test: " + _status); return; }
+                    if (_spawnPoints.Count < 3) { _status = "Bake has fewer than 3 spaced ground-floor spawn cells; check scale"; Log.Warn(null,"[POI] Gas station test: " + _status); return; }
                     var manager = ES3ReferenceMgrBase.Current;
                     var prefab = manager == null ? null : manager.GetPrefab(2524626245796737373L, true);
                     if (prefab == null || prefab.name != "Scraffa") throw new InvalidOperationException("Native Scraffa melee prefab unavailable");
@@ -163,7 +163,7 @@ namespace WildWasteland.Modules.POI
                 TownBakeBridge.Actor(actor);
                 _status = _spawned == 3 ? "Ready: 3 melee Scrapyard raiders (unsaved test)" : "Spawning melee raiders " + _spawned + "/3";
             }
-            catch (Exception e) { _status = "Failed navigation/population: " + e.Message; Log.Warn("[POI] Gas station test " + _status); _spawnPoints.Clear(); _spawned = 3; }
+            catch (Exception e) { _status = "Failed navigation/population: " + e.Message; Log.Warn(null,"[POI] Gas station test " + _status); _spawnPoints.Clear(); _spawned = 3; }
         }
         /// <summary>Adjusts cached scene coordinates after a floating-origin jump.</summary>
         internal void Shift(Vector3 delta)

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Player-only fitting and prop authoring around the common humanoid driver.</summary>
     internal sealed partial class Body

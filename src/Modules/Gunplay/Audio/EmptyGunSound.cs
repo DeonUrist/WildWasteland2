@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>First-person handling sounds (empty click, reload) of the drawn gun play at the camera instead of the offset weapon root.</summary>
     internal static class EmptyGunSound
@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.Guns
             if (!empty && n != "AnimSound" && n != "Reload") return true;
             var weapon = __instance.Owner;
             if (weapon == null || weapon.transform.parent != PlayerState.WeaponsParent) return true;
-            var animation = Services.Animation;
+            var animation = Core.ModApi.Get<Core.IAnimationApi>();
             if (!GameRefs.InGame || animation != null && animation.PlayerThirdPerson) return true;
             var camera = PlayerState.PlayerCamera;
             var clip = __instance.clip != null ? __instance.clip.Value as AudioClip : null;

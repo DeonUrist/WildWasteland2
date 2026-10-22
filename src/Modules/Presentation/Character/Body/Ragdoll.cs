@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Physics proxies are unscaled world-space objects, so mirrored raider rigs work too.
     // Animation stops at death; the existing mesh then follows these jointed bodies.

@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Brain part: cover (low health, the game's hide, Dog Companion threat, fright retreat spots) and the cover stay.</summary>
     internal static partial class Brain

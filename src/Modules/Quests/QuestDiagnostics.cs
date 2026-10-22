@@ -29,10 +29,10 @@ namespace WildWasteland.Modules.Quests
                 List<Poi> near = Game.FindPois(target.position, 0f, 150f, "");
                 if (near.Count > 0)
                 {
-                    Poi best = near[0]; float distance = Game.HDist(best.Pos, target.position);
+                    Poi best = near[0]; float distance = Core.WorldGeometry.HorizontalDistance(best.Pos, target.position);
                     for (int i = 1; i < near.Count; i++)
                     {
-                        float candidate = Game.HDist(near[i].Pos, target.position);
+                        float candidate = Core.WorldGeometry.HorizontalDistance(near[i].Pos, target.position);
                         if (candidate < distance) { distance = candidate; best = near[i]; }
                     }
                     identity.Location = best.Name; identity.Distance = distance;
@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.Quests
             foreach (var pair in Factions.Overrides) text.AppendLine(pair.Key + " -> " + pair.Value);
             text.AppendLine().AppendLine("== Points of interest within 300 m (name, owner from its EnemySpawn_ child) ==");
             foreach (Poi poi in Game.FindPois(sceneCenter, 0f, 300f, ""))
-                text.AppendLine(poi.Name + "   owner=" + (poi.Faction.Length > 0 ? poi.Faction : "(none)") + "   dist " + (int)Game.HDist(poi.Pos, sceneCenter) + " m");
+                text.AppendLine(poi.Name + "   owner=" + (poi.Faction.Length > 0 ? poi.Faction : "(none)") + "   dist " + (int)Core.WorldGeometry.HorizontalDistance(poi.Pos, sceneCenter) + " m");
             return text.ToString();
         }
     }

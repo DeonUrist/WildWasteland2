@@ -9,7 +9,7 @@ using UnityEngine.Networking;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Presentation
 {
     // Gungirl's own voice. Flexa's voice clips (asset scan 2026-10-01):
     //   Sound  [attack]    ArrayGetRandom array    enemy_human_single_1..8  (shouts while attacking)
@@ -189,7 +189,7 @@ namespace WildWasteland.Modules.NPC
                 }
             }
             int labels = Gungirl.Label(root);
-            if (WildWasteland.Core.Log.L2 || Core.Log.Verbose)
+            if (WildWasteland.Core.Log.L2 || Core.Log.L1)
                 if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Female voice: " + root.name + " - " + n + " sound reference(s) replaced, " + timers + " shout timer(s) set" + (labels > 0 ? ", label set" : ""));
             _current = null;
             return true;

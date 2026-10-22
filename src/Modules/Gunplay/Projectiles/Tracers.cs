@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.Events;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     // Visible bullets for every gun-wielding human (raiders, Coyotes, traders' guards ...).
     //
@@ -31,8 +31,6 @@ namespace WildWasteland.Modules.Guns
         /// <summary>Gun kinds (values match WeaponKind 0..5).</summary>
         internal enum Kind { Pistol, Smg, Rifle, Sniper, Shotgun, Crossbow }
         /// <summary>Crossbow damage multiplier (read by the Apocaspawner tooltip bridge); the value lives in the weapon catalog now.</summary>
-        [Obsolete("refactor: use ModApi IWeaponStats.Get(handle, WeaponStat.DamageMultiplier)")]
-        internal const float CrossbowDamageMultiplier = 2.5f;
 
         private struct Shot
         {

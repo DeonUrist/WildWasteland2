@@ -93,7 +93,7 @@ namespace WildWasteland.Core
         }
 
         /// <summary>
-        /// Core VoiceAudio.LoadWav replacement: decodes path into a kept-loaded clip; targetRms &gt; 0 normalises the RMS to it
+        /// Core Core.Audio.LoadWav replacement: decodes path into a kept-loaded clip; targetRms &gt; 0 normalises the RMS to it
         /// (gain at most 8) with the 0.7 soft clip and logs the gain at verbose level. Throws on unreadable files.
         /// Difference: accepts every format of <see cref="DecodeWav"/> (VoiceAudio accepted 16-bit PCM only and threw on a truncated chunk).
         /// </summary>
@@ -104,7 +104,7 @@ namespace WildWasteland.Core
             if (targetRms > 0f && samples.Length > 0)
             {
                 double gain = NormalizeRms(samples, targetRms);
-                if (Log.Verbose) Log.Info("[Core] Voice sound " + name + " gain " + gain.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
+                if (Log.L1) Log.Main(null,"[Core] Voice sound " + name + " gain " + gain.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture));
             }
             return Clip(name, samples, ch, rate, true);
         }
@@ -327,7 +327,7 @@ namespace WildWasteland.Core
             load.Done = true; load.Clip = clip; load.Error = error;
             if (callback == null) return;
             try { callback(clip, error); }
-            catch (Exception e) { Log.Warn("[Core] Audio load callback for " + load.Path + " failed: " + e.Message); }
+            catch (Exception e) { Log.Warn(null,"[Core] Audio load callback for " + load.Path + " failed: " + e.Message); }
         }
     }
 }

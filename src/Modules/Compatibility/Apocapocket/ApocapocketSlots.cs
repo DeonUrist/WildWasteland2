@@ -1,6 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.HUD;
+using WildWasteland.Modules.Compatibility;
 
 namespace WildWasteland.Modules.Compatibility
 {

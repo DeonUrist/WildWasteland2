@@ -13,7 +13,7 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Senses part owned by Debug: the per-agent log line, the status line and the ghost / state world overlay (DrawDebug).</summary>
     internal static partial class Senses

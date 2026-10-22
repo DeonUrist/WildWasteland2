@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // Temporary collection aid. Disable HighlightUnbakedMapPois to restore normal colors; no map data or marker ownership changes.
     internal static partial class Nav
@@ -61,7 +61,7 @@ namespace WildWasteland.Modules.NPC
             bool enabled = NavigationAuthoringApi.HighlightUnbaked;
             if (!enabled)
             {
-                if (_highlightActive) Core.Log.Always("[NPC] Nav: unbaked POI map tint off; normal colors restored");
+                if (_highlightActive) Core.Log.Always(null,"[NPC] Nav: unbaked POI map tint off; normal colors restored");
                 _highlightActive = false; return;
             }
             if (_highlightActive && _highlightIndexReady) return;
@@ -77,9 +77,9 @@ namespace WildWasteland.Modules.NPC
                     if (resource.StartsWith(prefix, StringComparison.Ordinal) && resource.EndsWith(".wwnav", StringComparison.OrdinalIgnoreCase))
                         AddCapturedMap(resource.Substring(prefix.Length));
                 _highlightIndexValid = true;
-                Core.Log.Always("[NPC] Nav: unbaked POI map tint on; " + _capturedMapTypes.Count + " POI types have saved bakes");
+                Core.Log.Always(null,"[NPC] Nav: unbaked POI map tint on; " + _capturedMapTypes.Count + " POI types have saved bakes");
             }
-            catch (Exception e) { Core.Log.Warn("Nav: unbaked POI map tint disabled: bake index could not be read: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(null,"Nav: unbaked POI map tint disabled: bake index could not be read: " + e.Message); }
         }
     }
 }

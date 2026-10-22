@@ -45,10 +45,10 @@ namespace WildWasteland.Modules.Quests
                 if (owner == null || Factions.Friendly(giver, owner)) continue;
                 if (giver.War.Count > 0 && !Factions.AtWar(giver, owner)) continue;   // only take camps of a faction we are at war with
                 if (want.Length > 0 && Util.Norm(owner.Name) != want) continue;
-                Vector3 rel = Game.Rel(p.Pos);
+                Vector3 rel = Core.Origin.World(p.Pos);
                 bool taken = false;
                 for (int i = 0; i < active.Count; i++)
-                    if (active[i].Type == QType.Takeover && active[i].HasPos && Game.HDist(active[i].Pos, rel) < 5f) { taken = true; break; }
+                    if (active[i].Type == QType.Takeover && active[i].HasPos && Core.WorldGeometry.HorizontalDistance(active[i].Pos, rel) < 5f) { taken = true; break; }
                 if (blocked != null && blocked.Contains(QuestGen.PosKey(rel))) taken = true;     // a neighbour is already offering this camp
                 if (!taken) cands.Add(p);
             }
@@ -57,7 +57,7 @@ namespace WildWasteland.Modules.Quests
             float bd = float.MaxValue;
             for (int i = 0; i < cands.Count; i++)
             {
-                float d = Game.HDist(cands[i].Pos, giverWorld);
+                float d = Core.WorldGeometry.HorizontalDistance(cands[i].Pos, giverWorld);
                 if (d < bd) { bd = d; best = cands[i]; }
             }
             return best;
@@ -80,7 +80,7 @@ namespace WildWasteland.Modules.Quests
             q.Target = owner.Name;
             q.Label = owner.Name + " camp";
             q.HasPos = true;
-            q.Pos = Game.Rel(camp.Pos);
+            q.Pos = Core.Origin.World(camp.Pos);
             q.Radius = radius;
             // The camp's people only exist while you are near it. When some are loaded, that is the head count; when none are
             // (the camp is too far away to tell), the count stays unknown (0) until you get close, and the quest log is updated then.
@@ -99,14 +99,14 @@ namespace WildWasteland.Modules.Quests
         {
             Faction winner = Factions.ByKey(q.Home);
             if (winner == null || !q.HasPos) return 0;
-            Vector3 campWorld = Game.Abs(q.Pos);
+            Vector3 campWorld = Core.Origin.Scene(q.Pos);
 
             Poi camp = null;
             string campKey = null;
             float bd = 80f;
             foreach (Poi p in Game.FindPois(campWorld, 0f, 80f, "camp"))
             {
-                float d = Game.HDist(p.Pos, campWorld);
+                float d = Core.WorldGeometry.HorizontalDistance(p.Pos, campWorld);
                 if (d < bd) { bd = d; camp = p; }
             }
             if (camp != null)
@@ -118,7 +118,7 @@ namespace WildWasteland.Modules.Quests
             }
             else Log("Takeover: camp object not found near the target; the owner could not be switched.");
 
-            return SpawnGroup(winner, campWorld, Game.Rel(campWorld), rng, campKey);
+            return SpawnGroup(winner, campWorld, Core.Origin.World(campWorld), rng, campKey);
         }
 
         // ---- a garrison for the new owner -----------------------------------------------------------
@@ -160,22 +160,22 @@ namespace WildWasteland.Modules.Quests
                 if (live.TryGetValue(id, out tr) && tr != null)
                 {
                     giverMissingSince.Remove(id);
-                    if (Game.HDist(playerWorld, tr.position) <= GiverRespawnRange) { q.GiverPos = Game.Rel(tr.position); giverSeen.Add(id); }
+                    if (Core.WorldGeometry.HorizontalDistance(playerWorld, tr.position) <= GiverRespawnRange) { q.GiverPos = Core.Origin.World(tr.position); giverSeen.Add(id); }
                     continue;
                 }
-                Vector3 world = Game.Abs(q.GiverPos);
-                float d = Game.HDist(playerWorld, world);
+                Vector3 world = Core.Origin.Scene(q.GiverPos);
+                float d = Core.WorldGeometry.HorizontalDistance(playerWorld, world);
                 if (d > GiverRespawnRange * 1.5f) { giverDisarmed.Remove(id); giverSeen.Remove(id); giverMissingSince.Remove(id); continue; }
                 if (d > GiverRespawnRange) { giverMissingSince.Remove(id); continue; }
                 if (giverSeen.Contains(id)) { giverDisarmed.Add(id); continue; }   // it was here a moment ago: killed in front of you, so no instant replacement
                 if (giverDisarmed.Contains(id)) continue;
                 Vector3 g;
-                if (!Game.GroundAt(world.x, world.z, out g)) continue;          // ground not loaded yet
+                if (!Core.WorldGeometry.GroundAt(world.x, world.z, out g)) continue;          // ground not loaded yet
                 float since;
                 if (!giverMissingSince.TryGetValue(id, out since)) { giverMissingSince[id] = rt; continue; }
                 if (rt - since < 3f) continue;                                  // give the game time to bring it back itself
 
-                string baseName = Game.BaseName(id);
+                string baseName = Core.Names.Base(id);
                 if (giverUnusable.Contains(baseName)) continue;
                 if (InactiveExists(id)) { giverDisarmed.Add(id); continue; }     // it is there, just switched off: leave it to the game
                 GameObject src = FindPrefab(baseName);

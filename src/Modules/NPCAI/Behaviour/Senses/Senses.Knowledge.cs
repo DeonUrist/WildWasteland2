@@ -12,7 +12,7 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Senses part: what an agent knows: engaging, losing and remembering targets, ghosts (rank, merge, holders), flanking, pursuit guesses and searches.</summary>
     internal static partial class Senses
@@ -65,7 +65,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- (crew AI) the fought-player memory ----------
-        /// <summary>Set when an NPC engages the player, is hit by him, hears his shots while fighting him (convoy crews on foot: also when they hear them at all), or is told by Patrols (Services.Npc.Remember: its car's crew fought him); refreshed by every sight of him while fighting him. While it lasts ([Senses] FoughtMemorySeconds after the last contact) losing sight does not drop him.</summary>
+        /// <summary>Set when an NPC engages the player, is hit by him, hears his shots while fighting him (convoy crews on foot: also when they hear them at all), or is told by Patrols (Core.ModApi.Get<Core.INpcApi>().Remember: its car's crew fought him); refreshed by every sight of him while fighting him. While it lasts ([Senses] FoughtMemorySeconds after the last contact) losing sight does not drop him.</summary>
         internal static float FoughtSeconds { get { return Mathf.Clamp(NpcaiSettings.FoughtMemorySeconds.Value, 10f, 600f); } }
         /// <summary>Refreshes the fought memory of a target for FoughtMemorySeconds from now.</summary>
         private static void FoughtFor(Agent a, GameObject target, float now, string why) { FoughtUntil(a, target, now + FoughtSeconds, why); }
@@ -98,7 +98,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // Services.Npc.Remember: the NPC (registered now if it can be, else the moment it registers) remembers target until now + seconds
+        // Core.ModApi.Get<Core.INpcApi>().Remember: the NPC (registered now if it can be, else the moment it registers) remembers target until now + seconds
         private static readonly Dictionary<int, KeyValuePair<GameObject, float>> _remember = new Dictionary<int, KeyValuePair<GameObject, float>>();
         /// <summary>INpcApi.Remember: the NPC (now, or the moment it registers) remembers the target for seconds (crew memory handed over by Patrols).</summary>
         internal static void Remember(GameObject npc, GameObject target, float seconds)
@@ -125,7 +125,7 @@ namespace WildWasteland.Modules.NPC
             if (r.Key != null && Time.time < r.Value) { a.Crew = true; FoughtUntil(a, r.Key, r.Value, "told by its crew"); if (SimpleBandits.Has(a.Owner)) a.NextLook = Time.time; }   // as Remember: it looks at once
         }
 
-        /// <summary>for Services.Npc.IsIdle: no target, no ghost to check, no search (an NPC the senses do not know is idle)</summary>
+        /// <summary>for Core.ModApi.Get<Core.INpcApi>().IsIdle: no target, no ghost to check, no search (an NPC the senses do not know is idle)</summary>
         internal static bool IsIdle(GameObject npc)
         {
             if (npc == null) return false;

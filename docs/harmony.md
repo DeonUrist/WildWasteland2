@@ -1,5 +1,9 @@
 # Harmony patch inventory (0.1.0)
 
+## 2.0 inventory scope
+
+Module ownership now follows docs/modules.md and the canonical src/Modules folders. The historical patch rows below retain provenance; they are not a regenerated inventory of enabled 2.0 runtime hooks. Core dispatchers and module-scoped subscriptions own installation/removal. Debug Patches.Records is the runtime authority; no game was launched to regenerate it during this transition.
+
 BloodFX optional lifecycle compatibility (2026-10-21): Guns prefixes `BloodFX.BloodRelay.OnParticleCollision(GameObject)`. Early-out while the native plugin component is alive or relay Owner differs from the retained managed instance. After native destruction only, forward to its closed `Plugin.OnSprayCollision` delegate, bypassing BloodFX's Unity-null owner guard. A WW scheduler callback invokes its original managed Update only after native destruction and during gameplay; the native component remains the sole updater while alive. No native Update/health/damage patch. Signature checks and teardown are in Guns/BloodFxCompat.cs.
 
 Guns also prefixes optional `BloodFX.Plugin.TestHit(bool)`: reject only the non-player debug hit when its configured key is F8 and this compatibility owner is active. Other test bindings remain native; no input polling or saved-config edit is added.

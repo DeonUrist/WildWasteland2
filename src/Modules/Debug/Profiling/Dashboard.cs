@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Debug
     {
         private static Rect _window = new Rect(30, 35, 1080, 740);
         private static readonly GUI.WindowFunction Window = DrawWindow;
-        private static readonly string[] Tabs = { "Overview", "Scheduler", "Detailed calls", "Systems & tracing", "Counters", "Logs & capture", "Development tools" };
+        private static readonly string[] Tabs = { "Overview", "Scheduler", "Detailed calls", "Systems & tracing", "Counters", "Logs & capture" };
         private static DebugRuntime _runtime;
         private static int _tab;
         private static Vector2 _scroll;
@@ -19,7 +19,6 @@ namespace WildWasteland.Modules.Debug
         private static int _selected;
         private static bool _deep;
         internal static readonly List<string> Counters = new List<string>();
-        private static readonly List<WildWasteland.Core.UI.ToolPage> ToolPages = new List<WildWasteland.Core.UI.ToolPage>();
         private static GUIStyle _mono, _heading;
         private static readonly CultureInfo C = CultureInfo.InvariantCulture;
         /// <summary>Clamps the non-pausing dashboard window to the display and restores GUI depth after rendering.</summary>
@@ -30,7 +29,7 @@ namespace WildWasteland.Modules.Debug
             _window.width = Mathf.Min(1080, Screen.width - 20); _window.height = Mathf.Min(740, Screen.height - 20);
             _window.x = Mathf.Clamp(_window.x, 0, Mathf.Max(0, Screen.width - _window.width)); _window.y = Mathf.Clamp(_window.y, 0, Mathf.Max(0, Screen.height - _window.height));
             int depth = GUI.depth; GUI.depth = -950;
-            _window = GUI.Window(0x574457, _window, Window, "WILD WASTELAND DEBUG  |  " + DebugModule.MenuKey.Value);
+            _window = GUI.Window(0x574457, _window, Window, "WILD WASTELAND PERFORMANCE");
             GUI.depth = depth;
         }
         /// <summary>Draws the dashboard tabs, capture controls and selected content inside one bounded scroll view.</summary>
@@ -41,7 +40,6 @@ namespace WildWasteland.Modules.Debug
             if (record != _runtime.Recording) { _runtime.Recording = record; if (record) Measurements.Reset(); }
             if (GUILayout.Button("Reset sample window", GUILayout.Width(165))) Measurements.Reset();
             if (GUILayout.Button("Export capture", GUILayout.Width(135))) Reports.Export(_runtime);
-            if (GUILayout.Button("WW development tools", GUILayout.Width(170))) _runtime.OpenTools();
             if (GUILayout.Button("Close", GUILayout.Width(65))) _runtime.Close();
             GUILayout.EndHorizontal();
             GUILayout.Label(Measurements.Context, _mono);
@@ -57,7 +55,6 @@ namespace WildWasteland.Modules.Debug
                 case 3: Systems(); break;
                 case 4: CounterView(); break;
                 case 5: Logs(); break;
-                case 6: DevelopmentTools(); break;
             }
             GUILayout.EndScrollView();
             GUILayout.Label("Live menu does not pause the world. Input is held while open; close it to play while capturing. Timing is disabled during hook installation.");
@@ -175,7 +172,7 @@ namespace WildWasteland.Modules.Debug
             if (GUILayout.Button("Capture A: wait 5s, play 30s, export + retain baseline")) _runtime.ScheduleCapture(true);
             if (GUILayout.Button("Capture B: wait 5s, play 30s, export comparison")) _runtime.ScheduleCapture(false);
             GUILayout.EndHorizontal();
-            GUILayout.Label("Label the location/action. Finish hook installation, reset, close F4, play 30-60 seconds, then capture. Change Performance yourself between A and B; use the same route, camera and hooks.");
+            GUILayout.Label("Label the location/action. Finish hook installation, reset, close the profiler, play 30-60 seconds, then capture. Change Performance yourself between A and B; use the same route, camera and hooks.");
             if (GUILayout.Button("Keep current window as baseline A")) { Diagnosis.KeepBaseline(_runtime); _runtime.Status = "Baseline A retained in memory; reset before collecting B."; }
             GUILayout.Label(Diagnosis.BaselineLabel);
             GUILayout.Label("Shared Debug logging level", _heading);
@@ -187,37 +184,9 @@ namespace WildWasteland.Modules.Debug
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Write summary now")) _runtime.WriteSummary();
             if (GUILayout.Button("Export capture")) Reports.Export(_runtime);
-            if (GUILayout.Button(_runtime.Rebinding ? "Press a key; Esc cancels" : "Rebind " + DebugModule.MenuKey.Value)) _runtime.Rebinding = true;
             GUILayout.EndHorizontal();
             GUILayout.Label("Trace queue is bounded; dropped events: " + Instrumentation.Dropped + ". Errors from instrumented calls are always retained. Last 512 lines kept for export.");
             foreach (var line in _runtime.Trace) if (Matches(line)) GUILayout.Label(line, _mono);
-        }
-        /// <summary>Lists existing module tool pages and opens the selected editor through Core.</summary>
-        private static void DevelopmentTools()
-        {
-            GUILayout.Label("Existing WW editors, bakers and diagnostic pages", _heading);
-            GUILayout.Label("Open hands control to the existing WW tool UI and enables its Debug/Developer visibility flags. It never enables global verbose logging.");
-            if (GUILayout.Button("Load / refresh development tool catalogue"))
-            {
-                ToolPages.Clear();
-                foreach (var entry in WildWasteland.Core.ModuleHost.Entries)
-                {
-                    try
-                    {
-                        var pages = entry.Module.ToolPages(); if (pages == null) continue;
-                        foreach (var page in pages) { if (page.Owner == null) page.Owner = entry.Module; ToolPages.Add(page); }
-                    }
-                    catch (Exception e) { _runtime.Status = "Tool catalogue: " + entry.Module.Id + ": " + e.GetBaseException().Message; }
-                }
-            }
-            foreach (var page in ToolPages)
-            {
-                string name = (page.Owner == null ? "Core" : page.Owner.Id) + " / " + page.Group + " / " + page.Title;
-                if (!Matches(name)) continue;
-                GUILayout.BeginHorizontal(); GUILayout.Label(name);
-                if (GUILayout.Button("Open", GUILayout.Width(85))) _runtime.OpenTool(page);
-                GUILayout.EndHorizontal();
-            }
         }
         /// <summary>Applies the dashboard's case-insensitive text filter.</summary>
         private static bool Matches(string value) { return _filter.Length == 0 || value.IndexOf(_filter, StringComparison.OrdinalIgnoreCase) >= 0; }

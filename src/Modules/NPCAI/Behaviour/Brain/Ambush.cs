@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // (1.7.3) Ambush predators. Scorpions and spiders (small and big) do not go for you - or for another creature they hate - from the edge of
     // sight. Calm, they let a target come within 3-5 m (chosen at random each time they settle) and only then attack; sounds do not draw

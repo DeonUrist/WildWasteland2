@@ -12,7 +12,7 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Senses part: what a bailed-out crew and an informed NPC know (Patrols bail-out, vehicle explosions, INpcApi.Inform).</summary>
     internal static partial class Senses

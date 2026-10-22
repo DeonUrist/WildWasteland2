@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.Tools
                     }
                 }
             }
-            catch (Exception e) { Fail(e.Message); Log.Error("[NPC] POI navigation bake " + Poi, e); }
+            catch (Exception e) { Fail(e.Message); Log.Error(null,"[NPC] POI navigation bake " + Poi, e); }
             return !Done;
         }
 
@@ -319,7 +319,7 @@ namespace WildWasteland.Modules.Tools
                     if (!old.Manual || old.Kind != PoiLinkKind.Ladder) continue;
                     float dx = old.LineBottom.x - axLocal.x, dz = old.LineBottom.z - axLocal.z; if (dx * dx + dz * dz > .3f * .3f) continue;
                     Vector3 o = -(Root.rotation * (Quaternion.Euler(0f, old.Yaw, 0f) * Vector3.forward)); o.y = 0f;
-                    if (o.sqrMagnitude > 1e-4f) { side = Vector3.Dot(o, through) >= 0f ? through : -through; Log.Info("[NPC] POI navigation bake " + Poi + ": ladder side kept from the editor / the player"); }
+                    if (o.sqrMagnitude > 1e-4f) { side = Vector3.Dot(o, through) >= 0f ? through : -through; Log.Main(null,"[NPC] POI navigation bake " + Poi + ": ladder side kept from the editor / the player"); }
                     break;
                 }
             }
@@ -372,7 +372,7 @@ namespace WildWasteland.Modules.Tools
                     added++;
                 }
             }
-            if (added == 0) Log.Warn("[NPC] POI navigation bake " + Poi + ": ladder " + ladder.transform.parent?.name + " found " + stops.Count + " surfaces along it, linked none");
+            if (added == 0) Log.Warn(null,"[NPC] POI navigation bake " + Poi + ": ladder " + ladder.transform.parent?.name + " found " + stops.Count + " surfaces along it, linked none");
         }
         // the side a person climbs this ladder from (horizontal unit vector from the rung line towards the climber):
         // 1. a leaning ladder is climbed on the side away from what it leans on; 2. the side opposite the floor at its top;
@@ -448,7 +448,7 @@ namespace WildWasteland.Modules.Tools
         Vector3 Said(string ladder, string why, Vector3 side)
         {
             Vector3 l = Root.InverseTransformDirection(side);
-            Log.Info("[NPC] POI navigation bake " + Poi + ": ladder " + ladder + " climbed from local (" + l.x.ToString("0.0") + ", " + l.z.ToString("0.0") + ") side: " + why);
+            Log.Main(null,"[NPC] POI navigation bake " + Poi + ": ladder " + ladder + " climbed from local (" + l.x.ToString("0.0") + ", " + l.z.ToString("0.0") + ") side: " + why);
             return side;
         }
 

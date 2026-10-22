@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Game part (split from PlayerBody/Game.cs in Wave A): what the player's hands and weapon are doing, read from the game's FSMs and
@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             get
             {
-                var wp = WeaponsParent;
+                var wp = Core.PlayerState.WeaponsParent;
                 // a hit is re-validated (the weapon FSMs may switch it later in the same frame): the drawn child still active, or with none a fresh scan
                 if (_drawnFrame == Time.frameCount && ReferenceEquals(_drawnParent, wp) && !ReferenceEquals(_drawnChild, null) && _drawnChild != null && _drawnChild.gameObject.activeInHierarchy) return _drawn;
                 _drawnFrame = Time.frameCount; _drawnParent = wp; _drawn = ""; _drawnChild = null;
@@ -50,9 +50,9 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 try
                 {
-                    if (_kickFsm == null && WeaponsParent != null)
+                    if (_kickFsm == null && Core.PlayerState.WeaponsParent != null)
                     {
-                        var k = WeaponsParent.Find("kick");
+                        var k = Core.PlayerState.WeaponsParent.Find("kick");
                         if (k != null) foreach (var f in k.GetComponents<PlayMakerFSM>()) if (f.FsmName == "Animation") _kickFsm = f;
                     }
                     return _kickFsm != null && _kickFsm.gameObject.activeInHierarchy ? _kickFsm.ActiveStateName : "";
@@ -64,14 +64,14 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>the drawn gun really reloads: its [ReloadAnimation] FSM is "on" (akms etc.), or its [Reload] FSM is past idle/checkAmmo</summary>
         public static bool IsReloading(string weapon)
         {
-            if (string.IsNullOrEmpty(weapon) || WeaponsParent == null) return false;
+            if (string.IsNullOrEmpty(weapon) || Core.PlayerState.WeaponsParent == null) return false;
             try
             {
                 PlayMakerFSM[] f;
                 if (!_reloadFsms.TryGetValue(weapon, out f) || f[0] == null && f[1] == null)
                 {
                     f = new PlayMakerFSM[2];
-                    var w = WeaponsParent.Find(weapon);
+                    var w = Core.PlayerState.WeaponsParent.Find(weapon);
                     if (w != null) foreach (var x in w.GetComponents<PlayMakerFSM>()) { if (x.FsmName == "ReloadAnimation") f[0] = x; else if (x.FsmName == "Reload") f[1] = x; }
                     _reloadFsms[weapon] = f;
                 }
@@ -153,13 +153,13 @@ namespace WildWasteland.Modules.PlayerBody
         public static bool ArmsReloading(string weapon, out bool known)
         {
             known = false;
-            if (string.IsNullOrEmpty(weapon) || WeaponsParent == null) return false;
+            if (string.IsNullOrEmpty(weapon) || Core.PlayerState.WeaponsParent == null) return false;
             try
             {
                 Animator an;
                 if (!_arms.TryGetValue(weapon, out an) || an == null)
                 {
-                    var w = WeaponsParent.Find(weapon);
+                    var w = Core.PlayerState.WeaponsParent.Find(weapon);
                     an = w != null ? w.GetComponentInChildren<Animator>(true) : null;
                     _arms[weapon] = an;
                 }
@@ -221,7 +221,7 @@ namespace WildWasteland.Modules.PlayerBody
                     foreach (var st in f[1].FsmStates) if (st.Name == "checkAmmoInStore") { r = true; break; }
             }
             catch (Exception) { }
-            if (WeaponsParent != null && WeaponsParent.Find(weapon) != null) _perRound[weapon] = r;
+            if (Core.PlayerState.WeaponsParent != null && Core.PlayerState.WeaponsParent.Find(weapon) != null) _perRound[weapon] = r;
             return r;
         }
         // right mouse button (the game's "Aim Down Sights"): PlayerCamera [AimDownSIghts_Hold] sits in "ads" while it is held (it sends
@@ -234,8 +234,8 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 try
                 {
-                    if (_adsFsm == null && PlayerCamera != null)
-                        foreach (var f in PlayerCamera.GetComponents<PlayMakerFSM>()) if (f.FsmName == "AimDownSIghts_Hold" || f.FsmName == "AimDownSights_Hold") { _adsFsm = f; break; }
+                    if (_adsFsm == null && Core.PlayerState.PlayerCamera != null)
+                        foreach (var f in Core.PlayerState.PlayerCamera.GetComponents<PlayMakerFSM>()) if (f.FsmName == "AimDownSIghts_Hold" || f.FsmName == "AimDownSights_Hold") { _adsFsm = f; break; }
                     return _adsFsm != null && _adsFsm.enabled && _adsFsm.ActiveStateName == "ads";
                 }
                 catch (Exception) { return false; }
@@ -260,9 +260,9 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 try
                 {
-                    if (_binoFsm == null && PlayerCamera != null)
+                    if (_binoFsm == null && Core.PlayerState.PlayerCamera != null)
                     {
-                        var t = PlayerCamera.Find("ItemAnim/Binocular Anim");
+                        var t = Core.PlayerState.PlayerCamera.Find("ItemAnim/Binocular Anim");
                         if (t != null) foreach (var f in t.GetComponents<PlayMakerFSM>()) if (f.FsmName == "Animation") { _binoFsm = f; break; }
                     }
                     return _binoFsm != null && _binoFsm.enabled && _binoFsm.ActiveStateName == "on";
@@ -286,14 +286,14 @@ namespace WildWasteland.Modules.PlayerBody
         public static bool Attack(string weapon, out string state, out float time)
         {
             state = ""; time = 0f;
-            if (string.IsNullOrEmpty(weapon) || WeaponsParent == null) return false;
+            if (string.IsNullOrEmpty(weapon) || Core.PlayerState.WeaponsParent == null) return false;
             try
             {
                 PlayMakerFSM f;
                 if (!_attackFsms.TryGetValue(weapon, out f) || f == null)
                 {
                     f = null;
-                    var w = WeaponsParent.Find(weapon);
+                    var w = Core.PlayerState.WeaponsParent.Find(weapon);
                     if (w != null) foreach (var c in w.GetComponents<PlayMakerFSM>()) if (c.FsmName == "Attack") { f = c; break; }
                     _attackFsms[weapon] = f;
                 }

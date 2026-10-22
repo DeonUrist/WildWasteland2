@@ -24,11 +24,11 @@ namespace WildWasteland.Core
             BepInEx.PluginInfo info;
             if (Chainloader.PluginInfos.TryGetValue(GUID, out info) && !ReferenceEquals(info.Instance, null))
             {
-                Log.Warn("[Core] HealthStacks: " + ReplacementGuard.Status(GUID) + ". Built-in fix waits until restart.");
+                Log.Warn(null,"[Core] HealthStacks: " + ReplacementGuard.Status(GUID) + ". Built-in fix waits until restart.");
                 return;
             }
             Hooks.GetButtonDownUpdate.Prefix(Owner, TakeItemUsePatch.Prefix);
-            Log.Always("[Core] HealthStacks ready (always on, max 3 charges)");
+            Log.Always(null,"[Core] HealthStacks ready (always on, max 3 charges)");
         }
     }
 
@@ -53,7 +53,7 @@ namespace WildWasteland.Core
             }
             catch (Exception e)
             {
-                Log.Error("[Core] HealthStacks TakeItem patch", e);
+                Log.Error(null,"[Core] HealthStacks TakeItem patch", e);
                 return true;
             }
         }
@@ -85,7 +85,7 @@ namespace WildWasteland.Core
             int moved = Math.Min(need, gq.Value);
             hq.Value += moved;
             gq.Value -= moved;
-            if (Log.Verbose) Log.Info(string.Format("[Core] HealthStacks {0}: took {1} charge(s), slot {2}/{3}, ground item {4}", slot.name, moved, hq.Value,
+            if (Log.L1) Log.Main(null,string.Format("[Core] HealthStacks {0}: took {1} charge(s), slot {2}/{3}, ground item {4}", slot.name, moved, hq.Value,
                 HealthStacks.MaxCharges, gq.Value > 0 ? gq.Value + " left" : "used up"));
 
             if (gq.Value <= 0)

@@ -5,7 +5,7 @@ using HarmonyLib;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// ChaseCamera part serving the player body: the mod's ApocaplayerBridge looks up the old standalone "Apocaplayer.*" types by name;
@@ -30,8 +30,8 @@ namespace WildWasteland.Modules.PlayerBody
             _attempted = false; _owner = owner;
             var host = CompatibilityHost.PlayerBody.Config;
             Enabled = host != null ? host.Enabled : null;
-            ThirdCarHeight = CameraSettings.ThirdCarHeight; // refs-ok: REFACTOR-REQUEST B17-8
-            OcclusionPrototype = CameraSettings.OcclusionPrototype; OcclusionInVehicle = CameraSettings.OcclusionInVehicle; // refs-ok: REFACTOR-REQUEST B17-8
+            ThirdCarHeight = ModApi.Get<ICameraModInterop>()?.CarHeight; // refs-ok: REFACTOR-REQUEST B17-8
+            OcclusionPrototype = ModApi.Get<ICameraModInterop>()?.Occlusion; OcclusionInVehicle = ModApi.Get<ICameraModInterop>()?.VehicleOcclusion; // refs-ok: REFACTOR-REQUEST B17-8
             TryInstall();
             _discovery = Scheduler.Interval(owner, "Compatibility.ChaseCamera.Discovery", 1f, Discover);
         }
@@ -40,6 +40,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// re-binds the mod when the player-body host starts or stops (the host used to install/clear the adapter in its Init/Shutdown).</summary>
         private static void Discover()
         {
+            var interop=ModApi.Get<ICameraModInterop>();ThirdCarHeight=interop?.CarHeight;OcclusionPrototype=interop?.Occlusion;OcclusionInVehicle=interop?.VehicleOcclusion;
             if (!_attempted) { TryInstall(); return; }
             bool running = CompatibilityHost.PlayerBody.Running;
             if (running == _hostWasRunning || _refresh == null) return;
@@ -51,7 +52,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Resolves the mod's bridge, installs the FindType prefix and lets the mod re-discover the WW types.</summary>
         private static void TryInstall()
         {
-            if (_attempted) return;
+            if (_attempted || ModApi.Get<ICameraModInterop>()==null) return;
             BepInEx.PluginInfo info;
             if (!Chainloader.PluginInfos.TryGetValue("local.apocalypter.chasecamera", out info) || ReferenceEquals(info.Instance, null)) return;
             _attempted = true;
@@ -77,15 +78,9 @@ namespace WildWasteland.Modules.PlayerBody
         private static bool BeforeFindType(string __0, ref Type __result)
         {
             if (!CompatibilityHost.PlayerBody.Running) return true;
-            switch (__0)
-            {
-                case "Apocaplayer.ThirdPerson": __result = typeof(ThirdPerson); break; // refs-ok: REFACTOR-REQUEST B17-8
-                case "Apocaplayer.Game": __result = typeof(Game); break; // refs-ok: REFACTOR-REQUEST B17-8
-                case "Apocaplayer.Plugin": __result = typeof(ChaseCameraCompat); break;
-                case "Apocaplayer.OcclusionCutaway": __result = typeof(OcclusionCutaway); break; // refs-ok: REFACTOR-REQUEST B17-8
-                case "Apocaplayer.Cave": __result = typeof(Cave); break; // refs-ok: REFACTOR-REQUEST B17-8
-                default: return true;
-            }
+            if(__0=="Apocaplayer.Game")__result=typeof(ChasePlayerState);
+            else if(__0=="Apocaplayer.Plugin")__result=typeof(ChaseCameraCompat);
+            else { __result=ModApi.Get<ICameraModInterop>()?.ResolveType(__0);if(__result==null)return true; }
             return false;
         }
 

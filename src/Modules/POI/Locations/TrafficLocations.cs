@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.POI
         private static readonly Queue<MapRequest> MapQueue=new Queue<MapRequest>();
         private static readonly HashSet<Transform> QueuedMaps=new HashSet<Transform>();
         private static float _nextBake;
-        private static readonly List<Core.NavStructure> _structures = new List<Core.NavStructure>();   // WW: Core.Services.Npc.Structures (ex NPCAI.Nav._structures reflection)
+        private static readonly List<Core.NavStructure> _structures = new List<Core.NavStructure>();   // WW: Core.ModApi.Get<Core.INpcApi>().Structures (ex NPCAI.Nav._structures reflection)
         internal static int Revision { get; private set; }
         private static bool _discoveryReady;
         /// <summary>Reports completion of the initial shared-world discovery pass.</summary>
@@ -83,7 +83,7 @@ namespace WildWasteland.Modules.POI
                 }
                 _structures.Clear();
             }
-            catch (Exception e) { Core.Log.Warn("Traffic: NPC Overhaul map adapter: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(null,"Traffic: NPC Overhaul map adapter: " + e.Message); }
         }
 
         /// <summary>Recognizes native numbered camp prefab names.</summary>

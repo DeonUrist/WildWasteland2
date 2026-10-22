@@ -9,7 +9,7 @@ using NWH.WheelController3D;
 using UnityEngine;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// The geometry of a suspension adjustment without the Part Adjustment mod (its own SuspensionAdjustment is the reference; same rules:

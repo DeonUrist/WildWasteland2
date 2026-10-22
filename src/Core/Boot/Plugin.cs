@@ -101,11 +101,11 @@ namespace WildWasteland
                 Core.ModuleHost.StartAll();
                 Core.Optimization.OptimizationRuntime.Instance.Init();
                 Core.Optimization.OptimizationRuntime.Instance.ProvideApis();
-                Core.Log.Always(Core.ModuleHost.Summary());
+                Core.Log.Always(null,Core.ModuleHost.Summary());
             }
             catch (Exception e)
             {
-                Core.Log.Error("Wild Wasteland failed to start", e);
+                Core.Log.Error(null,"Wild Wasteland failed to start", e);
             }
         }
 
@@ -115,14 +115,14 @@ namespace WildWasteland
             try
             {
                 var cfg = UnityEngine.AudioSettings.GetConfiguration();
-                if (want <= 0 || cfg.numRealVoices == want) { Core.Log.Info("[Core] Audio: " + cfg.numRealVoices + " real voices (unchanged)"); return; }
+                if (want <= 0 || cfg.numRealVoices == want) { Core.Log.Main(null,"[Core] Audio: " + cfg.numRealVoices + " real voices (unchanged)"); return; }
                 int before = cfg.numRealVoices;
                 cfg.numRealVoices = want;
                 if (cfg.numVirtualVoices < want) cfg.numVirtualVoices = want * 8;
                 bool ok = UnityEngine.AudioSettings.Reset(cfg);
-                Core.Log.Always("[Core] Audio: real voices " + before + " -> " + UnityEngine.AudioSettings.GetConfiguration().numRealVoices + (ok ? "" : " (Reset failed)"));
+                Core.Log.Always(null,"[Core] Audio: real voices " + before + " -> " + UnityEngine.AudioSettings.GetConfiguration().numRealVoices + (ok ? "" : " (Reset failed)"));
             }
-            catch (Exception e) { Core.Log.Warn("[Core] Audio: could not set the voice count: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(null,"[Core] Audio: could not set the voice count: " + e.Message); }
         }
 
         /// <summary>Registers the per-frame Core job.</summary>

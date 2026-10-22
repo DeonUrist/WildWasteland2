@@ -79,7 +79,7 @@ namespace WildWasteland.Modules.HUD
             if (path == null)
             {
                 _status = "missing: " + System.IO.Path.Combine(System.IO.Path.Combine(HudModule.Dir ?? "", "Sounds"), "headshot.mp3");
-                Log.Warn("[HUD] Headshot sound " + _status);
+                Log.Warn(null,"[HUD] Headshot sound " + _status);
                 yield break;
             }
             using (var request = UnityWebRequestMultimedia.GetAudioClip(new Uri(path).AbsoluteUri, AudioType.MPEG))
@@ -90,22 +90,22 @@ namespace WildWasteland.Modules.HUD
                 yield return request.SendWebRequest();
                 _request = null;
                 if (request.result != UnityWebRequest.Result.Success)
-                { _status = "error: " + request.error; Log.Warn("[HUD] Headshot sound: " + request.error); yield break; }
+                { _status = "error: " + request.error; Log.Warn(null,"[HUD] Headshot sound: " + request.error); yield break; }
                 _clip = DownloadHandlerAudioClip.GetContent(request);
-                if (_clip == null) { _status = "could not be decoded"; Log.Warn("[HUD] Headshot sound could not be decoded."); yield break; }
+                if (_clip == null) { _status = "could not be decoded"; Log.Warn(null,"[HUD] Headshot sound could not be decoded."); yield break; }
                 // AudioSource.volume clamps to 1, so boost decoded samples once instead.
                 float gain = HudModule.HeadshotGain.Value;
                 var samples = new float[_clip.samples * _clip.channels];
                 if (_clip.GetData(samples, 0))
                 {
                     for (int i = 0; i < samples.Length; i++) samples[i] = Mathf.Clamp(samples[i] * gain, -1f, 1f);
-                    if (!_clip.SetData(samples, 0)) Log.Warn("[HUD] Headshot sound gain could not be applied.");
+                    if (!_clip.SetData(samples, 0)) Log.Warn(null,"[HUD] Headshot sound gain could not be applied.");
                 }
-                else Log.Warn("[HUD] Headshot sound samples unavailable; using original volume.");
+                else Log.Warn(null,"[HUD] Headshot sound samples unavailable; using original volume.");
                 _clip.hideFlags = HideFlags.HideAndDontSave;
                 EnsureVoices();
                 foreach (var voice in Voices) if (voice != null) voice.clip = _clip;
-                if (Log.Verbose) Log.Info("[HUD] headshot sound loaded from " + path);
+                if (Log.L1) Log.Main(null,"[HUD] headshot sound loaded from " + path);
             }
             _load = null;
         }

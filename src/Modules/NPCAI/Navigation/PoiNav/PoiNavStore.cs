@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Where the POI navigation files live (D13): the editor / baker writes config\WildWasteland\NPCAI\PoiNav\&lt;type&gt;.txt; the shipped
     /// pack sits in plugins\WildWasteland\NPCAI\PoiNav\ (read when no config file exists). Loads are async (worker) and cached per type.</summary>

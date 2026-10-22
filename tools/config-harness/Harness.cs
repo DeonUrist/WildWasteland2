@@ -28,17 +28,26 @@ static class Harness
         setPath.Invoke(null, new object[] { Path.Combine(root, "Apocalypter.exe"), null, null, null });
         Logger.Listeners.Add(new StdoutListener());
         Log.Source = Logger.CreateLogSource("WW");
-        Log.Verbose = true;
+        Log.Level = 1;
         Assets.Init(Path.Combine(root, "BepInEx", "plugins", "WildWasteland", "WildWasteland.dll"));
-        Legacy.FirstRunMain = Legacy.FirstRunTools = true;
         int problems = 0;
 
         var modules = new IModule[] {
-            new WildWasteland.Modules.PlayerBody.PlayerBodyModule(),
-            new WildWasteland.Modules.NPC.NpcModule(),
-            new WildWasteland.Modules.Guns.GunsModule(),
+            new WildWasteland.Modules.Debug.DebugModule(),
+            new WildWasteland.Modules.Compatibility.CompatibilityModule(),
+            new WildWasteland.Modules.Saves.SavesModule(),
+            new WildWasteland.Modules.NPCAI.NPCAIModule(),
+            new WildWasteland.Modules.Presentation.PresentationModule(),
+            new WildWasteland.Modules.Gunplay.GunplayModule(),
             new WildWasteland.Modules.HUD.HudModule(),
-            new WildWasteland.Modules.Patrols.PatrolsModule() };
+            new WildWasteland.Modules.Vehicles.VehiclesModule(),
+            new WildWasteland.Modules.Loot.LootModule(),
+            new WildWasteland.Modules.Patrols.PatrolsModule(),
+            new WildWasteland.Modules.POI.PoiModule(),
+            new WildWasteland.Modules.Quests.QuestsModule(),
+            new WildWasteland.Modules.Survival.SurvivalModule(),
+            new WildWasteland.Modules.Tools.ToolsModule(),
+            new WildWasteland.Modules.Developer.DeveloperModule() };
 
         // 1) each module alone on fresh files
         var mainSets = new Dictionary<string, HashSet<string>>();

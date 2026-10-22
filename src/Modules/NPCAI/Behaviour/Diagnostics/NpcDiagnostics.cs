@@ -2,7 +2,7 @@ using System;
 using BepInEx.Configuration;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Copies private NPC state only when Debug explicitly asks for it.</summary>
     internal sealed class NpcDiagnosticSource : INpcDiagnosticSource

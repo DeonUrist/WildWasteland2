@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Idle part: the body - walk speed, stop and the per-frame drive through the Mover.</summary>
     internal static partial class Idle

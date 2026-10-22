@@ -2,7 +2,6 @@ using System;
 using Pose = WildWasteland.Modules.Presentation.Pose;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
 namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Creates and controls the existing occupant pose implementation.</summary>

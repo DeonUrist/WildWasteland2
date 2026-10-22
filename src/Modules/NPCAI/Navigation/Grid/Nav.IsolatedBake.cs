@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Isolated bake of one POI prefab (README A6-9, INavApi.BakeIsolated): ex reflection from Towns TownTowerKit into Nav.</summary>
     internal static partial class Nav

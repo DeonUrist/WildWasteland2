@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.POI
                 var data = terrain.terrainData; int res = data.holesResolution;
                 string state = "seed=" + map.graph.random.Seed + "; active=" + (start.main != null && terrain == start.main.terrain ? "main" : "draft")
                     + "; size=" + data.size.ToString("F1") + "; heightRes=" + data.heightmapResolution + "; globalsHeight=" + map.globals.height
-                    + "; terrainWrites=off; tests=" + _settings.TestGasStation.Value + "/" + _settings.TestCamp10.Value + "/" + Services.PoiNavSetup;
+                    + "; terrainWrites=off; tests=" + _settings.TestGasStation.Value + "/" + _settings.TestCamp10.Value + "/" + (Core.ModApi.Get<Core.INavApi>()?.WorldGenerationSuspended==true);
                 int[] dx = { -1, 1, 0, 0 }, dz = { 0, 0, -1, 1 };
                 for (int side = 0; side < 4; side++)
                 {
@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.POI
                 if (state == _startingTerrainState) return;
                 _startingTerrainState = state; Log.Deep(Owner, "Starting terrain (" + source + "): " + state);
             }
-            catch (Exception e) { Log.Warn("[POI] Starting terrain trace failed: " + e.Message); }
+            catch (Exception e) { Log.Warn(null,"[POI] Starting terrain trace failed: " + e.Message); }
         }
         /// <summary>Forgets the last starting-terrain trace so the next applied tile logs again.</summary>
         partial void ClearDebug() { _startingTerrainState = null; }

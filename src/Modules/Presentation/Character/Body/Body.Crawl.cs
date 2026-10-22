@@ -4,7 +4,7 @@ using UnityEngine.Playables;
 using WildWasteland.Modules.Presentation;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     internal sealed partial class Body
     {

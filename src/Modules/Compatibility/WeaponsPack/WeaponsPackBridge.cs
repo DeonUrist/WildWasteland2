@@ -2,10 +2,7 @@ using System;
 using BepInEx.Bootstrap;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
-using WildWasteland.Modules.HUD;
-using WildWasteland.Modules.Guns;
-using WildWasteland.Modules.NPC;
-using WildWasteland.Modules.PlayerBody;
+using WildWasteland.Modules.Compatibility;
 
 namespace WildWasteland.Modules.Compatibility
 {
@@ -18,6 +15,8 @@ namespace WildWasteland.Modules.Compatibility
     /// </summary>
     internal static class WeaponsPackBridge
     {
+        /// <summary>Projects the external chainsaw equip state into the native hearing policy.</summary>
+        private sealed class WeaponNoise : IEquipmentNoise { public float FootstepScale=>WeaponsPackFear.ChainsawDrawn?3f:1f; }
         /// <summary>BepInEx GUID of the pack.</summary>
         internal const string Guid = "apocalypter.weaponspack";
         private static IModule _scope;
@@ -27,6 +26,7 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Registers discovery, the chainsaw-cut sweep, the corpse hook and the load reset under <paramref name="scope"/>.</summary>
         internal static void Start(IModule scope)
         {
+            ModApi.Provide<IEquipmentNoise>(scope,new WeaponNoise());
             _scope = scope; _attempted = false;
             ModApi.Provide<IWeaponIconModels>(scope, new WeaponIconModels());
             _discovery = Scheduler.Interval(scope, "Compatibility.WeaponsPack.Discovery", .5f, Discover);

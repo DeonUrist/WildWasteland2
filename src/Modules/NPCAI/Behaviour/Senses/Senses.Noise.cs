@@ -12,7 +12,7 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Senses part: hearing: gunshots, explosions, the player's engine and horn, thrown items, shared by Noise() with the responder limit and the storm shrink.</summary>
     internal static partial class Senses
@@ -208,7 +208,7 @@ namespace WildWasteland.Modules.NPC
             if (!On || victim == null || attacker == null) return;
             var hit=victim.transform;while(hit!=null&&!hit.CompareTag("Coyotes"))hit=hit.parent;
             if(hit!=null&&IsPlayer(attacker)){var relation=CoyoteRelation();if(relation!=null&&relation.Fsm.Initialized)relation.SendEvent("FactionCoyotesEnemy");}
-            Core.Services.RaiseNpcHurt(victim,attacker);
+            { var observed=new Core.Events.AttackObserved { Victim=Core.Entities.Of(victim),Attacker=Core.Entities.Of(attacker) };Core.ModEvents.Publish(ref observed); }
             var a = Get(victim.transform.root.gameObject);
             if (a == null) return;
             if(a.CrewBoarding)return;
@@ -292,7 +292,7 @@ namespace WildWasteland.Modules.NPC
             if (!ReferenceEquals(_engineRbCar, car)) { _engineRbCar = car; _engineRb = car.GetComponent<Rigidbody>(); }     // (perf) per car, not per tick
             var rb = _engineRb;
             float speed = rb != null ? rb.velocity.magnitude : 0f;
-            float thr = Nwh.Throttle(car);
+            float thr = Core.VehicleEngine.Throttle(car);
             if (speed < 1.5f && thr < 0.05f) radius *= Mathf.Clamp01(NpcaiSettings.EngineIdleFactor.Value / 100f);
             if (!_engineAbout.TryGetValue(car.GetInstanceID(), out about)) { about = "engine " + (hp > 0f ? hp + " HP" : ""); _engineAbout[car.GetInstanceID()] = about; }
             return radius;
@@ -321,7 +321,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>True while the car's engine runs (Core vehicle engine state).</summary>
-        private static bool Apocapatrol_EngineRunning(GameObject car) { return Nwh.EngineRunning(car); }
+        private static bool Apocapatrol_EngineRunning(GameObject car) { return Core.VehicleEngine.Running(car); }
 
         /// <summary>the player throws a held item (GrabItem FSM state Throw): the landing spot attracts NPCs within ThrowRange</summary>
         private static void Thrown(float now, float dt)

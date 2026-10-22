@@ -1,6 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
+using WildWasteland.Modules.Vehicles;
 namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>Native light and brake switches shared by player and traffic control clients.</summary>

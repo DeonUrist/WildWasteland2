@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.Events;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Player shots (Wave A split of Tracers.cs, B09): the Raycast prefix of first-person guns, the per-gun stats (MakeGun), pellet spread and the camera-ray first hit.</summary>
     internal static partial class Tracers
@@ -74,7 +74,7 @@ namespace WildWasteland.Modules.Guns
                 Vector3 muzzle = gun.Muzzle != null && gun.Muzzle.gameObject.activeInHierarchy ? gun.Muzzle.position
                                : origin + ft.forward * 0.4f - ft.up * 0.15f;
                 Vector3 bodyMuzzle;
-                if (Services.Animation != null && Services.Animation.TryPlayerWeaponMuzzle(out bodyMuzzle))
+                if (Core.ModApi.Get<Core.IAnimationApi>() != null && Core.ModApi.Get<Core.IAnimationApi>().TryPlayerWeaponMuzzle(out bodyMuzzle))
                 {
                     muzzle = bodyMuzzle;
                     if (Log.L2 && _playerMuzzleLogs++ < 3) GunplayLog.Deep("Player shot origin: visible body muzzle " + muzzle);

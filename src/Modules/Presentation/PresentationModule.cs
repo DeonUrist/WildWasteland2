@@ -7,8 +7,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WildWasteland.Modules.NPC;
-using WildWasteland.Modules.PlayerBody;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.Presentation
 {

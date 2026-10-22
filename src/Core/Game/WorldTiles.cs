@@ -188,14 +188,14 @@ namespace WildWasteland.Core
         {
             string msg = "[" + (e.Owner != null ? e.Owner.Id : "Core") + "] tile " + e.Name + " handler failed: " + ex.GetType().Name + ": " + ex.Message;
             if (worker) { if (_workerErrors.Count < 64) _workerErrors.Enqueue(msg); }
-            else Log.Warn(msg);
+            else Log.Warn(null,msg);
         }
 
         /// <summary>Logs worker-thread failures queued since the last main-thread event.</summary>
         static void DrainWorkerErrors()
         {
             string msg;
-            while (_workerErrors.TryDequeue(out msg)) Log.Warn(msg);
+            while (_workerErrors.TryDequeue(out msg)) Log.Warn(null,msg);
         }
     }
 }

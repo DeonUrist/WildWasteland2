@@ -1,7 +1,6 @@
 using UnityEngine;
 using Pose=WildWasteland.Modules.Presentation.Pose;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
 namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Owns bus-pose authoring values and a lifecycle-cleared visual edit target.</summary>

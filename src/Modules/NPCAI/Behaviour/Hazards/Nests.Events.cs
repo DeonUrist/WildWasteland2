@@ -2,7 +2,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Nests part publishing the NPCAI hazard events NestBuilt / NestFreed / NestAlarm / WebTouched (only while someone listens).</summary>
     internal static partial class Nests

@@ -6,7 +6,7 @@ using System.Text;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Presentation-owned live pose context and storage; Tools supplies input through an owned callback.</summary>
     internal static partial class GunPose
@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Publishes the actual drawn pose before asking the current Tools owner for motion.</summary>
         public static bool Keys(string weapon,string pose,float[] shown,out Vector3 move,out Vector3 rot) { move=rot=Vector3.zero; if(Editing && !string.IsNullOrEmpty(weapon)){ CurrentWeapon=weapon;CurrentPose=pose??"";CurrentShown=shown;CurrentFrame=Time.frameCount; } if(!Editing || string.IsNullOrEmpty(weapon) || Time.timeScale<.01f || ApocasetterBridge.InputBlocked || !Application.isFocused){ Flush();AimLift.EndArmKeys();return false; } var value=PoseEditorApi.WeaponInput(); move=value.Move;rot=value.Rotation;return value.Apply; }
         /// <summary>Finishes arm edits when the playable character is no longer eligible.</summary>
-        public static void ClearHint(){if(!Editing || !ThirdPerson.On || Game.InCar || Game.Dead || string.IsNullOrEmpty(Game.DrawnWeapon))AimLift.EndArmKeys();}
+        public static void ClearHint(){if(!Editing || !ThirdPerson.On || Core.PlayerState.InCar || Core.PlayerState.Dead || string.IsNullOrEmpty(Game.DrawnWeapon))AimLift.EndArmKeys();}
         /// <summary>Exports the complete authored pose table as source.</summary>
         private static void ExportBuiltinTable()
         {

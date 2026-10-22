@@ -2,7 +2,6 @@ using WildWasteland.Modules.Presentation;
 using Pose = WildWasteland.Modules.Presentation.Pose;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
 namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Owns profile fallback and actual animated follower seat resources.</summary>

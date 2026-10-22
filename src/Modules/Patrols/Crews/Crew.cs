@@ -60,7 +60,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Stops the crew at its accepted exterior town parking destination.</summary>
         internal void ParkForTown()
         {
-            if (Marker?.PlayerEntered == true || PlayerRef.PlayerCar == _car) { TownParking = false; return; }
+            if (Marker?.PlayerEntered == true || Core.PlayerState.Car == _car) { TownParking = false; return; }
             if (!TownParking)
             {
                 TownParking = true; TownParkedAt = Time.time; Hold = true;
@@ -77,7 +77,7 @@ namespace WildWasteland.Modules.Patrols
             for (int i = 0; i < marker.Riders.Length; i++)
             {
                 var rider = marker.Riders[i]; if (rider == null || Patrol.GetHealth(rider) <= 0f) continue;
-                string identity = CrewLooks.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", "")));
+                string identity = CrewLooks.Identity(rider, Core.Names.Prefab(rider.name.Replace("(Rider)", "")));
                 marker.DropRider(rider);
                 var mob = Patrol.BailOut(_car, rider, identity, i % 2 == 0 ? -1f : 1f, false);
                 if (mob != null) WorldTraffic.TownDismounted(_car, mob);
@@ -141,7 +141,7 @@ namespace WildWasteland.Modules.Patrols
             var mk = Marker; if (mk == null) return;
             float d = _healthVar != null ? _healthVar.Value : -1f, p = mk.PassengerHealthVar != null ? mk.PassengerHealthVar.Value : -1f;
             if (((d >= 0f && _lastDriverHealth >= 0f && d < _lastDriverHealth - 0.01f) || (p >= 0f && _lastPaxHealth >= 0f && p < _lastPaxHealth - 0.01f))
-                && PlayerRef.Player != null && ReferenceEquals(mk.FactionTarget, PlayerRef.Player.gameObject)) mk.PlayerContactAt = Time.time;
+                && Core.PlayerState.Transform != null && ReferenceEquals(mk.FactionTarget, Core.PlayerState.Transform.gameObject)) mk.PlayerContactAt = Time.time;
             _lastDriverHealth = d; _lastPaxHealth = p;
         }
 
@@ -359,7 +359,7 @@ namespace WildWasteland.Modules.Patrols
             if (_car == null) { Destroy(this); return; }
             if (Time.timeScale <= 0f) return;
             if(CombatTick())return;
-            if (TownParking && Marker?.PlayerEntered != true && PlayerRef.PlayerCar != _car) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
+            if (TownParking && Marker?.PlayerEntered != true && Core.PlayerState.Car != _car) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
             TownParking = false;
             if (Regroup != null && Time.time >= _nextRegroup)
             {
@@ -460,7 +460,7 @@ namespace WildWasteland.Modules.Patrols
         { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null || Core.ModApi.Get<Core.IVehicleAttachments>()==null) return;
             RefreshDrivingProvider();
             if (_car == null || _done || Time.timeScale <= 0f || Marker?.SetupOnly==true) return;
-            if (TownParking && Marker?.PlayerEntered != true && PlayerRef.PlayerCar != _car) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
+            if (TownParking && Marker?.PlayerEntered != true && Core.PlayerState.Car != _car) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
             if (Regrouping) { if (!_dead && _driving) Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); return; }   // waiting for the crew to get back in
             if (!_dead)
             {
@@ -619,7 +619,7 @@ namespace WildWasteland.Modules.Patrols
             if (_pilot != null) { _pilot.Detach(); _pilot = null; }
             Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 0f);
             var drv = Patrol.MoveToDriverSeat(_car, pax);
-            if (drv == null) { Core.Log.Warn("[Patrols] " + "Crew: could not seat the passenger as driver"); _paxBails = true; return; }
+            if (drv == null) { Core.Log.Warn(null,"[Patrols] " + "Crew: could not seat the passenger as driver"); _paxBails = true; return; }
             marker.Promote(drv);
             marker.DriverDied=false;marker.DriverBailed=false;
             _dead = false; _stuck = false; _done = false; _driving = false;
@@ -650,7 +650,7 @@ namespace WildWasteland.Modules.Patrols
         private void OnDriverDied()
         {
             var marker=Marker;
-            if(marker!=null&&PlayerRef.Player!=null&&ReferenceEquals(marker.FactionTarget,PlayerRef.Player.gameObject))marker.PlayerContactAt=Time.time;
+            if(marker!=null&&Core.PlayerState.Transform!=null&&ReferenceEquals(marker.FactionTarget,Core.PlayerState.Transform.gameObject))marker.PlayerContactAt=Time.time;
             if(marker!=null&&!marker.DriverBailed)marker.DriverDied=(_healthVar!=null&&_healthVar.Value<=0f)||(_driver!=null&&Patrol.GetHealth(_driver)==0f);
             _dead = true;
             SeatLocked(false);                 // the player may take the car from now on

@@ -43,7 +43,7 @@ namespace WildWasteland.Core.UI
         /// <summary>Resolves the game theme directory beside the supplied plugin DLL.</summary>
         public static void Init(string pluginDll)
         {
-            Dir = Path.Combine(Path.Combine(Path.GetDirectoryName(pluginDll) ?? ".", "theme"), "game");
+            Dir = Path.Combine(Core.Assets.ModuleDir("Core"), "Theme/game");
         }
 
         /// <summary>Loads assets and rebuilds styles for the requested scale; call before drawing each OnGUI pass.</summary>
@@ -72,14 +72,14 @@ namespace WildWasteland.Core.UI
                 _body = Font.CreateDynamicFontFromOSFont(new[] { "Segoe UI", "Segoe UI Symbol", "Arial" }, 14);
                 _bold = Font.CreateDynamicFontFromOSFont(new[] { "Segoe UI Semibold", "Segoe UI", "Segoe UI Symbol", "Arial" }, 14);
             }
-            catch (Exception e) { WildWasteland.Core.Log.Warn("OS fonts: " + e.Message); }
+            catch (Exception e) { WildWasteland.Core.Log.Warn(null,"OS fonts: " + e.Message); }
             _display = GameFont;
             if (_display == null)
             {
                 try { _display = Font.CreateDynamicFontFromOSFont(new[] { "Impact", "Arial Black", "Segoe UI Symbol", "Arial" }, 16); } catch { }
-                WildWasteland.Core.Log.Info("Mods window: game menu font not found yet, using Impact");
+                WildWasteland.Core.Log.Main(null,"Mods window: game menu font not found yet, using Impact");
             }
-            else WildWasteland.Core.Log.Info("Mods window: using the game's menu font '" + _display.name + "'");
+            else WildWasteland.Core.Log.Main(null,"Mods window: using the game's menu font '" + _display.name + "'");
             foreach (var f in new[] { _body, _bold, _display }) if (f != null) _keep.Add(f);
         }
 
@@ -88,7 +88,7 @@ namespace WildWasteland.Core.UI
         {
             if (f == null || f == GameFont) return;
             GameFont = f;
-            if (_loaded) { _display = f; _builtFor = -1; WildWasteland.Core.Log.Info("Mods window: switched to the game's menu font '" + f.name + "'"); }
+            if (_loaded) { _display = f; _builtFor = -1; WildWasteland.Core.Log.Main(null,"Mods window: switched to the game's menu font '" + f.name + "'"); }
         }
 
         /// <summary>Scales a font size by the current UI scale and rounds it to at least eight pixels.</summary>
@@ -206,9 +206,9 @@ namespace WildWasteland.Core.UI
                 else st.padding = new RectOffset(pad.left, pad.right, pad.top, pad.bottom + p);
                 var key = f.name + "/" + st.fontSize;
                 if (_centerLogged.Add(key))
-                    WildWasteland.Core.Log.Info("Text centring " + key + ": ascent " + asc.ToString("0.0") + " line " + lh.ToString("0.0") + " glyphs " + minY + ".." + maxY + " → shift " + dy.ToString("0.0"));
+                    WildWasteland.Core.Log.Main(null,"Text centring " + key + ": ascent " + asc.ToString("0.0") + " line " + lh.ToString("0.0") + " glyphs " + minY + ".." + maxY + " → shift " + dy.ToString("0.0"));
             }
-            catch (Exception e) { WildWasteland.Core.Log.Warn("CenterText: " + e.Message); }
+            catch (Exception e) { WildWasteland.Core.Log.Warn(null,"CenterText: " + e.Message); }
         }
 
         private static GUIStyle _slotStyle;
@@ -229,16 +229,16 @@ namespace WildWasteland.Core.UI
             var path = Path.Combine(Dir, file);
             try
             {
-                if (!File.Exists(path)) { WildWasteland.Core.Log.Warn("Mods window: missing " + path); return null; }
+                if (!File.Exists(path)) { WildWasteland.Core.Log.Warn(null,"Mods window: missing " + path); return null; }
                 var t = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!ImageConversion.LoadImage(t, File.ReadAllBytes(path), false)) { WildWasteland.Core.Log.Warn("Mods window: cannot decode " + path); return null; }
+                if (!ImageConversion.LoadImage(t, File.ReadAllBytes(path), false)) { WildWasteland.Core.Log.Warn(null,"Mods window: cannot decode " + path); return null; }
                 t.wrapMode = repeat ? TextureWrapMode.Repeat : TextureWrapMode.Clamp;
                 t.filterMode = FilterMode.Bilinear;
                 t.hideFlags = HideFlags.HideAndDontSave;
                 _keep.Add(t);
                 return t;
             }
-            catch (Exception e) { WildWasteland.Core.Log.Warn("Mods window: " + file + ": " + e.Message); return null; }
+            catch (Exception e) { WildWasteland.Core.Log.Warn(null,"Mods window: " + file + ": " + e.Message); return null; }
         }
 
         /// <summary>Creates a brightness-scaled texture while preserving alpha, returning the original texture if copying fails.</summary>

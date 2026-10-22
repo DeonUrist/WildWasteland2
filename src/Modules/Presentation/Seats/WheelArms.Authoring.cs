@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Actual wheel runtime preview state and storage; the editor owns all input and rendering.</summary>
     internal static partial class WheelArms
@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.PlayerBody
             return new WheelGripDraft{Key=_key,Name=_name,Owner=_owner,FilePath=_setup==null?null:FilePath,Available=_setup!=null && _mount!=null && _wheel!=null,Values=_setup==null?null:(float[])_setup.V.Clone(),Handlebars=_handlebars,Editing=_editor,Pose=_editPose,Preview=_preview,TowardDriver=_towardDriver,RimDiameter=_mount==null?0f:200f*_radius.x*Mathf.Abs(_mount.lossyScale.x),Requested=new Vector2(_arms[0]==null?0f:_arms[0].Requested,_arms[1]==null?0f:_arms[1].Requested),Reach=new Vector2(_arms[0]==null?0f:_arms[0].Reach,_arms[1]==null?0f:_arms[1].Reach),LeftLimited=_arms[0]!=null && _arms[0].BendLimited,RightLimited=_arms[1]!=null && _arms[1].BendLimited};
         }
         /// <summary>Changes only preview intent; native steering and IK remain runtime-owned.</summary>
-        internal static void AuthorPreview(bool editing,int pose,int preview){if(!editing){StopEditor();return;}if(_setup==null||!Game.InCar||Game.Dead)return;_editor=true;_editPose=Mathf.Clamp(pose,0,_handlebars?2:1);_preview=Mathf.Clamp(preview,0,_handlebars?3:2);}
+        internal static void AuthorPreview(bool editing,int pose,int preview){if(!editing){StopEditor();return;}if(_setup==null||!Core.PlayerState.InCar||Core.PlayerState.Dead)return;_editor=true;_editPose=Mathf.Clamp(pose,0,_handlebars?2:1);_preview=Mathf.Clamp(preview,0,_handlebars?3:2);}
         /// <summary>Validates the exact current wheel and full buffer before publishing edits and mirrored poses.</summary>
         internal static void AuthorValues(string key,float[] values,int pose,int side){if(_setup==null||key!=_key)throw new InvalidOperationException("Fitted wheel changed");PoseEditorApi.Validate(values,_setup.V.Length);Array.Copy(values,_setup.V,values.Length);if(!_handlebars && pose>=0 && pose<2 && side>=0 && side<2)MirrorPose(_setup.V,pose,side);_dirty=true;}
         /// <summary>Restarts the native stroke interpolation after replacing a complete setup.</summary>

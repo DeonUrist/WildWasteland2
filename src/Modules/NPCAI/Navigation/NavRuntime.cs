@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Lifecycle of NPCAI navigation, driven by the NPCAI module entry (NPCAIModule.Navigation.cs): registers the navigation jobs

@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Patrols
         {
             var best=NearestOpposed(faction,position);
             if(best!=null)return best;
-            return PlayerHostile(faction)&&!PlayerRef.GodMode&&PlayerRef.Player!=null?PlayerRef.Player.gameObject:null;
+            return PlayerHostile(faction)&&!Core.PlayerState.GodMode&&Core.PlayerState.Transform!=null?Core.PlayerState.Transform.gameObject:null;
         }
 
         /// <summary>Checks the current drive target condition for traffic factions.</summary>
@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.Patrols
             pos=vel=Vector3.zero;targetCar=null;
             var target=marker!=null?ForCar(car,marker):null;
             if(target==null)return false;
-            if(PlayerRef.Player!=null&&target==PlayerRef.Player.gameObject)return PlayerRef.Target(out pos,out vel,out targetCar);
+            if(Core.PlayerState.Transform!=null&&target==Core.PlayerState.Transform.gameObject)return Core.PlayerState.Target(out pos,out vel,out targetCar);
             pos=target.transform.position;var body=target.GetComponentInParent<Rigidbody>();if(body!=null){vel=body.velocity;targetCar=body.gameObject;}return true;
         }
         /// <summary>Resolves the current normalized faction and hostile-target policy of the vehicle.</summary>
@@ -43,7 +43,7 @@ namespace WildWasteland.Modules.Patrols
             var enemy=car.GetComponent<Crew>()?.CombatEnemy;if(enemy!=null)return enemy;
             if(Time.time>=marker.FactionCheck){marker.FactionCheck=Time.time+0.4f;marker.FactionTarget=Target(marker.Faction,car.transform.position);}
             var target=marker.FactionTarget;
-            return target!=null&&PlayerRef.Player!=null&&target==PlayerRef.Player.gameObject&&PatrolPoi.Ignored(car)?null:target;
+            return target!=null&&Core.PlayerState.Transform!=null&&target==Core.PlayerState.Transform.gameObject&&PatrolPoi.Ignored(car)?null:target;
         }
     }
 }

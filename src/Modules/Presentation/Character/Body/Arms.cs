@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Modules.Presentation;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // The game's first-person arms (player_arm_left / player_arm_left.002, 8 bones each, one pair per weapon, tool and item animation)
     // and the kick leg (Player_leg) all use the material "Player2" - the same texture atlas as the seated driver. We give those

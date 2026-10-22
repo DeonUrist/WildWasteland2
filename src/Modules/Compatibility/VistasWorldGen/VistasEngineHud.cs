@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.HUD
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// Vistas World Gen part serving the HUD: the mod's engine-heat overlay is replaced by HUD notifications ("OVERHEATING, POWER CUT",
@@ -42,13 +42,13 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Prefix of the mod's engine-heat HUD draw (every GUI frame): pushes a HUD notice on a new warning state and skips the original.</summary>
         private static bool Draw()
         {
-            if (!CompatibilityHost.CleanHud.Running || !HudModule.CleanHudEnabled.Value || _active == null) { _last = null; _state = 0; return true; } // refs-ok: REFACTOR-REQUEST B17-16
+            if (ModApi.Get<INotifications>()?.Enabled!=true || _active == null) { _last = null; _state = 0; return true; } // refs-ok: REFACTOR-REQUEST B17-16
             var active = _active(null) as UnityEngine.Object;
             int state = active != null && ((ConfigEntry<bool>)_enabled).Value ? (_stalled(active) ? 2 : _temperature(active) >= 105f ? 1 : 0) : 0;
             if (!ReferenceEquals(_last, active)) { _last = active; _state = 0; }
-            if (!GameRefs.InGame || !MessageHook.Active) return false; // refs-ok: REFACTOR-REQUEST B17-16
-            if (state != _state && state != 0) MessageHook.Push( // refs-ok: REFACTOR-REQUEST B17-16
-                state == 2 ? "ENGINE SEIZED, LET IT COOL" : "OVERHEATING, POWER CUT");
+            if (!GameRefs.InGame) return false; // refs-ok: REFACTOR-REQUEST B17-16
+            if (state != _state && state != 0 && ModApi.Get<INotifications>()?.Push( // refs-ok: REFACTOR-REQUEST B17-16
+                state == 2 ? "ENGINE SEIZED, LET IT COOL" : "OVERHEATING, POWER CUT",NotificationKind.Warning,0f)!=true)return false;
             _state = state; return false;
         }
         /// <summary>Forgets the mod's members (the owner removes the patch).</summary>

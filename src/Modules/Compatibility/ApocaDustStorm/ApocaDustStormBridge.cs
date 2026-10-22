@@ -1,7 +1,7 @@
 using BepInEx.Bootstrap;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
-using WildWasteland.Modules.Patrols.WarRig; // refs-ok: namespace of the Compatibility-owned War Rig shelter part (Wave C renames namespaces)
+using WildWasteland.Modules.Compatibility;
+using WildWasteland.Modules.Compatibility.WarRig;
 
 namespace WildWasteland.Modules.Compatibility
 {

@@ -9,17 +9,18 @@ namespace WildWasteland.Modules.HUD
         public override void ProvideApis()
         {
             ModApi.Provide<IPlaceBannerDisplay>(this, this);
-            ModApi.Provide<IHitFeedback>(this, Services.Hud);
+            ModApi.Provide<IHitFeedback>(this, Core.ModApi.Get<Core.IHitFeedback>());
             ModApi.Provide<IMapMarkers>(this, _questMap);
             ModApi.Provide<IMapMarkerStyle>(this, _questMap);
             ModApi.Provide<ICompassMarkers>(this, this);
             ModApi.Provide<IVehicleStatusDisplay>(this, this);
-            ModApi.Provide<IQuestPresentation>(this, Services.QuestUi);
+            ModApi.Provide<IQuestPresentation>(this, Core.ModApi.Get<Core.IQuestPresentation>());
             ModApi.Provide<INotifications>(this, this);
             ModApi.Provide<ILocationMarkers>(this, this);
             ModApi.Provide<ILocationVisibility>(this,this);
         }
         /// <summary>Respects the existing location-marker switch for external POI markers.</summary>
+        bool INotifications.Enabled=>Running&&CleanHudEnabled.Value;
         bool ILocationVisibility.Locations=>Running&&CleanHudEnabled.Value&&ShowLocations.Value;
         /// <summary>Respects the existing master compass switch for external markers.</summary>
         bool ILocationVisibility.Compass=>Running&&CleanHudEnabled.Value&&ShowCompass.Value;

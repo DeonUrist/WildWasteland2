@@ -3,10 +3,10 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>
-    /// Core.Services.Guns adapter (ex Gunplay.Api v1). Kind codes: pistol=0, SMG=1, rifle=2, sniper=3, shotgun=4, crossbow=5.
+    /// Core.ModApi.Get<Core.IGunsApi>() adapter (ex Gunplay.Api v1). Kind codes: pistol=0, SMG=1, rifle=2, sniper=3, shotgun=4, crossbow=5.
     /// Consumers: NPC (WeaponRanges, VanillaEvents) and Patrols (HandlesFittedWheelMelee).
     /// </summary>
     internal sealed class GunsApi : IGunsApi

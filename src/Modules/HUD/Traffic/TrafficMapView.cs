@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.HUD
             bool inGame=Core.GameRefs.InGame;float now=Time.unscaledTime;
             var source = Source; if (source != null && inGame && now >= _snapshotAt) { source.Capture(_snapshot); _snapshotAt = now + .5f; } else if (source == null) _snapshot.Enabled = false;
             if(inGame&&now<(Source != null ? Source.NoticeUntil : 0f))return true;
-            var mapApi=Core.Services.Map;
+            var mapApi=Core.ModApi.Get<Core.IMapMarkers>();
             bool traffic=_snapshot.Enabled&&(RoutesOn||MarkersOn);
             bool reset=_gameInkAt!=0f||_mapWasOpen;
             if((!traffic&&(Source != null ? Source.RigCount : 0)==0)||!inGame)return reset;
@@ -67,7 +67,7 @@ namespace WildWasteland.Modules.HUD
             var source = Source;
             int rigs = source != null ? source.RigCount : 0;
             if (source == null) _snapshot.Enabled = false;
-            var mapApi=Core.Services.Map;
+            var mapApi=Core.ModApi.Get<Core.IMapMarkers>();
             bool traffic=_snapshot.Enabled&&(RoutesOn||MarkersOn);
             if((!traffic&&rigs==0)||!Core.GameRefs.InGame)
             {_gameInkAt=0f;_mapWasOpen=false;return;}

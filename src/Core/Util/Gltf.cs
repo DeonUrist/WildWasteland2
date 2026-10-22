@@ -344,7 +344,7 @@ namespace WildWasteland.Core
             object nv;
             bool norm = a.TryGetValue("normalized", out nv) && nv is bool && (bool)nv;
             var res = new float[count * comps];
-            if (Has(a, "sparse")) Log.Warn("[" + owner + "] glTF: sparse accessor " + idx + " not supported (sparse values ignored)");
+            if (Has(a, "sparse")) Log.Warn(null,"[" + owner + "] glTF: sparse accessor " + idx + " not supported (sparse values ignored)");
             if (!Has(a, "bufferView")) return res;
             var bv = Obj(views[Int(a, "bufferView", 0)]);
             byte[] buf = buffers[Int(bv, "buffer", 0)];

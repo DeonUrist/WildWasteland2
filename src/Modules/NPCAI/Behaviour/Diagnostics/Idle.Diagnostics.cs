@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Idle part owned by Debug: the world overlay of idle controllers (DrawDebug).</summary>
     internal static partial class Idle

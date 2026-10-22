@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Nests part: which nests exist - freeing far nests, assigning spiders to caves / wrecks / camps.</summary>
     internal static partial class Nests

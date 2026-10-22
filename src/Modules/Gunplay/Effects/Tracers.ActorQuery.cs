@@ -1,6 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Gunplay compatibility entry points for canonical Core actor queries.</summary>
     internal static partial class Tracers

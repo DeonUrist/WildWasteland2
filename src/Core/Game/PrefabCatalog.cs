@@ -205,7 +205,7 @@ namespace WildWasteland.Core
             }
             _scanGo = null; _scanFsm = null;
             _building = false; _ready = true;
-            if (Log.Verbose) Log.Info("[Core] Prefab catalog: " + _exact.Count + " names, " + _fsms.Count + " asset FSMs (generation " + Generation + ")");
+            if (Log.L1) Log.Main(null,"[Core] Prefab catalog: " + _exact.Count + " names, " + _fsms.Count + " asset FSMs (generation " + Generation + ")");
             return false;
         }
     }

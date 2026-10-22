@@ -1,6 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Numeric gate and clipping helpers for detached town navigation geometry.</summary>
     internal static class TownPerimeter

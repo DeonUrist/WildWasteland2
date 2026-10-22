@@ -20,8 +20,8 @@ namespace WildWasteland.Modules.Patrols
             {
                 if (Time.time < _next) return Root;
                 _next = Time.time + .5f; Root = null;
-                var player = PlayerRef.Player; var api = Core.Services.Npc;
-                if (player == null || api == null || PlayerRef.PlayerCar != null) return null;
+                var player = Core.PlayerState.Transform; var api = Core.ModApi.Get<Core.INpcApi>();
+                if (player == null || api == null || Core.PlayerState.Car != null) return null;
                 api.Structures(Structures); float best = float.MaxValue;
                 foreach (var s in Structures)
                 {
@@ -102,8 +102,8 @@ namespace WildWasteland.Modules.Patrols
         {
             get
             {
-                var player = PlayerRef.Player;
-                return _poiRoot != null && PatrolPoi.PlayerRoot == _poiRoot && player != null && !PlayerRef.GodMode
+                var player = Core.PlayerState.Transform;
+                return _poiRoot != null && PatrolPoi.PlayerRoot == _poiRoot && player != null && !Core.PlayerState.GodMode
                     && TrafficFactions.PlayerHostile(Marker.Faction) && CombatEnemy != null
                     && (_poiApproach || TrafficLocations.FlatDistance(player.position, transform.position) <= _poiRange);
             }
@@ -117,9 +117,9 @@ namespace WildWasteland.Modules.Patrols
             var journey = agent != null ? WorldTraffic.Find(agent.Journey) : null;
             bool eligible = journey != null && !journey.convoy && !journey.merchant && !journey.townParked && !journey.townResident
                 && !Marker.SetupOnly && !Marker.PlayerEntered && !_dead && !_done && !FullyStuck && !PlayerInside()
-                && PatrolsModule.ReturnToCar.Value && Core.Services.Npc != null && !PlayerRef.GodMode && TrafficFactions.PlayerHostile(Marker.Faction);
+                && PatrolsModule.ReturnToCar.Value && Core.ModApi.Get<Core.INpcApi>() != null && !Core.PlayerState.GodMode && TrafficFactions.PlayerHostile(Marker.Faction);
             var root = eligible ? PatrolPoi.PlayerRoot : null;
-            var player = PlayerRef.Player;
+            var player = Core.PlayerState.Transform;
             if (root == null || player == null || (_poiRoot != null && root != _poiRoot)) { EndPoi(); return false; }
             if (_poiRoot == null)
             {

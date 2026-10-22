@@ -7,7 +7,6 @@ using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Quests
 {
@@ -134,7 +133,7 @@ namespace WildWasteland.Modules.Quests
                 if (f == null || f.FsmName != "Health") continue;
                 GameObject go = f.gameObject;
                 if (go == null || go.name != name) continue;
-                float d = Game.HDist(go.transform.position, from);
+                float d = Core.WorldGeometry.HorizontalDistance(go.transform.position, from);
                 if (d < bd) { bd = d; best = go.transform; }
             }
             return best;
@@ -153,7 +152,7 @@ namespace WildWasteland.Modules.Quests
                 for (int i = 0; i < all.Length; i++)
                 {
                     if (all[i] == null || all[i].FsmName != "Health") continue;
-                    FsmFloat v = Game.FindFloat(all[i], "Health");
+                    FsmFloat v = Core.FsmIndex.Float(all[i], "Health");
                     if (v != null) { playerHealth = all[i]; playerHealthVar = v; break; }
                 }
                 if (playerHealthVar == null) return;
@@ -175,7 +174,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>an enemy of the player: the game's own switch says so, or it is a creature with no such switch</summary>
         static bool IsCritter(GameObject go)
         {
-            string n = Game.BaseName(go.name);
+            string n = Core.Names.Base(go.name);
             foreach (string part in (ignoreNames.Value ?? "").Split(','))
             {
                 string q = part.Trim();
@@ -344,7 +343,7 @@ namespace WildWasteland.Modules.Quests
                     if (mounted && carObj != null && t.IsChildOf(carObj.transform)) continue;          // his own car
                     // what the target rides in (or sits in) only counts when the hit is at the target itself, not a hull or wall in front of him
                     if (t.IsChildOf(troot) && Vector3.Distance(h.point, to) < 0.7f) continue;
-                    Transform pl = Game.Player();
+                    Transform pl = Core.PlayerState.Transform;
                     if (pl != null && t.IsChildOf(pl.root)) continue;
                     return false;
                 }
@@ -378,9 +377,9 @@ namespace WildWasteland.Modules.Quests
             float now = Time.time;
             // still busy with a target?
             if (target != null && !Alive(target)) target = null;
-            if (target != null && (now > engagedUntil || Game.HDist(target.transform.position, npc.transform.position) > 80f)) target = null;
-            if (target != null && mounted && guardComp != null && Game.HDist(target.transform.position, pl.position) > PatrolShootDistance() * 1.25f) target = null;
-            if (target != null && leash.Value > 0f && Game.HDist(target.transform.position, pl.position) > leash.Value) { target = null; if (!mounted && moveFsm != null && moveFsm.ActiveStateName != "Run") { try { moveFsm.Fsm.SetState("Run"); } catch (Exception) { } } }
+            if (target != null && (now > engagedUntil || Core.WorldGeometry.HorizontalDistance(target.transform.position, npc.transform.position) > 80f)) target = null;
+            if (target != null && mounted && guardComp != null && Core.WorldGeometry.HorizontalDistance(target.transform.position, pl.position) > PatrolShootDistance() * 1.25f) target = null;
+            if (target != null && leash.Value > 0f && Core.WorldGeometry.HorizontalDistance(target.transform.position, pl.position) > leash.Value) { target = null; if (!mounted && moveFsm != null && moveFsm.ActiveStateName != "Run") { try { moveFsm.Fsm.SetState("Run"); } catch (Exception) { } } }
             if (target != null && mounted && shootFromCar.Value && IsRangedNpc(npc))
             {
                 if (ClearShot(target)) hiddenSince = -1f;
@@ -408,7 +407,7 @@ namespace WildWasteland.Modules.Quests
                 if (!Hostile(g)) continue;
                 if (!hurt && IsCritter(g)) continue;
                 if (shooter && !hurt && !ClearShot(g)) continue;                        // a shooter does not pick (or aim at) someone behind a wall
-                float d = Game.HDist(g.transform.position, pl.position);
+                float d = Core.WorldGeometry.HorizontalDistance(g.transform.position, pl.position);
                 if (d < bd) { bd = d; best = g; }
             }
             if (best != null && hurt && shooter && !ClearShot(best)) { coverTarget = best; coverUntil = now + 8f; }      // hurt from behind cover: he still answers it
@@ -472,7 +471,7 @@ namespace WildWasteland.Modules.Quests
             {
                 Vector3 p = pl.position + Quaternion.Euler(0f, i * 60f, 0f) * back.normalized * 4f;
                 Vector3 g;
-                if (Game.GroundAt(p.x, p.z, out g) && Takeover.RoomAt(g))
+                if (Core.WorldGeometry.GroundAt(p.x, p.z, out g) && Takeover.RoomAt(g))
                 {
                     npc.transform.position = g + Vector3.up * 0.2f;
                     LiftAbove(g.y);
@@ -576,7 +575,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>True when the NPC's base name is in the ranged list ([Quests / Hire] ranged names).</summary>
         static bool NamedRanged(GameObject go)
         {
-            string n = Game.BaseName(go.name);
+            string n = Core.Names.Base(go.name);
             foreach (string part in (rangedNames.Value ?? "").Split(','))
             {
                 string q = part.Trim();

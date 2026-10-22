@@ -292,7 +292,7 @@ namespace WildWasteland.Core
         internal void Failed(Exception e)
         {
             if (++_errors > 3) return;
-            Log.Warn("[" + (Owner != null ? Owner.Id : "Core") + "] WorldIndex " + WatchKind + " " + Text + " callback failed: " + e.Message);
+            Log.Warn(null,"[" + (Owner != null ? Owner.Id : "Core") + "] WorldIndex " + WatchKind + " " + Text + " callback failed: " + e.Message);
         }
     }
 }

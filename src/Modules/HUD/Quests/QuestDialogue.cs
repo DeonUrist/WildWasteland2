@@ -45,7 +45,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Updates the quest conversation view.</summary>
         internal static void Tick()
         {
-            var api = Services.Quests; var source = api != null ? api.Conversation : null;
+            var api = Core.ModApi.Get<Core.IQuestApi>(); var source = api != null ? api.Conversation : null;
             if (!HudModule.CleanHudEnabled.Value || source == null || !api.Ready || (!source.Open && string.IsNullOrEmpty(source.Prompt))) { Hide(); return; }
             if (_root == null) Build();
             if (!ReferenceEquals(_source, source)) { Pointer.Clear(); _source = source; _revision = -1; }

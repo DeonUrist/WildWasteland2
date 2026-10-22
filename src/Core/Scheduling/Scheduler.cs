@@ -148,7 +148,7 @@ namespace WildWasteland.Core
                 if (j.Removed || !j.Enabled) continue;
                 if (j.Wants == null) return true;
                 try { if (j.Wants()) return true; }
-                catch (Exception e) { j.Wants = null; Log.Error("[" + (j.Owner != null ? j.Owner.Id : "Core") + "] Gui job '" + j.Name + "' predicate failed - now always drawn", e); return true; }
+                catch (Exception e) { j.Wants = null; Log.Error(null,"[" + (j.Owner != null ? j.Owner.Id : "Core") + "] Gui job '" + j.Name + "' predicate failed - now always drawn", e); return true; }
             }
             return false;
         }
@@ -260,7 +260,7 @@ namespace WildWasteland.Core
                     if (++j.WindowErrors >= JobErrorLimit && j.Enabled)
                     {
                         j.Enabled = false;
-                        Log.Error("[" + (j.Owner != null ? j.Owner.Id : "Core") + "] job '" + j.Name + "' threw " + j.WindowErrors + " times in 10 s - job DISABLED for this session (last: " + e.Message + "). Switch the module off and on (F6 / F7 Modules) to retry.");
+                        Log.Error(null,"[" + (j.Owner != null ? j.Owner.Id : "Core") + "] job '" + j.Name + "' threw " + j.WindowErrors + " times in 10 s - job DISABLED for this session (last: " + e.Message + "). Switch the module off and on (F6 / F7 Modules) to retry.");
                     }
                 }
                 double ms = (_sw.ElapsedTicks - t0) * TicksToMs;

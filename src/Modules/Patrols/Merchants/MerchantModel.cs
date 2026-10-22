@@ -46,15 +46,15 @@ namespace WildWasteland.Modules.Patrols
         private static string PathName=>Path.Combine(EditorStore.Root,"MerchantLayouts.json");
         /// <summary>Reads the current shipped authoring defaults.</summary>
         private static MerchantLayoutFile Defaults()
-        {using(var stream=WildWasteland.Core.DiskResources.Open("Patrols.MerchantLayouts.defaults.json"))using(var reader=new StreamReader(stream))return TrafficCodec.ReadRecord<MerchantLayoutFile>(reader.ReadToEnd());}
+        {using(var stream=WildWasteland.Core.DiskResources.Open("Patrols.MerchantLayouts.defaults.json"))using(var reader=new StreamReader(stream))return Core.RecordJson.ReadRecord<MerchantLayoutFile>(reader.ReadToEnd());}
         private static MerchantLayoutFile Data
         {
             get
             {
                 if(_data!=null)return _data;
                 bool save=false;
-                try{_data=File.Exists(PathName)?TrafficCodec.ReadRecord<MerchantLayoutFile>(File.ReadAllText(PathName)):Defaults();save=!File.Exists(PathName);}
-                catch(Exception e){Core.Log.Warn("[Patrols] " + "Merchant layout: "+e.Message);_data=Defaults();}
+                try{_data=File.Exists(PathName)?Core.RecordJson.ReadRecord<MerchantLayoutFile>(File.ReadAllText(PathName)):Defaults();save=!File.Exists(PathName);}
+                catch(Exception e){Core.Log.Warn(null,"[Patrols] " + "Merchant layout: "+e.Message);_data=Defaults();}
                 if(_data?.layouts==null)_data=Defaults();
                 if(_data.version<2)
                 {
@@ -68,7 +68,7 @@ namespace WildWasteland.Modules.Patrols
                     var missing=baseline.objects.Where(p=>!(layout.objects??new MerchantPose[0]).Any(o=>o?.id==p.id)).ToArray();
                     if(missing.Length>0){layout.objects=(layout.objects??new MerchantPose[0]).Concat(missing).ToArray();save=true;}
                 }
-                if(save)EditorStore.AtomicWrite(PathName,TrafficCodec.WriteRecord(_data));
+                if(save)Core.AuthoringFiles.AtomicWrite(PathName,Core.RecordJson.WriteRecord(_data));
                 return _data;
             }
         }
@@ -87,7 +87,7 @@ namespace WildWasteland.Modules.Patrols
             var layout=new MerchantLayout{template=host.Data.template,objects=host.Objects.Where(o=>o.Transform!=null).Select(o=>new MerchantPose{id=CommonId(o.Id),position=car.transform.InverseTransformPoint(o.Transform.position),rotation=(Quaternion.Inverse(car.transform.rotation)*o.Transform.rotation).eulerAngles}).ToArray()};
             var old=Data.layouts.FirstOrDefault(l=>l.template==layout.template);
             if(old?.objects!=null)layout.objects=old.objects.Where(p=>!layout.objects.Any(n=>n.id==p.id)).Concat(layout.objects).ToArray();
-            var list=Data.layouts.Where(l=>l.template!=layout.template).ToList();list.Add(layout);Data.layouts=list.ToArray();EditorStore.AtomicWrite(PathName,TrafficCodec.WriteRecord(Data));foreach(var merchant in MerchantHost.All.Where(h=>h!=null&&h.Data?.template==layout.template))Apply(merchant);return "Saved shared placement for all merchant types: "+layout.template;
+            var list=Data.layouts.Where(l=>l.template!=layout.template).ToList();list.Add(layout);Data.layouts=list.ToArray();Core.AuthoringFiles.AtomicWrite(PathName,Core.RecordJson.WriteRecord(Data));foreach(var merchant in MerchantHost.All.Where(h=>h!=null&&h.Data?.template==layout.template))Apply(merchant);return "Saved shared placement for all merchant types: "+layout.template;
         }
     }
 }

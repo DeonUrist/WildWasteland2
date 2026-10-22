@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // (2.3.3) Smooth first-person weapon / item sway. The game's [Sway] FSMs under the PlayerCamera (WeaponsArm/Parent, ItemAnim,
     // Flashlight, GodHands_Model) run PlayMaker's SmoothLookAt toward an object "LookAt" at speed 40:
@@ -69,7 +69,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!CharacterSettings.FirstPersonSwayOn.Value) { s.Ready = false; return true; }
             try
             {
-                var cam = Game.PlayerCamera;
+                var cam = Core.PlayerState.PlayerCamera;
                 var go = __instance.Fsm.GetOwnerDefaultTarget(__instance.gameObject);
                 var target = __instance.targetObject != null ? __instance.targetObject.Value : null;
                 if (cam == null || go == null || target == null || !go.transform.IsChildOf(cam)) return true;

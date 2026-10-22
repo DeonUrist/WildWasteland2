@@ -1,6 +1,6 @@
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Runtime state of the NPCAI module shared by its static subsystems (namespace kept until Wave C): the running flag every hook and

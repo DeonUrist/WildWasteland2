@@ -136,7 +136,7 @@ namespace WildWasteland.Modules.Patrols
                 Captures[data] = new Capture { World = _world, X = tile.coord.x, Z = tile.coord.z,
                     Rect = tile.WorldRect, Sources = _sources };
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Road discovery prepare: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(null,"[Patrols] " + "Road discovery prepare: " + e.Message); }
         }
 
         /// <summary>Switches captured road metadata to the current generation recipe.</summary>
@@ -344,7 +344,7 @@ namespace WildWasteland.Modules.Patrols
                 string path=Path.Combine(CacheRoot,world,x+"_"+z+".roads");
                 EnqueueIO(()=>{if(!File.Exists(path))return;var tile=ReadCache(path,world);tile.Compact();tile.Cached=true;Pending.Enqueue(tile);});
             }
-            if(Errors.TryDequeue(out var error))Core.Log.Warn("[Patrols] " + "Road cache: "+error);
+            if(Errors.TryDequeue(out var error))Core.Log.Warn(null,"[Patrols] " + "Road cache: "+error);
         }
 
         /// <summary>Queues derived road-cache reads along the requested world-space segment.</summary>

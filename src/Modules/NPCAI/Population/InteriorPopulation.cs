@@ -5,9 +5,9 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.NPCAI;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // Applies to native interior groups throughout the world while the addon is loaded.
     // Native FSMs still own creation, registration, names and one-shot progress.

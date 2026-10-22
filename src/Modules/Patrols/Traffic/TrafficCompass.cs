@@ -36,9 +36,9 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Advances scheduled work under the current save, pause and admission gates.</summary>
         internal static void Tick()
         {
-            var api = Core.Services.Compass;
+            var api = Core.ModApi.Get<Core.ICompassMarkers>();
             if (!ReferenceEquals(api, _api)) { Clear(); _api = api; }
-            if (api == null && Core.Services.Map == null) { Clear(); return; }
+            if (api == null && Core.ModApi.Get<Core.IMapMarkers>()== null) { Clear(); return; }
             if (!PatrolsModule.Running || !Core.GameRefs.InPlay) return;
             Seen.Clear(); Journeys.Clear(); Dead.Clear();
             var journeys = WorldTraffic.CompassJourneys;
@@ -81,9 +81,9 @@ namespace WildWasteland.Modules.Patrols
             Tracked marker;
             if (!Markers.TryGetValue(key, out marker)) Markers.Add(key, marker = new Tracked());
             bool known = marker.Known; int previousId = marker.Id;
-            var map = Core.Services.Map;
+            var map = Core.ModApi.Get<Core.IMapMarkers>();
             bool observed = map != null && (journey != null ? WorldTraffic.ObserveJourney(journey, map, name, color) : map.Observe(target, name, color));
-            if (observed && !marker.Known) { marker.Known = true; if (Core.Log.Verbose) Core.Log.Info("[Patrols] Visible group identified: " + name); }
+            if (observed && !marker.Known) { marker.Known = true; if (Core.Log.L1) Core.Log.Main(null,"[Patrols] Visible group identified: " + name); }
             if (!first) return;
             marker.Target = target; marker.Anchor = anchor;
             if (!compass || _api == null || !_api.VehiclesEnabled)

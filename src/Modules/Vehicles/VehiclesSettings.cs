@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WarRig = WildWasteland.Modules.Patrols.WarRig;   // refs-ok: Vehicles-owned namespace until the Wave C rename
+using WarRig = WildWasteland.Modules.Vehicles.WarRig;   // refs-ok: Vehicles-owned namespace until the Wave C rename
 
 namespace WildWasteland.Modules.Vehicles
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // (2.2.0) ModAPI: the animation decisions for ANY humanoid that another mod animates with the player's clips (ModAPI.Character), frame by frame,
     // with no Unity types - tools/modapitest runs it for every weapon kind x every situation outside the game and checks / draws the result.

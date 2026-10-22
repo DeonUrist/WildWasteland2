@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // (1.2.0) NPC bodies animated through the player-animation framework (ex Apocaplayer's ModAPI, now the IAnimationApi provided by
     // the Presentation module): the player's own clips and logic - idle, 8 directions x walk / run / sprint, crouch idle and 8 crouched walks

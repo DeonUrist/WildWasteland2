@@ -1,6 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Exposes the actual carrier through the owning body instead of third-party reflection into private state.</summary>
     internal sealed partial class Body
@@ -15,8 +15,8 @@ namespace WildWasteland.Modules.Presentation
     {
         /// <summary>Validates the real body and settings before exposing current native visual objects.</summary>
         public bool TryGet(object value,out GameObject root,out GameObject carrier)
-        {var body=value as PlayerBody.Body;root=null;carrier=null;if(!PresentationModule.Running||body==null||!CharacterSettings.BodyFirstPerson.Value||PlayerState.InCar&&!CharacterSettings.BodyInCar||body.Root==null||!body.Root.activeInHierarchy)return false;root=body.Root;carrier=body.WeaponCarrier;return true;}
+        {var body=value as WildWasteland.Modules.Presentation.Body;root=null;carrier=null;if(!PresentationModule.Running||body==null||!CharacterSettings.BodyFirstPerson.Value||PlayerState.InCar&&!CharacterSettings.BodyInCar||body.Root==null||!body.Root.activeInHierarchy)return false;root=body.Root;carrier=body.WeaponCarrier;return true;}
         /// <summary>Reads current native prop visibility intent when restoring suppressed carrier renderers.</summary>
-        public bool Visible(object value){var body=value as PlayerBody.Body;return body!=null&&body.WeaponPropVisible;}
+        public bool Visible(object value){var body=value as WildWasteland.Modules.Presentation.Body;return body!=null&&body.WeaponPropVisible;}
     }
 }

@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.Debug
     {
         internal static DebugRuntime Instance; internal static string SceneMarker;
         internal readonly EditorSession Session = new EditorSession();
-        internal bool Visible, Recording = true, Rebinding;
+        internal bool Visible, Recording = true;
         private float _captureStart = -1, _captureEnd = -1;
         private bool _captureBaseline;
         /// <summary>Closes the dashboard, waits five seconds and then records a thirty-second A/B sample.</summary>
@@ -41,8 +41,6 @@ namespace WildWasteland.Modules.Debug
         internal readonly List<string> Trace = new List<string>();
         private float _snapshotAt, _lastSnapshot, _summaryAt;
         private long _ownTicks; private int _ownFrames;
-        private bool _openTools;
-        private ToolPage _toolsPage;
         private string _lastFault;
         /// <summary>Initializes shared measurement/probe catalogs once after chainloading on the Core scheduler.</summary>
         private void Initialize()
@@ -69,15 +67,10 @@ namespace WildWasteland.Modules.Debug
             var keyboard = Keyboard.current;
             if (keyboard != null)
             {
-                if (Rebinding)
-                {
-                    foreach (var key in keyboard.allKeys) if (key.wasPressedThisFrame) { if (key.keyCode != Key.Escape) DebugModule.MenuKey.Value = key.keyCode; Rebinding = false; break; }
-                }
-                else if (Visible && keyboard.escapeKey.wasPressedThisFrame) Close();
+                if (Visible && keyboard.escapeKey.wasPressedThisFrame) Close();
             }
             if (Visible && !Session.Open) Visible = false;
             if (Visible) Session.Maintain();
-            if (_openTools && !EditorSession.Busy) { _openTools = false; ToolWindow.Open(_toolsPage); _toolsPage = null; }
             Instrumentation.Timing = Core.Log.L2 && Recording && Instrumentation.PendingCount == 0 && Instrumentation.Fault == null;
             Instrumentation.Allocations = DebugModule.AllocationTiming.Value && Instrumentation.AllocationSupported;
             Instrumentation.Spikes = Core.Log.L2; Instrumentation.Lifecycle = Core.Log.L2; Instrumentation.Threshold = DebugModule.SpikeThreshold.Value;
@@ -132,15 +125,7 @@ namespace WildWasteland.Modules.Debug
             else { Status = "Close the other editor/menu first."; Core.Log.Main(DebugModule.Instance, Status); }
         }
         /// <summary>Closes the dashboard session and persists its Debug measurement settings.</summary>
-        internal void Close() { Visible = false; Rebinding = false; Session.Close(); DebugModule.SettingsFile.Save(); }
-        /// <summary>Closes the dashboard and queues the shared tool window for the next unowned editor frame.</summary>
-        internal void OpenTools() { Close(); _openTools = true; }
-        /// <summary>Queues a selected tool page and enables its existing Debug/Developer visibility gates.</summary>
-        internal void OpenTool(ToolPage page)
-        {
-            WildWasteland.Plugin.EnableDebug.Value = true; WildWasteland.Plugin.DeveloperMode.Value = true;
-            _toolsPage = page; Close(); _openTools = true;
-        }
+        internal void Close() { Visible = false; Session.Close(); DebugModule.SettingsFile.Save(); }
         /// <summary>Retains the latest 512 diagnostic lines for capture export.</summary>
         internal void AddTrace(string line) { if (Trace.Count >= 512) Trace.RemoveAt(0); Trace.Add(line); }
         /// <summary>Writes current frame/job/probe summaries through the shared log policy.</summary>

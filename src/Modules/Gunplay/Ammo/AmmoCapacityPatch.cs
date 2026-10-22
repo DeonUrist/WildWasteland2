@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Harmony patch class: IntClamp.DoClamp prefix (backpack ammo overflow).</summary>
     [HarmonyPatch(typeof(IntClamp), "DoClamp")]

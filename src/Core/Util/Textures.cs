@@ -112,7 +112,7 @@ namespace WildWasteland.Core
         public static Texture2D FromFile(string path, TextureSettings s, string name = null)
         {
             try { return File.Exists(path) ? FromBytes(File.ReadAllBytes(path), s, name ?? Path.GetFileNameWithoutExtension(path)) : null; }
-            catch (Exception e) { if (Log.Verbose) Log.Info("[Core] Texture " + path + ": " + e.Message); return null; }
+            catch (Exception e) { if (Log.L1) Log.Main(null,"[Core] Texture " + path + ": " + e.Message); return null; }
         }
 
         /// <summary>
@@ -167,7 +167,7 @@ namespace WildWasteland.Core
                     }
                 }
             }
-            catch (Exception ex) { if (Log.Verbose) Log.Info("[Core] Texture resource " + resource + ": " + ex.Message); }
+            catch (Exception ex) { if (Log.L1) Log.Main(null,"[Core] Texture resource " + resource + ": " + ex.Message); }
             if (e == null) { e = new Entry(); _cache[key] = e; }
             else if (e.Texture != null && e.Texture != t) UnityEngine.Object.Destroy(e.Texture);
             e.Texture = t; e.Owner = owner;

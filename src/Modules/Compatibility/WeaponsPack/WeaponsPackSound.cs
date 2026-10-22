@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// Weapons Pack part serving melee: a chainsaw contact plays the machete slash clip of Gunplay melee instead of the pack's standard
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Guns
         private static bool BeforeHitSound(object __instance, Vector3 __0)
         {
             if (!installed || !CompatibilityHost.Guns.Running) return true;
-            var clip = Tracers.StabClip(); // refs-ok: REFACTOR-REQUEST B17-3
+            var clip = ModApi.Get<IWeaponEffects>()?.StabClip(); // refs-ok: REFACTOR-REQUEST B17-3
             var audio = source(__instance);
             if (clip == null || audio == null) return true;
             audio.transform.position = __0; audio.pitch = UnityEngine.Random.Range(.9f, 1.1f); audio.volume = 1f;

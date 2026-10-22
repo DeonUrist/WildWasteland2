@@ -40,7 +40,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Updates the quest journal.</summary>
         internal static void Tick()
         {
-            var api = Core.Services.Quests; if (api == null) { Hide(); return; }
+            var api = Core.ModApi.Get<Core.IQuestApi>(); if (api == null) { Hide(); return; }
             if (!HudModule.CleanHudEnabled.Value || !api.Ready || !api.JournalOpen || !Core.GameRefs.InGame
                 || Core.UI.EditorSession.Busy || (Cursor.visible && Cursor.lockState != CursorLockMode.Locked)) { Hide(); return; }
             try

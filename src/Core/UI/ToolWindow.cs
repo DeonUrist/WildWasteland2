@@ -54,7 +54,7 @@ namespace WildWasteland.Core.UI
             if (_open && !_session.Open) Close();
             if (!_openNewGame || !GameRefs.InGame || EditorSession.Busy || ApocasetterBridge.InputBlocked) return;
             Open(CorePages.GamePage);
-            if (_open) { _openNewGame = false; Log.Always("[Core] New game ready: opened Game settings"); }
+            if (_open) { _openNewGame = false; Log.Always(null,"[Core] New game ready: opened Game settings"); }
         }
 
         /// <summary>Adds a unique settings page to the window.</summary>
@@ -77,11 +77,11 @@ namespace WildWasteland.Core.UI
             if (LoadingProgress.MenusBlocked) return;
             if (!_open)
             {
-                if (EditorSession.Busy || !_session.Acquire(true, fromMenu)) { Log.Info("Settings: another editor is open or the game is paused"); return; }
+                if (EditorSession.Busy || !_session.Acquire(true, fromMenu)) { Log.Main(null,"Settings: another editor is open or the game is paused"); return; }
                 _open = true;
                 _fromMenu = fromMenu;
                 CollectModulePages();
-                Log.Always("[Core] Settings opened: CleanHUD atlas UI, 54-unit rows");
+                Log.Always(null,"[Core] Settings opened: CleanHUD atlas UI, 54-unit rows");
             }
             if (page != null)
             {
@@ -115,7 +115,7 @@ namespace WildWasteland.Core.UI
             foreach (var e in ModuleHost.Entries)
             {
                 IEnumerable<ToolPage> pages = null;
-                try { pages = e.Module.ToolPages(); } catch (Exception ex) { Log.Error("[" + e.Module.Id + "] ToolPages", ex); }
+                try { pages = e.Module.ToolPages(); } catch (Exception ex) { Log.Error(null,"[" + e.Module.Id + "] ToolPages", ex); }
                 if (pages == null) continue;
                 foreach (var p in pages) { if (p.Owner == null) p.Owner = e.Module; CorePages.AddDebugPage(p); }
             }
@@ -148,7 +148,7 @@ namespace WildWasteland.Core.UI
             if (_deferred != null && !EditorSession.Busy && Event.current.type == EventType.Repaint)
             {
                 var d = _deferred; _deferred = null;
-                try { d(); } catch (Exception e) { Log.Error("F7 deferred action", e); }
+                try { d(); } catch (Exception e) { Log.Error(null,"F7 deferred action", e); }
             }
             if (!_open) return;
             if (_current != null && !Visible(_current))
@@ -158,7 +158,7 @@ namespace WildWasteland.Core.UI
                 _session.Maintain();
                 ToolLayout.PollRebind();
                 if (!ToolLayout.Rebinding && Event.current != null && UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); return; }
-                if (_current != null) { try { _current.Update(); } catch (Exception e) { Log.Error("F7 page " + _current.Title, e); } }
+                if (_current != null) { try { _current.Update(); } catch (Exception e) { Log.Error(null,"F7 page " + _current.Title, e); } }
             }
             Skin.EnsureGameFont();
             int depth = GUI.depth; GUI.depth = -900;
@@ -269,7 +269,7 @@ namespace WildWasteland.Core.UI
                 bool wasEnabled = GUI.enabled;
                 if (off && !page.ShowWhenModuleOff && !(page is ConfigPage)) GUI.enabled = false;
                 try { page.Draw(_layout); }
-                catch (Exception ex) { _layout.Text("Page error: " + ex.Message, Ledger.Danger); Log.Error("F7 page " + page.Title, ex); }
+                catch (Exception ex) { _layout.Text("Page error: " + ex.Message, Ledger.Danger); Log.Error(null,"F7 page " + page.Title, ex); }
                 GUI.enabled = wasEnabled;
                 if (_layout.Searching && !_layout.SearchResults)
                 {

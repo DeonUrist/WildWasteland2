@@ -58,7 +58,7 @@ namespace WildWasteland.Modules.Quests
                 foreach (string encoded in value.Substring(10).Split('\n'))
                     if (encoded.Length > 0) Names.Add(System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encoded)));
             }
-            catch (Exception e) { _readFailed = true; Log.Warn("[Quests] Could not load former crew; saving blocked: " + e.Message); }
+            catch (Exception e) { _readFailed = true; Log.Warn(null,"[Quests] Could not load former crew; saving blocked: " + e.Message); }
         }
         /// <summary>Stages former crew identities in the world-save transaction.</summary>
         internal static void Save(IModule owner, string slot)
@@ -72,7 +72,7 @@ namespace WildWasteland.Modules.Quests
                 foreach (string name in names) text.Append(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(name))).Append('\n');
                 SaveBus.Key(SaveKey).Write(owner, slot, text.ToString());
             }
-            catch (Exception e) { SaveBus.ReportFailure(owner, "Former crew save failed: " + e.Message); Log.Warn("[Quests] Could not save former crew: " + e.Message); }
+            catch (Exception e) { SaveBus.ReportFailure(owner, "Former crew save failed: " + e.Message); Log.Warn(null,"[Quests] Could not save former crew: " + e.Message); }
         }
     }
 }

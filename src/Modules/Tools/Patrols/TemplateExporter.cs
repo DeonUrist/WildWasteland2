@@ -169,7 +169,7 @@ namespace WildWasteland.Modules.Tools
             Ledger.Rule(x, box.yMax - 73, box.width - 44);
             if (Ledger.Button(new Rect(box.xMax - 213, box.yMax - 55, 77, 34), "Cancel")) _afterDraw = Close;
             if (Ledger.Button(new Rect(box.xMax - 128, box.yMax - 55, 106, 34), "Save template", primary: true))
-                _afterDraw = () => { try { Dump(); Close(); } catch (Exception e) { Core.Log.Error("[Patrols] " + "Template save failed: " + e); Toast("Template not saved: " + e.Message); } };
+                _afterDraw = () => { try { Dump(); Close(); } catch (Exception e) { Core.Log.Error(null,"[Patrols] " + "Template save failed: " + e); Toast("Template not saved: " + e.Message); } };
             Ledger.Rule(6, 634, _rect.width - 12);
             GUI.enabled = enabled; _ledgerDropdown.Draw();
         }
@@ -432,15 +432,15 @@ namespace WildWasteland.Modules.Tools
             log.Append("Template ").Append(name).Append(" <- ").Append(how).Append(" ").Append(car.name).Append(": ").Append(w.Parts.Count).Append(" part(s)");
             if (w.Moved > 0) log.Append(", ").Append(w.Moved).Append(" moved hinge/part offset(s)");
             log.Append(" -> ").Append(path);
-            Core.Log.Always("[Patrols] " + log.ToString());
+            Core.Log.Always(null,"[Patrols] " + log.ToString());
             for (int i = 0; i < w.Parts.Count; i++)
             {
                 var p = w.Parts[i];
-                Core.Log.Always("[Patrols] " + "  [" + i + "] " + (p.parent >= 0 ? "on [" + p.parent + "] " : "") + p.hinge + " = " + p.prefab
+                Core.Log.Always(null,"[Patrols] " + "  [" + i + "] " + (p.parent >= 0 ? "on [" + p.parent + "] " : "") + p.hinge + " = " + p.prefab
                     + (p.hingePos.Length > 0 ? "  (hinge moved)" : "") + (p.pos.Length > 0 ? "  (placed at its own pose)" : ""));
             }
-            foreach (var n in w.Notes) Core.Log.Warn("[Patrols] " + "  " + n);
-            if (!hasDriverSeat) Core.Log.Warn("[Patrols] " + "  no driver seat on the car: the template has no driver (a raider car needs one to drive)");
+            foreach (var n in w.Notes) Core.Log.Warn(null,"[Patrols] " + "  " + n);
+            if (!hasDriverSeat) Core.Log.Warn(null,"[Patrols] " + "  no driver seat on the car: the template has no driver (a raider car needs one to drive)");
 
             Toast("Saved template " + name + " (" + body + ", " + w.Parts.Count + " parts" + ")\n" + path
                 + (w.Notes.Count > 0 ? "\n" + w.Notes.Count + " warning(s) - see the BepInEx log" : "")

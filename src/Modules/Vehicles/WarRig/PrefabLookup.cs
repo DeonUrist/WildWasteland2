@@ -2,7 +2,7 @@ using System;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>Saves: resolves the War Rig prefab id through the Core.Hooks.GetPrefab dispatcher (null = not ours, ES3 continues).</summary>
     internal static class PrefabLookup

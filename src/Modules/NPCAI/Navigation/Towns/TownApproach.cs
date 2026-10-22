@@ -2,7 +2,7 @@ using WildWasteland.Core;
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Numeric entrance selection outside the town; the street graph is only used inside its contour.

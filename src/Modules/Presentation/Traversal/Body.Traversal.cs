@@ -6,7 +6,7 @@ using UnityEngine.Playables;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     internal sealed partial class Body
     {
@@ -57,13 +57,13 @@ namespace WildWasteland.Modules.PlayerBody
         private bool LateTraversal(View view)
         {
             if (Traversal == null) return false;
-            if (Game.Paused) return true;
+            if (Core.PlayerState.Paused) return true;
             if (!ModAPI.PlayerCanTraverse) { EndTraversal(); return false; }
-            var player = Game.Player.transform;
+            var player = Core.PlayerState.Player.transform;
             if (Traversal.Pose != null)
             {
                 _animator.enabled = true;
-                Root.transform.SetPositionAndRotation(player.position - Vector3.up * (Game.StandingHeight * .5f), Traversal.Facing);
+                Root.transform.SetPositionAndRotation(player.position - Vector3.up * (Core.PlayerState.StandingHeight * .5f), Traversal.Facing);
                 Root.transform.localScale = Vector3.one;
                 _anim.localPosition = Vector3.zero;
                 _anim.localRotation = Quaternion.identity;
@@ -88,7 +88,7 @@ namespace WildWasteland.Modules.PlayerBody
             _traversalMix.SetInputWeight(1, weight);
             _traversalClip.SetTime(seconds);
             _animator.enabled = true;
-            Root.transform.SetPositionAndRotation(player.position - Vector3.up * (Game.StandingHeight * .5f), Traversal.Facing);
+            Root.transform.SetPositionAndRotation(player.position - Vector3.up * (Core.PlayerState.StandingHeight * .5f), Traversal.Facing);
             Root.transform.localScale = Vector3.one;
             _anim.localPosition = Vector3.zero;
             _anim.localRotation = Quaternion.identity;

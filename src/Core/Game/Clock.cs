@@ -64,7 +64,7 @@ namespace WildWasteland.Core
                 if (_known && Time.unscaledTime < _nextEval) return _dark;
                 _nextEval = Time.unscaledTime + 2f;
                 try { EvaluateDark(); }
-                catch (Exception e) { Log.Warn("[Core] DayLight: " + e.Message); _azure = null; _nextAzure = Time.unscaledTime + 30f; }
+                catch (Exception e) { Log.Warn(null,"[Core] DayLight: " + e.Message); _azure = null; _nextAzure = Time.unscaledTime + 30f; }
                 return _dark;
             }
         }
@@ -124,7 +124,7 @@ namespace WildWasteland.Core
                 _dark = _time.Value < 6f || _time.Value >= 19.5f;
                 _known = true;
             }
-            if (_known && was != _dark && Log.Verbose) Log.Info("[Core] DayLight: " + (_dark ? "dark" : "light") + (_azure != null ? " (sun elevation)" : " (DayTime fallback)"));
+            if (_known && was != _dark && Log.L1) Log.Main(null,"[Core] DayLight: " + (_dark ? "dark" : "light") + (_azure != null ? " (sun elevation)" : " (DayTime fallback)"));
         }
     }
 }

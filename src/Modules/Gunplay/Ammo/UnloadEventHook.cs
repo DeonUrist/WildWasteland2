@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// (WW) Handler of Core.Hooks.ProcessEvent (observer, never skips).
     internal static class UnloadEventHook

@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// Was a MonoBehaviour on Gunplay.Runner; now the scheduler job "Guns.Ammo" (every frame: the hold/tap state machine needs frames).
     internal static class AmmoRunner

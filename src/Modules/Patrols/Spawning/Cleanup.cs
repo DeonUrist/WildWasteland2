@@ -25,21 +25,21 @@ namespace WildWasteland.Modules.Patrols
             if (Time.unscaledTime >= _nextEnteredCheck)
             {
                 _nextEnteredCheck = Time.unscaledTime + 1f;
-                var pc = PlayerRef.PlayerCar;
+                var pc = Core.PlayerState.Car;
                 var m = pc != null ? pc.GetComponent<PatrolMarker>() : null;
                 if (m != null && !m.PlayerEntered) { m.PlayerEntered = true; PatrolsModule.Verbose("Cleanup: " + pc.name + " is the player's now, never removed"); }
                 if (m != null && m.TemplateName == "Abandoned War Rig" && m.SetupOnly)
                 {
                     var body = pc.GetComponent<Rigidbody>();
                     if (body != null && Vector3.ProjectOnPlane(body.velocity, Vector3.up).sqrMagnitude > 1f && Core.ModApi.Get<Core.IVehicleDrive>()?.EngineRunning(pc)==true)
-                    { m.SetupOnly = false; Core.Log.Always("[Patrols] War Rig truck driven by player: normal native car cleanup now applies; tanker remains protected."); }
+                    { m.SetupOnly = false; Core.Log.Always(null,"[Patrols] War Rig truck driven by player: normal native car cleanup now applies; tanker remains protected."); }
                 }
             }
 
             if (Time.unscaledTime < _nextTick) return;
             _nextTick = Time.unscaledTime + Interval;
             if (!PatrolsModule.CleanupEnabled.Value && !PatrolsModule.SelfDestruct.Value) return;
-            var player = PlayerRef.Player;
+            var player = Core.PlayerState.Transform;
             if (player == null) return;
 
             var all = PatrolMarker.All.ToArray();   // copy: Remove() destroys cars, which edits the list
@@ -102,10 +102,10 @@ namespace WildWasteland.Modules.Patrols
             var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null)
             {
-                if (trailer.GetComponent<WarRig.WarRigUnit>() != null) WarRig.PatrolRetention.DetachTankers(car);
-                else { Register.RemoveTree(trailer); Destroy(trailer); }
+                if (Core.ModApi.Get<Core.IVehicleAttachments>()?.IsWarRig(trailer)==true) WarRig.PatrolRetention.DetachTankers(car);
+                else { Core.ItemSpawner.RemoveTree(trailer); Destroy(trailer); }
             }
-            Register.RemoveTree(car);
+            Core.ItemSpawner.RemoveTree(car);
             Destroy(car);
         }
     }

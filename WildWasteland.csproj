@@ -5,8 +5,6 @@
     <RootNamespace>WildWasteland</RootNamespace>
     <!-- Match old mcs (build.sh): C# 7, no local functions. -->
     <LangVersion>7.3</LangVersion>
-    <!-- Refactor (WW2): [Obsolete] forwarders exist until Wave C removes them. -->
-    <NoWarn>$(NoWarn);CS0618</NoWarn>
     <Nullable>disable</Nullable>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -38,7 +36,7 @@
     <!-- Source folders retain their authoring paths; all payloads ship as external files, never DLL resources. -->
     <Content Include="src\Modules\*\Embedded\**\*" Exclude="src\Modules\*\Embedded\**\*.md">
       <ResourceName>$([System.String]::Copy('%(Identity)').Replace('/','\').Replace('src\Modules\','').Replace('\Embedded\','.').Replace('\','.'))</ResourceName>
-      <RuntimePath>$([System.String]::Copy('%(Identity)').Replace('/','\').Replace('src\Modules\','').Replace('\Embedded\','\').Replace('NPC\WomenOfWasteland\','NPC\').Replace('PlayerBody\Portraits\','PlayerBody\LegacyPortraits\').Replace('PlayerBody\CharacterPortraits\','PlayerBody\Portraits\').Replace('PlayerBody\Textures\female_kick.png','PlayerBody\Models\Player2_female_kick.png'))</RuntimePath>
+      <RuntimePath>$([System.String]::Copy('%(Identity)').Replace('/','\').Replace('src\Modules\','').Replace('\Embedded\','\'))</RuntimePath>
       <Link>RuntimeAssets\%(RuntimePath)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

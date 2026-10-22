@@ -30,17 +30,32 @@ namespace WildWasteland.Core
             }
             Names = names.ToArray();
         }
+        /// <summary>Resolves the finite historical resource identifiers without old on-disk folder fallbacks.</summary>
+        private static string Canonical(string name)
+        {
+            if(Paths.ContainsKey(name))return name;
+            string[,] prefixes={
+                {"CleanHUD.DefaultSettings.","Core.DefaultSettings."},{"CleanHUD.DefaultProfiles.PlayerBody.","Presentation.DefaultProfiles."},{"CleanHUD.DefaultProfiles.CleanHUD.","HUD.DefaultProfiles.HUD."},
+                {"NPC.NavMaps.","NPCAI.NavMaps."},{"NPC.PoiNav.","NPCAI.PoiNav."},{"NPC.WomenOfWasteland.","Presentation."},
+                {"NPC.Models.","Presentation.Models."},{"NPC.Sounds.","Presentation.Sounds."},
+                {"PlayerBody.CharacterPortraits.","Presentation.Portraits."},{"PlayerBody.Textures.female_kick.png","Presentation.Models.Player2_female_kick.png"},
+                {"PlayerBody.","Presentation."},{"Guns.","Gunplay."},{"CleanHUD.","HUD."},{"Towns.","POI."},{"Weather.","Survival."},
+                {"Patrols.Textures.","Presentation.VehicleSkins."},{"Patrols.WarRig.","Vehicles.WarRig."},{"Patrols.Sounds.","Presentation.Sounds."}
+            };
+            for(int i=0;i<prefixes.GetLength(0);i++)if(name.StartsWith(prefixes[i,0],StringComparison.Ordinal))return prefixes[i,1]+name.Substring(prefixes[i,0].Length);
+            return name;
+        }
         /// <summary>Resolves an indexed asset to its installed path, or returns null when absent.</summary>
         internal static string FilePath(string name)
         {
             string path;
-            if (!Paths.TryGetValue(name, out path)) throw new FileNotFoundException("Runtime asset is not listed in asset-index.tsv: " + name);
+            if (!Paths.TryGetValue(Canonical(name), out path)) throw new FileNotFoundException("Runtime asset is not listed in asset-index.tsv: " + name);
             return path;
         }
         /// <summary>Opens an indexed disk asset or the matching assembly resource.</summary>
         internal static Stream Open(string name)
         {
-            string path; if (!Paths.TryGetValue(name, out path)) return null;
+            string path; if (!Paths.TryGetValue(Canonical(name), out path)) return null;
             try { return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 16384); }
             catch (FileNotFoundException) { return null; }
             catch (DirectoryNotFoundException) { return null; }

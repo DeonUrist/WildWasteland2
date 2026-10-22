@@ -5,7 +5,7 @@ using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Nav part owned by Debug: NavTrace / NavDump BMP pictures, trace cell texts, the waypoint overlay (DrawDebug) and the status line.</summary>
     internal static partial class Nav

@@ -5,10 +5,10 @@ using UnityEngine;
 namespace WildWasteland.Modules.Patrols
 {
     // Dismounted crew (Patrol.BailOut, RiderGuard.SpawnMob / Land):
-    //  - awareness handover: crew that shot at / detected / was hit by the player from the car remember him on foot (Services.Npc.Remember);
+    //  - awareness handover: crew that shot at / detected / was hit by the player from the car remember him on foot (Core.ModApi.Get<Core.INpcApi>().Remember);
     //  - return to car ([Patrols] Return to car): membership is recorded per car; combat exits return when the attacker dies or leaves 50 m,
     //    other dismounts return once every living member is idle. Convoy, merchant and battle crews use the same seats and health handover.
-    //    (Services.Npc.Travel) and are seated again in their original order with the same identity and health; a passenger (else a gunner)
+    //    (Core.ModApi.Get<Core.INpcApi>().Travel) and are seated again in their original order with the same identity and health; a passenger (else a gunner)
     //    takes the wheel when the driver is dead. The car is held, not retired / cleaned up / blown up, until everyone is aboard or it gives up;
     //  - crew left without a usable car go to Stranded; WorldTraffic wraps them into a foot patrol after StrandedIdleSeconds out of combat.
     // Runtime only: nothing here is saved. After a reload dismounted crew are ordinary natively saved NPCs again (the behaviour before).
@@ -78,14 +78,14 @@ namespace WildWasteland.Modules.Patrols
             if (marker == null) return;
             Handover(car, marker, mob);
             if (WorldTraffic.TownDismounted(car, mob)) return;
-            var crew=car.GetComponent<Crew>();if(crew!=null&&crew.CombatEnemy!=null&&Core.Services.Npc!=null)Core.Services.Npc.CrewOrder(mob,crew.CombatEnemy,false);
+            var crew=car.GetComponent<Crew>();if(crew!=null&&crew.CombatEnemy!=null&&Core.ModApi.Get<Core.INpcApi>()!=null)Core.ModApi.Get<Core.INpcApi>().CrewOrder(mob,crew.CombatEnemy,false);
             if (Native(car, marker)) return;
             var g = Find(car);
             if (g == null && Regroupable(car, marker)) g = Create(car, marker);
             string why = g != null ? Unusable(g) : "no return to this car";
             if (g == null || why != null)
             {
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Return to car: " + mob.name + " stays on foot (" + why + ")");
+                if (Core.Log.L1) PatrolsModule.Verbose("Return to car: " + mob.name + " stays on foot (" + why + ")");
                 Strand(mob, identity, marker.Faction, NameOf(marker));
                 return;
             }
@@ -93,7 +93,7 @@ namespace WildWasteland.Modules.Patrols
                 Order = role == RoleDriver ? 0 : role == RolePassenger ? 1 : 2 + Mathf.Max(0, slot) };
             int at = g.Members.Count; while (at > 0 && g.Members[at - 1].Order > m.Order) at--;
             g.Members.Insert(at, m); g.CalmSince = -1f;
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Return to car: " + mob.name + " (" + (role == RoleDriver ? "driver" : role == RolePassenger ? "passenger" : "turret " + (slot + 1)) + ", " + identity + ") left " + car.name + "; recorded for the way back");
+            if (Core.Log.L1) PatrolsModule.Verbose("Return to car: " + mob.name + " (" + (role == RoleDriver ? "driver" : role == RolePassenger ? "passenger" : "turret " + (slot + 1)) + ", " + identity + ") left " + car.name + "; recorded for the way back");
         }
 
         // Crew.OnStuck: the crew is about to bail after the doors open; keep the car out of world-traffic retirement in between
@@ -113,15 +113,15 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>NPC module: crew that engaged the player from the car keep him in mind on foot</summary>
         private static void Handover(GameObject car, PatrolMarker marker, GameObject mob)
         {
-            var api = Core.Services.Npc; var player = PlayerRef.Player;
-            if (api == null || player == null || PlayerRef.GodMode || !TrafficFactions.PlayerHostile(marker.Faction)) return;
+            var api = Core.ModApi.Get<Core.INpcApi>(); var player = Core.PlayerState.Transform;
+            if (api == null || player == null || Core.PlayerState.GodMode || !TrafficFactions.PlayerHostile(marker.Faction)) return;
             float memory = PatrolsModule.DismountMemorySeconds.Value; if (memory <= 0f) return;
             bool aware = Time.time - marker.PlayerContactAt <= memory;
             if (!aware) { var agent = WorldTraffic.AgentOf(car); aware = agent != null && agent.SeenUntil > Time.time; }
             if (!aware) return;
             try { api.Remember(mob, player.gameObject, memory); }
             catch (System.Exception e) { PatrolsModule.Verbose("Awareness handover: " + e.Message); return; }
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Awareness: " + mob.name + " got out of " + car.name + " knowing where the player is (" + memory.ToString("0") + " s)");
+            if (Core.Log.L1) PatrolsModule.Verbose("Awareness: " + mob.name + " got out of " + car.name + " knowing where the player is (" + memory.ToString("0") + " s)");
         }
 
         // ------------------------------------------------------------ eligibility
@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Checks the current regroupable condition for crew return.</summary>
         private static bool Regroupable(GameObject car, PatrolMarker marker)
         {
-            return PatrolsModule.ReturnToCar.Value && Core.Services.Npc != null && car.GetComponent<Crew>() != null
+            return PatrolsModule.ReturnToCar.Value && Core.ModApi.Get<Core.INpcApi>() != null && car.GetComponent<Crew>() != null
                 && !car.GetComponent<Crew>().FullyStuck;
         }
 
@@ -176,9 +176,9 @@ namespace WildWasteland.Modules.Patrols
             if (car == null) return "car gone";
             if (!car.activeInHierarchy) return "car unloaded";
             if (!PatrolsModule.ReturnToCar.Value) return "return to car off";
-            if (Core.Services.Npc == null) return "NPC module off";
+            if (Core.ModApi.Get<Core.INpcApi>()== null) return "NPC module off";
             if (marker == null || marker.Exploded) return "car exploded";
-            if (marker.PlayerEntered || ReferenceEquals(PlayerRef.PlayerCar, car)) return "the player took the car";
+            if (marker.PlayerEntered || ReferenceEquals(Core.PlayerState.Car, car)) return "the player took the car";
             if (crew == null) return "no crew";
             if (crew.OutOfFuel) return "out of fuel";
             if (crew.FullyStuck) return "car stuck";
@@ -197,7 +197,7 @@ namespace WildWasteland.Modules.Patrols
             var g = crew.Regroup; if (g == null) return;
             string why = Unusable(g);
             if (why != null) { End(g, why, false); return; }
-            var api = Core.Services.Npc;
+            var api = Core.ModApi.Get<Core.INpcApi>();
             float now = Time.time;
             var enemy=g.Crew.CombatEnemy;
             bool returnNow=g.PoiExit?!g.Crew.PoiEngaged:g.CombatExit&&(enemy==null||(enemy.transform.position-g.Car.transform.position).sqrMagnitude>2500f);
@@ -241,7 +241,7 @@ namespace WildWasteland.Modules.Patrols
                 g.Boarding = true; g.BoardStart = now; crew.Regrouping = true;
                 var front=FrontDoor(g.Car);if(front!=null)Patrol.OpenDoorAt(g.Car,front.position);
                 if (!crew.DriverSeatedAlive && !g.Ejected) { g.Ejected = true; Patrol.EjectCorpses(g.Car, null); }   // a carcass on the driver seat goes out first
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Return to car: fight over, " + pending + " crew walk back to " + g.Car.name);
+                if (Core.Log.L1) PatrolsModule.Verbose("Return to car: fight over, " + pending + " crew walk back to " + g.Car.name);
             }
             if (g.SeatedDriver && !crew.DriverSeatedAlive) { End(g, "the new driver died", true); return; }
             bool needDriver = !crew.DriverSeatedAlive;
@@ -250,7 +250,7 @@ namespace WildWasteland.Modules.Patrols
                 g.DriverMember = null;
                 for (int i = 0; i < g.Members.Count; i++) { var m = g.Members[i]; if (m.State == OnFoot || m.State == Walking) { g.DriverMember = m; m.BoardKnown = false; break; } }
                 if (g.DriverMember == null) { End(g, "no living crew to drive", true); return; }
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Return to car: " + g.DriverMember.Body.name + " will take the wheel of " + g.Car.name);
+                if (Core.Log.L1) PatrolsModule.Verbose("Return to car: " + g.DriverMember.Body.name + " will take the wheel of " + g.Car.name);
             }
             if (!allIdle && g.LastTick > 0f) g.BoardStart = Mathf.Min(now, g.BoardStart + (now - g.LastTick));   // the walk-back timeout pauses while they fight
             g.LastTick = now;
@@ -309,7 +309,7 @@ namespace WildWasteland.Modules.Patrols
         // beside the seat on its own side, the car's exit distance out (the bus: behind its rear door); kept in car space
         /// <summary>beside the seat on its own side, the car's exit distance out (the bus: behind its rear door); kept in car space</summary>
         internal static Transform FrontDoor(GameObject car)
-        { return car!=null&&car.GetComponent<MerchantHost>()!=null&&TemplateExporter.PrefabName(car.name).Equals("Rustliner",System.StringComparison.OrdinalIgnoreCase)?Patrol.FindChild(car.transform,"hinge_door_R"):null; }
+        { return car!=null&&car.GetComponent<MerchantHost>()!=null&&Core.Names.Prefab(car.name).Equals("Rustliner",System.StringComparison.OrdinalIgnoreCase)?Patrol.FindChild(car.transform,"hinge_door_R"):null; }
 
         /// <summary>Computes the exterior native door position used for boarding and dismounting.</summary>
         internal static Vector3 DoorOutside(GameObject car,Transform door)
@@ -326,7 +326,7 @@ namespace WildWasteland.Modules.Patrols
                 m.BoardKnown = true;
                 float exit = VehicleRules.ExitDistance(g.Car.name) + 0.75f;
                 Vector3 seat, world;
-                var rear = TemplateExporter.PrefabName(g.Car.name).Equals("Rustliner", System.StringComparison.OrdinalIgnoreCase) ? Patrol.FindChild(ct, "hinge_door_parent") : null;
+                var rear = Core.Names.Prefab(g.Car.name).Equals("Rustliner", System.StringComparison.OrdinalIgnoreCase) ? Patrol.FindChild(ct, "hinge_door_parent") : null;
                 if (m == g.DriverMember) seat = Patrol.DriverSeatPos(g.Car);
                 else if (m.Role == RolePassenger)
                 {
@@ -388,8 +388,8 @@ namespace WildWasteland.Modules.Patrols
             if (health > 0f) { Patrol.SetHealth(seated, health); seated.AddComponent<Patrol.LateHealth>().Value = health; }
             var merchantHealth=seated.GetComponent<MerchantGuardHealth>();if(merchantHealth!=null)merchantHealth.Saved=null;
             var body = m.Body;
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Return to car: " + body.name + " is back in " + car.name + (asDriver ? " at the wheel" : m.Role == RoleTurret ? " on turret " + (m.Slot + 1) : " in the passenger seat") + " as " + seated.name);
-            Register.RemoveTree(body); Object.Destroy(body);
+            if (Core.Log.L1) PatrolsModule.Verbose("Return to car: " + body.name + " is back in " + car.name + (asDriver ? " at the wheel" : m.Role == RoleTurret ? " on turret " + (m.Slot + 1) : " in the passenger seat") + " as " + seated.name);
+            Core.ItemSpawner.RemoveTree(body); Object.Destroy(body);
             m.Body = null; m.State = Aboard;
         }
 
@@ -399,10 +399,10 @@ namespace WildWasteland.Modules.Patrols
             bool alive = m.Body != null && (m.Health == null || m.Health.Value > 0f);
             m.State = Left;
             if (g.DriverMember == m) g.DriverMember = null;
-            if (Core.Log.Verbose && alive) PatrolsModule.Verbose("Return to car: " + m.Body.name + " does not get back into " + (g.Car != null ? g.Car.name : "the car") + " (" + why + ")");
+            if (Core.Log.L1 && alive) PatrolsModule.Verbose("Return to car: " + m.Body.name + " does not get back into " + (g.Car != null ? g.Car.name : "the car") + " (" + why + ")");
             if (!alive) return;
             ReleaseOrder(m.Body);
-            var api = Core.Services.Npc;
+            var api = Core.ModApi.Get<Core.INpcApi>();
             if (m.Arrived || m.OrderedAt > 0f) try { if (api != null) api.Travel(m.Body, null, 0f); } catch (System.Exception) { }
             if (m.Excluded) return;
             Strand(m.Body, m.Identity, g.Faction, g.Name);
@@ -426,7 +426,7 @@ namespace WildWasteland.Modules.Patrols
             // the self-destruct was skipped while the car was held (Explode.Eligible): an empty car that keeps nobody gets its roll now
             if (crew != null && !driver && g.Car != null && g.Marker != null && !g.Marker.Exploded && !Explode.IsWreck(g.Car)) Explode.Schedule(crew, g.Car, g.Marker, "its crew did not come back");
             if (finished && driver && g.Car != null && !string.IsNullOrEmpty(g.TrafficId)) WorldTraffic.Reattach(g.Car, g.TrafficId, g.TrafficSlot);
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Return to car: " + (g.Car != null ? g.Car.name : "car") + " regroup ended (" + why + ")" + (finished && driver ? ", driving on" : ""));
+            if (Core.Log.L1) PatrolsModule.Verbose("Return to car: " + (g.Car != null ? g.Car.name : "car") + " regroup ended (" + why + ")" + (finished && driver ? ", driving on" : ""));
         }
         /// <summary>Sets tle town for the current crew return.</summary>
         internal static void SettleTown(Crew crew)
@@ -441,14 +441,14 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Retains a surviving actor as a returning foot traveller after vehicle loss.</summary>
         private static void Strand(GameObject body, string identity, string faction, string name)
         {
-            if (body == null || !PatrolsModule.ConvoyEnabled.Value || !PatrolsModule.FootPatrols.Value || Core.Services.Npc == null) return;
+            if (body == null || !PatrolsModule.ConvoyEnabled.Value || !PatrolsModule.FootPatrols.Value || Core.ModApi.Get<Core.INpcApi>()== null) return;
             for (int i = 0; i < Stranded.Count; i++) if (ReferenceEquals(Stranded[i].Body, body)) return;
             Stranded.Add(new StrandedCrew { Body = body, Health = HealthVar(body), Identity = identity, Faction = TrafficFactions.Normalize(faction), Name = name });
         }
 
         /// <summary>Releases order for the current crew return.</summary>
         private static void ReleaseOrder(GameObject body)
-        { if(body!=null&&Core.Services.Npc!=null){Core.Services.Npc.CrewOrder(body,null,false);Core.Services.Npc.Travel(body,null,0f);} }
+        { if(body!=null&&Core.ModApi.Get<Core.INpcApi>()!=null){Core.ModApi.Get<Core.INpcApi>().CrewOrder(body,null,false);Core.ModApi.Get<Core.INpcApi>().Travel(body,null,0f);} }
 
         /// <summary>Resolves the existing native actor Health variable.</summary>
         internal static FsmFloat HealthVar(GameObject who)

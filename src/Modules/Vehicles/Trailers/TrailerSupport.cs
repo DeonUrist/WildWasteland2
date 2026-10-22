@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// Native trailers: a trailer is a separate saved vehicle whose ConfigurableJoint lives on the trailer, with the trailer's attacher and the
@@ -39,8 +39,6 @@ namespace WildWasteland.Modules.Patrols
         internal static GameObject Attached(GameObject car)
         {
             if (car == null) return null;
-            var marker = car.GetComponent<PatrolMarker>();   // refs-ok: REFACTOR-REQUEST B12-2 (IPatrols has no trailer-of-journey query)
-            if (marker != null && Connected(car, marker.Trailer)) return marker.Trailer;
             foreach (var f in car.GetComponents<PlayMakerFSM>())
             {
                 if (f == null || (f.FsmName != "TrailerAttach" && f.FsmName != "TrailerLoad")) continue;

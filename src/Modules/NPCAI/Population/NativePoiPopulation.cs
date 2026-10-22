@@ -4,9 +4,9 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.NPCAI;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // Native non-town POIs only; shares the interior population's lifecycle and native spawn sequence.
     internal static class NativePoiPopulation

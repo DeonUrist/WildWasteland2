@@ -1,5 +1,5 @@
 using UnityEngine;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Numeric polygon queries over the POI supplied town outline.</summary>
     internal sealed class TownOutline

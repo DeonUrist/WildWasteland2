@@ -48,9 +48,9 @@ namespace WildWasteland.Core
                 var open = ui != null ? ui.GetField("_open", BindingFlags.Instance | BindingFlags.NonPublic) : null;
                 if (toggle != null && toggle.ReturnType == typeof(void) && open != null && open.FieldType == typeof(bool))
                     Patches.Patch(null, toggle, prefix: Patches.Method(typeof(ApocasetterBridge), nameof(BeforeMenuToggle)));
-                else Log.Warn("Apocasetter bridge: loading menu guard unavailable; SettingsUI.Toggle/_open not found");
+                else Log.Warn(null,"Apocasetter bridge: loading menu guard unavailable; SettingsUI.Toggle/_open not found");
             }
-            catch (Exception e) { Log.Warn("Apocasetter bridge: " + e.Message); }
+            catch (Exception e) { Log.Warn(null,"Apocasetter bridge: " + e.Message); }
         }
 
         /// <summary>Whether the optional input-blocking API is available.</summary>
@@ -165,7 +165,7 @@ namespace WildWasteland.Core
             Resolve();
             if (_set == null) return false;
             try { _set.Invoke(null, new object[] { on }); return true; }
-            catch (Exception e) { Log.Warn("Apocasetter InputBlocker: " + e.Message); return false; }
+            catch (Exception e) { Log.Warn(null,"Apocasetter InputBlocker: " + e.Message); return false; }
         }
 
         /// <summary>The game's menu font as captured by Apocasetter (null until its MODS button was cloned). Polled lazily.</summary>

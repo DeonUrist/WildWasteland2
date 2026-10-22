@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.NPCAI;
 
 namespace WildWasteland.Modules.NPCAI
 {

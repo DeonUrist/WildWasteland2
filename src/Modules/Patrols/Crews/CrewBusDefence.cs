@@ -36,7 +36,7 @@ namespace WildWasteland.Modules.Patrols
             Attacked(part,attacker);
             if(crew.CombatEnemy==attacker)
             {
-                var api=Core.Services.Npc;
+                var api=Core.ModApi.Get<Core.INpcApi>();
                 if(api!=null){if(crew.Marker.Driver!=null)api.Remember(crew.Marker.Driver,attacker,15f);if(crew.Marker.Passenger!=null)api.Remember(crew.Marker.Passenger,attacker,15f);}
                 PatrolsModule.Verbose("Crew: vehicle part hit; defending against "+attacker.name);
             }
@@ -45,7 +45,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Finds bus threat for the current crew bus defence.</summary>
         private void FindBusThreat()
         {
-            if(Marker.Faction!="Coyotes"||Core.Services.Npc==null)return;
+            if(Marker.Faction!="Coyotes"||Core.ModApi.Get<Core.INpcApi>()==null)return;
             var current=CombatEnemy;
             if(current!=null&&(current.transform.position-transform.position).sqrMagnitude<=2500f)return;
             if(current!=null&&Time.time-_attackedAt<4f)return;
@@ -74,7 +74,7 @@ namespace WildWasteland.Modules.Patrols
         private void RepairWheels()
         {
             if(_damagedWheels.Count==0||Core.SaveBus.Busy||Marker.Faction!="Coyotes"||Explode.IsWreck(_car)||Time.time-_wheelHitAt<10f||_rb!=null&&_rb.velocity.sqrMagnitude>1f)return;
-            var player=PlayerRef.Player;if(player!=null&&(player.position-transform.position).sqrMagnitude<3600f)return;
+            var player=Core.PlayerState.Transform;if(player!=null&&(player.position-transform.position).sqrMagnitude<3600f)return;
             var enemy=CombatEnemy;if(enemy!=null&&(enemy.transform.position-transform.position).sqrMagnitude<=2500f)return;
             bool alive=DriverSeatedAlive;
             if(Regroup!=null)foreach(var member in Regroup.Members)if(member.Body!=null&&(member.Health==null||member.Health.Value>0f))alive=true;

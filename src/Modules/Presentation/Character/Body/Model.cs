@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Her body meshes (built once from the .glb against Flexa's 22-bone skeleton) and textures.
     //  Full    - everything (third person, the shadow)

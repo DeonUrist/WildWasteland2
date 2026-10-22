@@ -44,7 +44,7 @@ namespace WildWasteland.Modules.Debug
                 File.WriteAllText(path, sb.ToString());
                 return path;
             }
-            catch (Exception e) { Log.Error("[Performance] census", e); return null; }
+            catch (Exception e) { Log.Error(null,"[Performance] census", e); return null; }
         }
     }
 }

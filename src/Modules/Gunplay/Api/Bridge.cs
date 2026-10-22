@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>
     /// Calls into the other modules (was Integration.cs: AppDomain scan for NPCAI.Api / GunplayHUD.Api every 5 s + delegates).
@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.Guns
         /// <summary>NPC aim spread factor at a distance: NPCAI's when it runs, else the built-in +10 % per 5 m beyond 5 m.</summary>
         internal static float SpreadFactor(float distance)
         {
-            var npc = Services.Npc;
+            var npc = Core.ModApi.Get<Core.INpcApi>();
             if (npc != null)
             {
                 try { return npc.SpreadFactor(distance); }
@@ -27,30 +27,30 @@ namespace WildWasteland.Modules.Guns
         /// <summary>Old service path of a shot: combat activity for autosave and INpcApi.Shot (NPC hearing).</summary>
         internal static void Shot(GameObject shooter, Vector3 position, int kind, bool player)
         {
-            Services.ReportCombat();
-            var npc = Services.Npc; if (npc == null) return;
+            var combat=new Core.Events.CombatActivity { Actor=Core.EntityId.None,Kind=Core.Events.CombatActivityKind.Attack };Core.ModEvents.Publish(ref combat);
+            var npc = Core.ModApi.Get<Core.INpcApi>(); if (npc == null) return;
             try { npc.Shot(shooter, position, kind, player); } catch (Exception e) { GunplayLog.Warn("NPC shot: " + e.Message); }
         }
 
         /// <summary>Old service path of a hit on a creature: combat activity and INpcApi.Hurt.</summary>
         internal static void Hurt(GameObject victim, GameObject attacker)
         {
-            Services.ReportCombat();
-            var npc = Services.Npc; if (npc == null) return;
+            var combat=new Core.Events.CombatActivity { Actor=Core.EntityId.None,Kind=Core.Events.CombatActivityKind.Attack };Core.ModEvents.Publish(ref combat);
+            var npc = Core.ModApi.Get<Core.INpcApi>(); if (npc == null) return;
             try { npc.Hurt(victim, attacker); } catch (Exception e) { GunplayLog.Warn("NPC hurt: " + e.Message); }
         }
 
         /// <summary>Old service path of the player's hit feedback (IHitFeedback.PlayerHit).</summary>
         internal static void PlayerHit(GameObject target, Vector3 position, float damage, bool head)
         {
-            var hud = Services.Hud; if (hud == null) return;
+            var hud = Core.ModApi.Get<Core.IHitFeedback>(); if (hud == null) return;
             try { hud.PlayerHit(target, position, damage, head); } catch (Exception e) { GunplayLog.Warn("HUD hit: " + e.Message); }
         }
 
         /// <summary>Old service path of the player's vehicle-part hit feedback (IHitFeedback.PartHit).</summary>
         internal static void PartHit(GameObject target, Vector3 position, float damage)
         {
-            var hud = Services.Hud; if (hud == null) return;
+            var hud = Core.ModApi.Get<Core.IHitFeedback>(); if (hud == null) return;
             try { hud.PartHit(target, position, damage); } catch (Exception e) { GunplayLog.Warn("HUD part hit: " + e.Message); }
         }
     }

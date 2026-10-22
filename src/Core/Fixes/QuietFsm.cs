@@ -28,7 +28,7 @@ namespace WildWasteland.Core
             Patches.Patch(Owner, AccessTools.PropertyGetter(typeof(PlayMakerPrefs), "LogPerformanceWarnings"),
                 postfix: AccessTools.Method(typeof(QuietFsm), nameof(PerformanceWarnings)));
             var target = AccessTools.Method(typeof(HutongGames.PlayMaker.ActionHelpers), "GetGameObjectFsm", new[] { typeof(GameObject), typeof(string) });
-            if (target == null) { Log.Warn("[Core] QuietFsm: ActionHelpers.GetGameObjectFsm not found; missing-FSM warnings stay"); return; }
+            if (target == null) { Log.Warn(null,"[Core] QuietFsm: ActionHelpers.GetGameObjectFsm not found; missing-FSM warnings stay"); return; }
             Patches.Patch(Owner, target, prefix: AccessTools.Method(typeof(QuietFsm), nameof(Prefix)));
         }
 
@@ -48,7 +48,7 @@ namespace WildWasteland.Core
                 // vanilla falls back to go.GetComponent<PlayMakerFSM>() (the first FSM, or null) after the warning
                 __result = _buf.Count > 0 ? _buf[0] : null;
                 _buf.Clear();
-                if (++_hidden == 1 && Log.L1) Log.Info("[Core] QuietFsm: hiding \"Could not find FSM\" warnings (first: " + __1 + " on " + __0.name + ")");
+                if (++_hidden == 1 && Log.L1) Log.Main(null,"[Core] QuietFsm: hiding \"Could not find FSM\" warnings (first: " + __1 + " on " + __0.name + ")");
                 return false;
             }
             catch (Exception) { _buf.Clear(); return true; }

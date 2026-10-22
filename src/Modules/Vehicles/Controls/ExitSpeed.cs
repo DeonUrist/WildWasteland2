@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// Exit speed: the game lets the player leave a car only below 6 m/s (PlayerCamera [DriveUse] compares the car's speed against a literal 6
@@ -27,8 +27,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Old entry called from Patrols' Patrol.Tick; the Vehicles job "Vehicles.Exit speed" runs <see cref="Update"/> now.</summary>
-        [Obsolete("refactor: the Vehicles module runs the exit-speed rule itself (ExitSpeed.Update)")]
-        internal static void Tick() { }
+
 
         /// <summary>
         /// Interval job "Vehicles.Exit speed" (0.5 s, own 5 s throttle): finds the DriveUse FSM's 6 m/s compares once per player object and

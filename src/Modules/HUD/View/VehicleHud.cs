@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Draws the cockpit status icons.</summary>
         public static void Draw(bool ignitionOff, bool handbrakeOn, bool playing, string volume)
         {
-            var display = Core.Services.VehicleStatus;
+            var display = Core.ModApi.Get<Core.IVehicleStatusDisplay>();
             if (display != null && display.TryShow(ignitionOff, handbrakeOn, playing, volume)) return;
             if (!ignitionOff && !handbrakeOn && !playing) return;
             if (!_loaded)

@@ -7,7 +7,7 @@ namespace WildWasteland.Modules.Patrols
 {
     // Foot patrols ([Patrols] Foot patrols, world traffic on): 2-5 walkers on a TrafficJourney (foot = true, vehicles empty) between camps of one
     // faction, over the same land routes the cars use. Virtual (TrafficJourney.Advance) away from the player; within FootPatrolLoadRange they
-    // become real simple-bandit NPCs walked by Services.Npc.Travel along the route (journey.Follow the leader), and simulated again beyond
+    // become real simple-bandit NPCs walked by Core.ModApi.Get<Core.INpcApi>().Travel along the route (journey.Follow the leader), and simulated again beyond
     // FootPatrolUnloadRange. Real walkers are journey-owned: never in the native save lists (the journey is saved in the embedded traffic record).
     // At a loaded destination they become ordinary camp residents (natively saved); unloaded / virtual arrivals just end.
     // Crew left without a usable car (CrewReturn.Stranded) are wrapped into a foot journey to the nearest uncleared camp of their faction.
@@ -53,7 +53,7 @@ namespace WildWasteland.Modules.Patrols
         // a walker leaves the journey (released, hired, removed): its walk order goes with it
         /// <summary>a walker leaves the journey (released, hired, removed): its walk order goes with it</summary>
         private static void Unorder(GameObject body)
-        { var api = Core.Services.Npc; if (api != null && body != null) try { api.Travel(body, null, 0f); } catch (Exception) { } }
+        { var api = Core.ModApi.Get<Core.INpcApi>(); if (api != null && body != null) try { api.Travel(body, null, 0f); } catch (Exception) { } }
 
         // module shutdown: live walkers stay in the world as ordinary (natively saved) NPCs
         /// <summary>module shutdown: live walkers stay in the world as ordinary (natively saved) NPCs</summary>
@@ -62,7 +62,7 @@ namespace WildWasteland.Modules.Patrols
         private void ReleaseFoot(string why)
         {
             foreach (var fl in _footLive.Values)
-                for (int i = 0; i < MaxWalkers; i++) { var body = fl.Bodies[i]; if (body != null) { Register.Add(body, false); Unorder(body); fl.Bodies[i] = null; } }
+                for (int i = 0; i < MaxWalkers; i++) { var body = fl.Bodies[i]; if (body != null) { Core.ItemSpawner.AddExisting(body, false); Unorder(body); fl.Bodies[i] = null; } }
             if (_footLive.Count > 0) PatrolsModule.Verbose("Foot patrols: real walkers released to the world (" + why + ")");
             _footLive.Clear(); _footDeparture = null;
         }
@@ -99,23 +99,23 @@ namespace WildWasteland.Modules.Patrols
             FootLive fl;
             _footLive.TryGetValue(journey.id, out fl);
             if (fl != null) FootBodies(journey, fl);
-            if (!AnyWalker(journey)) { if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + ": everyone died"); Remove(journey); return; }
+            if (!AnyWalker(journey)) { if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + ": everyone died"); Remove(journey); return; }
             if (!journey.TerrainRoute) { if (fl != null) foreach (var body in fl.Bodies) Unorder(body); return; }
             if (!journey.arrived && !string.IsNullOrEmpty(journey.destination) && Cleared(journey.destination) && !FootRetarget(journey, fl != null)) return;
             if (fl == null)
             {
-                if (journey.arrived) { if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived while simulated; removed"); Remove(journey); return; }
+                if (journey.arrived) { if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived while simulated; removed"); Remove(journey); return; }
                 journey.Advance(seconds);
-                if (Core.Services.Npc != null && TrafficLocations.FlatDistance(journey.position, playerWorld) <= PatrolsModule.FootLoadRange.Value && !Convoy.AutosaveSoon(30f)
+                if (Core.ModApi.Get<Core.INpcApi>() != null && TrafficLocations.FlatDistance(journey.position, playerWorld) <= PatrolsModule.FootLoadRange.Value && !Convoy.AutosaveSoon(30f)
                     && (!TrafficFactions.PlayerHostile(journey.faction) || TrafficLocations.PatrolSpawnAllowed(journey.position)))
                 {
                     _footLive[journey.id] = new FootLive { NextOrder = Time.time + UnityEngine.Random.Range(0.5f, 1.5f) };
-                    if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + " materializes (" + journey.walkers.Length + " walkers, " + TrafficLocations.FlatDistance(journey.position, playerWorld).ToString("0") + " m away)");
+                    if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " materializes (" + journey.walkers.Length + " walkers, " + TrafficLocations.FlatDistance(journey.position, playerWorld).ToString("0") + " m away)");
                 }
                 return;
             }
             if (fl.Settle > 0) { if (Time.time >= fl.SettleAt) FootSettle(journey, fl); return; }
-            if (Core.Services.Npc == null)
+            if (Core.ModApi.Get<Core.INpcApi>()== null)
             {   // walkers near the player never vanish in front of him: they stay as ordinary (natively saved) NPCs
                 if (fl.MinDistance <= PatrolsModule.FootLoadRange.Value && FootLeader(journey) != null) { PatrolsModule.Verbose("Foot patrol " + journey.name + ": NPC module off, walkers released"); RemoveFoot(journey); }
                 else FootVirtualize(journey, fl, "NPC module off");
@@ -144,9 +144,9 @@ namespace WildWasteland.Modules.Patrols
                 if (!fl.Spawned[i] || w.dead) continue;
                 var body = fl.Bodies[i];
                 if (body == null || (fl.Health[i] != null && fl.Health[i].Value <= 0f))
-                { w.dead = true; w.health = 0f; fl.Bodies[i] = null; if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + ": walker " + (i + 1) + " (" + w.identity + ") died"); continue; }
+                { w.dead = true; w.health = 0f; fl.Bodies[i] = null; if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + ": walker " + (i + 1) + " (" + w.identity + ") died"); continue; }
                 if (body.transform.parent != null || QuestFollowers.IsHired(body))
-                { w.dead = true; fl.Bodies[i] = null; Register.Add(body, false); Unorder(body); PatrolsModule.Verbose("Foot patrol " + journey.name + ": walker " + body.name + " left the group"); }
+                { w.dead = true; fl.Bodies[i] = null; Core.ItemSpawner.AddExisting(body, false); Unorder(body); PatrolsModule.Verbose("Foot patrol " + journey.name + ": walker " + body.name + " left the group"); }
             }
         }
 
@@ -168,7 +168,7 @@ namespace WildWasteland.Modules.Patrols
         {
             var w = journey.walkers[i];
             var prefab = Prefabs.FindAny(w.identity);
-            if (prefab == null) { w.dead = true; fl.Spawned[i] = true; Core.Log.Warn("[Patrols] Foot patrol: walker prefab not found: " + w.identity); return; }
+            if (prefab == null) { w.dead = true; fl.Spawned[i] = true; Core.Log.Warn(null,"[Patrols] Foot patrol: walker prefab not found: " + w.identity); return; }
             float progress = RoadPath.Progress(journey.route, journey.leg, journey.position) - i * 2.5f;
             var dir = FootDirection(journey.route, progress);
             var world = RoadPath.Point(journey.route, progress) + Vector3.Cross(Vector3.up, dir) * (((i & 1) == 0 ? 1f : -1f) * 0.8f);
@@ -180,10 +180,10 @@ namespace WildWasteland.Modules.Patrols
             mob.SetActive(true);
             var col = mob.GetComponent<Collider>();
             if (col != null) mob.transform.position += Vector3.up * (ground.y + 0.15f - col.bounds.min.y);
-            Register.Name(mob, prefab.name); CrewLooks.Dress(mob, w.identity, false);
+            Core.ItemSpawner.Name(mob, prefab.name); CrewLooks.Dress(mob, w.identity, false);
             if (w.health > 0f) { Patrol.SetHealth(mob, w.health); mob.AddComponent<Patrol.LateHealth>().Value = w.health; }
             fl.Bodies[i] = mob; fl.Health[i] = CrewReturn.HealthVar(mob); fl.Spawned[i] = true; fl.Fails[i] = 0; fl.Ordered[i] = new Vector3(float.MaxValue, 0f, 0f);
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + ": walker " + mob.name + " spawned at " + mob.transform.position);
+            if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + ": walker " + mob.name + " spawned at " + mob.transform.position);
         }
 
         // 1 Hz: formation targets ahead along the route; the journey follows the leader. A leader that cannot get anywhere (Travel failed
@@ -191,7 +191,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>1 Hz: formation targets ahead along the route; the journey follows the leader. A leader that cannot get anywhere (Travel failed repeatedly) lets the journey advance virtually, and walkers out of the player's sight catch up by moving them.</summary>
         private void FootWalk(TrafficJourney journey, FootLive fl, Transform player)
         {
-            var api = Core.Services.Npc;
+            var api = Core.ModApi.Get<Core.INpcApi>();
             int leader = -1;
             for (int i = 0; i < MaxWalkers; i++) if (fl.Bodies[i] != null) { leader = i; break; }
             fl.MinDistance = float.MaxValue;
@@ -270,7 +270,7 @@ namespace WildWasteland.Modules.Patrols
                 fl.Bodies[i] = null; UnityEngine.Object.Destroy(body);
             }
             _footLive.Remove(journey.id);
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + " simulated again (" + why + ")");
+            if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " simulated again (" + why + ")");
             if (journey.arrived) Remove(journey);
         }
 
@@ -278,7 +278,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>arrival at a loaded camp: step 1 drops the simple-bandit / faction-actor components (ordinary NPC AI again)...</summary>
         private void FootBeginSettle(TrafficJourney journey, FootLive fl)
         {
-            var api = Core.Services.Npc;
+            var api = Core.ModApi.Get<Core.INpcApi>();
             for (int i = 0; i < MaxWalkers; i++)
             {
                 var body = fl.Bodies[i]; if (body == null) continue;
@@ -296,13 +296,13 @@ namespace WildWasteland.Modules.Patrols
         {
             TrafficBase camp;
             TrafficLocations.Known.TryGetValue(journey.destination ?? "", out camp);
-            var api = Core.Services.Npc;
+            var api = Core.ModApi.Get<Core.INpcApi>();
             int n = 0;
             for (int i = 0; i < MaxWalkers; i++)
             {
                 var body = fl.Bodies[i]; if (body == null) continue;
                 fl.Bodies[i] = null; n++;
-                Register.Add(body, false);
+                Core.ItemSpawner.AddExisting(body, false);
                 if (camp != null)
                 {
                     TrafficCamps.Bind(camp.id, body);
@@ -310,7 +310,7 @@ namespace WildWasteland.Modules.Patrols
                 }
             }
             _footLive.Remove(journey.id); _journeys.Remove(journey);
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived at " + (camp != null ? camp.name + " " + camp.id : "its camp") + ": " + n + " new resident(s)");
+            if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived at " + (camp != null ? camp.name + " " + camp.id : "its camp") + ": " + n + " new resident(s)");
         }
 
         /// <summary>Removes foot for the current traffic foot.</summary>
@@ -318,7 +318,7 @@ namespace WildWasteland.Modules.Patrols
         {
             FootLive fl;
             if (_footLive.TryGetValue(journey.id, out fl))
-                for (int i = 0; i < MaxWalkers; i++) { var body = fl.Bodies[i]; if (body != null) { fl.Bodies[i] = null; Register.Add(body, false); Unorder(body); } }   // never vanish in front of the player
+                for (int i = 0; i < MaxWalkers; i++) { var body = fl.Bodies[i]; if (body != null) { fl.Bodies[i] = null; Core.ItemSpawner.AddExisting(body, false); Unorder(body); } }   // never vanish in front of the player
             _footLive.Remove(journey.id);
             _journeys.Remove(journey);
         }
@@ -369,7 +369,7 @@ namespace WildWasteland.Modules.Patrols
             if (_settling.Count > 0) SettlingTick();
             var list = CrewReturn.Stranded;
             if (list.Count == 0) return;
-            var api = Core.Services.Npc;
+            var api = Core.ModApi.Get<Core.INpcApi>();
             if (!PatrolsModule.FootPatrols.Value || api == null) { list.Clear(); return; }   // they stay ordinary NPCs, saved natively
             float wait = PatrolsModule.StrandedIdleSeconds.Value;
             for (int i = list.Count - 1; i >= 0; i--)
@@ -402,7 +402,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Sets tling tick for the current traffic foot.</summary>
         private void SettlingTick()
         {
-            var api = Core.Services.Npc; float now = Time.time;
+            var api = Core.ModApi.Get<Core.INpcApi>(); float now = Time.time;
             for (int i = _settling.Count - 1; i >= 0; i--)
             {
                 var body = _settling[i];
@@ -419,25 +419,25 @@ namespace WildWasteland.Modules.Patrols
             var first = group[0];
             var start = TrafficSpace.World(first.Body.transform.position);
             var camp = NearestCamp(first.Faction, start, null);
-            if (camp == null) { if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrols: no " + first.Faction + " camp known; " + group.Count + " stranded crew stay where they are"); return; }
+            if (camp == null) { if (Core.Log.L1) PatrolsModule.Verbose("Foot patrols: no " + first.Faction + " camp known; " + group.Count + " stranded crew stay where they are"); return; }
             bool[] roads;
             var route = Core.RouteGeometry.Build(start, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, unchecked(first.Body.GetInstanceID() * 397), out roads);
             if (route == null || route.Length < 2) return;
             var walkers = new TrafficWalker[group.Count];
             var fl = new FootLive { NextOrder = Time.time + UnityEngine.Random.Range(0.2f, 1f) };
-            var api = Core.Services.Npc;
+            var api = Core.ModApi.Get<Core.INpcApi>();
             for (int k = 0; k < group.Count; k++)
             {
                 var s = group[k];
-                walkers[k] = new TrafficWalker { identity = string.IsNullOrEmpty(s.Identity) ? CrewLooks.Identity(s.Body, TemplateExporter.PrefabName(s.Body.name)) : s.Identity, health = s.Health != null ? s.Health.Value : -1f };
+                walkers[k] = new TrafficWalker { identity = string.IsNullOrEmpty(s.Identity) ? CrewLooks.Identity(s.Body, Core.Names.Prefab(s.Body.name)) : s.Identity, health = s.Health != null ? s.Health.Value : -1f };
                 fl.Bodies[k] = s.Body; fl.Health[k] = s.Health; fl.Spawned[k] = true; fl.Ordered[k] = new Vector3(float.MaxValue, 0f, 0f);
-                Register.RemoveTree(s.Body);   // journey-owned: the embedded traffic record saves them now
+                Core.ItemSpawner.RemoveTree(s.Body);   // journey-owned: the embedded traffic record saves them now
                 try { if (api != null) api.Travel(s.Body, null, 0f); } catch (Exception) { }
             }
             var journey = new TrafficJourney { id = Guid.NewGuid().ToString("N"), name = FootName(first.Faction, first.Name), faction = first.Faction, source = "", destination = camp.id,
                 foot = true, route = route, roadLegs = roads, leg = 1, position = route[0], speed = PatrolsModule.FootSpeed.Value, walkers = walkers, vehicles = NoVehicles };
             _journeys.Add(journey); _footLive[journey.id] = fl;
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrols: " + group.Count + " crew without a car (" + journey.name + ") walk to " + camp.name + " " + camp.id + ", " + TrafficLocations.FlatDistance(start, camp.apron).ToString("0") + " m");
+            if (Core.Log.L1) PatrolsModule.Verbose("Foot patrols: " + group.Count + " crew without a car (" + journey.name + ") walk to " + camp.name + " " + camp.id + ", " + TrafficLocations.FlatDistance(start, camp.apron).ToString("0") + " m");
         }
 
         // ------------------------------------------------------------ population (1 Hz, with the vehicle groups)
@@ -448,7 +448,7 @@ namespace WildWasteland.Modules.Patrols
         private void FootRetry(string why)
         {
             _nextFootRoll = Time.time + FootRetrySeconds;
-            if (Core.Log.Verbose && why != _footWhy) PatrolsModule.Verbose("Foot patrols: none can leave yet - " + why + " (retry in " + FootRetrySeconds.ToString("0") + " s)");
+            if (Core.Log.L1 && why != _footWhy) PatrolsModule.Verbose("Foot patrols: none can leave yet - " + why + " (retry in " + FootRetrySeconds.ToString("0") + " s)");
             _footWhy = why; _footStateCode = 6;
         }
         // diagnostics: every reason a foot patrol is not leaving is logged once when it changes (verbose only, no per-tick strings)
@@ -458,7 +458,7 @@ namespace WildWasteland.Modules.Patrols
         {
             if (code == _footStateCode) return;
             _footStateCode = code;
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrols: " + text);
+            if (Core.Log.L1) PatrolsModule.Verbose("Foot patrols: " + text);
         }
         // one MapMagic main tile ("chunk"); 5 km when the map is not known yet
         /// <summary>one MapMagic main tile ("chunk"); 5 km when the map is not known yet</summary>
@@ -474,7 +474,7 @@ namespace WildWasteland.Modules.Patrols
         private void PopulateFoot(Vector3 playerWorld)
         {
             if (!PatrolsModule.FootPatrols.Value) { _footDeparture = null; FootState(1, "off (Game > World > Foot patrols)"); return; }
-            if (Core.Services.Npc == null) { _footDeparture = null; FootState(2, "waiting - the NPC module is not running"); return; }
+            if (Core.ModApi.Get<Core.INpcApi>()== null) { _footDeparture = null; FootState(2, "waiting - the NPC module is not running"); return; }
             int count = 0;
             for (int i = 0; i < _journeys.Count; i++) if (_journeys[i].foot) count++;
             if (count >= PatrolsModule.FootMaxActive.Value) { _footDeparture = null; FootState(3, count + " active = FootPatrolMaxActive"); return; }
@@ -489,7 +489,7 @@ namespace WildWasteland.Modules.Patrols
                 }
                 _footDeparture = null;
                 var outward = pending.Job.Route; var back = pending.Back.Route;
-                if (outward == null || outward.Length < 2 || back == null || back.Length < 2 || Cleared(pending.Source.id) || TrafficLocations.FlatDistance(pending.Source.center, TrafficSpace.World(PlayerRef.Player != null ? PlayerRef.Player.position : Vector3.zero)) < PatrolsModule.FootMinSourceDistance.Value)
+                if (outward == null || outward.Length < 2 || back == null || back.Length < 2 || Cleared(pending.Source.id) || TrafficLocations.FlatDistance(pending.Source.center, TrafficSpace.World(Core.PlayerState.Transform != null ? Core.PlayerState.Transform.position : Vector3.zero)) < PatrolsModule.FootMinSourceDistance.Value)
                 { FootRetry(outward == null || outward.Length < 2 || back == null || back.Length < 2 ? "no land route " + pending.Source.name + " <-> " + pending.Point.name : "you came too close to the home camp, or it was cleared, while routing"); return; }
                 // one route: home camp -> far POI -> home camp (the roaming Coyote precedent: two planner jobs joined at the POI)
                 var route = new Vector3[outward.Length + back.Length - 1];
@@ -502,7 +502,7 @@ namespace WildWasteland.Modules.Patrols
                     speed = PatrolsModule.FootSpeed.Value, walkers = pending.Walkers, vehicles = NoVehicles };
                 _journeys.Add(journey);
                 _footStateCode = -1;
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + " (" + journey.walkers.Length + " walkers) leaves " + pending.Source.name + " for " + pending.Point.name + " (" +
+                if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " (" + journey.walkers.Length + " walkers) leaves " + pending.Source.name + " for " + pending.Point.name + " (" +
                     TrafficLocations.FlatDistance(pending.Source.apron, pending.Point.position).ToString("0") + " m) and back");
                 return;
             }
@@ -567,7 +567,7 @@ namespace WildWasteland.Modules.Patrols
             }
             if (targets.Count == 0) { FootRetry("no turn-around point within one chunk (" + longest.ToString("0") + " m) of " + source.name + " - POIs: " + TrafficLocations.Points.Count + " known, " + inCamp + " in camps, " + tooNear + " too near, " + tooFar + " too far"); return; }
             var point = targets[UnityEngine.Random.Range(0, targets.Count)];
-            if (Core.Log.Verbose && kind != "POI") PatrolsModule.Verbose("Foot patrols: no far POI from " + source.name + " (" + TrafficLocations.Points.Count + " known, " + inCamp + " in camps, " + tooNear + " too near, " + tooFar + " too far) - turns around at " + (kind == "camp" ? point.name : "open land"));
+            if (Core.Log.L1 && kind != "POI") PatrolsModule.Verbose("Foot patrols: no far POI from " + source.name + " (" + TrafficLocations.Points.Count + " known, " + inCamp + " in camps, " + tooNear + " too near, " + tooFar + " too far) - turns around at " + (kind == "camp" ? point.name : "open land"));
             var pool = CrewFactions.Travelers(faction);
             var walkers = new TrafficWalker[UnityEngine.Random.Range(2, MaxWalkers + 1)];
             for (int i = 0; i < walkers.Length; i++) walkers[i] = new TrafficWalker { identity = pool[UnityEngine.Random.Range(0, pool.Length)] };

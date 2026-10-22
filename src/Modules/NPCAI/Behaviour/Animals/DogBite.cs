@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // (1.8.0) Dogs bite properly. The game's dogs (Wild / Yard Hound, Grimhound, Nightwalker, Alpha Nightwalker) have only idle and run clips -
     // no bite - and their Movement FSM runs them at full speed the whole fight while the Attack FSM turns them slowly (SmoothLookAt 6): the

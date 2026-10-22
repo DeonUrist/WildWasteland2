@@ -1,5 +1,5 @@
 using WildWasteland.Core;
-using WildWasteland.Modules.PlayerBody;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.Presentation
 {

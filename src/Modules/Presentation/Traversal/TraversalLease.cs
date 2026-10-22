@@ -2,7 +2,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>One NPC's traversal lease handed out by <see cref="TraversalApi.Begin"/>: wraps the NPC traversal animation and publishes <see cref="TraversalEnded"/> on Dispose.</summary>
     internal sealed class TraversalLease : ITraversalLease

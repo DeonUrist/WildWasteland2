@@ -5,7 +5,7 @@ using System.Reflection;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Visual part of PassengerGuard: melee props hidden in place, aim point on the target's Head bone; Presentation part (Wave A split of Crews/Passenger.cs).</summary>
     internal partial class PassengerGuard

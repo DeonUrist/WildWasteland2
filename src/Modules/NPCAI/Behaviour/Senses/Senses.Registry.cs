@@ -12,7 +12,7 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Senses part: the agent registry: registration, faction enemies and relations, vanilla sensors, the player and his car, prefab names, shutdown and origin shift.</summary>
     internal static partial class Senses

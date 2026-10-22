@@ -4,7 +4,7 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // First-person aim down sights. Each gun's [AimDownSights] FSM moves the first-person gun between hip and sights with an iTweenMoveTo
     // (on anim / off anim) at speed 10 m/s with easeInQuad: over the ~0.1-0.2 m between the two spots that takes 1-2 frames, so it looks

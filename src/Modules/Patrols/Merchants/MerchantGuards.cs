@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.Patrols
         {
             yield return null;yield return null;
             var health=Patrol.GetHealth(gameObject);if(health<=0f)yield break;
-            var prefab=Prefabs.FindAny(TemplateExporter.PrefabName(gameObject.name.Replace("(Rider)","")));
+            var prefab=Prefabs.FindAny(Core.Names.Prefab(gameObject.name.Replace("(Rider)","")));
             Maximum=prefab!=null?Patrol.GetHealth(prefab):health;if(Maximum<=0f)Maximum=health;
             var value=Saved!=null?Mathf.Clamp(Saved.maxHealth>Maximum?Saved.health*Maximum/Saved.maxHealth:Saved.health,0f,Maximum):Mathf.Min(health,Maximum);
             Patrol.SetHealth(gameObject,value);
@@ -39,7 +39,7 @@ namespace WildWasteland.Modules.Patrols
             host.Data.turrets=Enumerable.Range(0,marker.Riders.Length).Select(slot=>
             {
                 var person=marker.Riders[slot];var anchor=marker.RiderAnchors[slot];var guard=person!=null?person.GetComponent<MerchantGuardHealth>():null;
-                return new MerchantTurret{slot=slot,prefab=person!=null?TemplateExporter.PrefabName(person.name.Replace("(Rider)","")):"",health=person!=null?Mathf.Max(0f,Patrol.GetHealth(person)):0f,
+                return new MerchantTurret{slot=slot,prefab=person!=null?Core.Names.Prefab(person.name.Replace("(Rider)","")):"",health=person!=null?Mathf.Max(0f,Patrol.GetHealth(person)):0f,
                     maxHealth=guard!=null?guard.Maximum:0f,position=anchor!=null?anchor.localPosition:Vector3.zero,standing=person!=null&&person.GetComponent<RiderGuard>()?.StandingPose==true};
             }).ToArray();
         }
@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.Patrols
         internal static void Restore(MerchantHost host)
         {
             if(host.Data.turrets==null)return;var marker=host.GetComponent<PatrolMarker>();if(marker==null)return;
-            foreach(var person in host.GetComponentsInChildren<Transform>(true).Where(t=>t.name.EndsWith("(Rider)")&&t.GetComponent<RiderGuard>()==null).ToArray()){Register.RemoveTree(person.gameObject);Object.Destroy(person.gameObject);}
+            foreach(var person in host.GetComponentsInChildren<Transform>(true).Where(t=>t.name.EndsWith("(Rider)")&&t.GetComponent<RiderGuard>()==null).ToArray()){Core.ItemSpawner.RemoveTree(person.gameObject);Object.Destroy(person.gameObject);}
             foreach(var saved in host.Data.turrets)
             {
                 if(saved==null||saved.slot<0||saved.slot>=marker.Riders.Length||saved.health<=0f||string.IsNullOrEmpty(saved.prefab)||marker.Riders[saved.slot]!=null)continue;

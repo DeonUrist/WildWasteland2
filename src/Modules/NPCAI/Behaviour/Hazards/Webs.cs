@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // (1.6.0, TEST) Spider webs drawn in code - no asset in the game is a web. A web is real web geometry built once into one static mesh
     // (one GameObject, one MeshRenderer, one draw call, nothing per frame): thin flat strands with a soft-edged thread texture (mipmapped, so

@@ -2,7 +2,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// WheelArms part (split from PlayerBody/Vehicles/WheelGripEditor.cs in Wave A): runtime helpers of the steering-wheel arm solver -

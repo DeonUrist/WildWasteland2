@@ -27,7 +27,7 @@ namespace WildWasteland.Modules.Patrols
                 var guard = rider != null ? rider.GetComponent<RiderGuard>() : null;
                 if (rider == null || anchor == null || guard == null || !guard.Mounted || Patrol.GetHealth(rider) == 0f) continue;
                 var p = anchor.localPosition;
-                result[i] = new PatrolRiderData { prefab = CrewLooks.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", ""))),
+                result[i] = new PatrolRiderData { prefab = CrewLooks.Identity(rider, Core.Names.Prefab(rider.name.Replace("(Rider)", ""))),
                     health = Patrol.GetHealth(rider), position = new[] { p.x, p.y, p.z }, standing = guard.StandingPose };
             }
             return result;
@@ -60,10 +60,10 @@ namespace WildWasteland.Modules.Patrols
             {
                 if (trailer == null || trailer.name != data.trailerName || !Core.ModApi.Get<Core.IVehicleAttachments>().IsTrailer(trailer)) continue;
                 try { Core.ModApi.Get<Core.IVehicleAttachments>().Connect(car, trailer, true); PatrolsModule.Verbose("Load hitch restored: " + car.name + " -> " + trailer.name + "; native poses retained"); }
-                catch (Exception e) { Core.Log.Warn("[Patrols] Saved hitch skipped for " + car.name + ": " + e.Message); }
+                catch (Exception e) { Core.Log.Warn(null,"[Patrols] Saved hitch skipped for " + car.name + ": " + e.Message); }
                 return;
             }
-            Core.Log.Warn("[Patrols] Saved trailer not found; nothing rebuilt: " + data.trailerName);
+            Core.Log.Warn(null,"[Patrols] Saved trailer not found; nothing rebuilt: " + data.trailerName);
         }
         /// <summary>Encodes the current record in its stable field order.</summary>
         internal static void Write(BinaryWriter writer, PatrolCarData[] cars)

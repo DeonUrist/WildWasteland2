@@ -2,7 +2,7 @@ using BepInEx.Configuration;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Every config entry of NPCAI navigation (README 6.2, D12 fresh start: new sections, no migration from the old [NPC / Nav] keys):

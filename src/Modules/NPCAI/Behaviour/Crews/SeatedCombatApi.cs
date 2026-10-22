@@ -1,7 +1,7 @@
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// ISeatedCombat provider (README 6.2/6.5, ex Patrols PassengerGuard driving): a passenger at a vehicle seat fights from it with its

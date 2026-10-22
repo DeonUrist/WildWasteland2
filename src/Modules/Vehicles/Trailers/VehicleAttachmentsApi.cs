@@ -1,7 +1,7 @@
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
-using WildWasteland.Modules.Patrols.WarRig;
+using WildWasteland.Modules.Vehicles;
+using WildWasteland.Modules.Vehicles.WarRig;
 namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>Owns native trailer discovery, attachment and rig cleanup operations.</summary>

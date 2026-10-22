@@ -50,7 +50,7 @@ namespace WildWasteland.Modules.Quests
             _saveOwner = owner;
             ModApi.Provide<IQuestFallbackData>(owner, this);
             I = this; logStarted = true; logged.Clear(); DataDir = owner.Dir; _generation++;
-            foreach (var file in QuestContent.Import(DataDir)) Core.Log.Always("[Quests] imported missing content: " + file);
+            foreach (var file in QuestContent.Import(DataDir)) Core.Log.Always(null,"[Quests] imported missing content: " + file);
             ApplyTakeoverSettings(); ApplyFactionSettings(); ParseGenTypes();
             Game.MinLiquidFraction = minLiquid.Value;
             factionsPath = Path.Combine(DataDir, "factions.txt");
@@ -63,19 +63,19 @@ namespace WildWasteland.Modules.Quests
             Core.Hooks.GetButtonUpUpdate.Prefix(owner, BlockButtonUp);
             Core.Hooks.GetMouseButtonDownUpdate.Prefix(owner, BlockMouse);
             Core.Hooks.MouseLookDo.Prefix(owner, BlockLook);
-            Core.Log.Always("[Quests] Conversation mouse-look guard installed.");
+            Core.Log.Always(null,"[Quests] Conversation mouse-look guard installed.");
             Hotkeys.Register(owner, logKey, ToggleJournal, CanJournal);
             Hotkeys.Register(owner, hiring.dismissKey, DismissFollower, CanDismiss);
             Hotkeys.Register(owner, QuestsModule.InteractKey, OpenInteraction, CanInteract);
             bridge.InstallOptional(owner);
-            Core.Log.Always("[Quests] Native Quests 1.8.2 ready: " + defs.Count + " authored quests; AQ1 / ApocalypterQuests retained; Talk optional.");
+            Core.Log.Always(null,"[Quests] Native Quests 1.8.2 ready: " + defs.Count + " authored quests; AQ1 / ApocalypterQuests retained; Talk optional.");
         }
         /// <summary>Quests warning (always written, rate-limited); replaces QuestLogger.LogWarning.</summary>
-        internal static void Warn(string text) { Core.Log.Warn("[Quests] " + text); }
+        internal static void Warn(string text) { Core.Log.Warn(null,"[Quests] " + text); }
         /// <summary>Quests level-1 line (written while the verbose level is 1 or more); replaces QuestLogger.LogInfo.</summary>
-        internal static void Info(string text) { Core.Log.Info("[Quests] " + text); }
+        internal static void Info(string text) { Core.Log.Main(null,"[Quests] " + text); }
         /// <summary>Quests error (always written, rate-limited); replaces QuestLogger.LogError.</summary>
-        internal static void Error(string text) { Core.Log.Error("[Quests] " + text); }
+        internal static void Error(string text) { Core.Log.Error(null,"[Quests] " + text); }
         /// <summary>Applies current faction, takeover and generation tuning.</summary>
         internal void ApplyConfig() { ApplyTakeoverSettings(); ApplyFactionSettings(); ParseGenTypes(); Game.MinLiquidFraction = minLiquid.Value; }
         /// <summary>Observes a native death action for quest objective accounting.</summary>
@@ -83,8 +83,8 @@ namespace WildWasteland.Modules.Quests
         {
             if (I == null || !I.ready || action.Fsm == null || action.Fsm.Name != "Health" || action.Fsm.ActiveStateName != "spawn") return;
             var go = action.Owner; if (go == null || go == GameRefs.Player) return;
-            string dead = action.storeObject != null && action.storeObject.Value != null ? Game.BaseName(action.storeObject.Value.name) : "";
-            I.OnEnemyKilled(Game.BaseName(go.name), dead, go.transform.position, go.tag, go);
+            string dead = action.storeObject != null && action.storeObject.Value != null ? Core.Names.Base(action.storeObject.Value.name) : "";
+            I.OnEnemyKilled(Core.Names.Base(go.name), dead, go.transform.position, go.tag, go);
         }
         /// <summary>Blocks native button-down actions while the quest conversation owns input.</summary>
         static bool BlockButtonDown(GetButtonDown action) { return I == null || !I.bridge.NativeOpen; }
@@ -127,8 +127,8 @@ namespace WildWasteland.Modules.Quests
                 if (resume && book.Deserialize(_resumeText)) { RestoreBook(); CrewHistory.Restore(_resumeCrew); saveBlocked = false; }
                 else if (!_newWorld) LoadBook(); else { saveBlocked = false; book.Clear(); }
                 _resumeText = _resumeSlot = null; _resumeCrew = null;
-                _newWorld = false; RefreshLines(Game.Player()); SnapshotRows();
-                Core.Log.Always("[Quests] World ready: " + _sessionSlot + ", " + book.Active.Count + " active quests" + (saveBlocked ? "; unreadable data protected" : ""));
+                _newWorld = false; RefreshLines(Core.PlayerState.Transform); SnapshotRows();
+                Core.Log.Always(null,"[Quests] World ready: " + _sessionSlot + ", " + book.Active.Count + " active quests" + (saveBlocked ? "; unreadable data protected" : ""));
             }
             // Capture before native serialization; the shared transaction verifies both keys before publication.
             if (state == "SaveGame" && ready && _sessionSlot == SaveBus.Slot)
@@ -166,9 +166,9 @@ namespace WildWasteland.Modules.Quests
                 var go = f.gameObject;
                 if (returning && go.name != q.GiverId) continue;
                 var hp = f.FsmVariables.GetFsmFloat("Health"); if (hp == null || hp.Value <= 0) continue;
-                if (Game.HDist(f.transform.position, position) > radius || Game.IsPlayerEnemy(go) || !Person(Game.BaseName(go.name))) continue;
-                if (!Factions.Friendly(Factions.ByKey(q.Home), Factions.OfObject(go.tag, Game.BaseName(go.name), go.transform.position))) continue;
-                if (returning) q.GiverPos = Game.Rel(f.transform.position);
+                if (Core.WorldGeometry.HorizontalDistance(f.transform.position, position) > radius || Game.IsPlayerEnemy(go) || !Person(Core.Names.Base(go.name))) continue;
+                if (!Factions.Friendly(Factions.ByKey(q.Home), Factions.OfObject(go.tag, Core.Names.Base(go.name), go.transform.position))) continue;
+                if (returning) q.GiverPos = Core.Origin.World(f.transform.position);
                 return true;
             }
             return false;

@@ -37,7 +37,7 @@ namespace WildWasteland.Modules.HUD
             _sample = 0;
             float elevation = Mathf.Max(_height - _lowest, _origin.y - _height - 3f);
             float scale = 1f + Mathf.Clamp(elevation / 150f, 0f, 2f);
-            if (Core.Log.Verbose && Mathf.Abs(scale - _scale) > .05f) Core.Log.Info("[CleanHUD] Vantage discovery: elevation " + elevation.ToString("0") + " m, range " + scale.ToString("0.00") + "x");
+            if (Core.Log.L1 && Mathf.Abs(scale - _scale) > .05f) Core.Log.Main(null,"[CleanHUD] Vantage discovery: elevation " + elevation.ToString("0") + " m, range " + scale.ToString("0.00") + "x");
             _scale = scale;
         }
         /// <summary>Tests the elevated sight discovery.</summary>
@@ -45,7 +45,7 @@ namespace WildWasteland.Modules.HUD
         {
             var camera = GameRefs.MainCamera;
             if (_scale <= 1.05f || root == null || camera == null || !GameRefs.InGame || SaveBus.Busy) return false;
-            if (Services.Map != null && Services.Map.Open) return false;
+            if (Core.ModApi.Get<Core.IMapMarkers>() != null && Core.ModApi.Get<Core.IMapMarkers>().Open) return false;
             var origin = camera.transform.position; var delta = root.position + Vector3.up * 2f - origin;
             float distance = delta.magnitude;
             if (distance < .01f || distance > MapFog.RevealRadius) return false;

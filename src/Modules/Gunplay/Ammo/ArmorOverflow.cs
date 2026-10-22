@@ -6,7 +6,7 @@ using HutongGames.PlayMaker.Actions;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Armor overflow: a smaller body armor no longer deletes armor; the excess drops as plates (one per 50 points).</summary>
     internal static class ArmorOverflow

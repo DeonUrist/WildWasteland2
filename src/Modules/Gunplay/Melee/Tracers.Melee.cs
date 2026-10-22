@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Melee (Wave A split of Tracers.cs, B09): blood on corpses, blade stab sound, melee damage on wheels and fitted wheels.</summary>
     internal static partial class Tracers
@@ -271,7 +271,7 @@ namespace WildWasteland.Modules.Guns
             }
             if (wheel == null) return;
             _wDone = true;
-            Core.Services.RaiseVehiclePartHit(wheel.gameObject, Core.GameRefs.Player);
+            { var observed=new Core.Events.PartAttackObserved { Part=Core.Entities.Of(wheel.gameObject),Attacker=Core.Entities.Of(Core.GameRefs.Player) };Core.ModEvents.Publish(ref observed); }
             float mult = Mathf.Max(0f, GunplaySettings.WheelDamageMultiplier.Value);
             float before = PartCondition(wheel);
             foreach (var f in wheel.GetComponents<PlayMakerFSM>())

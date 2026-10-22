@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.Patrols
         internal static int Available(string id)
         {
             if(!PatrolsModule.CarSpawnLimit.Value)return int.MaxValue;
-            int total=0,own=0;bool other=false;var player=PlayerRef.Player;
+            int total=0,own=0;bool other=false;var player=Core.PlayerState.Transform;
             foreach(var tag in Cars)
             {
                 if(tag==null||tag.Building)continue;

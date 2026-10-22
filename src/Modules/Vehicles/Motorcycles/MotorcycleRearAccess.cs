@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>Saved component on motorcycle chassis: Easy Save can restore old collider-enabled values after instantiating the corrected prefab, so the rear trim is re-applied.</summary>
     internal sealed class MotorcycleRearAccess : MonoBehaviour

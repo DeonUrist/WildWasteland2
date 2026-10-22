@@ -10,7 +10,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.HUD
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// Apocapocket (com.denis.apocalypter.apocapocket) slot reader serving the HUD and the <see cref="IInventorySlots"/> provider: the

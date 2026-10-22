@@ -1,6 +1,6 @@
 using System;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // 2.1.1: the DECISIONS of the Mixamo locomotion, with no Unity types, so tools/locotest can run every weapon x every position outside the
     // game and the offline pose check (tools/locotest/check.py) can draw and measure what she would do. Loco.cs applies them to the playables.

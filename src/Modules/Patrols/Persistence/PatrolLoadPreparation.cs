@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.Patrols
             { Prefabs.Refresh(); VehiclePreparation.WarmPark();  }
             if (state == "isPlay")
             {
-                if (_loading) Core.Log.Always("[Patrols] Load handoff ready: vehicle builds cached, saved patrol AI prepared; native vehicle/item deltas retained.");
+                if (_loading) Core.Log.Always(null,"[Patrols] Load handoff ready: vehicle builds cached, saved patrol AI prepared; native vehicle/item deltas retained.");
                 _loading = false;
             }
         }

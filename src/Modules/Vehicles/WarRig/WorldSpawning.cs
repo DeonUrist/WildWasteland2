@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>War Rig placement (Vehicles part; the natural-rig map notice is POI's WorldSpawning.Notice.cs): full-footprint clearance test and template identity.</summary>
     internal static partial class WorldSpawning

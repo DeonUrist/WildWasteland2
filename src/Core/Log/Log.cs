@@ -27,12 +27,7 @@ namespace WildWasteland.Core
         public static bool L2 { get { return Level >= 2; } }
 
         /// <summary>Old global verbose switch: true while <see cref="Level"/> is 1 or higher. Setting true raises the level to 1, false sets 0.</summary>
-        [Obsolete("refactor: use Log.L1 / Log.Level")]
-        public static bool Verbose
-        {
-            get { return Level >= 1; }
-            set { Level = value ? Math.Max(Level, 1) : 0; }
-        }
+
 
         static readonly Dictionary<string, int> _counts = new Dictionary<string, int>();
         static readonly Dictionary<IModule, string> _prefixes = new Dictionary<IModule, string>();
@@ -84,24 +79,19 @@ namespace WildWasteland.Core
         // ------------------------------------------------------------------ old API (callers prefix "[Id] " themselves)
 
         /// <summary>Old level-1 info line; the caller already prefixed it.</summary>
-        [Obsolete("refactor: use Log.Main(owner, ...) behind Log.L1")]
-        public static void Info(string msg) { if (Level >= 1) Write(LogLevel.Info, msg); }
+
 
         /// <summary>Old always-written line; the caller already prefixed it.</summary>
-        [Obsolete("refactor: use Log.Always(owner, msg)")]
-        public static void Always(string msg) { Write(LogLevel.Info, msg); }
+
 
         /// <summary>Old rate-limited warning; the caller already prefixed it.</summary>
-        [Obsolete("refactor: use Log.Warn(owner, msg)")]
-        public static void Warn(string msg) { if (Allow(msg)) Write(LogLevel.Warning, msg); }
+
 
         /// <summary>Old rate-limited error; the caller already prefixed it. No longer fails a running save (README 9).</summary>
-        [Obsolete("refactor: use Log.Error(owner, msg)")]
-        public static void Error(string msg) { if (Allow(msg)) Write(LogLevel.Error, msg); }
+
 
         /// <summary>Old rate-limited error with exception; the caller already prefixed it. No longer fails a running save (README 9).</summary>
-        [Obsolete("refactor: use Log.Error(owner, msg, e)")]
-        public static void Error(string msg, Exception e) { if (Allow(msg)) Write(LogLevel.Error, msg + ": " + e); }
+
 
         // ------------------------------------------------------------------ internals
 

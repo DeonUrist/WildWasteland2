@@ -16,8 +16,8 @@ namespace WildWasteland.Modules.HUD
             MessageHook.Push(text); return true;
         }
         /// <summary>Installs the quest notification provider.</summary>
-        internal static void Install(HudModule owner) { Services.QuestUi = new QuestNotifications(); }
+        internal static void Install(HudModule owner) { Core.ModApi.Provide<IQuestPresentation>(owner,new QuestNotifications()); }
         /// <summary>Clears transient quest notification provider state so the next scene or session starts cleanly.</summary>
-        internal static void Clear() { if (Services.QuestUi is QuestNotifications) Services.QuestUi = null; }
+        internal static void Clear() { if (Core.ModApi.Get<Core.IQuestPresentation>() is QuestNotifications) Core.ModApi.Withdraw<IQuestPresentation>(Core.ModApi.OwnerOf<IQuestPresentation>()); }
     }
 }

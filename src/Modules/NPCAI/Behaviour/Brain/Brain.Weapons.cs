@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     internal static partial class Brain
     {

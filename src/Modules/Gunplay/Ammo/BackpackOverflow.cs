@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// Preserve ammo before the vanilla per-frame clamp discards it after a capacity reduction.
     internal static class BackpackOverflow

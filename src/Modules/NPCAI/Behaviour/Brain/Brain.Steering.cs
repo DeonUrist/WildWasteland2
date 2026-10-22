@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Brain part: steering - walking a map route and the feeler fan, corner scouting, blocked and stuck handling, hops.</summary>
     internal static partial class Brain

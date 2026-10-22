@@ -78,7 +78,7 @@ namespace WildWasteland.Core
             if (h == null) return;
             foreach (Action<Type> d in h.GetInvocationList())
             {
-                try { d(contract); } catch (Exception e) { Log.Error("[Core] ModApi.Changed handler " + d.Method.Name, e); }
+                try { d(contract); } catch (Exception e) { Log.Error(null,"[Core] ModApi.Changed handler " + d.Method.Name, e); }
             }
         }
 

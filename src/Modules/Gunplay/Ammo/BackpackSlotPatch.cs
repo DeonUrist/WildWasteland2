@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Harmony patch class: FsmState.OnEnter postfix (backpack slot emptied).</summary>
     [HarmonyPatch(typeof(FsmState), "OnEnter")]

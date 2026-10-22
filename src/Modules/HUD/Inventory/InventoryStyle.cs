@@ -82,8 +82,8 @@ namespace WildWasteland.Modules.HUD
                 if (_raycaster == null) { _raycaster = _canvas.gameObject.AddComponent<GraphicRaycaster>(); _addedRaycaster = true; }
                 _raycasterOn = _raycaster.enabled; _raycaster.enabled = true;
                 _view.gameObject.SetActive(true);
-                if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Inventory opened: native data, F3 modal input");
-                if (Core.Log.Verbose && ApocasetterBridge.InputBlocked) Core.Log.Info("[CleanHUD] Inventory: equipment pointer owns hover/click while Apocasetter blocks native UI");
+                if (Core.Log.L1) Core.Log.Main(null,"[CleanHUD] Inventory opened: native data, F3 modal input");
+                if (Core.Log.L1 && ApocasetterBridge.InputBlocked) Core.Log.Main(null,"[CleanHUD] Inventory: equipment pointer owns hover/click while Apocasetter blocks native UI");
             }
             Session.Maintain(); Menu.BlockCancelFrame = Time.frameCount + 2;
             if (Application.isFocused && Time.frameCount > _openedFrame && (Pressed(_key != null ? _key.Key : KeyCode.Tab)
@@ -292,7 +292,7 @@ namespace WildWasteland.Modules.HUD
             if (_events != null) _events.enabled = _eventsOn;
             if (_raycaster != null) _raycaster.enabled = _raycasterOn;
             Session.Close();
-            if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Inventory closed");
+            if (Core.Log.L1) Core.Log.Main(null,"[CleanHUD] Inventory closed");
         }
         /// <summary>Restores the inventory styling.</summary>
         internal static void Restore()

@@ -115,7 +115,7 @@ namespace WildWasteland.Core
             catch (Exception e)
             {
                 foreach (var item in items) { registry.arrayList.Remove(item); UnityEngine.Object.Destroy(item); }
-                UnityEngine.Object.Destroy(staging); Log.Warn("[Inventory] Inventory drop retained supplies: " + e.Message); return false;
+                UnityEngine.Object.Destroy(staging); Log.Warn(null,"[Inventory] Inventory drop retained supplies: " + e.Message); return false;
             }
             count.Value -= quantity;
             if (medical != null)
@@ -130,7 +130,7 @@ namespace WildWasteland.Core
                 var body = item.GetComponent<Rigidbody>(); if (body != null) { body.isKinematic = false; body.useGravity = true; body.velocity = forward; }
             }
             UnityEngine.Object.Destroy(staging);
-            if (Log.Verbose) Log.Info("[Inventory] Inventory dropped " + quantity + " x " + Keys[kind] + " through native local creation");
+            if (Log.L1) Log.Main(null,"[Inventory] Inventory dropped " + quantity + " x " + Keys[kind] + " through native local creation");
             return true;
         }
     }

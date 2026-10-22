@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.Presentation
         {
             try{var values=(text??"").Split(',');if(values.Length!=3)return fallback;return new Vector3(float.Parse(values[0],System.Globalization.CultureInfo.InvariantCulture),float.Parse(values[1],System.Globalization.CultureInfo.InvariantCulture),float.Parse(values[2],System.Globalization.CultureInfo.InvariantCulture));}catch{return fallback;}
         }
-        // the player animation framework's humanoid clips (WW: Core.Services.Animation.GetClip, ex reflection on Apocaplayer.Anims.Get)
+        // the player animation framework's humanoid clips (WW: Core.ModApi.Get<Core.IAnimationApi>().GetClip, ex reflection on Apocaplayer.Anims.Get)
         // - null without the provider (PlayerBody off) or the clip
         /// <summary>A humanoid clip of the animation service, or null without the provider or the clip.</summary>
         internal static AnimationClip Clip(string name) { return PlayerAnims.Clip(name); }

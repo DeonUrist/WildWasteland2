@@ -92,7 +92,7 @@ namespace WildWasteland.Modules.Tools
                 if (_mutation != null) { var action = _mutation; _mutation = null; action(); }
                 if (_dirty) { PatrolEditor.Save(); _dirty = false; }
             }
-            catch (Exception e) { _mutation = null; _dirty = false; _status = e.Message; Core.Log.Error("[Patrols] " + "Editor operation: " + e); }
+            catch (Exception e) { _mutation = null; _dirty = false; _status = e.Message; Core.Log.Error(null,"[Patrols] " + "Editor operation: " + e); }
         }
         /// <summary>Releases the authoring session and closes modal and dropdown state.</summary>
         private void Schedule(Action action) { Close(); _afterClose = action; _spawnNotBefore = Time.frameCount + 2; _spawnGeneration = EditorSession.Generation; }

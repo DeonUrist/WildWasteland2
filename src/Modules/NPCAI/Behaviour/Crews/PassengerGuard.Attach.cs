@@ -5,7 +5,7 @@ using System.Reflection;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Crew orchestration of PassengerGuard: attach as passenger, turret gunner or burst-firing driver; Patrols part (Wave A split of Crews/Passenger.cs).</summary>
     internal partial class PassengerGuard

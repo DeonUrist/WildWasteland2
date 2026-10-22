@@ -66,7 +66,7 @@ namespace WildWasteland.Core
             catch (Exception e)
             {
                 Note(owner, null, patchClass.FullName, "attr", false, e.Message);
-                Log.Error("[" + owner + "] patch class " + patchClass.FullName + " failed", e);
+                Log.Error(null,"[" + owner + "] patch class " + patchClass.FullName + " failed", e);
                 return -1;
             }
         }
@@ -78,7 +78,7 @@ namespace WildWasteland.Core
             if (original == null)
             {
                 Note(owner, null, "(null target)", "?", false, "target method not found");
-                Log.Warn("[" + owner + "] patch target not found (" + Name(prefix ?? postfix ?? finalizer) + ")");
+                Log.Warn(null,"[" + owner + "] patch target not found (" + Name(prefix ?? postfix ?? finalizer) + ")");
                 return false;
             }
             try
@@ -97,7 +97,7 @@ namespace WildWasteland.Core
             catch (Exception e)
             {
                 Note(owner, original, Name(prefix ?? postfix ?? finalizer ?? transpiler), "manual", false, e.Message);
-                Log.Error("[" + owner + "] patch of " + Describe(original) + " failed", e);
+                Log.Error(null,"[" + owner + "] patch of " + Describe(original) + " failed", e);
                 return false;
             }
         }
@@ -121,7 +121,7 @@ namespace WildWasteland.Core
             string id = Plugin.GUID + "." + m.Id;
             Harmony h;
             if (!_instances.TryGetValue(id, out h)) return;
-            try { h.UnpatchSelf(); } catch (Exception e) { Log.Error("[" + m.Id + "] unpatch failed", e); }
+            try { h.UnpatchSelf(); } catch (Exception e) { Log.Error(null,"[" + m.Id + "] unpatch failed", e); }
             for (int i = _records.Count - 1; i >= 0; i--) if (_records[i].Owner == m.Id) _records.RemoveAt(i);
             var dead = new List<string>();
             foreach (var kv in _owners) if (kv.Value == m.Id) dead.Add(kv.Key);
@@ -182,7 +182,7 @@ namespace WildWasteland.Core
             if (_owners.TryGetValue(key, out other) && other != owner)
             {
                 Conflicts++;
-                Log.Error("[Patches] CONFLICT: " + owner + " and " + other + " both " + kind + " " + t + " directly; use a Hooks dispatcher (AGENTS.md 5.6)");
+                Log.Error(null,"[Patches] CONFLICT: " + owner + " and " + other + " both " + kind + " " + t + " directly; use a Hooks dispatcher (AGENTS.md 5.6)");
             }
             else _owners[key] = owner;
         }

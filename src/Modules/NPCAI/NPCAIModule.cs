@@ -6,10 +6,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WildWasteland.Modules.Guns;
-using WildWasteland.Modules.NPC;
-using WildWasteland.Modules.Patrols;
-using WildWasteland.Modules.Quests;
+using WildWasteland.Modules.NPCAI;
 
 
 namespace WildWasteland.Modules.NPCAI
@@ -66,8 +63,8 @@ namespace WildWasteland.Modules.NPCAI
             NpcaiRuntime.DataDir = Assets.ModuleConfigDir(Id);
             ResetAll();                                    // re-runnable after Shutdown: every registry starts empty
 
-            Services.CrewBailedOut += OnCrewBailedOut;     // ex Senses.HookApocapatrol (Harmony on Apocapatrol.Patrol.BailOut / Explode.Blast)
-            Services.VehicleExploded += OnVehicleExploded;
+            ModEvents.Subscribe<Core.Events.CrewBailedOut>(this,OnCrewBailedOut);     // ex Senses.HookApocapatrol (Harmony on Apocapatrol.Patrol.BailOut / Explode.Blast)
+            ModEvents.Subscribe<Core.Events.VehicleExploded>(this,OnVehicleExploded);
             SaveBus.StateChanged += Senses.OnSaveLoadState;   // ex Senses.Persist.Tick polling the SaveLoadGame FSM
             _subscribed = true;
 
@@ -119,8 +116,8 @@ namespace WildWasteland.Modules.NPCAI
 
             if (_subscribed)
             {
-                Services.CrewBailedOut -= OnCrewBailedOut;
-                Services.VehicleExploded -= OnVehicleExploded;
+                ModEvents.Unsubscribe<Core.Events.CrewBailedOut>(this,OnCrewBailedOut);
+                ModEvents.Unsubscribe<Core.Events.VehicleExploded>(this,OnVehicleExploded);
                 SaveBus.StateChanged -= Senses.OnSaveLoadState;
                 _subscribed = false;
             }
@@ -207,9 +204,9 @@ namespace WildWasteland.Modules.NPCAI
         static void ShiftWebs() { Webs.Shift(_shift); }
 
         /// <summary>Old Patrols event (CrewBailedOut): the crew keeps what its car knew.</summary>
-        static void OnCrewBailedOut(GameObject car, GameObject pax, GameObject npc) { if (NpcaiRuntime.Running) Senses.AfterBailOut(car, pax, npc); }
+        static void OnCrewBailedOut(ref Core.Events.CrewBailedOut evt) { var car=Entities.Find(evt.Vehicle);var pax=Entities.Find(evt.Passenger);var npc=Entities.Find(evt.Npc); if (NpcaiRuntime.Running) Senses.AfterBailOut(car, pax, npc); }
         /// <summary>Old Patrols event (VehicleExploded): the blast is heard.</summary>
-        static void OnVehicleExploded(GameObject car) { if (NpcaiRuntime.Running) Senses.AfterBlast(car); }
+        static void OnVehicleExploded(ref Core.Events.VehicleExploded evt) { var car=Entities.Find(evt.Vehicle); if (NpcaiRuntime.Running) Senses.AfterBlast(car); }
 
         /// <summary>Core.Hooks subscriptions; per dispatcher the subscriber order is the old one.</summary>
         void InstallHooks()
@@ -265,6 +262,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Registers ModAPI providers: the NPC API, the private diagnostics source for Debug, then the Navigation part.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<INpcFear>(this,new NpcFear());
             ModApi.Provide<INpcShotPolicy>(this,new NpcShotPolicy());
             ModApi.Provide<ICanineBehaviour>(this,CanineBehaviour.Instance);
             ModApi.Provide<INativePopulation>(this,new NativePopulationApi());

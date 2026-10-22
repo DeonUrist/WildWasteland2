@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "deployed_dll": "E:\\SteamLibrary\\steamapps\\common\\Apocalypter\\BepInEx\\plugins\\WildWasteland\\WildWasteland.dll",
+  "md5": "D1ABF39E5587707D797ADB1422A5A24D",
+  "runtime_assets": 535,
+  "all_asset_bytes_match": true,
+  "backup": "V:\\Repos\\Apocalypter\\_releases\\WW2-clean-setup-20261023_011559",
+  "settings": "WW config and native save settings reset; defaults regenerate on launch",
+  "saves": "Existing saves, old metadata sidecars and recovery folders archived outside active save root",
+  "game_launched": false,
+  "package": "V:\\Repos\\Apocalypter\\_releases\\WildWasteland-2.0.0_20261023_011653.zip"
+}

@@ -68,7 +68,7 @@ namespace WildWasteland.Modules.Quests
                     foreach (string part in (reloadSoundFrom.Value ?? "").Split(','))
                     {
                         string[] kv = part.Split('=');
-                        if (kv.Length == 2 && kv[0].Trim().Length > 0 && Game.BaseName(npc.name).IndexOf(kv[0].Trim(), StringComparison.OrdinalIgnoreCase) >= 0) want = kv[1].Trim();
+                        if (kv.Length == 2 && kv[0].Trim().Length > 0 && Core.Names.Base(npc.name).IndexOf(kv[0].Trim(), StringComparison.OrdinalIgnoreCase) >= 0) want = kv[1].Trim();
                     }
                     if (want.Length > 0) { best = rack.Find(want); viaFallback = best != null; }
                 }
@@ -249,7 +249,7 @@ namespace WildWasteland.Modules.Quests
             Camera cam = GameRefs.MainCamera;
             if (cam != null) arm = FindDeep(cam.transform, "WeaponsArm");
             if (arm == null) { GameObject g = GameRefs.PlayerCameraHolder != null ? GameRefs.PlayerCameraHolder : null; if (g != null) arm = g.transform; }
-            if (arm == null) { Transform pl = Game.Player(); if (pl != null) arm = FindDeep(pl, "WeaponsArm") ?? FindDeep(pl.root, "WeaponsArm"); }
+            if (arm == null) { Transform pl = Core.PlayerState.Transform; if (pl != null) arm = FindDeep(pl, "WeaponsArm") ?? FindDeep(pl.root, "WeaponsArm"); }
             Transform rack = arm != null ? (arm.Find("Parent") ?? FindDeep(arm, "Parent")) : null;
             if (rack != null) rackCache = rack;
             return rack;
@@ -353,7 +353,7 @@ namespace WildWasteland.Modules.Quests
             try
             {
                 bool can;
-                can = Services.FollowerVehicles != null && Services.FollowerVehicles.CanFire(npc);   // the gunner did not take him as ranged: the mod judges range itself
+                can = Core.ModApi.Get<Core.IFollowerVehicles>() != null && Core.ModApi.Get<Core.IFollowerVehicles>().CanFire(npc);   // the gunner did not take him as ranged: the mod judges range itself
                 if (!can) return;
                 nextShot = now + Mathf.Max(0.2f, shotInterval.Value) * UnityEngine.Random.Range(0.8f, 1.2f);
                 PlayMakerFSM hf = FindFsm(target, "Health");
@@ -396,7 +396,7 @@ namespace WildWasteland.Modules.Quests
             magSize = 0; reloadSecs = 3f;
             ScanParts();
             if (magSize <= 0 && prevMag > 0) { magSize = prevMag; reloadSecs = prevReload; }   // could not read his gun this time: keep what he had
-            string bn = Game.BaseName(npc.name);
+            string bn = Core.Names.Base(npc.name);
             float mo = NamedValue(magSizes.Value, bn, -1f), ro = NamedValue(reloadTimes.Value, bn, -1f);
             if (mo >= 0f) magSize = Mathf.RoundToInt(mo);
             if (ro > 0f) reloadSecs = Mathf.Max(0.2f, ro);

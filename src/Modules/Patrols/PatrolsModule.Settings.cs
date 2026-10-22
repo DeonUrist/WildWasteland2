@@ -42,7 +42,6 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Debug page, Patrols switches: War Rig ground recovery first.</summary>
         private static void DebugSwitchesPatrols(ToolLayout l, IModule owner)
         {
-            if (owner != null && owner.Id == "Patrols") l.Toggle(WildWasteland.Modules.Patrols.WarRig.S.GroundRecoveryEnabled, "Ground recovery");
         }
     }
 }

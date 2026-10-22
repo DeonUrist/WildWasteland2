@@ -72,7 +72,7 @@ namespace WildWasteland.Modules.Survival
             StartWeather();
             NativeStormProtection.Install(this);
             Scheduler.EveryFrame(this, "Survival.StormShelter", NativeStormProtection.Tick);
-            Core.Log.Always("[Survival] Stew Pot and environment initialized; native saves retained.");
+            Core.Log.Always(null,"[Survival] Stew Pot and environment initialized; native saves retained.");
         }
 
         /// <summary>Resolves only the custom pot prefab through the native catalog chain.</summary>

@@ -48,7 +48,7 @@ namespace WildWasteland.Modules.Quests
             float bd = float.MaxValue;
             for (int i = 0; i < near.Count; i++)
             {
-                float d = Game.HDist(near[i].Pos, world);
+                float d = Core.WorldGeometry.HorizontalDistance(near[i].Pos, world);
                 if (d < bd) { bd = d; best = near[i]; }
             }
             return best;

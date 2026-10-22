@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
 using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Vehicles

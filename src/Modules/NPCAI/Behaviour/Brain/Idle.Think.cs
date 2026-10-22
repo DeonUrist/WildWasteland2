@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Idle part: the per-frame tick, travel orders, the camp / search / ghost-walk thinks and the walk legs.</summary>
     internal static partial class Idle

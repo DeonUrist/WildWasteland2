@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // A looping humanoid animation baked from a Mixamo FBX into embedded per-bone world poses (tools/ladder-assets/export.py, no Unity
     // editor needed). On first use the source skeleton is rebuilt for a moment, given a runtime humanoid Avatar and read back through

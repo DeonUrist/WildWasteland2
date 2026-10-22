@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>The furniture inside the War Rig tank (copies of vehicle / camp decor) and its ladder: built into the template, placed and pruned per rig, rebound after loads.</summary>
     internal static class Props

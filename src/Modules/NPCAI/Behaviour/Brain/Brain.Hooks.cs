@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Brain part: the Harmony / Core hook handlers (SetVelocity pedal, Rotate, LookAt, Raycast bumpers, SendEvent, AddForce, SmoothLookAt, hide).</summary>
     internal static partial class Brain

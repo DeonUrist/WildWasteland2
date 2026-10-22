@@ -4,7 +4,7 @@ using ES3Internal;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>Motorcycle chassis integration (Vehicles part; the MotorcycleMod bridge is the Compatibility part): ES3 prefab resolver, template, rear collider trim, body name.</summary>
     internal static class MotorcycleIntegration
@@ -12,7 +12,6 @@ namespace WildWasteland.Modules.Patrols
         internal const string Body = "Motorcycle";
 
         /// <summary>Old Patrols entry point; the Vehicles module installs the resolver itself (<see cref="Hook"/>).</summary>
-        [Obsolete("refactor: the Vehicles module installs the motorcycle resolver (MotorcycleIntegration.Hook)")]
 
         /// <summary>Installs the ES3 prefab-id resolver (shared Core.Hooks.GetPrefab dispatcher) and the optional MotorcycleMod template patch.</summary>
         internal static void Hook(IModule owner)

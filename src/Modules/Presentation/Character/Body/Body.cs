@@ -6,7 +6,7 @@ using UnityEngine.Playables;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Player model/view adapter: a clone of Flexa's "Anim" object (Animator with the humanoid avatar enemy_1_IdleAvatar + the 22 mixamorig bones +
     // the skinned mesh), stripped of props/colliders/FSMs, with our mesh and texture. ModAPI.Character + CharPlan drive the same

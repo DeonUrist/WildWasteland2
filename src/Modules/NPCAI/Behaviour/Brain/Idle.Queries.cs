@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Idle part behind the NPCAI ModAPI: the travel-order query used for the published behaviour mode.</summary>
     internal static partial class Idle

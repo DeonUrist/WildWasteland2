@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Survival
             _volume=new Material(material); _volume.renderQueue=3001;
             // Share distance sorting so distant tops/feet do not overlay nearer bodies.
             _cloudMaterial=new Material(smoke); _cloudMaterial.renderQueue=_volume.renderQueue;
-            Log.Always("[Weather] Hurricane bodies and top/base clouds share transparent queue 3001 for distance sorting.");
+            Log.Always(null,"[Weather] Hurricane bodies and top/base clouds share transparent queue 3001 for distance sorting.");
             _clouds=new WeatherSmoke(_cloudMaterial,true);
             _bounds=new Mesh { name="WW.Weather.VortexSmoke.Bounds" };
             _bounds.vertices=new[] {

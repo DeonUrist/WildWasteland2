@@ -6,9 +6,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WildWasteland.Modules.Guns;
-using WildWasteland.Modules.HUD;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Gunplay
 {
@@ -99,6 +97,7 @@ namespace WildWasteland.Modules.Gunplay
         /// <summary>Provides IGunsApi (old contract), IWeaponCatalog, IWeaponStats and IWeaponState.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<IWeaponEffects>(this,new WeaponEffects());
             ModApi.Provide<IRiderWeapons>(this,new RiderWeapons());
             ModApi.Provide<IGunsApi>(this, new GunsApi());
             ModApi.Provide<IWeaponCatalog>(this, WeaponCatalog.Instance);
@@ -143,7 +142,7 @@ namespace WildWasteland.Modules.Gunplay
             WeaponStats.Instance.Clear();
             WeaponState.Instance.Clear();
             try { VanillaEvents.Shutdown(); } catch (Exception e) { Log.Error(this, "shutdown: VanillaEvents", e); }
-            var h = Services.Hud;
+            var h = Core.ModApi.Get<Core.IHitFeedback>();
             if (h != null) { try { h.ExternalReporter = false; } catch (Exception e) { Log.Warn(this, "HUD ExternalReporter: " + e.Message); } }
         }
 
@@ -189,10 +188,10 @@ namespace WildWasteland.Modules.Gunplay
             try { Tracers.Tick(); } catch (Exception e) { Log.Error(Instance, "Tracers", e); }
         }
 
-        /// <summary>HUD's vanilla observer stays quiet while projectiles report hits (Services.Hud may appear after Init).</summary>
+        /// <summary>HUD's vanilla observer stays quiet while projectiles report hits (Core.ModApi.Get<Core.IHitFeedback>() may appear after Init).</summary>
         internal static void SyncHud()
         {
-            var h = Services.Hud;
+            var h = Core.ModApi.Get<Core.IHitFeedback>();
             if (h == null) return;
             bool want = GunplaySettings.ProjectilesEnabled;
             if (h.ExternalReporter != want) h.ExternalReporter = want;

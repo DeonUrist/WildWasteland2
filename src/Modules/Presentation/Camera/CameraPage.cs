@@ -1,7 +1,7 @@
 using WildWasteland.Modules.Presentation;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>F7 "Camera" page of the Presentation World part: third-person state and the camera settings.</summary>
     internal static class CameraPage

@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Developer
         /// <summary>Selects the next actual native object in the current placement category.</summary>
         internal void NextObject(){if(_objects.Length>0)_slot=(_slot+1)%_objects.Length;}
         /// <summary>Writes the selected native merchant layout through the actual Patrols provider.</summary>
-        internal void SaveLayout(){if(_car==null)return;try{_status=Core.ModApi.Get<Core.IMerchantPlacement>().Save(_car);Core.Log.Always("[Patrols] "+_status);}catch(Exception e){_status="Save failed: "+e.Message;Core.Log.Error("[Patrols] Merchant editor save",e);}}
+        internal void SaveLayout(){if(_car==null)return;try{_status=Core.ModApi.Get<Core.IMerchantPlacement>().Save(_car);Core.Log.Always(null,"[Patrols] "+_status);}catch(Exception e){_status="Save failed: "+e.Message;Core.Log.Error(null,"[Patrols] Merchant editor save",e);}}
         /// <summary>Holds the actual native merchant journey still during placement edits.</summary>
         internal void Freeze(){if(_car!=null){Core.ModApi.Get<Core.IMerchantPlacement>().Freeze(_car);_status="Bus held still";}}
 

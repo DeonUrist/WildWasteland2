@@ -1,6 +1,6 @@
 using System;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Rounds and hammer state of one physical gun (value type of the magazine ledger).</summary>
     internal struct Magazine

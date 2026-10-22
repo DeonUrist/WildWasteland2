@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// Combat HUD (ex Gunplay HUD 1.2.2, plugin class GunplayHUD.Plugin): weapon crosshair styles, selection dot toggle,
-    /// hit marker, floating damage numbers / damage list and the headshot sound. Provides <see cref="Services.Hud"/>
+    /// hit marker, floating damage numbers / damage list and the headshot sound. Provides <see cref="Core.ModApi.Get<Core.IHitFeedback>()"/>
     /// (ex GunplayHUD.Api) that the Guns module reports its projectile hits to.
     /// </summary>
     public sealed partial class HudModule : ModuleBase
@@ -83,6 +83,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Initializes the HUD module.</summary>
         public override void Init()
         {
+            Scheduler.EveryFrame(this,"HUD.ExternalDialogue",ExternalDialogueView.Tick,Phase.LateUpdateLast);
             InitClean();
             Scheduler.Gui(this, "Vehicle cockpit hints", VehicleHints.Draw, VehicleHints.Wanted);
             _portraitBank = new CharacterPortraitBank();
@@ -100,9 +101,9 @@ namespace WildWasteland.Modules.HUD
             Dir = Core.Assets.ModuleDir(Id);
             _running = true;
             HitFeedbackService.External = false;
-            Services.Hud = new HitFeedbackService();
-            // Guns initialises before HUD (module order) and cannot set ExternalReporter while Services.Hud is null: seed it here.
-            var guns = Services.Guns;
+            Core.ModApi.Provide<IHitFeedback>(Core.ModuleHost.Current,new HitFeedbackService());
+            // Guns initialises before HUD (module order) and cannot set ExternalReporter while Core.ModApi.Get<Core.IHitFeedback>() is null: seed it here.
+            var guns = Core.ModApi.Get<Core.IGunsApi>();
             if (guns != null) HitFeedbackService.External = guns.ProjectilesEnabled;
 
             Patches.ApplyClass(this, typeof(WeaponDamageText));
@@ -112,7 +113,7 @@ namespace WildWasteland.Modules.HUD
             Scheduler.EveryFrame(this, "Hit feedback flush", FlushHits, Phase.LateUpdate);
             _crosshairJob.RunNow();
             HeadshotAudio.Refresh();
-            Core.Log.Info("[HUD] Combat HUD (ex Gunplay HUD 1.2.2) started");
+            Core.Log.Main(null,"[HUD] Combat HUD (ex Gunplay HUD 1.2.2) started");
         }
 
         /// <summary>Resolves flush hits for the HUD module.</summary>
@@ -128,6 +129,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Handles scene loaded for the HUD module.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            ExternalDialogueView.Hide();
             SavingPresentation.Clear();
             InventoryModel.Reset();
             if (_cursors != null) { _cursors.SetAimZoom(false); _cursors.Restore(); }
@@ -144,6 +146,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Restores native behavior and releases owned HUD module resources.</summary>
         public override void Shutdown()
         {
+            ExternalDialogueView.Dispose();
             SavingPresentation.Clear();
             InventoryModel.Off();
             if (_portraitBank != null) _portraitBank.Dispose(); _portraitBank = null;
@@ -151,7 +154,7 @@ namespace WildWasteland.Modules.HUD
             if (_trafficMap != null) _trafficMap.Dispose(); _trafficMap = null;
             ShutdownClean();
             _running = false;
-            if (Services.Hud is HitFeedbackService) Services.Hud = null;
+            if (Core.ModApi.Get<Core.IHitFeedback>() is HitFeedbackService) Core.ModApi.Withdraw<IHitFeedback>(Core.ModApi.OwnerOf<IHitFeedback>());
             HitFeedbackService.External = false;
             CrosshairController.Shutdown();
             HeadshotAudio.Shutdown();
@@ -216,7 +219,7 @@ namespace WildWasteland.Modules.HUD
                 l.Heading("Status");
                 l.Value("Crosshair UI", CrosshairController.Status);
                 l.Value("Headshot sound", HeadshotAudio.Status);
-                l.Value("Hit source", !on ? "-" : HitFeedbackService.External && ModApi.Get<IGunsApi>() != null ? "Gunplay module (projectiles)" : Services.Hud != null && Services.Hud.Enabled ? "vanilla hits (SetFsmFloat observer)" : "none (feedback off)");
+                l.Value("Hit source", !on ? "-" : HitFeedbackService.External && ModApi.Get<IGunsApi>() != null ? "Gunplay module (projectiles)" : Core.ModApi.Get<Core.IHitFeedback>() != null && Core.ModApi.Get<Core.IHitFeedback>().Enabled ? "vanilla hits (SetFsmFloat observer)" : "none (feedback off)");
                 l.Space(4);
                 l.Text("Tests close this window and fake one hit in front of the camera with the current settings.");
                 int b = l.Buttons("TEST HIT", "TEST HEADSHOT");
@@ -226,7 +229,7 @@ namespace WildWasteland.Modules.HUD
         }
     }
 
-    /// <summary>Services.Hud implementation (ex public static class GunplayHUD.Api).</summary>
+    /// <summary>Core.ModApi.Get<Core.IHitFeedback>() implementation (ex public static class GunplayHUD.Api).</summary>
     internal sealed class HitFeedbackService : IHitFeedback
     {
         internal static bool External;

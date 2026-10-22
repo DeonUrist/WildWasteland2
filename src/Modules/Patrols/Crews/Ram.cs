@@ -23,8 +23,8 @@ namespace WildWasteland.Modules.Patrols
                 try
                 {
                     if (col.collider == null) return;
-                    var p = PlayerRef.Player;                                   // refresh the cached player first
-                    int kind = p == null ? 0 : PlayerRef.Kind(col.collider.transform);
+                    var p = Core.PlayerState.Transform;                                   // refresh the cached player first
+                    int kind = p == null ? 0 : Core.PlayerState.Kind(col.collider.transform);
                     if (kind == 0) return;
                     if (_mk == null) _mk = GetComponent<PatrolMarker>();
                     if (_rb == null) _rb = GetComponent<Rigidbody>();
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Patrols
                     float into = toContact.sqrMagnitude > 1e-4f ? Vector3.Dot(carVel, toContact.normalized) : 0f;
                     Hit(gameObject, mk != null ? mk.BodyPrefab : null, kind, Mathf.Max(0f, into), col.collider, carVel);
                 }
-                catch (Exception e) { Core.Log.Error("[Patrols] " + "Ram: " + e); }
+                catch (Exception e) { Core.Log.Error(null,"[Patrols] " + "Ram: " + e); }
             }
         }
 
@@ -97,7 +97,7 @@ namespace WildWasteland.Modules.Patrols
             if (kind == 2) amount *= PatrolsModule.RamInCarFactor.Value;
             amount = Mathf.Round(amount);
 
-            var player = PlayerRef.Player;
+            var player = Core.PlayerState.Transform;
             if (player == null) return;
             PlayMakerFSM bodypart = null, health = null, movement = null;
             var effects = new List<PlayMakerFSM>();
@@ -185,7 +185,7 @@ namespace WildWasteland.Modules.Patrols
             }
             if (_pendingAt < 0f || Time.time < _pendingAt) return;
             _pendingAt = -1f;
-            var player = PlayerRef.Player;
+            var player = Core.PlayerState.Transform;
             if (player == null) return;
             foreach (var f in player.GetComponents<PlayMakerFSM>())
                 if (f.FsmName == "Health" && f.Fsm.Initialized)
@@ -193,7 +193,7 @@ namespace WildWasteland.Modules.Patrols
                     var h = f.FsmVariables.GetFsmFloat("Health");
                     if (h == null) return;
                     float delta = h.Value - _healthBefore;
-                    if (delta > 0f) Core.Log.Warn("[Patrols] " + "Ram: player health went UP after " + _pendingCar + "'s hit (" + _healthBefore.ToString("0") + " -> " + h.Value.ToString("0") + ") - damage sign wrong?");
+                    if (delta > 0f) Core.Log.Warn(null,"[Patrols] " + "Ram: player health went UP after " + _pendingCar + "'s hit (" + _healthBefore.ToString("0") + " -> " + h.Value.ToString("0") + ") - damage sign wrong?");
                     else PatrolsModule.Verbose("Ram: player health " + _healthBefore.ToString("0") + " -> " + h.Value.ToString("0") + " (" + _pending + " sent)");
                     return;
                 }

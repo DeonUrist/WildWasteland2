@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     internal static partial class Senses
     {

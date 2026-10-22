@@ -18,7 +18,6 @@ namespace WildWasteland.Modules.Debug
     {
         internal static DebugModule Instance;
         internal static ConfigEntry<int> VerboseLevel;
-        internal static ConfigEntry<Key> MenuKey;
         internal static ConfigEntry<bool> AllocationTiming;
         internal static ConfigEntry<float> SpikeThreshold;
         private static ConfigEntry<bool> _traceHandlers, _navigationOverlay, _patrolOverlay, _trafficDebugMap, _recordNpcNames;
@@ -45,7 +44,6 @@ namespace WildWasteland.Modules.Debug
             _trafficDebugMap = cfg.Tool("Patrols", "Traffic debug map", true, "Draw routes on the native debug map when HUD has no route policy provider.");
             _recordNpcNames = cfg.Tool("Quests", "Record NPC names", false, "Record talked-to NPC names and locations for quest authoring.");
             _factionDumpKey = cfg.Hotkey("Faction diagnostic dump", Key.None, "Write nearby faction/FSM/quest details under Debug.");
-            MenuKey = cfg.Hotkey("Performance dashboard", Key.F4, "Open Debug performance measurements and A/B capture controls.");
             _traceHandlers = cfg.Tool("Measurements", "Trace handlers", false, "Measure individual Core hook, event and named-scope handlers.");
             AllocationTiming = cfg.Tool("Measurements", "Thread allocation timing", false, "Measure allocation deltas inside optional method probes; adds overhead.");
             SpikeThreshold = cfg.Tool("Measurements", "Slow call milliseconds", 2f, "Threshold for deep-level method spike traces.", new AcceptableValueRange<float>(.1f, 1000f));
@@ -71,7 +69,6 @@ namespace WildWasteland.Modules.Debug
             Hotkeys.Register(this, _factionDumpKey, WriteFactionDump, CanDumpFaction);
             Scheduler.Gui(this, "Debug.PatrolOverlay", PatrolDiagnosticOverlay.Draw, PatrolOverlayWanted);
             Scheduler.Gui(this, "Debug.NavigationOverlay", NavigationOverlay.Draw, NavigationWanted);
-            Hotkeys.Register(this, MenuKey, _runtime.Toggle, null, true);
             Scheduler.EveryFrame(this, "Debug.Measurements", _runtime.Tick, Phase.EarlyUpdate);
             Scheduler.Gui(this, "Debug.Dashboard", _runtime.Draw, DashboardWanted);
         }
@@ -87,6 +84,8 @@ namespace WildWasteland.Modules.Debug
         /// <summary>Adds the shared logging level and dashboard launcher to Core's settings shell.</summary>
         public override void Settings(SettingsShell shell)
         {
+            shell.Custom(this, SettingsShell.Page.Debug, "Tools", DrawLaunchers);
+            shell.Custom(this, SettingsShell.Page.Developer, "Tools", DrawTools);
             shell.Row(this, SettingsShell.Page.Debug, "Logging", VerboseLevel, "Logging level");
             shell.Row(this, SettingsShell.Page.Debug, "Navigation", _navigationOverlay, "Show navigation overlay");
             shell.Custom(this, SettingsShell.Page.Debug, "Navigation", DrawNavigation);
@@ -100,6 +99,26 @@ namespace WildWasteland.Modules.Debug
             shell.Custom(this, SettingsShell.Page.Developer, "Optimizations", OptimizationDiagnosticsPage.DrawDeveloper);
             shell.Resettable(this, SettingsShell.Page.Debug, VerboseLevel);
             shell.Resettable(this, SettingsShell.Page.Debug, _traceHandlers);
+        }
+
+        private void DrawLaunchers(ToolLayout layout)
+        {
+            if (layout.Button("Performance", _runtime != null)) ToolWindow.CloseThen(_runtime.Toggle);
+            layout.Toggle(Plugin.DeveloperMode, "Developer");
+        }
+
+        private void DrawTools(ToolLayout layout)
+        {
+            for (int pass = 0; pass < 2; pass++)
+            {
+                if (pass == 1) layout.Heading("Advanced settings");
+                foreach (var page in ToolWindow.DeveloperPages)
+                {
+                    if (page.IsTool != (pass == 0) || page.DebugOnly && !Plugin.EnableDebug.Value) continue;
+                    bool available = page.Owner == null || ModuleHost.IsRunning(page.Owner) || page.ShowWhenModuleOff;
+                    if (layout.Button(page.Title + " / " + page.Group, available)) { ToolWindow.Open(page); return; }
+                }
+            }
         }
 
         /// <summary>Draws private Patrols status through the Core diagnostic source.</summary>
@@ -149,7 +168,6 @@ namespace WildWasteland.Modules.Debug
             layout.Value("Frame samples", Measurements.Count.ToString());
             if (layout.Button("Write FSM and scene census", _runtime != null)) DebugCensus.WriteCensus();
             layout.Value("Frame avg / p95 / p99", Measurements.Average.ToString("0.00") + " / " + Measurements.P95.ToString("0.00") + " / " + Measurements.P99.ToString("0.00") + " ms");
-            if (layout.Button("Open performance dashboard", _runtime != null)) ToolWindow.CloseThen(_runtime.Toggle);
         }
 
         /// <summary>Configured logging level; setting it persists the sole Debug log policy entry.</summary>

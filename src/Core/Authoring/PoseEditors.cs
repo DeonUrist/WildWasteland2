@@ -7,7 +7,7 @@ namespace WildWasteland.Core
     public sealed class CharacterPoseDraft
     {
         public string Weapon, Clip, AimWeapon, AimClip, Status, Note, AimLine, FilePath;
-        public float[] Shown, Aim;
+        public float[] Shown, Aim; // refs-ok: Aim is a detached numeric pose field, not the NPCAI type.
         public string[] Clips;
         public int Frame, AimFrame, Selected, UserCount, BuiltinCount, AimCount;
         public bool Editing, ThirdPerson, CanEditArms, Crouched;

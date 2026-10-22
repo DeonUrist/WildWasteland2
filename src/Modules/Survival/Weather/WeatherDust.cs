@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.Survival
             var source = prefab != null ? prefab.transform.Find("Sand Player") : null;
             if (source == null)
             {
-                if (!_waiting) { _waiting = true; Log.Warn("[Weather] Waiting for native SandStorm/Sand Player prefab in the game's reference manager."); }
+                if (!_waiting) { _waiting = true; Log.Warn(null,"[Weather] Waiting for native SandStorm/Sand Player prefab in the game's reference manager."); }
                 return false;
             }
             _root = new GameObject("WW.Weather.GroundDust") { hideFlags = HideFlags.HideAndDontSave, layer = 2 };
@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.Survival
             _opacity = _material.HasProperty("_Opacity") ? _material.GetFloat("_Opacity") : 1;
             _renderer.enabled = false; copy.SetActive(true); _root.SetActive(true);
             Camera.onPreCull += Before;
-            Log.Always("[Weather] Vanilla Sand Player clouds ready: native material, UV flow, velocity, lifetime and shape retained; brown tint, 60/100/100 particle cap.");
+            Log.Always(null,"[Weather] Vanilla Sand Player clouds ready: native material, UV flow, velocity, lifetime and shape retained; brown tint, 60/100/100 particle cap.");
             return true;
         }
         /// <summary>Advances nearby dust from storm intensity, wind and live palette.</summary>
@@ -88,7 +88,7 @@ namespace WildWasteland.Modules.Survival
                 if (_system.particleCount > 0 || Time.unscaledTime >= _reportAt)
                 {
                     _reported = true;
-                    Log.Always("[Weather] Local sand live: particles="+_system.particleCount+"; rate="+emission.rateOverTimeMultiplier+"; time="+_system.time+"; culling="+main.cullingMode+"; strength="+strength+"; playing="+_system.isPlaying);
+                    Log.Always(null,"[Weather] Local sand live: particles="+_system.particleCount+"; rate="+emission.rateOverTimeMultiplier+"; time="+_system.time+"; culling="+main.cullingMode+"; strength="+strength+"; playing="+_system.isPlaying);
                 }
             }
         }

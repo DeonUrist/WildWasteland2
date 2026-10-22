@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Publishes native population registration without exposing town or NPC private state.</summary>
     internal sealed class NativePopulationApi:INativePopulation

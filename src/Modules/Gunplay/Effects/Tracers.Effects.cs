@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Impact effects (Wave A split of Tracers.cs, B09): RangedHit/MetalImpact prefabs, world impacts and metal sparks on car parts.</summary>
     internal static partial class Tracers

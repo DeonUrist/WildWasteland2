@@ -84,7 +84,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Checks equivalence of map area for the current town traffic.</summary>
         private bool SameMapArea(Vector3 world)
         {
-            var player = PlayerRef.Player; if (player == null) return true;
+            var player = Core.PlayerState.Transform; if (player == null) return true;
             var center = TrafficSpace.World(player.position); var direction = world - center; direction.y = 0f;
             if (direction.sqrMagnitude < 1000000f) return true;
             // Uses the native, unzoomed map footprint even while M is closed.
@@ -102,7 +102,7 @@ namespace WildWasteland.Modules.Patrols
             if (_townDepartures.Any(d => d.Journey.merchant == (role == 2))) return false;
             var destinations = _townStops.Where(s => s.CanTravel && (role != 2 || s.Faction == "Coyotes") && !ParkingBusy(s.Id)).ToList();
             var sources = _townStops.Where(s => s.CanTravel).ToList();
-            var player = PlayerRef.Player; if (player == null || destinations.Count == 0) return false;
+            var player = Core.PlayerState.Transform; if (player == null || destinations.Count == 0) return false;
             var position = TrafficSpace.World(player.position);
             // Actual settlements are remembered before encounter visibility; no invented offscreen endpoints.
             var pairs = (from a in sources from b in destinations where a.Id != b.Id && TrafficLocations.FlatDistance(a.Parking, b.Parking) > 300f
@@ -114,7 +114,7 @@ namespace WildWasteland.Modules.Patrols
                 vehicles = roster.Select(Freeze).ToArray(), speed = PatrolsModule.TrafficConvoySpeed.Value / 3.6f };
             _townDepartures.Add(new TownDeparture { Source = pair.A, Destination = pair.B, Journey = journey,
                 Job = RoadPlanner.RequestRoute(TownGate(pair.A), TownGate(pair.B), true) });
-            Core.Log.Info("[Patrols] Town route planning: " + pair.A.Name + " -> " + pair.B.Name);
+            Core.Log.Main(null,"[Patrols] Town route planning: " + pair.A.Name + " -> " + pair.B.Name);
             return true;
         }
         /// <summary>Checks the current park point condition for town traffic.</summary>
@@ -156,7 +156,7 @@ namespace WildWasteland.Modules.Patrols
                 AdoptTownRoute(pending);
                 j.townBound = true;
                 if (!_journeys.Contains(j)) _journeys.Add(j);
-                Core.Log.Always("[Patrols] Town route ready: " + pending.Source.Name + " -> " + pending.Destination.Name + "; " + j.route.Length + " waypoints");
+                Core.Log.Always(null,"[Patrols] Town route ready: " + pending.Source.Name + " -> " + pending.Destination.Name + "; " + j.route.Length + " waypoints");
             }
             // Old saves may contain pass-through routes. Redirect their existing vehicles/stock;
             // never rebuild a different roster just to attach a settlement destination.
@@ -233,7 +233,7 @@ namespace WildWasteland.Modules.Patrols
                 // No escort cars remain at a settled city, including a virtual arrival.
                 if (arriving == null) for (int i = 0; i < j.vehicles.Length; i++) if (!j.vehicles[i].truck) j.vehicles[i].retired = true;
                 if (arriving != null) ParkConvoyCrew(j, arriving);
-                Core.Log.Always("[Patrols] Convoy parked at " + j.destination + "; no longer counted as travelling; unattended timeout " + (j.townVisitSeconds / 60f).ToString("0.0") + " minutes");
+                Core.Log.Always(null,"[Patrols] Convoy parked at " + j.destination + "; no longer counted as travelling; unattended timeout " + (j.townVisitSeconds / 60f).ToString("0.0") + " minutes");
                 return true;
             }
             if (!j.merchant) return false;
@@ -285,10 +285,10 @@ namespace WildWasteland.Modules.Patrols
                 GameObject body = TownGuard(name); if (body == null || QuestFollowers.IsHired(body)) continue;
                 float due; if (_townGuardOrders.TryGetValue(name, out due) && Time.time < due) continue;
                 _townGuardOrders[name] = Time.time + 5f;
-                if (Core.Services.Npc != null && Core.Services.Npc.IsIdle(body) && (body.transform.position - TrafficSpace.Scene(j.position)).sqrMagnitude > 144f)
+                if (Core.ModApi.Get<Core.INpcApi>() != null && Core.ModApi.Get<Core.INpcApi>().IsIdle(body) && (body.transform.position - TrafficSpace.Scene(j.position)).sqrMagnitude > 144f)
                 {
                     float angle = (TrafficHash(name) % 360) * Mathf.Deg2Rad;
-                    Core.Services.Npc.Travel(body, TrafficSpace.Scene(j.position) + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 7f, 3f);
+                    Core.ModApi.Get<Core.INpcApi>().Travel(body, TrafficSpace.Scene(j.position) + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 7f, 3f);
                 }
             }
         }
@@ -312,7 +312,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (string name in j.townGuards ?? new string[0])
             {
                 var body = TownGuard(name); if (body == null || QuestFollowers.IsHired(body)) continue;
-                Register.RemoveTree(body); Destroy(body);
+                Core.ItemSpawner.RemoveTree(body); Destroy(body);
             }
             foreach (string name in j.townGuards ?? new string[0]) { _townGuards.Remove(name); _townGuardJourneys.Remove(name); _townGuardOrders.Remove(name); }
             if (_live.TryGetValue(j.id, out var live)) foreach (var car in live.Cars.Values)

@@ -3,7 +3,7 @@ using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using WildWasteland.Core;
-using WildWasteland.Modules.Guns;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Gunplay
 {

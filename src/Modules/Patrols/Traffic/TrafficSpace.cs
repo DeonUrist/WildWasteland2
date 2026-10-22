@@ -20,7 +20,7 @@ namespace WildWasteland.Modules.Patrols
         {
             // Routes and detection memories are stable-world coordinates. Only legacy physics caches need translation.
             foreach (var pilot in Pilot.All) if (pilot != null) pilot.OriginShift(shift);
-            PlayerRef.OriginShift(shift);
+            PatrolPoi.Reset();
         }
     }
 }

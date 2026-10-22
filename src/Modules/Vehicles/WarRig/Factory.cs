@@ -12,7 +12,7 @@ using WildWasteland.Modules.Vehicles;
 using WildWasteland.Core;
 using Object = UnityEngine.Object;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>
     /// War Rig = inactive clone of the vanilla Trailer_Big (attacher, leg, TrailerAttached/TireWear/DistanceKinematic FSMs, NWH

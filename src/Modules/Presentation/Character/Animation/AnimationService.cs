@@ -3,9 +3,9 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
-    // Core.Services.Animation: the cross-module face of ModAPI (AGENTS.md 5.1 / PORTING.md 6). NPC and Patrols call this instead of
+    // Core.ModApi.Get<Core.IAnimationApi>(): the cross-module face of ModAPI (AGENTS.md 5.1 / PORTING.md 6). NPC and Patrols call this instead of
     // Apocaplayer.ModAPI + a Chainloader GUID check + Rider.Clip reflection. Pure forwarding: every call lands on the static ModAPI
     // (which stays public in this module's namespace). One adapter object per ModAPI.Character, cached, so Attach/Find return the
     // same IAnimatedCharacter for the same Animator, as ModAPI does.

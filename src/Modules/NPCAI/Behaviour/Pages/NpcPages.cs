@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WildWasteland.Modules.Guns;
+using WildWasteland.Modules.NPCAI;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>The module's F7 pages (group "NPC AI & navigation"): live values of every subsystem on top, its F7 settings below.</summary>
     internal static partial class NpcPages

@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Harmony patch class: FloatClamp.DoClamp prefix (armor overflow).</summary>
     [HarmonyPatch(typeof(FloatClamp), "DoClamp")]

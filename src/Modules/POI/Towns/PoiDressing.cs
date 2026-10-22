@@ -73,12 +73,12 @@ namespace WildWasteland.Modules.POI
         /// <summary>Offers already loaded roots to the owning discovery provider.</summary>
         internal void DiscoverExisting()
         {
-            if (Services.Npc == null) return;
-            _structures.Clear(); Services.Npc.Structures(_structures);
+            if (Core.ModApi.Get<Core.INpcApi>()== null) return;
+            _structures.Clear(); Core.ModApi.Get<Core.INpcApi>().Structures(_structures);
             foreach (var row in _structures)
             {
                 if (!Custom(row.Root) || _roots.ContainsKey(row.Root.GetInstanceID())) continue;
-                var site = Attach(row.Root); if (!site.Ready) PoiDressNavigation.Forget(row.Root);
+                var site = Attach(row.Root); if (!site.Ready) Core.ModApi.Get<Core.INavApi>()?.ForgetStructure(row.Root);
             }
             _structures.Clear();
         }
@@ -98,7 +98,7 @@ namespace WildWasteland.Modules.POI
                 site.Exits = layout.Props.FindAll(p => p.Kind == "Exit").ToArray();
                 foreach (var prop in layout.Props) if (prop.Marker) { Markers.Catalog.Start(); break; }
             }
-            catch (Exception e) { site.Error = e.Message; site.Ready = true; Log.Warn("[POI] POI layout rejected for " + site.Type + ": " + e.Message); }
+            catch (Exception e) { site.Error = e.Message; site.Ready = true; Log.Warn(null,"[POI] POI layout rejected for " + site.Type + ": " + e.Message); }
             _roots.Add(root.GetInstanceID(), site); Sites.Add(site); if (!site.Ready) _pending.Enqueue(site); return site;
         }
         /// <summary>Advances one bounded construction or preparation step.</summary>
@@ -142,7 +142,7 @@ namespace WildWasteland.Modules.POI
             {
                 if (site.Dressing != null) { site.Dressing.SetActive(false); Object.Destroy(site.Dressing); site.Dressing = null; }
                 site.Error = e.Message; site.Ready = true;
-                Log.Warn("[POI] POI dressing skipped for " + site.Type + ": " + e.Message);
+                Log.Warn(null,"[POI] POI dressing skipped for " + site.Type + ": " + e.Message);
                 TownBakeBridge.Discover(site.Root.gameObject);
             }
         }
@@ -157,7 +157,7 @@ namespace WildWasteland.Modules.POI
             foreach (var row in Sites)
             {
                 if (row.Root == null || row.Type != site.Type) continue;
-                PoiDressNavigation.Forget(row.Root);
+                Core.ModApi.Get<Core.INavApi>()?.ForgetStructure(row.Root);
                 if (row.Dressing != null) { row.Dressing.SetActive(false); Object.Destroy(row.Dressing); row.Dressing = null; }
                 bool queued = !row.Ready;
                 row.Layout = _layouts[site.Type]; row.Next = 0; row.Error = null; row.Ready = false;
@@ -178,7 +178,7 @@ namespace WildWasteland.Modules.POI
             Authoring?.Close();
             Markers.Clear(false);
             foreach (var site in Sites) if (site.Dressing != null)
-            { if (site.Root != null) PoiDressNavigation.Forget(site.Root); site.Dressing.SetActive(false); Object.Destroy(site.Dressing); }
+            { if (site.Root != null) Core.ModApi.Get<Core.INavApi>()?.ForgetStructure(site.Root); site.Dressing.SetActive(false); Object.Destroy(site.Dressing); }
             foreach(var site in Sites) if(site.PopulationArea!=null)ModApi.Get<INativePopulation>()?.Forget(site.PopulationArea);
             Sites.Clear(); _roots.Clear(); _layouts.Clear(); _pending.Clear(); _structures.Clear(); Catalog.Dispose();
         }

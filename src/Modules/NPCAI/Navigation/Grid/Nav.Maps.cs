@@ -4,7 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Persistent prefab maps of the grid baker (.wwnav): signature, load, save, in-memory templates.</summary>
     internal static partial class Nav

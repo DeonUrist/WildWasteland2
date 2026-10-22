@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Player-specific hit alignment; all animation selection and clocks belong to CharPlan.</summary>
     internal sealed partial class Body

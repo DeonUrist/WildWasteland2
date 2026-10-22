@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.Patrols
             if (e == null)
             {
                 var near = _all.Where(x => x.Kind == kind).Select(x => x.Name + (x.Display != null ? " \"" + x.Display + "\"" : "")).Take(40);
-                Core.Log.Warn("[Patrols] " + "No " + kind + " prefab matches \"" + q + "\". Known: " + string.Join(", ", near.ToArray()));
+                Core.Log.Warn(null,"[Patrols] " + "No " + kind + " prefab matches \"" + q + "\". Known: " + string.Join(", ", near.ToArray()));
                 return null;
             }
             PatrolsModule.Verbose("Prefab \"" + q + "\" -> " + e.Name + (e.Display != null ? " (\"" + e.Display + "\")" : "") + " [" + e.Kind + "]");
@@ -129,7 +129,7 @@ namespace WildWasteland.Modules.Patrols
                 else continue;
                 _all.Add(new Entry { Go = kv.Key, Name = kv.Key.name, Display = DisplayOf(kv.Value), Kind = kind });
             }
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Prefab scan: " + _all.Count + " vehicles/items, " + _roots.Count + " prefabs with FSMs");
+            if (Core.Log.L1) PatrolsModule.Verbose("Prefab scan: " + _all.Count + " vehicles/items, " + _roots.Count + " prefabs with FSMs");
         }
 
         /// <summary>Reads the native ID category used by existing patrol item matching.</summary>

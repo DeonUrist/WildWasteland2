@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.Gunplay
     // Observe that write without changing the FSM, then measure its Health/Condition
     // result after the frame's damage events.
     // WW: subscribed to Core.Hooks.SetFsmFloatEnter (prefix, observe only, always returns true = never skips). The Guns
-    // module reports its projectile hits through Services.Hud and sets ExternalReporter; while that is true (and Guns is
+    // module reports its projectile hits through Core.ModApi.Get<Core.IHitFeedback>() and sets ExternalReporter; while that is true (and Guns is
     // running) this observer stays quiet, so one shot never produces feedback twice. First line of the handler is a static
     // bool (feedback off / external reporter), then the 1.2.2 string filters; GetComponents use a reused list (no alloc).
     /// <summary>Gunplay part of the vanilla hit observer: notes the player's vanilla gun hits and flushes measured damage to the HUD hit feedback while projectiles are off.</summary>
@@ -132,7 +132,7 @@ namespace WildWasteland.Modules.Gunplay
         {
             if (GunplaySettings.ProjectilesEnabled) { Pending.Clear(); return; }
             if (Pending.Count == 0) return;
-            var hud = Services.Hud;
+            var hud = Core.ModApi.Get<Core.IHitFeedback>();
             foreach (var hit in Pending)
             {
                 if (hit.Target == null) continue;

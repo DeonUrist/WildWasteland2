@@ -5,7 +5,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Brain part owned by Debug: NavDump trail pictures, the stuck look-ahead log and the status line.</summary>
     internal static partial class Brain

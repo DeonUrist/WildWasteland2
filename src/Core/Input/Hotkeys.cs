@@ -82,9 +82,9 @@ namespace WildWasteland.Core
             {
                 var k = b.Entry.Value; if (k == Key.None) continue;
                 string name = b.Entry.Definition.Key, other;
-                if (Array.IndexOf(GameKeys, k) >= 0) Log.Warn("[Keys] " + name + " = " + k + " is a game key (F2 heal / F9 hide UI / F11 god mode)");
+                if (Array.IndexOf(GameKeys, k) >= 0) Log.Warn(null,"[Keys] " + name + " = " + k + " is a game key (F2 heal / F9 hide UI / F11 god mode)");
                 if (k == Key.LeftAlt || k == Key.RightAlt || k == Key.LeftShift || k == Key.RightShift || k == Key.LeftCtrl || k == Key.RightCtrl) continue;   // modifiers are shared by design
-                if (seen.TryGetValue(k, out other) && other != name) Log.Warn("[Keys] " + name + " and " + other + " both use " + k);
+                if (seen.TryGetValue(k, out other) && other != name) Log.Warn(null,"[Keys] " + name + " and " + other + " both use " + k);
                 else seen[k] = name;
             }
         }

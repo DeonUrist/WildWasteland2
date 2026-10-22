@@ -4,7 +4,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.Events;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// <see cref="ITraversal"/> provider of the Presentation World part (README P3): NPC traversal leases over the shared ladder / climb
@@ -92,10 +92,7 @@ namespace WildWasteland.Modules.PlayerBody
                 for (int i = 0; i < _stale.Count; i++) _occupants.Remove(_stale[i]);
                 _stale.Clear();
             }
-#pragma warning disable 618
-            var legacy = Services.LadderClimbers;
-#pragma warning restore 618
-            for (int i = 0; i < legacy.Count; i++) into.Add(legacy[i]);
+
         }
 
         /// <summary>Ladder animation: height climbed per cycle (two rungs), metres (1.24 without the clip).</summary>

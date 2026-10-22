@@ -1,4 +1,3 @@
-using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -316,13 +315,13 @@ namespace WildWasteland.Modules.Patrols
                 var data = new PatrolSaveData { version = SchemaVersion, saveFile = Path.GetFileName(slot), worldSeed = seed, convoyCooldown = -1f, lastGroup = Convoy.LastGroup ?? "", trafficJson = WorldTraffic.SaveJson() };
                 var cars = new List<PatrolCarData>();
                 foreach (var marker in PatrolMarker.All)
-                    if (marker != null && !Register.Pending(marker.gameObject)) cars.Add(marker.Snapshot());   // still being built: not in the game's save either
+                    if (marker != null && !Core.ItemSpawner.Pending(marker.gameObject)) cars.Add(marker.Snapshot());   // still being built: not in the game's save either
                 data.cars = cars.ToArray();
                 var bytes = Serialize(data);
                 Core.SaveBus.Key(EsKey).Write(PatrolsModule.Instance, slot, Convert.ToBase64String(bytes));
                 PatrolsModule.Verbose("Persistence: saved " + data.cars.Length + " patrol car(s) for " + data.saveFile);
             }
-            catch (Exception e) { Core.SaveBus.ReportFailure(PatrolsModule.Instance, "Patrol save failed: " + e.Message); Core.Log.Error("[Patrols] Persistence save failed: " + e); }
+            catch (Exception e) { Core.SaveBus.ReportFailure(PatrolsModule.Instance, "Patrol save failed: " + e.Message); Core.Log.Error(null,"[Patrols] Persistence save failed: " + e); }
         }
 
         /// <summary>Restores tracked for the current persistence.</summary>
@@ -344,13 +343,13 @@ namespace WildWasteland.Modules.Patrols
             if (data.version != SchemaVersion || data.worldSeed != seed)
             {
                 _readFailed = true;
-                Core.Log.Warn("[Patrols] Persistence: embedded version/seed does not match " + slot + "; saving blocked");
+                Core.Log.Warn(null,"[Patrols] Persistence: embedded version/seed does not match " + slot + "; saving blocked");
                 _restoreRunning = false; yield break;
             }
 
             Convoy.LastGroup = data.lastGroup ?? "";
             try { WorldTraffic.RestoreJson(data.trafficJson); }
-            catch (Exception e) { _readFailed = true; Core.Log.Warn("[Patrols] Persistence: invalid traffic record; saving blocked: " + e.Message); }
+            catch (Exception e) { _readFailed = true; Core.Log.Warn(null,"[Patrols] Persistence: invalid traffic record; saving blocked: " + e.Message); }
             var savedCars = data.cars ?? new PatrolCarData[0];
             var pending = new List<PatrolCarData>(savedCars);
             while(pending.Count>0&&!VehiclePreparation.Available){_waitingForVehicles=true;yield return null;}
@@ -375,7 +374,7 @@ namespace WildWasteland.Modules.Patrols
                     }
                     catch (Exception e)
                     {
-                        Core.Log.Error("[Patrols] " + "Persistence: failed to restore " + pending[i].carName + ": " + e);
+                        Core.Log.Error(null,"[Patrols] " + "Persistence: failed to restore " + pending[i].carName + ": " + e);
                         pending.RemoveAt(i);
                     }
                     LoadFraction = .5f * (savedCars.Length - pending.Count) / Math.Max(1, savedCars.Length);
@@ -385,7 +384,7 @@ namespace WildWasteland.Modules.Patrols
             }
             PatrolsModule.Verbose("Persistence: restored " + (savedCars.Length - pending.Count) + "/" + savedCars.Length
                 + " patrol car(s) from " + slot);
-            foreach (var missing in pending) { WorldTraffic.MissingRestored(missing); Core.Log.Warn("[Patrols] " + "Persistence: saved patrol car not found: " + missing.carName); }
+            foreach (var missing in pending) { WorldTraffic.MissingRestored(missing); Core.Log.Warn(null,"[Patrols] " + "Persistence: saved patrol car not found: " + missing.carName); }
             int prepared = 0;
             foreach (var kv in restored)
             {
@@ -399,7 +398,7 @@ namespace WildWasteland.Modules.Patrols
             }
             _restoreRunning = false;
             LoadFraction = 1f;
-            Core.Log.Always("[Patrols] Saved patrol preparation complete: " + restored.Count + "/" + savedCars.Length + " native vehicle(s); no parts or cargo rebuilt.");
+            Core.Log.Always(null,"[Patrols] Saved patrol preparation complete: " + restored.Count + "/" + savedCars.Length + " native vehicle(s); no parts or cargo rebuilt.");
             // a second, cheap pass a few seconds later: anything the game's own load applied after us (materials) is fixed again
             yield return new WaitForSecondsRealtime(3f);
             foreach (var kv in restored)
@@ -502,7 +501,7 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e)
             {
                 _readFailed = true;
-                Core.Log.Warn("[Patrols] Cannot read embedded patrol state; saving blocked: " + e.Message);
+                Core.Log.Warn(null,"[Patrols] Cannot read embedded patrol state; saving blocked: " + e.Message);
                 return null;
             }
         }

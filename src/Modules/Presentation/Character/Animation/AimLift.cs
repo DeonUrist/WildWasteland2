@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Text;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // (2.1.7) Aiming a gun, the game shoots from the camera (her eyes) - but the Mixamo aim clips hold the rifle ~30 cm lower, so the shots seemed
     // to leave from her mouth. While an aim / fire clip moves her hands, both hands are lifted (and pushed forward) together by a two-bone arm IK

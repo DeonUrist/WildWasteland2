@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.Quests
                 if (f == null || f.FsmName != "Health" || f.ActiveStateName != "health") continue;
                 GameObject go = f.gameObject;
                 if (go == null || !go.activeInHierarchy || NormNpc(go.tag) != want) continue;
-                names.Add(BaseName(go.name));
+                names.Add(Core.Names.Base(go.name));
             }
             return names;
         }
@@ -67,10 +67,10 @@ namespace WildWasteland.Modules.Quests
                 if (f == null || f.FsmName != "Health") continue;
                 GameObject go = f.gameObject;
                 if (go == null || !go.activeInHierarchy) continue;
-                string name = BaseName(go.name);
+                string name = Core.Names.Base(go.name);
                 if (name.StartsWith("Player", StringComparison.OrdinalIgnoreCase) || name.EndsWith("_Dead", StringComparison.OrdinalIgnoreCase)) continue;
                 if (f.ActiveStateName != "health") continue;
-                if (HDist(go.transform.position, center) > radius) continue;
+                if (Core.WorldGeometry.HorizontalDistance(go.transform.position, center) > radius) continue;
                 var e = new EnemyInfo();
                 e.Name = name;
                 e.Tag = go.tag;
@@ -132,7 +132,7 @@ namespace WildWasteland.Modules.Quests
                 if (f == null) continue;
                 GameObject go = f.gameObject;
                 if (go == null || !go.activeInHierarchy) continue;
-                string name = BaseName(go.name);
+                string name = Core.Names.Base(go.name);
                 if (name.EndsWith("_Dead", StringComparison.OrdinalIgnoreCase)) continue;
                 string n = NormNpc(name);
                 bool match = false;
@@ -161,11 +161,11 @@ namespace WildWasteland.Modules.Quests
                 PlayMakerFSM f = all[i];
                 if (f == null || f.FsmName != "ID") continue;
                 GameObject go = f.gameObject;
-                if (go == null || !BaseName(go.name).EndsWith("_Dead", StringComparison.OrdinalIgnoreCase)) continue;
-                if (HDist(go.transform.position, center) > radius) continue;
+                if (go == null || !Core.Names.Base(go.name).EndsWith("_Dead", StringComparison.OrdinalIgnoreCase)) continue;
+                if (Core.WorldGeometry.HorizontalDistance(go.transform.position, center) > radius) continue;
                 if (seen.Add(go.GetInstanceID())) list.Add(go);
             }
-            list.Sort(delegate (GameObject a, GameObject b) { return HDist(a.transform.position, center).CompareTo(HDist(b.transform.position, center)); });
+            list.Sort(delegate (GameObject a, GameObject b) { return Core.WorldGeometry.HorizontalDistance(a.transform.position, center).CompareTo(Core.WorldGeometry.HorizontalDistance(b.transform.position, center)); });
             return list;
         }
     }

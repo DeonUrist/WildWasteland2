@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // How ground NPCs move while they have a target ("the brain").
     //
@@ -418,7 +418,7 @@ namespace WildWasteland.Modules.NPC
                     if (lost) { SetMode(n, Mode.Chase, !WildWasteland.Core.Log.L2 ? "" : los ? "target at " + d.ToString("0") + " m" : "no line of sight"); }
                     else if (now >= n.NextRecheck)
                     {
-                        n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;   // refs-ok: own type NPC.Aim (the Brain.Aim method hides the simple name)
+                        n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPCAI.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPCAI.Aim.HoldRecheckMax) * R;   // refs-ok: own type WildWasteland.Modules.NPCAI.Aim (the Brain.Aim method hides the simple name)
                         // advances more when the target has not fired for 8 s (reloading, hiding), never when hurt (below CoverBelow)
                         float adv = NpcaiSettings.AdvanceChance.Value;
                         if (Time.time - Senses.LastPlayerShotAt > 8f) adv *= 2.5f;
@@ -442,7 +442,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 else if (n.Mode == Mode.Chase && good && n.LosLooks >= 2)        // two thinks in a row: a fence bar flickering across the line doesn't stop and start the hold
                 {
-                    n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;   // refs-ok: own type NPC.Aim (the Brain.Aim method hides the simple name)
+                    n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPCAI.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPCAI.Aim.HoldRecheckMax) * R;   // refs-ok: own type WildWasteland.Modules.NPCAI.Aim (the Brain.Aim method hides the simple name)
                     SetMode(n, Mode.Hold, !WildWasteland.Core.Log.L2 ? "" : "line of sight at " + d.ToString("0") + " m (engages within " + engage.ToString("0") + ")");
                     return;
                 }

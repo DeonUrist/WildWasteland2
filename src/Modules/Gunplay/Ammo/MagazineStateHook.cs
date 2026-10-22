@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// (WW) Handlers of Core.Hooks.EnterState (prefix + postfix, never skip).
     internal static class MagazineStateHook

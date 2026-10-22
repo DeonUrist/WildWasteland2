@@ -1,7 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Patrols;
-using WildWasteland.Modules.PlayerBody;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Vehicles
 {

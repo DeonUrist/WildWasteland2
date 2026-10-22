@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Guns;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Gunplay
 {

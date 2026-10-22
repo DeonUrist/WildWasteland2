@@ -1,10 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Guns;
-using WildWasteland.Modules.Patrols;
+using WildWasteland.Modules.NPCAI;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// The NPCAI ModAPI provider (README 6.2): <see cref="INpcApi"/> (NPCAI.Api v1, same members and behaviour, plus the nav structure

@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Builds the stable key of a faction name.</summary>
         public static string KeyOf(Poi p)
         {
-            Vector3 r = Game.Rel(p.Pos);
+            Vector3 r = Core.Origin.World(p.Pos);
             return p.Name + "@" + Mathf.RoundToInt(r.x / 10f) * 10 + "," + Mathf.RoundToInt(r.z / 10f) * 10;
         }
 

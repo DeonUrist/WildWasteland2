@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     internal sealed partial class Body
     {

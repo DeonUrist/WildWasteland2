@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.HUD
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// Weapons Pack part serving the HUD: the pack's own HUD icon is replaced by the shared white weapon silhouette (prefix of its

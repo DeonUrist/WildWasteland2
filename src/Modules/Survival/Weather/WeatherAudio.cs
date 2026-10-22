@@ -31,21 +31,21 @@ namespace WildWasteland.Modules.Survival
         {
             _thunder.Load();
             if (_attempted) return; _attempted = true;
-            if (!File.Exists(_path)) { Log.Warn("[Weather] Storm sound missing: "+_path); return; }
+            if (!File.Exists(_path)) { Log.Warn(null,"[Weather] Storm sound missing: "+_path); return; }
             _load = Core.Audio.LoadAsync(_path, AudioType.WAV, Loaded);
         }
         /// <summary>Creates the shared storm loop after Core decodes its file.</summary>
         private void Loaded(AudioClip clip, string error)
         {
                 _load = null;
-                if (clip == null) { Log.Warn("[Weather] Storm sound load failed: "+error); return; }
+                if (clip == null) { Log.Warn(null,"[Weather] Storm sound load failed: "+error); return; }
                 _clip = clip;
                 _clip.hideFlags = HideFlags.HideAndDontSave;
                 _host = new GameObject("WW.Weather.Sound") { hideFlags = HideFlags.HideAndDontSave };
                 _host.transform.SetParent(Runner.Host.transform,false);
                 _source = _host.AddComponent<AudioSource>(); _source.playOnAwake = false; _source.loop = true;
                 _source.spatialBlend = 0; _source.dopplerLevel = 0; _source.volume = 0; _source.clip = _clip;
-                Log.Always("[Weather] Storm sound loaded: sound/sandstorm.wav; silent beyond 1200 m, full volume within 150 m and inside; one shared loop.");
+                Log.Always(null,"[Weather] Storm sound loaded: sound/sandstorm.wav; silent beyond 1200 m, full volume within 150 m and inside; one shared loop.");
         }
         /// <summary>Queues the sound corresponding to a visual lightning strike.</summary>
         internal void Strike(float clock, Vector3 position, Vector3 eye, float strength) { _thunder.Strike(clock,position,eye,strength); }

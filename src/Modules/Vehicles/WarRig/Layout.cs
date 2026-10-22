@@ -3,7 +3,7 @@ using NWH.Common.CoM;
 using NWH.WheelController3D;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>Applies the fixed layout to one War Rig (the template, or a live one from the F3 page): model pose, colliders, wheels, hitch, legs, lock zone, props, mass.</summary>
     internal static class Layout

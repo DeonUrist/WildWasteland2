@@ -3,7 +3,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.Events;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// <see cref="ICameraRig"/> provider of the Presentation World part (README P2): view mode, player view pose, the shared eye/aim ray of the
@@ -39,7 +39,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (ThirdPerson.On && ThirdPerson.HasView && !ThirdPerson.Peek)
             { position = ThirdPerson.ViewPos; rotation = ThirdPerson.ViewRot; fov = ThirdPerson.ViewFov; return true; }
-            var cam = Game.Cam;
+            var cam = Core.PlayerState.Camera;
             if (cam == null) { position = Vector3.zero; rotation = Quaternion.identity; fov = 60f; return false; }
             var t = cam.transform; position = t.position; rotation = t.rotation; fov = cam.fieldOfView;
             return true;
@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_aimFrame != Time.frameCount)
             {
                 _aimFrame = Time.frameCount;
-                var cam = Game.Cam;
+                var cam = Core.PlayerState.Camera;
                 _aimOk = cam != null;
                 if (_aimOk)
                 {
@@ -69,7 +69,7 @@ namespace WildWasteland.Modules.PlayerBody
         public Vector2 CrosshairScreen { get { return ThirdPerson.HasCrosshair ? ThirdPerson.CrosshairScreen : new Vector2(Screen.width * .5f, Screen.height * .5f); } }
 
         /// <summary>True while the third-person camera zooms with the mouse wheel (on foot or in a car, not peeking, not paused).</summary>
-        public bool OwnsMouseWheel { get { return ThirdPerson.On && !ThirdPerson.Peek && !Game.Paused; } }
+        public bool OwnsMouseWheel { get { return ThirdPerson.On && !ThirdPerson.Peek && !Core.PlayerState.Paused; } }
 
         /// <summary>Publishes <see cref="CameraModeChanged"/> when the view mode differs from the last published one (cheap enum compare per frame).</summary>
         internal static void Publish()

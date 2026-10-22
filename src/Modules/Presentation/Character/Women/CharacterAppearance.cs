@@ -1,7 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
-using WildWasteland.Modules.Patrols;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.Presentation
 {

@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.POI
         public override void Init()
         {
             _running = true;
-            Services.Poi = this;
+            Core.ModApi.Provide<IPoiApi>(Core.ModuleHost.Current,this);
             _towns.Init();
             PoiEncounter.Register(this);
             TrafficCamps.Install(this); TrafficLocations.Install(this);
@@ -186,7 +186,7 @@ namespace WildWasteland.Modules.POI
                 if (!data.isDraft) _captures[data] = new Capture { Seed = graph.random.Seed,
                     Sources = new List<KeyValuePair<string, PoiLocations>>(registration.Sites).ToArray() };
             }
-            catch (Exception e) { Log.Error("[POI] Registration failed", e); }
+            catch (Exception e) { Log.Error(null,"[POI] Registration failed", e); }
         }
         // MapMagic clears products and heights after this worker callback, before main-thread application.
         /// <summary>Captures worker products before MapMagic releases its generation buffers.</summary>
@@ -229,7 +229,7 @@ namespace WildWasteland.Modules.POI
                     TrySpawn(siteComponent);
                 }
             }
-            catch (Exception e) { Log.Error("[POI] Applying sites failed", e); }
+            catch (Exception e) { Log.Error(null,"[POI] Applying sites failed", e); }
         }
         /// <summary>Tests for a Unity-destroyed live site.</summary>
         private static bool Missing(PoiSite site) { return site == null; }
@@ -249,14 +249,14 @@ namespace WildWasteland.Modules.POI
             var player = GameRefs.Player; if (player == null || (player.transform.position - site.transform.position).sqrMagnitude > 500f * 500f) return;
             site.Building = true;
             try { site.Definition.Spawn(site.transform.position, site.transform.rotation, site.Completed); }
-            catch (Exception e) { site.Building = false; Log.Error("[POI] Spawn failed: " + site.Definition.Id, e); }
+            catch (Exception e) { site.Building = false; Log.Error(null,"[POI] Spawn failed: " + site.Definition.Id, e); }
         }
         /// <summary>Commits a successful one-shot encounter completion key.</summary>
         internal void Completed(PoiSite site, GameObject result)
         {
             if (site == null) return; site.Building = false;
             if (result != null && _running) { _spawned.Add(site.Key); Log.Main(null, "[POI] " + site.Definition.Id + " encounter spawned: " + site.Key); }
-            else Log.Warn("[POI] Encounter could not be built: " + site.Key);
+            else Log.Warn(null,"[POI] Encounter could not be built: " + site.Key);
         }
         /// <summary>Refreshes world-scoped references after native loading finishes.</summary>
         public override void OnWorldReady()
@@ -310,7 +310,7 @@ namespace WildWasteland.Modules.POI
             }
             foreach (var site in _sites) if (site != null) UnityEngine.Object.Destroy(site.gameObject);
             _sites.Clear(); _captures.Clear(); _graphs.Clear(); _definitions.Clear();
-            if (ReferenceEquals(Services.Poi, this)) Services.Poi = null;
+            if (ReferenceEquals(Core.ModApi.Get<Core.IPoiApi>(), this)) Core.ModApi.Withdraw<IPoiApi>(Core.ModApi.OwnerOf<IPoiApi>());
         }
         /// <summary>Forwards origin jumps to town and dressing state.</summary>
         public override void OnOriginShift(Vector3 delta) { _towns.OnOriginShift(delta); }

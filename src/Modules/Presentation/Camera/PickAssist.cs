@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Third person: picking what is under the crosshair. The game's picks (grab / carry items, use, vehicle parts, doors ...) all go through
     // PlayMaker's ActionHelpers.DoMousePick: one ray from the first-person eye through the cursor, at most `distance` long, cached per frame.
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             try
             {
-                if (PresentationModule.WorldRunning && ThirdPerson.On && Game.InCar && Game.CarRoot != null)
+                if (PresentationModule.WorldRunning && ThirdPerson.On && Core.PlayerState.InCar && Core.PlayerState.CarRoot != null)
                 {
                     // Dashboard/parts must never capture fire or wheel input in third person.
                     // Keep the DriveTrigger pick for the game's F-to-exit action.
@@ -47,18 +47,18 @@ namespace WildWasteland.Modules.PlayerBody
                         HutongGames.PlayMaker.ActionHelpers.mousePickInfo = default(RaycastHit);
                     return; // no screen-space assist inside a vehicle
                 }
-                if (PresentationModule.WorldRunning && ThirdPerson.CarShift && !ThirdPerson.On && Game.Cam != null && Core.GameRefs.MainCamera == Game.Cam && !Game.Paused)
+                if (PresentationModule.WorldRunning && ThirdPerson.CarShift && !ThirdPerson.On && Core.PlayerState.Camera != null && Core.GameRefs.MainCamera == Core.PlayerState.Camera && !Core.PlayerState.Paused)
                 {   // first person in the car with her body: the picture is drawn from a bit in front of the eye, so the game's eye ray (from
                     // behind that) ends on what is in front - the cassette player instead of the ignition / light switches under the cursor.
                     // The pick is cast again from the drawn eye, through the same cursor direction.
-                    var ray = Game.Cam.ScreenPointToRay(Input.mousePosition);
+                    var ray = Core.PlayerState.Camera.ScreenPointToRay(Input.mousePosition);
                     RaycastHit h;
-                    Vector3 eye = ThirdPerson.CarShiftEye(Game.Cam.transform);
+                    Vector3 eye = ThirdPerson.CarShiftEye(Core.PlayerState.Camera.transform);
                     float d = Mathf.Max(0.01f, distance - Vector3.Dot(eye - ray.origin, ray.direction));   // the same reach from the real eye
                     HutongGames.PlayMaker.ActionHelpers.mousePickInfo = Physics.Raycast(eye, ray.direction, out h, d, layerMask) ? h : default(RaycastHit);
                     return;
                 }
-                if (!PresentationModule.WorldRunning || !CameraSettings.PickAssistOn.Value || !ThirdPerson.On || !ThirdPerson.HasView || Game.Cam == null || Core.GameRefs.MainCamera != Game.Cam || Game.Paused) return;
+                if (!PresentationModule.WorldRunning || !CameraSettings.PickAssistOn.Value || !ThirdPerson.On || !ThirdPerson.HasView || Core.PlayerState.Camera == null || Core.GameRefs.MainCamera != Core.PlayerState.Camera || Core.PlayerState.Paused) return;
                 var cur = HutongGames.PlayMaker.ActionHelpers.mousePickInfo;
                 if (cur.collider != null && Usable(cur.collider)) return;   // the game's own ray already has something
                 RaycastHit hit;
@@ -71,7 +71,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>True for a vehicle part of the player car that must not take fire / wheel input in third person (the DriveTrigger stays pickable).</summary>
         private static bool BlockedVehiclePart(Transform target)
         {
-            var car = Game.CarRoot;
+            var car = Core.PlayerState.CarRoot;
             if (car == null || !target.IsChildOf(car)) return false;
             var drive = car.Find("DriveTrigger");
             return drive == null || !target.IsChildOf(drive);
@@ -87,14 +87,14 @@ namespace WildWasteland.Modules.PlayerBody
         private static bool Mine(Collider c)
         {
             var t = c.transform;
-            return Game.Player != null && t.IsChildOf(Game.Player.transform) || Game.PlayerCamera != null && t.IsChildOf(Game.PlayerCamera);
+            return Core.PlayerState.Player != null && t.IsChildOf(Core.PlayerState.Player.transform) || Core.PlayerState.PlayerCamera != null && t.IsChildOf(Core.PlayerState.PlayerCamera);
         }
 
         /// <summary>Screen-space nearest usable collider to the cursor within the pick distance and PickAssistRadius, visible from the third-person camera; the eye ray to it is the result.</summary>
         private static bool Find(float distance, int layerMask, out RaycastHit result)
         {
             result = default(RaycastHit);
-            var cam = Game.Cam;
+            var cam = Core.PlayerState.Camera;
             Vector3 eye = cam.transform.position;
             // the cursor ray of the third-person picture
             Vector3 mouse = ThirdPerson.HasCrosshair ? (Vector3)ThirdPerson.CrosshairScreen : Input.mousePosition;   // the dynamic crosshair
@@ -178,7 +178,7 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 var c = _hits[i].collider;
                 if (c == null || Same(c, target) || Mine(c)) continue;
-                if (Game.InCar && Game.CarRoot != null && c.transform.IsChildOf(Game.CarRoot)) continue;   // the car body around a seat
+                if (Core.PlayerState.InCar && Core.PlayerState.CarRoot != null && c.transform.IsChildOf(Core.PlayerState.CarRoot)) continue;   // the car body around a seat
                 return false;
             }
             return true;

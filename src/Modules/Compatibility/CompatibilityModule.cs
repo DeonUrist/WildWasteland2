@@ -4,7 +4,7 @@ using BepInEx.Configuration;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.Compatibility;
 
 namespace WildWasteland.Modules.Compatibility
 {

@@ -4,7 +4,7 @@ using HarmonyLib;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// Damage part of the Apocaspawner bridge: Apocaspawner's crossbow WeaponDamage result is scaled by the Gunplay crossbow multiplier
@@ -33,7 +33,7 @@ namespace WildWasteland.Modules.Guns
             var guns = ModApi.Get<IGunsApi>();
             if (guns == null || !guns.PlayerProjectilesEnabled) return;
             if (!go.name.StartsWith("crossbow", StringComparison.OrdinalIgnoreCase)) return;
-            _value.SetValue(__result, (float)_value.GetValue(__result) * Tracers.CrossbowDamageMultiplier); // refs-ok: REFACTOR-REQUEST B17-6
+            _value.SetValue(__result, (float)_value.GetValue(__result) * (ModApi.Get<IWeaponStats>()?.Get(ModApi.Get<IWeaponCatalog>()?.Resolve("crossbow") ?? -1,WeaponStat.DamageMultiplier) ?? 1f)); // refs-ok: REFACTOR-REQUEST B17-6
         }
 
         /// <summary>Forgets the reflected field (the scope removes the patch).</summary>

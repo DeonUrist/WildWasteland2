@@ -5,8 +5,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WildWasteland.Modules.Patrols;
-using WildWasteland.Modules.PlayerBody;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.Presentation
 {
@@ -138,6 +137,7 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>World part ModAPI: provides the camera rig, traversal, seat pose and vehicle skin services.</summary>
         partial void ProvideApisWorld()
         {
+            ModApi.Provide<ICameraModInterop>(this,new CameraModInterop());
             if (_cameraRig == null) _cameraRig = new CameraRigApi();
             if (_traversal == null) _traversal = new TraversalApi();
             if (_seats == null) _seats = new SeatPosesApi();

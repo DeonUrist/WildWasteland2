@@ -76,8 +76,8 @@ namespace WildWasteland.Modules.Tools
                 float d = (row.Root.position - camera.transform.position).sqrMagnitude;
                 if (d < distance) { nearest = row; distance = d; }
             }
-            if (nearest == null) { _status = "No ready custom POI within 200 m. Approach the gas station, or wait for dressing to finish."; Log.Warn("[Towns] POI dresser: " + _status); return; }
-            if (nearest.Error != null) { _status = "Layout error: " + nearest.Error + ". Existing file retained."; Log.Warn("[Towns] POI dresser: " + _status); return; }
+            if (nearest == null) { _status = "No ready custom POI within 200 m. Approach the gas station, or wait for dressing to finish."; Log.Warn(null,"[Towns] POI dresser: " + _status); return; }
+            if (nearest.Error != null) { _status = "Layout error: " + nearest.Error + ". Existing file retained."; Log.Warn(null,"[Towns] POI dresser: " + _status); return; }
             if (!_session.Acquire()) return;
             try
             {
@@ -263,7 +263,7 @@ namespace WildWasteland.Modules.Tools
                 CancelPlacement(); string error; if (!_runtime.Save(_site.Id, EditorLayoutJson.Serialize(_draft), out error)) throw new InvalidOperationException(error); _status = "Saved " + _draft.Props.Count + " props to " + _runtime.LayoutPath(_site.Type);
                 Close();
             }
-            catch (Exception e) { _status = "Save failed: " + e.Message; Log.Warn("[Towns] POI dresser: " + _status); }
+            catch (Exception e) { _status = "Save failed: " + e.Message; Log.Warn(null,"[Towns] POI dresser: " + _status); }
         }
         /// <summary>Releases the authoring session, camera, previews and provider state.</summary>
         internal void Close(bool immediate = false)
@@ -275,8 +275,8 @@ namespace WildWasteland.Modules.Tools
                 if (t.parent == _cameraParent) { t.localPosition = _cameraLocal; t.localRotation = _cameraRotation; }
                 else t.position = _cameraPosition;
             }
-            try { _runtime.SetDressingVisible(_site.Id, true); } catch (Exception e) { Log.Warn("[Tools] POI preview restoration: " + e.Message); }
-            try { _runtime.ReleaseSession(_owner); } catch (Exception e) { Log.Warn("[Tools] POI session release: " + e.Message); }
+            try { _runtime.SetDressingVisible(_site.Id, true); } catch (Exception e) { Log.Warn(null,"[Tools] POI preview restoration: " + e.Message); }
+            try { _runtime.ReleaseSession(_owner); } catch (Exception e) { Log.Warn(null,"[Tools] POI session release: " + e.Message); }
             if (_preview != null) { _preview.SetActive(false); Object.Destroy(_preview); }
             if (_outline != null) Object.Destroy(_outline.gameObject);
             if (_outlineMaterial != null) Object.Destroy(_outlineMaterial);

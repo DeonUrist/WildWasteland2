@@ -74,7 +74,7 @@ namespace WildWasteland.Modules.Survival
             Scheduler.Interval(owner,"Weather.NativeEncounters",.5f,Reconcile);
             Scan();
             _active=this;
-            Log.Always("[Weather] Native storm replacement enabled: native encounter/save anchors retained; WW walls and safe-eye tornado hazards replace vanilla graphics/physics.");
+            Log.Always(null,"[Weather] Native storm replacement enabled: native encounter/save anchors retained; WW walls and safe-eye tornado hazards replace vanilla graphics/physics.");
         }
         /// <summary>Starts a bounded rediscovery of existing native storm anchors.</summary>
         internal void Scan() { _scan=0; _scanning=true; }
@@ -109,7 +109,7 @@ namespace WildWasteland.Modules.Survival
                 storm.Pending.Add(root.transform); _roots[storm.Id]=storm;
                 return storm;
             }
-            Log.Warn("[Weather] Native storm anchor capacity (64) reached; replacement discovery deferred."); return null;
+            Log.Warn(null,"[Weather] Native storm anchor capacity (64) reached; replacement discovery deferred."); return null;
         }
         /// <summary>Observes enabled native storm FSMs without scanning unrelated hierarchies.</summary>
         private void Enabled(PlayMakerFSM fsm)
@@ -188,7 +188,7 @@ namespace WildWasteland.Modules.Survival
             // Native Move has chosen its heading. Reserve 2 km for cloud overhang beyond the footprint.
             PositionEncounter(storm,-velocity.normalized);
             storm.AwaitMotion=false;
-            Log.Always("[Weather] New storm positioned before reveal: front clearance >=3000 m; world="+Origin.World(storm.Root.transform.position).ToString("F1"));
+            Log.Always(null,"[Weather] New storm positioned before reveal: front clearance >=3000 m; world="+Origin.World(storm.Root.transform.position).ToString("F1"));
             return true;
         }
         /// <summary>Places a fresh native encounter with the configured distant front clearance.</summary>
@@ -213,7 +213,7 @@ namespace WildWasteland.Modules.Survival
                 if (storm.Pending.Count==0)
                 {
                     storm.Ready=true;
-                    Log.Always("[Weather] Replaced native SandStorm: "+storm.Root.name+"; original particles/audio/collision hazards suppressed; native save identity retained.");
+                    Log.Always(null,"[Weather] Replaced native SandStorm: "+storm.Root.name+"; original particles/audio/collision hazards suppressed; native save identity retained.");
                 }
                 return true;
             }
@@ -263,7 +263,7 @@ namespace WildWasteland.Modules.Survival
         internal Storm Preview(Vector3 position,Quaternion rotation)
         {
             var manager=ES3ReferenceMgrBase.Current; var prefab=manager!=null ? manager.GetPrefab(PrefabId,true) : null;
-            if (prefab==null) { Log.Warn("[Weather] Native SandStorm prefab unavailable; damaging preview not spawned."); return null; }
+            if (prefab==null) { Log.Warn(null,"[Weather] Native SandStorm prefab unavailable; damaging preview not spawned."); return null; }
             var root=UnityEngine.Object.Instantiate(prefab.gameObject,position,rotation);
             var storm=Track(root);
             if (storm==null) { UnityEngine.Object.Destroy(root); return null; }

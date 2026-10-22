@@ -4,7 +4,7 @@ using BepInEx.Configuration;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// (WW) Runtime POI navigation: human NPCs inside a POI whose type has pre-recorded data (PoiNavData) route over its node graph with
@@ -163,8 +163,7 @@ namespace WildWasteland.Modules.NPC
 
         // One node per scheduler step; the ray allowance is shared by every POI in the frame.
         /// <summary>Old NPC-entry sliced job body: forwards to <see cref="BuildSlice"/> unless the NPCAI entry runs "NPCAI.PoiNav.Build".</summary>
-        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
-        internal static bool BuildStep() { return !NavRuntime.Active && BuildSlice(); }
+
 
         /// <summary>Job "NPCAI.PoiNav.Build" (sliced, 500 us): one graph/node step of the queued POI instances; true = more work.</summary>
         internal static bool BuildSlice()
@@ -263,8 +262,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
         }
         /// <summary>Old NPC-entry job body: forwards to <see cref="UpdateWalkers"/> unless the NPCAI entry runs "NPCAI.PoiNav.Walkers".</summary>
-        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
-        internal static void WalkerTick() { if (!NavRuntime.Active) UpdateWalkers(); }
+
 
         /// <summary>Job "NPCAI.PoiNav.Walkers" (every frame): bodies nobody walked for 0.25 s (the brain stopped driving it: an attack, a stand) get their physics back.</summary>
         internal static void UpdateWalkers()
@@ -519,7 +517,7 @@ namespace WildWasteland.Modules.NPC
                 }
             }
             if (_planFrame != Time.frameCount) { _planFrame = Time.frameCount; _plansNow = 0; }
-            if (r.DirectSurface >= 0 && r.Inst == inst && r.Graph == inst.G && end == r.GoalNode && Services.PlayerLadder == null)
+            if (r.DirectSurface >= 0 && r.Inst == inst && r.Graph == inst.G && end == r.GoalNode && Core.ModApi.Get<Core.ITraversal>()?.PlayerOnLadder!=true)
             {
                 var feet = pos - Vector3.up * r.FeetOff; int near = NearestWorld(inst, feet, 4f, false);
                 if (near >= 0 && inst.Data.Nodes[near].Surface == r.DirectSurface && Mathf.Abs(inst.World[near].y - feet.y) < .8f && Clear(pos, goal)) return false;
@@ -620,7 +618,7 @@ namespace WildWasteland.Modules.NPC
         static int PlayerLadderLink(Inst inst, Vector3 goal)
         {
             var player = GameRefs.Player;
-            if (Services.PlayerLadder == null || player == null) return -1;
+            if (Core.ModApi.Get<Core.ITraversal>()?.PlayerOnLadder!=true || player == null) return -1;
             Vector3 p = player.transform.position;
             if ((goal - p).sqrMagnitude > 4f) return -1;
             int best = -1; float bd = 1.5f * 1.5f;
@@ -652,8 +650,7 @@ namespace WildWasteland.Modules.NPC
             Rescan(true);
         }
         /// <summary>Old NPC-entry origin shift: forwards to <see cref="ShiftCore"/> unless the NPCAI entry shifts navigation.</summary>
-        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
-        internal static void Shift(Vector3 delta) { if (!NavRuntime.Active) ShiftCore(delta); }
+
 
         /// <summary>Floating origin: instance points, boxes, routes and running traversals move by delta.</summary>
         internal static void ShiftCore(Vector3 delta)
@@ -667,8 +664,7 @@ namespace WildWasteland.Modules.NPC
             PoiNavTraverse.Shift(delta);
         }
         /// <summary>Old NPC-entry reset: forwards to <see cref="ResetCore"/> unless the NPCAI entry owns navigation.</summary>
-        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
-        internal static void Reset() { if (!NavRuntime.Active) ResetCore(); }
+
 
         /// <summary>Releases walkers and traversals and forgets every instance, route, graph and loaded data (scene load, start/stop).</summary>
         internal static void ResetCore()

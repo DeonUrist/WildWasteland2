@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     internal static partial class Nav
     {
@@ -45,7 +45,7 @@ namespace WildWasteland.Modules.NPC
             _highlightIndexReady = false;
             MapActionStatus = "Reset custom pathfinding: " + deleted + " cached file(s) deleted, " + removed.Count + " live map(s) queued for rediscovery. Vanilla maps retained."
                 + (failed == 0 ? "" : " " + failed + " file operation(s) failed; see the log.");
-            Core.Log.Always("[NPC] Nav: " + MapActionStatus);
+            Core.Log.Always(null,"[NPC] Nav: " + MapActionStatus);
         }
 
         /// <summary>Deletes only derived map files directly inside the selected cache folder.</summary>
@@ -58,10 +58,10 @@ namespace WildWasteland.Modules.NPC
                     foreach (string file in Directory.GetFiles(dir, pattern, SearchOption.TopDirectoryOnly))
                     {
                         try { File.Delete(file); deleted++; }
-                        catch (Exception e) { failed++; Core.Log.Warn("Nav: could not delete custom map " + file + ": " + e.Message); }
+                        catch (Exception e) { failed++; Core.Log.Warn(null,"Nav: could not delete custom map " + file + ": " + e.Message); }
                     }
             }
-            catch (Exception e) { failed++; Core.Log.Warn("Nav: could not reset custom maps in " + dir + ": " + e.Message); }
+            catch (Exception e) { failed++; Core.Log.Warn(null,"Nav: could not reset custom maps in " + dir + ": " + e.Message); }
         }
 
         // Capture candidates from a clean vanilla setup. Reviewed files go into NPC/Embedded/NavMaps/Vanilla in the repo.
@@ -89,7 +89,7 @@ namespace WildWasteland.Modules.NPC
                         using (var output = new FileStream(System.IO.Path.Combine(export, name), FileMode.Create, FileAccess.Write)) input.CopyTo(output);
                         copied.Add(name); found.Add(poi);
                     }
-                    catch (Exception e) { failed++; Core.Log.Warn("Nav: could not export " + resource + ": " + e.Message); }
+                    catch (Exception e) { failed++; Core.Log.Warn(null,"Nav: could not export " + resource + ": " + e.Message); }
                 }
                 foreach (string dir in new[] { VanillaMapDir, CustomMapDir })
                 {
@@ -103,7 +103,7 @@ namespace WildWasteland.Modules.NPC
                             File.Copy(file, System.IO.Path.Combine(export, name), true);
                             copied.Add(name); found.Add(poi);
                         }
-                        catch (Exception e) { failed++; Core.Log.Warn("Nav: could not export " + file + ": " + e.Message); }
+                        catch (Exception e) { failed++; Core.Log.Warn(null,"Nav: could not export " + file + ": " + e.Message); }
                     }
                 }
                 var missing = new List<string>();
@@ -111,13 +111,13 @@ namespace WildWasteland.Modules.NPC
                 MapActionStatus = "Exported " + copied.Count + " candidate map file(s), covering " + found.Count + "/" + VanillaPoiNames.Length
                     + " vanilla POIs, to " + export + ". Capture with custom POI mods disabled; verify before shipping."
                     + (failed == 0 ? "" : " " + failed + " file(s) failed; see the log.");
-                Core.Log.Always("[NPC] Nav: " + MapActionStatus);
-                if (missing.Count > 0) Core.Log.Always("[NPC] Nav: vanilla capture missing: " + string.Join(", ", missing.ToArray()));
+                Core.Log.Always(null,"[NPC] Nav: " + MapActionStatus);
+                if (missing.Count > 0) Core.Log.Always(null,"[NPC] Nav: vanilla capture missing: " + string.Join(", ", missing.ToArray()));
             }
             catch (Exception e)
             {
                 MapActionStatus = "Vanilla map export failed: " + e.Message;
-                Core.Log.Warn("Nav: " + MapActionStatus);
+                Core.Log.Warn(null,"Nav: " + MapActionStatus);
             }
         }
 

@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // (1.5.0) Small spiders pounce. A small spider chasing the player on foot, with open ground between them, starts running in zigzags when it
     // comes within 3-5 m (chosen at random per try), and from 2 m it leaps at the player: a ballistic jump aimed where the player will be, the

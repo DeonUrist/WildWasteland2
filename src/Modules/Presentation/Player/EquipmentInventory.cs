@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Equipment snapshot consuming optional logical custody or Core native slots.</summary>
     internal sealed class EquipmentInventory

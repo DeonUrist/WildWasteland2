@@ -1,6 +1,6 @@
 using System;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>
     /// Tracks one capacity-clamped amount across capacity changes (ammo per caliber, body armor). When the capacity shrinks the excess is

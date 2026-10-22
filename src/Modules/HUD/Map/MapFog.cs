@@ -248,7 +248,7 @@ namespace WildWasteland.Modules.HUD
             }
             for (int i = 0; i < Window; i++) { _buffer[i] = 255; _buffer[(Window - 1) * Window + i] = 255; _buffer[i * Window] = 255; _buffer[i * Window + Window - 1] = 255; }
             _uploadPending = true; _wasOpen = false;
-            if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Fog window at cell " + _winX + "," + _winZ + " (" + Chunks.Count + " chunks)");
+            if (Core.Log.L1) Core.Log.Main(null,"[CleanHUD] Fog window at cell " + _winX + "," + _winZ + " (" + Chunks.Count + " chunks)");
         }
     }
 }

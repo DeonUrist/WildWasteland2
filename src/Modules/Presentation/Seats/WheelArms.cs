@@ -10,7 +10,7 @@ using WildWasteland.Core.UI;
 
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     internal static partial class WheelArms
     {
@@ -82,7 +82,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Per frame (BodyRunner): follows the player car, its steering mount and fitted wheel / handlebars and loads the matching grip setup (checked twice a second).</summary>
         internal static void Tick()
         {
-            var car = PresentationModule.WorldRunning && !SaveBus.Busy && Game.Ready && Game.InCar && !Game.Dead ? Game.CarRoot : null;
+            var car = PresentationModule.WorldRunning && !SaveBus.Busy && Game.Ready && Core.PlayerState.InCar && !Core.PlayerState.Dead ? Core.PlayerState.CarRoot : null;
             if (!ReferenceEquals(car, _car))
             {
                 Clear(); _car = car;
@@ -144,7 +144,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             if (bounds.extents.x < .02f || bounds.extents.y < .02f) { Log.Warn(PresentationModule.WorldOwner, "Wheel arms: rim geometry has no usable XY radius; keeping the seat pose"); return; }
             _center = bounds.center; _radius = bounds.extents;
-            _towardDriver = Vector3.Dot(mount.forward, Game.Player.transform.position - mount.position) >= 0f ? 1f : -1f;
+            _towardDriver = Vector3.Dot(mount.forward, Core.PlayerState.Player.transform.position - mount.position) >= 0f ? 1f : -1f;
             var prefab = wheel.GetComponent<ES3Prefab>();
             _key = prefab != null ? "prefab-" + prefab.prefabId.ToString(Inv) : "mesh-" + mesh.name;
             foreach (char c in Path.GetInvalidFileNameChars()) _key = _key.Replace(c, '_');
@@ -310,7 +310,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal static void RestPassengerArms(Dictionary<string, Transform> bones, string owner)
         {
             if (owner != "wheel" && owner != "tool") return;
-            Transform hips; var player = Game.Player;
+            Transform hips; var player = Core.PlayerState.Player;
             if (player == null || !bones.TryGetValue("mixamorig:Hips", out hips)) return;
             if (_passengerHips != hips)
             {

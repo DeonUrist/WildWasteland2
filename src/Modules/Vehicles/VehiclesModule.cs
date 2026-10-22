@@ -5,10 +5,9 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-using WildWasteland.Modules.Patrols;
-using WildWasteland.Modules.PlayerBody;
-using WarRig = WildWasteland.Modules.Patrols.WarRig;             // refs-ok: Vehicles-owned namespace until the Wave C rename
-using Motorcycles = WildWasteland.Modules.Patrols.Motorcycles;   // refs-ok: Vehicles-owned namespace until the Wave C rename
+using WildWasteland.Modules.Vehicles;
+using WarRig = WildWasteland.Modules.Vehicles.WarRig;             // refs-ok: Vehicles-owned namespace until the Wave C rename
+using Motorcycles = WildWasteland.Modules.Vehicles.Motorcycles;   // refs-ok: Vehicles-owned namespace until the Wave C rename
 
 namespace WildWasteland.Modules.Vehicles
 {
@@ -93,14 +92,7 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>The War Rig model folder: plugins/WildWasteland/Vehicles/WarRig, or the pre-D13 Patrols/WarRig folder while the model files still live there.</summary>
         private string WarRigDir()
         {
-            string dir = Path.Combine(Dir, "WarRig");
-            string old = Path.Combine(Assets.ModuleDir("Patrols"), "WarRig");
-            if (!File.Exists(Path.Combine(dir, WarRig.S.ModelFile)) && File.Exists(Path.Combine(old, WarRig.S.ModelFile)))
-            {
-                Log.Warn(this, "War Rig model found only in " + old + "; move WarRig.glb and WarRig_colliders.glb to " + dir + " (D13)");
-                return old;
-            }
-            return dir;
+            return Path.Combine(Dir, "WarRig");
         }
 
         /// <summary>Undoes every game-state change: ignition row, cockpit state, steering centring, exit speed, War Rig registrations and the shelter.</summary>

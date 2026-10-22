@@ -6,7 +6,7 @@ using UnityEngine.Playables;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     public static partial class ModAPI
     {

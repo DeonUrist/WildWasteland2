@@ -78,7 +78,7 @@ namespace WildWasteland.Modules.Tools
             _holder = new GameObject("WW.PoiNavSetup");
             _staging = new GameObject("staging (inactive)"); _staging.SetActive(false); _staging.transform.SetParent(_holder.transform, false);
             Status = "placing " + _prefabs.Count + " POI types";
-            Log.Always("[NPC] POI pathfinding setup: placing " + _prefabs.Count + " native POI types from " + _cursor.ToString("F0") + "; new towns paused.");
+            Log.Always(null,"[NPC] POI pathfinding setup: placing " + _prefabs.Count + " native POI types from " + _cursor.ToString("F0") + "; new towns paused.");
         }
 
         /// <summary>Places and strips one native structure copy for explicit authoring.</summary>
@@ -113,8 +113,8 @@ namespace WildWasteland.Modules.Tools
                 _placed.Add(go.transform);
                 Status = "placed " + _placed.Count + " / " + _prefabs.Count;
             }
-            catch (Exception e) { Log.Warn("[NPC] POI pathfinding setup: " + prefab.name + ": " + e.Message); }
-            if (_next >= _prefabs.Count) Log.Always("[NPC] POI pathfinding setup: " + _placed.Count + " POI types placed.");
+            catch (Exception e) { Log.Warn(null,"[NPC] POI pathfinding setup: " + prefab.name + ": " + e.Message); }
+            if (_next >= _prefabs.Count) Log.Always(null,"[NPC] POI pathfinding setup: " + _placed.Count + " POI types placed.");
         }
 
         /// <summary>Converts collider bounds into setup-root local coordinates.</summary>
@@ -151,7 +151,7 @@ namespace WildWasteland.Modules.Tools
             if (_holder != null) Object.Destroy(_holder);
             _holder = null; _placed.Clear(); _prefabs.Clear(); _next = 0; _queue.Clear(); Baking = null;
             Status = "off"; SetSuspended(false);
-            Log.Always("[NPC] POI pathfinding setup removed.");
+            Log.Always(null,"[NPC] POI pathfinding setup removed.");
         }
 
         // ------------------------------------------------------------------ baking
@@ -179,11 +179,11 @@ namespace WildWasteland.Modules.Tools
                 {
                     NavigationTools.Source.Save(Baking.Result); Baked++;
                     NavigationTools.Source.Forget(Baking.Poi);
-                    Log.Always("[NPC] POI navigation baked: " + Baking.Poi + " " + Baking.Status + " -> " + NavigationTools.Source.ConfigPath(Baking.Poi));
+                    Log.Always(null,"[NPC] POI navigation baked: " + Baking.Poi + " " + Baking.Status + " -> " + NavigationTools.Source.ConfigPath(Baking.Poi));
                 }
-                catch (Exception e) { Failed++; Log.Warn("[NPC] POI navigation " + Baking.Poi + " not saved: " + e.Message); }
+                catch (Exception e) { Failed++; Log.Warn(null,"[NPC] POI navigation " + Baking.Poi + " not saved: " + e.Message); }
             }
-            else { Failed++; Log.Warn("[NPC] POI navigation bake " + Baking.Poi + " " + Baking.Status); }
+            else { Failed++; Log.Warn(null,"[NPC] POI navigation bake " + Baking.Poi + " " + Baking.Status); }
             Baking = null;
         }
 

@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using HutongGames.PlayMaker.Actions;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>NPC-owned taunt timing, knowledge sharing and horn observation.</summary>
     internal static partial class Senses

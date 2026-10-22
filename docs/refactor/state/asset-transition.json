@@ -1,0 +1,1069 @@
+{
+  "base_sha256": "5aa0485c4fb4da89a7cc3546c86d2b37ef0980762edd906395b774f45e9a6f6a",
+  "added": [
+    {
+      "source": "WildWasteland/Patrols/.coyote-traffic-v1",
+      "target": "src/Modules/Patrols/Embedded/.coyote-traffic-v1",
+      "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "bytes": 1
+    },
+    {
+      "source": "WildWasteland/Patrols/.merchant-traffic-v1",
+      "target": "src/Modules/Patrols/Embedded/.merchant-traffic-v1",
+      "sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "bytes": 1
+    },
+    {
+      "source": "WildWasteland/Patrols/MerchantLayouts.json",
+      "target": "src/Modules/Patrols/Embedded/MerchantLayouts.json",
+      "sha256": "248ad9b75b32c05241228de49457ee8bcdabadd5f5c01cc23b44da8e67c783fd",
+      "bytes": 2963
+    },
+    {
+      "source": "WildWasteland/Patrols/PatrolsAndLoot.json",
+      "target": "src/Modules/Patrols/Embedded/PatrolsAndLoot.json",
+      "sha256": "21d12aa72fa2c887abe46402aaa5fbeb57a4f67e3b448da443907f130ac852c8",
+      "bytes": 15865
+    },
+    {
+      "source": "WildWasteland/Guns/Sounds/knifestab.wav",
+      "target": "src/Modules/Gunplay/Embedded/Sounds/knifestab.wav",
+      "sha256": "d1e75e791655f39b8672a326c09e844c40eb00e0fe8e2ec7492464350d3d8e52",
+      "bytes": 648594
+    },
+    {
+      "source": "WildWasteland/HUD/Sounds/headshot.mp3",
+      "target": "src/Modules/HUD/Embedded/Sounds/headshot.mp3",
+      "sha256": "7c99ecc896942ee52df46feae00c1fbc193f8bd59923ee3f4b29f68a9ead2f37",
+      "bytes": 15788
+    },
+    {
+      "source": "WildWasteland/NPC/Models/npcai_dogs.bundle",
+      "target": "src/Modules/Presentation/Embedded/Models/npcai_dogs.bundle",
+      "sha256": "4fa4316c7ca2f13d9df6c6003ae24c9e7e816de72730aa02e5267a30eae45eb0",
+      "bytes": 3059068
+    },
+    {
+      "source": "WildWasteland/NPC/Models/npcai_wildhound.bundle",
+      "target": "src/Modules/Presentation/Embedded/Models/npcai_wildhound.bundle",
+      "sha256": "2dd7667f7451254b6f13655c259466eb8fb7751c4754b7388547c3b09b698c14",
+      "bytes": 549923
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Big_Tyrant.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Big_Tyrant.json",
+      "sha256": "ff830b039e80e989d83183e5f5d7835604e7a38467b11eef04abcf42a89008f3",
+      "bytes": 3009
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Bike.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Bike.json",
+      "sha256": "26f861dfe87e8cdac97afe2800703ea3a332c76b1c5ef6f3281322d42d84c804",
+      "bytes": 1192
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Bike_with_Rider_Flexa.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Bike_with_Rider_Flexa.json",
+      "sha256": "91fd47b4ff63cb6fe3b06ca52e299a6f74cff4404f007fdd24c8fb1d6619baa3",
+      "bytes": 1380
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Bike_with_Rider_Scrud.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Bike_with_Rider_Scrud.json",
+      "sha256": "11b9392c4191e7413f3426d5fa5728af3c68a077b67e37fde3e93949411a7141",
+      "bytes": 1404
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Blast_Bike.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Blast_Bike.json",
+      "sha256": "cbc1c5ed6ec735522b0593140f2302d51e35d523d0dbfc5a12abf74f5233a10b",
+      "bytes": 1546
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Chariot.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Chariot.json",
+      "sha256": "38295804b5678b72699c4dc9611b1a9f69e7af7c8eead0c0bb6c427600823e85",
+      "bytes": 1726
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Coyote_PipeRat.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Coyote_PipeRat.json",
+      "sha256": "9091e61aef08a5bdb4ec1689d2985c5683867fd1399fe8df6e40af1eba5f01e7",
+      "bytes": 3779
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Coyote_Trader.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Coyote_Trader.json",
+      "sha256": "3354a2f11a43722ab1bbe20a7a010e2cd41778a903878410452ae8c406a906f2",
+      "bytes": 1896
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Example_PipeRat.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Example_PipeRat.json",
+      "sha256": "87b2f3232d8007b5f2b389690af2220e8badabb448a2c4c5200bfd30e41822af",
+      "bytes": 1441
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Fast_Blast_Bike.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Fast_Blast_Bike.json",
+      "sha256": "ffbd16d609c4f316453c0865f52fc79ceac49fbc9b0ddf65eff7422c5c460369",
+      "bytes": 1582
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Junker_Advanced.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Junker_Advanced.json",
+      "sha256": "8ff79f25be652e212d4564a8aa3ca818eba0c03fbc254ff544b173edfc8e70a8",
+      "bytes": 2828
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Junker_Basic.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Junker_Basic.json",
+      "sha256": "7213df95ea4106714cfbe35fdb4f6c3cb6960c755ce6efdb92a2ebbefa6b1cac",
+      "bytes": 2840
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Junker_Warboy.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Junker_Warboy.json",
+      "sha256": "6b87c4d2dd1016a24f2ad52cddc053f771696b9f44e58f114a6911e97ad2dba0",
+      "bytes": 3018
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Piperat_Bandit.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Piperat_Bandit.json",
+      "sha256": "0f02bbc803a26e672a5e0cb707a3252654c664c8ca11d637b4cab2e87ee7bba5",
+      "bytes": 2767
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/PipeRat_Basic.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/PipeRat_Basic.json",
+      "sha256": "b7e64022acfb71af252d5095eb5707a59ef2d639f3760fb44e14dece80aeeed6",
+      "bytes": 1637
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Piperat_Scout.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Piperat_Scout.json",
+      "sha256": "05fe286b752c935e48083eda0585956b3189952af128d12a58d0116a63f5bf6b",
+      "bytes": 2766
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Porcupine.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Porcupine.json",
+      "sha256": "9636666b73c5a40b3e4550459d6b8a0d8f3d0b92fc7e745d234916af11efaeeb",
+      "bytes": 6194
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Rustcargo_Loot.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Rustcargo_Loot.json",
+      "sha256": "8749ff4c2065a10b05d92557030be7fe575d662571ec659d625d7b112c34f58d",
+      "bytes": 1388
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Rustcargo_Loot_Advanced.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Rustcargo_Loot_Advanced.json",
+      "sha256": "9142ac2a20e9bf771df1aea337cc5045db68ed6f2ac5cacaa4f6a51b6dc72d8c",
+      "bytes": 1431
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Spikeback_Motorcycle.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Spikeback_Motorcycle.json",
+      "sha256": "0aaa1fa46594aea061fcb554533e394760c1dd1a0dd35672f31ccf9f7bff0a56",
+      "bytes": 1633
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Tiny_Tyrant.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Tiny_Tyrant.json",
+      "sha256": "9cb9d60a85b696bacacbf1ba32f5fe56e32c3fbeff854cbb10b12b45ac167bb0",
+      "bytes": 3013
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Truck_War_Rig.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Truck_War_Rig.json",
+      "sha256": "c50dc3c7975c5f303695a7b30c8433cefa22da49da80963b931dab7b1e67f0e2",
+      "bytes": 5922
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Vulture_Gunner.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Vulture_Gunner.json",
+      "sha256": "afafdf36fe2a5a8d9b2f659a514cb21689ba9a2f36b7fb06f5631faa5a597d40",
+      "bytes": 3628
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Warboy_Armored_Tyrant.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Warboy_Armored_Tyrant.json",
+      "sha256": "0505af2eccb1b77c159ef0137fc0227fe33b68ccb5e4f9607041370e76cbbf0d",
+      "bytes": 3027
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Warboy_Bike.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Warboy_Bike.json",
+      "sha256": "201910d6e2fbcea246bbe55003a0088a71e4f6a69809f4e41f5041e140ed688c",
+      "bytes": 1724
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Warboy_Tyrant.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Warboy_Tyrant.json",
+      "sha256": "8fc687345f3b936dd57a5928af9994faf58548c9a002120a2e6eec6752246968",
+      "bytes": 2886
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Warboy_Vulture.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Warboy_Vulture.json",
+      "sha256": "a24f7063d0a47b53763ac96b2f743d8f30fadde1f0f43987c5c271e49f383003",
+      "bytes": 3049
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/War_rig.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/War_rig.json",
+      "sha256": "ad1cc0ff8b742e49238367770a7d9835ed8cb887c37b8a6a49e4033b22bb0252",
+      "bytes": 4250
+    },
+    {
+      "source": "WildWasteland/Patrols/BaseTemplates/Weak_Warboy.json",
+      "target": "src/Modules/Patrols/Embedded/BaseTemplates/Weak_Warboy.json",
+      "sha256": "5b02a727023618268378fc3c3cc3714137f24a042659fcacda747b9e4c390bea",
+      "bytes": 2781
+    },
+    {
+      "source": "WildWasteland/Patrols/PlayerTemplates/Coyote_Bike.json",
+      "target": "src/Modules/Patrols/Embedded/PlayerTemplates/Coyote_Bike.json",
+      "sha256": "2ad45108b788f6dbbf86af07486bf8444638468dd9c6c4402f2c091308a8ac32",
+      "bytes": 1204
+    },
+    {
+      "source": "WildWasteland/Patrols/Sounds/witness-me.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/witness-me.wav",
+      "sha256": "c930fc5dd7207a56f2cd49a01d5c59a7031d4739b88afaef08166a021f140851",
+      "bytes": 132852
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo.png",
+      "sha256": "51c87fb0fccfd9557b9e83c40e0cc92fd4dd874d8725ed9e45f5acf4bb73dd2b",
+      "bytes": 705709
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_diesel.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_diesel.png",
+      "sha256": "dab1ad6ea3af280bbb09635c94e62982d5c9a6a87f5169206efd670cc6a11954",
+      "bytes": 709126
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_drugs.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_drugs.png",
+      "sha256": "4cce1e3148cc79faf5742129c6cddc56d80ddece896992a9b6ea801beec3eca5",
+      "bytes": 738523
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_food.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_food.png",
+      "sha256": "f1a1850902dfe9f5efbc65a31c0ec4ba1c7c69d141fff8e1ef97fb1a7ccc7423",
+      "bytes": 839869
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_gasoline.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_gasoline.png",
+      "sha256": "dab1ad6ea3af280bbb09635c94e62982d5c9a6a87f5169206efd670cc6a11954",
+      "bytes": 709126
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_inside.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_inside.png",
+      "sha256": "6cbaa63e4b7104f9b7034f4ced7faf2006a3be6ac6b6690498746bae534ff3a4",
+      "bytes": 733145
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_mechanic.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_mechanic.png",
+      "sha256": "3a810ab3528001da1cf05d714799cb70d2f7c43363e85ac0fd121ac9c701eaf4",
+      "bytes": 762622
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_medicine.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_medicine.png",
+      "sha256": "075042e30ac8b19df188cc6ef6ed90fc31d750ec3be1483bf1d3f2a5bad8835e",
+      "bytes": 766420
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_water.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_water.png",
+      "sha256": "8d897d0ac5766b445de3109fd93173edb0f0fb56327692190bc97b801a6957b7",
+      "bytes": 875046
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/cargo_weapons.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/cargo_weapons.png",
+      "sha256": "b53f46763ad563c5ac3e57aaf1095a94d06ead88df82f5249d0b6c39b545be77",
+      "bytes": 771898
+    },
+    {
+      "source": "WildWasteland/Patrols/WarRig/WarRig.glb",
+      "target": "src/Modules/Vehicles/Embedded/WarRig/WarRig.glb",
+      "sha256": "4b8ad6bee3aae304c5cb6ce84e1910d426b452ac1fc4badbb620d21e524a8dd1",
+      "bytes": 19822788
+    },
+    {
+      "source": "WildWasteland/Patrols/WarRig/WarRig_colliders.glb",
+      "target": "src/Modules/Vehicles/Embedded/WarRig/WarRig_colliders.glb",
+      "sha256": "f671a4955d5a21fbb08007f305ec627e31ec5fb85cd729db4862ca8c2f4f38d1",
+      "bytes": 66012
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/apocaplayer_anims.bundle",
+      "target": "src/Modules/Presentation/Embedded/Models/apocaplayer_anims.bundle",
+      "sha256": "c3148129d87646acb909ed18b5679b09ae9a40818b5a48381197692950f51cc5",
+      "bytes": 3006574
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/apocaplayer_camera.bundle",
+      "target": "src/Modules/Presentation/Embedded/Models/apocaplayer_camera.bundle",
+      "sha256": "033869d9e2844a4d5248663e294acb6c883249b48214a83a9b693a50e11ac1b6",
+      "bytes": 7439
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/apocaplayer_climbing.bundle",
+      "target": "src/Modules/Presentation/Embedded/Models/apocaplayer_climbing.bundle",
+      "sha256": "36007c576c2894dc332dab4105046f412937d3b963a0e1ecb2f0286a4dd5c94d",
+      "bytes": 261989
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player2_female_arms.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Player2_female_arms.png",
+      "sha256": "4f98add05924b22bd7849cab677061740bc915dc3a5d28e7568082ee88fe2e67",
+      "bytes": 3430221
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player2_max_arms.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Player2_max_arms.png",
+      "sha256": "286959dd6a4bd5ca6d04844e64064a3d41a30e89236bf751808b4ed5c24c2931",
+      "bytes": 3610907
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player2_max_arms_left.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Player2_max_arms_left.png",
+      "sha256": "84ca29e66272133ce9f36cef37afc3034ef00a683192ac2f5edd2f870bcdde30",
+      "bytes": 3814770
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/player_character_2_UI.png",
+      "target": "src/Modules/Presentation/Embedded/Models/player_character_2_UI.png",
+      "sha256": "0e47f1bf89a9753d61a13f5784a47911b99ec9815c71e40f98c2805283f8bd7f",
+      "bytes": 347996
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/player_character_2_UI_max.png",
+      "target": "src/Modules/Presentation/Embedded/Models/player_character_2_UI_max.png",
+      "sha256": "86a4c8474d259ca818bc558f520dd115100bd40df91d8471618451f7bdf34968",
+      "bytes": 349173
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player_female.glb",
+      "target": "src/Modules/Presentation/Embedded/Models/Player_female.glb",
+      "sha256": "b2fc90d0ece076b4e13cba66d4fe28c3756b633d5f5f94f26d175542e2569573",
+      "bytes": 1735544
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player_female.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Player_female.png",
+      "sha256": "cfffcd81e7150be8ab5822c33b39234793ea814a3be4d16cd0b2897a419cd203",
+      "bytes": 1656016
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player_male.glb",
+      "target": "src/Modules/Presentation/Embedded/Models/Player_male.glb",
+      "sha256": "bb2d376dedd45418d436f501ac46dfd03686920630c83fbf177fbe47993c01bd",
+      "bytes": 142116
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player_male.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Player_male.png",
+      "sha256": "383311bd0141ae8473b9ce6350562dfd7b18c57eb3d6e3b55c25a87b1c495dc7",
+      "bytes": 4163560
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player_max.glb",
+      "target": "src/Modules/Presentation/Embedded/Models/Player_max.glb",
+      "sha256": "874eae3bf50a042a09558aa6ca47da4ffdc4283df1a3a2d136bda06ca69d73c8",
+      "bytes": 4528796
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Player_max.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Player_max.png",
+      "sha256": "1f988804185b4d48748030523b169bab1631ac89b42044bc25b814949c6e4dec",
+      "bytes": 4408284
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/shout_female.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/shout_female.wav",
+      "sha256": "82112ba1a08495029c85b2cb04ba62a11f1949b3340738fb10f46886f684061d",
+      "bytes": 175966
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/shout_male.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/shout_male.wav",
+      "sha256": "b2821101a84f62d232d55ef578c87f0b76cc2dd25ab566b963af841ebd3d357d",
+      "bytes": 122818
+    },
+    {
+      "source": "WildWasteland/theme/game/chains.jpg",
+      "target": "src/Core/Embedded/theme/game/chains.jpg",
+      "sha256": "41c9d9116add7c75eade5236e11dd2450e6692a6c6dea159bc056301ebaccd49",
+      "bytes": 28470
+    },
+    {
+      "source": "WildWasteland/theme/game/knob.png",
+      "target": "src/Core/Embedded/theme/game/knob.png",
+      "sha256": "8d0e5f26727ca1dcacafd1aa5b7b222b6a8c0fc443f6b8dd32403f4a3a5410da",
+      "bytes": 7371
+    },
+    {
+      "source": "WildWasteland/theme/game/plank.png",
+      "target": "src/Core/Embedded/theme/game/plank.png",
+      "sha256": "f8f77d16ad92e1707aa590788e2752fd1fdbceaf6c282823644c4e56af88f3bd",
+      "bytes": 51281
+    },
+    {
+      "source": "WildWasteland/theme/game/rebar_h.png",
+      "target": "src/Core/Embedded/theme/game/rebar_h.png",
+      "sha256": "32ffc13ba5b47ca51b103e286147dda78a9cd73e26dc52cf39f8c84c6edb3d04",
+      "bytes": 22176
+    },
+    {
+      "source": "WildWasteland/theme/game/rebar_v.png",
+      "target": "src/Core/Embedded/theme/game/rebar_v.png",
+      "sha256": "4d98e7648f8f09df67f7773b0de645016ccddd548dea71636f6edd4a7c621976",
+      "bytes": 20732
+    },
+    {
+      "source": "WildWasteland/theme/game/rivet.png",
+      "target": "src/Core/Embedded/theme/game/rivet.png",
+      "sha256": "2536d861129c4fbb7b19b60e1859c17a654e7d26e9afef7d36498c3ac2770975",
+      "bytes": 7250
+    },
+    {
+      "source": "WildWasteland/theme/game/rust.jpg",
+      "target": "src/Core/Embedded/theme/game/rust.jpg",
+      "sha256": "ccd9296175781e466014ed9c4b6020d30619aea2b22d4e1b139bb2f1675321f4",
+      "bytes": 93686
+    },
+    {
+      "source": "WildWasteland/theme/ledger/check.png",
+      "target": "src/Core/Embedded/theme/ledger/check.png",
+      "sha256": "b3781513b609440b59e6a9d50cdb9be0ed7ba0d48a878d082eab12f79c340d31",
+      "bytes": 507
+    },
+    {
+      "source": "WildWasteland/theme/ledger/chevron-down.png",
+      "target": "src/Core/Embedded/theme/ledger/chevron-down.png",
+      "sha256": "16d154791cf48ad379e28c9328742851228ed138c045702b6132971ebe37bf43",
+      "bytes": 454
+    },
+    {
+      "source": "WildWasteland/theme/ledger/chevron-right.png",
+      "target": "src/Core/Embedded/theme/ledger/chevron-right.png",
+      "sha256": "5e6406639e5a7d21580059a27a004902280ed4321a383964a8ee4ea96dc538e7",
+      "bytes": 459
+    },
+    {
+      "source": "WildWasteland/theme/ledger/circle-minus.png",
+      "target": "src/Core/Embedded/theme/ledger/circle-minus.png",
+      "sha256": "a777111e6656415ee74cc8c21cd9793277dd8dc4183d17e0ac82ef8436368fb1",
+      "bytes": 1330
+    },
+    {
+      "source": "WildWasteland/theme/ledger/plus.png",
+      "target": "src/Core/Embedded/theme/ledger/plus.png",
+      "sha256": "c51dac43051518e18372580a8c78b4d52258bbc061d650ec61d578867a53c1d3",
+      "bytes": 359
+    },
+    {
+      "source": "WildWasteland/theme/ledger/star-filled.png",
+      "target": "src/Core/Embedded/theme/ledger/star-filled.png",
+      "sha256": "bc3e9b304606dbc65b45552b452dd7cb61f421f3cd63dff343e2611f23c9f9b1",
+      "bytes": 810
+    },
+    {
+      "source": "WildWasteland/theme/ledger/star.png",
+      "target": "src/Core/Embedded/theme/ledger/star.png",
+      "sha256": "7ee34f2e19b4f22bd6247613a8bf25ee6c4866a9d2061c451a140487c5aa974a",
+      "bytes": 1149
+    },
+    {
+      "source": "WildWasteland/theme/ledger/trash-2.png",
+      "target": "src/Core/Embedded/theme/ledger/trash-2.png",
+      "sha256": "c6ea9e9ee119639924ecc607a6bd9d21f8543a6445d54a4fe08e33244927c010",
+      "bytes": 759
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/halfbreed_body.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/halfbreed_body.png",
+      "sha256": "ad4272d0d4f23f5432b6ec7004fe4dd1817730f927062e399597f73b62a9f291",
+      "bytes": 3460425
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/halfbreed_trunk.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/halfbreed_trunk.png",
+      "sha256": "99fe803a5e02e24181fe1a1ece6d8e8f19a53cfae495f4901dd8f9d199f64d43",
+      "bytes": 3070663
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/junker.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/junker.png",
+      "sha256": "afd602523ce6d396db39fb51be868f48aa9ca1b493689e6e7b4bfbbf0fa58b9b",
+      "bytes": 518509
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/piperat.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/piperat.png",
+      "sha256": "6228b45b4b2a9fc92b80842a3d57ed3612171dd218c852d4d3fec60b8ab1946f",
+      "bytes": 1703214
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/piperat_dashboard.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/piperat_dashboard.png",
+      "sha256": "cd2b5738f10dafae40495e315cae29d67f9d3811735320a8761a087a376db032",
+      "bytes": 1281456
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/poloska.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/poloska.png",
+      "sha256": "6c0a7df74573514a8b984a520372e2e7465bd4dff5f4b1f801a4d9ddda06edde",
+      "bytes": 804028
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/rustliner.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/rustliner.png",
+      "sha256": "124164cc802f682b8da108e532283bb271d7fceb2145713bac69152505eb050b",
+      "bytes": 2191461
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/rustlinerX.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/rustlinerX.png",
+      "sha256": "89ae6c173d9e6408dd2701b4f9f010b4b48eb4343fc577aa062910d0bedcaf56",
+      "bytes": 19638429
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/coyotes/tinytyrant.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/coyotes/tinytyrant.png",
+      "sha256": "9c471bff5f5914b505038d0e4c4a45d2607bad3f2ac8f6d7fae231f9f9742735",
+      "bytes": 2199090
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/scrapyard/halfbreed_body.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/scrapyard/halfbreed_body.png",
+      "sha256": "ad4272d0d4f23f5432b6ec7004fe4dd1817730f927062e399597f73b62a9f291",
+      "bytes": 3460425
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/scrapyard/halfbreed_trunk.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/scrapyard/halfbreed_trunk.png",
+      "sha256": "99fe803a5e02e24181fe1a1ece6d8e8f19a53cfae495f4901dd8f9d199f64d43",
+      "bytes": 3070663
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/scrapyard/junker.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/scrapyard/junker.png",
+      "sha256": "afd602523ce6d396db39fb51be868f48aa9ca1b493689e6e7b4bfbbf0fa58b9b",
+      "bytes": 518509
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/scrapyard/piperat.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/scrapyard/piperat.png",
+      "sha256": "6228b45b4b2a9fc92b80842a3d57ed3612171dd218c852d4d3fec60b8ab1946f",
+      "bytes": 1703214
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/scrapyard/piperat_dashboard.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/scrapyard/piperat_dashboard.png",
+      "sha256": "cd2b5738f10dafae40495e315cae29d67f9d3811735320a8761a087a376db032",
+      "bytes": 1281456
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/scrapyard/poloska.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/scrapyard/poloska.png",
+      "sha256": "6c0a7df74573514a8b984a520372e2e7465bd4dff5f4b1f801a4d9ddda06edde",
+      "bytes": 804028
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/scrapyard/rustliner.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/scrapyard/rustliner.png",
+      "sha256": "89ae6c173d9e6408dd2701b4f9f010b4b48eb4343fc577aa062910d0bedcaf56",
+      "bytes": 19638429
+    },
+    {
+      "source": "WildWasteland/Patrols/Textures/scrapyard/tinytyrant.png",
+      "target": "src/Modules/Presentation/Embedded/VehicleSkins/scrapyard/tinytyrant.png",
+      "sha256": "bbae8aa6052665e4f808e5f88c8e437745c99dbbf15df8f4edc6891dda5db03c",
+      "bytes": 2370600
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Hud/cassette.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Hud/cassette.png",
+      "sha256": "53d16eadf2e5f57e0b4771fef63359678899f3393e6d9be1f1b09ae112e946e2",
+      "bytes": 12210
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Hud/handbrake.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Hud/handbrake.png",
+      "sha256": "87cb033d5ca0a5240e55d732329309de50e0e7fc62a24ee5372397e93b7a8221",
+      "bytes": 12800
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/Hud/ignition.png",
+      "target": "src/Modules/Presentation/Embedded/Models/Hud/ignition.png",
+      "sha256": "52398f4b508f0d7286726cb97929002b2064e47daf90cdbf9e24a91fff5cfcba",
+      "bytes": 8636
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/Female/FEMDEATH.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/Female/FEMDEATH.wav",
+      "sha256": "f2f48bf3e3679699ca2c220a7f9e30f21209d6708e518fa4e7a9889cddf11443",
+      "bytes": 173470
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/Female/FEMPAIN1.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/Female/FEMPAIN1.wav",
+      "sha256": "61460021788e0a094b92996e7257404b151072fd0d94d5027d714bf9aac04095",
+      "bytes": 74838
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/Female/FEMPAIN2.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/Female/FEMPAIN2.wav",
+      "sha256": "232109be3942643def2446d6085bfd29579dbb0f2c16c5af102758eeeea9af03",
+      "bytes": 82454
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/Female/FEMPAIN3.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/Female/FEMPAIN3.wav",
+      "sha256": "10dbb47d1121a15395736c5e58e401b8db3361825aa00d9fed05df26bf09898f",
+      "bytes": 55866
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/Female/FEMPAIN4.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/Female/FEMPAIN4.wav",
+      "sha256": "747272fa3f4e4000832b4c6fb421b84bee724777e27a853994bb9178d597e8e6",
+      "bytes": 63498
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/Female/human_hurt.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/Female/human_hurt.wav",
+      "sha256": "bda4d21a4b5bbf647c1d7ac2ee028d64f84478d700824ee48759ac48745390cf",
+      "bytes": 133466
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Sounds/Female/human_hurt_2.wav",
+      "target": "src/Modules/Presentation/Embedded/Sounds/Female/human_hurt_2.wav",
+      "sha256": "5e764c42a4d99535fa0300f09f44d4dc69f16e33cf43665c144f94c7bdafb10b",
+      "bytes": 72404
+    },
+    {
+      "source": "WildWasteland/LoadingScreens/BG_MAIN.png",
+      "target": "src/Modules/HUD/Embedded/LoadingScreens/BG_MAIN.png",
+      "sha256": "64d2c72819c799b75a8c819ce17ab971ff26d3713b754a83b9d2eb94a692d772",
+      "bytes": 2395847
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Models/player_character_2_UI_male.png",
+      "target": "src/Modules/Presentation/Embedded/Models/player_character_2_UI_male.png",
+      "sha256": "58dad93a2db65b000121093be8d329b2e595367b34782361575911667cc3d02c",
+      "bytes": 351773
+    },
+    {
+      "source": "WildWasteland/Weather/LICENSE-JangaFX.txt",
+      "target": "src/Modules/Survival/Embedded/LICENSE-JangaFX.txt",
+      "sha256": "64473bdcf2041c5d4f2580ffdddc15d0c20e2440bed4119d032a3ec92363a21c",
+      "bytes": 6531
+    },
+    {
+      "source": "WildWasteland/CleanHUD/font_atlas.png",
+      "target": "src/Modules/HUD/Embedded/font_atlas.png",
+      "sha256": "9cc2e4bc8509941181095c9addc3987863fe163c5d39cda1c907e0f92cfe7777",
+      "bytes": 25241
+    },
+    {
+      "source": "WildWasteland/CleanHUD/font_meta.json",
+      "target": "src/Modules/HUD/Embedded/font_meta.json",
+      "sha256": "63a4d0139a348c55de87f5df8d50dad6c7a7423728a2046464a8d343b75d99e5",
+      "bytes": 4255
+    },
+    {
+      "source": "WildWasteland/CleanHUD/game_font_atlas.png",
+      "target": "src/Modules/HUD/Embedded/game_font_atlas.png",
+      "sha256": "1aa9c8a4c59c9c18eef90c28b09c0a2aa7a8d8f3ce579de2ad85814d3faa9690",
+      "bytes": 161495
+    },
+    {
+      "source": "WildWasteland/CleanHUD/game_font_meta.json",
+      "target": "src/Modules/HUD/Embedded/game_font_meta.json",
+      "sha256": "02cf682061ee4a82c41a6b5aee157a5764d85b6c1c9d4ef4bb93e5226cacae87",
+      "bytes": 3864
+    },
+    {
+      "source": "WildWasteland/CleanHUD/panel_menu.png",
+      "target": "src/Modules/HUD/Embedded/panel_menu.png",
+      "sha256": "c368756887a104c29c63935f4a96ba33ae155d43ce196166d8ca6ff40a1d065a",
+      "bytes": 447192
+    },
+    {
+      "source": "WildWasteland/CleanHUD/panel_vitals.png",
+      "target": "src/Modules/HUD/Embedded/panel_vitals.png",
+      "sha256": "0c2dfa2558fa6be8fe8992ce246e897936160142600650df44b08205bf840059",
+      "bytes": 385044
+    },
+    {
+      "source": "WildWasteland/CleanHUD/panel_weapon.png",
+      "target": "src/Modules/HUD/Embedded/panel_weapon.png",
+      "sha256": "ce31b73024d68aaa910cf468ba115ed59ec7d7e8511f40b59a0ff6e1191734d9",
+      "bytes": 379171
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Portraits/Bodyguard.png",
+      "target": "src/Modules/Presentation/Embedded/Portraits/Bodyguard.png",
+      "sha256": "bb09ae365649f6325187ebab6579dc89b81e0b9b1de31fbc0203c8b895df8f92",
+      "bytes": 221578
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Portraits/Female.png",
+      "target": "src/Modules/Presentation/Embedded/Portraits/Female.png",
+      "sha256": "23b35ec567ac855d201bfa91f6f8fa75d924f8243f19b099df705f8174f49e36",
+      "bytes": 241185
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Portraits/Gungirl.png",
+      "target": "src/Modules/Presentation/Embedded/Portraits/Gungirl.png",
+      "sha256": "ba5324f80684a9ab01630efa1436cdec251e9bc4afaaadeebe0355970c9f32c5",
+      "bytes": 226172
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Portraits/Male.png",
+      "target": "src/Modules/Presentation/Embedded/Portraits/Male.png",
+      "sha256": "853e816705eb3c0d48a6fc317fc4454ea8a38909fcccb1d051ea16bad9c07c8c",
+      "bytes": 266443
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Portraits/Merchant.png",
+      "target": "src/Modules/Presentation/Embedded/Portraits/Merchant.png",
+      "sha256": "8ba478bf04d317910abf0aae244ca9ffc3d71d2b3e4f4318a4eb80058e6bcc50",
+      "bytes": 229142
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Portraits/OrganicMechanic.png",
+      "target": "src/Modules/Presentation/Embedded/Portraits/OrganicMechanic.png",
+      "sha256": "b233fe4d7ca0ad1c208c4364dc5b92fa24494a908acaf8c36b073e00cce0efa1",
+      "bytes": 220116
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Portraits/Shoota.png",
+      "target": "src/Modules/Presentation/Embedded/Portraits/Shoota.png",
+      "sha256": "a15d3d206001dc8779545b13d8d52c9f0ae27f0da642fa615a06fe3fe629a12f",
+      "bytes": 209602
+    },
+    {
+      "source": "WildWasteland/PlayerBody/Portraits/Sprokka.png",
+      "target": "src/Modules/Presentation/Embedded/Portraits/Sprokka.png",
+      "sha256": "05cbaa3f705668e215d6673332f189efcb441a3e72b73c2c1519e106373b8bee",
+      "bytes": 193313
+    },
+    {
+      "source": "WildWasteland/PlayerBody/LegacyPortraits/male.png",
+      "target": "src/Modules/Presentation/Embedded/LegacyPortraits/male.png",
+      "sha256": "58dad93a2db65b000121093be8d329b2e595367b34782361575911667cc3d02c",
+      "bytes": 351773
+    }
+  ],
+  "retained_current": [
+    {
+      "source": "WildWasteland/CleanHUD/DefaultSettings/main.cfg.txt",
+      "target": "src/Core/Embedded/DefaultSettings/main.cfg.txt",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultSettings/settings.cfg.txt",
+      "target": "src/Core/Embedded/DefaultSettings/settings.cfg.txt",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultSettings/tools.cfg.txt",
+      "target": "src/Core/Embedded/DefaultSettings/tools.cfg.txt",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Big_Tyrant.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Big_Tyrant.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Bike_with_Rider_Flexa.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Bike_with_Rider_Flexa.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Bike_with_Rider_Scrud.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Bike_with_Rider_Scrud.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Blast_Bike.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Blast_Bike.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Chariot.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Chariot.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Coyote_Bike.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Coyote_Bike.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Coyote_PipeRat.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Coyote_PipeRat.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Example_PipeRat.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Example_PipeRat.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Fast_Blast_Bike.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Fast_Blast_Bike.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Junker_Advanced.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Junker_Advanced.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Junker_Basic.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Junker_Basic.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Junker_Warboy.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Junker_Warboy.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Piperat_Bandit.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Piperat_Bandit.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/PipeRat_Basic.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/PipeRat_Basic.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Piperat_Scout.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Piperat_Scout.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Porcupine.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Porcupine.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Rustcargo_Loot.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Rustcargo_Loot.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Rustcargo_Loot_Advanced.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Rustcargo_Loot_Advanced.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Spikeback_Motorcycle.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Spikeback_Motorcycle.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Tiny_Tyrant.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Tiny_Tyrant.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Truck_War_Rig.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Truck_War_Rig.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Vulture_Gunner.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Vulture_Gunner.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/War_rig.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/War_rig.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Warboy_Armored_Tyrant.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Warboy_Armored_Tyrant.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Warboy_Bike.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Warboy_Bike.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Warboy_Tyrant.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Warboy_Tyrant.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Warboy_Vulture.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Warboy_Vulture.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/DefaultTemplates/Weak_Warboy.json",
+      "target": "src/Modules/Patrols/Embedded/DefaultTemplates/Weak_Warboy.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/EditorDefaults.json",
+      "target": "src/Modules/Patrols/Embedded/EditorDefaults.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Patrols/MerchantLayouts.defaults.json",
+      "target": "src/Modules/Patrols/Embedded/MerchantLayouts.defaults.json",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Quests/voice-files.txt",
+      "target": "src/Modules/Quests/Embedded/voice-files.txt",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Towns/Names/Animals.txt",
+      "target": "src/Modules/POI/Embedded/Names/Animals.txt",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Towns/Names/Coyotes.txt",
+      "target": "src/Modules/POI/Embedded/Names/Coyotes.txt",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Towns/Names/Mutants.txt",
+      "target": "src/Modules/POI/Embedded/Names/Mutants.txt",
+      "reason": "Keep current 2.0 authored content"
+    },
+    {
+      "source": "WildWasteland/Towns/Names/Scrapyard.txt",
+      "target": "src/Modules/POI/Embedded/Names/Scrapyard.txt",
+      "reason": "Keep current 2.0 authored content"
+    }
+  ],
+  "removed_redundant_profile_copies": [
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/CleanHUD/game_keys.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/CleanHUD/game_keys.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/CleanHUD/layout.json",
+      "target": "src/Core/Embedded/DefaultProfiles/CleanHUD/layout.json",
+      "sha256": "9bf7d2b0c843a9ab9477b321072952bcf518fbca3a921df2a6341c6cf7af0fb9",
+      "bytes": 641
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/aim-lift.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/aim-lift.txt",
+      "sha256": "5a2022fd6a7e236b74a3b58a7ba617f8eb41cba4ce475d9e3e55371abefa1408",
+      "bytes": 11999
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/weapon-poses.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/weapon-poses.txt",
+      "sha256": "f9e32a4c40b06ea5b59c60482e0cbc4c3ee2cd33caa53473405155775f7ebe95",
+      "bytes": 11464
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/handlebars-2835345611251204295.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/handlebars-2835345611251204295.txt",
+      "sha256": "2c0496d1d5513c1fe471d80e5638e82bc488d4970d885220a464c3f89c6f30ea",
+      "bytes": 281
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/handlebars-6671498748310945008.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/handlebars-6671498748310945008.txt",
+      "sha256": "e1e6d26f2f36c11c49505c9c61542999f6a914aacfdc4fb7ce49034fb770d738",
+      "bytes": 464
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/handlebars.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/handlebars.txt",
+      "sha256": "d1279e0af1b5777f63939d2ce813ae4931a01d99aac1c0cb499aa0019b35a351",
+      "bytes": 688
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-2384584351746890731.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-2384584351746890731.txt",
+      "sha256": "1b58f1c7a407f2ddeb2a9204e12f61b91f0ee6be4643036ad6085229fdc6eb1b",
+      "bytes": 357
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-3894013393212262665.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-3894013393212262665.txt",
+      "sha256": "5bc96fc01d2ba1ce0dbb1d1fc87b4adacfe15f5c5a26906ed4625d4f3c63b4db",
+      "bytes": 382
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-5434766704124918220.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-5434766704124918220.txt",
+      "sha256": "b2e5d373a7179b04d16943de69f673782e90e7c9d3b5d8556ec7fb0bc31a0799",
+      "bytes": 385
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-5576978123831739139.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-5576978123831739139.txt",
+      "sha256": "1b58f1c7a407f2ddeb2a9204e12f61b91f0ee6be4643036ad6085229fdc6eb1b",
+      "bytes": 357
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-6092308018466859180.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-6092308018466859180.txt",
+      "sha256": "858053ab413243322111a16dd89a2c580e50bd4db7ee8d69b00f9db9e94d76d2",
+      "bytes": 382
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-6878447116165556891.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-6878447116165556891.txt",
+      "sha256": "b2e5d373a7179b04d16943de69f673782e90e7c9d3b5d8556ec7fb0bc31a0799",
+      "bytes": 385
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-711980780739716570.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-711980780739716570.txt",
+      "sha256": "1b58f1c7a407f2ddeb2a9204e12f61b91f0ee6be4643036ad6085229fdc6eb1b",
+      "bytes": 357
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-7426604920568358540.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-7426604920568358540.txt",
+      "sha256": "2cfa2cc84ffea1a4798d0c504cffaf1fe007d77e6c07e61b0b5fd441b168fab3",
+      "bytes": 399
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-7429543961785059347.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-7429543961785059347.txt",
+      "sha256": "ead9e02b1cedc7b3e4a69a6e6b9801eea25962837a417ac8e7683aa2d0f660f3",
+      "bytes": 364
+    },
+    {
+      "source": "WildWasteland/CleanHUD/DefaultProfiles/PlayerBody/WheelGrips/prefab-7757638041469866452.txt",
+      "target": "src/Core/Embedded/DefaultProfiles/PlayerBody/WheelGrips/prefab-7757638041469866452.txt",
+      "sha256": "858053ab413243322111a16dd89a2c580e50bd4db7ee8d69b00f9db9e94d76d2",
+      "bytes": 382
+    }
+  ]
+}

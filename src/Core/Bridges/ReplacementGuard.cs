@@ -83,7 +83,7 @@ namespace WildWasteland.Core
                 : "automatic disable unavailable (" + error + "); disable the standalone mod and restart";
             _names.Add(info.Metadata.Name + (queued ? "" : " (disable manually)"));
             if (!queued) _failed++;
-            Log.Warn("[Core] Replacing " + info.Metadata.Name + ": " + _status[guid] + ". Configs are preserved.");
+            Log.Warn(null,"[Core] Replacing " + info.Metadata.Name + ": " + _status[guid] + ". Configs are preserved.");
         }
 
         /// <summary>Status text for a replaced standalone (Modules page "Standalone replacement" line).</summary>
@@ -106,7 +106,7 @@ namespace WildWasteland.Core
                 PluginInfo info;
                 if (!Chainloader.PluginInfos.TryGetValue(Recommended[i, 0], out info) || ReferenceEquals(info.Instance, null)) _missing.Add(i);
             }
-            Log.Always("[Core] Recommended mods not active: " + _missing.Count);
+            Log.Always(null,"[Core] Recommended mods not active: " + _missing.Count);
         }
     }
 }

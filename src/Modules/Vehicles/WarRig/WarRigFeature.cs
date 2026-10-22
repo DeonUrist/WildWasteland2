@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Vehicles.WarRig
 {
     /// <summary>
     /// War Rig 1.1.3 as a feature of the Vehicles module (ex WarRig.Plugin, then a Patrols feature): ES3 prefab resolver, template body
@@ -24,24 +24,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         /// transitional forwarder keeps installing, under the Patrols owner, the parts other modules own until they install them themselves
         /// (REFACTOR-REQUEST B12-4..B12-6): Survival storm protection, Compatibility Apocaspawner/ApocaDustStorm bridges, POI encounter.
         /// </summary>
-        [Obsolete("refactor: the Vehicles module starts the War Rig (WarRigFeature.Start); owners install their own War Rig parts")]
-        internal static void Install(IModule owner, string dir)
-        {
-            SpawnerIntegration.Install(owner);                    // refs-ok: REFACTOR-REQUEST B12-5 (Compatibility Apocaspawner bridge)
-            DustStormBridge.Install(owner);                       // refs-ok: REFACTOR-REQUEST B12-5 (Compatibility ApocaDustStorm bridge)
-                 // refs-ok: REFACTOR-REQUEST B12-6 (POI War Rig encounter)
-        }
 
-        /// <summary>Old Patrols shutdown entry point: undoes the transitional foreign parts of <see cref="Install"/> (the Vehicles module stops the War Rig itself).</summary>
-        [Obsolete("refactor: the Vehicles module stops the War Rig (WarRigFeature.Stop); owners remove their own War Rig parts")]
-        internal static void Uninstall()
-        {
-        }
-
-        /// <summary>Old Patrols scene entry point: per-scene reset of the transitional foreign parts (the Vehicles module resets the War Rig itself).</summary>
-        [Obsolete("refactor: the Vehicles module resets the War Rig per scene (WarRigFeature.ResetForScene); owners reset their own parts")]
-
-        /// <summary>Installs the War Rig prefab-id resolver and registers the rig as a template body.</summary>
         internal static void Start(IModule owner, string dir)
         {
             _owner = owner; Dir = dir;
@@ -64,8 +47,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         internal static void ResetForScene() { WorldSpawning.ResetForScene(); }
 
         /// <summary>Old log helper (always logged); Vehicles logs at level 1.</summary>
-        [Obsolete("refactor: log through Log.Main(VehiclesModule.Instance, ...)")]
-        internal static void Say(string text) { Log.Main(VehiclesModule.Instance, text); }
+
 
         /// <summary>Spawns a War Rig on open ground 14 m in front of the player (F3 tool); throws with a player-readable reason when it cannot.</summary>
         public static GameObject SpawnNearPlayer(bool equip)

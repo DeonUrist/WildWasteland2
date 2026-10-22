@@ -128,7 +128,7 @@ namespace WildWasteland.Modules.Survival
                 }
                 copy.SetActive(true); // The inactive holder keeps the template hidden; native clones must start active.
                 Cached = copy;
-                WildWasteland.Core.Log.Always("[Survival] StewPot template ready: empty, 20 L, mesh collider; Camp & Farming in Apocaspawner.");
+                WildWasteland.Core.Log.Always(null,"[Survival] StewPot template ready: empty, 20 L, mesh collider; Camp & Farming in Apocaspawner.");
                 return copy;
             }
             catch { Object.Destroy(copy); throw; }
@@ -168,7 +168,7 @@ namespace WildWasteland.Modules.Survival
                 StaleLiquids[i] = OptionalMaterial(stem + "_stale.png", Liquids[i]);
                 SpoiledLiquids[i] = OptionalMaterial(stem + "_spoiled.png", StaleLiquids[i]);
             }
-            WildWasteland.Core.Log.Always("[Survival] StewPot GLBs loaded from " + SurvivalModule.Assets + "; stewpot_collider.glb: single convex mesh.");
+            WildWasteland.Core.Log.Always(null,"[Survival] StewPot GLBs loaded from " + SurvivalModule.Assets + "; stewpot_collider.glb: single convex mesh.");
         }
 
         /// <summary>Uses an optional texture when installed, otherwise retains the supplied material.</summary>

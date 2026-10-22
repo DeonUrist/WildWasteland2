@@ -95,7 +95,7 @@ namespace WildWasteland.Modules.Survival
             if (sky != null && !sky._fogLogged)
             {
                 sky._fogLogged = true;
-                Log.Always("[Weather] Native Azure distance haze bypassed: gameplay camera uses the unfiltered image; WW regional dust retained.");
+                Log.Always(null,"[Weather] Native Azure distance haze bypassed: gameplay camera uses the unfiltered image; WW regional dust retained.");
             }
         }
         /// <summary>Restores the original fog material even if native rendering throws.</summary>

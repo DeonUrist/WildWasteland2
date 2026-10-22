@@ -4,7 +4,7 @@ using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// Structure navigation: NPCs know the camps, buildings and caves they are in.
@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.NPC
             public int Phase;                       // bake: 0 floors, 1 edges, 2 connected areas (sliced too), then Baked
             public int CompScan, CompCur, CompCurSize; public Stack<int> CompStack; public List<int> CompSizes;   // phase 2 progress
             public readonly Dictionary<long, Field> Fields = new Dictionary<long, Field>();
-            public Core.NavStructure Pub;                // (WW) the Core.Services.Npc view of it (reused, refreshed by Structures())
+            public Core.NavStructure Pub;                // (WW) the Core.ModApi.Get<Core.INpcApi>() view of it (reused, refreshed by Structures())
             // (WW perf, N2) per cell, bit b = the move to neighbour b (loop order dz -1..1, dx -1..1) is allowed (Move: step + no corner
             // cutting) / is a hop; made after the bake for MaxStep = MaskStep, used while that holds and no _relax / _noHop is on
             public byte[] Mv, Hop; public float MaskStep;
@@ -136,16 +136,14 @@ namespace WildWasteland.Modules.NPC
         internal static bool On { get { return NpcaiRuntime.Running && NpcaiSettings.BrainEnabled.Value; } }
 
         /// <summary>Old NPC-entry reset (scene load / init / shutdown): forwards to <see cref="ResetCore"/> unless the NPCAI entry owns navigation.</summary>
-        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
-        public static void OnSceneLoaded() { if (!NavRuntime.Active) ResetCore(); }
+
 
         /// <summary>Drops every structure, map job, route cache and discovery state (scene load, module start/stop).</summary>
         internal static void ResetCore() { IsolatedBake.CancelQueued(); ResetMapHighlight(); foreach (var s in _structures) CloseMap(s); _needed = null; Needed = false; _structures.Clear(); _known.Clear(); _baking = null; _debug.Clear(); _floorCols.Clear(); _exits.Clear(); _relaxedFields.Clear(); _pool.Clear(); _heaps.Clear(); _player = null; _sweep.Clear(); _swept = false; _nodeKind.Clear(); _outPlans.Clear(); _outMemo.Clear(); _compRing.Clear(); PickReset(); _maskQueue.Clear(); }
 
         // ---------- discovery + baking (per frame) ----------
         /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs the "NPCAI.Nav" job.</summary>
-        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
-        public static void Tick() { if (!NavRuntime.Active) Update(); }
+
 
         /// <summary>Job "NPCAI.Nav" (every frame, Update): exit picks, move masks, discovery sweep, bake scheduling and one bake slice.</summary>
         internal static void Update()
@@ -2027,7 +2025,7 @@ namespace WildWasteland.Modules.NPC
             return flat.sqrMagnitude < 0.01f || !Physics.CapsuleCast(a1, a2, Radius, flat.normalized, flat.magnitude, BakeMask, QueryTriggerInteraction.Ignore);
         }
 
-        /// <summary>(WW) Core.Services.Npc.Structures: what Apocapatrol read from _structures by reflection (Root, Box, Baked, FloorY, W, Cell)</summary>
+        /// <summary>(WW) Core.ModApi.Get<Core.INpcApi>().Structures: what Apocapatrol read from _structures by reflection (Root, Box, Baked, FloorY, W, Cell)</summary>
         internal static void Structures(List<Core.NavStructure> into)
         {
             if (into == null) return;
@@ -2039,8 +2037,7 @@ namespace WildWasteland.Modules.NPC
         // (cells, edges, areas) is relative and stays. Route caches keyed by world positions (fields to outside goals, exit plans, memos,
         // debug marks) are dropped and rebuilt on the next think. A bake in progress continues on the shifted box.
         /// <summary>Old NPC-entry origin shift: forwards to <see cref="ShiftCore"/> unless the NPCAI entry shifts navigation.</summary>
-        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
-        internal static void Shift(Vector3 d) { if (!NavRuntime.Active) ShiftCore(d); }
+
 
         /// <summary>Floating origin: moves boxes, grid origins and floors by d; drops world-keyed route caches.</summary>
         internal static void ShiftCore(Vector3 d)

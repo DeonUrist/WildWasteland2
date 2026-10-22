@@ -22,10 +22,10 @@ namespace WildWasteland.Modules.Presentation
                     for (int i = 1; i <= 4; i++)
                     {
                         string clipName = i == 1 ? "witness-me" : "witness-me" + i;
-                        var path = System.IO.Path.Combine(Core.Assets.ModuleDir("Patrols"), "Sounds", clipName + ".wav");
+                        var path = System.IO.Path.Combine(Core.Assets.ModuleDir("Presentation"), "Sounds", clipName + ".wav");
                         var clip = WildWasteland.Core.Audio.TryLoadWav(path, clipName, 1.8f);   // +5 dB over the normalised file (peak about -0.5 dBFS)
                         if (clip != null) _screams.Add(clip);
-                        else Core.Log.Warn("[Patrols] " + "Rider: " + path + " not found or not a PCM wav - skipped");
+                        else Core.Log.Warn(null,"[Patrols] " + "Rider: " + path + " not found or not a PCM wav - skipped");
                     }
                 }
                 if (_screams.Count == 0 || at == null) return 1.5f;
@@ -39,7 +39,7 @@ namespace WildWasteland.Modules.Presentation
                 src.volume = 1f; src.priority = 64; src.dopplerLevel = 0f;
                 src.Play();
                 UnityEngine.Object.Destroy(go, scream.length + 0.2f);
-                if (Core.Log.Verbose) Core.Log.Deep(PresentationModule.Instance,"Rider: scream " + scream.name);
+                if (Core.Log.L1) Core.Log.Deep(PresentationModule.Instance,"Rider: scream " + scream.name);
                 return scream.length;
             }
             catch (Exception e) { Core.Log.Deep(PresentationModule.Instance,"Rider: scream: " + e.Message); return 1.5f; }

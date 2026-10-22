@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using HutongGames.PlayMaker;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Actual NPC guard implementation; traffic callers retain no private component dependency.</summary>
     internal sealed class OccupantCombatApi : IOccupantCombat

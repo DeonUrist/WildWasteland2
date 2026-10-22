@@ -4,7 +4,7 @@ using System.IO;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>
     /// The service side of the grid navigation (README 6.2, P6): waypoint providers consulted before routing (towns, custom POI exits),

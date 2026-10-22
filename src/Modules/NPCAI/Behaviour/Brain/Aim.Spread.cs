@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Aim part owned by Gunplay: NPC aim spread by distance (Steps, SpreadFactor).</summary>
     internal static partial class Aim

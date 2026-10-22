@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Presentation
 {
     // Shared by the mod and the Unity physics verification project.
     internal sealed class ClimbGeometry

@@ -170,9 +170,9 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Rechecks an apparently empty takeover camp before resolving its objective.</summary>
         void CheckEmptyCamp(Quest q, Vector3 playerWorld)
         {
-            Vector3 camp = Game.Abs(q.Pos);
+            Vector3 camp = Core.Origin.Scene(q.Pos);
             float near = Math.Max(30f, q.Radius * 0.6f);
-            if (Game.HDist(playerWorld, camp) > near || Takeover.CountDefenders(camp, q.Target, q.Radius) > 0)
+            if (Core.WorldGeometry.HorizontalDistance(playerWorld, camp) > near || Takeover.CountDefenders(camp, q.Target, q.Radius) > 0)
             {
                 campEmptyFor.Remove(q.Id);
                 return;
@@ -201,7 +201,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Advances active objective counts, deadlines and delivery state.</summary>
         internal void Tick()
         {
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             if (pl == null) return;
             Vector3 pp = pl.position;
 
@@ -214,7 +214,7 @@ namespace WildWasteland.Modules.Quests
                 if (q.Type == QType.Deliver && q.TimeLeft <= 0f) { if (Returning(q)) { CancelQuest(q, "ran out of time returning the goods"); continue; } if (q.NoRecipient) CancelStranded(q); else DeliveryStolen(q); continue; }
                 if (q.Type != QType.Deliver && q.Deadline > 0.0 && nowH >= 0.0 && nowH >= q.Deadline) { FailQuest(q, "ran out of time"); continue; }
                 if (q.Type == QType.Takeover && !q.ObjectiveDone && q.HasPos) { ScoutCamp(q, pp); CheckEmptyCamp(q, pp); }
-                if (q.Type == QType.Goto && !q.ObjectiveDone && q.HasPos && Game.HDist(pp, Game.Abs(q.Pos)) <= q.Radius)
+                if (q.Type == QType.Goto && !q.ObjectiveDone && q.HasPos && Core.WorldGeometry.HorizontalDistance(pp, Core.Origin.Scene(q.Pos)) <= q.Radius)
                 {
                     q.ObjectiveDone = true;
                     if (!q.ReturnToGiver) { if (Pay(q)) Complete(q); }
@@ -246,7 +246,7 @@ namespace WildWasteland.Modules.Quests
                 bool ready4Hand = q.ObjectiveDone || (q.Type == QType.Fetch && haveCache.TryGetValue(q.Id, out heldNow) && heldNow >= q.Count);
                 if (!ready4Hand)
                 {
-                    if (q.HasPos && q.Type != QType.Fetch) want["Q:" + q.Id] = Game.Abs(q.Pos);
+                    if (q.HasPos && q.Type != QType.Fetch) want["Q:" + q.Id] = Core.Origin.Scene(q.Pos);
                 }
                 else if (q.ReturnToGiver && q.Type != QType.Talk)
                 {
@@ -255,7 +255,7 @@ namespace WildWasteland.Modules.Quests
                     gw = Vector3.zero;
                     Transform live = Game.FindLive(q.GiverId);
                     if (live != null) { gw = live.position; have = true; }
-                    else if (q.HasGiverPos) { gw = Game.Abs(q.GiverPos); have = true; }
+                    else if (q.HasGiverPos) { gw = Core.Origin.Scene(q.GiverPos); have = true; }
                     if (have) want["T:" + q.Id] = gw;
                 }
             }
@@ -333,23 +333,23 @@ namespace WildWasteland.Modules.Quests
                     if (CountUnknown(q))
                     {
                         string far = "";
-                        if (pl != null && q.HasPos) { Vector3 ct = Game.Abs(q.Pos); far = ", " + (int)Game.HDist(pl.position, ct) + " m " + Util.Compass(ct.x - pl.position.x, ct.z - pl.position.z); }
+                        if (pl != null && q.HasPos) { Vector3 ct = Core.Origin.Scene(q.Pos); far = ", " + (int)Core.WorldGeometry.HorizontalDistance(pl.position, ct) + " m " + Util.Compass(ct.x - pl.position.x, ct.z - pl.position.z); }
                         return "head count unknown" + far;
                     }
                     return q.Progress + "/" + q.Count + " of the " + q.Label;
                 case QType.Deliver:
                     {
                         string where = "";
-                        if (pl != null && q.HasPos) { Vector3 dt = Game.Abs(q.Pos); where = (int)Game.HDist(pl.position, dt) + " m " + Util.Compass(dt.x - pl.position.x, dt.z - pl.position.z) + ", "; }
+                        if (pl != null && q.HasPos) { Vector3 dt = Core.Origin.Scene(q.Pos); where = (int)Core.WorldGeometry.HorizontalDistance(pl.position, dt) + " m " + Util.Compass(dt.x - pl.position.x, dt.z - pl.position.z) + ", "; }
                         return where + Clock(q.TimeLeft) + " left";
                     }
                 case QType.Goto:
                     if (pl == null || !q.HasPos) return "go to the spot";
-                    Vector3 t = Game.Abs(q.Pos);
-                    return (int)Game.HDist(pl.position, t) + " m " + Util.Compass(t.x - pl.position.x, t.z - pl.position.z);
+                    Vector3 t = Core.Origin.Scene(q.Pos);
+                    return (int)Core.WorldGeometry.HorizontalDistance(pl.position, t) + " m " + Util.Compass(t.x - pl.position.x, t.z - pl.position.z);
                 default:
                     if (pl == null) return "find someone far away";
-                    return (int)Game.HDist(pl.position, Game.Abs(q.Start)) + "/" + (int)q.MinDistance + " m away from " + q.GiverName;
+                    return (int)Core.WorldGeometry.HorizontalDistance(pl.position, Core.Origin.Scene(q.Start)) + "/" + (int)q.MinDistance + " m away from " + q.GiverName;
             }
         }
 
@@ -419,7 +419,7 @@ namespace WildWasteland.Modules.Quests
         static void AimAt(AimInfo a, Vector3 world, string what)
         {
             a.Has = true;
-            a.Rel = Game.Rel(world);
+            a.Rel = Core.Origin.World(world);
             a.What = what;
         }
 
@@ -433,7 +433,7 @@ namespace WildWasteland.Modules.Quests
                 string giver = "the " + q.GiverName;
                 Transform live = Game.FindLive(q.GiverId);
                 if (live != null) AimAt(a, live.position, giver);
-                else if (q.HasGiverPos) AimAt(a, Game.Abs(q.GiverPos), giver + " (last seen)");
+                else if (q.HasGiverPos) AimAt(a, Core.Origin.Scene(q.GiverPos), giver + " (last seen)");
                 return;
             }
             switch (q.Type)
@@ -457,14 +457,14 @@ namespace WildWasteland.Modules.Quests
                         List<EnemyInfo> foes = Game.FindEnemies(pp, 4000f);
                         EnemyInfo best = null;
                         float bd = 0f;
-                        Vector3 centre = q.HasPos ? Game.Abs(q.Pos) : pp;
+                        Vector3 centre = q.HasPos ? Core.Origin.Scene(q.Pos) : pp;
                         for (int i = 0; i < foes.Count; i++)
                         {
                             EnemyInfo e = foes[i];
                             if (!KillMatches(q.Target, e.Name, e.Name)) continue;
                             if (Factions.Protected(home, e.Tag, e.Name, e.Pos, e.Go)) continue;
-                            if (q.HasPos && Game.HDist(e.Pos, centre) > q.Radius) continue;
-                            float d = Game.HDist(e.Pos, pp);
+                            if (q.HasPos && Core.WorldGeometry.HorizontalDistance(e.Pos, centre) > q.Radius) continue;
+                            float d = Core.WorldGeometry.HorizontalDistance(e.Pos, pp);
                             if (best == null || d < bd) { best = e; bd = d; }
                         }
                         if (best != null) AimAt(a, best.Pos, "the nearest " + (q.Label.Length > 0 ? q.Label : best.Name) + " you can see");
@@ -472,31 +472,31 @@ namespace WildWasteland.Modules.Quests
                         return;
                     }
                 case QType.Clear:
-                    AimAt(a, Game.Abs(q.HasPos ? q.Pos : q.Start), "the patrol area (centre)");
+                    AimAt(a, Core.Origin.Scene(q.HasPos ? q.Pos : q.Start), "the patrol area (centre)");
                     return;
                 case QType.Takeover:
-                    if (q.HasPos) AimAt(a, Game.Abs(q.Pos), "the " + (q.Label.Length > 0 ? q.Label : "camp"));
+                    if (q.HasPos) AimAt(a, Core.Origin.Scene(q.Pos), "the " + (q.Label.Length > 0 ? q.Label : "camp"));
                     return;
                 case QType.Goto:
-                    if (q.HasPos) AimAt(a, Game.Abs(q.Pos), "the " + (string.IsNullOrEmpty(q.Label) ? "spot" : q.Label));
+                    if (q.HasPos) AimAt(a, Core.Origin.Scene(q.Pos), "the " + (string.IsNullOrEmpty(q.Label) ? "spot" : q.Label));
                     return;
                 case QType.Deliver:
-                    if (q.HasPos) AimAt(a, Game.Abs(q.Pos), "the " + (string.IsNullOrEmpty(q.Place) ? "destination" : q.Place));
+                    if (q.HasPos) AimAt(a, Core.Origin.Scene(q.Pos), "the " + (string.IsNullOrEmpty(q.Place) ? "destination" : q.Place));
                     return;
                 case QType.Talk:
                     {
                         // anyone friendly far enough from where you took the job: the nearest camp that qualifies
                         Faction home = Factions.ByKey(q.Home);
-                        Vector3 start = Game.Abs(q.Start);
+                        Vector3 start = Core.Origin.Scene(q.Start);
                         List<Poi> camps = Game.FindPois(pp, 0f, 4000f, "Camp");
                         Poi best = null;
                         float bd = 0f;
                         for (int i = 0; i < camps.Count; i++)
                         {
                             Poi c = camps[i];
-                            if (Game.HDist(c.Pos, start) < q.MinDistance) continue;
+                            if (Core.WorldGeometry.HorizontalDistance(c.Pos, start) < q.MinDistance) continue;
                             if (c.Faction.Length > 0 && !Factions.Friendly(home, Factions.ByKey(c.Faction))) continue;
-                            float d = Game.HDist(c.Pos, pp);
+                            float d = Core.WorldGeometry.HorizontalDistance(c.Pos, pp);
                             if (best == null || d < bd) { best = c; bd = d; }
                         }
                         if (best != null) AimAt(a, best.Pos, "a camp far enough away");
@@ -511,8 +511,8 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Formats a nearby place label for dialogue.</summary>
         static string Place(AimInfo a, Transform pl)
         {
-            Vector3 t = Game.Abs(a.Rel);
-            int d = (int)Game.HDist(pl.position, t);
+            Vector3 t = Core.Origin.Scene(a.Rel);
+            int d = (int)Core.WorldGeometry.HorizontalDistance(pl.position, t);
             return d < 30 ? "right here" : Far(d) + " " + Util.Compass(t.x - pl.position.x, t.z - pl.position.z) + " of you";
         }
 
@@ -547,8 +547,8 @@ namespace WildWasteland.Modules.Quests
         {
             if (q.Count <= 0) scouting.Add(q.Id);
             if (!scouting.Contains(q.Id) || q.Progress > 0 && q.Count > 0) return;
-            Vector3 camp = Game.Abs(q.Pos);
-            if (Game.HDist(playerWorld, camp) > scoutRange.Value) return;
+            Vector3 camp = Core.Origin.Scene(q.Pos);
+            if (Core.WorldGeometry.HorizontalDistance(playerWorld, camp) > scoutRange.Value) return;
             int alive = Takeover.CountDefenders(camp, q.Target, q.Radius);
             if (alive <= 0) return;
             int need = q.Progress + alive;
@@ -567,7 +567,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Pays an accepted reward through the canonical native currency variable.</summary>
         bool Pay(Quest q)
         {
-            if (!Game.AddMoney(q.Reward, moneyVar.Value))
+            if (!Core.Money.AddMoney(q.Reward, moneyVar.Value))
             {
                 AddToast("Could not pay the reward: money variable not found (see the BepInEx log).");
                 return false;
@@ -689,12 +689,12 @@ namespace WildWasteland.Modules.Quests
             {
                 Quest q = active[i];
                 if (q.Type != QType.Deliver || !q.HasPos) continue;
-                if (Game.HDist(t.position, Game.Abs(q.Pos)) > q.Radius) continue;
+                if (Core.WorldGeometry.HorizontalDistance(t.position, Core.Origin.Scene(q.Pos)) > q.Radius) continue;
                 if (Game.IsPlayerEnemy(t.gameObject)) continue;                 // anyone at the camp who isn't hostile to you
                 List<QuestItemHit> hits = Game.FindItems(q.Target, pl.position, handRadius.Value, countCarried.Value);
                 int have = Game.CountStacks(hits);
                 if (have < q.Count) { bridge.Say(Format(q.Remind, q, have)); Speak(q, "remind"); return false; }
-                if (Game.MoneyVar(moneyVar.Value) == null) { AddToast("Could not pay the reward: money variable not found (see the BepInEx log)."); return true; }
+                if (Core.Money.MoneyVar(moneyVar.Value) == null) { AddToast("Could not pay the reward: money variable not found (see the BepInEx log)."); return true; }
                 Game.TakeItems(hits, q.Count, t.position);
                 bridge.Say(Format(q.Done, q, q.Count)); Speak(q, "done");
                 if (Pay(q)) Complete(q);
@@ -715,9 +715,9 @@ namespace WildWasteland.Modules.Quests
             Vector3 relative = returning ? q.GiverPos : q.Pos;
             var state = camps.At(relative, 120f);
             if (state == CampState.Cleared) { FailQuest(q, returning ? "return camp is dead" : "destination camp is dead"); return; }
-            Vector3 camp = Game.Abs(relative); float radius = returning ? 120f : q.Radius;
+            Vector3 camp = Core.Origin.Scene(relative); float radius = returning ? 120f : q.Radius;
             float arrival = Mathf.Max(5f, Mathf.Min(30f, radius * .6f));
-            if (Game.HDist(pp, camp) > arrival || state != CampState.Ready || DeliveryRecipient(q, camp, radius, returning))
+            if (Core.WorldGeometry.HorizontalDistance(pp, camp) > arrival || state != CampState.Ready || DeliveryRecipient(q, camp, radius, returning))
             { q.NoRecipientSince = -1; _emptyScans.Remove(q.Id); return; }
             int scan;
             if (q.NoRecipientSince < 0) { q.NoRecipientSince = Time.time; _emptyScans[q.Id] = QuestWorld.Revision; return; }
@@ -745,7 +745,7 @@ namespace WildWasteland.Modules.Quests
         {
             if (!book.Active.Contains(q)) return;
             bridge.You((Returning(q) ? "There was nobody to deliver to. Here are your " : "I can't make that delivery. Here are your ") + q.Label + ".");
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             List<QuestItemHit> hits = Game.FindItems(q.Target, pl != null ? pl.position : Vector3.zero, handRadius.Value, countCarried.Value);
             int have = Game.CountStacks(hits);
             if (have < q.Count)
@@ -868,7 +868,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Shows a quest notice through HUD or the retained fallback notice data.</summary>
         void AddToast(string text)
         {
-            if (ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Notify(text)) { Core.Log.Always("[Quests] " + text); return; }
+            if (ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Notify(text)) { Core.Log.Always(null,"[Quests] " + text); return; }
             var t = new Toast();
             t.Text = text;
             t.Until = Time.unscaledTime + 6f;
@@ -909,10 +909,10 @@ namespace WildWasteland.Modules.Quests
                     if (!string.IsNullOrEmpty(mineNow[gi].GiverId) && mineNow[gi].GiverId == deadObj) CancelQuest(mineNow[gi], mineNow[gi].GiverName + " died");
                 if (book.Active.Count == 0) return;
             }
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             if (pl == null) return;
-            if (Game.HDist(pl.position, worldPos) > killRadius.Value) return;
-            Vector3 rel = Game.Rel(worldPos);
+            if (Core.WorldGeometry.HorizontalDistance(pl.position, worldPos) > killRadius.Value) return;
+            Vector3 rel = Core.Origin.World(worldPos);
 
             Quest[] snapshot = book.Active.ToArray();
             for (int i = 0; i < snapshot.Length; i++)
@@ -921,16 +921,16 @@ namespace WildWasteland.Modules.Quests
                 if (q.ObjectiveDone) continue;
                 bool hit = false;
                 if ((q.Type == QType.Kill || q.Type == QType.Clear) && Factions.Protected(Factions.ByKey(q.Home), ownerTag, deadName, worldPos, ownerGo)) continue;
-                if (q.Type == QType.Kill) hit = KillMatches(q.Target, ownerName, deadName) && (!q.HasPos || Game.HDist(rel, q.Pos) <= q.Radius);
-                else if (q.Type == QType.Clear) hit = q.HasPos && Game.HDist(rel, q.Pos) <= q.Radius;
-                else if (q.Type == QType.Takeover) hit = q.HasPos && Util.Norm(ownerTag) == Util.Norm(q.Target) && Game.HDist(rel, q.Pos) <= q.Radius;
+                if (q.Type == QType.Kill) hit = KillMatches(q.Target, ownerName, deadName) && (!q.HasPos || Core.WorldGeometry.HorizontalDistance(rel, q.Pos) <= q.Radius);
+                else if (q.Type == QType.Clear) hit = q.HasPos && Core.WorldGeometry.HorizontalDistance(rel, q.Pos) <= q.Radius;
+                else if (q.Type == QType.Takeover) hit = q.HasPos && Util.Norm(ownerTag) == Util.Norm(q.Target) && Core.WorldGeometry.HorizontalDistance(rel, q.Pos) <= q.Radius;
                 if (!hit) continue;
 
                 q.Progress++;
                 nextRefresh = 0f;
-                if (q.Type == QType.Takeover && q.Count <= 0) q.Count = q.Progress + Takeover.CountDefenders(Game.Abs(q.Pos), q.Target, q.Radius);   // head count was not known yet
+                if (q.Type == QType.Takeover && q.Count <= 0) q.Count = q.Progress + Takeover.CountDefenders(Core.Origin.Scene(q.Pos), q.Target, q.Radius);   // head count was not known yet
                 // camp has nobody left (it had fewer people than the quest asked for): the camp is cleared
-                if (q.Type == QType.Takeover && q.Progress < q.Count && Takeover.CountDefenders(Game.Abs(q.Pos), q.Target, q.Radius) == 0)
+                if (q.Type == QType.Takeover && q.Progress < q.Count && Takeover.CountDefenders(Core.Origin.Scene(q.Pos), q.Target, q.Radius) == 0)
                     q.Count = q.Progress;
                 if (q.Progress >= q.Count)
                 {
@@ -962,11 +962,11 @@ namespace WildWasteland.Modules.Quests
         {
             if (string.IsNullOrEmpty(tpl)) return "";
             string dist = "?", dir = "";
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             if ((q.Type == QType.Goto || q.Type == QType.Takeover || q.Type == QType.Deliver) && q.HasPos && pl != null)
             {
-                Vector3 t = Game.Abs(q.Pos);
-                dist = ((int)Game.HDist(pl.position, t)).ToString();
+                Vector3 t = Core.Origin.Scene(q.Pos);
+                dist = ((int)Core.WorldGeometry.HorizontalDistance(pl.position, t)).ToString();
                 dir = Util.Compass(t.x - pl.position.x, t.z - pl.position.z);
             }
             else if (q.Type == QType.Talk) dist = ((int)q.MinDistance).ToString();
@@ -1010,7 +1010,7 @@ namespace WildWasteland.Modules.Quests
             RecordNpcName(bridge.NpcName);
             if (!ready) return;
 
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             if (pl == null) return;
             string npc = bridge.NpcName;
             Quest[] snapshot = book.Active.ToArray();
@@ -1021,8 +1021,8 @@ namespace WildWasteland.Modules.Quests
                 if (q.Type != QType.Talk) continue;
                 if (q.Target != "*" && !Util.NameMatches(q.Target, npc)) continue;
                 if (!Factions.Friendly(Factions.ByKey(q.Home), Factions.OfObject(bridge.Npc != null ? bridge.Npc.gameObject.tag : "", npc, bridge.Npc != null ? bridge.Npc.position : pl.position))) continue;   // no carrying word to a rival faction
-                if (Game.HDist(pl.position, Game.Abs(q.Start)) < q.MinDistance) continue;
-                if (Game.MoneyVar(moneyVar.Value) == null) { AddToast("Could not pay the reward: money variable not found (see the BepInEx log)."); break; }
+                if (Core.WorldGeometry.HorizontalDistance(pl.position, Core.Origin.Scene(q.Start)) < q.MinDistance) continue;
+                if (Core.Money.MoneyVar(moneyVar.Value) == null) { AddToast("Could not pay the reward: money variable not found (see the BepInEx log)."); break; }
                 bridge.Say(Format(q.Done, q, 0)); Speak(q, "done");
                 if (Pay(q)) Complete(q);
                 break;
@@ -1081,7 +1081,7 @@ namespace WildWasteland.Modules.Quests
             }
             if (repMenuOpen)
             {
-                try { if (RepShopFaction(npc, tr) != null && Game.GetMoney(moneyVar.Value) >= 0) AddRepButtons(npc, tr); } catch (Exception e) { LogOnce("RepButtons", e); }
+                try { if (RepShopFaction(npc, tr) != null && Core.Money.GetMoney(moneyVar.Value) >= 0) AddRepButtons(npc, tr); } catch (Exception e) { LogOnce("RepButtons", e); }
                 wantButtons.Add(Btn("repback", "Back", delegate { repMenuOpen = false; }));
                 return;
             }
@@ -1104,7 +1104,7 @@ namespace WildWasteland.Modules.Quests
             try { AddHireButtons(npc, tr); } catch (Exception e) { LogOnce("HireButtons", e); }
             try
             {
-                if (RepShopFaction(npc, tr) != null && Game.GetMoney(moneyVar.Value) >= 0)
+                if (RepShopFaction(npc, tr) != null && Core.Money.GetMoney(moneyVar.Value) >= 0)
                 {
                     wantButtons.Add(Btn("repmenu", "Buy or sell reputation...", delegate { repMenuOpen = true; }));
                 }
@@ -1128,8 +1128,8 @@ namespace WildWasteland.Modules.Quests
             int cost = Hire.CostFor(npc);
             if (cost < 0) return;
             Faction f = Factions.OfPerson(tr.gameObject.tag, npc, tr.position);
-            if (f == null) { if (logged.Add("HireNoFaction" + Game.BaseName(npc))) Info("Hire: " + npc + " (tag " + tr.gameObject.tag + ") has no faction here (no matching tag, factions.txt entry or camp nearby), so it cannot be hired."); return; }
-            string shown = Game.BaseName(npc);
+            if (f == null) { if (logged.Add("HireNoFaction" + Core.Names.Base(npc))) Info("Hire: " + npc + " (tag " + tr.gameObject.tag + ") has no faction here (no matching tag, factions.txt entry or camp nearby), so it cannot be hired."); return; }
+            string shown = Core.Names.Base(npc);
             wantButtons.Add(Btn("hire", "Hire " + shown + " for a day  (" + cost + " " + f.Name + " reputation)", delegate { HireNpc(f, cost, tr, shown); }));
         }
 
@@ -1176,7 +1176,7 @@ namespace WildWasteland.Modules.Quests
         Faction RepShopFaction(string npc, Transform tr)
         {
             if (!repShopOn.Value || !Util.NameMatches(repShopNpcs.Value, npc) || repShopNpcs.Value.Trim().Length == 0) return null;
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             Vector3 pos = tr != null ? tr.position : (pl != null ? pl.position : Vector3.zero);
             Faction f = Factions.OfObject(tr != null ? tr.gameObject.tag : "", npc, pos);
             return f != null && !f.Hostile ? f : null;
@@ -1189,7 +1189,7 @@ namespace WildWasteland.Modules.Quests
             int rep = RepOf(f.Key);
             int cap = Math.Max(1, repMaxDeal.Value);
             int buyP = Math.Max(0, repBuyPrice.Value);
-            int nuts = Game.GetMoney(moneyVar.Value);
+            int nuts = Core.Money.GetMoney(moneyVar.Value);
             int room = Math.Max(0, RepMax - rep);
             int afford = nuts < 0 ? 0 : (buyP > 0 ? nuts / buyP : room);
             canBuy = Math.Min(Math.Min(room, afford), cap);
@@ -1200,7 +1200,7 @@ namespace WildWasteland.Modules.Quests
         void AddRepButtons(string npc, Transform tr)
         {
             Faction f = RepShopFaction(npc, tr);
-            if (f == null || Game.GetMoney(moneyVar.Value) < 0) return;
+            if (f == null || Core.Money.GetMoney(moneyVar.Value) < 0) return;
             int canBuy, canSell;
             RepLimits(f, out canBuy, out canSell);
             int buyP = Math.Max(0, repBuyPrice.Value), sellP = Math.Max(0, repSellPrice.Value);
@@ -1239,7 +1239,7 @@ namespace WildWasteland.Modules.Quests
             {
                 bridge.You("I'll buy " + n + " reputation with " + f.Name + ".");
                 if (n < 1 || n > canBuy) { bridge.Say("You can't afford that, or there's no more to buy."); return; }
-                if (!Game.AddMoney(-n * buyP, moneyVar.Value)) { bridge.Say("(Mod problem: the money variable was not found. See the BepInEx log.)"); return; }
+                if (!Core.Money.AddMoney(-n * buyP, moneyVar.Value)) { bridge.Say("(Mod problem: the money variable was not found. See the BepInEx log.)"); return; }
                 ChangeRep(f.Key, n, null);
                 bridge.Say("Done. " + n + " reputation, " + (n * buyP) + " nuts. Word will get round.");
                 Info("Bought " + n + " " + f.Name + " reputation for " + (n * buyP) + " nuts (now " + RepOf(f.Key) + ").");
@@ -1249,7 +1249,7 @@ namespace WildWasteland.Modules.Quests
                 bridge.You("I'll sell " + n + " reputation with " + f.Name + ".");
                 if (n < 1 || n > canSell) { bridge.Say("You haven't got that much to sell."); return; }
                 ChangeRep(f.Key, -n, null);
-                Game.AddMoney(n * sellP, moneyVar.Value);
+                Core.Money.AddMoney(n * sellP, moneyVar.Value);
                 bridge.Say("Done. " + n + " reputation off your name, " + (n * sellP) + " nuts for you.");
                 Info("Sold " + n + " " + f.Name + " reputation for " + (n * sellP) + " nuts (now " + RepOf(f.Key) + ").");
             }
@@ -1295,9 +1295,9 @@ namespace WildWasteland.Modules.Quests
         Quest MakeOffer(string npc, Transform npcTr)
         {
             itemsAroundCache.Clear();
-            Transform pl = Game.Player();
-            Vector3 playerRel = pl != null ? Game.Rel(pl.position) : Vector3.zero;
-            Vector3 giverRel = npcTr != null ? Game.Rel(npcTr.position) : playerRel;
+            Transform pl = Core.PlayerState.Transform;
+            Vector3 playerRel = pl != null ? Core.Origin.World(pl.position) : Vector3.zero;
+            Vector3 giverRel = npcTr != null ? Core.Origin.World(npcTr.position) : playerRel;
 
             blockedNow = BlockedKeys(GiverKey(npcTr, npc), giverRel);
             var eligible = new List<Quest>();
@@ -1374,7 +1374,7 @@ namespace WildWasteland.Modules.Quests
                     q.Count = 0;                                        // filled in with the camp's real head count if it is in view, else found out later
                     Takeover.Fill(q, camp, owner, takeoverRadius.Value);
                     int est = q.Count > 0 ? q.Count : Math.Max(1, takeoverKills.Value);
-                    q.Reward = Math.Max(10, (int)(Math.Round((150f + est * 50f + Game.HDist(giverWorld, camp.Pos) * 0.03f) / 5.0) * 5.0));
+                    q.Reward = Math.Max(10, (int)(Math.Round((150f + est * 50f + Core.WorldGeometry.HorizontalDistance(giverWorld, camp.Pos) * 0.03f) / 5.0) * 5.0));
                     Phrases.FillDefaults(q, rng);
                 }
             }
@@ -1447,12 +1447,12 @@ namespace WildWasteland.Modules.Quests
                 if (!p.Name.StartsWith("Camp", StringComparison.OrdinalIgnoreCase)) continue;
                 Faction owner = Factions.OwnerOfPoi(p);
                 if (owner == null || owner.Key != gf.Key) continue;
-                Vector3 rel = Game.Rel(p.Pos);
+                Vector3 rel = Core.Origin.World(p.Pos);
                 bool taken = false;
                 for (int j = 0; j < book.Active.Count; j++)
                 {
                     Quest a = book.Active[j];
-                    if (a.Type == QType.Goto && a.HasPos && Game.HDist(a.Pos, rel) < 5f) { taken = true; break; }
+                    if (a.Type == QType.Goto && a.HasPos && Core.WorldGeometry.HorizontalDistance(a.Pos, rel) < 5f) { taken = true; break; }
                 }
                 if (!taken) res.Add(p);
             }
@@ -1482,12 +1482,12 @@ namespace WildWasteland.Modules.Quests
             for (int i = 0; i < all.Count; i++)
             {
                 if (!Factions.PoiAllowed(gf, all[i], people)) continue;
-                Vector3 rel = Game.Rel(all[i].Pos);
+                Vector3 rel = Core.Origin.World(all[i].Pos);
                 bool taken = false;
                 for (int j = 0; j < book.Active.Count; j++)
                 {
                     Quest a = book.Active[j];
-                    if (a.Type == QType.Goto && a.HasPos && Game.HDist(a.Pos, rel) < 5f) { taken = true; break; }
+                    if (a.Type == QType.Goto && a.HasPos && Core.WorldGeometry.HorizontalDistance(a.Pos, rel) < 5f) { taken = true; break; }
                 }
                 if (!taken) res.Add(all[i]);
             }
@@ -1543,14 +1543,14 @@ namespace WildWasteland.Modules.Quests
                         float nd = float.MaxValue;
                         for (int li = 0; li < list.Count; li++)
                         {
-                            if (blockedNow != null && blockedNow.Contains(QuestGen.PosKey(Game.Rel(list[li].Pos)))) continue;
-                            float ld = Game.HDist(list[li].Pos, giverWorld);
+                            if (blockedNow != null && blockedNow.Contains(QuestGen.PosKey(Core.Origin.World(list[li].Pos)))) continue;
+                            float ld = Core.WorldGeometry.HorizontalDistance(list[li].Pos, giverWorld);
                             if (ld < nd) { nd = ld; near1 = list[li]; }
                         }
                         if (near1 != null)
                         {
                             Poi p = near1;                          // the closest one
-                            q.Pos = Game.Rel(p.Pos);
+                            q.Pos = Core.Origin.World(p.Pos);
                             q.HasPos = true;
                             if (q.Label == "" || q.Label == "spot") q.Label = p.Kind.ToLowerInvariant();
                             return true;
@@ -1636,7 +1636,7 @@ namespace WildWasteland.Modules.Quests
                 double age = now - o.Hours;
                 if (age < 0.0 || age > noRepeatHours.Value) { ledger.RemoveAt(i); continue; }
                 if (o.Giver == giverKey) continue;
-                if (Game.HDist(o.Rel, giverRel) <= noRepeatMeters.Value) set.Add(o.Key);
+                if (Core.WorldGeometry.HorizontalDistance(o.Rel, giverRel) <= noRepeatMeters.Value) set.Add(o.Key);
             }
             return set;
         }
@@ -1780,7 +1780,7 @@ namespace WildWasteland.Modules.Quests
                 for (int i = 0; i < book.Active.Count; i++)
                 {
                     Quest a = book.Active[i];
-                    if (a.Type == q.Type && a.HasPos && Game.HDist(a.Pos, q.Pos) < 10f) return "You're already on that one for someone else.";
+                    if (a.Type == q.Type && a.HasPos && Core.WorldGeometry.HorizontalDistance(a.Pos, q.Pos) < 10f) return "You're already on that one for someone else.";
                 }
             }
             return null;
@@ -1799,8 +1799,8 @@ namespace WildWasteland.Modules.Quests
             else
             {
                 float km = 0f;
-                Vector3 from = q.HasGiverPos ? Game.Abs(q.GiverPos) : Game.Abs(q.Start);
-                if ((q.Type == QType.Goto || q.Type == QType.Takeover) && q.HasPos) km = Game.HDist(Game.Abs(q.Pos), from) / 1000f;
+                Vector3 from = q.HasGiverPos ? Core.Origin.Scene(q.GiverPos) : Core.Origin.Scene(q.Start);
+                if ((q.Type == QType.Goto || q.Type == QType.Takeover) && q.HasPos) km = Core.WorldGeometry.HorizontalDistance(Core.Origin.Scene(q.Pos), from) / 1000f;
                 else if (q.Type == QType.Talk) km = q.MinDistance / 1000f;
                 else if (q.Type == QType.Kill && q.HasPos) km = Math.Min(q.Radius, 4000f) / 1000f;
                 hours = Math.Min(Math.Max(minHours.Value, maxHours.Value), minHours.Value + km * extraHoursPerKm.Value);
@@ -1856,8 +1856,8 @@ namespace WildWasteland.Modules.Quests
                 q.Count = made;
                 QuestGen.ResetClock(q, bridge.Npc != null ? bridge.Npc.position : Vector3.zero, deliverMinutesBase.Value * 60f, deliverMinutesPerKm.Value * 60f);
             }
-            Transform pl = Game.Player();
-            if (pl != null) q.Start = Game.Rel(pl.position);
+            Transform pl = Core.PlayerState.Transform;
+            if (pl != null) q.Start = Core.Origin.World(pl.position);
             AssignDeadline(q);
             book.Active.Add(q);
             if (!scripted) StampGiver(bridge.Npc, q.GiverName);
@@ -1903,7 +1903,7 @@ namespace WildWasteland.Modules.Quests
         {
             if (!book.Active.Contains(q)) return;      // already handed in (two clicks in one slow frame)
             bridge.You("About the job: " + q.Title + ".");
-            Transform pl = Game.Player();
+            Transform pl = Core.PlayerState.Transform;
             Vector3 pp = pl != null ? pl.position : Vector3.zero;
 
             List<QuestItemHit> hits = null;
@@ -1939,7 +1939,7 @@ namespace WildWasteland.Modules.Quests
                 return;
             }
 
-            if (Game.MoneyVar(moneyVar.Value) == null)
+            if (Core.Money.MoneyVar(moneyVar.Value) == null)
             {
                 bridge.Say("(Mod problem: the money variable was not found, so I can't pay you. See the BepInEx log.)");
                 return;
@@ -1960,7 +1960,7 @@ namespace WildWasteland.Modules.Quests
             bridge.Say(Format(q.Done, q, q.Count) + (brought > 0 ? " And you brought " + (brought == 1 ? "the body" : brought + " bodies") + ": that's another " + bonus + " nuts." : ""));
             if (Pay(q))
             {
-                if (bonus > 0 && Game.AddMoney(bonus, moneyVar.Value)) AddToast("Bodies brought back: +" + bonus + " nuts");
+                if (bonus > 0 && Core.Money.AddMoney(bonus, moneyVar.Value)) AddToast("Bodies brought back: +" + bonus + " nuts");
                 Complete(q);
             }
         }
@@ -1972,7 +1972,7 @@ namespace WildWasteland.Modules.Quests
             var res = new List<GameObject>();
             foreach (GameObject go in Game.FindBodies(center, bodyRadius.Value))
             {
-                string dead = Game.BaseName(go.name);
+                string dead = Core.Names.Base(go.name);
                 string owner = dead.EndsWith("_Dead", StringComparison.OrdinalIgnoreCase) ? dead.Substring(0, dead.Length - 5) : dead;
                 if (KillMatches(q.Target, owner, dead)) res.Add(go);
             }
@@ -2021,9 +2021,9 @@ namespace WildWasteland.Modules.Quests
                         if (ActiveById(id) != null) return;
                         string npc = bridge.NpcName;
                         Transform npcTr = bridge.Npc;
-                        Transform pl = Game.Player();
-                        Vector3 playerRel = pl != null ? Game.Rel(pl.position) : Vector3.zero;
-                        Vector3 giverRel = npcTr != null ? Game.Rel(npcTr.position) : playerRel;
+                        Transform pl = Core.PlayerState.Transform;
+                        Vector3 playerRel = pl != null ? Core.Origin.World(pl.position) : Vector3.zero;
+                        Vector3 giverRel = npcTr != null ? Core.Origin.World(npcTr.position) : playerRel;
                         Vector3 giverWorld = npcTr != null ? npcTr.position : (pl != null ? pl.position : Vector3.zero);
                         Factions.Refresh(factionsPath, delegate (string w) { Warn(w); });
                         people = Game.FindPeople(Factions.PeopleWords);
@@ -2041,7 +2041,7 @@ namespace WildWasteland.Modules.Quests
                     {
                         Quest q = ActiveById(id);
                         if (q == null) return;
-                        if (Game.MoneyVar(moneyVar.Value) == null) { AddToast("Could not pay the reward: money variable not found (see the BepInEx log)."); return; }
+                        if (Core.Money.MoneyVar(moneyVar.Value) == null) { AddToast("Could not pay the reward: money variable not found (see the BepInEx log)."); return; }
                         if (Pay(q)) Complete(q);
                         break;
                     }

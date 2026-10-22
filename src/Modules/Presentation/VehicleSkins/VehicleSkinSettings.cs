@@ -27,12 +27,7 @@ namespace WildWasteland.Modules.Presentation
         /// </summary>
         internal static string TextureDir()
         {
-            string dir = Path.Combine(Assets.ModuleDir("Presentation"), Folder);
-            if (Directory.Exists(dir)) return dir;
-            string old = Path.Combine(Assets.ModuleDir("Patrols"), "Textures");
-            if (!Directory.Exists(old)) return dir;
-            Log.Warn(PresentationModule.WorldOwner, "Vehicle skins: textures found only in the old folder " + old + "; move them to " + dir);
-            return old;
+            return Path.Combine(Assets.ModuleDir("Presentation"), Folder);
         }
     }
 }

@@ -1,7 +1,7 @@
 using System.Linq;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>Free attachables (plates, spikes, blast lances): items whose CheckBool FSM carries an "Attached" flag instead of the vehPart tag.</summary>
     internal static class VehicleAttachments

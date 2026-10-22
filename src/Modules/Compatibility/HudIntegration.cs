@@ -4,7 +4,7 @@ using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
-using WildWasteland.Modules.HUD;
+using WildWasteland.Modules.Compatibility;
 namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>Typed facade of the optional driving source, preserving its own visibility and diagnostics.</summary>

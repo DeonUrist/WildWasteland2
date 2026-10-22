@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Reflection;
 using HutongGames.PlayMaker;
 using UnityEngine;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.NPCAI;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.NPCAI
 {
     // Ranged passengers retain vanilla detection and firing, but never receive movement or animation FSMs. Their
     // visible body always uses the exact same fixed Pose component as the driver. Sound2 preserves weapon audio.

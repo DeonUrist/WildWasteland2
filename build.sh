@@ -26,7 +26,7 @@ find src/Modules -path '*/Embedded/*' ! -name '*.md' -type f | sort | while IFS=
   mod=$(printf '%s' "$f" | cut -d/ -f3)
   rel=${f#src/Modules/$mod/Embedded/}
   key=$(printf '%s' "$mod.$rel" | tr / .)
-  target=$(printf '%s' "$mod/$rel" | sed -e 's#^NPC/WomenOfWasteland/#NPC/#' -e 's#^PlayerBody/Portraits/#PlayerBody/LegacyPortraits/#' -e 's#^PlayerBody/CharacterPortraits/#PlayerBody/Portraits/#' -e 's#^PlayerBody/Textures/female_kick.png$#PlayerBody/Models/Player2_female_kick.png#')
+  target="$mod/$rel"
   mkdir -p "$OUTDIR/RuntimeAssets/$(dirname "$target")"
   cp "$f" "$OUTDIR/RuntimeAssets/$target"
   printf '%s\t%s\n' "$key" "$target" >> "$OUTDIR/RuntimeAssets/asset-index.tsv"
@@ -41,6 +41,6 @@ for d in mscorlib System System.Core netstandard \
   Unity.TextMeshPro Unity.InputSystem PlayMaker Micosmo.SensorToolkit \
   NWH.Common NWH.VehiclePhysics2 NWH.WheelController MapMagic Den.Tools \
   Assembly-CSharp Assembly-CSharp-firstpass; do REFS="$REFS -r:$M/$d.dll"; done
-mcs -nostdlib -noconfig -target:library -langversion:latest -optimize+ -nowarn:649,414,169,219,162,618,108,114,67,168,1717,429,665 \
+mcs -nostdlib -noconfig -target:library -langversion:latest -optimize+ -nowarn:649,414,169,219,162,108,114,67,168,1717,429,665 \
   -out:"$OUTDIR/WildWasteland.dll" $REFS -r:$B/BepInEx.dll -r:$B/0Harmony.dll -r:$B/Mono.Cecil.dll -r:$B/MonoMod.Utils.dll $SRC
 echo "built $OUTDIR/WildWasteland.dll"

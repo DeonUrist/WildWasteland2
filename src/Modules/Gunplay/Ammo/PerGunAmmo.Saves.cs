@@ -2,7 +2,7 @@ using System;
 using HarmonyLib;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.Gunplay
 {
     /// <summary>Captures the magazine ledger through the same verified ES3 transaction as other world records.</summary>
     internal static partial class PerGunAmmo

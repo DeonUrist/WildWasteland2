@@ -48,11 +48,11 @@ namespace WildWasteland.Modules.Compatibility
         }
 
         /// <summary>Old player-body entry (Presentation after Wave C).</summary>
-        internal static readonly CompatibilityHost PlayerBody = new CompatibilityHost("PlayerBody", "Presentation");
+        internal static readonly CompatibilityHost PlayerBody = new CompatibilityHost("Presentation");
         /// <summary>Old NPC entry (NPCAI after Wave C).</summary>
-        internal static readonly CompatibilityHost Npc = new CompatibilityHost("NPC", "NPCAI");
+        internal static readonly CompatibilityHost Npc = new CompatibilityHost("NPCAI");
         /// <summary>Old Guns entry (Gunplay after Wave C).</summary>
-        internal static readonly CompatibilityHost Guns = new CompatibilityHost("Guns", "Gunplay");
+        internal static readonly CompatibilityHost Guns = new CompatibilityHost("Gunplay");
         /// <summary>Old CleanHUD entry (HUD after Wave C).</summary>
         internal static readonly CompatibilityHost CleanHud = new CompatibilityHost("HUD");
         /// <summary>Patrols entry (it still installs the War Rig and vehicle parts).</summary>
