@@ -40,7 +40,7 @@ namespace WildWasteland.Modules.NPC
         private const int Solid = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14) | (1 << 16);
 
         // (1.7.4) the layout of every nest built so far (where its webs hang / lie, in the place's own coordinates), kept in
-        // BepInEx/config/NPCAI/nest-layouts.txt: a nest is rebuilt exactly the same after a load, a restart or a return - and at once,
+        // BepInEx/config/WildWasteland/NPC/nest-layouts.txt: a nest is rebuilt exactly the same after a load, a restart or a return - and at once,
         // without looking for spots again. Keyed by the map tile, the place's name and its position in the tile.
         private static Dictionary<string, string> _layouts;
         // (WW) config/WildWasteland/NPC/nest-layouts.txt

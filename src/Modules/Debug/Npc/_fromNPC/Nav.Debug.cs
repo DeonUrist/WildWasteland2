@@ -71,7 +71,7 @@ namespace WildWasteland.Modules.NPC
 
         // ---------- [Debug] NavDump: the map as a picture ----------
         // (also: orange = a wall or spike between this cell and a walkable neighbour; purple = a small island, never used for routes)
-        // BepInEx/config/Apocaraider/NavDump/<structure>_<x>_<z>_<tag>.bmp, 2 px per cell, north up. Walkable: grey by height (open sky
+        // BepInEx/config/WildWasteland/NPC/NavDump/<structure>_<x>_<z>_<tag>.bmp, 2 px per cell, north up. Walkable: grey by height (open sky
         // greenish, under a roof bluish); a walkable cell next to a walkable one more than MaxStep higher or lower: yellow; no floor: black;
         // too tight for a body: red; inside rock: brown. On a "no route" dump: the NPC's reachable area is tinted, the NPC white, the goal
         // magenta, the chosen exit cyan.

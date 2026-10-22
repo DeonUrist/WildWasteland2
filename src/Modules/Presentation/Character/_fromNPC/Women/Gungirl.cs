@@ -512,10 +512,7 @@ namespace WildWasteland.Modules.NPC
         {
             rel = (rel ?? "").Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
             if (Path.IsPathRooted(rel)) return rel;
-            string path = Path.Combine(NpcModule.Instance.Dir, rel);
-            if (File.Exists(path) || Directory.Exists(path)) return path;
-            string legacy = Path.Combine(Assets.LegacyPluginDir("WomenOfWasteland"), rel);
-            return File.Exists(legacy) || Directory.Exists(legacy) ? legacy : path;
+            return Path.Combine(NpcModule.Instance.Dir, rel);
         }
 
         // ---------- debug spawn ----------
