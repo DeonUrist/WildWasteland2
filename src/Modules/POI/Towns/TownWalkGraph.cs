@@ -7,6 +7,7 @@ namespace WildWasteland.Modules.POI
     // A small invisible visibility graph. No path paint, road mesh or grid/A* searches.
     internal static class TownWalkGraph
     {
+        /// <summary>Constructs the next admitted geometry item from the committed plan.</summary>
         internal static void Build(TownPlan plan, BuildingSpec[] specs, StopToken stop)
         {
             var ground = new TownGround(plan, specs, null, 0, null);
@@ -66,10 +67,13 @@ namespace WildWasteland.Modules.POI
             plan.StreetNodes = nodes.ToArray(); plan.StreetEdges = edges.ToArray(); plan.MainNodes = 0;
             plan.PathsVersion = 7; plan.PathWidth = 1.2f; plan.AccessPath = new Vector3[0]; plan.GradeAccess = false;
         }
+        /// <summary>Adds the captured item to the owning plan or live registry.</summary>
         private static void Add(TownGround ground, TownPlan plan, List<Vector3> nodes, List<int> edges, int a, int b)
         { if (Clear(ground, plan, nodes[a], nodes[b])) { edges.Add(a); edges.Add(b); } }
+        /// <summary>Finds the requested numeric site or prefab specification.</summary>
         private static BuildingSpec Find(BuildingSpec[] specs, string name)
         { foreach (var spec in specs) if (spec.Name == name) return spec; return null; }
+        /// <summary>Releases current resources and resets the associated world or catalog state.</summary>
         private static bool Clear(TownGround ground, TownPlan plan, Vector3 a, Vector3 b)
         {
             var rotation = Quaternion.Euler(0, plan.Yaw, 0);

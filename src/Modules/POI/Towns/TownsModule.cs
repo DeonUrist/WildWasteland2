@@ -73,8 +73,11 @@ namespace WildWasteland.Modules.POI
         internal readonly IModule Owner;
         /// <summary>Routes every town hook and scheduled job through its sole POI module owner.</summary>
         internal TownRuntime(IModule owner) { Owner = owner; }
+        /// <summary>Returns the number of currently materialized town sites.</summary>
         public int SiteCount { get { return _sites.Count; } }
+        /// <summary>Returns the live town site at the requested index.</summary>
         public TownSite GetSite(int index) { return _sites[index].Site; }
+        /// <summary>Resolves exact town ownership and the matching native faction pool for a dressing root.</summary>
         internal TownSite MarkerTown(Transform root, out List<GameObject> pool)
         {
             pool = null;
@@ -87,6 +90,7 @@ namespace WildWasteland.Modules.POI
                 }
             return null;
         }
+        /// <summary>Binds POI settings before any scene or asset preparation.</summary>
         internal void BindConfig(ModuleConfig cfg) { _settings.Bind(cfg); TownPoiSettings.Configure(_settings); }
         // Wave A (A6) entry split: lifecycle parts owned by other target modules live in partial files in their folders.
         /// <summary>NPCAI/Navigation part: installs the Nav bridge (TownBakeBridge: Nav.Next waypoints, instance overlays).</summary>
@@ -97,6 +101,7 @@ namespace WildWasteland.Modules.POI
         partial void TraceStartingTerrain(TerrainTile applied, string source);
         /// <summary>Debug part: forgets the last starting-terrain trace (world changed).</summary>
         partial void ClearDebug();
+        /// <summary>Starts the sole POI lifecycle and its typed providers.</summary>
         internal void Init()
         {
             if (_running) return;
@@ -139,6 +144,7 @@ namespace WildWasteland.Modules.POI
             Log.Main(null, "[POI] ready: " + _settings.Min.Value + "-" + _settings.Max.Value + " buildings, " + _settings.Chance.Value + "% per main chunk; ensure selected towns=" + _settings.EnsureTown.Value
                 + "; preferred terrain " + _settings.Relief.Value + " m relief / " + _settings.Earthwork.Value + " m cut-fill.");
         }
+        /// <summary>Recognizes terrain outputs whose authored native locations must be retained.</summary>
         private static bool NativePoi(ObjectsOutput output)
         {
             foreach (var p in output.prefabs)
@@ -146,6 +152,7 @@ namespace WildWasteland.Modules.POI
                     || p.name.StartsWith("Cave_", StringComparison.Ordinal) || p.name.StartsWith("Wreck_", StringComparison.Ordinal))) return true;
             return false;
         }
+        /// <summary>Registers validated data under its owning module.</summary>
         private Registration Register(Graph graph)
         {
             var registration = new Registration { Graph = graph, Assets = new TownAssets() };
@@ -170,6 +177,7 @@ namespace WildWasteland.Modules.POI
             }
             catch { Undo(registration); throw; }
         }
+        /// <summary>Captures main-thread inputs before worker generation or staged preparation.</summary>
         private void Prepare(TerrainTile tile, TileData data)
         {
             if (!_running || tile == null || data == null || tile.mapMagic == null || tile.mapMagic.graph == null) return;
@@ -200,6 +208,7 @@ namespace WildWasteland.Modules.POI
             }
             catch (Exception e) { Log.Warn("[POI] skipped terrain preparation: " + e.Message); }
         }
+        /// <summary>Captures worker products before MapMagic releases its generation buffers.</summary>
         private void Finalized(TerrainTile tile, TileData data, StopToken stop)
         {
             Capture capture;
@@ -237,6 +246,7 @@ namespace WildWasteland.Modules.POI
             catch (Exception e)
             { capture.Input.Error = "Late town generation: " + e.Message; if (capture.Input.Progress != null) capture.Input.Progress.Finish("Failed: " + e.Message); }
         }
+        /// <summary>Publishes the completed numeric plan on the main thread.</summary>
         private void Applied(TerrainTile tile, TileData data, StopToken stop)
         {
             TraceStartingTerrain(tile, "applied");
@@ -279,8 +289,10 @@ namespace WildWasteland.Modules.POI
             }
             catch (Exception e) { Log.Warn("[POI] stopped applying town; existing objects retained: " + e.Message); }
         }
+        /// <summary>Builds the stable seed-and-tile identity of a town decision.</summary>
         private static string ChunkKey(int seed, int x, int z)
         { return "v1/" + seed.ToString(CultureInfo.InvariantCulture) + "/" + x.ToString(CultureInfo.InvariantCulture) + "/" + z.ToString(CultureInfo.InvariantCulture); }
+        /// <summary>Creates a live construction context from the committed plan and terrain anchor.</summary>
         private static TownSite NewSite(TownPlan plan, Transform anchor, Terrain terrain, BuildingSpec[] specs)
         {
             var site = new TownSite { Plan = plan, Anchor = anchor, GroundTerrain = null, Buildings = new GameObject[plan.LotCount], Spawners = new PlayMakerFSM[plan.LotCount][] };
@@ -300,13 +312,17 @@ namespace WildWasteland.Modules.POI
 
             TownMarkers.Add(site); return site;
         }
+        /// <summary>Reapplies the town foundation when the external generator edits its tile.</summary>
         private void TownTerrainEdited(TerrainTile tile)
         {
             if (!_running || tile == null) return;
             foreach (var live in _sites) if (live.Tile == tile && live.Site.GroundPad != null) live.Site.GroundPad.Apply();
         }
+        /// <summary>Returns _waiting for towns for the current owner state.</summary>
         private bool Loading { get { return _waitingForTowns || (SaveBus.Busy && !SaveBus.Saving && !(ModApi.Get<ISaveTransactionState>()?.Active??false)); } }
+        /// <summary>Admits the loading-only construction burst.</summary>
         private bool LoadWanted() { return _loading; }
+        /// <summary>Uses the configured loading budget while preserving one native activation per frame.</summary>
         private void LoadBurst()
         {
             // Behind the loading screen nobody sees frame pacing: construction and connection run up to the configured
@@ -315,6 +331,7 @@ namespace WildWasteland.Modules.POI
             _burst.Reset(); _burst.Start();
             while (_burst.Elapsed.TotalMilliseconds < budget && BuildStep()) { }
         }
+        /// <summary>Admits one staged construction, perimeter or navigation-preparation step.</summary>
         private bool BuildStep()
         {
             _loading = Loading;
@@ -426,9 +443,11 @@ namespace WildWasteland.Modules.POI
         }
         /// <summary>Reads the selected town template wall setting.</summary>
         private bool TemplateWalls(TownPlan plan) { return plan.Rules != null && plan.Rules.Walls; }
+        /// <summary>Tests whether committed ownership and template intent still require perimeter construction.</summary>
         private bool NeedsWalls(Live live)
         { return !live.WallFailed && _settings.Walls.Value && TemplateWalls(live.Site.Plan) && TownPerimeter.Allegiance(live.Site.Plan) && live.Registration.Assets.WallKit.Available
             && (live.Site.Walls == null || !live.Site.Walls.Prepared); }
+        /// <summary>Completes the loading record with its final status.</summary>
         private void Finish(Live live, string reason)
         {
             _revision++; live.Finished = true; live.Site.NavigationStopped = true;
@@ -436,6 +455,7 @@ namespace WildWasteland.Modules.POI
                 try { live.Site.Overlap.FinishPartial(); } catch (Exception e) { Log.Warn("[POI] stopped partial overlap: " + e.Message); }
             if (live.Site.Loading != null) live.Site.Loading.Finish(reason);
         }
+        /// <summary>Refreshes live state within the existing bounded update cadence.</summary>
         private void Refresh()
         {
             if (!_running || _blocked || (ModApi.Get<ISaveTransactionState>()?.Active??false) || SaveBus.Saving) return;
@@ -457,6 +477,7 @@ namespace WildWasteland.Modules.POI
                 }
             }
         }
+        /// <summary>Releases live geometry belonging to a streamed terrain tile.</summary>
         private void Moved(TerrainTile tile)
         {
             if (_gasStation != null) _gasStation.Moved(tile);
@@ -465,6 +486,7 @@ namespace WildWasteland.Modules.POI
             if (tile.main != null) ForgetMoved(tile.main.data, key);
             if (tile.draft != null) ForgetMoved(tile.draft.data, key);
         }
+        /// <summary>Drops worker capture state belonging to a streamed tile generation.</summary>
         private void ForgetMoved(TileData data, string key)
         {
             if (data == null) return;
@@ -474,6 +496,7 @@ namespace WildWasteland.Modules.POI
             TownPoiSettings.Forget(data);
             if (_captures.TryRemove(data, out ignored) && ignored.Input.Progress != null) ignored.Input.Progress.Finish("Cancelled — terrain streamed out");
         }
+        /// <summary>Aggregates town construction and arrived population readiness for the shared loading hold.</summary>
         private LoadingProgress.Work? LoadProgress()
         {
             if (!_running || _blocked) return null;
@@ -509,6 +532,7 @@ namespace WildWasteland.Modules.POI
             _waitingForTowns = pending;
             return !pending;
         }
+        /// <summary>Removes the matching registration and releases its live presentation state.</summary>
         private void Remove(TerrainTile tile, bool capture)
         {
             for (int i = _sites.Count - 1; i >= 0; i--) if (_sites[i].Tile == tile)
@@ -519,6 +543,7 @@ namespace WildWasteland.Modules.POI
                 TownFactory.Destroy(live.Site); _sites.RemoveAt(i); _revision++;
             }
         }
+        /// <summary>Captures persistent world records into the selected ES3 transaction.</summary>
         internal void OnSaveBegin(string slot)
         {
             if (!_running || string.IsNullOrEmpty(slot)) return;
@@ -532,32 +557,41 @@ namespace WildWasteland.Modules.POI
             }
             catch (Exception e) { SaveBus.ReportFailure("Towns save failed: " + e.Message); Block("saving", e); }
         }
+        /// <summary>Restores the selected ES3 world records before generation resumes.</summary>
         internal void OnLoadBegin(string slot)
         {
             ClearSites(); _resume.Clear(); _epoch++; _blocked = false;
             try { if (_gasStation != null) _gasStation.Load(slot); if (_dressing != null) _dressing.Markers.Load(slot); _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
             catch (Exception e) { _records.Clear(); Block("loading (saved data retained on disk)", e); }
         }
+        /// <summary>Releases prior world records before starting a fresh world.</summary>
         public void NewWorld()
         { ClearSites(); if (_dressing != null) _dressing.Markers.Load(null); if (_gasStation != null) _gasStation.NewWorld(); _resume.Clear(); _epoch++; _blocked = false;  _records.Clear(); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
+        /// <summary>Tracks native load-state transitions without another polling loop.</summary>
         private void StateChanged(string previous, string current)
         { if (current == "setSeed" || current == "Start") NewWorld(); }
+        /// <summary>Refreshes world-scoped references after native loading finishes.</summary>
         internal void OnWorldReady() { Refresh(); }
+        /// <summary>Clears scene-owned state for a replacement world while retaining additive scenes.</summary>
         internal void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (mode == LoadSceneMode.Additive) return;
             ClearSites(); _resume.Clear(); _epoch++; _captures.Clear();
 
-            // Keep graph registrations until shutdown: the native generator graph can survive scene changes.
+            // Asset catalogs are recaptured for the next world; numeric saved plans retain their exact intent.
         }
+        /// <summary>Releases live sites and derived construction state before a world change.</summary>
         private void ClearSites()
-        { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
+        { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); foreach(var r in _graphs.Values)Undo(r);_graphs.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
+        /// <summary>Latches a stage failure so corrupt or unavailable state cannot be silently overwritten.</summary>
         private void Block(string stage, Exception e)
         { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[POI] blocked during " + stage + "; no replacement layout will be invented", e); }
+        /// <summary>Restores original graph links and disposes the captured generation assets.</summary>
         private static void Undo(Registration registration)
         {
             if (registration.Assets != null) registration.Assets.Dispose();
         }
+        /// <summary>Releases owner-scoped resources and restores intercepted native state.</summary>
         internal void Shutdown()
         {
             if (!_running) return;
@@ -583,6 +617,7 @@ namespace WildWasteland.Modules.POI
              ShutdownNavigation();
             if (ReferenceEquals(TownsApi.Provider, this)) TownsApi.Provider = null;
         }
+        /// <summary>Returns on origin shift for the current owner state.</summary>
         internal void OnOriginShift(Vector3 delta) { if (_gasStation != null) _gasStation.Shift(delta); }
     }
 }

@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.POI
         private readonly Material[] _gateMaterials = new Material[2];
         private readonly Texture2D[] _gateTextures = new Texture2D[2];
         internal bool Available { get { return Banner != null && Meshes[0] != null; } }
+        /// <summary>Restores the current data format and rejects incompatible or corrupt input.</summary>
         internal void Load(List<GameObject> prefabs)
         {
             Tower.Load(prefabs);
@@ -57,6 +58,7 @@ namespace WildWasteland.Modules.POI
             if (Available) { LoadGateTextures(); Log.Main(null, "[POI] perimeter kit: Camp_14 heavy metal fences and faction entrance banners; four open vehicle gates."); }
             else Log.Warn("[POI] native Camp_14 perimeter kit missing; wall prototype unavailable (towns retained).");
         }
+        /// <summary>Loads module-owned faction gate artwork and native shader materials.</summary>
         private void LoadGateTextures()
         {
             var cloth = Banner.transform.Find("flag_2_2_sided"); var renderer = cloth == null ? null : cloth.GetComponent<Renderer>();
@@ -88,12 +90,14 @@ namespace WildWasteland.Modules.POI
                 finally { if (texture != null) UnityEngine.Object.Destroy(texture); }
             }
         }
+        /// <summary>Applies the faction banner artwork to an owned gate clone.</summary>
         internal void ApplyGateTexture(GameObject gate, TownFaction faction)
         {
             var material = _gateMaterials[faction == TownFaction.Coyotes ? 1 : 0]; if (material == null) return;
             var cloth = gate.transform.Find("flag_2_2_sided"); var renderer = cloth == null ? null : cloth.GetComponent<Renderer>();
             if (renderer != null) renderer.sharedMaterial = material;
         }
+        /// <summary>Releases owned resources and restores original native state.</summary>
         internal void Dispose()
         {
             Tower.Dispose(); Trees.Clear(); foreach (var material in _shared.Values) UnityEngine.Object.Destroy(material); _shared.Clear();
@@ -102,6 +106,7 @@ namespace WildWasteland.Modules.POI
     }
     internal sealed class TownWalls
     {
+        /// <summary>Describes the piece data used by this owner.</summary>
         private struct Piece { internal Vector3 Position, Direction; internal float Length; internal int Kind; }
         private readonly TownSite _site;
         private readonly TownWallKit _kit;
@@ -111,10 +116,14 @@ namespace WildWasteland.Modules.POI
         private readonly TownBorderProps _border;
         internal readonly TownVehicleGates VehicleRoutes;
         internal bool Ready { get { return _next >= _pieces.Count && _border.Ready; } }
+        /// <summary>Reports completion of geometry, props and both perimeter routing tables.</summary>
         internal bool Prepared { get { return Ready && VehicleRoutes.Ready && WalkerRoutes.Ready; } }
         internal readonly TownVehicleGates WalkerRoutes;
+        /// <summary>Returns max for the current owner state.</summary>
         internal float Progress { get { return .65f * _next / Mathf.Max(1, _pieces.Count) + .25f * _border.Progress + .05f * (VehicleRoutes.Progress + WalkerRoutes.Progress); } }
+        /// <summary>Returns the current perimeter construction stage for loading presentation.</summary>
         internal string Stage { get { return _next < _pieces.Count ? "Building town walls " + _next + "/" + _pieces.Count : !_border.Ready ? _border.Stage : "Connecting town gates"; } }
+        /// <summary>Initializes town walls with the supplied owning state and immutable inputs.</summary>
         internal TownWalls(TownSite site, TownAssets assets, Transform parent)
         {
             _site = site; _kit = assets.WallKit;
@@ -137,6 +146,7 @@ namespace WildWasteland.Modules.POI
             }
         }
         // spawned = a native prefab clone was activated this call (the only indivisible cost; the caller paces those per frame).
+        /// <summary>Advances one bounded construction or preparation step.</summary>
         internal bool Step(out bool spawned)
         {
             spawned = false;
@@ -167,6 +177,7 @@ namespace WildWasteland.Modules.POI
             if (_next == _pieces.Count) { Physics.SyncTransforms(); Log.Main(null, "[POI] bent perimeter built " + _site.Plan.Key + ": " + (_pieces.Count - 4) + " shared-mesh sections, four cardinal open gates; parking outside east gate."); }
             return true;
         }
+        /// <summary>Releases owned resources and restores original native state.</summary>
         internal void Dispose() { if (_root != null) UnityEngine.Object.Destroy(_root); }
     }
 }

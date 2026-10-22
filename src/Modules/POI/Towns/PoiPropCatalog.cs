@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.POI
         private IEnumerator<KeyValuePair<long, Object>> _scan;
         internal bool Started, Complete;
         internal bool Busy { get { return _scan != null; } }
+        /// <summary>Starts the sliced catalog generation once.</summary>
         internal void Start()
         {
             if (Started) return;
@@ -35,6 +36,7 @@ namespace WildWasteland.Modules.POI
             }
             _scan = snapshot.GetEnumerator(); Started = true;
         }
+        /// <summary>Advances one bounded construction or preparation step.</summary>
         internal bool Step()
         {
             if (_scan == null) return false;
@@ -52,8 +54,10 @@ namespace WildWasteland.Modules.POI
             if (_listed.Add(key)) All.Add(asset);
             return true;
         }
+        /// <summary>Orders catalog entries by their displayed label.</summary>
         private static int Compare(Asset a, Asset b) { return string.Compare(a.Label, b.Label, StringComparison.OrdinalIgnoreCase); }
         private readonly Dictionary<string, Asset> _markers = new Dictionary<string, Asset>(StringComparer.Ordinal);
+        /// <summary>Tests or resolves the requested marker kind.</summary>
         private Asset Marker(string kind)
         {
             Asset asset; if (_markers.TryGetValue(kind, out asset)) return asset;

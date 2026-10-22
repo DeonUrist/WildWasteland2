@@ -18,11 +18,13 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Registers a single editor owner and its input callback.</summary>
         public void Register(IModule owner,Action input){if(owner==null)throw new ArgumentNullException(nameof(owner));if(_owner!=null && ModuleHost.IsRunning(_owner) && !ReferenceEquals(owner,_owner))throw new InvalidOperationException("Wheel editor already owned");_owner=owner;_input=input;}
         /// <summary>Ends preview and releases callbacks belonging to the exact owner.</summary>
-        public void Remove(IModule owner){if(!ReferenceEquals(owner,_owner))return;WheelArms.AuthorPreview(false,0,0);_owner=null;_input=null;}
+        public void Remove(IModule owner){if(!ReferenceEquals(owner,_owner))return;try{WheelArms.AuthorPreview(false,0,0);}finally{Clear();}}
         /// <summary>Sets runtime preview intent with bounds checked by the real wheel owner.</summary>
         public void Preview(bool editing,int pose,int preview){WheelArms.AuthorPreview(editing,pose,preview);}
         /// <summary>Publishes a validated full setup and mirrors the edited wheel side.</summary>
         public void SetValues(string key,float[] values,int editedPose,int editedSide){WheelArms.AuthorValues(key,values,editedPose,editedSide);}
+        /// <summary>Restarts runtime stroke interpolation after a complete setup replacement.</summary>
+        public void ResetMotion(){WheelArms.AuthorResetMotion();}
         /// <summary>Atomically saves the current authored wheel setup.</summary>
         public void Save(){WheelArms.AuthorSave();}
         /// <summary>Resets and saves the current wheel setup.</summary>

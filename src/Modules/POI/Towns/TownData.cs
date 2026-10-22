@@ -5,7 +5,9 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.POI
 {
+    /// <summary>Describes the town condition data used by this owner.</summary>
     public enum TownCondition { Ruined, Inhabited }
+    /// <summary>Describes the town faction data used by this owner.</summary>
     public enum TownFaction { Animals, Mutants, Scrapyard, Coyotes }
     [Flags]
     public enum TownRole { None = 0, Residence = 1, Shop = 2, GasStation = 4, ParkingLot = 8, Workshop = 16, Civic = 32 }
@@ -22,12 +24,14 @@ namespace WildWasteland.Modules.POI
         internal TownFrontage[] Frontages;
         internal TownFrontage[] TiltedFrontages;
         internal bool Crane, Wreck, Merchant, Camp;
+        /// <summary>Tests whether the measured footprint exceeds the large-building limit.</summary>
         internal bool Big { get { return HalfX > 25 || HalfZ > 25; } }
     }
     public sealed class TownLot
     {
         public string Prefab { get; internal set; }
         public bool IsParking { get { return Prefab == "Towns_Parking"; } }
+        /// <summary>Tests whether the committed prefab is an authored merchant lot.</summary>
         public bool IsMerchant { get { return Merchants.Contains(Prefab); } }
         internal static readonly HashSet<string> Merchants = new HashSet<string>(StringComparer.Ordinal) { "Camp_10" };
         public Vector3 LocalPosition { get; internal set; }
@@ -42,6 +46,7 @@ namespace WildWasteland.Modules.POI
         internal int Actors, Loot, Vehicles;
         internal bool Hounds;
         internal bool Skipped, External;
+        /// <summary>Returns an independent editable copy of the current data.</summary>
         internal TownLot Copy() { return (TownLot)MemberwiseClone(); }
     }
     public sealed class TownPlan
@@ -56,6 +61,7 @@ namespace WildWasteland.Modules.POI
         public TownCondition Condition { get; internal set; }
         public TownFaction Faction { get; internal set; }
         public int FactionMembers { get; internal set; }
+        /// <summary>Reports accepted human-faction ownership before resident spawning.</summary>
         public bool Owned { get { return HasTown && (Faction == TownFaction.Coyotes || Faction == TownFaction.Scrapyard); } }
         internal bool PopulationMeasured;
         internal bool MerchantSeeded;
@@ -80,14 +86,18 @@ namespace WildWasteland.Modules.POI
         internal float PathWidth, AccessWidth;
         internal bool GradeAccess;
         internal Vector3[] AccessPath = new Vector3[0];
+        /// <summary>Copies mutable lot/path state while invalidating derived geometry caches.</summary>
         internal TownPlan CopyPaths()
         {
             var p = (TownPlan)MemberwiseClone(); p.Outline = null; p.Overlay = null; p.DressingOnly = null; p.Lots = new TownLot[Lots.Length];
             for (int i = 0; i < Lots.Length; i++) p.Lots[i] = Lots[i].Copy();
             return p;
         }
+        /// <summary>Returns the committed number of lots.</summary>
         public int LotCount { get { return Lots.Length; } }
+        /// <summary>Returns the committed lot at the requested index.</summary>
         public TownLot GetLot(int index) { return Lots[index]; }
+        /// <summary>Converts a lot-local point to stable world coordinates.</summary>
         internal Vector3 World(Vector3 local) { return WorldCenter + Quaternion.Euler(0, Yaw, 0) * local; }
     }
     internal sealed class GenerationInput
@@ -141,13 +151,17 @@ namespace WildWasteland.Modules.POI
         internal GameObject Staged;               // next lot's prefab clone, deserialized one build slot before its activation
         internal int PrepSteps;                   // completed overlap/navigation steps (work-based preparation budget)
         internal readonly HashSet<int> CountedMembers = new HashSet<int>();
+        /// <summary>Converts a plan-local point through the live map anchor.</summary>
         internal Vector3 Scene(Vector3 local) { return Anchor.TransformPoint(Plan.World(local)); }
+        /// <summary>Projects a point onto the supplied town terrain when present.</summary>
         internal Vector3 Ground(Vector3 point, float offset = 0)
         {
             if (GroundTerrain != null) point.y = GroundTerrain.SampleHeight(point) + GroundTerrain.transform.position.y + offset;
             return point;
         }
+        /// <summary>Stages or resolves the native geometry of one committed lot.</summary>
         public GameObject Building(int lot) { return Buildings[lot]; }
+        /// <summary>Returns the authored exterior parking pose and footprint.</summary>
         public bool Parking(out Vector3 center, out Quaternion rotation, out Vector2 size)
         {
             foreach (var lot in Plan.Lots) if (lot.IsParking)

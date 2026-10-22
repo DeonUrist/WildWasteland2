@@ -32,7 +32,9 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Changes only preview intent; native steering and IK remain runtime-owned.</summary>
         internal static void AuthorPreview(bool editing,int pose,int preview){if(!editing){StopEditor();return;}if(_setup==null||!Game.InCar||Game.Dead)return;_editor=true;_editPose=Mathf.Clamp(pose,0,_handlebars?2:1);_preview=Mathf.Clamp(preview,0,_handlebars?3:2);}
         /// <summary>Validates the exact current wheel and full buffer before publishing edits and mirrored poses.</summary>
-        internal static void AuthorValues(string key,float[] values,int pose,int side){if(_setup==null||key!=_key)throw new InvalidOperationException("Fitted wheel changed");PoseEditorApi.Validate(values,_setup.V.Length);Array.Copy(values,_setup.V,values.Length);if(!_handlebars && pose>=0 && pose<2 && side>=0 && side<2)MirrorPose(_setup.V,pose,side);ResetStroke(_lastSpin);_dirty=true;}
+        internal static void AuthorValues(string key,float[] values,int pose,int side){if(_setup==null||key!=_key)throw new InvalidOperationException("Fitted wheel changed");PoseEditorApi.Validate(values,_setup.V.Length);Array.Copy(values,_setup.V,values.Length);if(!_handlebars && pose>=0 && pose<2 && side>=0 && side<2)MirrorPose(_setup.V,pose,side);_dirty=true;}
+        /// <summary>Restarts the native stroke interpolation after replacing a complete setup.</summary>
+        internal static void AuthorResetMotion(){ResetStroke(_lastSpin);}
         /// <summary>Saves authored wheel data explicitly.</summary>
         internal static void AuthorSave(){Save();}
         /// <summary>Replaces the current setup with its native defaults and saves it.</summary>

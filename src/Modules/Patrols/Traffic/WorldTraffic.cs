@@ -212,9 +212,8 @@ namespace WildWasteland.Modules.Patrols
         {
             var player = PlayerRef.Player; if (player == null) return;
             int nearby=TrafficLocations.NearbyCount(TrafficSpace.World(player.position),PatrolsModule.CampTrafficRange.Value);
-            BattleTick(seconds,player);
-            ExcludeClearedBases();
-            TrimPopulation(player);
+            bool vehiclesAvailable=VehiclePreparation.Available;
+            if(vehiclesAvailable){BattleTick(seconds,player);ExcludeClearedBases();TrimPopulation(player);}
             RefreshRoadRoutes();
             PumpTownRoutes();
             PumpPatrolCalls();
@@ -225,6 +224,7 @@ namespace WildWasteland.Modules.Patrols
             for (int jn = 0; jn < _tickJourneys.Count; jn++)
             {
                 var journey = _tickJourneys[jn];
+                if(!journey.foot&&!vehiclesAvailable)continue;
                 if (TownVisit(journey, seconds, player)) continue;
                 if(journey.merchant&&journey.waitSeconds>0f)journey.waitSeconds=Mathf.Max(TrafficLocations.FlatDistance(journey.position,TrafficSpace.World(player.position))<=100f?1f:0f,journey.waitSeconds-seconds);
                 if(!string.IsNullOrEmpty(journey.battle))continue;

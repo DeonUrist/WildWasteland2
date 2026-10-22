@@ -216,10 +216,10 @@ namespace WildWasteland.Modules.Patrols
         private static PlayMakerFSM _saveLoad, _newGoSave;
         private static string _lastState, _loadSlot;
         private static float _nextScan;
-        private static bool _restoreRunning;
+        private static bool _restoreRunning,_waitingForVehicles;
         private static Coroutine _restore;
         /// <summary>Returns the current restoring used by persistence.</summary>
-        internal static bool Restoring { get { return _restoreRunning; } }
+        internal static bool Restoring { get { return _restoreRunning&&!_waitingForVehicles; } }
         internal static float LoadFraction { get; private set; }
         private const string EsKey = "Apocapatrol.Patrol";
         private static bool _readFailed;
@@ -266,7 +266,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Clears previous-scene objects and starts a fresh runtime generation.</summary>
         internal static void ResetForScene()
         {
-            _readFailed = false;
+            _readFailed = false;_waitingForVehicles=false;
             if (_restore != null && Runner != null) Runner.StopCoroutine(_restore);
             _restore = null;
             _saveLoad = null; _newGoSave = null; _lastState = null; _loadSlot = null;
@@ -306,6 +306,8 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Publishes current owned data through its authoritative persistence boundary.</summary>
         private static void Save(string slot, int seed)
         {
+            if (_waitingForVehicles || !VehiclePreparation.Available && PatrolMarker.All.Count>0)
+            {Core.SaveBus.ReportFailure(PatrolsModule.Instance,"Enable Vehicles before saving a world with deferred patrol vehicle state; previous state preserved.");return;}
             if (string.IsNullOrEmpty(slot) || _readFailed)
             { Core.SaveBus.ReportFailure(PatrolsModule.Instance, "Patrol state could not be read or has no save slot; preserving the previous save."); return; }
             try
@@ -350,6 +352,8 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { _readFailed = true; Core.Log.Warn("[Patrols] Persistence: invalid traffic record; saving blocked: " + e.Message); }
             var savedCars = data.cars ?? new PatrolCarData[0];
             var pending = new List<PatrolCarData>(savedCars);
+            while(pending.Count>0&&!VehiclePreparation.Available){_waitingForVehicles=true;yield return null;}
+            _waitingForVehicles=false;
             float until = Time.realtimeSinceStartup + 15f;
             var roots = new List<GameObject>();
             var restored = new List<KeyValuePair<GameObject, PatrolCarData>>();

@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.POI
     {
         internal const string Key = "WildWasteland.Towns.World.v1";
         private const int Magic = 0x57575453;
+        /// <summary>Writes the current validated state through its owning persistence transaction.</summary>
         internal static void Save(string slot, Dictionary<string, TownRecord> records)
         {
             string value;
@@ -25,6 +26,7 @@ namespace WildWasteland.Modules.POI
             }
             SaveBus.Key(Key).Write(null, slot, value);
         }
+        /// <summary>Restores the current data format and rejects incompatible or corrupt input.</summary>
         internal static Dictionary<string, TownRecord> Load(string slot)
         {
             var disk = new ES3Settings(slot) { location = ES3.Location.File };

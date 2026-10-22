@@ -20,9 +20,13 @@ namespace WildWasteland.Modules.POI
     /// </summary>
     internal sealed partial class TownGasStation : IGasStationAuthoring
     {
+        /// <summary>Returns the latest test-placement status.</summary>
         public string Status=>_status;
+        /// <summary>Counts the currently materialized gas stations.</summary>
         public int LoadedCount=>_stations.Count;
+        /// <summary>Returns the live developer test-pad root.</summary>
         public Transform TestRoot=>Root;
+        /// <summary>Copies the module-owned authoring controls for Tools to render.</summary>
         public void Settings(List<BepInEx.Configuration.ConfigEntryBase> into){into.Clear();into.Add(_settings.DesertGasStationChance);into.Add(_settings.GasStationParking);into.Add(_settings.TestGasStation);into.Add(_settings.GasStationScale);into.Add(_settings.TestCamp10);}
         // developer test pad
         private readonly List<Vector3> _cells = new List<Vector3>(256);
@@ -33,6 +37,7 @@ namespace WildWasteland.Modules.POI
         private GameObject _raider;
         private Transform _camp;
         internal Transform Root { get { return _test != null && _test.Root != null ? _test.Root.transform : null; } }
+        /// <summary>Locates the native starting camp inside the generated tile.</summary>
         private bool CampInArea(TerrainTile tile, TileData data, out Vector3 camp)
         {
             camp = Vector3.zero;
@@ -45,6 +50,7 @@ namespace WildWasteland.Modules.POI
             var area = data.area.active;
             return camp.x >= area.worldPos.x && camp.z >= area.worldPos.z && camp.x < area.worldPos.x + area.worldSize.x && camp.z < area.worldPos.z + area.worldSize.z;
         }
+        /// <summary>Chooses a clear test pad closer to the starting camp than other authored locations.</summary>
         private static void PlanTest(Request request, TileData data, List<Vector3> avoid, TownPlan saved, StopToken stop)
         {
             float nearest = float.PositiveInfinity;
@@ -83,6 +89,7 @@ namespace WildWasteland.Modules.POI
             request.Pad = new TownPlan { WorldCenter = best, Radius = request.Radius, Feather = 8 };
         }
         // the Camp_10 test pad: the native camp, stripped of its scripts (no spawners, merchant or other logic), on the level pad
+        /// <summary>Places static test-camp geometry with native spawning logic removed.</summary>
         private void PlaceCamp(Request request, TerrainTile tile)
         {
             Remove(request.Key, false);
@@ -105,6 +112,7 @@ namespace WildWasteland.Modules.POI
             catch (Exception e) { Log.Warn("[POI] Camp_10 test placement: " + e.Message); }
             finally { Object.Destroy(holder); }
         }
+        /// <summary>Advances the navigation-gated developer test population.</summary>
         private void TestTick(GameObject player)
         {
             var root = _test.Root;
@@ -157,6 +165,7 @@ namespace WildWasteland.Modules.POI
             }
             catch (Exception e) { _status = "Failed navigation/population: " + e.Message; Log.Warn("[POI] Gas station test " + _status); _spawnPoints.Clear(); _spawned = 3; }
         }
+        /// <summary>Adjusts cached scene coordinates after a floating-origin jump.</summary>
         internal void Shift(Vector3 delta)
         {
             // Native floating origin moves the roots and NPCs. Only our not-yet-used cell snapshots need correction.

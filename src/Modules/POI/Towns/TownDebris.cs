@@ -4,6 +4,7 @@ namespace WildWasteland.Modules.POI
     internal static class TownDebris
     {
         // Two crashed cars in the central wreck garden, placed from the deterministic dressing plan (same seeds as before).
+        /// <summary>Constructs the next admitted geometry item from the committed plan.</summary>
         internal static void Build(TownSite site, TownAssets assets, Transform root)
         {
             var plan = TownOverlayPlan.DressingFor(site.Plan, assets);

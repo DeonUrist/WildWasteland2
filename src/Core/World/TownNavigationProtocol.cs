@@ -11,11 +11,14 @@ namespace WildWasteland.Core
     public sealed class TownNavGeometry
     {
         public string Key; public Vector3 WorldCenter; public float Yaw,Radius,Feather; public Vector3[] StreetNodes,Outline; public Vector3[] WallRuns; public int[] StreetEdges; public Bounds Frame; public TownNavLot[] Lots; public TownNavPatch[] Overlay;
+        /// <summary>Returns the number of committed town lots.</summary>
         public int LotCount=>Lots.Length;
+        /// <summary>Converts a lot-local point to stable world coordinates.</summary>
         public Vector3 World(Vector3 local)=>WorldCenter+Quaternion.Euler(0,Yaw,0)*local;
     }
     /// <summary>Live instance handles beside a detached numeric town plan. Arrays/lists are observed on the main thread.</summary>
     public interface ITownBoundary { bool Waypoint(Vector3 from,Vector3 goal,out Vector3 point,out bool hold); }
+    /// <summary>Describes the town nav context data used by this owner.</summary>
     public sealed class TownNavContext { public TownNavGeometry Plan; public Transform Anchor; public Terrain GroundTerrain; public GameObject[] Buildings; public List<Bounds> DebrisBlockers; public bool HasWalls; public ITownBoundary Boundary; }
     /// <summary>Incrementally prepared navigation component owned by NPCAI.</summary>
     public interface ITownNavWork : IDisposable { bool Ready {get;} bool Failed {get;} float Progress {get;} bool Step(); }

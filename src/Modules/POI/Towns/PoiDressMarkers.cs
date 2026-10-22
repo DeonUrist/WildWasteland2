@@ -19,7 +19,9 @@ namespace WildWasteland.Modules.POI
     {
         internal static readonly string[] Kinds = { "Hide", "Exit", "Items", "CarParts", "Monsters" };
         internal static readonly string[] Categories = { "Markers", "Structures & walls", "Furniture & storage", "Bones & trophies", "Vegetation & rocks", "Vehicle bodies", "Car parts", "Weapons & equipment", "Items & supplies", "Other scenery" };
+        /// <summary>Tests whether a marker kind belongs to the supported palette.</summary>
         internal static bool IsKind(string kind) { return Array.IndexOf(Kinds, kind) >= 0; }
+        /// <summary>Classifies a native scenery asset for authoring.</summary>
         internal static string Category(GameObject root, string label)
         {
             string name = label.ToLowerInvariant();
@@ -33,6 +35,7 @@ namespace WildWasteland.Modules.POI
             if (category != "Items & supplies") return category;
             return root.GetComponent<ES3Internal.ES3Prefab>() != null ? category : "Other scenery";
         }
+        /// <summary>Tests the geometry or name against the requested containment rule.</summary>
         private static bool Contains(string text, params string[] words)
         { foreach (var word in words) if (text.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0) return true; return false; }
     }

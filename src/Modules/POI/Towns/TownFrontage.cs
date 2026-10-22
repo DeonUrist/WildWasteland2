@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.POI
         internal float Protrusion;
         internal Vector4 Envelope;
         internal readonly Dictionary<int, float> Min = new Dictionary<int, float>(), Max = new Dictionary<int, float>();
+        /// <summary>Builds deterministic numeric planning data from the supplied geometry and seed.</summary>
         internal static TownFrontage Make(BuildingSpec spec, int row, float tilt = 0)
         {
             int side = row == 0 ? -1 : 1;

@@ -5,9 +5,11 @@ namespace WildWasteland.Modules.POI
 {
     internal sealed class TownOutline
     {
+        /// <summary>Describes the run data used by this owner.</summary>
         internal struct Run { internal Vector3 A, B; }
         internal readonly Run[] Runs;
         internal readonly Vector3[] Vertices;
+        /// <summary>Initializes town outline with the supplied owning state and immutable inputs.</summary>
         internal TownOutline(TownPlan plan)
         {
             var frame = TownPerimeter.Frame(plan);
@@ -46,6 +48,7 @@ namespace WildWasteland.Modules.POI
             }
             Runs = runs.ToArray();
         }
+        /// <summary>Offsets a polygon vertex along its adjoining outward normals.</summary>
         internal Vector3 Offset(int index, float distance)
         {
             var p = Vertices[index]; var before = (p - Vertices[(index + Vertices.Length - 1) % Vertices.Length]).normalized;
@@ -54,12 +57,14 @@ namespace WildWasteland.Modules.POI
             var outward = (normal + next).normalized;
             return p + outward * (distance / Mathf.Max(.4f, Vector3.Dot(outward, normal)));
         }
+        /// <summary>Tests the geometry or name against the requested containment rule.</summary>
         internal bool Contains(Vector3 point, float margin)
         {
             for (int i = 0; i < Vertices.Length; i++)
             { var a = Vertices[i]; var b = Vertices[(i + 1) % Vertices.Length]; if (Cross(b - a, point - a) < margin * Vector3.Distance(a, b)) return false; }
             return true;
         }
+        /// <summary>Finds a wall-corner tower placement that preserves gates and building clearance.</summary>
         internal bool Tower(TownPlan plan, int corner, List<Bounds> occupied, out Vector3 result)
         {
             var frame = TownPerimeter.Frame(plan); var direction = TownPerimeter.Corner(frame, corner, 0) - frame.center;
@@ -82,6 +87,7 @@ namespace WildWasteland.Modules.POI
             }
             return !float.IsNegativeInfinity(best);
         }
+        /// <summary>Tests whether the segment enters a solid perimeter margin.</summary>
         internal bool Crosses(Vector3 a, Vector3 b, float radius)
         {
             foreach (var run in Runs)
@@ -100,7 +106,9 @@ namespace WildWasteland.Modules.POI
             }
             return false;
         }
+        /// <summary>Computes the horizontal two-dimensional cross product.</summary>
         private static float Cross(Vector3 a, Vector3 b) { return a.x * b.z - a.z * b.x; }
+        /// <summary>Measures squared point-to-segment distance in the horizontal plane.</summary>
         internal static float Distance(Vector3 p, Vector3 a, Vector3 b)
         {
             p.y = a.y = b.y = 0; var delta = b - a;

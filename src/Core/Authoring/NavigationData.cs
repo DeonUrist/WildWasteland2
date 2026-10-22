@@ -75,6 +75,7 @@ namespace WildWasteland.Core
         /// <summary>The hand-editable text form (header, nodes, edges, links).</summary>
         public string Write()
         {
+            Validate();
             var sb = new StringBuilder();
             sb.Append("WWPOINAV ").Append(Version).Append('\n');
             sb.Append("poi ").Append(Poi).Append('\n');
@@ -88,7 +89,7 @@ namespace WildWasteland.Core
         }
 
         /// <summary>Invariant float parse.</summary>
-        static float P(string s) { return float.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture); }
+        static float P(string s) { float value=float.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture); if(float.IsNaN(value)||float.IsInfinity(value))throw new InvalidDataException("nonfinite navigation value");return value; }
         /// <summary>Vector parse from three words starting at i.</summary>
         static Vector3 PV(string[] w, int i) { return new Vector3(P(w[i]), P(w[i + 1]), P(w[i + 2])); }
 
@@ -96,6 +97,7 @@ namespace WildWasteland.Core
         public static PoiNavData Read(string text)
         {
             var d = new PoiNavData();
+            bool named=false, signed=false;
             var lines = text.Split('\n');
             if (lines.Length == 0 || !lines[0].Trim().StartsWith("WWPOINAV ", StringComparison.Ordinal)) throw new InvalidDataException("not a POI navigation file");
             if (int.Parse(lines[0].Trim().Substring(9), CultureInfo.InvariantCulture) != Version) throw new InvalidDataException("unsupported version");
@@ -106,27 +108,43 @@ namespace WildWasteland.Core
                 var w = line.Split(' ');
                 switch (w[0])
                 {
-                    case "poi": d.Poi = line.Substring(4); break;
-                    case "sig": d.Signature = line.Length > 4 ? line.Substring(4) : ""; break;
-                    case "node": d.Nodes.Add(new PoiNavNode { Pos = PV(w, 1), Surface = int.Parse(w[4], CultureInfo.InvariantCulture), Terrain = w[5] == "1" }); break;
+                    case "poi": if(named)throw new InvalidDataException("duplicate poi");named=true;d.Poi = line.Substring(4); break;
+                    case "sig": if(signed)throw new InvalidDataException("duplicate signature");signed=true;d.Signature = line.Length > 4 ? line.Substring(4) : ""; break;
+                    case "node": if(w.Length!=6 || w[5]!="0" && w[5]!="1")throw new InvalidDataException("invalid node");d.Nodes.Add(new PoiNavNode { Pos = PV(w, 1), Surface = int.Parse(w[4], CultureInfo.InvariantCulture), Terrain = w[5] == "1" }); break;
                     case "edge":
+                        if(w.Length!=3)throw new InvalidDataException("invalid edge");
                         int a = int.Parse(w[1], CultureInfo.InvariantCulture), b = int.Parse(w[2], CultureInfo.InvariantCulture);
                         d.Edges.Add(a); d.Edges.Add(b); break;
                     case "link":
+                        if(w.Length!=19 || w[2]!="0" && w[2]!="1" || w[3]!="0" && w[3]!="1")throw new InvalidDataException("invalid link");
                         d.Links.Add(new PoiNavLink
                         {
                             Kind = (PoiLinkKind)Enum.Parse(typeof(PoiLinkKind), w[1]), Manual = w[2] == "1", Off = w[3] == "1",
                             From = PV(w, 4), To = PV(w, 7), LineBottom = PV(w, 10), LineTop = PV(w, 13), Yaw = P(w[16]),
-                            FromSurface = w.Length > 18 ? int.Parse(w[17], CultureInfo.InvariantCulture) : -1,
-                            ToSurface = w.Length > 18 ? int.Parse(w[18], CultureInfo.InvariantCulture) : -1
+                            FromSurface = int.Parse(w[17], CultureInfo.InvariantCulture),
+                            ToSurface = int.Parse(w[18], CultureInfo.InvariantCulture)
                         });
                         break;
+                    default: throw new InvalidDataException("unknown navigation record");
                 }
             }
-            for (int i = 0; i < d.Edges.Count; i++) if (d.Edges[i] < 0 || d.Edges[i] >= d.Nodes.Count) throw new InvalidDataException("edge to a missing node");
+            if(!named||!signed)throw new InvalidDataException("missing navigation identity");
+            d.Validate();
             d.Recompute();
             return d;
         }
+        /// <summary>Rejects malformed authored buffers before serialization or runtime publication.</summary>
+        private void Validate()
+        {
+            if(string.IsNullOrWhiteSpace(Poi)||Poi.IndexOfAny(new[]{'\r','\n','/','\\'})>=0||Poi=="."||Poi=="..")throw new InvalidDataException("invalid poi identity");
+            if(Signature==null||Signature.IndexOfAny(new[]{'\r','\n'})>=0)throw new InvalidDataException("invalid signature");
+            if((Edges.Count&1)!=0)throw new InvalidDataException("unpaired navigation edge");
+            foreach(var node in Nodes){if(node==null||node.Surface<0)throw new InvalidDataException("invalid node surface");Finite(node.Pos);}
+            foreach(int edge in Edges)if(edge<0||edge>=Nodes.Count)throw new InvalidDataException("edge to a missing node");
+            foreach(var link in Links){if(link==null||!Enum.IsDefined(typeof(PoiLinkKind),link.Kind)||link.FromSurface < -1||link.ToSurface < -1)throw new InvalidDataException("invalid traversal");Finite(link.From);Finite(link.To);Finite(link.LineBottom);Finite(link.LineTop);if(float.IsNaN(link.Yaw)||float.IsInfinity(link.Yaw))throw new InvalidDataException("nonfinite traversal yaw");}
+        }
+        /// <summary>Rejects nonfinite geometry before it can reach the graph builder.</summary>
+        private static void Finite(Vector3 value){if(float.IsNaN(value.x)||float.IsInfinity(value.x)||float.IsNaN(value.y)||float.IsInfinity(value.y)||float.IsNaN(value.z)||float.IsInfinity(value.z))throw new InvalidDataException("nonfinite navigation geometry");}
     }
 
 }

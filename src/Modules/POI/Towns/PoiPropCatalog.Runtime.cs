@@ -37,6 +37,7 @@ namespace WildWasteland.Modules.POI
         }
         private readonly Dictionary<long, Asset> _assets = new Dictionary<long, Asset>();
         private GameObject _templates;
+        /// <summary>Resolves the exact native mesh identity or its portable source fallback.</summary>
         internal Asset Resolve(PoiDressProp prop)
         {
             if (prop.Marker) return Marker(prop.Kind);
@@ -49,6 +50,7 @@ namespace WildWasteland.Modules.POI
             if (filter == null || filter.gameObject.scene.IsValid() || filter.sharedMesh == null || filter.sharedMesh.name != prop.Mesh) return null;
             return Capture(prop.Asset, filter);
         }
+        /// <summary>Captures immutable generation inputs or the current native progress.</summary>
         private Asset Capture(long id, MeshFilter filter)
         {
             Asset asset; if (_assets.TryGetValue(id, out asset)) return asset;
@@ -74,6 +76,7 @@ namespace WildWasteland.Modules.POI
             }
             _assets.Add(id, asset); return asset;
         }
+        /// <summary>Creates static geometry from the resolved mesh, materials and collider shapes.</summary>
         internal GameObject Create(Asset asset, Transform parent, PoiDressProp prop, bool solid)
         {
             if (_templates == null) { _templates = new GameObject("POI dressing static templates"); _templates.SetActive(false); }
@@ -101,8 +104,10 @@ namespace WildWasteland.Modules.POI
             }
             var go = Object.Instantiate(template, parent, false); Pose(go.transform, prop); return go;
         }
+        /// <summary>Applies the authored local pose to a static prop.</summary>
         internal static void Pose(Transform transform, PoiDressProp prop)
         { transform.localPosition = prop.Position; transform.localRotation = Quaternion.Euler(prop.Rotation); transform.localScale = prop.Scale; }
+        /// <summary>Releases owned resources and restores original native state.</summary>
         public void Dispose()
         {
             if (_scan != null) _scan.Dispose(); _scan = null;
@@ -113,11 +118,13 @@ namespace WildWasteland.Modules.POI
         }
         private readonly Dictionary<string, MeshFilter> _sources = new Dictionary<string, MeshFilter>(StringComparer.Ordinal);
         private bool _sourcesReady;
+        /// <summary>Indexes native asset meshes by their portable source paths.</summary>
         private void Sources()
         {
             if (_sourcesReady) return; _sourcesReady = true;
             foreach (var filter in WildWasteland.Core.PrefabCatalog.AssetMeshes) if (filter != null && !filter.gameObject.scene.IsValid()) _sources[Source(filter)] = filter;
         }
+        /// <summary>Builds the portable mesh/material source identity.</summary>
         private static string Source(MeshFilter filter)
         {
             var path = new System.Text.StringBuilder(); var root = filter.transform;
@@ -126,6 +133,7 @@ namespace WildWasteland.Modules.POI
             if (renderer != null) foreach (var material in renderer.sharedMaterials) path.Append('|').Append(material == null ? "" : material.name);
             return path.ToString();
         }
+        /// <summary>Hashes the portable source identity into a stable fallback asset id.</summary>
         private static long SourceId(string path)
         { ulong hash = 14695981039346656037UL; foreach (char c in path) hash = unchecked((hash ^ c) * 1099511628211UL); return unchecked((long)(hash | 0x8000000000000000UL)); }
     }

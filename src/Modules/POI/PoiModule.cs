@@ -47,8 +47,11 @@ namespace WildWasteland.Modules.POI
         private bool _running, _loaded, _loadFailed;
         private string _slot;
         private static readonly SaveKey SpawnRecord = SaveBus.Key("WildWasteland.POI.Spawned.v1");
+        /// <summary>Returns the final POI module identifier.</summary>
         public override string Id { get { return "POI"; } }
+        /// <summary>Returns the player-facing module name.</summary>
         public override string DisplayName { get { return "Points of interest"; } }
+        /// <summary>Binds POI settings before any scene or asset preparation.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             _towns.BindConfig(cfg);
@@ -57,6 +60,7 @@ namespace WildWasteland.Modules.POI
         }
         /// <summary>Publishes custom POI registration and detached town geometry/traffic services.</summary>
         public override void ProvideApis() { ModApi.Provide<ITownPrefabCatalog>(this,new TownPrefabCatalog()); ModApi.Provide<IEncounterNotices>(this,new EncounterNotices()); ModApi.Provide<IWorldLocations>(this,_locations); ModApi.Provide<IWorldDiscovery>(this,_locations); ModApi.Provide<ICampStatus>(this,_locations); ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
+        /// <summary>Starts the sole POI lifecycle and its typed providers.</summary>
         public override void Init()
         {
             _running = true;
@@ -72,10 +76,13 @@ namespace WildWasteland.Modules.POI
             TerrainTile.OnTileMoved += Moved;
             Scheduler.Interval(this, "Site proximity", 1f, Proximity, Phase.Update, true);
         }
+        /// <summary>Advances or requests world discovery through the owning runtime.</summary>
         private void Discover() { if (_running && GameRefs.InGame && !SaveBus.Busy) TrafficLocations.Tick(); }
+        /// <summary>Advances camp population state during active gameplay.</summary>
         private void CheckCamps() { if (_running && GameRefs.InGame && !SaveBus.Busy) TrafficCamps.Tick(); }
         // Replaces the old 500 m trigger sphere per site (a huge Default-layer trigger every rigidbody and query touched):
         // a site is tried when the player comes within 500 m, as OnTriggerEnter did. Game time, like physics; skipped while not in play.
+        /// <summary>Admits one-shot encounters when the player enters their activation range.</summary>
         private void Proximity()
         {
             if (!_running || _sites.Count == 0 || !GameRefs.InGame || SaveBus.Busy) return;
@@ -89,11 +96,13 @@ namespace WildWasteland.Modules.POI
                 site.Inside = inside;
             }
         }
+        /// <summary>Registers validated data under its owning module.</summary>
         public void Register(PoiDefinition definition)
         {
             if (definition == null || string.IsNullOrEmpty(definition.Id) || definition.Spawn == null) throw new ArgumentException("Invalid POI definition");
             _definitions[definition.Id] = definition;
         }
+        /// <summary>Removes the matching registration and releases its live presentation state.</summary>
         public void Remove(string id)
         {
             _definitions.Remove(id);
@@ -103,12 +112,14 @@ namespace WildWasteland.Modules.POI
                 if (_sites[i] == null || _sites[i].Definition.Id == id)
                 { if (_sites[i] != null) UnityEngine.Object.Destroy(_sites[i].gameObject); _sites.RemoveAt(i); }
         }
+        /// <summary>Recognizes terrain outputs whose authored native locations must be retained.</summary>
         private static bool NativePoi(ObjectsOutput output)
         {
             foreach (var prefab in output.prefabs)
                 if (prefab != null && (prefab.name.StartsWith("Camp_", StringComparison.Ordinal) || prefab.name.StartsWith("Cave_", StringComparison.Ordinal) || prefab.name.StartsWith("Wreck_", StringComparison.Ordinal) || prefab.name.StartsWith("Building_", StringComparison.Ordinal))) return true;
             return false;
         }
+        /// <summary>Captures main-thread inputs before worker generation or staged preparation.</summary>
         private void Prepare(TerrainTile tile, TileData data)
         {
             if (!_running || tile == null || data == null || tile.mapMagic == null || tile.mapMagic.graph == null) return;
@@ -178,6 +189,7 @@ namespace WildWasteland.Modules.POI
             catch (Exception e) { Log.Error("[POI] Registration failed", e); }
         }
         // MapMagic clears products and heights after this worker callback, before main-thread application.
+        /// <summary>Captures worker products before MapMagic releases its generation buffers.</summary>
         private void Finalized(TerrainTile tile, TileData data, StopToken stop)
         {
             Capture capture;
@@ -191,6 +203,7 @@ namespace WildWasteland.Modules.POI
                 capture.Points[source.Key] = snapshot;
             }
         }
+        /// <summary>Publishes the completed numeric plan on the main thread.</summary>
         private void Applied(TerrainTile tile, TileData data, StopToken stop)
         {
             if (!_running || data == null || data.isDraft || tile == null || (stop != null && stop.stop)) return;
@@ -218,7 +231,9 @@ namespace WildWasteland.Modules.POI
             }
             catch (Exception e) { Log.Error("[POI] Applying sites failed", e); }
         }
+        /// <summary>Tests for a Unity-destroyed live site.</summary>
         private static bool Missing(PoiSite site) { return site == null; }
+        /// <summary>Releases live geometry belonging to a streamed terrain tile.</summary>
         private void Moved(TerrainTile tile)
         {
             Capture capture; if (tile.main != null && tile.main.data != null) _captures.TryRemove(tile.main.data, out capture);
@@ -226,6 +241,7 @@ namespace WildWasteland.Modules.POI
                 if (_sites[i] == null || _sites[i].transform.IsChildOf(tile.transform))
                 { if (_sites[i] != null) UnityEngine.Object.Destroy(_sites[i].gameObject); _sites.RemoveAt(i); }
         }
+        /// <summary>Admits an eligible nearby site without duplicating a committed encounter.</summary>
         internal void TrySpawn(PoiSite site)
         {
             if (!_running || !_loaded || site == null || !site.gameObject.activeInHierarchy || site.Building || _spawned.Contains(site.Key) || !GameRefs.InGame || SaveBus.Busy) return;
@@ -235,12 +251,14 @@ namespace WildWasteland.Modules.POI
             try { site.Definition.Spawn(site.transform.position, site.transform.rotation, site.Completed); }
             catch (Exception e) { site.Building = false; Log.Error("[POI] Spawn failed: " + site.Definition.Id, e); }
         }
+        /// <summary>Commits a successful one-shot encounter completion key.</summary>
         internal void Completed(PoiSite site, GameObject result)
         {
             if (site == null) return; site.Building = false;
             if (result != null && _running) { _spawned.Add(site.Key); Log.Main(null, "[POI] " + site.Definition.Id + " encounter spawned: " + site.Key); }
             else Log.Warn("[POI] Encounter could not be built: " + site.Key);
         }
+        /// <summary>Refreshes world-scoped references after native loading finishes.</summary>
         public override void OnWorldReady()
         {
             _towns.OnWorldReady();
@@ -248,6 +266,7 @@ namespace WildWasteland.Modules.POI
             if (!_loaded || _slot != SaveBus.Slot) Load(SaveBus.Slot);
             _sites.RemoveAll(Missing); foreach (var site in _sites) TrySpawn(site);
         }
+        /// <summary>Captures persistent world records into the selected ES3 transaction.</summary>
         public override void OnSaveBegin(string slot)
         {
             if (_loadFailed) { SaveBus.ReportFailure(this, "POI completion state could not be loaded; refusing to replace it"); return; }
@@ -270,14 +289,17 @@ namespace WildWasteland.Modules.POI
             if (value != null) foreach (var key in value.Split('\n')) if (!string.IsNullOrEmpty(key)) _spawned.Add(key);
             _loaded = true; _loadFailed = false;
         }
+        /// <summary>Restores the selected ES3 world records before generation resumes.</summary>
         public override void OnLoadBegin(string slot) { _towns.OnLoadBegin(slot); Load(slot); }
+        /// <summary>Clears scene-owned state for a replacement world while retaining additive scenes.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; PoiEncounter.ResetForScene(); EncounterNotices.Clear(); _towns.OnSceneLoaded(scene, mode); _sites.Clear(); _captures.Clear(); _spawned.Clear(); _locations.Reset(); _loaded = false; }
+        /// <summary>Releases owner-scoped resources and restores intercepted native state.</summary>
         public override void Shutdown()
         {
             _running = false;
             _towns.Shutdown();
             PoiEncounter.Reset(); EncounterNotices.Clear(); TownPrefabCatalog.Clear();
-            _locations.Reset();
+            _locations.Stop();
             TerrainTile.OnBeforeTilePrepare -= Prepare; TerrainTile.OnTileApplied -= Applied;
             TerrainTile.OnTileFinalized -= Finalized;
             TerrainTile.OnTileMoved -= Moved;
@@ -292,6 +314,7 @@ namespace WildWasteland.Modules.POI
         }
         /// <summary>Forwards origin jumps to town and dressing state.</summary>
         public override void OnOriginShift(Vector3 delta) { _towns.OnOriginShift(delta); }
+        /// <summary>Contributes the module-owned settings page to the shared shell.</summary>
         public override IEnumerable<ToolPage> ToolPages()
         {
             return new ToolPage[] { new ConfigPage(this, ToolGroups.Vehicles, "Points of interest", Config.Main, "POI / World") { Intro = "Native terrain-generation additions. 100% creates one site per 5 km slice. Encounters spawn within 500 m of the player (checked once per second)." } };
@@ -304,7 +327,9 @@ namespace WildWasteland.Modules.POI
         internal PoiDefinition Definition;
         internal string Key;
         internal bool Building, Inside;
+        /// <summary>Retries the live site only after its module owner exists.</summary>
         private void OnEnable() { if (Owner != null) Owner.TrySpawn(this); }
+        /// <summary>Commits a successful one-shot encounter completion key.</summary>
         internal void Completed(GameObject result) { if (Owner != null) Owner.Completed(this, result); }
     }
 }

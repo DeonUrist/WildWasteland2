@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.POI
     /// </summary>
     internal static partial class TownFactory
     {
+        /// <summary>Resolves the current Loot-owned native spawner service.</summary>
         private static INativeSpawners Spawners { get { return SpawnerControl.Required; } }
 
         /// <summary>Restarts every partly completed spawn loop of a rebuilt town (called by the POI entry when it goes live in play).</summary>
