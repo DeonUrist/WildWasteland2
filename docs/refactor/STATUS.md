@@ -3,25 +3,33 @@
 Repo: local `V:\Repos\Apocalypter\WildWasteland2` (branch `refactor/main`), continued from the cloud Wave A checkpoint. Plan: `docs/refactor/README.md` (section 0 amendments first), `work-packages.md` (local execution override first).
 Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline compile: OK (39 warnings).
 
-## Current local execution (2026-10-22, resumed after Claude)
+## Current local execution (2026-10-22, resumed)
 
-**Save persistence correction (D20):** all world records, save descriptions and thumbnails now reside in ES3. External module save-state readers/writers/registrations were removed; authored content/settings/derived geometry caches and recovery journals remain external. See `reports/save-file-only.md`. Preserve this correction when integrating older B10/B13 checkpoints; their sidecar implementations are superseded. Full refactor acceptance is still pending.
+Denis requested completion of the remaining owned packages, then a stop **before Shared integrations**. All work remains local in `refactor/main`. In-game acceptance is deferred until all refactor work is merged; no game, harness, deployment, push or release is part of this iteration.
 
-Validation for D20: Windows `dotnet build WildWasteland.csproj -c Release -p:Deploy=false` succeeded with **0 warnings, 0 errors**; partial check **183 declared, 0 missing implementations**. Source/whitespace review passed. No deployment or in-game acceptance.
+**D20 remains authoritative:** persistent world state, save descriptions and thumbnails live inside ES3. No module world-state sidecars or external fallback readers. Authored data/settings/derived geometry caches and recovery journals remain external. See `reports/save-file-only.md`.
 
-Denis authorized completing the remaining refactor locally. This section supersedes historical execution/status rows below. Base `ea39ee4` contains Claude batches 1 and 2. B01-B09, B12, B15 and B17 have completed package passes, with outstanding integration requests still to close; green `refs-ok` exemptions are not final dependency acceptance.
+B01–B09, B12, B15 and B17 have prior package passes. Current owned-package progress:
 
-- Active parallel packages: B10 HUD (`../WW2-B10`, `codex/b10-hud`), B11 Patrols (`../WW2-B11`, `codex/b11-patrols`), B13 POI (`../WW2-B13`, `codex/b13-poi`). Coordinator handles Core extensions, B14 Survival and merges. B16 Tools/Developer and B18 Quests follow as slots free up.
-- All remaining handoffs, shared-driver work and Wave C cleanup must finish and merge into `refactor/main` before in-game acceptance. No intermediate deployment/game/harness. Windows build/static/asset checks only.
-- Preserve completed work and actual behavior; resolve dependencies through real typed APIs/events, with exact approved cross-owner edits where necessary. Do not replace work with stubs or blanket `refs-ok` exceptions.
-- Last independently reviewed base: Windows Release/Deploy=false succeeded with 0 errors and 1 duplicate-using warning in Presentation/Character/Animation/ModAPI.cs; 183 partial declarations, none missing.
+| package | current checkpoint |
+|---|---|
+| B10 HUD | Completed owned source pass, merged `dc295d6`; strict references and comments pass. |
+| B11 Patrols | Completed owned runtime/source pass, merged through `d0d9921`; real vehicle/crew/cargo/routing providers and current-format ES3 records. |
+| B13 POI | Implementation merged through `6c88fda`; final lifecycle review, summaries and report being integrated. |
+| B14 Survival | Completed owned source pass, merged `19fef59`; weather/stew ownership and real typed providers. |
+| B16 Tools/Developer | Navigation, POI/town editor and actual authoring backends merged; final Patrols/pose/placement consumers and package gates in progress. |
+| B18 Quests | Completed owned source pass through `bbb525e`; follower seat consumer included, current-format records and typed consumers. |
+
+Latest combined Windows Release/Deploy=false build: **0 warnings, 0 errors**. Last partial check: **151 declarations, 0 missing**; these counts will change as obsolete editor partials are removed. Last staged resource index: **406 entries, no duplicate logical names or paths, no missing files**. Package source gates are rerun after final merges. Existing CS0618 suppression is temporary until Wave C; a clean build is not full architecture/runtime acceptance.
+
+Shared integrations remain explicit: distributed character/crew/Hire/Takeover/TalkBridge private partials and Core/Compatibility legacy entry adapters, followed by Wave C namespace/forwarder/registry/packaging/docs/global gates. Passing owner-folder scans does not certify those reverse dependencies. Package state and reports contain exact handoffs.
 
 ## How to resume
-1. Read this file and `state/pre-B-cleanup.md`, then the state of any package marked in progress. Read the package's brief, relevant inventories and all requests/reports addressed to it before implementation.
-2. Active wave: **Wave B**, with package agents running in parallel as Denis clarified. B01, B02 and B03 use isolated worktrees `V:\Repos\Apocalypter\WW2-B01`, `WW2-B02`, `WW2-B03` on `refactor/B01`, `refactor/B02`, `refactor/B03`. Read each worktree's state file and commits to resume; do not recreate/reset them. Keep D15 step commits and each report/request file up to date.
-3. Follow B01 ownership and frozen contracts. Its first preparation step is to inventory existing Core/_from* and CorePages contributions and consolidate the W0/A requests (including AtomicFile backup support and Clock's Quests fallback). Do not remove forwarders still used by pending packages or bypass the package's acceptance gates.
-4. On this PC use Windows `dotnet build WildWasteland.csproj -c Release -p:Deploy=false` and the applicable `python -B tools/refactor/` lints. Retain full compiler diagnostics; never infer code cleanliness from the old cloud warning count. CS0618 remains temporarily suppressed until Wave C. No WSL/Mono/game launch/deployment.
-5. Merge only completed, reviewed package branches into `refactor/main`; after each merge run `check_partials.py` and the Windows build, update this file and record outstanding cross-package requests. Dispatch subsequent Wave B packages as agent slots free up; complete Wave B before Wave C. Historical cloud instructions apply only in cloud workspaces.
+
+1. Read this current section, the relevant `state/Bxx.md` and `reports/Bxx.md`. Historical sections below do not override it or D20.
+2. Reuse existing worktrees: B11 `../WW2-B11`, B13 `../WW2-B13`, B16 `../WW2-B16`. Preserve their local edits and completed commits. Root handles integration, B14/B18 and focused typed-provider extensions.
+3. Finish and review B13/B16 checkpoints, merge into `refactor/main`, run Windows `dotnet build WildWasteland.csproj -c Release -p:Deploy=false` and applicable `python -B tools/refactor/` source gates, then update this section. No stubs or new blanket refs-ok exceptions.
+4. Stop before Shared integrations after this iteration is complete. Do not start a game, harness, deployment or release. All earlier historical requests for staged intermediate testing are superseded by Denis's deferred acceptance instruction.
 
 ## Local pre-B checkpoint (2026-10-22)
 - Cleanup complete; see `reports/pre-B-cleanup.md` and `state/pre-B-cleanup.md`. Windows Release/Deploy=false: **0 warnings, 0 errors** with the existing warning settings.
