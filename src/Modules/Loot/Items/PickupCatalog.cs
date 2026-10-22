@@ -1,27 +1,31 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using BepInEx;
 using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols
 {
-    internal sealed class PickupItem
-    {
-        internal string Id, Name;
-    }
-    /// <summary>Item list of the loot editor: every pickable item prefab (ID FSM, rigidbody root) with its display name; Loot (Wave A).</summary>
+    /// <summary>
+    /// Item list of the loot editor: every pickable item prefab (asset root with an "ID" FSM and a Rigidbody, no vehicles/trailers,
+    /// no tool sets or explosion helpers) with its display name (Apocaspawner name, else the ItemName FSM, else the prefab name).
+    /// Built on demand from the shared Core prefab index (<see cref="Core.PrefabCatalog.AssetFsms"/>) instead of its own
+    /// Resources.FindObjectsOfTypeAll scan; invalidated by Patrols on scene changes. Loot (Wave B); the Apocaspawner name part
+    /// lives in Compatibility (PickupCatalog.Apocaspawner.cs). Namespace kept for Wave C.
+    /// </summary>
     internal static partial class PickupCatalog
     {
         private static List<PickupItem> _items;
+
+        /// <summary>Drops the cached list (scene change); the next <see cref="All"/> rebuilds it.</summary>
         internal static void Invalidate() { _items = null; }
+
+        /// <summary>Every pickable item sorted by display name then id (editor use only, built once per invalidation).</summary>
         internal static List<PickupItem> All()
         {
             if (_items != null) return _items;
             var names = ApocaspawnerNames();   // Compatibility part (PickupCatalog.Apocaspawner.cs)
             var items = new Dictionary<string, PickupItem>(StringComparer.OrdinalIgnoreCase);
-            foreach (var fsm in Resources.FindObjectsOfTypeAll<PlayMakerFSM>())
+            foreach (var fsm in Core.PrefabCatalog.AssetFsms)
             {
                 if (fsm == null || fsm.FsmName != "ID") continue;
                 var go = fsm.gameObject;
@@ -41,6 +45,8 @@ namespace WildWasteland.Modules.Patrols
             }
             _items = items.Values.OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ThenBy(i => i.Id).ToList(); return _items;
         }
+
+        /// <summary>Display name of an item id from the built list, else the id with underscores as spaces.</summary>
         internal static string Name(string id) { var item = _items != null ? _items.FirstOrDefault(i => i.Id.Equals(id, StringComparison.OrdinalIgnoreCase)) : null; return item != null ? item.Name : id.Replace('_', ' '); }
     }
 }
