@@ -2,13 +2,14 @@ using System;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Tools
 {
     // (WW) "Display navigation data": GL lines after the main camera rendered (no objects, nothing saved). Surfaces get one colour
     // each (their walks and node ticks), ladders cyan (foot -> rung line -> platform), climbs orange, drops red; editor links are drawn
     // brighter and switched-off links grey. The editor draws its draft through the same code with the selection highlighted.
     internal static class PoiNavView
     {
+        private static readonly System.Collections.Generic.List<NavigationAuthoringInstance> _instances = new System.Collections.Generic.List<NavigationAuthoringInstance>();
         private static Material _mat;
         private static bool _hooked;
         internal static PoiNavData EditData;      // the editor's draft (drawn instead of the saved data of its POI)
@@ -25,8 +26,9 @@ namespace WildWasteland.Modules.NPC
         {
             // (A3) PoiNav.LearnLadderSide (dead after its return) deleted; PoiNav.WalkerTick runs in NPCAI's own "PoiNav.Walkers" job,
             // registered right before this one (same frame, same order).
-            bool want = PoiNav.Display != null && PoiNav.Display.Value && Plugin.EnableDebug.Value || EditData != null;
-            if (want && PoiNav.Display.Value) PoiNav.Rescan();
+            if (NavigationTools.Source == null) { Unhook(); return; }
+            bool want = NavigationTools.Display != null && NavigationTools.Display.Value && Plugin.EnableDebug.Value || EditData != null;
+            if (want && NavigationTools.Display.Value) NavigationTools.Source.Rescan();
             if (want == _hooked) return;
             if (want) Camera.onPostRender += Draw; else Camera.onPostRender -= Draw;
             _hooked = want;
@@ -56,8 +58,8 @@ namespace WildWasteland.Modules.NPC
                 GL.PushMatrix(); GL.MultMatrix(Matrix4x4.identity);
                 GL.Begin(GL.LINES);
                 if (EditData != null && EditRoot != null) DrawData(EditRoot, EditData, null, Selected);
-                if (PoiNav.Display != null && PoiNav.Display.Value)
-                    foreach (var i in PoiNav.Instances)
+                if (NavigationTools.Display != null && NavigationTools.Display.Value)
+                    foreach (var i in Instances())
                     {
                         if (!i.Ready || i.Root == null || i.Root == EditRoot || (i.Box.center - eye).sqrMagnitude > 250f * 250f) continue;
                         DrawData(i.Root, i.Data, i.World, -1);
@@ -67,6 +69,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { Log.Warn("[NPC] POI navigation view: " + e.Message); }
         }
 
+        private static System.Collections.Generic.List<NavigationAuthoringInstance> Instances() { NavigationTools.Source.Instances(_instances); return _instances; }
         internal static Color SurfaceColor(int s) { var c = Color.HSVToRGB(Mathf.Repeat(s * .618f, 1f), .65f, 1f); c.a = .85f; return c; }
 
         static void DrawData(Transform root, PoiNavData d, Vector3[] world, int selected)

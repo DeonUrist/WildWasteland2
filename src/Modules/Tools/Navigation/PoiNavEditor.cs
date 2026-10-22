@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Tools
 {
     // (WW) POI navigation editor (mouse + cursor). Every link end in view has a labelled handle: click to select, drag to move it over
     // the surfaces (a ladder's middle handle moves its rung line), mouse wheel turns the selected link. WASD / Q / E fly the camera at any
@@ -44,7 +44,7 @@ namespace WildWasteland.Modules.NPC
 
         internal static void Open()
         {
-            if (Opened || !GameRefs.InPlay || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value) return;
+            if (NavigationTools.Source == null || Opened || !GameRefs.InPlay || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value) return;
             var camera = GameRefs.MainCamera; if (camera == null) return;
             var nearest = NearestRoot(camera.transform.position);
             if (nearest == null) { _status = "No POI within 200 m."; Log.Warn("[NPC] POI navigation editor: " + _status); return; }
@@ -52,13 +52,13 @@ namespace WildWasteland.Modules.NPC
             _camera = camera; var t = camera.transform; _cameraParent = t.parent;
             _cameraLocal = t.localPosition; _cameraPosition = t.position; _cameraRotation = t.localRotation;
             _view = t.position; _yaw = t.eulerAngles.y; _pitch = t.eulerAngles.x; if (_pitch > 180) _pitch -= 360;
-            _root = nearest; _poi = PoiNavStore.TypeOf(nearest.name);
+            _root = nearest; _poi = NavigationTools.Source.TypeOf(nearest.name);
             Load();
             _status = _draft.Nodes.Count == 0 ? "Not baked yet: press REBAKE (links can still be drawn)." : "Drag a handle to move a link end · click a handle to select · wheel turns the selection.";
         }
         static Transform NearestRoot(Vector3 from)
         {
-            Nav.Roots(_roots); PoiNavSetup.Roots(_roots);
+            NavigationTools.Source.Roots(_roots); PoiNavSetup.Roots(_roots);
             Transform nearest = null; float best = 200f * 200f;
             foreach (var r in _roots)
             {
@@ -70,7 +70,7 @@ namespace WildWasteland.Modules.NPC
 
         static void Load()
         {
-            _base = PoiNavStore.Get(_poi);
+            _base = NavigationTools.Source.Get(_poi);
             _draft = _base != null ? _base.Copy() : new PoiNavData { Poi = _poi };
             _draft.Poi = _poi; _selected = -1; _mode = Mode.Select; _dirty = false; _undo.Clear(); _dragLink = -1; Ledger.ClearNumbers();
             PoiNavView.EditData = _draft; PoiNavView.EditRoot = _root; PoiNavView.Selected = -1;
@@ -80,10 +80,10 @@ namespace WildWasteland.Modules.NPC
         internal static void Tick()
         {
             if (!Opened) return;
-            if (_root == null || _camera == null || !_session.Open || SaveBus.Busy || !Application.isFocused || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value)
+            if (NavigationTools.Source == null || _root == null || _camera == null || !_session.Open || SaveBus.Busy || !Application.isFocused || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value)
             { Close(true); return; }
             _session.Maintain();
-            if (!_dirty && PoiNavStore.Get(_poi) != _base && PoiNavSetup.Baking == null) { Load(); _status = "Rebaked: " + _draft.Nodes.Count + " nodes, " + _draft.Links.Count + " links."; }
+            if (!_dirty && NavigationTools.Source.Get(_poi) != _base && PoiNavSetup.Baking == null) { Load(); _status = "Rebaked: " + _draft.Nodes.Count + " nodes, " + _draft.Links.Count + " links."; }
             var mouse = Mouse.current; if (mouse == null) return;
             Vector2 screen = mouse.position.ReadValue();
             float dt = Time.unscaledDeltaTime;
@@ -211,10 +211,10 @@ namespace WildWasteland.Modules.NPC
             try
             {
                 _mode = Mode.Select; _dragLink = -1;
-                PoiNavStore.Save(_draft);
-                PoiNav.Forget(_poi); _base = PoiNavStore.Get(_poi); _draft = _base != null ? _base.Copy() : _draft; PoiNavView.EditData = _draft; _dirty = false;
+                NavigationTools.Source.Save(_draft);
+                NavigationTools.Source.Forget(_poi); _base = NavigationTools.Source.Get(_poi); _draft = _base != null ? _base.Copy() : _draft; PoiNavView.EditData = _draft; _dirty = false;
                 _status = "Saved. NPCs use it now.";
-                Log.Always("[NPC] POI navigation saved: " + _poi + " (" + _draft.Links.Count + " links) -> " + PoiNavStore.ConfigPath(_poi));
+                Log.Always("[NPC] POI navigation saved: " + _poi + " (" + _draft.Links.Count + " links) -> " + NavigationTools.Source.ConfigPath(_poi));
             }
             catch (Exception e) { _status = "Save failed: " + e.Message; Log.Warn("[NPC] POI navigation editor: " + _status); }
         }
@@ -453,21 +453,22 @@ namespace WildWasteland.Modules.NPC
         internal static void DrawPage(ToolLayout l)
         {
             l.Heading("POI pathfinding");
-            l.Toggle(PoiNav.Enabled);
-            l.Toggle(PoiNav.Setup);
-            l.Toggle(PoiNav.Display);
+            if (NavigationTools.Source == null) { l.Text("Enable NPC AI to bake and edit its navigation data."); return; }
+            l.Toggle(NavigationTools.Source.Enabled);
+            l.Toggle(NavigationTools.Setup);
+            l.Toggle(NavigationTools.Display);
             l.Value("Setup", PoiNavSetup.Active ? PoiNavSetup.Status : "off");
             if (PoiNavSetup.Active && l.Button("Bake all setup POIs", PoiNavSetup.Queued == 0)) PoiNavSetup.BakeAll();
             if (l.Button("Bake the nearest POI", GameRefs.InPlay && PoiNavSetup.Queued == 0)) BakeNearest();
             l.Value("Baking", PoiNavSetup.Baking != null ? PoiNavSetup.Baking.Poi + ": " + PoiNavSetup.Baking.Status + " (" + PoiNavSetup.Queued + " queued)" : "idle (" + PoiNavSetup.Baked + " baked, " + PoiNavSetup.Failed + " failed)");
-            l.Value("NPCs on links now", PoiNavTraverse.Count.ToString());
+            l.Value("NPCs on links now", NavigationTools.Source.Traversals.ToString());
             if (l.Button("Remove test NPCs (" + PoiNavSetup.Tests + ")", PoiNavSetup.Tests > 0)) PoiNavSetup.ClearTests();
-            l.Entry(PoiNav.EditorKey);
+            l.Entry(NavigationTools.EditorKey);
             if (l.Button("Open POI navigation editor", GameRefs.InPlay)) ToolWindow.CloseThen(Open);
-            l.Entry(PoiNav.BakeBudgetMs);
-            l.Entry(PoiNav.BakeCell);
-            l.Entry(PoiNav.LadderSpeed);
-            l.Value("Files", PoiNavStore.ConfigDir);
+            l.Entry(NavigationTools.BakeBudgetMs);
+            l.Entry(NavigationTools.BakeCell);
+            l.Entry(NavigationTools.Source.LadderSpeed);
+            l.Value("Files", NavigationTools.Source.ConfigDir);
             if (!string.IsNullOrEmpty(_status)) l.Text(_status);
         }
         static void BakeNearest()
