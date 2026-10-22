@@ -8,7 +8,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 2. Glb (static mesh, gas-station superset)
 - [x] 3. Gltf (skinned)
 - [x] 4. Bindposes
-- [ ] 5. Audio (WAV decode + Level + LoadAsync)
+- [x] 5. Audio (WAV decode + Level + LoadAsync)
 - [ ] 6. Textures (Load + cache + Destroy on shutdown)
 - [ ] 7. Access (one accessor facade)
 - [ ] 8. KeyMap
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-e816cc2 (COMPILE OK; state line updated in next commit)
+02b292c (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 5 Audio: read VoiceAudio, Guns/Women Wav, Quests ReadWav, Rider Wav, 5 async loaders.
+Item 6 Textures: read the 18 LoadImage sites.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -42,3 +42,4 @@ Item 5 Audio: read VoiceAudio, Guns/Women Wav, Quests ReadWav, Rider Wav, 5 asyn
 - Json: lenient CarTemplateFile parser (comments, trailing commas, line-number errors) + StoreJson writer; no name clash with module Json copies (compiled).
 - Glb: verbatim gas-station copy (vertices/mesh names identical; colliderGeometry=false = StewPot/WarRig behaviour); added Load(byte[], name, dir) overload. GlbModel is public in Core.
 - Gltf: verbatim PlayerBody copy; Load(path, owner) prefixes the sparse warning with the caller's module (PlayerBody/NPC). Bindposes: identical copies; added TryGet(bone, out Matrix4x4).
+- Audio: DecodeWav = Guns/NPC Wav verbatim (broadest); LoadWav = VoiceAudio API (now accepts all formats); TryLoadWav = Rider (null on failure); NormalizePeak = Quests; Level/Process = NPC Women Level; LoadAsync(path, type, cb, decompress) returns cancellable Audio.Load.
