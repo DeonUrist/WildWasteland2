@@ -20,8 +20,6 @@ namespace WildWasteland.Modules.Patrols
             var v = ToolGroups.Vehicles; var p = ToolGroups.Poses; var m = ToolGroups.Merchants;
             return new ToolPage[]
             {
-                new ActionPage(this, v, "Patrol editor", PatrolEditorPage) { IsTool = true },
-                new ActionPage(this, v, "Template recorder", RecorderPage) { IsTool = true },
                 new ActionPage(this, p, "Turret spot editor", TurretSpotPage) { IsTool = true },
                 new ActionPage(this, p, "Bus passenger pose editor", BusPosePage) { IsTool = true },
                 new ActionPage(this, m, "Merchant item placement", MerchantSpotPage) { IsTool = true },

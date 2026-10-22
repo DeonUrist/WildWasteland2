@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Tools
 {
     internal static class EditorSelection
     {
