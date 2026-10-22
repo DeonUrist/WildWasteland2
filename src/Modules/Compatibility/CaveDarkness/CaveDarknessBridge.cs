@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.Compatibility
         public float At(Vector3 p)
         {
             if (_light == null) return -1f;
-            try { return Mathf.Clamp(_light(p), -1f, 1f); }
+            try { float value = _light(p); return value < 0f || float.IsNaN(value) || float.IsInfinity(value) ? -1f : Mathf.Clamp01(value); }
             catch (Exception e) { Failed(e); return -1f; }
         }
 
