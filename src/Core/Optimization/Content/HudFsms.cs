@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT7 (plan §7, research B §1.3, §3.5; Sources fsm/scene1_game/__GameManager__.md):
@@ -43,7 +43,7 @@ namespace WildWasteland.Modules.Performance
             FsmEdits.Watch(this, "Ammo", "__GameManager__", ReadyAmmo);
             FsmEdits.Watch(this, "ArmorBackpack", "__GameManager__", ReadyArmor);
             FsmEdits.Watch(this, "DayTime", "__GameManager__", ReadyDay);
-            _job = Scheduler.EveryFrame(Module, "Performance.DayTime", DayTick);
+            _job = Scheduler.EveryFrame(Module, "Core.Optimization.DayTime", DayTick);
         }
 
         protected override void OnDisable()

@@ -1,4 +1,4 @@
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT3 (plan §7, research B §2 #1 #6 #14 #15): the vehicle hinge FSMs poll their hinge's child count every frame

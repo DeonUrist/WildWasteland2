@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// RC1 (research C §1 "Renderers", §2 Tier 1.3, §3). 11,041 of 11,321 prefab MeshRenderers cast shadows; ~51% are smaller than

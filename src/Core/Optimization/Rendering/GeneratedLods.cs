@@ -7,7 +7,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     // Only sharedMesh is exchanged. Native renderer state, transforms, materials, colliders and rig components remain owned by the game.
     public sealed class GeneratedLods : Feature, IScanClient, ISkinnedScanClient, SaveGuard.IClient
@@ -69,14 +69,13 @@ namespace WildWasteland.Modules.Performance
             _memory = NewKnob(cfg, "Cache MB", "Maximum generated payload bytes reserved for the current scene; two worker reads at most. GPU overhead is additional.", 128, 256, 384, 256);
         }
 
-        public override void SubscribeHooks() { Hooks.CreateObjectEnter.Postfix(Module, RenderScan.AfterCreateObject); }
         protected override void OnEnable(FeatureMode mode)
         {
-            string root = Path.Combine(Assets.Root, "Performance", "LOD");
+            string root = Path.Combine(Assets.Root, "Core", "Optimization", "LOD");
             if (!File.Exists(Path.Combine(root, "catalog.tsv")))
             {
                 _status = "No pack installed; run tools/lod-generator/Generate.cmd -Install";
-                Log.Info("[Performance] RC9 " + _status);
+                if (Log.L1) Log.Main(OptimizationRuntime.Instance, "RC9 " + _status);
                 return;
             }
             _pack = new GeneratedLodPack(root);
@@ -85,14 +84,13 @@ namespace WildWasteland.Modules.Performance
             _epoch++;
             SaveGuard.Register(this);
             RenderScan.Register(this);
-            _job = Scheduler.Sliced(Module, "Performance.GeneratedLods", 750, Step, Phase.LateUpdateLast);
-            _discovery = Scheduler.Interval(Module, "Performance.GeneratedLodDiscovery", 15, Discover);
-            Log.Always("[Performance] RC9 " + _status);
+            _job = Scheduler.Sliced(Module, "Core.Optimization.GeneratedLods", 750, Step, Phase.LateUpdateLast);
+            _discovery = Scheduler.Interval(Module, "Core.Optimization.GeneratedLodDiscovery", 15, Discover);
+            if (Log.L1) Log.Main(OptimizationRuntime.Instance, "RC9 " + _status);
         }
 
         protected override void OnDisable()
         {
-            GeneratedLodExport.Stop();
             Camera.onPreRender -= RenderView;
             RenderScan.Unregister(this);
             SaveGuard.Unregister(this);
@@ -231,7 +229,7 @@ namespace WildWasteland.Modules.Performance
             entry.State = 4; entry.Data = null; _errors++;
             foreach (var mesh in entry.Variants) if (mesh != null) UnityEngine.Object.Destroy(mesh);
             entry.Variants[0] = entry.Variants[1] = null;
-            if (_errors <= 5) Log.Warn("[Performance] RC9 keeps original mesh: " + error);
+            if (_errors <= 5) Log.Warn(OptimizationRuntime.Instance, "RC9 keeps original mesh: " + error);
         }
 
         bool Upload()
@@ -361,8 +359,6 @@ namespace WildWasteland.Modules.Performance
             l.Value("LOD renderers", _objects.Count + "; unique cache " + _cache.Count + "; unmatched meshes " + _missing);
             l.Value("LOD cache", (_reserved / 1048576) + " MB reserved; reads " + _pending + "; errors " + _errors);
             l.Value("LOD view", _zoom ? "zoom: original meshes" : _saving || _guard ? "saving: original meshes" : "automatic screen-size LOD");
-            l.Value("LOD export", GeneratedLodExport.Status);
-            if (l.Buttons("Export loaded models for LOD generator") == 0) GeneratedLodExport.Start(Module);
         }
     }
 }

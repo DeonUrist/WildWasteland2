@@ -3,13 +3,13 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// The separate "Performance" tab of the settings window (between Modules and Debug; registered by Core's CorePages).
-    /// The module switch, preset and measurements stay here. Individual optimization modes, stats and tuning live in Developer.
+    /// The Core optimization master and preset stay here; measurement and per-feature controls belong to Debug.
     /// </summary>
-    public sealed partial class PerformancePage : ToolPage
+    public sealed class PerformancePage : ToolPage
     {
         static PerformancePage _instance;
         /// <summary>The single Performance tab (created on first use by CorePages.Register).</summary>
@@ -24,29 +24,21 @@ namespace WildWasteland.Modules.Performance
         /// <summary>Module switch, preset choice, then the Debug measurements.</summary>
         public override void Draw(ToolLayout l)
         {
-            var m = PerformanceModule.Instance;
+            var m = OptimizationRuntime.Instance;
             if (m == null) { l.Text("Performance module not loaded."); return; }
-            var entry = ModuleHost.Of(m);
-            if (entry != null && entry.Config != null) l.Toggle(entry.Config.Enabled, "Performance optimizations");
-            bool running = ModuleHost.IsRunning(m);
+            if (OptimizationRuntime.EnabledEntry != null) l.Toggle(OptimizationRuntime.EnabledEntry, "Performance optimizations");
+            bool running = m.Running;
             l.Text(running
                 ? "Experimental base-game optimizations. Choose a preset and compare measurements in the same scene. Changes apply immediately."
-                : "The Performance module is off: the game runs unmodified.", running ? (Color?)null : Ledger.Danger);
+                : "Core optimizations are off; their original game settings are restored.", running ? (Color?)null : Ledger.Danger);
 
-            var p = PerformanceModule.PresetEntry;
+            var p = OptimizationRuntime.PresetEntry;
             if (p != null)
             {
                 int sel = l.Choices("Preset", Array.IndexOf(_presetValues, p.Value), _presets);
                 if (_presetValues[sel] != p.Value) p.Value = _presetValues[sel];
                 l.Text("PERFORMANCE favors speed; BALANCED is the compromise; VISUALS favors detail. VANILLA (default) disables changes to visuals, simulation and item cleanup, including extra culling (marked *). Exact optimizations remain active.");
             }
-
-            DrawMeasurements(l);
         }
-
-        // Wave A split (refactor): measurements and the Developer feature list are drawn by the Debug part
-        // (src/Modules/Debug/Framework/_fromPerformance/PerformancePage.Debug.cs).
-        /// <summary>Debug part: Telemetry measurements and the scheduler job table at the end of the tab.</summary>
-        partial void DrawMeasurements(ToolLayout l);
     }
 }

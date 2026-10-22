@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// PM2 (plan §4, research A R2/R3): SendEvent with target GameObject / GameObjectFSM copied and scanned the whole FsmList
@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.Performance
             _foreign = ForeignPatcher();
             if (_foreign != null)
             {
-                WildWasteland.Core.Log.Always("[Performance] PM2: Fsm event dispatch is already patched by " + _foreign + " (e.g. Burner's Utilities FastEvents); PM2 not patched");
+                WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM2: Fsm event dispatch is already patched by " + _foreign + " (e.g. Burner's Utilities FastEvents); PM2 not patched");
                 return;
             }
             FsmRegistry.Acquire(Module); _acquired = true;
@@ -132,7 +132,7 @@ namespace WildWasteland.Modules.Performance
         {
             if (_stoodDown || (!On && !Shadow)) return;
             _stoodDown = true;
-            WildWasteland.Core.Log.Always("[Performance] PM2: another mod already dispatches events sent to objects (e.g. Burner's Utilities FastEvents); PM2 leaves those to it");
+            WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM2: another mod already dispatches events sent to objects (e.g. Burner's Utilities FastEvents); PM2 leaves those to it");
         }
 
         [HarmonyPatch]
@@ -146,7 +146,7 @@ namespace WildWasteland.Modules.Performance
             {
                 if (!__runOriginal) { StandDown(); return false; }
                 if (!On && !Shadow) return true;
-                Telemetry.SendGoFsm++;
+                OptimizationMetrics.SendGoFsm++;
                 if (Shadow)
                 {
                     if (gameObject == null) return true;
@@ -190,7 +190,7 @@ namespace WildWasteland.Modules.Performance
             {
                 if (!__runOriginal) { StandDown(); return false; }
                 if (!On && !Shadow) return true;
-                if (sendToChildren) Telemetry.SendGoChildren++; else Telemetry.SendGo++;
+                if (sendToChildren) OptimizationMetrics.SendGoChildren++; else OptimizationMetrics.SendGo++;
                 if (Shadow)
                 {
                     if (go == null) return true;
@@ -255,7 +255,7 @@ namespace WildWasteland.Modules.Performance
             static bool FsmBroadcast(Fsm __instance, FsmEvent fsmEvent, bool excludeSelf)
             {
                 if (!On) return true;
-                Telemetry.Broadcasts++;
+                OptimizationMetrics.Broadcasts++;
                 var eventData = new FsmEventData(Fsm.EventData);
                 Fsm.SetEventDataSentByInfo();
                 var source = new FsmEventData(Fsm.EventData);
@@ -281,7 +281,7 @@ namespace WildWasteland.Modules.Performance
             static bool PmBroadcast(FsmEvent fsmEvent)
             {
                 if (!On) return true;
-                Telemetry.Broadcasts++;
+                OptimizationMetrics.Broadcasts++;
                 int n; var snap = Snapshot(out n);
                 try
                 {

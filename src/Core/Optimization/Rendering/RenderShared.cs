@@ -5,11 +5,11 @@ using UnityEngine;
 using WildWasteland.Core;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     // Shared plumbing of the Rendering features (plan §2 "settings edits" + "prefab pass"):
     //   RenderScan   - the one sliced scan over prefab assets + scene instances (Resources.FindObjectsOfTypeAll on scene load / world
-    //                  ready / when a client starts), then incremental: MapMagic tile objects (PerformanceModule.TileAppliedEvent) and
+    //                  ready / when a client starts), then incremental: MapMagic tile objects (OptimizationRuntime.TileAppliedEvent) and
     //                  objects created by PlayMaker CreateObject (Core.Hooks.CreateObjectEnter postfix).
     //   SaveGuard    - ES3 writes Light / MeshRenderer / ParticleSystem / Camera fields of every saved GameObject and its children
     //                  (Sources code/Assembly-CSharp-firstpass/ES3Types/ES3Type_GameObject.cs:L74-101 "components", ES3Type_Light.cs,
@@ -87,10 +87,10 @@ namespace WildWasteland.Modules.Performance
             _types |= c.Types;
             if (_clients.Count == 1)
             {
-                var m = PerformanceModule.Instance;
-                _job = Scheduler.Sliced(m, "Performance.RenderScan", 1000, Step);
-                PerformanceModule.TileAppliedEvent -= OnTile;
-                PerformanceModule.TileAppliedEvent += OnTile;
+                var m = OptimizationRuntime.Instance;
+                _job = Scheduler.Sliced(m, "Core.Optimization.RenderScan", 1000, Step);
+                OptimizationRuntime.TileAppliedEvent -= OnTile;
+                OptimizationRuntime.TileAppliedEvent += OnTile;
             }
             RequestFull();
         }
@@ -102,7 +102,7 @@ namespace WildWasteland.Modules.Performance
             for (int i = 0; i < _clients.Count; i++) _types |= _clients[i].Types;
             if (_clients.Count == 0)
             {
-                PerformanceModule.TileAppliedEvent -= OnTile;
+                OptimizationRuntime.TileAppliedEvent -= OnTile;
                 if (_job != null) { _job.Remove(); _job = null; }
                 _fullWanted = _fullRunning = false; _arr = null; _subtrees.Clear(); _queued.Clear(); _roots.Clear(); _rootIds.Clear(); _info.Clear();
             }
@@ -140,7 +140,7 @@ namespace WildWasteland.Modules.Performance
 
         static bool Step()
         {
-            if (_fullWanted && !_fullRunning) { _fullWanted = false; _fullRunning = true; _stage = -1; _arr = null; _roots.Clear(); _rootIds.Clear(); _info.Clear(); Telemetry.Mark("prefabpass"); }
+            if (_fullWanted && !_fullRunning) { _fullWanted = false; _fullRunning = true; _stage = -1; _arr = null; _roots.Clear(); _rootIds.Clear(); _info.Clear(); OptimizationMetrics.Mark("prefabpass"); }
             if (_fullRunning) { StepFull(); return true; }
             if (_subtrees.Count > 0) { StepSubtree(_subtrees.Dequeue()); if (_subtrees.Count == 0) { _queued.Clear(); _info.Clear(); } return _subtrees.Count > 0; }
             return false;
@@ -181,7 +181,7 @@ namespace WildWasteland.Modules.Performance
         static void Finish()
         {
             _fullRunning = false; _arr = null; _stage = 6; _info.Clear(); _roots.Clear(); _rootIds.Clear(); Passes++;
-            for (int i = 0; i < _clients.Count; i++) { try { _clients[i].OnPassDone(); } catch (Exception e) { Log.Error("[Performance] scan pass done", e); } }
+            for (int i = 0; i < _clients.Count; i++) { try { _clients[i].OnPassDone(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan pass done", e); } }
         }
 
         static void DeliverRoot(Transform r)
@@ -190,14 +190,14 @@ namespace WildWasteland.Modules.Performance
             ScanCtx c;
             if (!Ctx(r, out c)) return;
             for (int k = 0; k < _clients.Count; k++)
-                if ((_clients[k].Types & ScanTypes.Roots) != 0) { try { _clients[k].OnRoot(r, ref c); } catch (Exception e) { Log.Error("[Performance] scan root", e); } }
+                if ((_clients[k].Types & ScanTypes.Roots) != 0) { try { _clients[k].OnRoot(r, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan root", e); } }
         }
 
         static void StepSubtree(Transform t)
         {
             if (t == null) return;
             if (++Subtrees % 64 == 0)
-                for (int i = 0; i < _clients.Count; i++) { try { _clients[i].OnPassDone(); } catch (Exception e) { Log.Error("[Performance] scan prune", e); } }
+                for (int i = 0; i < _clients.Count; i++) { try { _clients[i].OnPassDone(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan prune", e); } }
             var go = t.gameObject;
             if (Wants(ScanTypes.Lights)) { go.GetComponentsInChildren(true, _lBuf); for (int i = 0; i < _lBuf.Count; i++) Deliver(_lBuf[i]); _lBuf.Clear(); }
             if (Wants(ScanTypes.Renderers) || Wants(ScanTypes.Roots)) { go.GetComponentsInChildren(true, _rBuf); for (int i = 0; i < _rBuf.Count; i++) Deliver(_rBuf[i]); _rBuf.Clear(); }
@@ -236,14 +236,14 @@ namespace WildWasteland.Modules.Performance
                 {
                     var client = _clients[k] as ISkinnedScanClient;
                     if (client != null && (_clients[k].Types & ScanTypes.Skinned) != 0)
-                        try { client.OnSkinned(s, ref c); } catch (Exception e) { Log.Error("[Performance] scan skin", e); }
+                        try { client.OnSkinned(s, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan skin", e); }
                 }
         }
 
-        static void Safe(IScanClient cl, Light x, ref ScanCtx c) { try { cl.OnLight(x, ref c); } catch (Exception e) { Log.Error("[Performance] scan light", e); } }
-        static void Safe(IScanClient cl, MeshRenderer x, ref ScanCtx c) { try { cl.OnRenderer(x, ref c); } catch (Exception e) { Log.Error("[Performance] scan renderer", e); } }
-        static void Safe(IScanClient cl, ParticleSystem x, ref ScanCtx c) { try { cl.OnParticles(x, ref c); } catch (Exception e) { Log.Error("[Performance] scan particles", e); } }
-        static void Safe(IScanClient cl, Animator x, ref ScanCtx c) { try { cl.OnAnimator(x, ref c); } catch (Exception e) { Log.Error("[Performance] scan animator", e); } }
+        static void Safe(IScanClient cl, Light x, ref ScanCtx c) { try { cl.OnLight(x, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan light", e); } }
+        static void Safe(IScanClient cl, MeshRenderer x, ref ScanCtx c) { try { cl.OnRenderer(x, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan renderer", e); } }
+        static void Safe(IScanClient cl, ParticleSystem x, ref ScanCtx c) { try { cl.OnParticles(x, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan particles", e); } }
+        static void Safe(IScanClient cl, Animator x, ref ScanCtx c) { try { cl.OnAnimator(x, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan animator", e); } }
 
         /// <summary>Classifies a transform. False for objects that must never be touched (editor/internal hide flags, WW's own runner).</summary>
         internal static bool Ctx(Transform t, out ScanCtx c)
@@ -359,12 +359,12 @@ namespace WildWasteland.Modules.Performance
             {
                 if (Reverted) return;
                 Reverted = true; Saves++;
-                for (int i = 0; i < _clients.Count; i++) { try { _clients[i].RevertSaved(); } catch (Exception e) { Log.Error("[Performance] revert before save", e); } }
+                for (int i = 0; i < _clients.Count; i++) { try { _clients[i].RevertSaved(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "revert before save", e); } }
             }
             else if (now == "isPlay" && Reverted)
             {
                 Reverted = false;
-                for (int i = 0; i < _clients.Count; i++) { try { _clients[i].ReapplySaved(); } catch (Exception e) { Log.Error("[Performance] re-apply after save", e); } }
+                for (int i = 0; i < _clients.Count; i++) { try { _clients[i].ReapplySaved(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "re-apply after save", e); } }
             }
         }
     }
@@ -415,9 +415,9 @@ namespace WildWasteland.Modules.Performance
         static void Acquire()
         {
             if (_users++ > 0) return;
-            var m = PerformanceModule.Instance;
+            var m = OptimizationRuntime.Instance;
             m.EnsurePatched(typeof(MenuPatch));
-            _job = Scheduler.Interval(m, "Performance.QualityGuard", 1f, Tick);
+            _job = Scheduler.Interval(m, "Core.Optimization.QualityGuard", 1f, Tick);
             _level = QualitySettings.GetQualityLevel();
         }
 
@@ -480,7 +480,7 @@ namespace WildWasteland.Modules.Performance
         static class MenuPatch
         {
             [HarmonyPatch(typeof(AkshayDhotre.GraphicSettingsMenu.GraphicSettingHelperMethods), "ChangeQualitySettings"), HarmonyPostfix]
-            static void Post() { if (_users > 0) { try { Tick(); } catch (Exception e) { Log.Error("[Performance] quality re-apply", e); } } }
+            static void Post() { if (_users > 0) { try { Tick(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "quality re-apply", e); } } }
         }
     }
 

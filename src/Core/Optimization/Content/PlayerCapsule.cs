@@ -3,7 +3,7 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT10 (plan §7, research B §1.3, §3.3): Player [Movement] (Sources fsm/scene1_game/Player.md:L497-L567) writes the Player

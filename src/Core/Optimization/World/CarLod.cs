@@ -10,7 +10,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT2 (plan §7, research B §1.2-1.3 / C §2 Tier 1 #5): car simulation LOD for cars nobody uses.
@@ -74,8 +74,6 @@ namespace WildWasteland.Modules.Performance
         float _kin, _pres2;
         GameObject _lastDriven;
         FsmGameObject _player;
-        static bool _engineSimLoaded;
-        static readonly List<MonoBehaviour> _mbs = new List<MonoBehaviour>(64);
         static readonly List<Joint> _joints = new List<Joint>(4);
         static readonly List<PlayMakerFSM> _fsms = new List<PlayMakerFSM>(128);
         internal static long Paused, NwhSleeps, NwhWakes;
@@ -86,10 +84,9 @@ namespace WildWasteland.Modules.Performance
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("SetIsKinematic.OnEnter patch failed");
             On = true;
-            _engineSimLoaded = AccessTools.TypeByName("EngineSim.EngineManager") != null;
             ReadKnobs();
             FsmEdits.Watch(this, "DistanceKinematic", null, Ready);
-            _job = Scheduler.Interval(Module, "Performance.CarLod", 0.1f, Tick);
+            _job = Scheduler.Interval(Module, "Core.Optimization.CarLod", 0.1f, Tick);
         }
 
         void ReadKnobs() { _kin = Mathf.Max(50f, _kinDist.Value); float p = Mathf.Max(5f, _presDist.Value); _pres2 = p * p; }
@@ -151,7 +148,7 @@ namespace WildWasteland.Modules.Performance
                 if (car.Go == null) { _byGo.Remove(car.Go); ForgetPaused(car); _cars.RemoveAt(_cursor); continue; }
                 _cursor++;
                 try { Decide(car, pt, pp); }
-                catch (Exception e) { Log.Error("[Performance] CT2 " + car.Go.name, e); Release(car); }
+                catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "CT2 " + car.Go.name, e); Release(car); }
             }
         }
 
@@ -181,25 +178,12 @@ namespace WildWasteland.Modules.Performance
             return !car.Foreign;
         }
 
-        /// <summary>Patrols / Engine Sim components on the car, or a Joint coupling it to another body (trailer pair).</summary>
+        /// <summary>Typed module ownership or physical joint coupling excludes vehicles from native parked-car LOD.</summary>
         bool Foreign(Car car)
         {
-            _mbs.Clear();
-            car.Go.GetComponents(_mbs);
-            bool f = false;
-            for (int i = 0; i < _mbs.Count && !f; i++)
-            {
-                var m = _mbs[i]; if (m == null) continue;
-                string ns = m.GetType().Namespace;
-                if (ns != null && (ns.StartsWith("WildWasteland.Modules.Patrols", StringComparison.Ordinal) || ns.StartsWith("EngineSim", StringComparison.Ordinal))) f = true;
-            }
-            if (!f && _engineSimLoaded)
-            {
-                _mbs.Clear();
-                car.Go.GetComponentsInChildren(true, _mbs);           // once a second per car, only with Engine Sim installed
-                for (int i = 0; i < _mbs.Count && !f; i++) { var m = _mbs[i]; if (m != null) { string ns = m.GetType().Namespace; if (ns != null && ns.StartsWith("EngineSim", StringComparison.Ordinal)) f = true; } }
-            }
-            _mbs.Clear();
+            var ownership = ModApi.Get<IVehicleOwnership>();
+            IModule owner;
+            bool f = ownership != null && ownership.IsOwned(car.Go, out owner);
             if (!f)
             {
                 _joints.Clear();

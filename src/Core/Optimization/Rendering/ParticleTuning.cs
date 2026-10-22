@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// EN5 (research C §1 "Particles", §2 Tier 2.8, §3). 454 prefab systems: 105 prewarm (55 Fire Quad, 16 each Smoke/Ashes/Flames
