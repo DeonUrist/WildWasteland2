@@ -1,0 +1,11 @@
+source path	target module	target path	code references (file:line, resource or disk-path strings that must change)
+src/Core/.gitkeep	Core	src/Core/.gitkeep (keep or delete in Wave C; folder is no longer empty)	none
+developer/README.md	Debug	fold into docs (B03 ports developer/ into the Debug module, P10; then delete with the project)	none (documentation of the standalone WildWastelandDeveloper.dll)
+developer/WildWastelandDeveloper.csproj	Debug	delete when B03 has ported developer/*.cs into src/Modules/Debug (one DLL, P10)	build of the separate developer DLL; capture paths BepInEx/config/WildWastelandDeveloper/Captures stay readable (developer/Reports.cs, Diagnosis.cs)
+# Runtime paths and resources used by A1 code whose files are NOT under A1 source folders (for the Wave B owners; no file to move here):
+# (runtime, not in repo) plugins/WildWasteland/theme/game/*.png|jpg, theme/ledger/*.png	Core	plugins/WildWasteland/Core/theme/... (B01, D13)	src/Core/UI/Skin.cs:36 (Dir = <dll dir>/theme/game), Skin.cs:49-51 (rust.jpg chains.jpg knob.png rivet.png rebar_h.png rebar_v.png plank.png ...), src/Core/UI/Ledger.cs:234 (<theme>/ledger/<name>.png)
+# (embedded, CleanHUD) src/Modules/CleanHUD/Embedded/DefaultSettings/*.txt, DefaultProfiles/<owner>/**	Core	src/Core/Embedded/DefaultSettings/..., DefaultProfiles/... (B01; listed in A5's manifest as source)	src/Core/TunedSettings.cs:20 (resource 'CleanHUD.DefaultSettings.<name>.txt'), TunedSettings.cs:45-53 (resources 'CleanHUD.DefaultProfiles.<owner>.<path>' -> config/WildWasteland/<owner>/...)
+# (runtime, not in repo) plugins/WildWasteland/Performance/LOD/catalog.tsv + *.wwlod	Core	plugins/WildWasteland/Core/Optimization/LOD/ (B02, D13)	src/Core/Optimization/Rendering/GeneratedLods.cs:75-76 (Assets.Root/Performance/LOD), GeneratedLodPack.cs:20,152
+# (runtime output) plugins/WildWasteland/Performance/LODInput/*.json	Tools	plugins/WildWasteland/Tools/LODInput/ (B16)	src/Modules/Tools/Rendering/_fromPerformance/GeneratedLodExport.cs:36,109
+# (runtime output) config/WildWasteland/Performance/census-*.txt	Debug	config/WildWasteland/Debug/ (B03)	src/Modules/Debug/Framework/_fromPerformance/Telemetry.cs:179-181
+# (runtime) asset-index.tsv beside the DLL	Core	unchanged until Wave C (D13 resource-name alias table)	src/Core/DiskResources.cs:16-17,35
