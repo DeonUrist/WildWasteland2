@@ -12,11 +12,8 @@ namespace WildWasteland.Modules.Patrols
     //       ([Patrols / Spawning], [Patrols / World traffic], [Patrols / Merchants], [Patrols / Combat], [Patrols / Balance], [Patrols / War Rig]).
     //   F7 (tools.cfg): every former hidden / technical / pose / debug setting in "Patrols / <name>" sections.
     //   [Keys]: Patrol editor, Template recorder, Bus passenger pose editor, Merchant item editor (all None by default).
-    // Every entry that existed in a standalone cfg is migrated on the first Wild Wasteland run (Core ModuleConfig.Migrate).
     public sealed partial class PatrolsModule
     {
-        internal const string OldCfg = "com.denis.apocalypter.apocapatrol.cfg", WarRigCfg = "com.denis.apocalypter.warrig.cfg", SpotterCfg = "com.denis.apocalypter.merchantspotter.cfg";
-
         internal static ConfigEntry<Key> MenuKey, TemplateDumpKey, BusPassengerPoseEditorKey, MerchantEditorKey;
         internal static ConfigEntry<bool> AllowDebugSpawns;
         internal static ConfigEntry<float> PatrolSizePercent;
@@ -126,7 +123,6 @@ namespace WildWasteland.Modules.Patrols
         {
             ConvoyEnabled = cfg.Player(null, "Automatic spawns", true,
                 "Raider patrols and convoys spawn on their own while you play. Off = no automatic spawns at all (the editor's test spawns still work)");
-            Migrate(cfg, ConvoyEnabled, "Convoy spawner", "Enabled"); Migrate(cfg, ConvoyEnabled, "General", "Enabled");
             FactionBattles = cfg.Player(null, "Faction battles", true,
                 "World traffic: Scrapyard and Coyote groups that meet fight each other (resolved off-screen when you are far away; wrecks, corpses and a skull on the debug map). Off = no new battles");
             Merchants = cfg.Player(null, "Merchants", true,
@@ -134,54 +130,40 @@ namespace WildWasteland.Modules.Patrols
             RiderLances = cfg.Player(null, "Human turrets", true,
                 "A template's human turrets fight: a Warboy crouching on the roof throws blast lances (and may leap at you: \"Witness me!\"), a gunner " +
                 "shoots all around with its own gun. Off = they just ride along");
-            Migrate(cfg, RiderLances, "Combat", "HumanTurrets");
             RangedCombat = cfg.Player(null, "Ranged combat", true,
                 "Ranged humans (Boltjaw/Flexa/Lugnut/Scrud/Sprokka) in a car use their vanilla targeting and ranged attack: the passenger whenever a target " +
                 "is in the fire arc, the driver in bursts. Off = everybody just rides along");
-            Migrate(cfg, RangedCombat, "Combat", "RangedCombat");
             RamDamage = cfg.Player(null, "Ram damage", true,
                 "An AI car that hits you (on foot or in your car) hurts you. The game's own bumper damage only works against creatures, not the player");
-            Migrate(cfg, RamDamage, "Combat", "RamDamage");
             RamDamageInCar = cfg.Player(null, "Ram damage in car", false,
                 "Ram damage also while you sit in your own car (the game's own CrashDamage still applies by your speed). Off = only on foot");
-            Migrate(cfg, RamDamageInCar, "Combat", "RamDamageInCar");
             RaiderMusic = cfg.Player(null, "Raider music", true,
                 "A raider car built from a template that has a cassette in its radio plays it at full volume from the moment it spawns, " +
                 "until you switch the radio off. Off = the cassette sits in the radio, silent, as in a parked car");
-            Migrate(cfg, RaiderMusic, "General", "Raider music");
             CustomPaintjobs = cfg.Player(null, "Custom paintjobs", true,
                 "Raider cars wear the paint jobs from the Patrols\\Textures folder (body textures, truck container sides and inside). " +
                 "Off = they keep the game's own textures (cars spawned from then on; the textures are not loaded at game start)");
-            Migrate(cfg, CustomPaintjobs, "Debug", "CustomPaintjobs");
             SelfDestruct = cfg.Player(null, "Always explode cars", false,
                 "Override template explodeChance with 100%. Requires a dead driver and all living passengers/turrets to leave. An alive driver bailout never explodes the car; captured cars are protected");
-            Migrate(cfg, SelfDestruct, "General", "Always explode cars");
             CleanupEnabled = cfg.Player(null, "Cleanup", true,
                 "Remove raider cars you left behind. A car you have ever sat in is never removed (the game itself only deletes cars beyond 5 km)");
-            Migrate(cfg, CleanupEnabled, "Cleanup", "Enabled");
             RaidersOverheat = cfg.Player(null, "Raiders overheat", false,
                 "Raider engines overheat like yours (smoke, steam, the engine wears down). Off = they never overheat while their crew drives; " +
                 "a car you take or an engine you loot heats normally again");
-            Migrate(cfg, RaidersOverheat, "Balance", "RaidersOverheat");
             FuryRoad = cfg.Player(null, "Fury Road", true,
                 "Every patrol and convoy group can spawn from the start: their minimum distance travelled and minimum boss kills are ignored. " +
                 "Off = groups unlock with distance and bosses as set in the editor");
-            Migrate(cfg, FuryRoad, "General", "Fury Road");
             SimpleConvoyBanditsAI = cfg.Player(null, "Simple convoy bandits AI", true,
                 "NPC module: no crew AI while seated; dismounted bandits fight using baked-map navigation; they hunt you only once they have seen or fought you, and keep track of you for a while after a fight");
-            Migrate(cfg, SimpleConvoyBanditsAI, "Experimental", "simple convoy bandits AI");
             FootPatrols = cfg.Player(null, "Foot patrols", true,
                 "World traffic: groups of 2-5 raiders walk between camps over open land (simulated while you are far away). Crew left without a usable car also walk to a nearby camp. Off = no new foot patrols");
             ReturnToCar = cfg.Player(null, "Return to car", true,
                 "Patrol, convoy and merchant crews reboard when their attacker dies or moves beyond 50 m from the car, then resume pursuit or their route. A surviving passenger or gunner can drive; fully stuck cars are abandoned");
             TacticalDriving = cfg.Player(null, "Tactical driving", true, "World traffic: varied attack runs and vehicle-checked camp approaches");
-            Migrate(cfg, TacticalDriving, "World traffic prototype", "TacticalDriving");
             WarRig.S.SpawnEnabled = cfg.Player(null, "War Rig spawns", true,
                 "Allow the abandoned War Rig POI and manual War Rig spawns. World discovery chance is in POI / World. Existing rigs are unaffected");
-            cfg.Migrate(WarRig.S.SpawnEnabled, WarRigCfg, "Spawn", "Enabled");
             WarRig.S.GroundRecoveryEnabled = cfg.Player(null, "War Rig ground recovery", false,
                 "Rescue a War Rig (with its truck and passengers) after a confirmed fall below the terrain. Off by default");
-            cfg.Migrate(WarRig.S.GroundRecoveryEnabled, WarRigCfg, "Recovery", "Enabled");
         }
 
         // ---------------------------------------------------------------- F6: player-facing values
@@ -189,54 +171,37 @@ namespace WildWasteland.Modules.Patrols
         {
             const string sp = "Spawning";
             PatrolSizePercent = cfg.Player(sp, "PatrolSizePercent", 100f, "Size of every patrol / convoy that spawns, for weaker PCs: below 100 the group loses cars at random down to this share (rounded down, never below one car; a convoy keeps all of its trucks)", new AcceptableValueRange<float>(10f, 100f));
-            Migrate(cfg, PatrolSizePercent, "Scaling", "PatrolSizePercent");
             MaxPatrols = cfg.Player(sp, "Max patrols", 3, "Maximum tracked patrol groups, including arrived and passing Coyote groups; replaces density", new AcceptableValueRange<int>(0, 64));
-            Migrate(cfg, MaxPatrols, "Experimental", "Max patrols");
             MaxConvoys = cfg.Player(sp, "Max convoys", 1, "Maximum tracked convoy groups, including arrived groups; replaces density", new AcceptableValueRange<int>(0, 64));
-            Migrate(cfg, MaxConvoys, "Experimental", "Max convoys");
             CarSpawnLimit = cfg.Player(sp, "Car spawn limit", true, "Limit physical encounter cars; pending builds count toward the same budget");
-            Migrate(cfg, CarSpawnLimit, "Experimental", "car spawn limit");
             MaxCarsInEvent = cfg.Player(sp, "Max cars in event", 5, "Maximum cars in one patrol or convoy; cargo trucks have priority", new AcceptableValueRange<int>(1, 24));
-            Migrate(cfg, MaxCarsInEvent, "Experimental", "Max cars in event");
             MaxCarsInDoubleEvent = cfg.Player(sp, "Max cars in double event", 6, "Combined physical car budget when encounters overlap near the player", new AcceptableValueRange<int>(1, 48));
-            Migrate(cfg, MaxCarsInDoubleEvent, "Experimental", "Max cars in double event");
 
             const string wt = "World traffic";
             TrafficPatrolSpeed = cfg.Player(wt, "PatrolSpeedKmh", 55f, "Simulated/cruising patrol speed", new AcceptableValueRange<float>(10f, 100f));
-            Migrate(cfg, TrafficPatrolSpeed, "World traffic prototype", "PatrolSpeedKmh");
             TrafficConvoySpeed = cfg.Player(wt, "ConvoySpeedKmh", 38f, "Simulated/cruising convoy speed", new AcceptableValueRange<float>(10f, 80f));
-            Migrate(cfg, TrafficConvoySpeed, "World traffic prototype", "ConvoySpeedKmh");
             CampTrafficRange = cfg.Player(wt, "Camp traffic range", 2500f, "Loaded, uncleared raider camps support base patrols and convoys; incoming Coyote patrols do not require camps", new AcceptableValueRange<float>(500f, 10000f));
-            Migrate(cfg, CampTrafficRange, "Experimental", "Camp traffic range");
 
             const string mc = "Merchants";
             MaxMerchants = cfg.Player(mc, "Max merchants", 2, "Maximum merchants, with at most one of each shop type. Zero disables automatic merchants.", new AcceptableValueRange<int>(0, 3));
-            Migrate(cfg, MaxMerchants, "Experimental", "Max merchants");
             MerchantSpawnChance = cfg.Player(mc, "Merchant spawn chance", 100f, "Average percentage of Max merchants represented by routes. Whole slots are guaranteed; the remaining fractional slot is rolled at each check. 100 fills the cap; zero creates no merchant routes.", new AcceptableValueRange<float>(0f, 100f));
-            Migrate(cfg, MerchantSpawnChance, "Experimental", "Merchant spawn chance");
             MerchantCheckMinutes = cfg.Player(mc, "Merchant check interval (minutes)", 5f, "Check and adjust merchant route population this often, including replacing departed merchants. No immediate replacement when a route ends. Loaded merchants finish their visit before excess routes are removed.", new AcceptableValueRange<float>(1f, 60f));
-            Migrate(cfg, MerchantCheckMinutes, "Experimental", "Merchant check interval (minutes)");
 
             const string cb = "Combat";
             NpcRamDamageMultiplier = cfg.Player(cb, "NPC ram damage multiplier", 4f,
                 "Damage multiplier when any car hits a creature other than the player, including NPC-driven cars: 4 = four times the game's bumper damage, 1 = vanilla, 0 = no damage", new AcceptableValueRange<float>(0f, 10f));
             ShootDistance = cfg.Player(cb, "ShootDistance", 40f, "Occupants only shoot at a target closer than this, m", new AcceptableValueRange<float>(1f, 200f));
-            Migrate(cfg, ShootDistance, "Combat", "ShootDistance");
             WitnessMeChance = cfg.Player(cb, "WitnessMeChance", 10f,
                 "% chance that an unhurt blast-lance rider screams \"Witness me!\" and leaps at your car when you drive close " +
                 "(a wounded rider always does). 100 = every time", new AcceptableValueRange<float>(0f, 100f));
-            Migrate(cfg, WitnessMeChance, "Debug", "WitnessMeChance"); Migrate(cfg, WitnessMeChance, "Combat", "WitnessMeChance");
 
             const string bl = "Balance";
             MinPartHealth = cfg.Player(bl, "MinPartHealth", 80f, "Lowest condition (%) of a spawned raider car's parts that have one (engine, radiator, wheels ...)", new AcceptableValueRange<float>(0f, 100f));
-            Migrate(cfg, MinPartHealth, "Balance", "MinPartHealth");
             MaxPartHealth = cfg.Player(bl, "MaxPartHealth", 100f,
                 "Highest condition (%) of a spawned raider car's parts; the roll is weighted toward two thirds of the way from Min to Max", new AcceptableValueRange<float>(0f, 100f));
-            Migrate(cfg, MaxPartHealth, "Balance", "MaxPartHealth");
             ExplodedLootPercent = cfg.Player(bl, "ExplodedCarPartsPercent", 20f,
                 "% chance for each part of an exploded raider car to keep its condition (MinPartHealth..MaxPartHealth) instead of dropping " +
                 "at 0 %. 20 = about one part in five, 0 = all junk, 100 = all usable", new AcceptableValueRange<float>(0f, 100f));
-            Migrate(cfg, ExplodedLootPercent, "Scaling", "ExplodedCarPartsPercent");
 
         }
 
@@ -244,13 +209,9 @@ namespace WildWasteland.Modules.Patrols
         void BindKeys(ModuleConfig cfg)
         {
             MenuKey = cfg.Hotkey("Patrol editor", Key.None, "Patrols: open the patrol / convoy / merchant / loot editor (also F7 > Patrols & vehicles > Patrol editor). None = unbound");
-            Migrate(cfg, MenuKey, "Debug", "TemplateSpawnerKey"); Migrate(cfg, MenuKey, "Debug", "ApocaPatrol Config Key");
             TemplateDumpKey = cfg.Hotkey("Template recorder", Key.None, "Patrols: save the vehicle you sit in as a template (only while seated; also F7 > Template recorder). None = unbound");
-            Migrate(cfg, TemplateDumpKey, "Debug", "TemplateDumpKey");
             BusPassengerPoseEditorKey = cfg.Hotkey("Bus passenger pose editor", Key.None, "Patrols: toggle the bus passenger pose editor (also F7 > Seat & turret poses). None = unbound");
-            MigrateChangedKey(cfg, BusPassengerPoseEditorKey, OldCfg, "Debug", "Bus passenger pose editor key", "Insert");
             MerchantEditorKey = cfg.Hotkey("Merchant item editor", Key.None, "Patrols: toggle the merchant item placement editor (also F7 > Merchants). None = unbound");
-            MigrateChangedKey(cfg, MerchantEditorKey, SpotterCfg, "Debug", "ToggleKey", "NumpadMultiply");
         }
 
         // ---------------------------------------------------------------- F7 tools.cfg
@@ -260,47 +221,28 @@ namespace WildWasteland.Modules.Patrols
             TurretSpotEditor = cfg.Tool(TDebug, "TurretSpotEditor", false,
                 "Glowing markers on the human turret spots of the nearest raider car and numpad keys to move them: 8/2 forward/back, 4/6 left/right, " +
                 "7/9 down/up (Shift = x5), 0 = next turret, 5 = save the spot into the car's template file, . = markers on/off");
-            Migrate(cfg, TurretSpotEditor, "Debug", "TurretSpotEditor");
             BusPassengerPoseEditorEnabled = cfg.Tool(TDebug, "Bus passenger pose editor", false, "Live arm, leg and seat adjustment for the nearest bus passenger. Num0 selects joint, Num/ selects side, Num8/2 bends, Num4/6 swings sideways, Num7/9 twists, Num5 saves. Disable other numpad editors while using this tool.");
-            Migrate(cfg, BusPassengerPoseEditorEnabled, "Debug", "Bus passenger pose editor");
             MerchantEditorEnabled = cfg.Tool(TDebug, "Merchant item editor", false, "The in-car merchant object editor (numpad). Disable TurretSpotEditor while using it.");
-            cfg.Migrate(MerchantEditorEnabled, SpotterCfg, "Debug", "Enabled");
             AllowDebugSpawns = cfg.Tool(TDebug, "AllowDebugSpawns", true, "Show Spawn Template, S group buttons and SPAWN in the patrol editor");
-            Migrate(cfg, AllowDebugSpawns, "Debug", "AllowDebugSpawns");
             AiOverlay = cfg.Tool(TDebug, "AiOverlay", false, "On-screen line per AI car: state, speed, target angle, steering, feeler distances. With no raider car driving: the time until the next spawn roll");
-            Migrate(cfg, AiOverlay, "Debug", "AiOverlay");
             HideFsmWarnings = cfg.Tool(TDebug, "Hide missing-FSM warnings", true, "The game's \"Could not find FSM: ID on GameObject: ...\" warnings are not printed (QuietFsm)");
-            Migrate(cfg, HideFsmWarnings, "General", "Hide missing-FSM warnings");
             ExitSpeedKmh = cfg.Tool(TDebug, "ExitSpeedKmh", 30f,
                 "You can leave your car below this speed (km/h). The game's own limit is 6 m/s = 21.6 km/h, too low to get out of a car a truck keeps shoving",
                 new AcceptableValueRange<float>(5f, 200f));
-            Migrate(cfg, ExitSpeedKmh, "Debug", "ExitSpeedKmh");
 
             // world traffic tuning + debug map
             TrafficDebugMap = cfg.Tool(TTraffic, "DebugMap", true, "Draw traffic routes only on the game's debug map when it is open");
-            Migrate(cfg, TrafficDebugMap, "World traffic prototype", "DebugMap");
             RealPatrolNames = cfg.Tool(TTraffic, "Real patrol names", true, "Use each group's actual name on the game debug map; off labels groups Patrol or Convoy");
-            Migrate(cfg, RealPatrolNames, "Experimental", "Real patrol names");
             HideRouteType = cfg.Tool(TTraffic, "hide route type", false, "Draw every traffic route and marker gray and label it Distant traffic; overrides Real patrol names");
-            Migrate(cfg, HideRouteType, "Experimental", "hide route type");
             TrafficRoadRouting = cfg.Tool(TTraffic, "FollowRoads", true, "Influence sparse patrol waypoints with cached road hints; missing hints use a cached snake route");
-            Migrate(cfg, TrafficRoadRouting, "World traffic prototype", "FollowRoads");
             TrafficRoadConnector = cfg.Tool(TTraffic, "MaxRoadConnectorMetres", 350f, "Maximum distance a coarse waypoint is attracted toward a cached road hint, m", new AcceptableValueRange<float>(25f, 1000f));
-            Migrate(cfg, TrafficRoadConnector, "World traffic prototype", "MaxRoadConnectorMetres");
             TrafficMaxGroups = cfg.Tool(TTraffic, "MaxGroups", 24, "Maximum simulated plus real groups", new AcceptableValueRange<int>(1, 128));
-            Migrate(cfg, TrafficMaxGroups, "World traffic prototype", "MaxGroups");
             TrafficMaxRealCars = cfg.Tool(TTraffic, "MaxRealCars", 24, "Budget for nearby physical traffic cars; pending builds reserve slots", new AcceptableValueRange<int>(1, 100));
-            Migrate(cfg, TrafficMaxRealCars, "World traffic prototype", "MaxRealCars");
             TrafficLoadRange = cfg.Tool(TTraffic, "LoadRange", 750f, "Load traffic within this distance of the player, m", new AcceptableValueRange<float>(100f, 2000f));
-            Migrate(cfg, TrafficLoadRange, "World traffic prototype", "LoadRange");
             TrafficUnloadRange = cfg.Tool(TTraffic, "UnloadRange", 1000f, "Unload only once every group member is this far away; always at least LoadRange + 100 m", new AcceptableValueRange<float>(200f, 4000f));
-            Migrate(cfg, TrafficUnloadRange, "World traffic prototype", "UnloadRange");
             TrafficDestinationGrace = cfg.Tool(TTraffic, "DestinationGraceSeconds", 180f, "An arrived group waits this long without a nearby player before removal; proximity resets the clock", new AcceptableValueRange<float>(10f, 3600f));
-            Migrate(cfg, TrafficDestinationGrace, "World traffic prototype", "DestinationGraceSeconds");
             ConvoyGuardRange = cfg.Tool(TTraffic, "ConvoyGuardRange", 300f, "Escort drivers attack within this range of the convoy; truck drivers keep travelling, m", new AcceptableValueRange<float>(20f, 1000f));
-            Migrate(cfg, ConvoyGuardRange, "World traffic prototype", "ConvoyGuardRange");
             PatrolMemorySeconds = cfg.Tool(TTraffic, "PatrolMemorySeconds", 20f, "Search last known player position this long after losing sight/sound, then resume the route", new AcceptableValueRange<float>(0f, 120f));
-            Migrate(cfg, PatrolMemorySeconds, "World traffic prototype", "PatrolMemorySeconds");
             FootMaxActive = cfg.Tool(TTraffic, "FootPatrolMaxActive", 2, "Most generated foot patrols at once (crew left without a usable car may add a few more)", new AcceptableValueRange<int>(0, 8));
             FootSpawnChance = cfg.Tool(TTraffic, "FootPatrolSpawnChance", 35f, "Chance (%) per check that a foot patrol leaves a nearby camp", new AcceptableValueRange<float>(0f, 100f));
             FootCheckSeconds = cfg.Tool(TTraffic, "FootPatrolCheckSeconds", 60f, "Seconds between foot patrol spawn checks", new AcceptableValueRange<float>(5f, 1800f));
@@ -321,7 +263,6 @@ namespace WildWasteland.Modules.Patrols
                 "more: every shot and every hit is a sound, and beyond the limit sounds - the player's own shots too - cut out. 64 is a good value; " +
                 "0 leaves the game's own setting. Applied at game start (restart the game after a change)",
                 new AcceptableValueList<int>(0, 32, 48, 64, 96, 128));
-            Migrate(cfg, AudioVoices, "General", "AudioVoices"); Migrate(cfg, AudioVoices, "Scaling", "AudioVoices");
 
             // combat tuning (was the hidden [Combat] block)
             FireArc = cfg.Tool(TCombat, "FireArcHalfAngle", 100f, "Occupants may fire this many degrees left or right of the car's forward direction", new AcceptableValueRange<float>(0f, 180f));
@@ -348,10 +289,6 @@ namespace WildWasteland.Modules.Patrols
             RiderBlastDamage = cfg.Tool(TCombat, "RiderBlastDamage", 60f, "\"Witness me!\": damage of the rider's blast at its centre (in your car too); falls to a third at the edge", new AcceptableValueRange<float>(0f, 300f));
             RiderBlastRadius = cfg.Tool(TCombat, "RiderBlastRadius", 7f, "\"Witness me!\": reach of the rider's blast, m (damage and the shove of your car)", new AcceptableValueRange<float>(1f, 20f));
             RiderLanceSpeed = cfg.Tool(TCombat, "RiderLanceSpeed", 30f, "Throw speed of a rider's lance, m/s (the player's is 30)", new AcceptableValueRange<float>(5f, 80f));
-            foreach (var e in new ConfigEntryBase[] { FireArc, MaxAimPitch, AimTurnSpeed, FireBurstSeconds, FireIntervalMin, FireIntervalMax, RamDamageMultiplier, RamDamageByBody, RamFullSpeedKmh,
-                RamPushStrength, RamInCarFactor, RiderRange, RiderMaxThrowAngle, RiderJumpRange, RiderIntervalMin, RiderIntervalMax, RiderLeapReachPercent, RiderBailRange,
-                SuspensionLiftCenterOfMass, RiderLeapSpeed, RiderBlastDamage, RiderBlastRadius, RiderLanceSpeed })
-                MigrateBase(cfg, e, "Combat", e.Definition.Key);
 
             // turret rider pose (crouched gunner + the Warboy's lance prop)
             TurretThigh = cfg.Tool(TTurret, "TurretThigh", 80f, "Crouched human turret gunner: thigh angle forward, degrees", new AcceptableValueRange<float>(0f, 150f));
@@ -359,7 +296,6 @@ namespace WildWasteland.Modules.Patrols
             TurretHipHeight = cfg.Tool(TTurret, "TurretHipHeight", 0.4f, "Crouched human turret gunner: hips above the spot (feet), m", new AcceptableValueRange<float>(0f, 1.2f));
             RiderLanceOffset = cfg.Tool(TTurret, "RiderLanceOffset", "0, 0, 0", "Warboy's lance prop: position in the throwing hand, hand-local metres x, y, z");
             RiderLanceRotation = cfg.Tool(TTurret, "RiderLanceRotation", "0, 0, 0", "Warboy's lance prop: rotation in the throwing hand, degrees x, y, z");
-            foreach (var e in new ConfigEntryBase[] { TurretThigh, TurretKnee, TurretHipHeight, RiderLanceOffset, RiderLanceRotation }) MigrateBase(cfg, e, "Combat", e.Definition.Key);
 
             StuckPedalChance = cfg.Tool(TDriving, "StuckPedalChance", 5f, "% chance that a killed driver's gas pedal stays stuck; otherwise the gas is released and the car rolls to a stop", new AcceptableValueRange<float>(0f, 100f));
             BailChance = cfg.Tool(TDriving, "BailChance", 25f,
@@ -368,7 +304,6 @@ namespace WildWasteland.Modules.Patrols
             StuckBailChance = cfg.Tool(TDriving, "StuckBailChance", 100f,
                 "% chance that, when the driving AI gives up on a stuck car (after AI MaxRecovers), the whole crew gets out and fights on foot " +
                 "instead of the car waiting WaitSeconds and trying again", new AcceptableValueRange<float>(0f, 100f));
-            foreach (var e in new ConfigEntryBase[] { StuckPedalChance, BailChance, StuckBailChance }) MigrateBase(cfg, e, "Driving", e.Definition.Key);
 
             AiThrottle = cfg.Tool(TAI, "Throttle", 1f, "Maximum throttle the driving AI uses (0..1); also the throttle of a stuck pedal", new AcceptableValueRange<float>(0.05f, 1f));
             AiDriveByOffset = cfg.Tool(TAI, "DriveByOffset", 5f, "When the target may not be rammed (the template's ramsTargets), the car aims this far beside it and drives past instead, m", new AcceptableValueRange<float>(1f, 20f));
@@ -396,22 +331,15 @@ namespace WildWasteland.Modules.Patrols
             AiIgnoreMassBelow = cfg.Tool(TAI, "IgnoreMassBelow", 40f, "Loose physics objects lighter than this (kg) are not obstacles; the car drives through them", new AcceptableValueRange<float>(0f, 1000f));
             AiGiveUpDistance = cfg.Tool(TAI, "GiveUpDistance", 700f, "Beyond this distance from the player the car stops chasing and coasts until the player comes closer, m", new AcceptableValueRange<float>(20f, 2000f));
             AiInvertSteering = cfg.Tool(TAI, "InvertSteering", false, "Flip the steering sign if the car turns away from the target instead of toward it");
-            foreach (var e in new ConfigEntryBase[] { AiThrottle, AiDriveByOffset, AiLeadTime, AiCommitSeconds, AiSteerRate, AiSteerAngle, AiMaxSteerAtSpeed, AiTurnSafeSpeed, AiRamDistance,
-                AiPassWidth, AiRunOutMeters, AiRunOutMaxSeconds, AiReverseSeconds, AiReverseThrottle, AiStuckSeconds, AiRecoverWindow, AiMaxRecovers, AiWaitSeconds, AiFeelerRange,
-                AiFeelerSpeedFactor, AiFrontOffset, AiMaxSlopeDeg, AiAvoidGain, AiIgnoreMassBelow, AiGiveUpDistance, AiInvertSteering })
-                MigrateBase(cfg, e, "AI", e.Definition.Key);
 
             MinPartsFill = cfg.Tool(TLoot, "MinPartsFill", 15f, "Lowest fill (% of capacity) of a spawned car's tank (gas/diesel), engine oil and radiator water", new AcceptableValueRange<float>(0f, 100f));
             MaxPartsFill = cfg.Tool(TLoot, "MaxPartsFill", 60f, "Highest fill (%) of tank, oil and water; each rolled separately, weighted toward two thirds of the way from Min to Max", new AcceptableValueRange<float>(0f, 100f));
-            Migrate(cfg, MinPartsFill, "Loot", "MinPartsFill"); Migrate(cfg, MaxPartsFill, "Loot", "MaxPartsFill");
 
             ConvoySpawnDistance = cfg.Tool(TSpawner, "SpawnDistance", 350f, "How far away a spawn appears (m): ahead of your car, up to 45 degrees left or right; behind you when on foot", new AcceptableValueRange<float>(50f, 1000f));
-            MigrateBase(cfg, ConvoySpawnDistance, "Convoy spawner", ConvoySpawnDistance.Definition.Key);
 
             CleanupMinutes = cfg.Tool(TCleanup, "RemoveAfterMinutes", 10f, "A raider car farther than MinDistance for this long is removed with its crew and cargo (0 = never by time)", new AcceptableValueRange<float>(0f, 600f));
             CleanupMaxCars = cfg.Tool(TCleanup, "MaxCars", 30, "With more raider cars than this in the world, the farthest ones beyond MinDistance are removed first (0 = no limit)", new AcceptableValueRange<int>(0, 200));
             CleanupDistance = cfg.Tool(TCleanup, "MinDistance", 800f, "Cars closer than this are never removed (m)", new AcceptableValueRange<float>(100f, 5000f));
-            foreach (var e in new ConfigEntryBase[] { CleanupMinutes, CleanupMaxCars, CleanupDistance }) MigrateBase(cfg, e, "Cleanup", e.Definition.Key);
         }
 
         // ---------------------------------------------------------------- F7 poses (always editable; the PoseConfiguration gate is gone)
@@ -421,9 +349,7 @@ namespace WildWasteland.Modules.Patrols
             DriverOffsetX = PoseFloat.Create(cfg, TPose, "OffsetX", 0f, "Where each occupant's hips go: offset from its seat anchor, right (m)", offsetRange);
             DriverOffsetY = PoseFloat.Create(cfg, TPose, "OffsetY", -0.3f, "Where each occupant's hips go: offset from its seat anchor, up (m)", offsetRange);
             DriverOffsetZ = PoseFloat.Create(cfg, TPose, "OffsetZ", 0f, "Where each occupant's hips go: offset from its seat anchor, forward (m)", offsetRange);
-            foreach (var p in new[] { DriverOffsetX, DriverOffsetY, DriverOffsetZ }) { MigrateBase(cfg, p.Entry, "Driver", p.Entry.Definition.Key); MigrateBase(cfg, p.Entry, "Pose", p.Entry.Definition.Key); }
             PoseEnabled = PoseBool.Create(cfg, TPose, "Enabled", true, "Seated pose for live occupants");
-            MigrateBase(cfg, PoseEnabled.Entry, "Pose", "Enabled");
             var bodyRange = new AcceptableValueRange<float>(0f, 130f);
             var closerRange = new AcceptableValueRange<float>(-60f, 60f);
             PoseThigh = PoseFloat.Create(cfg, TPose, "ThighAngle", 85f, "Thigh angle", bodyRange);
@@ -436,36 +362,13 @@ namespace WildWasteland.Modules.Patrols
             PoseBikeArm = PoseFloat.Create(cfg, TPose, "BikeArmAngle", 55f, "Motorcycle riders (Motorcycle, Halfbreed): arm angle down to the handlebar", bodyRange);
             PoseBikeArmSpread = PoseFloat.Create(cfg, TPose, "BikeArmSpread", 22f, "Motorcycle riders: each arm this far outward, hands on the handlebar grips", closerRange);
             PoseElbow = PoseFloat.Create(cfg, TPose, "ElbowAngle", 25f, "Fallback elbow angle", bodyRange);
-            foreach (var p in new[] { PoseThigh, PoseKnee, PoseArm, PoseLeftLegCloser, PoseRightLegCloser, PoseLeftArmCloser, PoseRightArmCloser, PoseBikeArm, PoseBikeArmSpread, PoseElbow })
-                MigrateBase(cfg, p.Entry, "Pose", p.Entry.Definition.Key);
 
             HumanArmPoses.Clear();
             foreach (var human in HumanTypes)
             {
                 var profile = ArmPoseProfile.Create(cfg, human, Array.IndexOf(PassengerGuard.RangedHumans, human) >= 0);
                 HumanArmPoses[human] = profile;
-                foreach (var e in profile.Entries()) MigrateBase(cfg, e, "Pose." + human, e.Definition.Key);
             }
-        }
-
-        // ---------------------------------------------------------------- migration helpers (old Apocapatrol cfg unless named)
-        static void Migrate<T>(ModuleConfig cfg, ConfigEntry<T> e, string section, string key) { cfg.Migrate(e, OldCfg, section, key); }
-        static void MigrateBase(ModuleConfig cfg, ConfigEntryBase e, string section, string key)
-        {
-            if (e == null) return;
-            bool firstRun = ReferenceEquals(e.ConfigFile, cfg.Tools) ? Legacy.FirstRunTools : Legacy.FirstRunMain;
-            if (!firstRun) return;
-            string raw = Legacy.Get(OldCfg, section, key);
-            if (raw == null) return;
-            try { e.SetSerializedValue(raw); Log.Info("[Patrols] migrated " + OldCfg + " [" + section + "] " + key + " = " + raw); }
-            catch (Exception x) { Log.Warn("[Patrols] could not migrate [" + section + "] " + key + ": " + x.Message); }
-        }
-        // keys whose default changed to None: the old value is carried over only when the player had changed it from the old default
-        static void MigrateChangedKey(ModuleConfig cfg, ConfigEntry<Key> e, string file, string section, string key, string oldDefault)
-        {
-            string raw = Legacy.Get(file, section, key);
-            if (raw == null || string.Equals(raw.Trim(), oldDefault, StringComparison.OrdinalIgnoreCase)) return;
-            cfg.Migrate(e, file, section, key);
         }
     }
 
@@ -539,14 +442,6 @@ namespace WildWasteland.Modules.Patrols
                 RightHand = BonePoseConfig.Create(config, section, "RightHand", d[15], d[16], d[17]),
                 Weapon = ranged ? WeaponPoseConfig.Create(config, section, d) : null
             };
-        }
-
-        internal IEnumerable<ConfigEntryBase> Entries()
-        {
-            foreach (var b in new[] { LeftArm, LeftElbow, LeftHand, RightArm, RightElbow, RightHand })
-            { yield return b.Vertical.Entry; yield return b.Horizontal.Entry; yield return b.Rotation.Entry; }
-            if (Weapon != null)
-                foreach (var p in new[] { Weapon.PositionX, Weapon.PositionY, Weapon.PositionZ, Weapon.RotationX, Weapon.RotationY, Weapon.RotationZ }) yield return p.Entry;
         }
     }
 
