@@ -61,11 +61,11 @@ namespace WildWasteland.Modules.Compatibility
             _attempted = true;
             try
             {
-                if (info.Metadata.Version != new Version(1, 7, 0)) Log.Warn("[EngineSimCompat] Engine Sim " + info.Metadata.Version + " differs from the tested 1.7.0; attempting compatibility with this version");
+                if (info.Metadata.Version != new Version(1, 7, 0)) Log.Warn(_owner, "Engine Sim " + info.Metadata.Version + " differs from the tested 1.7.0; attempting compatibility with this version");
                 var plugin = info.Instance.GetType(); var asm = plugin.Assembly;
                 var manager = asm.GetType("EngineSim.EngineManager", true);
                 var runner = AccessTools.Field(plugin, "_runner").GetValue(null) as GameObject;
-                if (runner == null) { Log.Warn("[EngineSimCompat] Engine Sim has no runner; check its native-library loading error. Standalone behavior retained."); return; }
+                if (runner == null) { Log.Warn(_owner, "Engine Sim has no runner; check its native-library loading error. Standalone behavior retained."); return; }
                 _manager = runner.GetComponent(manager);
                 if (_manager == null) throw new InvalidOperationException("Engine Sim manager missing");
                 var coupling = asm.GetType("EngineSim.DriveCoupling", true);
@@ -89,7 +89,7 @@ namespace WildWasteland.Modules.Compatibility
                 Scheduler.EveryFrame(_owner, "Engine Sim frame", Frame);
                 Scheduler.EveryFrame(_owner, "Engine Sim physics", PhysicsFrame, Phase.FixedUpdate);
                 ModApi.Provide<IVehicleIgnition>(_owner, _owner); _ready = true;
-                Log.Always("[EngineSimCompat] Engine Sim " + info.Metadata.Version + " scheduled; shared Core world discovery, player/crew ignition bridge ready; native simulation and audio threads retained");
+                Log.Main(_owner, "Engine Sim " + info.Metadata.Version + " scheduled; shared Core world discovery, player/crew ignition bridge ready; native simulation and audio threads retained");
             }
             catch
             {
@@ -124,7 +124,7 @@ namespace WildWasteland.Modules.Compatibility
                 _ready = false;
                 ClearStarts();
                 ModApi.Withdraw<IVehicleIgnition>(_owner);
-                Log.Warn("[EngineSimCompat] Manager callback failed; original Engine Sim callbacks restored");
+                Log.Warn(_owner, "Manager callback failed; original Engine Sim callbacks restored");
                 throw;
             }
             finally { _dispatch = false; }
