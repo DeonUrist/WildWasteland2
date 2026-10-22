@@ -1,58 +1,28 @@
 using System;
-using System.Collections.Generic;
 using System.Text;
-using BepInEx;
-using BepInEx.Bootstrap;
-using BepInEx.Configuration;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using WildWasteland.Core.UI;
 using CleanHud = WildWasteland.Modules.CleanHUD;
 
 namespace WildWasteland.Core
 {
-    // Loaded plugins keep runners/coroutines/patches: disable through the installer's pre-load operation.
-    internal static class ReplacementGuard
+    /// <summary>
+    /// HUD part of <see cref="ReplacementGuard"/> (Wave A split): the title-menu notice listing replaced standalone mods and
+    /// recommended mods, drawn through Ledger with the CleanHUD glyph font/accent theme. B10 takes this over.
+    /// </summary>
+    internal static partial class ReplacementGuard
     {
-        static readonly Dictionary<string, string> _status = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        static readonly List<string> _names = new List<string>();
-        static bool _title;
-        internal static bool MenuModalOpen;
-        static int _failed;
         static GUIContent _message;
         static readonly GUIContent Heading = new GUIContent("RESTART REQUIRED");
-        static readonly string[,] Recommended = {
-            { "apocalypter.worldamp", "Vista World Gen", "73" },
-            { "com.fived.apocalypter.fallout_nv_radio", "Apocalypter Radio", "74" },
-            { "local.apocalypter.chasecamera", "ApocaChaseCam", "44" },
-            { "apocalypter.dogcompanion", "Dog Companion", "55" },
-            { "com.denis.apocalypter.apocapocket", "Apocapocket", "7" }
-        };
-        static readonly List<int> _missing = new List<int>();
-        static bool _checked;
-        static ConfigEntry<bool> _showRecommended;
         static Vector2 _scroll;
         static readonly Action<Rect, string, float, Color, TextAnchor> NoticeText = CleanHud.GlyphFont.Draw, NoticeWrap = CleanHud.GlyphFont.DrawWrapped;
         static readonly Func<string, float, float, float> NoticeHeight = CleanHud.GlyphFont.WrappedHeight;
 
-        internal static void Prepare()
-        {
-            _showRecommended = TunedSettings.Bind(Plugin.Settings, "Debug", "Recommended mods", false, "Show optional mod recommendations at the title menu.");
-            foreach (var entry in ModuleHost.Entries)
-            {
-                var guids = entry.Module.ConflictsWith;
-                if (guids != null) foreach (string guid in guids) Disable(guid);
-            }
-            Disable("local.immersivemap");
-            Disable("com.denis.apocalypter.womenofwasteland");
-            Disable(HealthStacks.GUID);
-            Disable(ITweenGuard.GUID);
-            Scheduler.Interval(null, "Core.Replacement notice", .5f, Tick).RunNow();
-            Scheduler.Gui(null, "Core.Replacement notice", Draw, WantsNotice);
-            RebuildNotice();
-        }
-        internal static void LateConflict(string guid) { Disable(guid); RebuildNotice(); }
-        static void RebuildNotice()
+        /// <summary>Registers the title-notice GUI job (Prepare, after the replaced mods were queued).</summary>
+        static partial void InstallNotice() { Scheduler.Gui(null, "Core.Replacement notice", Draw, WantsNotice); }
+
+        /// <summary>Rebuilds the restart notice text from the replaced-mod list (Prepare and late conflicts).</summary>
+        static partial void RebuildNotice()
         {
             if (_names.Count == 0) return;
             var text = new StringBuilder();
@@ -64,40 +34,10 @@ namespace WildWasteland.Core
             _message = new GUIContent(text.ToString());
         }
 
-        static void Disable(string guid)
-        {
-            if (_status.ContainsKey(guid)) return;
-            PluginInfo info;
-            if (!Chainloader.PluginInfos.TryGetValue(guid, out info) || ReferenceEquals(info.Instance, null)) return;
-            string error;
-            bool queued = ApocasetterBridge.QueueDisable(info, out error);
-            _status[guid] = queued ? "disable queued in Apocasetter; restart the game for Wild Wasteland to take over"
-                : "automatic disable unavailable (" + error + "); disable the standalone mod and restart";
-            _names.Add(info.Metadata.Name + (queued ? "" : " (disable manually)"));
-            if (!queued) _failed++;
-            Log.Warn("[Core] Replacing " + info.Metadata.Name + ": " + _status[guid] + ". Configs are preserved.");
-        }
-
-        internal static string Status(string guid)
-        {
-            string status;
-            return _status.TryGetValue(guid, out status) ? status : "disable the standalone mod and restart";
-        }
-
-        internal static void SceneLoaded(Scene scene) { _title = scene.buildIndex == 0; }
-        static void Tick()
-        {
-            SceneLoaded(SceneManager.GetActiveScene());
-            if (_checked) return;
-            _checked = true;
-            for (int i = 0; i < Recommended.GetLength(0); i++)
-            {
-                PluginInfo info;
-                if (!Chainloader.PluginInfos.TryGetValue(Recommended[i, 0], out info) || ReferenceEquals(info.Instance, null)) _missing.Add(i);
-            }
-            Log.Always("[Core] Recommended mods not active: " + _missing.Count);
-        }
+        /// <summary>GUI predicate: title scene, something to show, no menu modal or loading screen.</summary>
         static bool WantsNotice() { return _title && (_message != null || _showRecommended.Value && _missing.Count > 0) && !MenuModalOpen && !LoadingProgress.ScreenVisible; }
+
+        /// <summary>Draws the notice panel (restart warning + recommended mods with Nexus links) at 1920x1080 scale.</summary>
         static void Draw()
         {
             if (LoadingProgress.ScreenVisible || MenuModalOpen || ToolWindow.IsOpen || EditorSession.Busy || ApocasetterBridge.InputBlocked) return;

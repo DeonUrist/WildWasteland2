@@ -28,13 +28,13 @@ namespace WildWasteland.Core
         internal static void Install()
         {
             SaveTerrain.Install();
-            _data = NativeAccess.Get<Dictionary<string, ES3Data>>(typeof(ES3File), "cache");
-            _dirty = NativeAccess.Get<bool>(typeof(ES3File), "dirty");
+            _data = Access.Get<Dictionary<string, ES3Data>>(typeof(ES3File), "cache");
+            _dirty = Access.Get<bool>(typeof(ES3File), "dirty");
             var tile = typeof(MapMagic.Terrains.TerrainTile); var pool = AccessTools.TypeByName("Den.Tools.ObjectsPool+Pool");
             if (pool == null) throw new MissingMemberException("Terrain object pool unavailable");
-            _instances = NativeAccess.Get<IList>(pool, "instances"); _prototype = NativeAccess.Get<object>(pool, "prototype");
+            _instances = Access.Get<IList>(pool, "instances"); _prototype = Access.Get<object>(pool, "prototype");
             var prototype = AccessTools.Field(pool, "prototype"); if (prototype == null) throw new MissingFieldException("Terrain pool prototype unavailable");
-            _prefab = NativeAccess.Get<GameObject>(prototype.FieldType, "prefab");
+            _prefab = Access.Get<GameObject>(prototype.FieldType, "prefab");
             foreach (string name in new[] { "Move", "Remove", "ResetTerrain" }) Require(tile, name, "BeforeTile");
             Require(pool, "ClampCount", "BeforeClamp");
             if (!Patches.Patch(null, AccessTools.Method(pool, "MoveItems"), prefix: AccessTools.Method(typeof(WorldHistory), "BeforePool"), postfix: AccessTools.Method(typeof(WorldHistory), "AfterPool"))) throw new InvalidOperationException("Terrain history placement hook failed");
