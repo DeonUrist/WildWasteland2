@@ -17,33 +17,45 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class TargetedEventsFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "PM2"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Targeted events"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Fast targeted events"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 2; } }
+        /// <summary>Whether this feature can compare optimized answers while leaving the native path active.</summary>
         public override bool SupportsShadow { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Events sent to an object no longer search every FSM in the game (stalls on POI entry, save and load)."; } }
 
         internal static bool On, Shadow;
         static bool _acquired;
         static string _foreign;   // another mod's Harmony id already patching a dispatch method (PM2 then stays out)
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             Instance = this;
             _foreign = ForeignPatcher();
             if (_foreign != null)
             {
-                WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM2: Fsm event dispatch is already patched by " + _foreign + " (e.g. Burner's Utilities FastEvents); PM2 not patched");
+                if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM2: Fsm event dispatch is already patched by " + _foreign + " (e.g. Burner's Utilities FastEvents); PM2 not patched");
                 return;
             }
             FsmRegistry.Acquire(Module); _acquired = true;
             if (!EnsurePatched(typeof(Patch))) throw new Exception("Fsm event dispatch patch failed");
             Shadow = mode == FeatureMode.Shadow; On = mode == FeatureMode.On;
         }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = Shadow = false; if (_acquired) { _acquired = false; FsmRegistry.Release(); } }
+        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { FsmRegistry.Subscribe(Module); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { FsmRegistry.Rebuild(); }
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             if (_foreign != null) l.Text("Not active: event dispatch is already patched by " + _foreign + ".");
@@ -132,7 +144,7 @@ namespace WildWasteland.Core.Optimization
         {
             if (_stoodDown || (!On && !Shadow)) return;
             _stoodDown = true;
-            WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM2: another mod already dispatches events sent to objects (e.g. Burner's Utilities FastEvents); PM2 leaves those to it");
+            if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM2: another mod already dispatches events sent to objects (e.g. Burner's Utilities FastEvents); PM2 leaves those to it");
         }
 
         [HarmonyPatch]
@@ -227,14 +239,22 @@ namespace WildWasteland.Core.Optimization
     /// <summary>PM4: BroadcastAll without the throw-away copy of FsmList (pooled snapshot; per-receiver EventData copies kept).</summary>
     public sealed class BroadcastFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "PM4"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Broadcast events"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Broadcast without list copies"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 4; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Game-wide events (Save/Load settings, day change, faction changes) reuse one buffer instead of copying every FSM."; } }
         static bool On;
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { if (!EnsurePatched(typeof(Patch))) throw new Exception("broadcast patch failed"); On = true; }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; }
 
         static readonly Stack<PlayMakerFSM[]> _pool = new Stack<PlayMakerFSM[]>();

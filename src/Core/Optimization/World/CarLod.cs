@@ -32,15 +32,23 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class CarLodFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT2"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Car LOD"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Parked car simulation LOD"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.World; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 1; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Cars nobody uses stop running their dashboard/pedal FSMs when far away and their wheel physics while frozen."; } }
 
         Knob _kinDist, _presDist;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _kinDist = NewKnob(cfg, "Kinematic distance (m)", "Parked cars freeze (and stop simulating wheels) beyond this distance from the player (vanilla 2000).", 150f, 250f, 500f, 2000f);
@@ -78,8 +86,10 @@ namespace WildWasteland.Core.Optimization
         static readonly List<PlayMakerFSM> _fsms = new List<PlayMakerFSM>(128);
         internal static long Paused, NwhSleeps, NwhWakes;
 
+        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { Hooks.EnterState.Postfix(Module, AfterEnterState); }
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("SetIsKinematic.OnEnter patch failed");
@@ -91,12 +101,14 @@ namespace WildWasteland.Core.Optimization
 
         void ReadKnobs() { _kin = Mathf.Max(50f, _kinDist.Value); float p = Mathf.Max(5f, _presDist.Value); _pres2 = p * p; }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged()
         {
             ReadKnobs();
             for (int i = 0; i < _cars.Count; i++) if (_cars[i].ThresholdSet) SetThreshold(_cars[i], true);
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             On = false;
@@ -106,7 +118,9 @@ namespace WildWasteland.Core.Optimization
             _cars.Clear(); _byGo.Clear(); _paused.Clear(); _nwhOffCount = 0;
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _cars.Clear(); _byGo.Clear(); _paused.Clear(); _nwhOffCount = 0; _lastDriven = null; _player = null; FsmPause.Prune(); }
+        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin() { for (int i = 0; i < _cars.Count; i++) { WakeNwh(_cars[i]); } }
 
         void Ready(PlayMakerFSM f)
@@ -296,6 +310,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             int pres = 0, nwh = 0; for (int i = 0; i < _cars.Count; i++) { if (_cars[i].PresPaused) pres++; if (_cars[i].NwhOff) nwh++; }

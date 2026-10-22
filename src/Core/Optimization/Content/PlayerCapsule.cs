@@ -16,19 +16,28 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class PlayerCapsuleFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT10"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Player capsule"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Player collider height writes"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 12; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "The player's collider height is written only when it changes (crouch/stand), not twice every frame (exact)."; } }
 
         internal static bool On;
         readonly UndoLog _undo = new UndoLog();
         internal static long Writes, Skips;
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { On = true; FsmEdits.Watch(this, "Movement", "Player", Ready); }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; FsmEdits.Unwatch(this); _undo.RevertAll(); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _undo.Prune(); }
 
         void Ready(PlayMakerFSM f)
@@ -79,6 +88,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Height writes / skipped", Writes + " / " + Skips); }
     }
 }

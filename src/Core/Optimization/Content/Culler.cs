@@ -36,12 +36,19 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class CullerFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT1"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Culler"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Sliced item culling"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 1; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "The game's 5/10-second item culling and cleanup sweeps run a few entries per frame instead of the whole list in one frame (same rules)."; } }
 
         internal static bool On;
@@ -67,6 +74,7 @@ namespace WildWasteland.Core.Optimization
         internal static long Activated, Deactivated, Destroyed, Compacted, Passes, Skipped1000;
         static int _lastPassFrames, _passStartFrame;
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             _self = this; On = true;
@@ -79,6 +87,7 @@ namespace WildWasteland.Core.Optimization
             _job = Scheduler.Sliced(Module, "Core.Optimization.Culler", 1000, Step);
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             On = false;
@@ -89,6 +98,7 @@ namespace WildWasteland.Core.Optimization
             _running = false; _queue.Clear();
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded()
         {
             _undo.Prune();
@@ -96,6 +106,7 @@ namespace WildWasteland.Core.Optimization
             for (int i = 0; i < 4; i++) _queued[i] = false;
         }
 
+        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin() { _running = false; _queue.Clear(); for (int i = 0; i < 4; i++) _queued[i] = false; }
 
         // ---- neutralising the vanilla sweeps ----
@@ -320,6 +331,7 @@ namespace WildWasteland.Core.Optimization
             if (n < count) { l.RemoveRange(n, count - n); Compacted += count - n; }
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             if (_items != null) l.Value("Items / cars / sandstorms", _items.arrayList.Count + " / " + _cars.arrayList.Count + " / " + _sand.arrayList.Count);

@@ -17,15 +17,23 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class SunShadows : Feature, IScanClient
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "EN3"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Sun shadows"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Sun shadow distance, cascades, resolution, layer culling"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 4; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Shorter, cheaper sun shadows; small items, food, weapons and NPCs stop casting sun shadows a few dozen metres away."; } }
 
         Knob _dist, _casc, _res, _skin, _layerScale;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _dist = NewKnob(cfg, "Distance", "Sun shadow distance cap (m).", 80, 120, 160, 200);
@@ -43,6 +51,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Receives directional lights from the shared startup/incremental scan.</summary>
         public ScanTypes Types { get { return ScanTypes.Lights; } }
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             ApplyQuality();
@@ -51,6 +60,7 @@ namespace WildWasteland.Core.Optimization
             TryCurrentSun();
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             _active = false;
@@ -62,8 +72,11 @@ namespace WildWasteland.Core.Optimization
             RestoreSun();
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged() { ApplyQuality(); RestoreSun(); TryCurrentSun(); RenderScan.RequestFull(); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { RestoreSun(); RenderScan.RequestFull(); }
+        /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { TryCurrentSun(); RenderScan.RequestFull(); }
 
         void ApplyQuality()
@@ -133,6 +146,7 @@ namespace WildWasteland.Core.Optimization
             _sunSet = false; _sun = null; _sunOrig = null;
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Shadow distance", QualityGuard.Describe(QualityGuard.Q.ShadowDistance));

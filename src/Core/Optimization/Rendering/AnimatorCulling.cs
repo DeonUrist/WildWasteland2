@@ -16,15 +16,23 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class AnimatorCulling : Feature, IScanClient
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "RC6"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Animator culling"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Off-screen NPC animation"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.World; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 20; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "NPC skeletons stop updating while off-screen. Native IK runs unchanged at every distance."; } }
 
         Knob _cullAnim;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _cullAnim = NewKnob(cfg, "Cull NPC animators", "1 = AlwaysAnimate NPC animators become CullUpdateTransforms (prefabs).", 1, 1, 1, 0);
@@ -37,22 +45,26 @@ namespace WildWasteland.Core.Optimization
         readonly HashSet<int> _npcRoots = new HashSet<int>(), _otherRoots = new HashSet<int>();
         public ScanTypes Types { get { return ScanTypes.Animators; } }
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (_cullAnim.Value > 0.5f) RenderScan.Register(this);
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             RenderScan.Unregister(this);
             RestoreAnimators();
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged()
         {
             if (_cullAnim.Value > 0.5f) RenderScan.Register(this); else { RenderScan.Unregister(this); RestoreAnimators(); }
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _npcRoots.Clear(); _otherRoots.Clear(); RenderScan.RequestFull(); }
 
         void RestoreAnimators()
@@ -96,12 +108,17 @@ namespace WildWasteland.Core.Optimization
             return npc;
         }
 
+        /// <summary>This scan client does not modify lights.</summary>
         public void OnLight(Light l, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify mesh renderers.</summary>
         public void OnRenderer(MeshRenderer r, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify particle systems.</summary>
         public void OnParticles(ParticleSystem p, ref ScanCtx c) { }
+        /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
         public void OnPassDone() { }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("NPC animators culled (prefabs)", _assets.Count.ToString());

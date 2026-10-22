@@ -21,16 +21,23 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class FastActionLoadFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "FS4"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Fast action loading"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Faster FSM loading on spawn"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 14; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Spawning objects with FSMs (vehicles, items, camps) creates their actions with compiled constructors and field setters instead of reflection. Same values."; } }
 
         internal static bool On;
         public static long Created, FieldsSet, Fallbacks;
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             // 0.1.26c transpiled ActionData.LoadActionField in place, which broke field loading in game ("ActionData: Missing
@@ -40,15 +47,18 @@ namespace WildWasteland.Core.Optimization
             StartBatch();
             On = true;
         }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; }
         static bool _logged;
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded()
         {
             if (_logged || _batchState < 2) return;
             _logged = true;
-            if (_batchState == 2) WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
+            if (_batchState == 2) if (Log.L1) Log.Main(OptimizationRuntime.Instance, "FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
             else WildWasteland.Core.Log.Warn(OptimizationRuntime.Instance, "FS4: batch compile failed, reflection stays (" + _batchError + ")");
         }
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Compiled accessors", _batchState == 2 ? _batchCtors + " constructors, " + _batchSetters + " field setters (" + _batchMs + " ms, background)" : _batchState == 1 ? "compiling..." : _batchState == 3 ? "failed: " + _batchError : "-");

@@ -45,12 +45,19 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class FsmSleepFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "FS1"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "FSM sleep"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Idle FSMs skip their update"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 11; } }
+        /// <summary>Whether this feature can compare optimized answers while leaving the native path active.</summary>
         public override bool SupportsShadow { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "FSMs waiting for an event (doors, items, switches, parked cars) stop running their per-frame update until something happens to them."; } }
 
         internal static bool On, Shadow;
@@ -67,6 +74,7 @@ namespace WildWasteland.Core.Optimization
         static readonly Dictionary<Type, bool> _updates = new Dictionary<Type, bool>();
         static Type _lastType; static bool _lastUpdates;
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("FSM sleep patches failed");
@@ -74,6 +82,7 @@ namespace WildWasteland.Core.Optimization
             Shadow = mode == FeatureMode.Shadow; On = mode == FeatureMode.On;
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             WakeAll();
@@ -81,6 +90,7 @@ namespace WildWasteland.Core.Optimization
             _snapFsm = null;
         }
 
+        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks()
         {
             Hooks.ProcessEvent.Prefix(Module, BeforeProcessEvent);
@@ -105,9 +115,12 @@ namespace WildWasteland.Core.Optimization
             if (copied && fsm != null && !fsm.ManualUpdate) ClonesCleared++;
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { WakeAll(); }
+        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin() { WakeAll(); }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value(IsShadow ? "Would be asleep now" : "Asleep now", _asleep.Count + " of " + PlayMakerFSM.FsmList.Count + " enabled FSMs");
@@ -261,13 +274,20 @@ namespace WildWasteland.Core.Optimization
             // ---- event / state paths ----
             [HarmonyPatch(typeof(Fsm), "Event", typeof(FsmEventTarget), typeof(FsmEvent)), HarmonyPrefix]
             static void EventPre(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "SwitchState"), HarmonyPrefix] static void SwitchStatePre(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "Start"), HarmonyPrefix] static void StartPre(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "Stop"), HarmonyPrefix] static void StopPre(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "Init"), HarmonyPrefix] static void InitPre(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "Reinitialize"), HarmonyPrefix] static void ReinitPre(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "Clear"), HarmonyPrefix] static void ClearPre(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnDestroy"), HarmonyPrefix] static void OnDestroyPre(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "SwitchState"), HarmonyPrefix]
+            static void SwitchStatePre(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "Start"), HarmonyPrefix]
+            static void StartPre(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "Stop"), HarmonyPrefix]
+            static void StopPre(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "Init"), HarmonyPrefix]
+            static void InitPre(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "Reinitialize"), HarmonyPrefix]
+            static void ReinitPre(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "Clear"), HarmonyPrefix]
+            static void ClearPre(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnDestroy"), HarmonyPrefix]
+            static void OnDestroyPre(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "DelayedEvent", typeof(FsmEvent), typeof(float)), HarmonyPrefix]
             static void Delayed1Pre(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "DelayedEvent", typeof(FsmEventTarget), typeof(FsmEvent), typeof(float)), HarmonyPrefix]
@@ -276,19 +296,32 @@ namespace WildWasteland.Core.Optimization
             static void FinishPre(FsmStateAction __instance) { if (Any) { var f = __instance.Fsm; if (f != null) Wake(f); } }
 
             // ---- physics / animator / GUI callbacks ----
-            [HarmonyPatch(typeof(Fsm), "OnTriggerEnter2D"), HarmonyPrefix] static void P7(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnTriggerStay2D"), HarmonyPrefix] static void P8(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnTriggerExit2D"), HarmonyPrefix] static void P9(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnCollisionEnter2D"), HarmonyPrefix] static void P10(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnCollisionStay2D"), HarmonyPrefix] static void P11(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnCollisionExit2D"), HarmonyPrefix] static void P12(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnParticleCollision"), HarmonyPrefix] static void P13(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnControllerColliderHit"), HarmonyPrefix] static void P14(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnJointBreak"), HarmonyPrefix] static void P15(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnJointBreak2D"), HarmonyPrefix] static void P16(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnAnimatorMove"), HarmonyPrefix] static void P17(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnAnimatorIK"), HarmonyPrefix] static void P18(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnGUI"), HarmonyPrefix] static void P19(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnTriggerEnter2D"), HarmonyPrefix]
+            static void P7(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnTriggerStay2D"), HarmonyPrefix]
+            static void P8(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnTriggerExit2D"), HarmonyPrefix]
+            static void P9(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnCollisionEnter2D"), HarmonyPrefix]
+            static void P10(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnCollisionStay2D"), HarmonyPrefix]
+            static void P11(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnCollisionExit2D"), HarmonyPrefix]
+            static void P12(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnParticleCollision"), HarmonyPrefix]
+            static void P13(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnControllerColliderHit"), HarmonyPrefix]
+            static void P14(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnJointBreak"), HarmonyPrefix]
+            static void P15(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnJointBreak2D"), HarmonyPrefix]
+            static void P16(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnAnimatorMove"), HarmonyPrefix]
+            static void P17(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnAnimatorIK"), HarmonyPrefix]
+            static void P18(Fsm __instance) { W(__instance); }
+            [HarmonyPatch(typeof(Fsm), "OnGUI"), HarmonyPrefix]
+            static void P19(Fsm __instance) { W(__instance); }
 
             // ---- serialized flag ----
             [HarmonyPatch(typeof(PlayMakerFSM), "OnBeforeSerialize"), HarmonyPrefix]
