@@ -1,18 +1,34 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Quests
 {
-    /// <summary>Quests item query memo, Loot part (Wave A, from Quests/QueryCache.cs): caches "does this item match the token" per FSM for 30 s.</summary>
+    /// <summary>Item query memo (Loot, ex Quests/QueryCache.cs): caches "does this item match the token" per ItemName FSM for 30 s
+    /// (invalidated when the object, its name or its display name changes; the whole memo is dropped after 20000 entries).
+    /// Part of the Quests Game helper (REFACTOR-REQUEST B15-4). Namespace kept for Wave C.</summary>
     internal static partial class Game
     {
-        sealed class MatchMemo { internal GameObject Go; internal string Name, Display; internal bool Result; internal float Until; }
+        /// <summary>One memoized token match.</summary>
+        sealed class MatchMemo
+        {
+            /// <summary>Matched object (identity check).</summary>
+            internal GameObject Go;
+            /// <summary>Object name and display name at match time.</summary>
+            internal string Name, Display;
+            /// <summary>Match result.</summary>
+            internal bool Result;
+            /// <summary>Unscaled time the entry expires.</summary>
+            internal float Until;
+        }
         static readonly Dictionary<string, Dictionary<int, MatchMemo>> MatchesByToken = new Dictionary<string, Dictionary<int, MatchMemo>>(StringComparer.Ordinal);
         static int _matches;
+
+        /// <summary>Memoized <see cref="MatchUncached"/>; <paramref name="display"/> is always the item's current display name.</summary>
         static bool Matches(GameObject go, PlayMakerFSM itemNameFsm, string token, out string display)
         {
-            display = FindString(itemNameFsm, "ItemName");
+            display = ItemText(itemNameFsm, "ItemName");
             if (go == null || itemNameFsm == null || token == null) return false;
             if (_matches > 20000) { MatchesByToken.Clear(); _matches = 0; }
             Dictionary<int, MatchMemo> entries;
