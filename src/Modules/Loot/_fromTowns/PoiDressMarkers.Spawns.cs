@@ -11,25 +11,14 @@ using Object = UnityEngine.Object;
 
 namespace WildWasteland.Modules.Towns
 {
-    internal sealed class PoiDressMarkers
+    /// <summary>
+    /// Per-world spawn groups of POI layout markers: Hide/Exit points, Items/CarParts/Monsters ItemSpawner clones with one-shot
+    /// progress saved under ES3 key WildWasteland.Towns.PoiDressMarkers.v1 (WWPM1; identity formula unchanged).
+    /// Wave A (A6): partial split of Towns/PoiDressMarkers.cs (Loot part, B15). Still inline for Wave B: Monsters pools (NPCAI, B07)
+    /// and Hide/Exit semantics (NPCAI) in Build; the ES3 cache + AfterSave readback pattern (Core SaveBus helper, B01).
+    /// </summary>
+    internal sealed partial class PoiDressMarkers
     {
-        internal static readonly string[] Kinds = { "Hide", "Exit", "Items", "CarParts", "Monsters" };
-        internal static readonly string[] Categories = { "Markers", "Structures & walls", "Furniture & storage", "Bones & trophies", "Vegetation & rocks", "Vehicle bodies", "Car parts", "Weapons & equipment", "Items & supplies", "Other scenery" };
-        internal static bool IsKind(string kind) { return Array.IndexOf(Kinds, kind) >= 0; }
-        internal static string Category(GameObject root, string label)
-        {
-            string name = label.ToLowerInvariant();
-            if (PoiSpawnCatalog.Contains(name, "skull", "bone", "spike", "corpse", "carcass", "skeleton")) return "Bones & trophies";
-            if (PoiSpawnCatalog.Contains(name, "toilet", "chair", "table", "bed", "shelf", "cabinet", "barrel", "crate", "container", "locker", "sink")) return "Furniture & storage";
-            if (PoiSpawnCatalog.Contains(name, "tree", "bush", "grass", "rock", "stone", "cactus", "stump")) return "Vegetation & rocks";
-            if (PoiSpawnCatalog.Contains(name, "bumper", "radiator", "exhaust", "engine", "wheel", "gearlever", "steering", "hood_")) return "Car parts";
-            if (PoiSpawnCatalog.Contains(name, "fence", "wall", "building", "stairs", "floor", "roof", "ladder", "tower")) return "Structures & walls";
-            if (root.GetComponent<NWH.VehiclePhysics2.VehicleController>() != null || PoiSpawnCatalog.Contains(name, "car wreck", "car_wreck")) return "Vehicle bodies";
-            string category = PoiSpawnCatalog.ItemCategory(root);
-            if (category != "Items & supplies") return category;
-            return root.GetComponent<ES3Internal.ES3Prefab>() != null ? category : "Other scenery";
-        }
-
         private const string SaveKey = "WildWasteland.Towns.PoiDressMarkers.v1";
         private sealed class Live { internal string Key; internal PlayMakerFSM Fsm; }
         private readonly Dictionary<string, SpawnerState> _saved = new Dictionary<string, SpawnerState>(StringComparer.Ordinal);
