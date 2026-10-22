@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.Developer
         private bool Rotation {get{return _target==7||_target/2==1||_target/2==0&&_rotate;}}
         private void Publish(WheelGripDraft d){_api.SetValues(d.Key,d.Values,_pose,_target&1);_dirty=true;}
         private void Copy(WheelGripDraft d){_api.Save();_copy=(float[])d.Values.Clone();_copyName=d.Name;}
-        private void Paste(WheelGripDraft d){if(_copy==null)return;Array.Copy(_copy,d.Values,Math.Min(_copy.Length,d.Values.Length));if(d.Handlebars&&_copy.Length<84)for(int pose=1;pose<3;pose++)Array.Copy(d.Values,12,d.Values,12+pose*24,24);if(d.Handlebars&&_copy.Length<=84)Array.Clear(d.Values,84,12);Publish(d);_api.Save();_dirty=false;}
+        private void Paste(WheelGripDraft d){if(_copy==null)return;Array.Copy(_copy,d.Values,Math.Min(_copy.Length,d.Values.Length));if(d.Handlebars&&_copy.Length<84)for(int pose=1;pose<3;pose++)Array.Copy(d.Values,12,d.Values,12+pose*24,24);if(d.Handlebars&&_copy.Length<=84)Array.Clear(d.Values,84,12);Publish(d);_api.ResetMotion();_api.Save();_dirty=false;}
         private void Input()
         {
             if(_api==null)return;var d=_api.Capture();Context(d);if(!d.Available){if(_editing)End();return;}

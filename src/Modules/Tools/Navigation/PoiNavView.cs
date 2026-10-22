@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.Tools
         {
             try
             {
-                if (cam == null || cam != GameRefs.MainCamera || !Material()) return;
+                if (NavigationTools.Source == null || cam == null || cam != GameRefs.MainCamera || !Material()) return;
                 Vector3 eye = cam.transform.position;
                 _mat.SetPass(0);
                 GL.PushMatrix(); GL.MultMatrix(Matrix4x4.identity);
