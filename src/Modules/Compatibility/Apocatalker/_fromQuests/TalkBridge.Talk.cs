@@ -9,18 +9,15 @@ using UnityEngine.UI;
 
 namespace WildWasteland.Modules.Quests
 {
-    // One extra choice in Talk's list of things to say.
-    internal class TalkBtn
-    {
-        public string Key;          // identifies it (the list is rebuilt only when the keys or texts change)
-        public string Text;
-        public Action Click;
-    }
-
     // Talks to Apocalypter Talk ("Apocatalker") through reflection: its dialogue window is made of Unity UI objects and
     // all of its members are private / internal. Quest choices are copies of Talk's own choice buttons, put just above
     // its "Goodbye." button (the same way the Rumors mod adds its button).
-    internal partial class TalkBridge : IQuestConversation
+    /// <summary>
+    /// Apocatalker (Apocalypter Talk) bridge part of <see cref="TalkBridge"/> (Wave A, from Quests/TalkHook.cs; B17 Compatibility/Apocatalker):
+    /// reflection access to Talk's NPC/UI fields, copied choice buttons above "Goodbye.", Talk's window skin, and the choice sync
+    /// used by both the Talk window and the native conversation.
+    /// </summary>
+    internal partial class TalkBridge
     {
         const BindingFlags Inst = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
         const BindingFlags Stat = BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
@@ -182,11 +179,8 @@ namespace WildWasteland.Modules.Quests
                 if (string.IsNullOrEmpty(dir)) dir = System.IO.Path.GetDirectoryName(TalkType.Assembly.Location);
                 string file = System.IO.Path.Combine(System.IO.Path.Combine(dir, "theme"), "window.png");
                 if (!System.IO.File.Exists(file)) return;
-                var t = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!t.LoadImage(System.IO.File.ReadAllBytes(file))) { UnityEngine.Object.Destroy(t); return; }
-                t.filterMode = FilterMode.Bilinear;
-                t.wrapMode = TextureWrapMode.Clamp;
-                t.hideFlags = HideFlags.HideAndDontSave;
+                var t = Textures.FromBytes(System.IO.File.ReadAllBytes(file), new TextureSettings { Readable = true, Wrap = TextureWrapMode.Clamp, Filter = FilterMode.Bilinear, Flags = HideFlags.HideAndDontSave });
+                if (t == null) return;
                 skinTex = t;
                 skinBorder = ParseBorder(TalkConfigString("windowBorderCfg"), 16);
             }
@@ -304,6 +298,7 @@ namespace WildWasteland.Modules.Quests
 
     // Optional link to Talk's public API (flags and the "action = ..." events), through reflection so this mod does not
     // need to be built against a particular version of Talk.
+    /// <summary>Optional link to Talk's public TalkApi (flags, "action = ..." events) by reflection (Wave A, from Quests/TalkHook.cs; B17).</summary>
     internal static class TalkApiLink
     {
         static Type api;

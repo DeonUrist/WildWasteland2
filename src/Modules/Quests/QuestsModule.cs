@@ -10,7 +10,12 @@ using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.Quests
 {
-    public sealed class QuestsModule : ModuleBase
+    /// <summary>
+    /// Quests module entry (Wave A: stays the registered entry; B18). Per-target lifecycle parts live in partial files:
+    /// HUD (HUD/_fromQuests/QuestsModule.Hud.cs: the IMGUI windows job) and NPCAI (NPCAI/Behaviour/_fromQuests/QuestsModule.Npcai.cs:
+    /// the follower body driver ticks).
+    /// </summary>
+    public sealed partial class QuestsModule : ModuleBase
     {
         Plugin _engine;
         readonly HireSettings _hire = new HireSettings(); readonly VoiceSettings _voice = new VoiceSettings();
@@ -36,7 +41,7 @@ namespace WildWasteland.Modules.Quests
             Scheduler.Interval(this, "Quests.Reputation", .5f, Reputation);
             Scheduler.Interval(this, "Quests.Interaction", .2f, Interaction);
             Scheduler.Sliced(this, "Quests.World cache", 500, WorldStep);
-            Scheduler.Gui(this, "Quests.Windows", Draw, WantsGui);
+            InitHud();
         }
         void Frame()
         {
@@ -48,7 +53,7 @@ namespace WildWasteland.Modules.Quests
             }
             if (Plugin.I != _engine) return;
             if (_engine.Ready && !QuestWorld.Ready) return;
-            _engine.Frame(); _engine.InteractionFrame(); QuestFollower.Tick();
+            _engine.Frame(); _engine.InteractionFrame(); FrameNpcai();
         }
         void StartEngine()
         {
@@ -56,7 +61,7 @@ namespace WildWasteland.Modules.Quests
             SaveBus.StateChanged += StateChanged; Services.CrewBailedOut += CrewHistory.Bailed;
             QuestWorld.Begin(); if (SaveBus.State != null) StateChanged(null, SaveBus.State);
         }
-        void Late() { if (Plugin.I == _engine) { _engine.LateFrame(); QuestFollower.Late(); } }
+        void Late() { if (Plugin.I == _engine) { _engine.LateFrame(); LateNpcai(); } }
         bool Live { get { return Plugin.I == _engine && _engine.Ready && QuestWorld.Ready && GameRefs.InGame; } }
         void Progress() { if (Live) _engine.Tick(); }
         void Camps() { if (Live && GameRefs.Player != null) Takeover.NeutralizeTick(GameRefs.Player.transform.position); }
@@ -65,8 +70,6 @@ namespace WildWasteland.Modules.Quests
         void Reputation() { if (Live) _engine.ReputationTick(); }
         void Interaction() { if (Live) _engine.FindInteraction(); }
         bool WorldStep() { return Plugin.I == _engine && QuestWorld.Step(); }
-        void Draw() { if (Plugin.I == _engine) { _engine.Draw(); _engine.DrawConversation(); } }
-        bool WantsGui() { return Plugin.I == _engine && _engine.WantsGui; }
         void StateChanged(string previous, string state) { _engine.StateChanged(previous, state); }
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         { if (Plugin.I == _engine) { _engine.SceneReset(); QuestWorld.Begin(); } }
@@ -75,8 +78,16 @@ namespace WildWasteland.Modules.Quests
             SaveBus.StateChanged -= StateChanged; Services.CrewBailedOut -= CrewHistory.Bailed;
             if (ReferenceEquals(Services.Quests, _engine)) Services.Quests = null;
             if (Plugin.I == _engine) _engine.Stop();
-            QuestWorld.Clear(); MapLink.Reset(); QuestFollower.Release();
+            QuestWorld.Clear(); MapLink.Reset(); ShutdownNpcai();
         }
+        /// <summary>HUD part: registers the IMGUI windows job (tracker, journal, toasts, fallback dialogue).</summary>
+        partial void InitHud();
+        /// <summary>NPCAI part: per-frame follower body driver tick (after the engine frame).</summary>
+        partial void FrameNpcai();
+        /// <summary>NPCAI part: late follower pose (after the seat lock).</summary>
+        partial void LateNpcai();
+        /// <summary>NPCAI part: releases the follower body driver.</summary>
+        partial void ShutdownNpcai();
         public override IEnumerable<ToolPage> ToolPages()
         {
             return new ToolPage[] { new ConfigPage(this, ToolGroups.General, "Quests & hiring", Config.Tools, "Quests / *")

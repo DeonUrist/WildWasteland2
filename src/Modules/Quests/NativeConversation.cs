@@ -9,7 +9,11 @@ using Patches = WildWasteland.Core.Patches;
 
 namespace WildWasteland.Modules.Quests
 {
-    internal partial class TalkBridge
+    /// <summary>
+    /// The quest conversation (<see cref="IQuestConversation"/>), Quests part: the native talk session (begin, lines, choices, close)
+    /// used when Apocatalker is not installed. Wave A split: Talk patches/install -> Compatibility/Apocatalker/_fromQuests.
+    /// </summary>
+    internal partial class TalkBridge : IQuestConversation
     {
         internal bool NativeOpen;
         internal int Generation;
@@ -28,21 +32,6 @@ namespace WildWasteland.Modules.Quests
         public IList<string> Chat { get { return _chat; } }
         public IList<QuestChoice> Choices { get { return _choices; } }
 
-        internal void InstallOptional(QuestsModule owner)
-        {
-            Prompt = ""; ExternalAvailable = false;
-            BepInEx.PluginInfo info;
-            if (!Chainloader.PluginInfos.TryGetValue(Plugin.TalkGuid, out info) || ReferenceEquals(info.Instance, null)) return;
-            if (!Init(info.Instance.GetType())) { Plugin.Warn("[Quests] Talk adapter unavailable; using native quest interaction."); return; }
-            Bind(info.Instance); ExternalAvailable = true;
-            if (!Patches.Patch(owner, AccessTools.Method(TalkType, "Open"), postfix: AccessTools.Method(typeof(TalkBridge), "Opened"))
-                || !Patches.Patch(owner, AccessTools.Method(TalkType, "Close"), postfix: AccessTools.Method(typeof(TalkBridge), "Closed")))
-                throw new InvalidOperationException("Optional Talk conversation hooks unavailable.");
-            TalkApiLink.Init(info.Instance.GetType().Assembly, Plugin.I, "OnTalkAction");
-            Core.Log.Always("[Quests] Optional Apocatalker content adapter ready.");
-        }
-        static void Opened(object __instance) { if (Plugin.I != null) Plugin.I.ExternalOpened(__instance); }
-        static void Closed() { if (Plugin.I != null) Plugin.I.ExternalClosed(); }
         internal bool Begin(Transform npc)
         {
             if (NativeOpen || npc == null || !Session.Acquire()) return false;
@@ -70,18 +59,12 @@ namespace WildWasteland.Modules.Quests
             Generation++; NativeOpen = false; _nativeNpc = null; _pending = false; Prompt = "";
             _buttons.Clear(); _choices.Clear(); Voice.Stop(); Session.Close(); Revision++;
         }
-        internal void Uninstall()
-        {
-            Close(); ClearButtons(); Session.Close(true); TalkApiLink.Shutdown(); ExternalAvailable = false;
-            if (skinTex != null && !skinFromPanel) UnityEngine.Object.Destroy(skinTex);
-            skinTex = null; Instance = null; TalkType = null;
-        }
     }
 
+    /// <summary>Quests engine, interaction part: the aim-based "talk to" finder, opening the native conversation and filtering crew buttons.</summary>
     internal sealed partial class Plugin
     {
         Transform _interaction;
-        Vector2 _fallbackChat, _fallbackChoices;
         readonly RaycastHit[] _interactionHits = new RaycastHit[32];
         public void ExternalOpened(object host) { if (ready && bridge.ExternalAvailable && bridge.TalkingNow) OnTalkOpen(host); }
         public void ExternalClosed() { if (bridge.ExternalAvailable) { OnTalkClose(); bridge.Generation++; Voice.Stop(); deferred.Clear(); } }
@@ -140,29 +123,13 @@ namespace WildWasteland.Modules.Quests
                 if ((crew && (key == "work" || key == "accept")) || (seated && key == "hire")) wantButtons.RemoveAt(i);
             }
         }
-        internal void DrawConversation()
-        {
-            if (!ready) return;
-            if (!bridge.NativeOpen)
-            {
-                if (bridge.Prompt.Length > 0 && !DialogueStyled && GameRefs.InGame)
-                    GUI.Label(new Rect(Screen.width * .5f - 240, Screen.height * .65f, 480, 40), bridge.Prompt);
-                return;
-            }
-            if (DialogueStyled) return;
-            float scale = Mathf.Min(Screen.width / 1280f, Screen.height / 900f); var matrix = GUI.matrix;
-            GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1));
-            try
-            {
-                var rect = new Rect(Screen.width / scale * .5f - 450, 45, 900, 800); GUI.Box(rect, bridge.Name);
-                GUILayout.BeginArea(new Rect(rect.x + 25, rect.y + 45, 850, 710));
-                _fallbackChat = GUILayout.BeginScrollView(_fallbackChat, GUILayout.Height(380));
-                foreach (string line in bridge.Chat) GUILayout.Label(line); GUILayout.EndScrollView();
-                _fallbackChoices = GUILayout.BeginScrollView(_fallbackChoices, GUILayout.Height(240));
-                foreach (var choice in bridge.Choices) if (GUILayout.Button(choice.Text)) bridge.Choose(choice.Key);
-                GUILayout.EndScrollView(); if (GUILayout.Button("Close")) bridge.Close(); GUILayout.EndArea();
-            }
-            finally { GUI.matrix = matrix; }
-        }
+    }
+
+    // One extra choice in Talk's list of things to say.
+    internal class TalkBtn
+    {
+        public string Key;          // identifies it (the list is rebuilt only when the keys or texts change)
+        public string Text;
+        public Action Click;
     }
 }
