@@ -95,15 +95,15 @@ namespace WildWasteland.Modules.POI
                     bool merchant = prefab != null && (prefab.name == "Camp_10" || camp && HasMerchant(prefab));
                     bool custom = prefab != null && (TownPrefabCatalog.Prefabs.ContainsKey(prefab.name) || prefab.name == "TownsGasStation");
                     if (prefab == null || (!custom && !merchant && !camp && !prefab.name.StartsWith("Building_", StringComparison.Ordinal) && !(wreck && (prefab.name == "Wreck_8" || prefab.name == "Wreck_7"))) || Buildings.ContainsKey(prefab.name)) continue;
-                    if (!merchant && !wreck && !camp && allowed.Count > 0 && !allowed.Contains(prefab.name)) continue;
-                    if (camp && BossCamp(prefab)) { Log.Always("[Towns] camp " + prefab.name + " left out of towns: boss camp"); continue; }
+                    if (!custom && !merchant && !wreck && !camp && allowed.Count > 0 && !allowed.Contains(prefab.name)) continue;
+                    if (camp && BossCamp(prefab)) { Log.Main(null, "[POI] camp " + prefab.name + " left out of towns: boss camp"); continue; }
                     var spec = Measure(prefab); if (spec == null) continue;
                     spec.Wreck = wreck; spec.Crane = prefab.name == "Building_4"; spec.Merchant = merchant; spec.Camp = camp;
                     if (merchant) TownLot.Merchants.Add(prefab.name);
                     foreach (var child in prefab.GetComponentsInChildren<Transform>(true)) if (child.name.IndexOf("crane_big", StringComparison.OrdinalIgnoreCase) >= 0) spec.Crane = true;
                     spec.Bake = TownBakeData.Load(spec, margin, cell);
                     if (spec.Bake == null || !spec.Bake.FindEntry(spec))
-                    { Log.Warn("[Towns] template excluded: " + prefab.name + "; " + (spec.Bake == null ? "no matching bake (" + TownBakeData.LastMiss + ")" : "no measured outward entrance in " + spec.Bake.Source) + ". Bake this prefab with current NPC settings first."); continue; }
+                    { Log.Warn("[POI] template excluded: " + prefab.name + "; " + (spec.Bake == null ? "no matching bake (" + TownBakeData.LastMiss + ")" : "no measured outward entrance in " + spec.Bake.Source) + ". Bake this prefab with current NPC settings first."); continue; }
                     var paths = new List<string>();
                     var budgets = new List<TownPopulation.NativeBudget>();
                     var markers = new List<string>();
@@ -113,21 +113,21 @@ namespace WildWasteland.Modules.POI
                         {
                             paths.Add(Path(prefab.transform, fsm.transform));
                             try { budgets.Add(TownPopulation.Capture(fsm)); }
-                            catch (Exception e) { budgets.Add(new TownPopulation.NativeBudget { Kind = 6 }); Log.Warn("[Towns] unsupported spawn group disabled on town clones: " + prefab.name + "/" + fsm.gameObject.name + "; " + e.Message); }
+                            catch (Exception e) { budgets.Add(new TownPopulation.NativeBudget { Kind = 6 }); Log.Warn("[POI] unsupported spawn group disabled on town clones: " + prefab.name + "/" + fsm.gameObject.name + "; " + e.Message); }
                         }
                     foreach (var t in prefab.GetComponentsInChildren<Transform>(true)) if (t.name == "mapIcon") markers.Add(Path(prefab.transform, t));
                     spec.Frontages = new[] { TownFrontage.Make(spec, 0), TownFrontage.Make(spec, 1) };
                     spec.TiltedFrontages = new[] { TownFrontage.Make(spec, 0, -9), TownFrontage.Make(spec, 0, 9), TownFrontage.Make(spec, 1, -9), TownFrontage.Make(spec, 1, 9) };
-                    if (camp) foreach (var b in budgets) if (b.Kind == 6) { Log.Always("[Towns] camp " + prefab.name + " left out of towns: boss spawner"); goto nextPrefab; }
+                    if (camp) foreach (var b in budgets) if (b.Kind == 6) { Log.Main(null, "[POI] camp " + prefab.name + " left out of towns: boss spawner"); goto nextPrefab; }
                     var strip = camp ? Walls(prefab, spec) : new string[0];
-                    if (strip.Length > 0) Log.Always("[Towns] camp " + prefab.name + " in towns without its walls: " + string.Join(", ", strip));
+                    if (strip.Length > 0) Log.Main(null, "[POI] camp " + prefab.name + " in towns without its walls: " + string.Join(", ", strip));
                     Buildings.Add(prefab.name, new BuildingAsset { Prefab = prefab, Spec = spec, Spawners = paths.ToArray(), Markers = markers.ToArray(), Budgets = budgets.ToArray(), Strip = strip });
-                    Log.Always("[Towns] entrance " + spec.Name + ": local=" + spec.Entry + ", outward=" + spec.Outward + "; " + spec.Bake.Source);
+                    Log.Main(null, "[POI] entrance " + spec.Name + ": local=" + spec.Entry + ", outward=" + spec.Outward + "; " + spec.Bake.Source);
                 nextPrefab:;
             }
             WallKit.Load(NativePoiPrefabs);
             bool anyMerchant = false; foreach (var b in Buildings.Values) if (b.Spec.Merchant) anyMerchant = true;
-            if (!anyMerchant) Log.Warn("[Towns] no merchant camp in the town catalog (Camp_10 needs a bake): Coyotes towns keep only their merchant bus.");
+            if (!anyMerchant) Log.Warn("[POI] no merchant camp in the town catalog (Camp_10 needs a bake): Coyotes towns keep only their merchant bus.");
             if (Buildings.Count == 0) throw new InvalidOperationException("No configured Building_N prefabs with solid geometry in the current graph.");
             if (allowed.Count > 0) foreach (string name in allowed)
                 if (!Buildings.ContainsKey(name)) throw new InvalidOperationException("Configured building missing from current graph: " + name);
@@ -141,7 +141,7 @@ namespace WildWasteland.Modules.POI
             if (concrete != null) { PavementMaterial = new Material(concrete) { name = "Towns native concrete parking" }; PavementMaterial.mainTextureScale = Vector2.one; }
             CarShells.Sort((a, b) => string.CompareOrdinal(a.Mesh.name, b.Mesh.name));
             ShellBounds.Clear(); foreach (var shell in CarShells) ShellBounds.Add(shell.Mesh.bounds);
-            foreach (var pool in Population) Log.Always("[Towns] population catalog " + pool.Key + ": " + pool.Value.Count + " native prefabs");
+            foreach (var pool in Population) Log.Main(null, "[POI] population catalog " + pool.Key + ": " + pool.Value.Count + " native prefabs");
             TerrainLayer road = null;
             foreach (var generator in graph.generators)
             {

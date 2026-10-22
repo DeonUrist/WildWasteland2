@@ -27,7 +27,7 @@ namespace WildWasteland.Modules.POI
                 { string name = line.Trim(); if (name.Length > 0 && !name.StartsWith("#", StringComparison.Ordinal) && seen.Add(name)) names.Add(name); }
                 _pools[faction] = names.ToArray();
             }
-            Log.Always("[Towns] editable name lists: " + directory + " (Animals/Mutants/Scrapyard/Coyotes.txt)");
+            Log.Main(null, "[POI] editable name lists: " + directory + " (Animals/Mutants/Scrapyard/Coyotes.txt)");
         }
         internal void Begin(Dictionary<string, TownRecord> records)
         {

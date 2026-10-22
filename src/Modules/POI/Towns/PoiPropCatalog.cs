@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.POI
             if (!_scan.MoveNext())
             {
                 _scan.Dispose(); _scan = null; Complete = true;
-                All.Sort(Compare); WildWasteland.Core.Log.Always("[Towns] POI dresser catalog: " + All.Count + " distinct vanilla mesh/material variants and markers; prefab children included, no size limit."); return false;
+                All.Sort(Compare); WildWasteland.Core.Log.Main(null, "[POI] POI dresser catalog: " + All.Count + " distinct vanilla mesh/material variants and markers; prefab children included, no size limit."); return false;
             }
             var pair = _scan.Current; var filter = pair.Value as MeshFilter;
             if (filter == null || filter.gameObject.scene.IsValid()) return true;

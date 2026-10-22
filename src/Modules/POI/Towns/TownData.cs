@@ -132,7 +132,6 @@ namespace WildWasteland.Modules.POI
         internal ITownOverlayWork Overlap;
         internal TownLoading.Work Loading;
         internal int NextLot;
-        internal bool PopulationReady;
         internal int[][] PopulationCounts, LootCounts;
         internal TownRecord Record;
         internal readonly List<Bounds> DebrisBlockers = new List<Bounds>();

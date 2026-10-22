@@ -168,7 +168,7 @@ namespace WildWasteland.Modules.POI
                             graph.Add(filter); registration.Added.Add(filter); registration.Original[output] = original;
                             graph.Link(original, filter); graph.Link(filter, output);
                         }
-                        Log.Always("[POI] Registered " + definition.Id + " with native terrain generation.");
+                        Log.Main(null, "[POI] Registered " + definition.Id + " with native terrain generation.");
                     }
                     locations.Chance = definition.Enabled == null || definition.Enabled() ? _chance.Value : 0;
                 }
@@ -212,7 +212,7 @@ namespace WildWasteland.Modules.POI
                     marker.transform.rotation = point.rotation;
                     var siteComponent = marker.AddComponent<PoiSite>(); siteComponent.Owner = this; siteComponent.Definition = definition; siteComponent.Key = key;
                     _sites.Add(siteComponent); if (definition.Mark != null) definition.Mark(marker);
-                    Log.Always("[POI] " + pair.Key + " site generated in slice " + tile.coord + " at " + point.pos);
+                    Log.Main(null, "[POI] " + pair.Key + " site generated in slice " + tile.coord + " at " + point.pos);
                     TrySpawn(siteComponent);
                 }
             }
@@ -238,7 +238,7 @@ namespace WildWasteland.Modules.POI
         internal void Completed(PoiSite site, GameObject result)
         {
             if (site == null) return; site.Building = false;
-            if (result != null && _running) { _spawned.Add(site.Key); Log.Always("[POI] " + site.Definition.Id + " encounter spawned: " + site.Key); }
+            if (result != null && _running) { _spawned.Add(site.Key); Log.Main(null, "[POI] " + site.Definition.Id + " encounter spawned: " + site.Key); }
             else Log.Warn("[POI] Encounter could not be built: " + site.Key);
         }
         public override void OnWorldReady()

@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.POI
                 if (fsm.FsmName != "BasementDoor" || fsm.transform.parent == null || fsm.transform.parent.name != "to_basement") continue;
                 fsm.enabled = false;
                 var label = FsmUtil.Find(fsm.gameObject, "ItemName"); if (label != null) label.enabled = false;
-                Log.Always("[Towns] laboratory entrance disabled on town copy " + lot.Prefab);
+                Log.Main(null, "[POI] laboratory entrance disabled on town copy " + lot.Prefab);
             }
             foreach (string path in asset.Markers)
             { var icon = go.transform.Find(path); var renderer = icon == null ? null : icon.GetComponent<Renderer>(); if (renderer != null) renderer.forceRenderingOff = true; }
@@ -83,7 +83,7 @@ namespace WildWasteland.Modules.POI
             TownPopulation.Configure(site, index, assets, settings);
             InteriorPopulation.OwnTown(site, index);
             TownBakeBridge.Discover(go);
-            Log.Always("[Towns] lot " + site.Plan.Key + "/" + index + ": " + lot.Prefab + ", role=" + lot.Role + ", town=" + site.Plan.Condition);
+            Log.Main(null, "[POI] lot " + site.Plan.Key + "/" + index + ": " + lot.Prefab + ", role=" + lot.Role + ", town=" + site.Plan.Condition);
         }
 
         internal static GameObject Streets(TownSite site, TownAssets assets, Transform parent)

@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.POI
             for (int i = Trees.Count - 1; i >= 0; i--)
             {
                 if (TownAssets.ColliderBox(Trees[i].transform, out box)) Dressing.TreeLocal.Insert(0, box);
-                else { Log.Warn("[Towns] kit tree without colliders skipped: " + Trees[i].name); Trees.RemoveAt(i); }
+                else { Log.Warn("[POI] kit tree without colliders skipped: " + Trees[i].name); Trees.RemoveAt(i); }
             }
             foreach (var prefab in prefabs) if (prefab.name == "Camp_14")
             {
@@ -54,8 +54,8 @@ namespace WildWasteland.Modules.POI
                 var banner = prefab.transform.Find("decor/flag_pole"); Banner = banner == null ? null : banner.gameObject;
                 break;
             }
-            if (Available) { LoadGateTextures(); Log.Always("[Towns] perimeter kit: Camp_14 heavy metal fences and faction entrance banners; four open vehicle gates."); }
-            else Log.Warn("[Towns] native Camp_14 perimeter kit missing; wall prototype unavailable (towns retained).");
+            if (Available) { LoadGateTextures(); Log.Main(null, "[POI] perimeter kit: Camp_14 heavy metal fences and faction entrance banners; four open vehicle gates."); }
+            else Log.Warn("[POI] native Camp_14 perimeter kit missing; wall prototype unavailable (towns retained).");
         }
         private void LoadGateTextures()
         {
@@ -82,9 +82,9 @@ namespace WildWasteland.Modules.POI
                     if (source.mainTexture != null) { texture.wrapMode = source.mainTexture.wrapMode; texture.filterMode = source.mainTexture.filterMode; texture.anisoLevel = source.mainTexture.anisoLevel; }
                     _gateMaterials[i] = new Material(source) { name = "Towns gate " + i, mainTexture = texture, enableInstancing = true };
                     _gateTextures[i] = texture; texture = null;
-                    Log.Always("[Towns] gate texture loaded: " + path);
+                    Log.Main(null, "[POI] gate texture loaded: " + path);
                 }
-                catch (Exception e) { Log.Warn("[Towns] gate texture retained native banner: " + path + "; " + e.Message); }
+                catch (Exception e) { Log.Warn("[POI] gate texture retained native banner: " + path + "; " + e.Message); }
                 finally { if (texture != null) UnityEngine.Object.Destroy(texture); }
             }
         }
@@ -164,7 +164,7 @@ namespace WildWasteland.Modules.POI
                 var collider = go.AddComponent<BoxCollider>(); collider.size = new Vector3(.2794f, 4.416f, 9.3996f); collider.center = new Vector3(.0173f, .1028f, .0007858f);
             }
             _next++;
-            if (_next == _pieces.Count) { Physics.SyncTransforms(); Log.Always("[Towns] bent perimeter built " + _site.Plan.Key + ": " + (_pieces.Count - 4) + " shared-mesh sections, four cardinal open gates; parking outside east gate."); }
+            if (_next == _pieces.Count) { Physics.SyncTransforms(); Log.Main(null, "[POI] bent perimeter built " + _site.Plan.Key + ": " + (_pieces.Count - 4) + " shared-mesh sections, four cardinal open gates; parking outside east gate."); }
             return true;
         }
         internal void Dispose() { if (_root != null) UnityEngine.Object.Destroy(_root); }

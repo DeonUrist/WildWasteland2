@@ -42,7 +42,7 @@ namespace WildWasteland.Modules.POI
                         var d = building.transform.position - player.transform.position; d.y = 0;
                         if (d.sqrMagnitude > 3600) continue;
                         plan.Discovered = true;
-                        Log.Always("[Towns] visited " + plan.Name + " (" + plan.Key + ")"); break;
+                        Log.Main(null, "[POI] visited " + plan.Name + " (" + plan.Key + ")"); break;
                     }
                 if (marker.Map != ModApi.Get<IMapMarkers>())
                 { RemoveMap(marker); marker.Map = ModApi.Get<IMapMarkers>(); }

@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.POI
             TownRecord record;
             if (!_records.TryGetValue(key, out record) || lot < 0 || lot >= record.Plan.LotCount || ((int)role & ~63) != 0) return false;
             record.Plan.Lots[lot].Role = role; _revision++;
-            Log.Always("[Towns] lot role " + key + "/" + lot + " = " + role + " (persists with next world save)"); return true;
+            Log.Main(null, "[POI] lot role " + key + "/" + lot + " = " + role + " (persists with next world save)"); return true;
         }
         public void TravelStops(List<TownTrafficStop> into)
         {
@@ -99,7 +99,7 @@ namespace WildWasteland.Modules.POI
             TownRecord record;
             if (!_records.TryGetValue(key, out record) || !Enum.IsDefined(typeof(TownCondition), condition)) return false;
             record.Plan.Condition = condition; _revision++;
-            Log.Always("[Towns] condition " + key + " = " + condition + " (persists with next world save)"); return true;
+            Log.Main(null, "[POI] condition " + key + " = " + condition + " (persists with next world save)"); return true;
         }
         public bool VehicleWaypoint(Vector3 position, Vector3 goal, out Vector3 waypoint, out bool hold)
         {

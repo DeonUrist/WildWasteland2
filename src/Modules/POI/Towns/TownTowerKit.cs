@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.POI
                 }
                 if (Prefab.GetComponentsInChildren<PlayMakerFSM>(true).Length != 0 || Prefab.GetComponentsInChildren<Rigidbody>(true).Length != 0)
                     throw new InvalidOperationException("Tower geometry unexpectedly contains camp logic or physics actors");
-                Log.Always("[Towns] small tower extracted: container, canopy/supports, three railings and native ladder; no camp spawners, loot, signs or furnishings.");
+                Log.Main(null, "[POI] small tower extracted: container, canopy/supports, three railings and native ladder; no camp spawners, loot, signs or furnishings.");
                 return;
             }
         }
