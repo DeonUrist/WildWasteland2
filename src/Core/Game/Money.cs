@@ -17,6 +17,7 @@ namespace WildWasteland.Core
         static bool listedGlobals;
 
         // configured = exact global variable name, or "" to detect it.
+        /// <summary>Resolves the configured native global currency variable or detects its existing canonical name.</summary>
         public static FsmInt MoneyVar(string configured)
         {
             if (configured == null) configured = "";
@@ -61,12 +62,14 @@ namespace WildWasteland.Core
         }
 
         // The nuts you hold; -1 when the money variable can't be found.
+        /// <summary>Reads native currency, returning minus one while its variable is unavailable.</summary>
         public static int GetMoney(string configured)
         {
             FsmInt m = MoneyVar(configured);
             return m == null ? -1 : m.Value;
         }
 
+        /// <summary>Changes native currency and publishes the existing typed money-change event when observed.</summary>
         public static bool AddMoney(int amount, string configured)
         {
             FsmInt m = MoneyVar(configured);

@@ -4,8 +4,7 @@ namespace WildWasteland.Core
 {
     /// <summary>
     /// The only Core file that names module types (README 3.2 rule 2). Order = init order = config display order = Harmony subscriber
-    /// order. W0: the existing modules keep their order; the new skeleton modules follow (final order in core-modapi.md 5 is set in
-    /// Wave C when the old entries are retired).
+    /// order. Debug, Compatibility and Saves initialize before their consumers; remaining legacy entries stay until their target packages finish.
     /// </summary>
     internal static class ModuleRegistry
     {
@@ -38,7 +37,7 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.Developer.DeveloperModule());
         }
 
-        /// <summary>The audio real-voice count setting (today bound by Patrols as [Patrols] AudioVoices; Core audio setting in Wave B), or null.</summary>
+        /// <summary>The Core-owned startup real-voice budget, or null before Core settings bind.</summary>
         internal static ConfigEntry<int> AudioVoicesSetting() { return CoreSettings.AudioVoices; }
     }
 }

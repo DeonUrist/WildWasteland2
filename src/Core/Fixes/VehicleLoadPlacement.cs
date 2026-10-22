@@ -30,13 +30,16 @@ namespace WildWasteland.Core
             SaveBus.StateChanged -= StateChanged; LoadingProgress.RemoveHold(null, "Player vehicle placement");
             Release(); _installed = _loading = _seated = false; _car = null; Bodies.Clear(); Colliders.Clear();
         }
+        /// <summary>Resets placement state and starts the seated-save recovery gate when a load begins.</summary>
         static void StateChanged(string previous, string current)
         {
             if (current != "Start" && current != "setSeed" && current != "LoadGame") return;
             Release(); _loading = current == "LoadGame"; _seated = false; _car = null; _retry = 0;
         }
+        /// <summary>Restores the held player body collision flag and releases its kinematic placement hold.</summary>
         static void Release()
         { if (_playerBody != null) { _playerBody.detectCollisions = _collisions; _playerBody.isKinematic = false; } _playerBody = null; }
+        /// <summary>Detaches a player restored inside a vehicle and holds its body until safe ground is available.</summary>
         internal static void Loaded()
         {
             if (!_loading || GameRefs.Player == null) return;
@@ -52,6 +55,7 @@ namespace WildWasteland.Core
             player.transform.SetParent(null, true);
             player.transform.SetPositionAndRotation(car.transform.position + Vector3.up * 4f, Quaternion.Euler(0, car.transform.eulerAngles.y, 0));
         }
+        /// <summary>Suppresses native seated stance restoration during a vehicle-load placement recovery.</summary>
         internal static void LoadedStance(ES3PlayMaker.Load action)
         {
             if (!_loading || action.key.Value != "PlayerInCar" || action.Fsm.GameObject != GameRefs.Player) return;
@@ -86,6 +90,7 @@ namespace WildWasteland.Core
             }
             return false; // Keep native loading/input freeze until main terrain and standing clearance exist.
         }
+        /// <summary>Stops the loaded vehicle and disables its engine through the shared ignition service.</summary>
         static void Park()
         {
             _car.input.Throttle = 0; _car.input.Brakes = 1; _car.input.Handbrake = 1;
@@ -96,6 +101,7 @@ namespace WildWasteland.Core
             foreach (var body in Bodies) if (body != null && !body.isKinematic) { body.velocity = Vector3.zero; body.angularVelocity = Vector3.zero; }
             var root = _car.GetComponent<Rigidbody>(); if (root != null) { root.isKinematic = false; root.velocity = Vector3.zero; root.angularVelocity = Vector3.zero; }
         }
+        /// <summary>Restores the native player standing controls and camera state after load placement.</summary>
         internal static void Stand(GameObject player)
         {
             if (player == null || PlayerState.Health < 1) return;

@@ -111,7 +111,7 @@ namespace WildWasteland
             }
         }
 
-        /// <summary>Sets the real audio voice count before any module creates clips (setting bound by Patrols until Wave B).</summary>
+        /// <summary>Applies the Core real-voice budget before any module creates clips.</summary>
         static void ApplyAudioVoices(int want)
         {
             try

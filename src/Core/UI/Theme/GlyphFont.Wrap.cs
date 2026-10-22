@@ -12,6 +12,7 @@ namespace WildWasteland.Core.UI
     /// <summary>Word wrap with the glyph atlas font, used by the quest journal/dialogue and menu reference pages (Wave A split; B01 -> Core/UI GlyphFont.Wrap).</summary>
     internal sealed partial class GlyphFont
     {
+        /// <summary>Splits text into glyph-measured lines that fit the requested width and font size.</summary>
         internal static List<string> Wrap(string text, float width, float size = 26)
         {
             var lines = new List<string>(); var font = GlyphFont.Get();

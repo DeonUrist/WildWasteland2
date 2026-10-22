@@ -10,6 +10,7 @@ namespace WildWasteland.Core
         /// <summary>Removes this fix's hooks and patches so installation can be repeated safely.</summary>
         internal static void Remove() { Owner.Remove(); _installed = false; }
 
+        /// <summary>Registers the exact native color-grading action guard once.</summary>
         internal static void Install()
         {
             if (_installed) return; _installed = true;
@@ -17,6 +18,7 @@ namespace WildWasteland.Core
             Log.Always("[Core] Color grading policy ready (native graphics option forced off)");
         }
 
+        /// <summary>Keeps the native color-grading volume and menu toggle disabled without bypassing the action lifecycle.</summary>
         private static bool BeforeActivate(ActivateGameObject action)
         {
             var fsm = action.Fsm;

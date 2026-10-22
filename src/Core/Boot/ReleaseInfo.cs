@@ -1,13 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using System.Text.RegularExpressions;
-using HutongGames.PlayMaker;
-using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 namespace WildWasteland.Core
 {
@@ -41,7 +33,7 @@ namespace WildWasteland.Core
                         if (Json.Bool(release, "draft", false) || !Version.TryParse(tag.TrimStart('v', 'V').Split('-')[0], out version) || version <= latest) continue;
                         latest = version; UpdateUrl = "https://github.com/DeonUrist/WildWasteland/releases/tag/" + Uri.EscapeDataString(tag);
                     }
-                    Log.Main(null, "WW update check: installed " + Plugin.VERSION + (UpdateUrl == null ? "; no newer release" : "; update available " + latest));
+                    if (Log.L1) Log.Main(null, "WW update check: installed " + Plugin.VERSION + (UpdateUrl == null ? "; no newer release" : "; update available " + latest));
                 }
                 catch (Exception e) { UpdateUrl = null; Log.Warn(null, "WW update check: " + e.Message); }
             }
