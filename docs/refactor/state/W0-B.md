@@ -5,7 +5,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 
 ## Checklist
 - [x] 1. Json (Core/Util/Json.cs)
-- [ ] 2. Glb (static mesh, gas-station superset)
+- [x] 2. Glb (static mesh, gas-station superset)
 - [ ] 3. Gltf (skinned)
 - [ ] 4. Bindposes
 - [ ] 5. Audio (WAV decode + Level + LoadAsync)
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-5333abe (base, COMPILE OK)
+394a664 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 2 Glb: diff the 3 Glb copies, gas-station superset.
+Item 3 Gltf: diff NPC/Women and PlayerBody Gltf.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -40,3 +40,4 @@ Item 2 Glb: diff the 3 Glb copies, gas-station superset.
 - Compile: sh tools/refactor/compile.sh /tmp/w0b-build
 - Name decisions are recorded here as they are made.
 - Json: lenient CarTemplateFile parser (comments, trailing commas, line-number errors) + StoreJson writer; no name clash with module Json copies (compiled).
+- Glb: verbatim gas-station copy (vertices/mesh names identical; colliderGeometry=false = StewPot/WarRig behaviour); added Load(byte[], name, dir) overload. GlbModel is public in Core.
