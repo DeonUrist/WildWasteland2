@@ -365,7 +365,7 @@ namespace WildWasteland.Modules.Patrols
             var drv = UnityEngine.Object.Instantiate(prefab, pos, rot);
             drv.SetActive(true);
             drv.name = prefab.name + "(Driver)";
-            CrewAppearance.Dress(drv, prefabName, randomize);
+            CrewLooks.Dress(drv, prefabName, randomize);
 
             var drvCols = drv.GetComponentsInChildren<Collider>(true);
 
@@ -450,7 +450,7 @@ namespace WildWasteland.Modules.Patrols
             else if (PatrolsModule.RangedCombat.Value) PassengerGuard.Prepare(go, true);   // ranged-only rewiring + mute, before the FSMs' Start
             else Crew.MuteAi(go);
             go.name = prefab.name + "(" + role + ")";
-            CrewAppearance.Dress(go, prefabName, randomize);
+            CrewLooks.Dress(go, prefabName, randomize);
 
             var root = go.GetComponent<Rigidbody>() ?? go.AddComponent<Rigidbody>();
             root.isKinematic = true;
@@ -654,7 +654,7 @@ namespace WildWasteland.Modules.Patrols
                 mob.transform.position += Vector3.up * (groundY + 0.15f - bottom);
             }
             pos = mob.transform.position;
-            Register.Name(mob, prefab.name); CrewAppearance.Transfer(pax, mob); Register.Add(mob, false);
+            Register.Name(mob, prefab.name); CrewLooks.Transfer(pax, mob); Register.Add(mob, false);
             if (health > 0f) { SetHealth(mob, health); mob.AddComponent<LateHealth>().Value = health; }
             UnityEngine.Object.Destroy(pax);
             if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
@@ -662,7 +662,7 @@ namespace WildWasteland.Modules.Patrols
             Core.Services.RaiseCrewBailedOut(car, pax, mob);   // WW: the NPC module subscribes (ex its Harmony postfix on Apocapatrol.Patrol.BailOut)
             // awareness handover + return-to-car membership (pax is destroyed at the end of the frame; its name still tells the seat)
             if(record)CrewReturn.Dismounted(car, mob, pax.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0 ? CrewReturn.RoleDriver : CrewReturn.RolePassenger, -1,
-                CrewAppearance.Identity(mob, prefabName), null, null, false);
+                CrewLooks.Identity(mob, prefabName), null, null, false);
             return mob;
         }
 

@@ -244,7 +244,7 @@ namespace WildWasteland.Modules.Patrols
             int slot=0;foreach(var name in names)
             {
                 if(string.IsNullOrEmpty(name))continue;var prefab=Prefabs.FindAny(name.Replace("_Dead","")+"_Dead")??Prefabs.FindAny("Scraffa_Dead");if(prefab==null)continue;
-                var corpse=Instantiate(prefab,car.transform.position+car.transform.right*(3f+slot%2)+car.transform.forward*(slot/2f),Quaternion.identity);CrewAppearance.Dress(corpse,name.Replace("_Dead","")+"_Dead");corpse.SetActive(true);live.Corpses.Add(corpse);slot++;
+                var corpse=Instantiate(prefab,car.transform.position+car.transform.right*(3f+slot%2)+car.transform.forward*(slot/2f),Quaternion.identity);CrewLooks.Dress(corpse,name.Replace("_Dead","")+"_Dead");corpse.SetActive(true);live.Corpses.Add(corpse);slot++;
             }
         }
         private void UnloadBattle(TrafficBattle battle,BattleLive live)

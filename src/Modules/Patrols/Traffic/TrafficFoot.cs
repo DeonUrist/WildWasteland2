@@ -168,7 +168,7 @@ namespace WildWasteland.Modules.Patrols
             mob.SetActive(true);
             var col = mob.GetComponent<Collider>();
             if (col != null) mob.transform.position += Vector3.up * (ground.y + 0.15f - col.bounds.min.y);
-            Register.Name(mob, prefab.name); CrewAppearance.Dress(mob, w.identity, false);
+            Register.Name(mob, prefab.name); CrewLooks.Dress(mob, w.identity, false);
             if (w.health > 0f) { Patrol.SetHealth(mob, w.health); mob.AddComponent<Patrol.LateHealth>().Value = w.health; }
             fl.Bodies[i] = mob; fl.Health[i] = CrewReturn.HealthVar(mob); fl.Spawned[i] = true; fl.Fails[i] = 0; fl.Ordered[i] = new Vector3(float.MaxValue, 0f, 0f);
             if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + ": walker " + mob.name + " spawned at " + mob.transform.position);
@@ -405,7 +405,7 @@ namespace WildWasteland.Modules.Patrols
             for (int k = 0; k < group.Count; k++)
             {
                 var s = group[k];
-                walkers[k] = new TrafficWalker { identity = string.IsNullOrEmpty(s.Identity) ? CrewAppearance.Identity(s.Body, TemplateExporter.PrefabName(s.Body.name)) : s.Identity, health = s.Health != null ? s.Health.Value : -1f };
+                walkers[k] = new TrafficWalker { identity = string.IsNullOrEmpty(s.Identity) ? CrewLooks.Identity(s.Body, TemplateExporter.PrefabName(s.Body.name)) : s.Identity, health = s.Health != null ? s.Health.Value : -1f };
                 fl.Bodies[k] = s.Body; fl.Health[k] = s.Health; fl.Spawned[k] = true; fl.Ordered[k] = new Vector3(float.MaxValue, 0f, 0f);
                 Register.RemoveTree(s.Body);   // journey-owned: the embedded traffic record saves them now
                 try { if (api != null) api.Travel(s.Body, null, 0f); } catch (Exception) { }
