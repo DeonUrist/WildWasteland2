@@ -16,6 +16,10 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 - Whole-source lint baseline remains **1,078 cross-module reference findings** and **6,563 members without summaries across 723 source files**. These are heuristic findings recorded for Wave B/C, not passing gates or a claim of 1,078 independent bugs. No blanket suppression was added.
 - D12 cleanup removed the unused migration helpers and NPC helper arguments; current config entries, asset paths and save formats are unchanged. Wave B/C remain pending.
 
+## Claude takeover (2026-10-22 evening)
+Denis stopped Codex; Claude completes Wave B and C (see work-packages.md "Claude takeover"). Merged: B01+B02 (coord-wiring), B03 -> refactor/main 25b90be; Presentation/NPCAI partial entries re-applied. B04 continues on claude/B04 (= main + save-bootstrap WIP; session-compat's 3 extra commits to integrate), B17 on claude/B17 (= main + Codex B17 WIP, merge conflict left for the agent). D19: delete weather diagnostics (B14).
+Batches: 1 = B04, B17, B09, B12, B15; 2 = B05, B06, B07, B08; 3 = B10, B11, B13, B14, B16, B18; then Wave C.
+
 ## Waves
 | wave | package | branch | state | merged | notes |
 |---|---|---|---|---|---|

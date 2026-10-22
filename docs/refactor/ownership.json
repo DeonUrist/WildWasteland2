@@ -177,7 +177,8 @@
    "src/Modules/NPCAI/NpcaiModule*.cs",
    "src/Modules/NPCAI/NPCAIModule*.cs",
    "src/Modules/NPC/NpcModule.cs",
-   "src/Modules/NPC/NpcModule.Config.cs"
+   "src/Modules/NPC/NpcModule.Config.cs",
+   "src/Modules/NPCAI/NpcModule*.cs"
   ],
   "B08": [
    "src/Modules/NPCAI/Navigation/**"
@@ -199,11 +200,16 @@
   ],
   "B13": [
    "src/Modules/POI/**",
-   "src/Modules/Towns/TownsModule.cs"
+   "src/Modules/Towns/TownsModule.cs",
+   "src/Modules/Towns/**"
   ],
   "B14": [
    "src/Modules/Survival/**",
-   "src/Modules/Weather/WeatherModule.cs"
+   "src/Modules/Weather/WeatherModule.cs",
+   "src/Modules/Debug/Weather/**",
+   "src/Core/Diagnostics/WeatherDiagnosticState.cs",
+   "src/Modules/Debug/DebugModule.cs",
+   "src/Modules/Tools/_fromWeather/**"
   ],
   "B15": [
    "src/Modules/Loot/**"
