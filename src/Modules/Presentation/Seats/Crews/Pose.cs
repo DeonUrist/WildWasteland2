@@ -10,6 +10,12 @@ namespace WildWasteland.Modules.Patrols
     // spine, but combat never receives control of the arms or legs.
     internal class Pose : MonoBehaviour, ICrewSeatPose
     {
+        internal static readonly List<Pose> All=new List<Pose>();
+        /// <summary>Registers actual live seat poses for bounded authoring selection.</summary>
+        private void OnEnable() {if(!All.Contains(this))All.Add(this);}
+        /// <summary>Withdraws disabled poses from authoring selection.</summary>
+        private void OnDisable() {All.Remove(this);}
+
         private Transform _root, _anchor;
         private Transform _hips, _spine, _spine1, _spine2;
         private Transform _lUpLeg, _lLeg, _lFoot, _rUpLeg, _rLeg, _rFoot, _lArm, _lForeArm, _lHand, _rArm, _rForeArm, _rHand;
@@ -234,7 +240,7 @@ namespace WildWasteland.Modules.Patrols
             var up = _anchor.up;
 
             var bus=_busPassenger?BusPassengerPoseStore.Current:null;
-            bool editing=BusPassengerPoseEditor.Editing(this);   // refs-ok: REFACTOR-REQUEST B06-5 (Developer editor target; no authoring query)
+            bool editing=Core.ModApi.Get<Core.IBusPassengerAuthoring>()?.Editing(gameObject)==true;   // refs-ok: REFACTOR-REQUEST B06-5 (Developer editor target; no authoring query)
             if(bus!=null)
             {
                 BusJoint(_lUpLeg,_lLeg,bus.left[0],right,up);BusJoint(_lLeg,_lFoot,bus.left[1],right,up);

@@ -196,14 +196,12 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Binds keys for the current patrols settings.</summary>
         void BindKeys(ModuleConfig cfg)
         {
-            BindDeveloperKeys(cfg);
         }
 
         // ---------------------------------------------------------------- F7 tools.cfg
         /// <summary>Binds tools for the current patrols settings.</summary>
         void BindTools(ModuleConfig cfg)
         {
-            BindDeveloperDebug(cfg);
 
             BindCoreDebug(cfg);
             BindVehiclesDebug(cfg);
@@ -304,10 +302,6 @@ namespace WildWasteland.Modules.Patrols
         partial void BindVehiclesToggles(ModuleConfig cfg);
         /// <summary>Binds the F6 Combat entry NPC ram damage multiplier (applies to every car, Vehicles rule). Implemented in Vehicles (_fromPatrols).</summary>
         partial void BindVehiclesCombat(ModuleConfig cfg);
-        /// <summary>Binds the [Keys] entries of the bus passenger pose editor and the merchant item editor. Implemented in Developer (_fromPatrols).</summary>
-        partial void BindDeveloperKeys(ModuleConfig cfg);
-        /// <summary>Binds the tools.cfg Debug switches of the turret spot, bus passenger pose and merchant item editors. Implemented in Developer (_fromPatrols).</summary>
-        partial void BindDeveloperDebug(ModuleConfig cfg);
         /// <summary>Binds the tools.cfg Debug entry Hide missing-FSM warnings (drives Core QuietFsm). Implemented in Core (_fromPatrols).</summary>
         partial void BindCoreDebug(ModuleConfig cfg);
         /// <summary>Binds the tools.cfg Debug entry ExitSpeedKmh (player exit-speed rule). Implemented in Vehicles (_fromPatrols).</summary>
