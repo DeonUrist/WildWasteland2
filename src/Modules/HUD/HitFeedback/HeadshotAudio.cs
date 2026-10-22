@@ -24,6 +24,7 @@ namespace WildWasteland.Modules.HUD
 
         internal static string Status { get { return _clip != null ? "loaded (" + _clip.length.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " s)" : _status; } }
 
+        /// <summary>Returns whether this feature currently has active presentation work.</summary>
         private static bool Wanted { get { return HudModule.HudEnabled.Value && HudModule.HeadshotSound.Value; } }
 
         /// <summary>Old Tick, now called on Init / scene load / setting changes only.</summary>
@@ -40,6 +41,7 @@ namespace WildWasteland.Modules.HUD
             else EnsureVoices();
         }
 
+        /// <summary>Creates the bounded reusable audio voice pool when playback first needs it.</summary>
         private static void EnsureVoices()
         {
             if (_host == null)
@@ -58,14 +60,17 @@ namespace WildWasteland.Modules.HUD
                 }
         }
 
+        /// <summary>Resolves clamp01 for the headshot audio.</summary>
         private static float Volume { get { return Mathf.Clamp01(HudModule.HeadshotVolume.Value / 100f); } }
 
+        /// <summary>Applies the current gain to the existing headshot audio voices.</summary>
         internal static void ApplyVolume()
         {
             float v = Volume;
             foreach (var voice in Voices) if (voice != null) voice.volume = v;
         }
 
+        /// <summary>Loads the headshot audio.</summary>
         private static IEnumerator Load()
         {
             yield return null;     // next frame: after all module Inits (see class comment)
@@ -105,6 +110,7 @@ namespace WildWasteland.Modules.HUD
             _load = null;
         }
 
+        /// <summary>Plays the configured headshot clip through a reusable voice.</summary>
         internal static void Play()
         {
             if (_clip == null || AudioListener.pause || Time.timeScale == 0f) return;
@@ -118,6 +124,7 @@ namespace WildWasteland.Modules.HUD
             v.Play();
         }
 
+        /// <summary>Stops active headshot voices and resets their reuse deadlines.</summary>
         internal static void Stop()
         { foreach (var voice in Voices) if (voice != null) voice.Stop(); Gate.Reset(); }
 
