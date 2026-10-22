@@ -113,8 +113,6 @@ namespace WildWasteland.Modules.POI
             LoadingProgress.RegisterHold(Owner, "Towns", ReadyForHandoff);
             LoadingProgress.Register(Owner, LoadProgress);
 
-            _settings.PopulationMinPercent.SettingChanged += PopulationChanged; _settings.PopulationMaxPercent.SettingChanged += PopulationChanged;
-            _settings.LootMinPercent.SettingChanged += PopulationChanged; _settings.LootMaxPercent.SettingChanged += PopulationChanged;
             TerrainTile.OnBeforeTilePrepare += Prepare;
             TerrainTile.OnTileFinalized += Finalized; TerrainTile.OnTileApplied += Applied; TerrainTile.OnTileMoved += Moved;
             WorldTiles.OnEdited(Owner,TownTerrainEdited);
@@ -459,19 +457,6 @@ namespace WildWasteland.Modules.POI
                 }
             }
         }
-        private void PopulationChanged(object sender, EventArgs args)
-        {
-            if (!_running || _blocked) return;
-            try
-            {
-                foreach (var live in _sites) { live.Site.PopulationCounts = live.Site.LootCounts = null; live.Site.PopulationReady = false; }
-                foreach (var live in _sites) for (int i = 0; i < live.Site.Spawners.Length; i++)
-                    if (!live.Site.Plan.Lots[i].IsParking && !live.Site.Plan.Lots[i].Skipped && live.Site.Spawners[i] != null)
-                    { TownPopulation.Configure(live.Site, i, live.Registration.Assets, _settings); InteriorPopulation.OwnTown(live.Site, i); }
-                Log.Always("[Towns] DEBUG ranges: population=" + _settings.PopulationMinPercent.Value + "-" + _settings.PopulationMaxPercent.Value + "%, loot=" + _settings.LootMinPercent.Value + "-" + _settings.LootMaxPercent.Value + "% of native totals per town (balanced pending spawns; existing objects retained).");
-            }
-            catch (Exception e) { Log.Warn("[Towns] population update stopped; existing actors/items retained: " + e.Message); }
-        }
         private void Moved(TerrainTile tile)
         {
             if (_gasStation != null) _gasStation.Moved(tile);
@@ -580,8 +565,6 @@ namespace WildWasteland.Modules.POI
             LoadingProgress.Remove(Owner);
             var stopped=new TownTrafficStopped();ModEvents.Publish(ref stopped);
             SaveBus.StateChanged -= StateChanged;
-            _settings.PopulationMinPercent.SettingChanged -= PopulationChanged; _settings.PopulationMaxPercent.SettingChanged -= PopulationChanged;
-            _settings.LootMinPercent.SettingChanged -= PopulationChanged; _settings.LootMaxPercent.SettingChanged -= PopulationChanged;
             TerrainTile.OnBeforeTilePrepare -= Prepare; TerrainTile.OnTileFinalized -= Finalized;
             TerrainTile.OnTileApplied -= Applied; TerrainTile.OnTileMoved -= Moved;
             WorldTiles.Remove(Owner,(WorldTiles.TileEvent)TownTerrainEdited);

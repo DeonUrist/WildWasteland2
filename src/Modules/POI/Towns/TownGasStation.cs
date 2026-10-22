@@ -60,6 +60,8 @@ namespace WildWasteland.Modules.POI
         private bool _failed;
         private string _status = "Off (reload after enabling)";
         internal TownGasStation(TownSettings settings) { _settings = settings; Current = this; }
+        private GameObject _catalogPrefab;
+        internal GameObject CatalogPrefab {get{if(!Available)return null;if(_catalogPrefab==null)_catalogPrefab=Shell(null,"TownsGasStation");return _catalogPrefab;}}
         internal bool Available { get { if (_model == null && !_failed) { try { LoadModel(); } catch (Exception e) { Fail("model setup", e); } } return _model != null && _materials != null; } }
 
         // ------------------------------------------------------------------ requests (main thread, before the tile is generated)
@@ -391,6 +393,7 @@ namespace WildWasteland.Modules.POI
             _map = null; _compass = null;
             if (model)
             {
+                if(_catalogPrefab!=null)Object.Destroy(_catalogPrefab);_catalogPrefab=null;
                 if (_model != null) { Object.Destroy(_model.Mesh); foreach (var mesh in _model.Colliders) Object.Destroy(mesh); }
                 if (_collision != null) { Object.Destroy(_collision.Mesh); foreach (var mesh in _collision.Colliders) Object.Destroy(mesh); }
                 _model = _collision = null; _materials = null; _raider = null; _camp = null; _failed = false;

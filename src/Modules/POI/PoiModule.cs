@@ -56,14 +56,14 @@ namespace WildWasteland.Modules.POI
                 "Chance for each added POI in each generated 5 km terrain slice. 100 guarantees one site per slice for debugging. Changes affect newly generated slices.", new AcceptableValueRange<int>(0, 100));
         }
         /// <summary>Publishes custom POI registration and detached town geometry/traffic services.</summary>
-        public override void ProvideApis() { ModApi.Provide<IEncounterNotices>(this,new EncounterNotices()); ModApi.Provide<IWorldLocations>(this,_locations); ModApi.Provide<IWorldDiscovery>(this,_locations); ModApi.Provide<ICampStatus>(this,_locations); ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
+        public override void ProvideApis() { ModApi.Provide<ITownPrefabCatalog>(this,new TownPrefabCatalog()); ModApi.Provide<IEncounterNotices>(this,new EncounterNotices()); ModApi.Provide<IWorldLocations>(this,_locations); ModApi.Provide<IWorldDiscovery>(this,_locations); ModApi.Provide<ICampStatus>(this,_locations); ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
         public override void Init()
         {
             _running = true;
             Services.Poi = this;
             _towns.Init();
             PoiEncounter.Register(this);
-            TrafficCamps.Install(this);
+            TrafficCamps.Install(this); TrafficLocations.Install(this);
             Scheduler.EveryFrame(this,"World discovery",Discover);
             Scheduler.Interval(this,"Camp state",1f,CheckCamps,Phase.Update,true);
             TerrainTile.OnBeforeTilePrepare += Prepare;
@@ -194,7 +194,6 @@ namespace WildWasteland.Modules.POI
         private void Applied(TerrainTile tile, TileData data, StopToken stop)
         {
             if (!_running || data == null || data.isDraft || tile == null || (stop != null && stop.stop)) return;
-            TrafficLocations.TileApplied();
             Capture capture;
             if (!_captures.TryRemove(data, out capture)) return;
             try
@@ -251,9 +250,8 @@ namespace WildWasteland.Modules.POI
         }
         public override void OnSaveBegin(string slot)
         {
-            _towns.OnSaveBegin(slot);
-            _locations.Save(this,slot);
             if (_loadFailed) { SaveBus.ReportFailure(this, "POI completion state could not be loaded; refusing to replace it"); return; }
+            _towns.OnSaveBegin(slot); _locations.Save(this,slot);
             var snapshot = new List<string>(_spawned).ToArray();
             Write(slot, snapshot);
         }
@@ -278,7 +276,7 @@ namespace WildWasteland.Modules.POI
         {
             _running = false;
             _towns.Shutdown();
-            PoiEncounter.Reset(); EncounterNotices.Clear();
+            PoiEncounter.Reset(); EncounterNotices.Clear(); TownPrefabCatalog.Clear();
             _locations.Reset();
             TerrainTile.OnBeforeTilePrepare -= Prepare; TerrainTile.OnTileApplied -= Applied;
             TerrainTile.OnTileFinalized -= Finalized;

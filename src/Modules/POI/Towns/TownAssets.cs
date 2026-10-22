@@ -69,18 +69,16 @@ namespace WildWasteland.Modules.POI
             }
             return any;
         }
+        private static List<GameObject> CatalogPrefabs(Graph graph)
+        {TownPrefabCatalog.Captured=true;var result=new List<GameObject>();foreach(var generator in graph.generators){var output=generator as ObjectsOutput;if(output!=null)foreach(var prefab in output.prefabs)if(prefab!=null&&!result.Contains(prefab))result.Add(prefab);}foreach(var prefab in TownPrefabCatalog.Prefabs.Values)if(prefab!=null&&!result.Contains(prefab))result.Add(prefab);var station=TownGasStation.Current?.CatalogPrefab;if(station!=null)result.Add(station);return result;}
         internal void Load(Graph graph, TownSettings settings)
         {
             var allowed = new HashSet<string>(StringComparer.Ordinal);
             float margin = Mathf.Max(1, TownBakeBridge.Tuning("NavMargin", 4)), cell = Mathf.Max(.25f, TownBakeBridge.Tuning("NavCellSize", .5f));
             NavMaxStep = Mathf.Max(.1f, TownBakeBridge.Tuning("NavMaxStep", .45f));
             foreach (string part in settings.BuildingPrefabs.Value.Split(',')) if (part.Trim().Length > 0) allowed.Add(part.Trim());
-            foreach (var generator in graph.generators)
+            foreach(var prefab in CatalogPrefabs(graph))
             {
-                var output = generator as ObjectsOutput;
-                if (output == null) continue;
-                foreach (var prefab in output.prefabs)
-                {
                     if (prefab != null && (prefab.name.StartsWith("Building_", StringComparison.Ordinal) || prefab.name.StartsWith("Camp_", StringComparison.Ordinal)
                         || prefab.name.StartsWith("Cave_", StringComparison.Ordinal) || prefab.name.StartsWith("Wreck_", StringComparison.Ordinal))) NativePoiPrefabs.Add(prefab);
                     if (prefab != null) CatalogPopulation(prefab);
@@ -95,7 +93,8 @@ namespace WildWasteland.Modules.POI
                     // (WW) every native camp may stand in a town too (its perimeter walls stripped); camps with a merchant are merchant lots
                     bool camp = prefab != null && prefab.name.StartsWith("Camp_", StringComparison.Ordinal);
                     bool merchant = prefab != null && (prefab.name == "Camp_10" || camp && HasMerchant(prefab));
-                    if (prefab == null || (!merchant && !camp && !prefab.name.StartsWith("Building_", StringComparison.Ordinal) && !(wreck && (prefab.name == "Wreck_8" || prefab.name == "Wreck_7"))) || Buildings.ContainsKey(prefab.name)) continue;
+                    bool custom = prefab != null && (TownPrefabCatalog.Prefabs.ContainsKey(prefab.name) || prefab.name == "TownsGasStation");
+                    if (prefab == null || (!custom && !merchant && !camp && !prefab.name.StartsWith("Building_", StringComparison.Ordinal) && !(wreck && (prefab.name == "Wreck_8" || prefab.name == "Wreck_7"))) || Buildings.ContainsKey(prefab.name)) continue;
                     if (!merchant && !wreck && !camp && allowed.Count > 0 && !allowed.Contains(prefab.name)) continue;
                     if (camp && BossCamp(prefab)) { Log.Always("[Towns] camp " + prefab.name + " left out of towns: boss camp"); continue; }
                     var spec = Measure(prefab); if (spec == null) continue;
@@ -125,7 +124,6 @@ namespace WildWasteland.Modules.POI
                     Buildings.Add(prefab.name, new BuildingAsset { Prefab = prefab, Spec = spec, Spawners = paths.ToArray(), Markers = markers.ToArray(), Budgets = budgets.ToArray(), Strip = strip });
                     Log.Always("[Towns] entrance " + spec.Name + ": local=" + spec.Entry + ", outward=" + spec.Outward + "; " + spec.Bake.Source);
                 nextPrefab:;
-                }
             }
             WallKit.Load(NativePoiPrefabs);
             bool anyMerchant = false; foreach (var b in Buildings.Values) if (b.Spec.Merchant) anyMerchant = true;
