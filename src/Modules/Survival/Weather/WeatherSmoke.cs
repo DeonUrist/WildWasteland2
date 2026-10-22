@@ -24,12 +24,15 @@ namespace WildWasteland.Modules.Survival
         private readonly Material _material;
         private readonly bool _vortex;
         private Camera _camera;
+        /// <summary>Creates bounded reusable particle banks sharing the weather material.</summary>
         internal WeatherSmoke(Material material, bool vortex = false) { _material = material; _vortex = vortex; _banks = new Bank[vortex ? 320 : 192]; Camera.onPreCull += BeforeCamera; }
+        /// <summary>Begins collecting visible smoke banks for the selected camera.</summary>
         internal void Begin(Camera camera)
         {
             _camera = camera;
             for (int i = 0; i < _banks.Length; i++) if (_banks[i] != null) _banks[i].Used = false;
         }
+        /// <summary>Fills a reused smoke bank for one perimeter section and detail level.</summary>
         internal void Draw(int slot, Vector3 position, Quaternion rotation, float span, float depth, WeatherVisualDetail detail, bool leading, MaterialPropertyBlock properties)
         {
             var bank = _banks[slot];
@@ -121,20 +124,24 @@ namespace WildWasteland.Modules.Survival
             }
             bank.Renderer.SetPropertyBlock(properties); bank.Renderer.enabled = true;
         }
+        /// <summary>Creates one particle value from the shell geometry and animation controls.</summary>
         private static ParticleSystem.Particle Particle(Vector3 position, float size, float aspect, float seed, float leading, float canopy, float opacity = 1)
         {
             return new ParticleSystem.Particle { position = position, velocity = Vector3.zero, startSize3D = new Vector3(size,size*aspect,size),
                 rotation = (seed-.5f)*50, startColor = new Color(seed,leading,canopy,opacity), startLifetime = 100000, remainingLifetime = 100000, randomSeed = (uint)(seed*1000000)+1 };
         }
+        /// <summary>Restricts smoke bank rendering to the selected gameplay camera.</summary>
         private void BeforeCamera(Camera camera)
         {
             for (int i = 0; i < _banks.Length; i++) if (_banks[i] != null) _banks[i].Renderer.enabled = _banks[i].Used && camera == _camera;
         }
+        /// <summary>Clears camera ownership and hides retained smoke banks.</summary>
         internal void Suspend()
         {
             _camera = null;
             for (int i = 0; i < _banks.Length; i++) if (_banks[i] != null) { _banks[i].Used = false; _banks[i].Renderer.enabled = false; }
         }
+        /// <summary>Unsubscribes rendering observers and destroys private smoke resources.</summary>
         public void Dispose()
         {
             Camera.onPreCull -= BeforeCamera; Suspend();

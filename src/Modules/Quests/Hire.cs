@@ -93,8 +93,10 @@ namespace WildWasteland.Modules.Quests
 
         public static bool Enabled { get { return enabled != null && enabled.Value; } }
         public static bool Active { get { return book != null && !string.IsNullOrEmpty(book.HireName); } }
+        /// <summary>Display name of the currently attached hired companion.</summary>
         public static string Name { get { return displayName; } }
 
+        /// <summary>Binds the hire contract, tuning entries and outcome callbacks.</summary>
         public static void Init(HireSettings cfg, QuestBook b, Action<string> toastFn, Action<string, int, string> repFn)
         {
             book = b; toast = toastFn; changeRep = repFn;
@@ -125,6 +127,7 @@ namespace WildWasteland.Modules.Quests
 
         // ---- prices ---------------------------------------------------------------------------------------
         // the cost in reputation of hiring an NPC with this name, or -1 when it is not for hire
+        /// <summary>Returns the configured reputation price for an eligible actor name.</summary>
         public static int CostFor(string npcName)
         {
             if (!Enabled || string.IsNullOrEmpty(npcName)) return -1;
@@ -142,18 +145,21 @@ namespace WildWasteland.Modules.Quests
         }
 
         // "NPCAI and Apocapatrol" etc.; empty when both are there
-        public static string MissingMods() { return Services.Npc == null ? "NPC AI" : Services.FollowerVehicles == null ? "Patrols" : ""; }
+        /// <summary>Reports the missing required NPC or vehicle service.</summary>
+        public static string MissingMods() { return ModApi.Get<INpcApi>() == null ? "NPC AI" : ModApi.Get<IFollowerVehicles>() == null ? "Patrols" : ""; }
 
+        /// <summary>Tests whether a transform belongs to the hired companion.</summary>
         public static bool IsFollower(Transform t)
         {
             return Active && t != null && npc != null && (t.gameObject == npc || t.IsChildOf(npc.transform));
         }
 
         // ---- start / stop ---------------------------------------------------------------------------------------
+        /// <summary>Starts the hire contract and records its duration and faction.</summary>
         public static void Start(GameObject go, string factionKey, string shownName)
         {
             if (go == null) return;
-            double gh = Game.GameHours();
+            double gh = WildWasteland.Core.Clock.GameHours;
             book.HireName = go.name;
             book.HireUntil = gh >= 0.0 ? gh + Math.Max(0.1f, durationHours.Value) : -1.0;
             book.HireFaction = factionKey ?? "";
@@ -163,11 +169,13 @@ namespace WildWasteland.Modules.Quests
             Plugin.Info("Hired " + go.name + " (" + book.HireKind + ") until game hour " + book.HireUntil.ToString("0.0", CultureInfo.InvariantCulture));
         }
 
+        /// <summary>Formats the currently bound dismissal key hint.</summary>
         static string dismissHint()
         {
             return dismissKey.Value != UnityEngine.InputSystem.Key.None ? "Press " + dismissKey.Value + " to send them away." : "Talk to them to send them away.";
         }
 
+        /// <summary>Attaches the live native actor to the current hire contract.</summary>
         static void Attach(GameObject go)
         {
             npc = go;
@@ -191,6 +199,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Ends the hire. The NPC goes back to being a normal NPC where it stands.
+        /// <summary>Ends the hire contract and restores the companion before notifying the player.</summary>
         public static void Dismiss(string message)
         {
             if (!Active) return;
@@ -201,6 +210,7 @@ namespace WildWasteland.Modules.Quests
             if (!string.IsNullOrEmpty(message)) toast(message.Replace("{name}", n));
         }
 
+        /// <summary>Clears the active contract fields and transient actor references.</summary>
         static void Clear()
         {
             book.HireName = ""; book.HireUntil = 0.0; book.HireFaction = ""; book.HireKind = "";
@@ -209,16 +219,18 @@ namespace WildWasteland.Modules.Quests
         }
 
         // new world / slot being loaded: forget the objects (the book itself is reloaded by the caller)
+        /// <summary>Releases the old companion when switching worlds or restoring the journal.</summary>
         public static void Reset()
         {
             if (mounted) { try { Dismount(false); } catch (Exception) { } }
-            ReleaseNpc(); QuestFollower.Release(); RestoreCollisions();
+            ReleaseNpc(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release(); RestoreCollisions();
             npc = null; attached = false; target = null; moveFsm = null; healthFsm = null; searching = false; mounted = false; displayName = "";
             carObj = null; inCarSince = -1f; endPending = false; playerHealth = null; playerHealthVar = null; lastPlayerHealth = -1f; inCarFsm = null;
             Ranged.Clear(); _nearestName = null;
             muted.Clear(); ignoredCars.Clear(); ownCols.Clear(); lateOwn.Clear(); lateCar.Clear();
         }
 
+        /// <summary>Looks up a named native FSM using the quest world index.</summary>
         static PlayMakerFSM FindFsm(GameObject go, string name)
         {
             if (go == null) return null;
@@ -228,6 +240,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // ---- every frame ----------------------------------------------------------------------------------------
+        /// <summary>Advances hire expiry, actor restoration and the existing companion policy.</summary>
         public static void Update()
         {
             
@@ -258,7 +271,7 @@ namespace WildWasteland.Modules.Quests
             wasMountedAtLoss = mounted;
             if (healthFsm != null && healthFsm.ActiveStateName != "health" && healthFsm.Fsm != null && healthFsm.Fsm.Initialized) { Died(); return; }
 
-            double gh = Game.GameHours();
+            double gh = WildWasteland.Core.Clock.GameHours;
             if (book.HireUntil > 0.0 && gh >= 0.0 && gh >= book.HireUntil)
             {
                 // riding: they stay in the car until you get out
@@ -318,6 +331,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // one line about the body, for the log when something goes wrong
+        /// <summary>Logs the attached companion body configuration.</summary>
         static void LogBody(string what)
         {
             try
@@ -335,6 +349,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.Info("Hire: LogBody failed: " + e.Message); }
         }
 
+        /// <summary>Finds a named descendant in an actor hierarchy.</summary>
         static Transform FindDeep(Transform root, string name)
         {
             if (root == null) return null;
@@ -351,6 +366,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // ---- the end -------------------------------------------------------------------------------------------------
+        /// <summary>Ends the hire after confirmed death and applies its reputation penalty.</summary>
         static void Died()
         {
             string n = displayName;
@@ -362,6 +378,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // the object is gone: killed if it was close to you, otherwise it was just unloaded (the hire simply ends)
+        /// <summary>Ends a hire after its actor disappears outside normal restoration.</summary>
         static void Gone()
         {
             if (lastDistance < 80f && !wasMountedAtLoss) { Died(); return; }
@@ -370,9 +387,10 @@ namespace WildWasteland.Modules.Quests
             Clear();
             toast(n + " got lost. The hire is over.");
         }
+        /// <summary>Releases companion interaction, collision exceptions and render callbacks.</summary>
         internal static void Shutdown()
         {
-            QuestFollower.Release();
+            if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release();
             if (mounted) Dismount(true);
             ReleaseNpc(); RestoreCollisions(); Reset();
             if (recoilHooked) Application.onBeforeRender -= Recoil;

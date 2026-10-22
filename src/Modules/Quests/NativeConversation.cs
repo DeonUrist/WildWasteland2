@@ -25,13 +25,18 @@ namespace WildWasteland.Modules.Quests
         readonly List<QuestChoice> _choices = new List<QuestChoice>();
         readonly Dictionary<string, Action> _buttons = new Dictionary<string, Action>();
         bool _pending;
+        /// <summary>Whether the native quest conversation is open.</summary>
         public bool Open { get { return NativeOpen; } }
+        /// <summary>Current native conversation speaker name.</summary>
         public string Name { get { return _nativeName; } }
         public string Prompt { get; internal set; }
         public int Revision { get; private set; }
+        /// <summary>Current native conversation chat lines.</summary>
         public IList<string> Chat { get { return _chat; } }
+        /// <summary>Current typed conversation choices.</summary>
         public IList<QuestChoice> Choices { get { return _choices; } }
 
+        /// <summary>Acquires the editor input session and opens a native conversation.</summary>
         internal bool Begin(Transform npc)
         {
             if (NativeOpen || npc == null || !Session.Acquire()) return false;
@@ -39,19 +44,23 @@ namespace WildWasteland.Modules.Quests
             _chat.Clear(); _choices.Clear(); _buttons.Clear(); _pending = false; Prompt = ""; mineSig = ""; Revision++;
             AddLine("What do you need?"); Plugin.I.OnTalkOpen(null); return true;
         }
+        /// <summary>Appends a bounded native conversation chat line.</summary>
         void AddLine(string text) { if (_chat.Count >= 100) _chat.RemoveAt(0); _chat.Add(text); Revision++; }
+        /// <summary>Replaces native conversation buttons with the current quest choices.</summary>
         void NativeButtons(List<TalkBtn> want)
         {
             _buttons.Clear(); _choices.Clear(); _pending = false;
             foreach (var b in want) { _choices.Add(new QuestChoice { Key = b.Key, Text = b.Text }); _buttons[b.Key] = b.Click; }
             Revision++;
         }
+        /// <summary>Invokes one current conversation choice at most once.</summary>
         public void Choose(string key)
         {
             Action click;
             if (!NativeOpen || _pending || !_buttons.TryGetValue(key, out click)) return;
             _pending = true; click();
         }
+        /// <summary>Closes native conversation and releases its input session.</summary>
         public void Close()
         {
             if (!NativeOpen) { Prompt = ""; return; }
@@ -66,10 +75,15 @@ namespace WildWasteland.Modules.Quests
     {
         Transform _interaction;
         readonly RaycastHit[] _interactionHits = new RaycastHit[32];
+        /// <summary>Forwards an optional external host opening into the quest engine.</summary>
         public void ExternalOpened(object host) { if (ready && bridge.ExternalAvailable && bridge.TalkingNow) OnTalkOpen(host); }
+        /// <summary>Ends the current optional external conversation session.</summary>
         public void ExternalClosed() { if (bridge.ExternalAvailable) { OnTalkClose(); bridge.Generation++; Voice.Stop(); deferred.Clear(); } }
+        /// <summary>Tests current interaction admission and editor/input ownership.</summary>
         bool CanInteract() { return ready && _interaction != null && !bridge.ExternalAvailable && !bridge.TalkingNow && GameRefs.InGame && !GamePaused() && !EditorSession.Busy; }
+        /// <summary>Opens the native conversation for the current aimed actor.</summary>
         void OpenInteraction() { if (CanInteract()) { showLog = false; bridge.Begin(_interaction); } }
+        /// <summary>Maintains conversation lifetime and closes it when its actor or input lease is lost.</summary>
         internal void InteractionFrame()
         {
             if (!bridge.NativeOpen) return;
@@ -78,6 +92,7 @@ namespace WildWasteland.Modules.Quests
             { bridge.Close(); deferred.Clear(); return; }
             bridge.Session.Maintain();
         }
+        /// <summary>Finds a friendly nearby actor under the shared gameplay aim.</summary>
         internal void FindInteraction()
         {
             _interaction = null; bridge.Prompt = "";
@@ -87,7 +102,7 @@ namespace WildWasteland.Modules.Quests
             foreach (var f in QuestWorld.People)
             {
                 if (f == null || f.FsmName != "Health" || f.ActiveStateName != "health" || !f.gameObject.activeInHierarchy) continue;
-                var go = f.gameObject; if (go == GameRefs.Player || Game.IsPlayerEnemy(go) || (Services.FollowerVehicles != null && Services.FollowerVehicles.IsSeated(go))) continue;
+                var go = f.gameObject; if (go == GameRefs.Player || Game.IsPlayerEnemy(go) || (ModApi.Get<IFollowerVehicles>() != null && ModApi.Get<IFollowerVehicles>().IsSeated(go))) continue;
                 string name = Game.BaseName(go.name);
                 if (!Person(name) || name.IndexOf("Dead", StringComparison.OrdinalIgnoreCase) >= 0) continue;
                 Vector3 aim = f.transform.position + Vector3.up * 1.2f, delta = aim - eye; float distance = delta.magnitude;
@@ -107,16 +122,18 @@ namespace WildWasteland.Modules.Quests
             }
             if (_interaction != null) bridge.Prompt = "[" + QuestsModule.InteractKey.Value + "] Talk to " + Game.BaseName(_interaction.name);
         }
+        /// <summary>Tests whether an actor name supports quest or hiring interaction.</summary>
         static bool Person(string name)
         {
             string n = Util.Norm(name);
             foreach (string word in Factions.PeopleWords) if (word.Length > 0 && n.Contains(word)) return true;
             return Hire.CostFor(name) >= 0 || n.Contains("gunnar") || n.Contains("mechanic");
         }
+        /// <summary>Removes quest choices that do not apply to seated crew.</summary>
         void FilterCrewButtons()
         {
             var tr = bridge.Npc; bool crew = CrewHistory.Blocked(tr);
-            bool seated = tr != null && Services.FollowerVehicles != null && Services.FollowerVehicles.IsSeated(tr.gameObject);
+            bool seated = tr != null && ModApi.Get<IFollowerVehicles>() != null && ModApi.Get<IFollowerVehicles>().IsSeated(tr.gameObject);
             for (int i = wantButtons.Count - 1; i >= 0; i--)
             {
                 string key = wantButtons[i].Key;

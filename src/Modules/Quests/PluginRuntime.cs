@@ -20,19 +20,30 @@ namespace WildWasteland.Modules.Quests
         string[] _resumeCrew;
         readonly List<QuestRow> _rows = new List<QuestRow>();
         readonly Dictionary<string, int> _emptyScans = new Dictionary<string, int>();
+        /// <summary>Whether the quest engine has restored its current world.</summary>
         public bool Ready { get { return ready; } }
+        /// <summary>Whether tracker presentation is enabled.</summary>
         public bool TrackerEnabled { get { return showTracker.Value; } }
+        /// <summary>Whether the journal is currently open.</summary>
         public bool JournalOpen { get { return showLog; } }
+        /// <summary>Current cached journal text.</summary>
         public string JournalText { get { return logText; } }
+        /// <summary>Current journal hotkey name.</summary>
         public string JournalKey { get { return logKey.Value.ToString(); } }
+        /// <summary>Total completed quests in the current journal.</summary>
         public int Completed { get { return book.TotalDone; } }
+        /// <summary>Typed tracker rows for HUD consumers.</summary>
         public IList<QuestRow> Rows { get { return _rows; } }
+        /// <summary>Current conversation state provider.</summary>
         public IQuestConversation Conversation { get { return bridge; } }
-        bool TrackerStyled { get { return Services.QuestUi != null && Services.QuestUi.Tracker; } }
-        bool JournalStyled { get { return Services.QuestUi != null && Services.QuestUi.Journal; } }
-        internal bool DialogueStyled { get { return Services.QuestUi != null && Services.QuestUi.Conversation; } }
+        bool TrackerStyled { get { return ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Tracker; } }
+        bool JournalStyled { get { return ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Journal; } }
+        /// <summary>Whether HUD owns the tracker presentation.</summary>
+        internal bool DialogueStyled { get { return ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Conversation; } }
+        /// <summary>Whether any fallback quest presentation is currently visible.</summary>
         internal bool WantsGui { get { return ready && (bridge.NativeOpen || bridge.Prompt.Length > 0 || showLog || toasts.Count > 0 || (!TrackerStyled && showTracker.Value && trackerLines.Count > 0)); } }
 
+        /// <summary>Loads content and registers typed state, input and native observers.</summary>
         internal void Start(QuestsModule owner, HireSettings hiring, VoiceSettings voices)
         {
             ModApi.Provide<IQuestDiagnosticSource>(owner, new QuestDiagnosticSource());
@@ -65,7 +76,9 @@ namespace WildWasteland.Modules.Quests
         internal static void Info(string text) { Core.Log.Info("[Quests] " + text); }
         /// <summary>Quests error (always written, rate-limited); replaces QuestLogger.LogError.</summary>
         internal static void Error(string text) { Core.Log.Error("[Quests] " + text); }
+        /// <summary>Applies current faction, takeover and generation tuning.</summary>
         internal void ApplyConfig() { ApplyTakeoverSettings(); ApplyFactionSettings(); ParseGenTypes(); Game.MinLiquidFraction = minLiquid.Value; }
+        /// <summary>Observes a native death action for quest objective accounting.</summary>
         static void Death(CreateObject action)
         {
             if (I == null || !I.ready || action.Fsm == null || action.Fsm.Name != "Health" || action.Fsm.ActiveStateName != "spawn") return;
@@ -73,22 +86,32 @@ namespace WildWasteland.Modules.Quests
             string dead = action.storeObject != null && action.storeObject.Value != null ? Game.BaseName(action.storeObject.Value.name) : "";
             I.OnEnemyKilled(Game.BaseName(go.name), dead, go.transform.position, go.tag, go);
         }
+        /// <summary>Blocks native button-down actions while the quest conversation owns input.</summary>
         static bool BlockButtonDown(GetButtonDown action) { return I == null || !I.bridge.NativeOpen; }
+        /// <summary>Blocks held native buttons while the quest conversation owns input.</summary>
         static bool BlockButton(GetButton action) { return I == null || !I.bridge.NativeOpen; }
+        /// <summary>Blocks native button-up actions while the quest conversation owns input.</summary>
         static bool BlockButtonUp(GetButtonUp action) { return I == null || !I.bridge.NativeOpen; }
+        /// <summary>Blocks native mouse actions while the quest conversation owns input.</summary>
         static bool BlockMouse(GetMouseButtonDown action) { return I == null || !I.bridge.NativeOpen; }
+        /// <summary>Blocks player mouse-look during a native quest conversation.</summary>
         static bool BlockLook(MouseLook __instance) { return I == null || !I.bridge.NativeOpen || __instance.Owner != GameRefs.Player; }
+        /// <summary>Tests whether the journal can open in current gameplay.</summary>
         bool CanJournal() { return ready && GameRefs.InGame && !bridge.TalkingNow; }
+        /// <summary>Tests whether the current companion can be dismissed.</summary>
         bool CanDismiss() { return ready && Hire.Active && GameRefs.InGame; }
+        /// <summary>Toggles the journal only while gameplay is unpaused.</summary>
         void ToggleJournal() { if (!GamePaused()) showLog = !showLog; }
 
+        /// <summary>Releases transient quest session state before replacing the world.</summary>
         internal void SceneReset()
         {
             _generation++; ready = false; _sessionSlot = null; _newWorld = false;
             _resumeText = _resumeSlot = null; _resumeCrew = null;
             bridge.Close(); ResetSession(); deferred.Clear(); showLog = false; toasts.Clear(); _rows.Clear();
-            Takeover.Shutdown(); Factions.Overrides.Clear(); CrewHistory.Clear(); QuestFollower.Release(); Game.ResetWorld();
+            Takeover.Shutdown(); Factions.Overrides.Clear(); CrewHistory.Clear(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release(); Game.ResetWorld();
         }
+        /// <summary>Captures or restores quest state at canonical native lifecycle transitions.</summary>
         internal void StateChanged(string previous, string state)
         {
             if (state == "LoadGame" || state == "setSeed" || state == "Start")
@@ -113,23 +136,28 @@ namespace WildWasteland.Modules.Quests
                 SaveBook(); CrewHistory.Save(_saveOwner, _sessionSlot);
             }
         }
+        /// <summary>Copies current faction overrides and takeover walks into the journal.</summary>
         void CaptureBook()
         {
             book.Overrides.Clear(); foreach (var item in Factions.Overrides) book.Overrides[item.Key] = item.Value;
             book.Walks.Clear(); book.Walks.AddRange(Takeover.ActiveWalks());
         }
+        /// <summary>Restores current journal overrides and companion contract state.</summary>
         void RestoreBook()
         {
             Factions.Overrides.Clear(); foreach (var item in book.Overrides) Factions.Overrides[item.Key] = item.Value;
             Takeover.RestoreWalks(book.Walks); Hire.Reset();
         }
+        /// <summary>Copies cached tracker text and stable quest colors into typed rows.</summary>
         void SnapshotRows()
         {
             _rows.Clear();
             for (int i = 0; i < trackerLines.Count && i < book.Active.Count; i++)
                 _rows.Add(new QuestRow { Id = book.Active[i].Id, Text = trackerLines[i], Color = MapLink.QuestColor(book.Active[i].Id) });
         }
+        /// <summary>Tests the explicit return-goods delivery state.</summary>
         internal static bool Returning(Quest q) { return q.Type == QType.Deliver && q.Place == "WW:return-empty-delivery"; }
+        /// <summary>Finds a live friendly delivery recipient near the requested position.</summary>
         bool DeliveryRecipient(Quest q, Vector3 position, float radius, bool returning)
         {
             foreach (var f in QuestWorld.People)
@@ -145,12 +173,13 @@ namespace WildWasteland.Modules.Quests
             }
             return false;
         }
+        /// <summary>Closes conversations and releases quest-owned runtime resources.</summary>
         internal void Stop()
         {
             if (ready && !saveBlocked && _sessionSlot != null && _sessionSlot == SaveBus.Slot)
             { CaptureBook(); _resumeText = book.Serialize(); _resumeSlot = _sessionSlot; _resumeWorld = SaveBus.Generation; _resumeCrew = CrewHistory.Snapshot(); }
             _generation++; ready = false; bridge.Close(); bridge.Uninstall(); ResetSession();
-            Hire.Shutdown(); Voice.Shutdown(); QuestFollower.Release(); Takeover.Shutdown(); Factions.Reset();
+            Hire.Shutdown(); Voice.Shutdown(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release(); Takeover.Shutdown(); Factions.Reset();
             Game.ResetWorld(); CrewHistory.Clear(); _rows.Clear(); toasts.Clear(); deferred.Clear(); I = null;
         }
     }

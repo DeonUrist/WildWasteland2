@@ -17,6 +17,8 @@ namespace WildWasteland.Modules.Vehicles
         public void Connect(GameObject car,GameObject trailer,bool preservePose=false) {TrailerSupport.Connect(car,trailer,preservePose);}
         /// <summary>Classifies native hinge parts and free attachables.</summary>
         public bool IsPart(Transform item) {return VehicleAttachments.IsPart(item);}
+        /// <summary>Classifies a native free attachment without exposing its implementation.</summary>
+        public bool IsFreeAttachment(GameObject item) {return VehicleAttachments.IsFreeAttachment(item);}
         /// <summary>Recognizes an actual War Rig ancestor without exposing its component.</summary>
         public bool IsWarRig(GameObject item) {return item!=null&&item.GetComponentInParent<WarRigUnit>()!=null;}
         /// <summary>Releases actual tanker joints before a towing vehicle is deleted.</summary>

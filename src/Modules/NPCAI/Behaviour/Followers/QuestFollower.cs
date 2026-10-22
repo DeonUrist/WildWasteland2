@@ -3,10 +3,26 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Quests
+namespace WildWasteland.Modules.NPCAI
 {
     internal static class QuestFollower
     {
+        /// <summary>Current read-only contract; absent while Quests is disabled.</summary>
+        private static IQuestHireState State { get { return ModApi.Get<IQuestHireState>(); } }
+        /// <summary>Real NPCAI body provider over the existing companion implementation.</summary>
+        internal sealed class BodyApi : IQuestFollowerBody
+        {
+            /// <summary>Advances the current companion body.</summary>
+            public void Tick() { QuestFollower.Tick(); }
+            /// <summary>Applies final mounted pose constraints.</summary>
+            public void Late() { QuestFollower.Late(); }
+            /// <summary>Restores native body ownership.</summary>
+            public void Release() { QuestFollower.Release(); }
+            /// <summary>Shows the current shot and reload.</summary>
+            public void Shot() { QuestFollower.Shot(); }
+            /// <summary>Plays a native state when permitted by the shared body.</summary>
+            public void Play(Animator animator, string state, int layer, float time) { QuestFollower.Play(animator, state, layer, time); }
+        }
         private static GameObject _current;
         private static Animator _animator;
         private static PlayMakerFSM _attack;
@@ -28,15 +44,15 @@ namespace WildWasteland.Modules.Quests
         {
             if (_body == null || !_body.Valid) return;
             _body.Shoot();
-            float until = Hire.reloadUntil;
-            if (ModApi.Get<INpcApi>() != null) ModApi.Get<INpcApi>().SetFollowerDriven(Hire.npc, true, until);
+            float until = (State != null ? State.ReloadUntil : 0f);
+            if (ModApi.Get<INpcApi>() != null) ModApi.Get<INpcApi>().SetFollowerDriven((State != null ? State.Actor : null), true, until);
             if (until > Time.time && until != _reloadShown)
-            { _reloadShown = until; _body.Reload(until - Time.time, ModApi.Get<IAnimationApi>() != null && ModApi.Get<IAnimationApi>().ReloadsOneRoundAtATime(_weaponKey) ? Math.Max(1, Hire.magSize) : 0); }
+            { _reloadShown = until; _body.Reload(until - Time.time, ModApi.Get<IAnimationApi>() != null && ModApi.Get<IAnimationApi>().ReloadsOneRoundAtATime(_weaponKey) ? Math.Max(1, (State != null ? State.MagazineSize : 0)) : 0); }
         }
         /// <summary>Follower body tick (inside the Quests frame job): attaches the animation body, keeps the weapon, aims at the target, suspends the body for melee.</summary>
         internal static void Tick()
         {
-            var npc = Hire.Active ? Hire.npc : null;
+            var npc = (State != null && State.Active) ? (State != null ? State.Actor : null) : null;
             if (_current != npc || _animation != ModApi.Get<IAnimationApi>() || (_body != null && !_body.Valid))
             {
                 Release(); _current = npc; _animation = ModApi.Get<IAnimationApi>();
@@ -49,7 +65,7 @@ namespace WildWasteland.Modules.Quests
                 }
             }
             if (_current == null) return;
-            if (ModApi.Get<INpcApi>() != null) ModApi.Get<INpcApi>().SetFollowerDriven(_current, true, Hire.reloadUntil);
+            if (ModApi.Get<INpcApi>() != null) ModApi.Get<INpcApi>().SetFollowerDriven(_current, true, (State != null ? State.ReloadUntil : 0f));
             if (_body == null && _animator != null && _animator.isHuman && _animation != null && _animation.Ready && Time.unscaledTime >= _retry)
             {
                 _retry = Time.unscaledTime + 1f;
@@ -63,7 +79,7 @@ namespace WildWasteland.Modules.Quests
             }
             if (_body == null || !_body.Valid) return;
             UpdateWeapon();
-            bool mounted = Hire.mounted; var target = Hire.target;
+            bool mounted = (State != null && State.Mounted); var target = (State != null ? State.Target : null);
             bool animated = _weapon != null && _animation.WeaponKind(_weaponKey) != "Melee" && (mounted || _attack == null || _attack.ActiveStateName != "attack_melee");
             if (!animated)
             {
@@ -79,7 +95,7 @@ namespace WildWasteland.Modules.Quests
                 var v = target.transform.position + Vector3.up - (_current.transform.position + Vector3.up * 1.4f);
                 _body.AimPitch = -Mathf.Atan2(v.y, Mathf.Sqrt(v.x * v.x + v.z * v.z)) * Mathf.Rad2Deg;
             }
-            if (_reloadShown > 0 && Hire.reloadUntil <= Time.time) { _body.CancelReload(); _reloadShown = 0; }
+            if (_reloadShown > 0 && (State != null ? State.ReloadUntil : 0f) <= Time.time) { _body.CancelReload(); _reloadShown = 0; }
             if (ModApi.Get<IFollowerVehicles>() != null) ModApi.Get<IFollowerVehicles>().Animated(_current, mounted);
         }
         /// <summary>Finds the follower's held gun among its models (twice a second at most) and gives it to the body.</summary>
@@ -109,7 +125,7 @@ namespace WildWasteland.Modules.Quests
         internal static void Late()
         {
             // Quests' LateUpdate keeps the passenger on its seat; the body receives locomotion from its rigidbody on foot.
-            if (_current != null && _body != null && _body.Valid && Hire.mounted) _body.Velocity = Vector3.zero;
+            if (_current != null && _body != null && _body.Valid && (State != null && State.Mounted)) _body.Velocity = Vector3.zero;
         }
         /// <summary>Releases the follower body (brain back, animation body disposed or suspended).</summary>
         internal static void Release()

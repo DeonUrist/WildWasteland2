@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Quests
     /// </summary>
     internal static partial class Takeover
     {
+        /// <summary>Restores suppressed spawners and stops active takeover walks.</summary>
         internal static void Shutdown()
         {
             foreach (var w in walkers) if (w.Go != null && w.Move != null && w.Move.ActiveStateName == "Run") w.Move.Fsm.SetState("Idle");
@@ -27,24 +28,10 @@ namespace WildWasteland.Modules.Quests
         public static Action<string> Log = delegate { };
         public static bool PatrolAtCamp = true;     // [Takeover] PatrolAtCamp: walk around the camp after arriving
 
-        // one line per walker for the F7 dump: where it is, how far from the camp and the player
-        public static List<string> DescribeWalkers(Vector3 playerWorld)
-        {
-            var res = new List<string>();
-            for (int i = 0; i < walkers.Count; i++)
-            {
-                Walker w = walkers[i];
-                if (w.Go == null) { res.Add((w.Name ?? "?") + ": gone (destroyed or unloaded)"); continue; }
-                Vector3 p = w.Go.transform.position;
-                Vector3 camp = Game.Abs(w.TargetRel);
-                res.Add(w.Go.name + ": at (" + p.x.ToString("0") + ", " + p.y.ToString("0") + ", " + p.z.ToString("0") + ")  " + (int)Game.HDist(p, camp) + " m from camp, " + (int)Game.HDist(p, playerWorld) + " m from you");
-            }
-            return res;
-        }
-
         // ---- choosing and describing the target -----------------------------------------------
 
         // A camp owned by a faction that is not friendly with the giver's, within minD..maxD of the giver.
+        /// <summary>Chooses the closest eligible hostile camp for a takeover offer.</summary>
         public static Poi PickCamp(Faction giver, Vector3 giverWorld, string wantFaction, float minD, float maxD, List<Quest> active, System.Random rng, HashSet<string> blocked)
         {
             if (giver == null) return null;
@@ -77,6 +64,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // living people of `tag` within `radius` of the camp (only counts what is loaded right now)
+        /// <summary>Counts currently loaded live defenders belonging to the target faction.</summary>
         public static int CountDefenders(Vector3 campWorld, string tag, float radius)
         {
             int n = 0;
@@ -85,6 +73,7 @@ namespace WildWasteland.Modules.Quests
             return n;
         }
 
+        /// <summary>Fills a takeover quest from a selected camp and owner.</summary>
         public static void Fill(Quest q, Poi camp, Faction owner, float radius)
         {
             q.Type = QType.Takeover;
@@ -105,6 +94,7 @@ namespace WildWasteland.Modules.Quests
         // ---- the takeover itself ---------------------------------------------------------------
 
         // Called when the quest's kills are done. Returns how many people were sent.
+        /// <summary>Commits camp ownership and starts the winning faction’s arrival group.</summary>
         public static int Begin(Quest q, System.Random rng)
         {
             Faction winner = Factions.ByKey(q.Home);
@@ -152,6 +142,7 @@ namespace WildWasteland.Modules.Quests
         // Everyone who gave you a job you still have to hand in is remembered where you last saw them. Come back to that
         // spot (after having been away) and if the NPC is not there any more (killed, or unloaded and lost), a new copy is
         // created in the same place and takes over the job.
+        /// <summary>Restores eligible missing quest givers after takeover settlement.</summary>
         public static void GiverTick(QuestBook book, Vector3 playerWorld)
         {
             if (book == null || book.Active.Count == 0 || Time.unscaledTime < nextGiver) return;
@@ -208,6 +199,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Checks whether a matching native actor is present but inactive.</summary>
         static bool InactiveExists(string name)
         {
             var all = QuestWorld.Objects;

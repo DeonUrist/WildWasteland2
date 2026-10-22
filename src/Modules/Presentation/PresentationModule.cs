@@ -80,7 +80,6 @@ namespace WildWasteland.Modules.Presentation
             Instance = this;
             CharacterSettings.Bind(cfg);
             BindWorld(cfg);
-            PlayerBodyModule.BindAfterPresentation();
         }
 
         // ================================================================== lifecycle
@@ -89,6 +88,7 @@ namespace WildWasteland.Modules.Presentation
         {
             Instance = this;
             _running = true;
+            ModApi.Provide<ICharacterHudData>(this, new CharacterHudData());
             InitCharacterData();
             InitWorld();
             InitCharacterJobs();
@@ -205,6 +205,7 @@ namespace WildWasteland.Modules.Presentation
         /// IWeaponPose, IPoseAuthoring, ICharacterAssets, INpcAppearance while Women of Wasteland runs), then World's.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<IVehicleVisuals>(this,new VehicleVisuals());
             ModApi.Provide<ICrewSeats>(this,new CrewSeats());
             ModApi.Provide<ICrewAppearance>(this,new CrewAppearance());
             ModApi.Provide<IAnimationApi>(this, _animation);

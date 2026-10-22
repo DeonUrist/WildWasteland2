@@ -51,7 +51,6 @@ namespace WildWasteland.Modules.PlayerBody
             Game.Reset();
             Arms.OnSceneLoaded();
             Cave.Reset();
-            InventoryModel.Reset();   // refs-ok: REFACTOR-REQUEST B05-1 (HUD TAB picture; B10 drives it from CharacterModelChanged + its own job)
             Props.OnSceneLoaded();
         }
 
@@ -70,7 +69,6 @@ namespace WildWasteland.Modules.PlayerBody
             CarSeat.Detach();
             ThirdPerson.Off();
             Arms.Restore();
-            InventoryModel.Off();   // refs-ok: REFACTOR-REQUEST B05-1 (HUD TAB picture; B10 drives it from CharacterModelChanged + its own job)
             OcclusionCutaway.Stop();
             ThirdPerson.EndOfFrame();
             Core.Log.Main(PresentationModule.Instance, "Disabled: the game's own player is back");
@@ -86,7 +84,6 @@ namespace WildWasteland.Modules.PlayerBody
                 DestroyBody();
                 Model.Reset();
                 Arms.Restore();   // the next character's arms (or the game's for Male)
-                InventoryModel.CharacterChanged();   // refs-ok: REFACTOR-REQUEST B05-1 (HUD TAB picture; B10 drives it from CharacterModelChanged + its own job)
                 if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Character: " + CharacterSettings.Character.Value);
             }
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Character switch: " + e); }
@@ -124,7 +121,6 @@ namespace WildWasteland.Modules.PlayerBody
             try
             {
                 if (!Game.Ready) return;
-                InventoryModel.LateTick();   // refs-ok: REFACTOR-REQUEST B05-1 (HUD TAB picture; B10 drives it from CharacterModelChanged + its own job)
                 ThirdPerson.LateCrosshair();
                 if (!PlayerState.Dead && _body != null && _body.IsRagdoll) DestroyBody();
                 if (_body == null || !_body.Alive)

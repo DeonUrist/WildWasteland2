@@ -122,6 +122,7 @@ namespace WildWasteland.Modules.NPCAI
             }
             Step("Population", InteriorPopulation.ReleaseDeferred);   // deferred native spawn events run before the hooks go (ex Towns shutdown)
             Step("Navigation", ShutdownNavigation);
+            Step("Follower body", QuestFollower.Release);
             Step("Pounce", Pounce.Shutdown);
             Step("Burrow", Burrow.Shutdown);
             Step("DogBite", DogBite.Shutdown);          // + DogAnimations + Dog Companion drivers
@@ -259,6 +260,7 @@ namespace WildWasteland.Modules.NPCAI
             ModApi.Provide<INpcControl>(this, api);
             ModApi.Provide<ISeatedCombat>(this, new SeatedCombatApi());
             ModApi.Provide<IFollowers>(this, new Hire.FollowersApi());
+            ModApi.Provide<IQuestFollowerBody>(this, new QuestFollower.BodyApi());
             ModApi.Provide<IPopulation>(this, new PopulationApi());
             ModApi.Provide<INpcDiagnosticSource>(this, new NpcDiagnosticSource());
             ProvideApisNavigation();

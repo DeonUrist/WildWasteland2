@@ -186,7 +186,7 @@ namespace WildWasteland.Modules.Patrols
                 car = VehiclePreparation.Spawn(packed, pos, rot);
                 if(!menu&&tpl.Origin!="POI")EncounterCar.Attach(car,eventId,tpl.ConvoyMember,true);
                 car.SetActive(true);
-                Paint.Apply(car, body.name,tpl.Faction);
+                Core.ModApi.Get<Core.IVehicleVisuals>()?.Paint(car, body.name,tpl.Faction);
                 // The car, its parts and its cargo go into the game's save lists only once the car is complete (Register.Commit below):
                 // a save during the build (autosave, the player) does not store a half-built car
                 // Spawn has already named/deferred the packed frame and each fitted part before activation.
@@ -275,7 +275,7 @@ namespace WildWasteland.Modules.Patrols
                         if (car == null || trailer == null) yield break;
                         Rider.Seat(car, marker, PatrolMarker.VehicleTurretSlots + ti, tpl.Trailer.Turrets[ti], tpl.Trailer.TurretPos[ti], trailer,tpl.Trailer.TurretStanding[ti],!tpl.RestoreCrewAppearance);
                     }
-                Paint.ApplyCargo(car, lootKey);   // the container's texture by load (Textures/cargo_*.png)
+                Core.ModApi.Get<Core.IVehicleVisuals>()?.Cargo(car, lootKey);   // the container's texture by load (Textures/cargo_*.png)
 
                 yield return new WaitForSeconds(1f);
                 if (car == null) yield break;

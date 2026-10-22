@@ -51,6 +51,7 @@ namespace WildWasteland.Modules.Quests
         static readonly Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>();
 
         // An item prefab by name (e.g. dogfood_can): the loaded asset, not an object in the world.
+        /// <summary>Finds an item asset prefab by normalized native name.</summary>
         public static GameObject FindPrefab(string name)
         {
             string want = Util.Norm(name.TrimStart('='));
@@ -71,6 +72,7 @@ namespace WildWasteland.Modules.Quests
 
         // Finds a spot on the ground level with the giver's feet, in front of them. Looks only a little above the feet so a roof,
         // tank or truck body next to the giver is never picked, and tries other directions when the spot is blocked.
+        /// <summary>Chooses loaded ground near the giver without selecting nearby vehicle roofs.</summary>
         static Vector3 GroundNear(Vector3 feet, Vector3 fwd, Vector3 side)
         {
             float[] turns = { 0f, 40f, -40f, 80f, -80f, 130f, -130f, 180f };
@@ -100,6 +102,7 @@ namespace WildWasteland.Modules.Quests
         static readonly List<Watched> watched = new List<Watched>();
         static float nextWatch;
 
+        /// <summary>Restores newly delivered goods that fall through terrain or disappear.</summary>
         public static void WatchSpawns()
         {
             if (watched.Count == 0 || Time.time < nextWatch) return;
@@ -130,6 +133,7 @@ namespace WildWasteland.Modules.Quests
 
         // Puts `count` copies of an item on the ground in front of `who`, registered in the game's save like the
         // game's own spawns. Returns how many were made.
+        /// <summary>Spawns and registers delivery goods in front of their giver.</summary>
         public static int SpawnItemsInFront(string name, int count, Transform who, Action<string> log)
         {
             GameObject prefab = FindPrefab(name);
@@ -152,6 +156,7 @@ namespace WildWasteland.Modules.Quests
             return made;
         }
 
+        /// <summary>Clears cached prefabs, watched deliveries and current-world query state.</summary>
         internal static void ResetWorld()
         {
             Clock.Reset(); Money.Reset(); ammoFsm = null;

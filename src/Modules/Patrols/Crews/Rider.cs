@@ -252,7 +252,7 @@ namespace WildWasteland.Modules.Patrols
         private int _slot; private bool _gunner, _bike;   // 2.2.0: turret spot 0..2, a gunner (PassengerGuard shoots, Pose crouches / seats), on a motorcycle
         private bool _standing;
         internal bool StandingPose=>_standing||(_bike&&_standAt>=0f);
-        internal bool AnimatedPose=>(_body!=null&&PlayerAnims.Alive(_body))||_graphOk;
+        internal bool AnimatedPose=>(_body!=null&&(_body is Core.IAnimatedCharacter character && Core.ModApi.Get<Core.IAnimationApi>()!=null && character.Valid && !character.Suspended))||_graphOk;
         internal void MaxHealth(float health){_maxHealth=health;}
         private float _standAt = -1f;                      // a Warboy on a bike stands up (crouch -> stand blend) before the leap
         private float _nextIgnore, _outOfArc;
@@ -346,7 +346,7 @@ namespace WildWasteland.Modules.Patrols
         private void ReleaseBody()
         {
             if (_body == null) return;
-            try { PlayerAnims.Dispose(_body); } catch (Exception) { }
+            try { (_body as Core.IAnimatedCharacter)?.Dispose(); } catch (Exception) { }
             _body = null;
         }
     }

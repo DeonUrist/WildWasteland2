@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Quests
         static readonly Dictionary<GameObject, bool> Suppressed = new Dictionary<GameObject, bool>();
 
         // Switches off the old faction's spawners at camps that were taken over, so its people do not respawn.
+        /// <summary>Retains and disables a replaced faction’s native spawner.</summary>
         static void Suppress(GameObject go) { if (!Suppressed.ContainsKey(go)) Suppressed[go] = go.activeSelf; go.SetActive(false); }
 
         static float nextNeutralize;
@@ -27,11 +28,12 @@ namespace WildWasteland.Modules.Quests
         // owner's people are there, a fresh garrison is created. If any of them is ever killed (destroyed while you are
         // near) the camp is not refilled for GarrisonCooldownHours of game time. Unloading is not a death, so leaving
         // and coming back refills an empty camp straight away.
+        /// <summary>Reinforces a settled empty camp under its existing cooldown rules.</summary>
         static void TryGarrison(Poi p, string ownerName)
         {
             if (GarrisonSize <= 0 || Stamps == null) return;
             if (Time.unscaledTime < settleUntil) return;                        // a save was just loaded: the game first restores its own NPCs
-            double now = Game.GameHours();
+            double now = WildWasteland.Core.Clock.GameHours;
             if (now < 0.0) return;
             string key = "camp:" + Factions.KeyOf(p);
             float rt = Time.unscaledTime;
@@ -57,6 +59,7 @@ namespace WildWasteland.Modules.Quests
             else campLastTry[key] = rt - 45f;     // nobody could be made (no one loaded to copy, no ground yet): try again in about 15 s
         }
 
+        /// <summary>Suppresses previous owners and advances takeover garrison maintenance.</summary>
         public static void NeutralizeTick(Vector3 playerWorld)
         {
             if (Factions.Overrides.Count == 0 || Time.unscaledTime < nextNeutralize) return;

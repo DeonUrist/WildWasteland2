@@ -10,28 +10,36 @@ namespace WildWasteland.Modules.Quests
         private static readonly HashSet<string> Names = new HashSet<string>(StringComparer.Ordinal);
         private const string SaveKey = "WildWasteland.Quests.CrewHistory";
         private static bool _fresh, _readFailed;
+        /// <summary>Clears remembered former crew identities and world-read flags.</summary>
         internal static void Clear() { Names.Clear(); _fresh = false; _readFailed = false; }
+        /// <summary>Restores former crew identities retained during a module restart.</summary>
         internal static void Restore(string[] names) { if (names != null) foreach (string name in names) Names.Add(name); }
+        /// <summary>Begins a fresh-world or loaded-world history session.</summary>
         internal static void Begin(bool fresh) { Clear(); _fresh = fresh; }
+        /// <summary>Remembers a live actor still recognized as vehicle crew.</summary>
         internal static void Observe(GameObject npc)
         {
-            var vehicles = Services.FollowerVehicles;
+            var vehicles = ModApi.Get<IFollowerVehicles>();
             if (npc != null && npc.transform.parent == null && vehicles != null && vehicles.IsCrew(npc)) Remember(npc);
         }
+        /// <summary>Keeps the native cloned actor name when its persistent suffix is valid.</summary>
         private static void Remember(GameObject npc)
         {
             string name = npc.name;
             int clone = name.LastIndexOf("(Clone)", StringComparison.Ordinal), id;
             if (clone >= 0 && int.TryParse(name.Substring(clone + 7), out id) && id >= 0) Names.Add(name);
         }
+        /// <summary>Records the on-foot actor reported by a crew exit event.</summary>
         internal static void Bailed(GameObject car, GameObject previous, GameObject npc) { if (npc != null) Remember(npc); }
+        /// <summary>Excludes current and former crew from hire candidates.</summary>
         internal static bool Blocked(Transform npc)
         {
             if (npc == null) return false;
-            var vehicles = Services.FollowerVehicles;
+            var vehicles = ModApi.Get<IFollowerVehicles>();
             if (vehicles != null && vehicles.IsCrew(npc.gameObject)) { Observe(npc.gameObject); return true; }
             return Names.Contains(npc.name);
         }
+        /// <summary>Captures currently loaded crew identities before saving.</summary>
         internal static string[] Snapshot()
         {
             var fsms = PlayMakerFSM.FsmList; // Save-time capture also includes crew created since the last published slice.

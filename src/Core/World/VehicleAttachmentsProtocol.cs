@@ -9,6 +9,7 @@ namespace WildWasteland.Core
         GameObject Attached(GameObject vehicle);
         void Connect(GameObject vehicle,GameObject trailer,bool preservePose=false);
         bool IsPart(Transform item);
+        bool IsFreeAttachment(GameObject item);
         bool IsWarRig(GameObject item);
         void DetachTankers(GameObject vehicle);
     }
