@@ -13,7 +13,7 @@ namespace WildWasteland.Modules.Presentation
         static Action<string,string,bool,float,float> _aim;
         internal static bool Enabled;
         /// <summary>Clears callbacks and preview state when Presentation stops, even if Tools remains enabled.</summary>
-        internal static void Clear(){Enabled=false;GunPose.ResetSelection();_owner=null;_weapon=null;_aim=null;}
+        internal static void Clear(){Enabled=false;GunPose.ResetSelection();GunPose.CurrentWeapon=GunPose.CurrentPose="";GunPose.CurrentShown=null;GunPose.CurrentFrame=-1;_owner=null;_weapon=null;_aim=null;}
         /// <summary>True only while the registered editor module runs.</summary>
         internal static bool Active { get { return _owner!=null && ModuleHost.IsRunning(_owner); } }
         /// <summary>Calls Tools at the original weapon evaluation point.</summary>
