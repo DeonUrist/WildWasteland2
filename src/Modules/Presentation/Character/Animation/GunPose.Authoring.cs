@@ -51,7 +51,9 @@ namespace WildWasteland.Modules.PlayerBody
             cs.AppendLine("        };");
             cs.AppendLine("    }");
             cs.AppendLine("}");
-            File.WriteAllText(_export, cs.ToString());
+            string temp = _export + ".tmp";
+            File.WriteAllText(temp, cs.ToString());
+            AtomicFile.Replace(temp, _export);
         }
         /// <summary>Records the live presentation diagnostic.</summary>
         public static void Note(string s) { _note = s ?? ""; }
