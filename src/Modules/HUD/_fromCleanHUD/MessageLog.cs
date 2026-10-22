@@ -1,4 +1,5 @@
 using WildWasteland.Core.UI;
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
@@ -7,14 +8,18 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // Timed on-screen messages ("FULL", "Ammo Full", "Armor Full", "Bodyarmor Needed", ...) are FSM states that
     // UiTextSetText a text on the HUD canvas, Wait, and reset it on exit. While CleanHUD is on, such a message is
     // taken off the game's text (restored to what it showed before) and sent to the log at the top left instead.
     internal static class MessageHook
     {
-        internal static readonly List<string> Pending = new List<string>();
+        internal sealed class Notice { internal string Text; internal NotificationKind Kind; internal float Seconds; }
+        internal static readonly List<Notice> Pending = new List<Notice>();
+        internal static event Action<NotificationKind> Clearing;
+        /// <summary>Removes a notification category from pending and attached logs.</summary>
+        internal static void ClearKind(NotificationKind kind) { Pending.RemoveAll(x => x.Kind == kind); var clear = Clearing; if (clear != null) clear(kind); }
         internal static bool Active;   // set by the HUD while it is attached and visible
 
         private static readonly Dictionary<FsmState, bool> Timed = new Dictionary<FsmState, bool>();
@@ -62,12 +67,12 @@ namespace WildWasteland.Modules.CleanHUD
             return wait;
         }
 
-        internal static void Push(string msg)
+        internal static void Push(string msg, NotificationKind kind = NotificationKind.Info, float seconds = 0)
         {
             msg = msg.Replace("\r", " ").Replace("\n", " ").Trim();
             if (msg.Length == 0) return;
             if (Pending.Count > 32) Pending.RemoveAt(0);
-            Pending.Add(msg);
+            Pending.Add(new Notice { Text = msg, Kind = kind, Seconds = seconds });
         }
     }
 
@@ -76,7 +81,7 @@ namespace WildWasteland.Modules.CleanHUD
     {
         private const float LineH = 32f, Life = 3f, Width = 640f;
         private const int MaxLines = 8;
-        private sealed class Line { internal RectTransform Rt; internal Text Txt; internal CanvasGroup G; internal string Msg; internal int Count = 1; internal float Y, A; internal bool Dying; }
+        private sealed class Line { internal RectTransform Rt; internal Text Txt; internal CanvasGroup G; internal string Msg; internal NotificationKind Kind; internal float Until; internal int Count = 1; internal float Y, A; internal bool Dying; }
 
         private readonly RectTransform _root;
         private readonly Font _font;
@@ -87,7 +92,7 @@ namespace WildWasteland.Modules.CleanHUD
 
         internal static Vector2 Size { get { return new Vector2(Width, LineH * MaxLines); } }
 
-        internal MessageLog(RectTransform root, Font font, Color gold, Color white) { _root = root; _font = font; _gold = gold; _white = white; }
+        internal MessageLog(RectTransform root, Font font, Color gold, Color white) { _root = root; _font = font; _gold = gold; _white = white; MessageHook.Clearing += ClearKind; }
 
         private Line Make()
         {
@@ -114,37 +119,42 @@ namespace WildWasteland.Modules.CleanHUD
             return l;
         }
 
-        internal void Add(string msg)
+        internal void Add(string msg, NotificationKind kind = NotificationKind.Info, float seconds = 0)
         {
             float now = Time.unscaledTime;
             var last = _lines.Count > 0 ? _lines[_lines.Count - 1] : null;
-            if (last != null && !last.Dying && last.Msg == msg)
+            if (last != null && !last.Dying && last.Msg == msg && last.Kind == kind)
             {
-                last.Count++; last.Txt.text = msg + "  x" + last.Count; last.A = .35f;   // brief flash on repeat
+                last.Until = seconds > 0 ? now + seconds : 0; last.Count++; last.Txt.text = msg + "  x" + last.Count; last.A = .35f;   // brief flash on repeat
                 return;
             }
             int alive = 0; foreach (var x in _lines) if (!x.Dying) alive++;
             if (alive == 0) _nextDrop = now + Life;
             var l = Make();
-            l.Msg = msg; l.Count = 1; l.Dying = false; l.Txt.text = msg; l.A = 0f;
+            l.Msg = msg; l.Kind = kind; l.Until = seconds > 0 ? now + seconds : 0; l.Count = 1; l.Dying = false; l.Txt.text = msg; l.A = 0f;
             l.Y = _lines.Count * LineH;
             l.Rt.anchoredPosition = new Vector2(0, -l.Y); l.G.alpha = 0f;
             _lines.Add(l);
             if (alive + 1 > MaxLines) foreach (var x in _lines) if (!x.Dying) { x.Dying = true; break; }
         }
 
+        /// <summary>Fades all visible entries in the requested notification category.</summary>
+        void ClearKind(NotificationKind kind) { foreach (var line in _lines) if (line.Kind == kind) line.Dying = true; }
+        /// <summary>Releases category listeners when the parent HUD is destroyed.</summary>
+        internal void Dispose() { MessageHook.Clearing -= ClearKind; }
         internal void Tick()
         {
-            while (MessageHook.Pending.Count > 0) { var m = MessageHook.Pending[0]; MessageHook.Pending.RemoveAt(0); Add(m); }
+            while (MessageHook.Pending.Count > 0) { var m = MessageHook.Pending[0]; MessageHook.Pending.RemoveAt(0); Add(m.Text, m.Kind, m.Seconds); }
             float now = Time.unscaledTime, dt = Mathf.Min(Time.unscaledDeltaTime, .1f);
             if (now >= _nextDrop)
             {
-                foreach (var x in _lines) if (!x.Dying) { x.Dying = true; break; }
+                foreach (var x in _lines) if (!x.Dying && x.Until <= now) { x.Dying = true; break; }
                 _nextDrop = now + Life;
             }
             for (int i = 0; i < _lines.Count; i++)
             {
                 var l = _lines[i];
+                if (l.Until > 0 && now >= l.Until) l.Dying = true;
                 if (l.Dying)
                 {
                     l.A -= dt * 4f;

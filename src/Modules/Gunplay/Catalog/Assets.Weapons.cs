@@ -9,7 +9,7 @@ using UnityEngine.Rendering;
 using WildWasteland.Core;
 using WildWasteland.Modules.Gunplay;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>One row of the HUD weapon table (key, caliber, gun/melee/thrown).</summary>
     internal sealed class WeaponInfo

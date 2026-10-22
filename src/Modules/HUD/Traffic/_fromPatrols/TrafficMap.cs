@@ -1,10 +1,17 @@
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>Traffic drawing on the native map (route ink, group labels, battle skulls, War Rig notice; Gui job); HUD map layer part of WorldTraffic (Wave A split of Patrols Traffic/TrafficMap.cs).</summary>
-    internal sealed partial class WorldTraffic
+    internal sealed class TrafficMapView
     {
+        private readonly Core.TrafficMapSnapshot _snapshot = new Core.TrafficMapSnapshot();
+        private Core.ITrafficMapSource Source { get { return Core.ModApi.Get<Core.ITrafficMapSource>(); } }
+        private bool RoutesOn { get { return _snapshot.Routes; } }
+        private bool MarkersOn { get { return _snapshot.Markers; } }
+        private bool MapNames { get { return _snapshot.Names; } }
+        private bool InkUnknown { get { return _snapshot.HideRoutes; } }
+        private bool MapUnknown { get { return _snapshot.HideMarkers; } }
         private Camera _gameMap;
         private RectTransform _gameMapImage;
         private PlayMakerFSM _mapCheat;
@@ -28,11 +35,12 @@ namespace WildWasteland.Modules.Patrols
         internal bool GuiWanted()
         {
             bool inGame=Core.GameRefs.InGame;float now=Time.unscaledTime;
-            if(inGame&&now<WarRig.WorldSpawning.NaturalNoticeUntil)return true;
+            var source = Source; if (source != null && now >= _gameInkAt) source.Capture(_snapshot); else if (source == null) _snapshot.Enabled = false;
+            if(inGame&&now<(Source != null ? Source.NoticeUntil : 0f))return true;
             var mapApi=Core.Services.Map;
-            bool traffic=PatrolsModule.ConvoyEnabled.Value&&(RoutesOn||MarkersOn);
+            bool traffic=_snapshot.Enabled&&(RoutesOn||MarkersOn);
             bool reset=_gameInkAt!=0f||_mapWasOpen;
-            if((!traffic&&WarRig.WorldSpawning.NaturalRigs.Count==0)||!inGame)return reset;
+            if((!traffic&&(Source != null ? Source.RigCount : 0)==0)||!inGame)return reset;
             bool mapOpen=_mapCheat!=null&&_mapCheat.isActiveAndEnabled&&_mapCheat.ActiveStateName=="on";
             if((_gameMap==null||_gameMapImage==null||_mapCheat==null)&&(now>=_nextMapScan||(mapOpen&&!_mapWasOpen)))return true;
             return mapOpen||reset;
@@ -41,16 +49,18 @@ namespace WildWasteland.Modules.Patrols
         internal void Gui()
         {
             if(Event.current.type!=EventType.Repaint)return;
-            if(Core.GameRefs.InGame&&Time.unscaledTime<WarRig.WorldSpawning.NaturalNoticeUntil)
+            if(Core.GameRefs.InGame&&Time.unscaledTime<(Source != null ? Source.NoticeUntil : 0f))
             {
                 if(_rigNoticeStyle==null)_rigNoticeStyle=new GUIStyle(GUI.skin.box){fontSize=26,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter,normal={textColor=Color.yellow}};
                 GUI.Box(new Rect((Screen.width-420f)*.5f,40f,420f,55f),"WAR RIG SPAWNED",_rigNoticeStyle);
             }
-            var rigs=WarRig.WorldSpawning.NaturalRigs;
-            for(int i=rigs.Count-1;i>=0;i--)if(rigs[i]==null)rigs.RemoveAt(i);
+            var source = Source;
+            int rigs = source != null ? source.RigCount : 0;
+            if (source != null && Time.unscaledTime >= _gameInkAt) source.Capture(_snapshot);
+            else if (source == null) _snapshot.Enabled = false;
             var mapApi=Core.Services.Map;
-            bool traffic=PatrolsModule.ConvoyEnabled.Value&&(RoutesOn||MarkersOn);
-            if((!traffic&&rigs.Count==0)||!Core.GameRefs.InGame)
+            bool traffic=_snapshot.Enabled&&(RoutesOn||MarkersOn);
+            if((!traffic&&rigs==0)||!Core.GameRefs.InGame)
             {_gameInkAt=0f;_mapWasOpen=false;return;}
             bool mapOpen=_mapCheat!=null&&_mapCheat.isActiveAndEnabled&&_mapCheat.ActiveStateName=="on";
             if((_gameMap==null||_gameMapImage==null||_mapCheat==null)&&(Time.unscaledTime>=_nextMapScan||(mapOpen&&!_mapWasOpen)))
@@ -79,8 +89,8 @@ namespace WildWasteland.Modules.Patrols
                 {
                 var canvas=new Rect(0,0,Mathf.Min(512f,rect.width),Mathf.Min(512f,rect.height));
                 _gameInk.Begin(Mathf.RoundToInt(canvas.width),Mathf.RoundToInt(canvas.height));
-                foreach(var journey in _journeys)if(!journey.foot)for(int i=1;i<journey.route.Length;i++)   // foot patrols: never inked
-                    InkSegment(mapApi,journey.route[i-1],journey.route[i],canvas,RouteColor(journey,InkUnknown));
+                foreach(var journey in _snapshot.Journeys)if(!journey.Foot)for(int i=1;i<journey.Route.Length;i++)   // foot patrols: never inked
+                    InkSegment(mapApi,journey.Route[i-1],journey.Route[i],canvas,journey.RouteColor);
                 _gameInk.End();
                 }
                 _mapLabels.Clear();_mapBattles.Clear();
@@ -88,18 +98,11 @@ namespace WildWasteland.Modules.Patrols
                 // of every traffic group, cars and foot travelers alike. Map Routes only draws the route lines above.
                 if(lblOn)
                 {
-                foreach(var journey in _journeys)if(!Fogged(mapApi,journey.position))
-                CacheMapLabel(journey.position,rect,RouteColor(journey,MapUnknown&&!TrafficCompass.Known(journey)),MapName(journey),journey.foot);
-                if(first&&Core.Log.Verbose)LogFootDots(mapApi,rect);
-                foreach(var camp in TrafficLocations.Known.Values)if(camp.cleared&&mapApi==null)
-                CacheMapLabel(camp.center,rect,Color.gray,camp.name+" [Cleared]");
-                foreach(var battle in _battles)
-                {if(Fogged(mapApi,battle.position))continue;var p=MapPoint(battle.position,rect);_mapBattles.Add(new Rect(p.x-9f,p.y-9f,18f,18f));}
-                foreach(var merchant in MerchantHost.All)if(merchant!=null&&!Owns(merchant.GetComponent<PatrolMarker>())&&(mapApi==null||!mapApi.Hidden(merchant.transform.position)))
-                {
-                bool known=TrafficCompass.Known(TrafficCompass.MerchantKey(merchant));
-                CacheMapLabel(TrafficSpace.World(merchant.transform.position),rect,_lblHide&&!known?Color.gray:Color.yellow,_lblHide&&!known?"Unknown":_inkNames||known?merchant.Data?.group??"Coyote merchant":"Merchant");
-                }
+                foreach(var journey in _snapshot.Journeys)if(!Fogged(mapApi,journey.Position))
+                CacheMapLabel(journey.Position,rect,journey.MarkerColor,journey.Name,journey.Foot);
+                foreach(var point in _snapshot.Points) if (!Fogged(mapApi, point.Position)) CacheMapLabel(point.Position, rect, point.Color, point.Name);
+                foreach(var battle in _snapshot.Battles)
+                {if(Fogged(mapApi,battle))continue;var p=MapPoint(battle,rect);_mapBattles.Add(new Rect(p.x-9f,p.y-9f,18f,18f));}
                 }
             }
             if(traffic)
@@ -108,10 +111,10 @@ namespace WildWasteland.Modules.Patrols
                 foreach(var label in _mapLabels)DrawMapLabel(label);
                 GUI.color=Color.white;foreach(var battle in _mapBattles)GUI.DrawTexture(battle,Skull());
             }
-            foreach(var rig in rigs)
+            for(int rig = 0; rig < rigs; rig++)
             {
                 if(mapApi!=null&&mapApi.Markers==Core.MapDetail.Off)continue;
-                var p=_gameMap.WorldToViewportPoint(rig.transform.position);
+                var p=_gameMap.WorldToViewportPoint(Core.Origin.Scene(source.RigPosition(rig)));
                 if(p.z<=0f||p.x<0f||p.x>1f||p.y<0f||p.y>1f)continue;
                 if(_rigXStyle==null)_rigXStyle=new GUIStyle(GUI.skin.label){fontSize=24,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter,normal={textColor=Color.yellow}};
                 bool unknown=mapApi!=null&&mapApi.Markers==Core.MapDetail.Ambiguous;
@@ -129,12 +132,12 @@ namespace WildWasteland.Modules.Patrols
         {
             float now=Time.unscaledTime;
             long sig=0;
-            foreach(var journey in _journeys)if(!journey.foot)sig++;
-            foreach(var journey in _journeys)
+            foreach(var journey in _snapshot.Journeys)if(!journey.Foot)sig++;
+            foreach(var journey in _snapshot.Journeys)
             {
-                if(journey.foot)continue;   // not inked: their walking never re-inks the routes
-                var c=RouteColor(journey,InkUnknown);
-                sig=sig*31+(journey.route!=null?System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(journey.route)*7+journey.route.Length:0);
+                if(journey.Foot)continue;   // not inked: their walking never re-inks the routes
+                var c=journey.RouteColor;
+                sig=sig*31+(journey.Route!=null?System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(journey.Route)*7+journey.Route.Length:0);
                 sig=sig*31+((c.r<<16)|(c.g<<8)|c.b);
             }
             var cam=_gameMap.transform;
@@ -143,10 +146,10 @@ namespace WildWasteland.Modules.Patrols
             if(mapApi!=null)
             {
                 // CleanHUD reveals the fog only around the player, fading in over about a second: re-ink while the player moves (10 m cells) and 2 s after
-                var player=PlayerRef.Player;
+                var player=Core.GameRefs.Player != null ? Core.GameRefs.Player.transform : null;
                 if(player!=null)
                 {
-                    var w=TrafficSpace.World(player.position);int x=Mathf.FloorToInt(w.x/10f),z=Mathf.FloorToInt(w.z/10f);
+                    var w=Core.Origin.World(player.position);int x=Mathf.FloorToInt(w.x/10f),z=Mathf.FloorToInt(w.z/10f);
                     if(x!=_inkPlayerX||z!=_inkPlayerZ){_inkPlayerX=x;_inkPlayerZ=z;_fogMovingUntil=now+2f;}
                 }
                 fog=now<_fogMovingUntil;
@@ -156,24 +159,11 @@ namespace WildWasteland.Modules.Patrols
             _inkSafetyAt=now+10f;return true;
         }
         // With CleanHUD's fog of war on, routes are inked only across explored ground (50 m pieces, judged at their midpoints).
-        // diagnostics (verbose, once per map opening): where each foot patrol dot is and why it may not show
-        private void LogFootDots(Core.IMapMarkers mapApi,Rect rect)
-        {
-            var player=PlayerRef.Player;var pw=player!=null?TrafficSpace.World(player.position):Vector3.zero;int n=0;
-            foreach(var journey in _journeys)
-            {
-                if(!journey.foot)continue;n++;var p=MapPoint(journey.position,rect);
-                bool inside=p.x>=0f&&p.y>=0f&&p.x<=rect.width&&p.y<=rect.height;
-                PatrolsModule.Verbose("Map: foot patrol "+journey.name+" at "+TrafficLocations.FlatDistance(journey.position,pw).ToString("0")+" m from you, map point "+p.x.ToString("0")+","+p.y.ToString("0")+
-                    " of "+rect.width.ToString("0")+"x"+rect.height.ToString("0")+(inside?" (on the map)":" (outside the shown area)")+(Fogged(mapApi,journey.position)?", in fog":"")+(MarkersOn?"":", hidden: World traffic markers off"));
-            }
-            if(n==0)PatrolsModule.Verbose("Map: no foot patrols in world traffic");
-        }
-        private static bool Fogged(Core.IMapMarkers map,Vector3 world){return map!=null&&map.Hidden(TrafficSpace.Scene(world));}
+        private static bool Fogged(Core.IMapMarkers map,Vector3 world){return map!=null&&map.Hidden(Core.Origin.Scene(world));}
         private void InkSegment(Core.IMapMarkers map,Vector3 a,Vector3 b,Rect canvas,Color32 color)
         {
             if(map==null){_gameInk.Segment(MapPoint(a,canvas),MapPoint(b,canvas),color);return;}
-            int pieces=Mathf.Clamp(Mathf.CeilToInt(TrafficLocations.FlatDistance(a,b)/50f),1,400);
+            int pieces=Mathf.Clamp(Mathf.CeilToInt(Vector2.Distance(new Vector2(a.x,a.z),new Vector2(b.x,b.z))/50f),1,400);
             int start=-1;
             for(int k=0;k<=pieces;k++)
             {
@@ -221,7 +211,7 @@ namespace WildWasteland.Modules.Patrols
             GUI.color=label.color;GUI.DrawTexture(new Rect(r.x-9.5f,r.y+10.5f,5f,5f),_mapDot);GUI.Label(r,label.text,_mapLabelStyle);
         }
         private Vector2 MapPoint(Vector3 world,Rect rect)
-        {var p=_gameMap.WorldToViewportPoint(TrafficSpace.Scene(world));return new Vector2(p.x*rect.width,(1f-p.y)*rect.height);}
+        {var p=_gameMap.WorldToViewportPoint(Core.Origin.Scene(world));return new Vector2(p.x*rect.width,(1f-p.y)*rect.height);}
 
         private Texture2D Skull()
         {
@@ -230,6 +220,7 @@ namespace WildWasteland.Modules.Patrols
             _skull=new Texture2D(14,11,TextureFormat.RGBA32,false);var pixels=new Color32[154];for(int y=0;y<11;y++)for(int x=0;x<14;x++)pixels[(10-y)*14+x]=rows[y][x]=='1'?new Color32(230,230,230,255):new Color32(0,0,0,0);
             _skull.SetPixels32(pixels);_skull.filterMode=FilterMode.Point;_skull.Apply();return _skull;
         }
-        private void OnDestroy(){_gameInk.Dispose();if(_skull!=null)Destroy(_skull);if(_mapDot!=null)Destroy(_mapDot);}
+        internal void Reset() { _gameInkAt = 0f; _gameMap = null; _gameMapImage = null; _mapCheat = null; _nextMapScan = 0f; _mapWasOpen = false; _mapLabels.Clear(); _mapBattles.Clear(); }
+        internal void Dispose(){_gameInk.Dispose();if(_skull!=null)UnityEngine.Object.Destroy(_skull);if(_mapDot!=null)UnityEngine.Object.Destroy(_mapDot);}
     }
 }

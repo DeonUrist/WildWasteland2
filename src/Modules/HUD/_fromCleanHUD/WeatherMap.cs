@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal sealed class WeatherMap
     {
@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.CleanHUD
         private WeatherMapGraphic _graphic;
         private float _nextRefresh;
 
-        internal void Tick(QuestMap questMap)
+        internal void Tick(MapMarkers questMap)
         {
             var weather = Services.Weather;
             Camera camera; RectTransform map;

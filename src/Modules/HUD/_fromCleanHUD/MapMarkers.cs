@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
@@ -5,13 +6,13 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
-    internal sealed class QuestMap : IMapMarkers, IDisposable
+    internal sealed class MapMarkers : IMapMarkers, IMapMarkerStyle, IDisposable
     {
         private sealed class Entry
         {
-            internal int Id; internal string Owner, Icon; internal Color Color; internal Func<Vector3> Position;
+            internal int Id; internal string Owner, Icon, Label; internal float Size = 1; internal GlyphText LabelView; internal Color Color; internal Func<Vector3> Position;
             internal RectTransform Root; internal RawImage Image; internal Texture IconTexture;
         }
         private readonly List<Entry> _entries = new List<Entry>();
@@ -47,18 +48,26 @@ namespace WildWasteland.Modules.CleanHUD
             }
             finally { GUI.matrix = matrix; GUI.EndGroup(); GUI.color = color; GUI.depth = depth; }
         }
-        public Texture2D GetIcon(string key) { return CleanHudModule.Enabled.Value ? MapIcons.Get(key) : null; }
-        public MapDetail Markers { get { return CleanHudModule.MapMarkers.Value; } }
-        public MapDetail Routes { get { return CleanHudModule.MapRoutes.Value; } }
+        public Texture2D GetIcon(string key) { return HudModule.CleanHudEnabled.Value ? MapIcons.Get(key) : null; }
+        public MapDetail Markers { get { return HudModule.MapMarkers.Value; } }
+        public MapDetail Routes { get { return HudModule.MapRoutes.Value; } }
         public int Add(string owner, Func<Vector3> position, string icon, Color color, string label)
-        { var e = new Entry { Id = ++_next, Owner = owner, Position = position, Icon = icon, Color = color }; _entries.Add(e); _ids.Add(e.Id); return e.Id; }
+        { var e = new Entry { Id = ++_next, Owner = owner, Position = position, Icon = icon, Color = color, Label = label }; _entries.Add(e); _ids.Add(e.Id); return e.Id; }
+        /// <summary>Changes a live marker's label without reaching into its renderer.</summary>
+        public void SetLabel(int id, string label) { foreach (var e in _entries) if (e.Id == id) { e.Label = label ?? ""; break; } }
+        /// <summary>Changes a live marker's tint.</summary>
+        public void SetColor(int id, Color color) { foreach (var e in _entries) if (e.Id == id) { e.Color = color; break; } }
+        /// <summary>Changes a live marker's size multiplier within a positive bound.</summary>
+        public void SetSize(int id, float size) { foreach (var e in _entries) if (e.Id == id) { e.Size = Mathf.Clamp(size, .1f, 10f); break; } }
+        /// <summary>Changes a live marker's cached artwork key.</summary>
+        public void SetIcon(int id, string icon) { foreach (var e in _entries) if (e.Id == id) { e.Icon = icon; e.IconTexture = null; break; } }
         public bool Exists(int id) { return _ids.Contains(id); }
         public bool Hidden(Vector3 scene) { return MapFog.Hides(scene); }
         public bool Explored(Vector3 scene) { return MapFog.Explored(scene); }
         public bool Open { get { return _open; } }
         internal bool TryWeatherView(out Camera camera, out RectTransform map)
-        { camera = _camera; map = _map; return _open && camera != null && map != null && CleanHudModule.Enabled.Value && GameRefs.InPlay && !Core.UI.ToolWindow.IsOpen; }
-        public MapDetail TrafficMarkers { get { return CleanHudModule.MapTrafficMarkers.Value; } }
+        { camera = _camera; map = _map; return _open && camera != null && map != null && HudModule.CleanHudEnabled.Value && GameRefs.InPlay && !Core.UI.ToolWindow.IsOpen; }
+        public MapDetail TrafficMarkers { get { return HudModule.MapTrafficMarkers.Value; } }
         public float Zoom { get { return _zoom; } }
         public bool Observe(Transform target, string name, Color color) { return Binoculars.Observe(target, name, color) || VantageDiscovery.Sees(target); }
         public void Remove(int id)
@@ -121,7 +130,7 @@ namespace WildWasteland.Modules.CleanHUD
             var target = _owned.targetTexture; if (target == null) return;
             foreach (var image in UnityEngine.Object.FindObjectsOfType<RawImage>(true))
                 if (image.texture == target && image.name != "RawImage_Map") _consumers.Add(image);
-            if (_consumers.Count > 0) CleanHudModule.Log("Map camera target is also shown by " + _consumers.Count + " other image(s); the camera renders while any is visible");
+            if (_consumers.Count > 0) HudModule.Log("Map camera target is also shown by " + _consumers.Count + " other image(s); the camera renders while any is visible");
         }
         // Mouse wheel zooms the native map in (z 1 = native view .. MinZoom), never out. The native size/FOV is captured per camera
         // instance; a value the game writes itself becomes the new native. Markers, fog and Patrols' ink project through the camera.
@@ -174,7 +183,7 @@ namespace WildWasteland.Modules.CleanHUD
             bool play = GameRefs.Menu != null && GameRefs.Menu.ActiveStateName == "play";
             _open = mapShown;
             DriveZoom(mapShown, play);   // the zoom survives a pause; it resets when the map closes
-            _playerShown = CleanHudModule.Enabled.Value && CleanHudModule.MapEnabled.Value && play && mapShown && _map != null && _camera != null && !Core.UI.ToolWindow.IsOpen;
+            _playerShown = HudModule.CleanHudEnabled.Value && HudModule.MapEnabled.Value && play && mapShown && _map != null && _camera != null && !Core.UI.ToolWindow.IsOpen;
             if (_playerFor != GameRefs.Player)
             {
                 if (_nativePlayer != null) _nativePlayer.forceRenderingOff = _nativePlayerOff;
@@ -183,9 +192,9 @@ namespace WildWasteland.Modules.CleanHUD
                 _nativePlayerOff = _nativePlayer != null && _nativePlayer.forceRenderingOff;
             }
             if (_nativePlayer != null) _nativePlayer.forceRenderingOff = _nativePlayerOff || _playerShown;
-            MapFog.Tick(_map, _camera, CleanHudModule.MapEnabled.Value && play && mapShown && _map != null);
+            MapFog.Tick(_map, _camera, HudModule.MapEnabled.Value && play && mapShown && _map != null);
             if (_root == null) return;
-            bool open = CleanHudModule.Enabled.Value && CleanHudModule.MapEnabled.Value && Markers != MapDetail.Off && play
+            bool open = HudModule.CleanHudEnabled.Value && HudModule.MapEnabled.Value && Markers != MapDetail.Off && play
                 && mapShown && _camera != null;
             if (_root.gameObject.activeSelf != open) _root.gameObject.SetActive(open);
             if (!open) return;
@@ -195,10 +204,19 @@ namespace WildWasteland.Modules.CleanHUD
                 {
                     e.Root = DialogueWidgets.Rect(_root, "quest", 0, 0, 28, 28);
                     e.Image = e.Root.gameObject.AddComponent<RawImage>(); e.Image.raycastTarget = false;
-                    e.IconTexture = MapIcons.Get(e.Icon) ?? Assets.Tex("g_" + e.Icon);
+                    e.LabelView = DialogueWidgets.Text(e.Root, "label", -166, 32, 360, 22, 13, Color.white, "");
+                    e.LabelView.Align = TextAnchor.MiddleCenter;
+                    e.LabelView.gameObject.SetActive(false);
+                }
+                if (e.IconTexture == null) e.IconTexture = MapIcons.Get(e.Icon) ?? Assets.Tex("g_" + e.Icon);
+                if (e.LabelView != null)
+                {
+                    bool named = !string.IsNullOrEmpty(e.Label) && e.Owner != LocationMarkers.Owner;
+                    if (e.LabelView.gameObject.activeSelf != named) e.LabelView.gameObject.SetActive(named);
+                    if (named) { e.LabelView.Set(e.Label); e.LabelView.color = e.Color; }
                 }
                 bool ambiguous = Markers == MapDetail.Ambiguous && !(e.Owner == LocationMarkers.Owner && LocationMarkers.Known(e.Position));
-                float size = !ambiguous && e.Owner == LocationMarkers.Owner && LocationMarkers.CustomIcon(e.Position) ? 42f : 28f;
+                float size = (!ambiguous && e.Owner == LocationMarkers.Owner && LocationMarkers.CustomIcon(e.Position) ? 42f : 28f) * e.Size;
                 if (e.Root.sizeDelta.x != size) e.Root.sizeDelta = new Vector2(size, size);
                 e.Image.texture = ambiguous ? MapIcons.Get("unknown") : e.IconTexture;
                 e.Image.color = ambiguous ? Color.white : e.Color;
@@ -212,7 +230,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal void ApplyEnabled()
         {
             if (_fsm == null || !_captured) return;
-            bool enabled = CleanHudModule.MapEnabled.Value;
+            bool enabled = HudModule.MapEnabled.Value;
             if (!enabled && _fsm.enabled && _fsm.ActiveStateName == "on") _fsm.SendEvent("back");
             if (_fsm.enabled != enabled) _fsm.enabled = enabled;
         }

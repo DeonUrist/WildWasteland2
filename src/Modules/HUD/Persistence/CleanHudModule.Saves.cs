@@ -1,9 +1,9 @@
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
-    /// <summary>HUD world-ready bridge for the exploration record embedded in the world save.</summary>
-    public sealed partial class CleanHudModule
+    /// <summary>Loads HUD exploration from the selected ES3 world save when native loading completes.</summary>
+    public sealed partial class HudModule
     {
         /// <summary>Loads the fog of war of the current slot (MapFog.WorldReady).</summary>
         partial void WorldReadySaves() { MapFog.WorldReady(SaveBus.Slot); }

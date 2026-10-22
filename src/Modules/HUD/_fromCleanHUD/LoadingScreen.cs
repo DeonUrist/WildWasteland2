@@ -9,12 +9,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal sealed class LoadingScreen : IDisposable
     {
         private sealed class ScreenImage { internal string Name; internal Texture2D Texture; internal DateTime Stamp; }
-        private readonly string _dir = Path.Combine(Core.Assets.Root, "LoadingScreens");
+        private readonly string _dir = Path.Combine(Core.Assets.ModuleDir("HUD"), "LoadingScreens");
         private readonly Dictionary<string, ScreenImage> _images = new Dictionary<string, ScreenImage>(StringComparer.OrdinalIgnoreCase);
         private readonly List<ScreenImage> _screens = new List<ScreenImage>();
         private readonly System.Random _random = new System.Random();
@@ -55,16 +55,16 @@ namespace WildWasteland.Modules.CleanHUD
                 InstallArtwork();
                 string config = Path.Combine(_dir, "screens.json");
                 if (!File.Exists(config))
-                    using (var stream = WildWasteland.Core.DiskResources.Open("CleanHUD.LoadingScreens.screens.json"))
+                    using (var stream = WildWasteland.Core.DiskResources.Open("HUD.LoadingScreens.screens.json"))
                     using (var reader = new StreamReader(stream)) File.WriteAllText(config, reader.ReadToEnd());
                 var tips = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                using (var stream = WildWasteland.Core.DiskResources.Open("CleanHUD.LoadingScreens.screens.json"))
+                using (var stream = WildWasteland.Core.DiskResources.Open("HUD.LoadingScreens.screens.json"))
                 using (var reader = new StreamReader(stream)) ReadTips(reader.ReadToEnd(), tips);
                 _tips = tips; // Missing entries in an older custom JSON still receive the new default tips.
                 ReadTips(File.ReadAllText(config), tips);
 
             }
-            catch (Exception e) { CleanHudModule.Warn("Loading screen text: " + e.Message); }
+            catch (Exception e) { HudModule.Warn("Loading screen text: " + e.Message); }
             try
             {
                 string[] files = Directory.GetFiles(_dir, "*.png");
@@ -86,13 +86,13 @@ namespace WildWasteland.Modules.CleanHUD
                             if (image.Texture != null) UnityEngine.Object.Destroy(image.Texture);
                             image.Texture = texture; image.Stamp = stamp; texture = null;
                         }
-                        catch (Exception e) { CleanHudModule.Warn("Loading image " + name + ": " + e.Message); }
+                        catch (Exception e) { HudModule.Warn("Loading image " + name + ": " + e.Message); }
                         finally { if (texture != null) UnityEngine.Object.Destroy(texture); }
                     }
                     if (image.Texture != null) _screens.Add(image);
                 }
             }
-            catch (Exception e) { CleanHudModule.Warn("Loading images: " + e.Message); }
+            catch (Exception e) { HudModule.Warn("Loading images: " + e.Message); }
         }
 
         static void ReadTips(string text, Dictionary<string, string> tips)
@@ -109,7 +109,7 @@ namespace WildWasteland.Modules.CleanHUD
         void InstallArtwork()
         {
             if (_defaultArtInstalled) return;
-            var assembly = Assembly.GetExecutingAssembly(); const string prefix = "CleanHUD.LoadingScreens.";
+            var assembly = Assembly.GetExecutingAssembly(); const string prefix = "HUD.LoadingScreens.";
             foreach (string resource in WildWasteland.Core.DiskResources.Names)
             {
                 if (!resource.StartsWith(prefix, StringComparison.Ordinal) || !resource.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) continue;
@@ -173,11 +173,19 @@ namespace WildWasteland.Modules.CleanHUD
             _root.SetActive(false);
         }
 
+        /// <summary>Consumes the Saves presentation milestones; provider state also permits attachment during an already active save.</summary>
+        internal void Present(ref Core.Events.SavePresentation presentation)
+        {
+            if (presentation.Operation != SavePhase.Saving) return;
+            if (presentation.Phase == Core.Events.SavePresentationPhase.End) { if (_localSaving) { _localSaving = false; End(); } return; }
+            if (presentation.Fraction < .1f) return;
+            var saves = ModApi.Get<ISaves>(); _localSaving = true;
+            Begin(true, saves != null && (saves.Kind == SaveKind.Auto || saves.Kind == SaveKind.Exit));
+        }
         internal void Begin(bool saving = false, bool autosaving = false)
         {
-            if (Active || !CleanHudModule.Running || !CleanHudModule.MenuEnabled.Value) return;
+            if (Active || !HudModule.Running || !HudModule.MenuEnabled.Value) return;
             LoadingProgress.Begin();
-            Reload();
             _saving = saving; _autosaving = autosaving; _saveFinished = false;
             _nextProgress = _shownProgress = 0f;
             _screenSince = Time.unscaledTime;
@@ -188,7 +196,7 @@ namespace WildWasteland.Modules.CleanHUD
             if (_root == null) Build();
             ShowScreen(); UpdateProgress(); _completed = false; Active = true; _root.SetActive(true);
             var events = UnityEngine.EventSystems.EventSystem.current; if (events != null) events.SetSelectedGameObject(null);
-            CleanHudModule.Log((_autosaving ? "Autosaving " : _saving ? "Saving " : "Loading ") + (_current != null ? _current.Name : "(no Screen*.png found)"));
+            HudModule.Log((_autosaving ? "Autosaving " : _saving ? "Saving " : "Loading ") + (_current != null ? _current.Name : "(no Screen*.png found)"));
         }
         private void ShowScreen()
         {
@@ -222,7 +230,7 @@ namespace WildWasteland.Modules.CleanHUD
         private void SaveFinished() { _saveFinished = true; }
         internal void AfterEnterState(HutongGames.PlayMaker.Fsm fsm, HutongGames.PlayMaker.FsmState state)
         {
-            if (!CleanHudModule.Running || state == null || state.Name != "clicked" || fsm.Name != "Continue") return;
+            if (!HudModule.Running || state == null || state.Name != "clicked" || fsm.Name != "Continue") return;
             var go = fsm.GameObject; if (go == null || go.transform.parent == null) return;
             if ((go.name == "savegame" && go.transform.parent.name == "SaveGame") || (go.name == "Yes_Save" && go.transform.parent.name == "Really Save")) Begin(true);
         }
@@ -254,14 +262,15 @@ namespace WildWasteland.Modules.CleanHUD
         private bool NativeLoading() { return Visible(_nativeGame) || Visible(_nativeTitle) || Visible(_nativeSlots); }
         internal void Tick()
         {
-            if (Core.SinglePlayerSaving.Serializing) { _localSaving = true; if (!Active) Begin(true, Core.SaveSystem.AutomaticSaving); }
+            var saves = ModApi.Get<ISaves>();
+            if (saves != null && saves.Phase == SavePhase.Saving && saves.Progress >= .1f) { _localSaving = true; if (!Active) Begin(true, saves.Kind == SaveKind.Auto || saves.Kind == SaveKind.Exit); }
             else if (_localSaving) { _localSaving = false; End(); }
-            if (!CleanHudModule.Running || !CleanHudModule.MenuEnabled.Value) { End(); return; }
+            if (!HudModule.Running || !HudModule.MenuEnabled.Value) { End(); return; }
             FindNative();
             bool native = NativeLoading();
             if (!Active && native) Begin();
             if (!Active) return;
-            if (_saving && !_autosaving && _saveFinished && !ApocasaverLoading.SaveActive) { CleanHudModule.Log("Saving complete; menus unlocked"); End(); return; }
+            if (_saving && !_autosaving && _saveFinished && !(saves != null && saves.Phase == SavePhase.Saving && saves.Progress >= .1f)) { HudModule.Log("Saving complete; menus unlocked"); End(); return; }
             if (!_saving && _completed && !native) { End(); return; }
             if (_root == null) { Build(); ShowScreen(); _root.SetActive(true); }
             var labels = _autosaving ? AutosavingLabels : _saving ? SavingLabels : Labels;

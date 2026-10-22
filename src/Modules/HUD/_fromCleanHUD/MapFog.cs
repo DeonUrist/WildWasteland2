@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // Fog of war over the native debug map. Exploration grid and save format follow Immersive Map 1.12.0
     // (25 m cells in 64x64 chunks, gzip "IMFP" v4; its per-slot files are no longer imported, D12). Unlike the source, the overlay is a
@@ -40,7 +40,7 @@ namespace WildWasteland.Modules.CleanHUD
         private static Vector3 _paintPosition, _paintForward;
         private static float _paintRadius, _paintInner, _paintCone, _paintRange;
         private static int _paintStep, _paintReach, _paintX, _paintZ, _paintRow;
-        internal static float RevealRadius { get { return Mathf.Min(4000f, Mathf.Max(Cell, CleanHudModule.FogRadius.Value) * 2f * VantageDiscovery.Scale); } }
+        internal static float RevealRadius { get { return Mathf.Min(4000f, Mathf.Max(Cell, HudModule.FogRadius.Value) * 2f * VantageDiscovery.Scale); } }
 
         private static byte[] New() { var d = new byte[4096]; for (int i = 0; i < d.Length; i++) d[i] = 255; return d; }
         private static long Key(int cx, int cz) { return ((long)cx << 32) ^ (uint)cz; }
@@ -86,7 +86,7 @@ namespace WildWasteland.Modules.CleanHUD
             Chunk c; if (!Chunks.TryGetValue(Key(cx >> 6, cz >> 6), out c)) return true;
             return c.D[(cz & 63) * 64 + (cx & 63)] > ExploredFog;
         }
-        private static bool Shown { get { return _loaded && !_standDown && CleanHudModule.FogOfWar.Value && CleanHudModule.MapEnabled.Value; } }
+        private static bool Shown { get { return _loaded && !_standDown && HudModule.FogOfWar.Value && HudModule.MapEnabled.Value; } }
         internal static bool Explored(Vector3 scene)
         {
             if (!_loaded || _standDown) return false;
@@ -109,7 +109,7 @@ namespace WildWasteland.Modules.CleanHUD
             _last = p; _havePosition = true;
             if (jump) { _holdUntil = now + .5f; return; }
             float radius = RevealRadius;
-            float inner = Mathf.Clamp(radius - CleanHudModule.FogEdge.Value, 0f, radius * .999f);
+            float inner = Mathf.Clamp(radius - HudModule.FogEdge.Value, 0f, radius * .999f);
             var forward = Binoculars.Forward; forward.y = 0f;
             bool binoculars = Binoculars.Viewing && forward.sqrMagnitude > .01f;
             forward = binoculars ? forward.normalized : Vector3.zero;
@@ -180,8 +180,8 @@ namespace WildWasteland.Modules.CleanHUD
             if (!_window || x0 < _winX + 2 || z0 < _winZ + 2 || x1 > _winX + Window - 2 || z1 > _winZ + Window - 2)
                 Recenter(Mathf.FloorToInt((x0 + x1) * .5f), Mathf.FloorToInt((z0 + z1) * .5f));
             _overlay.uvRect = new Rect((x0 - _winX) / Window, (z0 - _winZ) / Window, (x1 - x0) / Window, (z1 - z0) / Window);
-            var color = CleanHudModule.Enabled.Value ? new Color(.09f, .08f, .07f) : new Color(.79f, .71f, .54f);
-            color.a = CleanHudModule.FogOpacity.Value;
+            var color = HudModule.CleanHudEnabled.Value ? new Color(.09f, .08f, .07f) : new Color(.79f, .71f, .54f);
+            color.a = HudModule.FogOpacity.Value;
             if (_overlay.color != color) _overlay.color = color;
             float now = Time.unscaledTime;
             if (_uploadPending && (!_wasOpen || now >= _nextUpload))

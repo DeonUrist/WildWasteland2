@@ -26,7 +26,7 @@ find src/Modules -path '*/Embedded/*' ! -name '*.md' -type f | sort | while IFS=
   mod=$(printf '%s' "$f" | cut -d/ -f3)
   rel=${f#src/Modules/$mod/Embedded/}
   key=$(printf '%s' "$mod.$rel" | tr / .)
-  target=$(printf '%s' "$mod/$rel" | sed -e 's#^NPC/WomenOfWasteland/#NPC/#' -e 's#^CleanHUD/LoadingScreens/#LoadingScreens/#' -e 's#^PlayerBody/Portraits/#PlayerBody/LegacyPortraits/#' -e 's#^PlayerBody/CharacterPortraits/#PlayerBody/Portraits/#' -e 's#^PlayerBody/Textures/female_kick.png$#PlayerBody/Models/Player2_female_kick.png#')
+  target=$(printf '%s' "$mod/$rel" | sed -e 's#^NPC/WomenOfWasteland/#NPC/#' -e 's#^PlayerBody/Portraits/#PlayerBody/LegacyPortraits/#' -e 's#^PlayerBody/CharacterPortraits/#PlayerBody/Portraits/#' -e 's#^PlayerBody/Textures/female_kick.png$#PlayerBody/Models/Player2_female_kick.png#')
   mkdir -p "$OUTDIR/RuntimeAssets/$(dirname "$target")"
   cp "$f" "$OUTDIR/RuntimeAssets/$target"
   printf '%s\t%s\n' "$key" "$target" >> "$OUTDIR/RuntimeAssets/asset-index.tsv"

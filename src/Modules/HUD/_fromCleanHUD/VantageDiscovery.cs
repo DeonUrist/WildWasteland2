@@ -1,7 +1,7 @@
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal static class VantageDiscovery
     {

@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.Saves
                 Operation = SavePhase.Idle, Fraction = 0, Text = _text
             };
             ModEvents.Publish(ref presentation);
-            Core.SaveWarning.Mirror(_phase, _seconds, _text);
+
         }
     }
 }

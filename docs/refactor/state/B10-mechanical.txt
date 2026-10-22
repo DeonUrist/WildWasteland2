@@ -1,0 +1,17 @@
+src\Core\Boot\ModuleRegistry.cs
+src\Modules\Compatibility\Apocapocket\ApocapocketBridge.cs
+src\Modules\Compatibility\Apocapocket\ApocapocketInventory.cs
+src\Modules\Compatibility\Apocapocket\ApocapocketSlots.cs
+src\Modules\Compatibility\Apocasaver\ApocasaverLoading.cs
+src\Modules\Compatibility\Apocatalker\ApocatalkerBridge.cs
+src\Modules\Compatibility\Apocatalker\TalkDialogue.cs
+src\Modules\Compatibility\ChaseCamera\ChaseCameraBridge.cs
+src\Modules\Compatibility\ChaseCamera\ChaseCameraHud.cs
+src\Modules\Compatibility\ChaseCamera\ChaseCameraTelemetry.cs
+src\Modules\Compatibility\ImmersiveMap\MapFog.ImmersiveMap.cs
+src\Modules\Compatibility\LegacyEntries\CleanHudModule.Compatibility.cs
+src\Modules\Compatibility\VistasWorldGen\VistasBridge.cs
+src\Modules\Compatibility\VistasWorldGen\VistasEngineHud.cs
+src\Modules\Compatibility\WeaponsPack\WeaponsPackBridge.cs
+src\Modules\Compatibility\WeaponsPack\WeaponsPackIcons.cs
+src\Modules\Gunplay\Catalog\Assets.Weapons.cs

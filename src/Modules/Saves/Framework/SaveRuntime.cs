@@ -51,7 +51,6 @@ namespace WildWasteland.Modules.Saves
             Hooks.ProcessEvent.Prefix(owner, NativeMenuEvent);
             SaveBus.StateChanged += StateChanged;
             SceneManager.sceneLoaded += SceneLoaded;
-            Core.SaveRuntime.InstallPresentation(owner);
         }
         /// <summary>Detaches scene/native state observation; current-world identity survives a runtime toggle.</summary>
         internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; SceneManager.sceneLoaded -= SceneLoaded; SelectedFile = null; _leaving = false; _latestVersion = -1; }

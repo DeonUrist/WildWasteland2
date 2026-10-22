@@ -41,7 +41,6 @@ namespace WildWasteland.Modules.Quests
             Scheduler.Interval(this, "Quests.Reputation", .5f, Reputation);
             Scheduler.Interval(this, "Quests.Interaction", .2f, Interaction);
             Scheduler.Sliced(this, "Quests.World cache", 500, WorldStep);
-            InitHud();
         }
         void Frame()
         {
@@ -80,8 +79,6 @@ namespace WildWasteland.Modules.Quests
             if (Plugin.I == _engine) _engine.Stop();
             QuestWorld.Clear(); MapLink.Reset(); ShutdownNpcai();
         }
-        /// <summary>HUD part: registers the IMGUI windows job (tracker, journal, toasts, fallback dialogue).</summary>
-        partial void InitHud();
         /// <summary>NPCAI part: per-frame follower body driver tick (after the engine frame).</summary>
         partial void FrameNpcai();
         /// <summary>NPCAI part: late follower pose (after the seat lock).</summary>

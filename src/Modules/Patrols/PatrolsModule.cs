@@ -216,7 +216,7 @@ namespace WildWasteland.Modules.Patrols
             // (WW perf) each with a predicate (built once here): IMGUI stops when none of them (and no other module) has anything to draw
             RegisterToolsGui();
             RegisterDeveloperSeatGui();
-            Scheduler.Gui(this, "Patrols.TrafficMap", DrawTraffic, TrafficGuiWanted);
+            Core.ModApi.Provide<Core.ITrafficMapSource>(this, this);
             RegisterDeveloperMerchantGui();
         }
 

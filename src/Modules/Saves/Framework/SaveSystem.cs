@@ -105,7 +105,6 @@ namespace WildWasteland.Modules.Saves
             if (!Patches.Patch(_owner, AccessTools.Method(typeof(ES3PlayMaker.PMDataWrapper), "ApplyVariables"), postfix: AccessTools.Method(typeof(SaveSystem), "LoadedPath"))) throw new InvalidOperationException("Save identity hook failed");
             SaveCleanup.Install(owner);
             SaveCombat.Install(owner);
-            Core.SaveWarning.Install(owner);
             SinglePlayerSaving.Install(owner);
             WorldHistory.Install(owner); SaveCompatibility.Install(owner);
             SaveBus.StateChanged += StateChanged;
@@ -187,9 +186,7 @@ namespace WildWasteland.Modules.Saves
             if (_pendingNotice == null || !LocalReady || LoadingProgress.MenusBlocked) return;
             var notices = ModApi.Get<INotifications>();
             if (notices != null) { if (notices.Push(_pendingNotice, NotificationKind.Save, 0)) _pendingNotice = null; return; }
-            // No INotifications provider yet: keep the old message-log delivery until HUD provides it (B10).
-            var text = _pendingNotice; _pendingNotice = null;
-            Modules.CleanHUD.MessageHook.Push(text); // refs-ok: REFACTOR-REQUEST B04-4 (HUD provides INotifications; then delete this fallback)
+
         }
         
         /// <summary>Reads the embedded save description while retaining unreadable world files.</summary>

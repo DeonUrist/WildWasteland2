@@ -20,6 +20,8 @@ namespace WildWasteland.Core
         {
             public IModule Owner; public ConfigEntry<Key> Entry; public Action Pressed; public Func<bool> When; public bool AllowWhilePaused;
         }
+        /// <summary>Copies currently registered bindings for key settings displays; callers cannot mutate the registry.</summary>
+        public static Binding[] Snapshot() { return _b.ToArray(); }
         static readonly List<Binding> _b = new List<Binding>();
         static readonly Key[] GameKeys = { Key.F2, Key.F9, Key.F11 };
 

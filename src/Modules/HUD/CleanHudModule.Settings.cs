@@ -2,13 +2,13 @@ using System;
 using BepInEx.Configuration;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>HUD element, world-map and fog settings contributed by their existing owner.</summary>
-    public sealed partial class CleanHudModule
+    public sealed partial class HudModule
     {
         /// <summary>Contributes independent HUD/map rows without Core depending on HUD types.</summary>
-        public override void Settings(SettingsShell shell)
+        private void CleanSettings(SettingsShell shell)
         {
             shell.Custom(this, SettingsShell.Page.World, "", NavigationSettings, 40);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawDirection, 140);
@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.CleanHUD
             shell.Custom(this, SettingsShell.Page.Debug, "", DrawFog, 400);
             foreach (SettingsShell.Page page in new[] { SettingsShell.Page.Player, SettingsShell.Page.World, SettingsShell.Page.Hud })
                 shell.OnShow(this, page, PreparePictures);
-            var driving = ChaseCameraHud.HudEnabled;
+            var driving = ModApi.Get<IDrivingHud>()?.Enabled;
             if (driving != null) shell.Resettable(this, SettingsShell.Page.Hud, driving);
         }
         /// <summary>Prepares character portrait resources owned by this HUD display.</summary>
@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>The optional driving-HUD mode with its external enable value.</summary>
         private static void DrawDriving(ToolLayout l)
         {
-            var driving = ChaseCameraHud.HudEnabled; if (driving == null) return;
+            var driving = ModApi.Get<IDrivingHud>()?.Enabled; if (driving == null) return;
             int mode = !driving.Value ? 0 : DrivingHudOnlyThirdPerson.Value ? 1 : 2;
             int selected = l.Choices("Gear/RPM/Speed HUD", mode, "Off", "3rd person", "On");
             if (selected != mode) { DrivingHudOnlyThirdPerson.Value = selected == 1; driving.Value = selected != 0; }
