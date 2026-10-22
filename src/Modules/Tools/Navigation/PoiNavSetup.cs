@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using Object = UnityEngine.Object;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Tools
 {
     // (WW) Developer: "Setup POI pathfinding". One copy of every native POI type (MapMagic's object outputs: Building_/Camp_/Cave_/Wreck_)
     // is placed in rows starting 200 m from the starting camp, stripped to its geometry (no FSMs or scripts: no spawners, loot or save
@@ -26,6 +26,7 @@ namespace WildWasteland.Modules.NPC
         internal static PoiNavBake Baking;
         internal static int Baked, Failed;
 
+        private static void SetSuspended(bool value) { var navigation = ModApi.Get<INavApi>(); if (navigation != null) navigation.WorldGenerationSuspended = value; }
         internal static void Roots(List<Transform> into) { foreach (var t in _placed) if (t != null) into.Add(t); }
         internal static int Placed { get { return _placed.Count; } }
         internal static bool Active { get { return _holder != null; } }
@@ -33,10 +34,11 @@ namespace WildWasteland.Modules.NPC
         // every frame: follows the setting, places one POI per frame, runs the bake queue
         internal static void Tick()
         {
-            bool want = PoiNav.Setup != null && PoiNav.Setup.Value && Plugin.EnableDebug.Value && Plugin.DeveloperMode.Value && GameRefs.InPlay;
-            Services.PoiNavSetup = PoiNav.Setup != null && PoiNav.Setup.Value;
+            if (NavigationTools.Source == null) { Reset(); return; }
+            bool want = NavigationTools.Setup != null && NavigationTools.Setup.Value && Plugin.EnableDebug.Value && Plugin.DeveloperMode.Value && GameRefs.InPlay;
+            SetSuspended(NavigationTools.Setup != null && NavigationTools.Setup.Value);
             if (want && _holder == null && !SaveBus.Busy) Start();
-            else if (!want && _holder != null && !(PoiNav.Setup != null && PoiNav.Setup.Value && !GameRefs.InPlay)) Clear();
+            else if (!want && _holder != null && !(NavigationTools.Setup != null && NavigationTools.Setup.Value && !GameRefs.InPlay)) Clear();
             if (_holder != null && _next < _prefabs.Count && GameRefs.InGame) PlaceOne();
             BakeTick();
         }
@@ -62,7 +64,7 @@ namespace WildWasteland.Modules.NPC
             _prefabs.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
             // the starting camp (or the player) is the anchor; rows run away from it
             Vector3 camp = GameRefs.Player != null ? GameRefs.Player.transform.position : Vector3.zero;
-            var roots = new List<Transform>(); Nav.Roots(roots);
+            var roots = new List<Transform>(); NavigationTools.Source.Roots(roots);
             foreach (var r in roots) if (r != null && r.name.StartsWith("Starter_Area", StringComparison.Ordinal)) { camp = r.position; break; }
             Vector3 away = GameRefs.Player != null ? GameRefs.Player.transform.position - camp : Vector3.forward; away.y = 0f;
             if (away.sqrMagnitude < 1f) away = Vector3.forward;
@@ -139,7 +141,7 @@ namespace WildWasteland.Modules.NPC
         {
             if (_holder != null) Object.Destroy(_holder);
             _holder = null; _placed.Clear(); _prefabs.Clear(); _next = 0; _queue.Clear(); Baking = null;
-            Status = "off"; Services.PoiNavSetup = false;
+            Status = "off"; SetSuspended(false);
             Log.Always("[NPC] POI pathfinding setup removed.");
         }
 
@@ -154,17 +156,17 @@ namespace WildWasteland.Modules.NPC
             {
                 if (_queue.Count == 0) return;
                 var root = _queue.Dequeue(); if (root == null) return;
-                Baking = new PoiNavBake(root, PoiNavStore.Get(PoiNavStore.TypeOf(root.name)));
+                Baking = new PoiNavBake(root, NavigationTools.Source.Get(NavigationTools.Source.TypeOf(root.name)));
             }
-            Baking.Step(PoiNav.BakeBudgetMs.Value);
+            Baking.Step(NavigationTools.BakeBudgetMs.Value);
             if (!Baking.Done) return;
             if (Baking.Result != null)
             {
                 try
                 {
-                    PoiNavStore.Save(Baking.Result); Baked++;
-                    PoiNav.Forget(Baking.Poi);
-                    Log.Always("[NPC] POI navigation baked: " + Baking.Poi + " " + Baking.Status + " -> " + PoiNavStore.ConfigPath(Baking.Poi));
+                    NavigationTools.Source.Save(Baking.Result); Baked++;
+                    NavigationTools.Source.Forget(Baking.Poi);
+                    Log.Always("[NPC] POI navigation baked: " + Baking.Poi + " " + Baking.Status + " -> " + NavigationTools.Source.ConfigPath(Baking.Poi));
                 }
                 catch (Exception e) { Failed++; Log.Warn("[NPC] POI navigation " + Baking.Poi + " not saved: " + e.Message); }
             }
@@ -183,17 +185,17 @@ namespace WildWasteland.Modules.NPC
             var actor = Object.Instantiate(prefab.gameObject, feet + Vector3.up * 1.05f, Quaternion.identity);
             actor.name = prefab.name + " (WW POI nav test)";
             var save = FsmUtil.Find(actor, "saveItemVar"); if (save != null) save.enabled = false;   // never written to the save
-            Brain.Spawned(actor);
+            NavigationTools.Source.NotifyTestSpawn(actor);
             _tests.Add(actor);
             return "Test NPC " + _tests.Count + " placed. Close the editor to watch; F11 (god mode) keeps it from seeing you.";
         }
         internal static void SendTests(Vector3 point)
         {
-            foreach (var t in _tests) if (t != null) Idle.Travel(t, point, .6f);
+            foreach (var t in _tests) if (t != null) ModApi.Get<INpcApi>()?.Travel(t, point, .6f);
         }
         internal static void ClearTests() { foreach (var t in _tests) if (t != null) Object.Destroy(t); _tests.Clear(); }
 
         internal static void Shift(Vector3 d) { _cursor += d; }
-        internal static void Reset() { ClearTests(); if (_holder != null) Object.Destroy(_holder); _holder = null; _placed.Clear(); _prefabs.Clear(); _queue.Clear(); Baking = null; Services.PoiNavSetup = false; }
+        internal static void Reset() { ClearTests(); if (_holder != null) Object.Destroy(_holder); _holder = null; _placed.Clear(); _prefabs.Clear(); _queue.Clear(); Baking = null; SetSuspended(false); }
     }
 }

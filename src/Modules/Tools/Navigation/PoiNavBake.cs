@@ -4,14 +4,15 @@ using System.Diagnostics;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Tools
 {
     // (WW) Bakes one POI instance into PoiNavData (developer tool, sliced by a time budget; the result is shared by every instance of the
     // type). Every column of the POI's footprint is cast top-down until the ground, so EVERY standable surface is found (floors, roofs,
     // container tops, walkways), not only the lowest one as the grid maps do. Then: walks between neighbouring samples, connected
     // surfaces, ledge climbs/drops between surfaces, native ladders (tag "Ladder" triggers), and a coarse node graph (~2 m).
-    internal sealed partial class PoiNavBake
+    internal sealed class PoiNavBake
     {
+        internal static readonly int Mask = Layers.NavSolid;
         internal const float MaxStep = .45f, ClimbMin = .45f, ClimbMax = 2.3f, DropMax = 4.5f, Radius = .25f, Height = 1.7f;
         // (heavy by design: a developer bake, only its result matters) the sample spacing and the node spacing (~2 m) in cells
         private readonly float Cell;
@@ -42,8 +43,8 @@ namespace WildWasteland.Modules.NPC
 
         internal PoiNavBake(Transform root, PoiNavData previous)
         {
-            Root = root; Poi = PoiNavStore.TypeOf(root.name); _keep = previous;
-            Cell = Mathf.Clamp(PoiNav.BakeCell != null ? PoiNav.BakeCell.Value : .33f, .2f, .5f);
+            Root = root; Poi = NavigationTools.Source.TypeOf(root.name); _keep = previous;
+            Cell = Mathf.Clamp(NavigationTools.BakeCell != null ? NavigationTools.BakeCell.Value : .33f, .2f, .5f);
             NodeSpan = Mathf.Max(2, Mathf.RoundToInt(2f / Cell));
         }
 

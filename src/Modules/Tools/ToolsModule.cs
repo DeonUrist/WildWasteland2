@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.Tools
         /// <summary>No entries yet (Core binds [Tools] Enabled).</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
+            NavigationTools.Bind(cfg);
             _poiEditorKey = cfg.Hotkey("POI editor", UnityEngine.InputSystem.Key.None, "Open the nearest custom POI layout and marker editor (Debug and Developer mode).");
         }
 
@@ -27,16 +28,17 @@ namespace WildWasteland.Modules.Tools
         public override void Init()
         {
             _poiEditor = new PoiEditor(); _poiEditor.Install(this, _poiEditorKey);
+            InitNavigation();
         }
 
         /// <summary>Stops an in-progress export when Tools is disabled.</summary>
-        public override void Shutdown() { GeneratedLodExport.Stop(); if (_poiEditor != null) _poiEditor.Close(true); _poiEditor = null; }
+        public override void Shutdown() { ShutdownNavigation(); GeneratedLodExport.Stop(); if (_poiEditor != null) _poiEditor.Close(true); _poiEditor = null; }
 
         /// <summary>Releases captured mesh references before a different save is loaded.</summary>
-        public override void OnLoadBegin(string slot) { GeneratedLodExport.Stop(); if (_poiEditor != null) _poiEditor.Close(true); }
+        public override void OnLoadBegin(string slot) { ResetNavigation(); GeneratedLodExport.Stop(); if (_poiEditor != null) _poiEditor.Close(true); }
 
         /// <summary>Stops an export whose source scene has been replaced.</summary>
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { GeneratedLodExport.Stop(); if (_poiEditor != null) _poiEditor.Close(true); }
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { ResetNavigation(); GeneratedLodExport.Stop(); if (_poiEditor != null) _poiEditor.Close(true); }
 
         /// <summary>Registers the explicit loaded-mesh export authoring page.</summary>
         private PoiEditor _poiEditor;
@@ -44,7 +46,7 @@ namespace WildWasteland.Modules.Tools
         private readonly TownTemplatePage _townTemplates = new TownTemplatePage();
         private readonly List<BepInEx.Configuration.ConfigEntryBase> _gasSettings = new List<BepInEx.Configuration.ConfigEntryBase>();
         /// <summary>Adjusts the active authoring camera when the native world origin moves.</summary>
-        public override void OnOriginShift(UnityEngine.Vector3 delta) { if (_poiEditor != null) _poiEditor.Shift(delta); }
+        public override void OnOriginShift(UnityEngine.Vector3 delta) { PoiNavSetup.Shift(delta); PoiNavEditor.Shift(delta); if (_poiEditor != null) _poiEditor.Shift(delta); }
         /// <summary>Draws the POI layout authoring entry point.</summary>
         private void DrawPoiEditor(ToolLayout layout) { if (_poiEditor != null) _poiEditor.DrawPage(layout); else layout.Entry(_poiEditorKey); }
         /// <summary>Draws POI-owned test-pad state and its actual tuning entries.</summary>
@@ -59,6 +61,8 @@ namespace WildWasteland.Modules.Tools
         {
             yield return new ActionPage(this, ToolGroups.Debug, "Generated LOD export", DrawLodExport) { IsTool = true };
             yield return new WeatherPreviewPage(this);
+            yield return new ActionPage(this, ToolGroups.Debug, "POI pathfinding", PoiNavEditor.DrawPage) { DebugOnly = true, IsTool = true };
+            yield return new ActionPage(this, ToolGroups.Debug, "Pathfinding baked data", DrawNavigationData) { DebugOnly = true, IsTool = true };
             yield return new ActionPage(this, ToolGroups.Debug, "POI editor", DrawPoiEditor) { IsTool = true, DebugOnly = true };
             yield return new ActionPage(this, ToolGroups.Debug, "Gas stations", DrawGasStations) { IsTool = true, DebugOnly = true };
             yield return new ActionPage(this, ToolGroups.General, "Town templates", _townTemplates.Draw) { IsTool = true };
