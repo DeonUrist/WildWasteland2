@@ -42,6 +42,8 @@ namespace WildWasteland.Modules.CleanHUD
 
         public override void BindConfig(ModuleConfig cfg)
         {
+            Sidecars.Register(this, "CleanHUD/Saves/{slot}.fog.bin");
+            Sidecars.Register(this, "CleanHUD/Saves/{slot}.locations.txt");
             Instance = this;
             Enabled = cfg.Player("HUD", "HUD", true, "Replace the native HUD. Off restores it immediately.");
             ShowNeeds = cfg.Player("HUD", "ShowNeeds", true, "Show water, food and sleep beneath HP and armor.");

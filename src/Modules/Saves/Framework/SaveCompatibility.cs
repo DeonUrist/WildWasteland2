@@ -1,9 +1,13 @@
+using Patches = WildWasteland.Core.Patches;
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using ES3Internal;
 using HarmonyLib;
 using HutongGames.PlayMaker;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // Preserve Apocasaver's stable hinge keys when its standalone save engine is disabled.
     // Compatibility owns the external HandPose adapter; Core transports its metadata with the original full ES3 keys.

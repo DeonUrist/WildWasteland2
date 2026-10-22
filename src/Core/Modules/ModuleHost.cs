@@ -161,6 +161,7 @@ namespace WildWasteland.Core
             Scheduler.RemoveAll(m);
             Hooks.RemoveAll(m);
             Hotkeys.RemoveAll(m);
+            UI.UiActions.RemoveAll(m);
             Patches.Unpatch(m);
             ModApi.RemoveAll(m);
             ModEvents.RemoveAll(m);

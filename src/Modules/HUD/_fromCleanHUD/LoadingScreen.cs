@@ -254,7 +254,8 @@ namespace WildWasteland.Modules.CleanHUD
         private bool NativeLoading() { return Visible(_nativeGame) || Visible(_nativeTitle) || Visible(_nativeSlots); }
         internal void Tick()
         {
-            if (Core.SinglePlayerSaving.Serializing) { _localSaving = true; if (!Active) Begin(true, Core.SaveSystem.AutomaticSaving); }
+            var saves = Core.ModApi.Get<Core.ISaves>();
+            if (saves != null && saves.Phase == Core.SavePhase.Saving && saves.Progress >= .1f) { _localSaving = true; if (!Active) Begin(true, saves.Kind == Core.SaveKind.Auto || saves.Kind == Core.SaveKind.Exit); }
             else if (_localSaving) { _localSaving = false; End(); }
             if (!CleanHudModule.Running || !CleanHudModule.MenuEnabled.Value) { End(); return; }
             FindNative();

@@ -1,3 +1,6 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,17 +10,16 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // Standalone native-menu adapters. No multiplayer assembly, player identity or redirected save root.
     // The temporary HUD partial is owner-bound until B10 moves its presentation to the Saves events.
     // Canonical player/placement queries belong to Core; native save menu interception belongs to Saves.
     internal static partial class SaveRuntime
     {
-        /// <summary>HUD part: registers the SAVING overlay GUI job.</summary>
-        static partial void InstallHud(IModule owner);
         static readonly Regex FileName = new Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", RegexOptions.IgnoreCase);
         internal static string ActiveFile, SelectedFile;
+        static readonly FsmEvent Clicked = FsmEvent.GetFsmEvent("Clicked");
         static bool _leaving;
         static int _latestVersion = -1;
         static string _latestFile;
@@ -36,7 +38,6 @@ namespace WildWasteland.Core
             Hooks.ProcessEvent.Prefix(owner, NativeMenuEvent);
             SaveBus.StateChanged += StateChanged;
             SceneManager.sceneLoaded += SceneLoaded;
-            InstallHud(owner);
         }
         /// <summary>Detaches scene/native state observation; current-world identity survives a runtime toggle.</summary>
         internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; SceneManager.sceneLoaded -= SceneLoaded; SelectedFile = null; _leaving = false; _latestVersion = -1; }
@@ -89,7 +90,7 @@ namespace WildWasteland.Core
         /// <summary>ProcessEvent prefix: redirects native save/load/quit menu clicks to the WW save library, exit save and newest-snapshot load.</summary>
         static bool NativeMenuEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
-            if (!SaveSystem.Installed || fsm == null || ev == null || ev.Name != "Clicked" || fsm.GameObject == null || SinglePlayerSaving.Serializing) return true;
+            if (!SaveSystem.Installed || fsm == null || ev == null || !ReferenceEquals(ev, Clicked) || fsm.GameObject == null || SinglePlayerSaving.Serializing) return true;
             string name = fsm.GameObject.name;
             if (SaveSystem.LocalReady && fsm.Name == "Continue" && (name.StartsWith("save_game_", StringComparison.Ordinal) || name == "savegame" || name == "Yes_Save" || name == "Save_Game_slots" || name == "Save_Game"))
             { WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); return false; }

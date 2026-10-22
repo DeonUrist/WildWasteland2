@@ -1,9 +1,12 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     /// <summary>Tracks Saves coroutines and disposes their iterators so shutdown always runs rollback/thaw finally blocks.</summary>
     internal static class SaveRoutines

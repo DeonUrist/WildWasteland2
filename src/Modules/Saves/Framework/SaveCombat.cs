@@ -1,15 +1,20 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // Observe native detection too: turning NPC AI off must not turn autosave safety off.
     internal static class SaveCombat
     {
+        /// <summary>Caches native detection, target and health variables for autosave safety.</summary>
         sealed class Actor { internal PlayMakerFSM Fsm, Attack; internal FsmGameObject Target; internal FsmFloat Health; }
         static readonly Dictionary<PlayMakerFSM, Actor> Actors = new Dictionary<PlayMakerFSM, Actor>();
         static readonly List<PlayMakerFSM> Dead = new List<PlayMakerFSM>();
+        static readonly FsmEvent Damage = FsmEvent.GetFsmEvent("Damage"), AnimalAttack = FsmEvent.GetFsmEvent("Animal_Attack"), AnimalRangedAttack = FsmEvent.GetFsmEvent("Animal_Attack_Ranged");
         static int _scan;
         static bool _scanning;
         static float _quietUntil;
@@ -26,15 +31,20 @@ namespace WildWasteland.Core
         }
         /// <summary>Detaches native state observation and clears tracked actors when Saves stops.</summary>
         internal static void Shutdown() { SaveBus.StateChanged -= State; Actors.Clear(); Dead.Clear(); _scan = 0; _scanning = false; _quietUntil = 0; Unsafe = false; }
+        /// <summary>Restarts conservative combat discovery at load and new-world boundaries.</summary>
         static void State(string previous, string current) { if (current == "LoadGame" || current == "setSeed") Reset(); }
+        /// <summary>Forgets old actors and blocks autosave until sliced initial discovery completes.</summary>
         static void Reset() { Actors.Clear(); Dead.Clear(); _scan = 0; _scanning = true; _quietUntil = 0; Unsafe = true; }
+        /// <summary>Extends the existing ten-second quiet period after combat activity.</summary>
         internal static void Activity()
         { if (SaveSystem.LocalReady) { _quietUntil = Time.unscaledTime + 10f; Unsafe = true; } }
+        /// <summary>Registers a native Detection FSM once for ongoing target observation.</summary>
         static void Track(PlayMakerFSM fsm)
         {
             if (!SaveSystem.LocalWorld || fsm == null || fsm.FsmName != "Detection" || Actors.ContainsKey(fsm)) return;
             Actors.Add(fsm, new Actor { Fsm = fsm });
         }
+        /// <summary>Inspects one native FSM per scheduler slice while the current world is ready.</summary>
         static bool Discover()
         {
             if (!SaveSystem.LocalReady || !_scanning) return false;
@@ -42,17 +52,20 @@ namespace WildWasteland.Core
             if (_scan >= fsms.Count) { _scanning = false; return false; }
             Track(fsms[_scan++]); return true;
         }
+        /// <summary>Observes cached native damage and animal attack events without consuming them.</summary>
         static bool Event(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             if (!SaveSystem.LocalWorld || ev == null || fsm == null) return true;
-            if (ev.Name == "Damage" || ev.Name == "Animal_Attack" || ev.Name == "Animal_Attack_Ranged") Activity();
+            if (ReferenceEquals(ev, Damage) || ReferenceEquals(ev, AnimalAttack) || ReferenceEquals(ev, AnimalRangedAttack)) Activity();
             return true;
         }
+        /// <summary>Observes native attack-state transitions even when the NPC feature module is disabled.</summary>
         static void Attack(Fsm fsm, FsmState state)
         {
             if (!SaveSystem.LocalWorld || fsm == null || fsm.Name != "Attack" || state == null) return;
             if (state.Name == "fire" || state.Name == "attack" || state.Name == "attack_ranged" || state.Name == "throw") Activity();
         }
+        /// <summary>Updates autosave safety from native targets, discovery completion and the combat quiet period.</summary>
         internal static bool Check()
         {
             bool active = false;
@@ -76,8 +89,6 @@ namespace WildWasteland.Core
                 if (target != null && target.activeInHierarchy && !target.CompareTag("Untagged")) { active = true; break; }
             }
             foreach (var fsm in Dead) Actors.Remove(fsm);
-            var vehicles = Services.VehicleCombatActive;
-            if (vehicles != null && vehicles()) active = true;
             if (active) Activity();
             Unsafe = _scanning || active || Time.unscaledTime < _quietUntil;
             return Unsafe;

@@ -75,6 +75,7 @@ namespace WildWasteland.Modules.HUD
         public override void Init()
         {
             StandaloneNotices.Install(this);
+            SavingPresentation.Install(this);
             Instance = this;
             Dir = Assets.ModuleDir(Id);
             _running = true;
@@ -116,6 +117,7 @@ namespace WildWasteland.Modules.HUD
 
         public override void Shutdown()
         {
+            SavingPresentation.Clear();
             _running = false;
             if (Services.Hud is HitFeedbackService) Services.Hud = null;
             HitFeedbackService.External = false;

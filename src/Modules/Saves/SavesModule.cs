@@ -32,9 +32,12 @@ namespace WildWasteland.Modules.Saves
         public override void Init()
         {
             SaveRuntime.Install(this);
+            RegisterMenuActions();
             SaveSystem.Install(this);
             SaveBus.FailureReported += FailureReported;
             ModEvents.Subscribe<Core.Events.CombatActivity>(this, CombatActivity);
+            ModEvents.Subscribe<Core.Events.WeaponFired>(this, WeaponFired);
+            ModEvents.Subscribe<Core.Events.NpcStateChanged>(this, NpcStateChanged);
             _recovering = true;
             try { SaveSystem.RecoverFiles(); }
             finally { _recovering = false; }
@@ -48,9 +51,15 @@ namespace WildWasteland.Modules.Saves
             _running = false;
             SaveBus.FailureReported -= FailureReported;
             ModEvents.Unsubscribe<Core.Events.CombatActivity>(this, CombatActivity);
+            ModEvents.Unsubscribe<Core.Events.WeaponFired>(this, WeaponFired);
+            ModEvents.Unsubscribe<Core.Events.NpcStateChanged>(this, NpcStateChanged);
             try { SaveRoutines.StopAll(); }
             finally { try { SaveSystem.Shutdown(); } finally { SaveRuntime.Shutdown(); _recovering = false; } }
         }
+        /// <summary>Defers autosaving after typed weapon activity, including while custom NPC AI is disabled.</summary>
+        static void WeaponFired(ref Core.Events.WeaponFired shot) { SaveCombat.Activity(); }
+        /// <summary>Defers autosaving when a typed NPC transition enters combat.</summary>
+        static void NpcStateChanged(ref Core.Events.NpcStateChanged change) { if (change.New == NpcMode.Combat) SaveCombat.Activity(); }
         /// <summary>Transfers sidecar failure into the current transaction's failure latch.</summary>
         static void FailureReported(IModule owner, string message) { SaveSystem.Fail(message); }
         /// <summary>Extends autosave combat deferral for activity from other modules.</summary>

@@ -1,3 +1,6 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.IO;
@@ -5,7 +8,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // Offline uses the native serializer and the same journal/publication path, without network ownership steps.
     internal static class SinglePlayerSaving
@@ -30,12 +33,19 @@ namespace WildWasteland.Core
         }
         /// <summary>Detaches new-world identity selection after running routines have been disposed.</summary>
         internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; _requested = false; }
+        /// <summary>Suppresses native look input only while offline serialization freezes the world.</summary>
         static bool Look(MouseLook action) { return !Serializing; }
+        /// <summary>Clears native button results while offline serialization owns input.</summary>
         static bool Block(FsmBool result) { if (!Serializing) return true; if (result != null) result.Value = false; return false; }
+        /// <summary>Routes native button-down queries through the serialization input barrier.</summary>
         static bool ButtonDown(GetButtonDown action) { return Block(action.storeResult); }
+        /// <summary>Routes native held-button queries through the serialization input barrier.</summary>
         static bool Button(GetButton action) { return Block(action.storeResult); }
+        /// <summary>Routes native button-up queries through the serialization input barrier.</summary>
         static bool ButtonUp(GetButtonUp action) { return Block(action.storeResult); }
+        /// <summary>Routes native mouse-down queries through the serialization input barrier.</summary>
         static bool MouseDown(GetMouseButtonDown action) { return Block(action.storeResult); }
+        /// <summary>Assigns a fresh live identity when a new native singleplayer world starts.</summary>
         static void StateChanged(string previous, string current)
         {
             if (current != "setSeed" || SaveRuntime.SelectedFile != null) return;
@@ -45,14 +55,16 @@ namespace WildWasteland.Core
             var variable = GameRefs.SaveLoadGame != null ? GameRefs.SaveLoadGame.FsmVariables.FindFsmString("SaveFile") : null;
             if (variable != null) variable.Value = file;
         }
+        /// <summary>Queues one tracked save iterator and initializes its coarse progress state.</summary>
         internal static bool Request()
         {
             if (_requested || Serializing || Loading || !SaveSystem.LocalReady) return false;
             _requested = true; Progress = 0; ProgressText = "Preparing save"; SaveRoutines.Start(Save()); return true;
         }
+        /// <summary>Freezes, serializes and publishes a native singleplayer world with unconditional rollback and thaw.</summary>
         static IEnumerator Save()
         {
-            float scale = Time.timeScale; int generation = SaveBus.Generation; bool completed = false, blocked = false;
+            float scale = Time.timeScale; int generation = SaveBus.Generation; bool completed = false, blocked = false, began = false, serialized = false;
             try
             {
                 // Let an originating native multi-root save action finish being suppressed before starting ours.
@@ -67,11 +79,15 @@ namespace WildWasteland.Core
                 ES3Settings.defaultSettings.path = file;
                 Serializing = true; Time.timeScale = 0;
                 blocked = !ApocasetterBridge.InputBlocked && ApocasetterBridge.SetInputBlock(true);
-                Progress = .1f; ProgressText = "Waiting for terrain to settle";
+                Presentation(Core.Events.SavePresentationPhase.Begin, .1f, "Waiting for terrain to settle");
                 var terrain = SaveTerrain.Prepare(); while (terrain.MoveNext()) yield return terrain.Current;
                 if (generation != SaveBus.Generation || !SaveSystem.LocalReady) yield break;
-                Progress = .25f; ProgressText = "Serializing world";
-                SaveSystem.Begin(); SaveSystem.Stamp();
+                Presentation(Core.Events.SavePresentationPhase.Progress, .25f, "Serializing world");
+                SaveSystem.Begin();
+                began = true;
+                var before = new Core.Events.BeforeSerialize { Slot = file, Generation = generation, Kind = SaveSystem.Exiting ? SaveKind.Exit : SaveSystem.AutomaticSaving ? SaveKind.Auto : SaveKind.Manual };
+                ModEvents.Publish(ref before);
+                SaveSystem.Stamp();
                 // Activate objects exactly as the native save menu does before serializing all roots.
                 var activate = FsmUtil.Find(GameRefs.GameManager, "SaveGameActivateItems"); if (activate != null) activate.SendEvent("Activate");
                 PlayMakerFSM.BroadcastEvent("SaveGame");
@@ -85,7 +101,8 @@ namespace WildWasteland.Core
                 }
                 if (!observed || SaveBus.Generation != generation || SaveBus.State != "isPlay" || registry.ActiveStateName != "off" || SaveBus.PendingAfterSave)
                     throw new IOException("Offline serialization did not finish; previous files retained");
-                Progress = .75f; ProgressText = "Verifying and publishing save";
+                serialized = true;
+                Presentation(Core.Events.SavePresentationPhase.Progress, .75f, "Verifying and publishing save");
                 completed = SaveSystem.Complete();
             }
             finally
@@ -93,13 +110,27 @@ namespace WildWasteland.Core
                 try { if (!completed && (SaveSystem.Busy || SaveSystem.Requested)) SaveSystem.Abort(new IOException("Offline save did not finish; previous files retained")); }
                 finally
                 {
-                    SaveTerrain.Release(); Serializing = _requested = false; Progress = 0; ProgressText = null;
+                    SaveTerrain.Release(); Serializing = _requested = false;
+                    if (began && SaveBus.Generation == generation)
+                    {
+                        var after = new Core.Events.AfterSerialize { Slot = SaveSystem.ActiveFile, Generation = generation, Kind = SaveSystem.Exiting ? SaveKind.Exit : SaveSystem.AutomaticSaving ? SaveKind.Auto : SaveKind.Manual, Ok = serialized };
+                        ModEvents.Publish(ref after);
+                    }
+                    Presentation(Core.Events.SavePresentationPhase.End, 0, null);
                     if (SaveBus.Generation == generation) Time.timeScale = scale;
                     if (blocked) ApocasetterBridge.SetInputBlock(false);
                 }
                 if (completed) SaveSystem.Notify(SaveSystem.Status);
             }
         }
+        /// <summary>Publishes coarse serializer milestones; no native percentage is inferred.</summary>
+        static void Presentation(Core.Events.SavePresentationPhase phase, float fraction, string text)
+        {
+            Progress = fraction; ProgressText = text;
+            var update = new Core.Events.SavePresentation { Phase = phase, Operation = SavePhase.Saving, Fraction = fraction, Text = text };
+            ModEvents.Publish(ref update);
+        }
+        /// <summary>Validates a chosen snapshot before native loading or a tracked return-to-menu flow.</summary>
         internal static void Load(string file)
         {
             if (!SaveSystem.Installed || !SaveSystem.Ready || SaveSystem.RecoveryError != null || SaveSystem.Busy || SaveSystem.Requested || Serializing || Loading) return;
@@ -108,6 +139,7 @@ namespace WildWasteland.Core
             { if (SaveSystem.LocalReady) SaveRoutines.Start(ReturnAndLoad(file)); return; }
             if (!SaveRuntime.Launch(file)) SaveSystem.Notify("The save could not be loaded. Check the log.");
         }
+        /// <summary>Waits for the title scene before launching the selected snapshot and clears loading on cancellation.</summary>
         static IEnumerator ReturnAndLoad(string file)
         {
             Loading = true;

@@ -29,8 +29,10 @@ namespace WildWasteland.Modules.Saves
         public override bool DrawFullPage() { DrawLibrary(); return true; }
         /// <summary>Releases preview images when the library is hidden.</summary>
         public override void OnHide() { ReleasePictures(); }
+        /// <summary>Resets save/load mode and filters when the library opens.</summary>
         internal void Configure(bool saving)
         { _saving = saving; _kind = _page = 0; _search = ""; }
+        /// <summary>Refreshes library data and current-world name while clearing stale confirmation state.</summary>
         public override void OnShow()
         {
             _confirmFile = _confirmKind = null;
@@ -38,16 +40,20 @@ namespace WildWasteland.Modules.Saves
             if (SaveSystem.LocalWorld) { _world = SaveSystem.CurrentWorldName; }
             Refresh();
         }
+        /// <summary>Destroys page-owned preview textures when the library is hidden or refreshed.</summary>
         internal void ReleasePictures()
         { foreach (var image in _pictures.Values) if (image != null) UnityEngine.Object.Destroy(image); _pictures.Clear(); }
+        /// <summary>Reloads snapshot metadata, sorts newest first and updates the visible rows.</summary>
         void Refresh()
         {
             SaveSystem.CatalogueVersion++; _saves.Clear(); _selected = -1; ReleasePictures();
             try { foreach (var save in SaveRuntime.Saves()) _saves.Add(SaveSystem.Info(save.File, save.Name)); _saves.Sort(Newest); _message = null; Filter(); }
             catch (Exception error) { _message = error.Message; }
         }
+        /// <summary>Orders library entries by descending native file modification time.</summary>
         static int Newest(SaveSystem.SaveInfo a, SaveSystem.SaveInfo b)
         { return File.GetLastWriteTimeUtc(SaveFiles.WorldPath(b.File)).CompareTo(File.GetLastWriteTimeUtc(SaveFiles.WorldPath(a.File))); }
+        /// <summary>Applies manual/automatic and text filters, then clamps the library page.</summary>
         void Filter()
         {
             _visible.Clear();
@@ -55,6 +61,7 @@ namespace WildWasteland.Modules.Saves
             { var s = _saves[i]; if (s.Automatic == (_kind == 1) && (_search.Length == 0 || s.Name.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0 || s.World.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0)) _visible.Add(i); }
             _page = Mathf.Clamp(_page, 0, Mathf.Max(0, (_visible.Count - 1) / 5));
         }
+        /// <summary>Loads and bounds cached thumbnail textures without modifying save bytes.</summary>
         Texture2D Picture(string file)
         {
             Texture2D picture = null; if (_pictures.TryGetValue(file, out picture)) return picture;
@@ -63,9 +70,12 @@ namespace WildWasteland.Modules.Saves
             catch (Exception error) { if (picture != null) UnityEngine.Object.Destroy(picture); picture = null; _message = "Preview unavailable: " + error.Message; }
             _pictures[file] = picture; return picture;
         }
+        /// <summary>Selects a snapshot and copies its editable name into library controls.</summary>
         void Select(int index) { _selected = index; _name = _saves[index].Name; if (!SaveSystem.LocalWorld) _world = _saves[index].World; }
+        /// <summary>Draws a library label with the shared theme and requested emphasis.</summary>
         static void Text(Rect r, string text, bool muted = false, bool heading = false)
         { Ledger.Label(r, text, heading ? Ledger.Heading : Ledger.Small, muted ? Ledger.Muted : Ledger.Text); }
+        /// <summary>Draws the library action with its enabled, primary or danger style.</summary>
         static bool Button(Rect r, string text, bool enabled = true, bool primary = false, bool danger = false)
         {
             bool before = GUI.enabled; GUI.enabled = before && enabled; bool hover = GUI.enabled && r.Contains(Event.current.mousePosition); Color accent = danger ? Ledger.Danger : Ledger.Accent;
@@ -73,14 +83,18 @@ namespace WildWasteland.Modules.Saves
             Ledger.Label(r, text, Ledger.GameButton, !GUI.enabled ? Ledger.Muted : danger || primary || hover ? accent : Ledger.Text, TextAnchor.MiddleCenter);
             bool hit = GUI.Button(r, GUIContent.none, GUIStyle.none); GUI.enabled = before; return hit;
         }
+        /// <summary>Changes the library category and refreshes its visible rows.</summary>
         void Tab(Rect r, string text, int kind)
         { if (Ledger.Choice(r, text, _kind == kind) && _kind != kind) { _kind = kind; _page = 0; _selected = -1; Filter(); if (kind == 2) DeletedBackups(); } }
+        /// <summary>Draws a named library text field using the existing shared ledger control.</summary>
         void Input(Rect r, string label, string key, ref string value)
         {
             Text(new Rect(r.x, r.y, r.width, 26), label, true); var field = new Rect(r.x, r.y + 30, r.width, 46); Ledger.Panel(field, Ledger.Field, Ledger.Line);
             string next = Ledger.TextField(field, key, value); value = next.Length > 64 ? next.Substring(0, 64) : next;
         }
+        /// <summary>Provides the authored-page entry hint for the tools host.</summary>
         public override void Draw(ToolLayout l) { l.Text("Open the save library from SAVE GAME or LOAD GAME."); }
+        /// <summary>Draws the complete save library, backups and confirmation surface.</summary>
         internal void DrawLibrary()
         {
             bool enabled = GUI.enabled; GUI.enabled = enabled && _confirmFile == null;
@@ -99,11 +113,13 @@ namespace WildWasteland.Modules.Saves
             if (_confirmFile != null) DrawConfirmation();
         }
         
+        /// <summary>Draws the fixed library row-column captions.</summary>
         internal static void SaveColumns(Rect r)
         {
             float s = r.width / 1060;
             Text(new Rect(r.x + 170 * s, r.y, 320 * s, 32), "SAVE NAME", true); Text(new Rect(r.x + 510 * s, r.y, 260 * s, 32), "WORLD", true); Text(new Rect(r.x + 780 * s, r.y, 135 * s, 32), "TRAVELLED", true);
         }
+        /// <summary>Draws one snapshot row with its original metadata and selection state.</summary>
         internal bool SaveRow(Rect r, SaveSystem.SaveInfo save, bool selected)
         {
             float s = r.width / 1060;
@@ -115,6 +131,7 @@ namespace WildWasteland.Modules.Saves
             Text(new Rect(r.x + 510 * s, r.y + 12, 260 * s, 66), save.World); Text(new Rect(r.x + 780 * s, r.y + 12, 260 * s, 66), save.Kilometres.HasValue ? save.Distance : "—");
             return GUI.Button(r, GUIContent.none, GUIStyle.none);
         }
+        /// <summary>Draws the filtered page of manual or automatic entries.</summary>
         void DrawSaves()
         {
             Text(new Rect(100, 265, 150, 44), "SEARCH", true); var search = new Rect(250, 265, 910, 44); Ledger.Panel(search, Ledger.Field, Ledger.Line);
@@ -131,6 +148,7 @@ namespace WildWasteland.Modules.Saves
             if (Button(new Rect(990, 920, 170, 48), "NEXT", _page + 1 < pages)) _page++;
         }
         bool CanSave { get { return SaveSystem.LocalReady && !SaveSystem.Busy && !SaveSystem.Requested && SaveSystem.Ready && SaveSystem.RecoveryError == null && !SaveSystem.ReloadRequired; } }
+        /// <summary>Draws selected-save actions and current-world save controls.</summary>
         void DrawDetails()
         {
             var save = _selected >= 0 && _selected < _saves.Count ? _saves[_selected] : null; Ledger.Panel(new Rect(1200, 188, 620, 780), Ledger.Surface, Ledger.Line);
@@ -157,6 +175,7 @@ namespace WildWasteland.Modules.Saves
             if (Button(new Rect(1516, 900, 280, 44), "SAVE HISTORY", save != null))
             { try { _backups.Clear(); _backupLabels.Clear(); _backups.AddRange(SaveSystem.Backups(save.File)); _kind = 2; _page = 0; } catch (Exception error) { _message = error.Message; } }
         }
+        /// <summary>Lists retained deleted-save journals whose published world is absent.</summary>
         void DeletedBackups()
         {
             try
@@ -167,6 +186,7 @@ namespace WildWasteland.Modules.Saves
             }
             catch (Exception error) { _message = error.Message; }
         }
+        /// <summary>Reads and caches the original metadata label of a retained journal.</summary>
         string[] BackupLabel(string path, string file)
         {
             string[] label; if (_backupLabels.TryGetValue(path, out label)) return label;
@@ -176,6 +196,7 @@ namespace WildWasteland.Modules.Saves
             { var lines = File.ReadAllLines(Path.Combine(path, "old-" + i + ".bin")); if (lines.Length >= 2 && lines[0] == "WW-SAVE-1") { name = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(lines[1])); if (lines.Length >= 9) mode = lines[7]; } break; }
             label = new[] { name, Directory.GetCreationTime(path).ToString("yyyy-MM-dd HH:mm:ss"), mode }; _backupLabels[path] = label; return label;
         }
+        /// <summary>Draws retained backups and title-only restore actions.</summary>
         void DrawBackups()
         {
             Text(new Rect(100, 265, 1060, 60), "Restore previous versions or deleted saves. Current files are backed up first.", true);
@@ -190,8 +211,10 @@ namespace WildWasteland.Modules.Saves
             if (Button(new Rect(100, 920, 220, 48), "OPEN FOLDER")) OpenBackups(); if (Button(new Rect(340, 920, 220, 48), "DELETED SAVES")) { DeletedBackups(); _page = 0; }
             if (Button(new Rect(710, 920, 210, 48), "PREVIOUS", _page > 0)) _page--; if (Button(new Rect(940, 920, 220, 48), "NEXT", (_page + 1) * 5 < _backups.Count)) _page++;
         }
+        /// <summary>Records a destructive library operation for its existing confirmation surface.</summary>
         void Confirm(string kind, string file)
         { _confirmKind = kind; _confirmFile = file; var info = kind == "restore" ? null : SaveSystem.Info(file); _confirmLabel = info != null ? info.Name + "  ·  " + info.World : "Restore the world and all matching companion files."; GUI.FocusControl(null); }
+        /// <summary>Requires the existing confirmation before deleting or restoring saved files.</summary>
         void DrawConfirmation()
         {
             Ledger.Fill(new Rect(0, 0, 1920, 1080), new Color(0, 0, 0, .82f)); Ledger.Panel(new Rect(500, 340, 920, 360), Ledger.Surface, _confirmKind == "delete" ? Ledger.Danger : Ledger.Accent);
@@ -206,9 +229,12 @@ namespace WildWasteland.Modules.Saves
             try { if (kind == "restore") SaveSystem.RestoreBackup(file); else SaveSystem.Delete(file); Refresh(); _message = kind == "restore" ? "Backup restored." : "Save deleted. Its backup is available in BACKUPS."; }
             catch (Exception error) { _message = error.Message; }
         }
+        /// <summary>Closes the library before requesting a named save on the next frame.</summary>
         void Save(string overwrite) { string name = _name, world = _world; ToolWindow.CloseThen(() => SaveSystem.Request(name, overwrite, worldName: world)); }
+        /// <summary>Opens the existing backup directory in the native file explorer.</summary>
         internal static void OpenBackups()
         { try { Directory.CreateDirectory(SaveFiles.BackupRoot); Process.Start(new ProcessStartInfo { FileName = SaveFiles.BackupRoot, UseShellExecute = true }); } catch (Exception error) { SaveSystem.Status = "Cannot open backups folder: " + error.Message; } }
+        /// <summary>Contributes save policy, recovery and cleanup controls to shared settings.</summary>
         internal static void DrawSystem(ToolLayout l)
         {
             l.Heading("System"); l.Toggle(Plugin.EnableDebug, "Enable Debug");

@@ -19,6 +19,10 @@ namespace WildWasteland.Core
             public IModule Owner;
             /// <summary>Pattern relative to config/WildWasteland with "{slot}".</summary>
             public string Pattern;
+            /// <summary>Optional owner policy deciding whether this exact companion belongs in a newly published snapshot.</summary>
+            public Func<string, bool> IncludeInSnapshot;
+            /// <summary>Optional owner rewrite of embedded slot identity; exceptions abort snapshot publication.</summary>
+            public Func<string, string, byte[], byte[]> RemapSnapshot;
         }
 
         /// <summary>Slot token inside patterns.</summary>
@@ -33,12 +37,12 @@ namespace WildWasteland.Core
         public static event Action Changed;
 
         /// <summary>Declares a per-slot companion file pattern of <paramref name="owner"/>. Registering the same owner + pattern twice is a no-op.</summary>
-        public static void Register(IModule owner, string pattern)
+        public static void Register(IModule owner, string pattern, Func<string, bool> includeInSnapshot = null, Func<string, string, byte[], byte[]> remapSnapshot = null)
         {
             if (string.IsNullOrEmpty(pattern)) return;
             if (pattern.IndexOf(SlotToken, StringComparison.Ordinal) < 0) { Log.Warn(owner, "sidecar pattern without " + SlotToken + " ignored: " + pattern); return; }
             for (int i = 0; i < _entries.Count; i++) if (_entries[i].Owner == owner && _entries[i].Pattern == pattern) return;
-            _entries.Add(new Entry { Owner = owner, Pattern = pattern });
+            _entries.Add(new Entry { Owner = owner, Pattern = pattern, IncludeInSnapshot = includeInSnapshot, RemapSnapshot = remapSnapshot });
             var h = Changed; if (h != null) try { h(); } catch (Exception e) { Log.Error(null, "Sidecars.Changed handler", e); }
         }
 
@@ -53,6 +57,27 @@ namespace WildWasteland.Core
         public static void PathsFor(string slot, List<string> into)
         {
             for (int i = 0; i < _entries.Count; i++) into.Add(PathFor(_entries[i].Owner, _entries[i].Pattern, slot));
+        }
+        /// <summary>Applies only a matching companion owner's snapshot admission policy; unregistered files remain included.</summary>
+        public static bool IncludeInSnapshot(string path, string slot)
+        {
+            string full = Path.GetFullPath(path);
+            foreach (var entry in _entries)
+                if (entry.IncludeInSnapshot != null && string.Equals(full, Path.GetFullPath(PathFor(entry.Owner, entry.Pattern, slot)), StringComparison.OrdinalIgnoreCase) && !entry.IncludeInSnapshot(slot)) return false;
+            return true;
+        }
+
+        /// <summary>Rewrites an exact registered companion's embedded identity, leaving its bytes unchanged when no policy applies.</summary>
+        public static byte[] RemapSnapshot(string path, string fromSlot, string toSlot, byte[] bytes)
+        {
+            string full = Path.GetFullPath(path);
+            foreach (var entry in _entries)
+                if (entry.RemapSnapshot != null && string.Equals(full, Path.GetFullPath(PathFor(entry.Owner, entry.Pattern, fromSlot)), StringComparison.OrdinalIgnoreCase))
+                {
+                    bytes = entry.RemapSnapshot(fromSlot, toSlot, bytes);
+                    if (bytes == null) throw new InvalidOperationException("Sidecar snapshot rewrite returned no bytes: " + entry.Pattern);
+                }
+            return bytes;
         }
     }
 }
