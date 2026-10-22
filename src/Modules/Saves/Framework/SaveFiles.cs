@@ -14,16 +14,24 @@ namespace WildWasteland.Modules.Saves
     // Durable undo journal. No world/sidecar mutation is permitted until every old byte is backed up.
     internal sealed class SaveFiles
     {
+        /// <summary>Stores the exact participant path, hash and old timestamp required for rollback.</summary>
         internal sealed class Entry { internal string Path, Hash; internal bool Existed; internal long WriteTicks; }
         internal readonly List<Entry> Entries = new List<Entry>();
         internal readonly string DirectoryPath, Slot;
         internal bool Committed;
+        /// <summary>Resolves the native ES3 directory without redirecting its location.</summary>
         internal static string WorldRoot { get { return Path.GetDirectoryName(Path.GetFullPath(new ES3Settings("WW_save-path-probe.es3") { location = ES3.Location.File }.FullPath)); } }
+        /// <summary>Returns the existing save-framework recovery directory.</summary>
         internal static string Root { get { return Path.Combine(WorldRoot, "WildWasteland-Saves"); } }
+        /// <summary>Returns the durable journal and retained-backup directory.</summary>
         internal static string BackupRoot { get { return Path.Combine(Root, "Backups"); } }
-        internal static string WorldPath(string file) { if (!SavesRuntime.IsSaveFile(file)) throw new IOException("Invalid save identity"); return Path.Combine(WorldRoot, file); }
+        /// <summary>Validates a supported WW2 slot identity before resolving its native world path.</summary>
+        internal static string WorldPath(string file) { if (!SaveRuntime.IsSaveFile(file)) throw new IOException("Invalid save identity"); return Path.Combine(WorldRoot, file); }
+        /// <summary>Returns the unchanged published-save description path.</summary>
         internal static string MetaPath(string file) { return WorldPath(file) + ".wwsave"; }
+        /// <summary>Returns the unchanged published-save thumbnail path.</summary>
         internal static string ImagePath(string file) { return MetaPath(file) + ".png"; }
+        /// <summary>Creates a uniquely named durable undo journal for the requested slot operation.</summary>
         internal SaveFiles(string slot, string operation)
         {
             WorldPath(slot); Slot = slot;
@@ -32,7 +40,9 @@ namespace WildWasteland.Modules.Saves
             WriteDurable(Path.Combine(DirectoryPath, "operation.txt"), Encoding.UTF8.GetBytes(operation));
         }
         SaveFiles(string directory, string slot, bool recovered) { DirectoryPath = directory; Slot = slot; }
+        /// <summary>Creates native ES3 file-location settings without changing global defaults.</summary>
         internal static ES3Settings Disk(string file) { return new ES3Settings(file) { location = ES3.Location.File }; }
+        /// <summary>Stores a participant path relative to an allowed root after checking symbolic links.</summary>
         static string Token(string path)
         {
             string full = Path.GetFullPath(path);
@@ -43,6 +53,7 @@ namespace WildWasteland.Modules.Saves
             }
             throw new IOException("Save participant is outside the save/config directories");
         }
+        /// <summary>Resolves a journal path token within its original allowed root.</summary>
         static string Resolve(string token)
         {
             string root = token.StartsWith("world/", StringComparison.Ordinal) ? WorldRoot : token.StartsWith("config/", StringComparison.Ordinal) ? Path.GetFullPath(Paths.ConfigPath) : token.StartsWith("assets/", StringComparison.Ordinal) ? Path.GetFullPath(Assets.Root) : null;
@@ -53,30 +64,36 @@ namespace WildWasteland.Modules.Saves
             CheckLinks(full, root);
             return full;
         }
+        /// <summary>Rejects participant paths that traverse symbolic links or reparse points.</summary>
         static void CheckLinks(string full, string root)
         {
             for (string path = full; path != null && !string.Equals(path, root, StringComparison.OrdinalIgnoreCase); path = Path.GetDirectoryName(path))
                 if ((Directory.Exists(path) || File.Exists(path)) && (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0) throw new IOException("Save participant traverses a symbolic link");
         }
+        /// <summary>Computes the unchanged SHA256 digest of a participant file.</summary>
         internal static string Hash(string path)
         { using (var input = File.OpenRead(path)) using (var sha = SHA256.Create()) return Convert.ToBase64String(sha.ComputeHash(input)); }
+        /// <summary>Writes complete bytes and flushes them to stable storage.</summary>
         internal static void WriteDurable(string path, byte[] bytes)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             using (var output = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None)) { output.Write(bytes, 0, bytes.Length); output.Flush(true); }
         }
+        /// <summary>Flushes a file copy and verifies identical SHA256 bytes before returning.</summary>
         internal static void CopyVerified(string source, string target)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(target));
             using (var input = File.OpenRead(source)) using (var output = new FileStream(target, FileMode.Create, FileAccess.Write, FileShare.None)) { input.CopyTo(output); output.Flush(true); }
             if (Hash(source) != Hash(target)) throw new IOException("Backup/copy verification failed: " + Path.GetFileName(source));
         }
+        /// <summary>Atomically replaces a destination with a verified staged copy.</summary>
         internal static void Publish(string source, string target)
         {
             string stage = target + ".ww-publish"; CopyVerified(source, stage);
             AtomicFile.Replace(stage, target);
             if (Hash(source) != Hash(target)) throw new IOException("Published save verification failed");
         }
+        /// <summary>Backs up existing files and durably records absent future participants before mutation.</summary>
         internal void Prepare(IEnumerable<string> files)
         {
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -106,8 +123,11 @@ namespace WildWasteland.Modules.Saves
             File.Move(Path.Combine(DirectoryPath, "undo.bin.tmp"), Path.Combine(DirectoryPath, "undo.bin"));
         }
         // D17: replace through AtomicFile (Mono File.Delete+File.Move over an existing marker can fail with Win32 1175).
+        /// <summary>Atomically publishes a complete one-byte journal milestone.</summary>
         static void Mark(string path) { WriteDurable(path + ".tmp", new byte[] { 1 }); AtomicFile.Replace(path + ".tmp", path); }
+        /// <summary>Recognizes only the exact complete one-byte journal marker.</summary>
         internal static bool Marked(string path) { return File.Exists(path) && new FileInfo(path).Length == 1 && File.ReadAllBytes(path)[0] == 1; }
+        /// <summary>Marks the completed journal before applying configured backup retention.</summary>
         internal void Commit()
         {
             Mark(Path.Combine(DirectoryPath, "committed")); Committed = true;
@@ -115,6 +135,7 @@ namespace WildWasteland.Modules.Saves
             try { foreach (string path in Directory.GetFiles(DirectoryPath, "new-*.bin")) File.Delete(path); }
             catch (Exception error) { Log.Warn("[System] Retaining redundant save staging: " + error.Message); }
         }
+        /// <summary>Restores old participant bytes and removes transaction-created files.</summary>
         internal void Rollback(bool clearCache = true)
         {
             // Verify the complete backup before restoring any participant.
@@ -133,6 +154,7 @@ namespace WildWasteland.Modules.Saves
             if (clearCache) ES3File.cachedFiles.Remove(Slot);
             Mark(Path.Combine(DirectoryPath, "recovered"));
         }
+        /// <summary>Validates and reads an existing durable journal without changing its format.</summary>
         internal static SaveFiles Read(string directory)
         {
             using (var reader = new BinaryReader(File.OpenRead(Path.Combine(directory, "undo.bin"))))
@@ -153,6 +175,7 @@ namespace WildWasteland.Modules.Saves
                 return tx;
             }
         }
+        /// <summary>Rolls back interrupted prepared transactions before accepting new writes.</summary>
         internal static void Recover()
         {
             if (!Directory.Exists(BackupRoot)) return;
@@ -164,6 +187,7 @@ namespace WildWasteland.Modules.Saves
                 Read(directory).Rollback(); Log.Always("[System] Interrupted save recovered: " + directory);
             }
         }
+        /// <summary>Matches supported complete-slot and seed-scoped companion filenames.</summary>
         static bool Matches(string name, string file)
         {
             if (name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".ww-publish", StringComparison.OrdinalIgnoreCase)) return false;
@@ -171,6 +195,7 @@ namespace WildWasteland.Modules.Saves
             return name == file || name.StartsWith(file + ".", StringComparison.OrdinalIgnoreCase) || name.StartsWith(stem + ".", StringComparison.OrdinalIgnoreCase)
                 || name.StartsWith(stem + "_seed", StringComparison.OrdinalIgnoreCase);
         }
+        /// <summary>Discovers existing matching companions without traversing symbolic links.</summary>
         static void Discover(string directory, string file, bool recurse, List<string> files)
         {
             if (!Directory.Exists(directory)) return;
@@ -178,6 +203,7 @@ namespace WildWasteland.Modules.Saves
             if (recurse) foreach (string child in Directory.GetDirectories(directory))
                 if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) == 0) Discover(child, file, true, files);
         }
+        /// <summary>Combines native files, discovered companions and owner-registered future sidecar paths.</summary>
         internal static List<string> Participants(string file)
         {
             WorldPath(file); var result = new List<string> { WorldPath(file), MetaPath(file), ImagePath(file) };
@@ -187,6 +213,7 @@ namespace WildWasteland.Modules.Saves
             Sidecars.PathsFor(file, result);
             return result;
         }
+        /// <summary>Preserves companion suffixes when translating a source slot to a new snapshot identity.</summary>
         internal static string Remap(string path, string from, string to)
         {
             string name = Path.GetFileName(path), stem = Path.GetFileNameWithoutExtension(from);
@@ -196,6 +223,7 @@ namespace WildWasteland.Modules.Saves
             else throw new IOException("Unknown save companion filename");
             return Path.Combine(Path.GetDirectoryName(path), name);
         }
+        /// <summary>Retains verified backups while preserving interrupted and deleted-save recovery.</summary>
         internal static void Prune(string slot, int keep)
         {
             string directory = Path.Combine(BackupRoot, slot); if (!Directory.Exists(directory)) return;

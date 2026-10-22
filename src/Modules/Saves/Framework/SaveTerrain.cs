@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.Saves
                 throw new InvalidOperationException("Terrain save barrier could not be installed");
             Log.Always("[System] Terrain save barrier ready: drain pending work, hold streaming until publication completes");
         }
+        /// <summary>Holds new terrain admission while allowing queued applications to drain.</summary>
         static bool MapUpdate()
         {
             if (!_held) return true;
@@ -28,7 +29,9 @@ namespace WildWasteland.Modules.Saves
             if (_draining) CoroutineManager.Update();
             return false;
         }
+        /// <summary>Allows terrain applications only before the publication barrier fully closes.</summary>
         static bool ApplyUpdate() { return !_held || _draining; }
+        /// <summary>Drains terrain to two quiet observations with timeout and generation checks.</summary>
         internal static IEnumerator Prepare()
         {
             _held = _draining = true;
@@ -47,6 +50,7 @@ namespace WildWasteland.Modules.Saves
                 yield return null;
             }
         }
+        /// <summary>Releases terrain admission and queued-application barriers.</summary>
         internal static void Release() { _held = _draining = false; }
     }
 }

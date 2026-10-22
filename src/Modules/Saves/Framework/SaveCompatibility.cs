@@ -35,13 +35,13 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Swaps a hinge rotation key for its stable Apocasaver key during a local save.</summary>
         static void BeforeSave(ES3PlayMaker.Save __instance, out FsmString __state)
         {
-            __state = null; if (!SavesSystem.LocalWorld || __instance.value.Type != VariableType.Vector3) return;
+            __state = null; if (!SaveSystem.LocalWorld || __instance.value.Type != VariableType.Vector3) return;
             string key = Stable(__instance.Fsm); if (key == null) return;
             __state = __instance.key; __instance.key = new FsmString { Value = key };
         }
         /// <summary>Restores the original key; a save exception fails the save transaction.</summary>
         static Exception AfterSave(ES3PlayMaker.Save __instance, FsmString __state, Exception __exception)
-        { if (__state != null) __instance.key = __state; if (__exception != null) SavesSystem.Fail(__exception.Message); return __exception; }
+        { if (__state != null) __instance.key = __state; if (__exception != null) SaveSystem.Fail(__exception.Message); return __exception; }
         /// <summary>Loads a hinge rotation from its stable key when the save has one.</summary>
         static void BeforeLoad(ES3PlayMaker.Load __instance, out FsmString __state)
         {
@@ -54,6 +54,6 @@ namespace WildWasteland.Modules.Saves
         { if (__state != null) __instance.key = __state; if (__exception == null) VehicleLoadPlacement.LoadedStance(__instance); return __exception; }
         /// <summary>Writes the session HandPose table into the active file's ES3 cache.</summary>
         internal static void SavePoses()
-        { SessionMetadata.Save(SavesSystem.ActiveFile); }
+        { SessionMetadata.Save(SaveSystem.ActiveFile); }
     }
 }

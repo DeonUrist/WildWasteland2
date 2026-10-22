@@ -73,7 +73,10 @@ namespace WildWasteland.Core
             string full = Path.GetFullPath(path);
             foreach (var entry in _entries)
                 if (entry.RemapSnapshot != null && string.Equals(full, Path.GetFullPath(PathFor(entry.Owner, entry.Pattern, fromSlot)), StringComparison.OrdinalIgnoreCase))
+                {
                     bytes = entry.RemapSnapshot(fromSlot, toSlot, bytes);
+                    if (bytes == null) throw new InvalidOperationException("Sidecar snapshot rewrite returned no bytes: " + entry.Pattern);
+                }
             return bytes;
         }
     }

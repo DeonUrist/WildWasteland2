@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.Saves
     // Observe native detection too: turning NPC AI off must not turn autosave safety off.
     internal static class SaveCombat
     {
+        /// <summary>Caches native detection, target and health variables for autosave safety.</summary>
         sealed class Actor { internal PlayMakerFSM Fsm, Attack; internal FsmGameObject Target; internal FsmFloat Health; }
         static readonly Dictionary<PlayMakerFSM, Actor> Actors = new Dictionary<PlayMakerFSM, Actor>();
         static readonly List<PlayMakerFSM> Dead = new List<PlayMakerFSM>();
@@ -30,33 +31,41 @@ namespace WildWasteland.Modules.Saves
         }
         /// <summary>Detaches native state observation and clears tracked actors when Saves stops.</summary>
         internal static void Shutdown() { SaveBus.StateChanged -= State; Actors.Clear(); Dead.Clear(); _scan = 0; _scanning = false; _quietUntil = 0; Unsafe = false; }
+        /// <summary>Restarts conservative combat discovery at load and new-world boundaries.</summary>
         static void State(string previous, string current) { if (current == "LoadGame" || current == "setSeed") Reset(); }
+        /// <summary>Forgets old actors and blocks autosave until sliced initial discovery completes.</summary>
         static void Reset() { Actors.Clear(); Dead.Clear(); _scan = 0; _scanning = true; _quietUntil = 0; Unsafe = true; }
+        /// <summary>Extends the existing ten-second quiet period after combat activity.</summary>
         internal static void Activity()
-        { if (SavesSystem.LocalReady) { _quietUntil = Time.unscaledTime + 10f; Unsafe = true; } }
+        { if (SaveSystem.LocalReady) { _quietUntil = Time.unscaledTime + 10f; Unsafe = true; } }
+        /// <summary>Registers a native Detection FSM once for ongoing target observation.</summary>
         static void Track(PlayMakerFSM fsm)
         {
-            if (!SavesSystem.LocalWorld || fsm == null || fsm.FsmName != "Detection" || Actors.ContainsKey(fsm)) return;
+            if (!SaveSystem.LocalWorld || fsm == null || fsm.FsmName != "Detection" || Actors.ContainsKey(fsm)) return;
             Actors.Add(fsm, new Actor { Fsm = fsm });
         }
+        /// <summary>Inspects one native FSM per scheduler slice while the current world is ready.</summary>
         static bool Discover()
         {
-            if (!SavesSystem.LocalReady || !_scanning) return false;
+            if (!SaveSystem.LocalReady || !_scanning) return false;
             var fsms = PlayMakerFSM.FsmList;
             if (_scan >= fsms.Count) { _scanning = false; return false; }
             Track(fsms[_scan++]); return true;
         }
+        /// <summary>Observes cached native damage and animal attack events without consuming them.</summary>
         static bool Event(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
-            if (!SavesSystem.LocalWorld || ev == null || fsm == null) return true;
+            if (!SaveSystem.LocalWorld || ev == null || fsm == null) return true;
             if (ReferenceEquals(ev, Damage) || ReferenceEquals(ev, AnimalAttack) || ReferenceEquals(ev, AnimalRangedAttack)) Activity();
             return true;
         }
+        /// <summary>Observes native attack-state transitions even when the NPC feature module is disabled.</summary>
         static void Attack(Fsm fsm, FsmState state)
         {
-            if (!SavesSystem.LocalWorld || fsm == null || fsm.Name != "Attack" || state == null) return;
+            if (!SaveSystem.LocalWorld || fsm == null || fsm.Name != "Attack" || state == null) return;
             if (state.Name == "fire" || state.Name == "attack" || state.Name == "attack_ranged" || state.Name == "throw") Activity();
         }
+        /// <summary>Updates autosave safety from native targets, discovery completion and the combat quiet period.</summary>
         internal static bool Check()
         {
             bool active = false;

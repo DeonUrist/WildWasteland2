@@ -51,6 +51,7 @@ namespace WildWasteland.Modules.Saves
             Array.Clear(_observations, 0, _observations.Length); _observation = _observationCount = 0;
             _offlineItems = null; _referenceFsms = null; _tracking = false; _last = 0;
         }
+        /// <summary>Accepts only the configured native disposable prefab categories after checking value and resource state.</summary>
         static bool Category(GameObject go)
         {
             string name = go.name; int at = name.IndexOf("(Clone)", StringComparison.Ordinal); if (at >= 0) name = name.Substring(0, at);
@@ -69,13 +70,15 @@ namespace WildWasteland.Modules.Saves
             }
             return corpse || empty && worthless;
         }
+        /// <summary>Retains unknown, parented, inactive, special-layer and player-observed roots.</summary>
         static bool Protected(GameObject go)
         {
             return go == null || go.transform.parent != null || go.layer == 22 || !go.activeInHierarchy || Touched.Contains(go.name);
         }
+        /// <summary>Refreshes custody protection and snapshots candidate observations using active gameplay elapsed time.</summary>
         static void Tick()
         {
-            if (!SavesSystem.LocalReady) return;
+            if (!SaveSystem.LocalReady) return;
             if (_generation != SaveBus.Generation) _offlineItems = null;
             if (_offlineItems == null && GameRefs.NewGOArrayList != null)
                 foreach (var list in GameRefs.NewGOArrayList.GetComponents<PlayMakerArrayListProxy>())
@@ -86,20 +89,22 @@ namespace WildWasteland.Modules.Saves
                 Array.Clear(_observations, 0, _observations.Length); _observationCount = 0; _tracking = false;
                 try
                 {
-                    var settings = SaveFiles.Disk(SavesSystem.ActiveFile);
-                    if (System.IO.File.Exists(SaveFiles.WorldPath(SavesSystem.ActiveFile)) && ES3.KeyExists(ProtectionKey, settings)) foreach (string name in ES3.Load<string[]>(ProtectionKey, settings)) Touched.Add(name);
+                    var settings = SaveFiles.Disk(SaveSystem.ActiveFile);
+                    if (System.IO.File.Exists(SaveFiles.WorldPath(SaveSystem.ActiveFile)) && ES3.KeyExists(ProtectionKey, settings)) foreach (string name in ES3.Load<string[]>(ProtectionKey, settings)) Touched.Add(name);
                     else { SnapshotObjects(); for (int i = 0; i < _observationCount; i++) { var existing = ObservationRoot(_observations[i]); if (existing != null) Touched.Add(existing.name); } }
                 }
                 catch (Exception error) { Log.Error("[System] Cleanup ownership data unreadable; cleanup disabled for this session", error); Enabled.Value = false; }
             }
             if (!Enabled.Value) { Far.Clear(); _last = 0; _tracking = false; if (_observationCount != 0) Array.Clear(_observations, 0, _observations.Length); _observationCount = 0; return; }
-            if (!GameRefs.InGame || SavesSystem.Busy) { _last = 0; return; }
+            if (!GameRefs.InGame || SaveSystem.Busy) { _last = 0; return; }
             float now = Time.unscaledTime; _elapsed = _last > 0 ? Mathf.Min(5.5f, now - _last) : 0; _last = now;
             var gone = new List<GameObject>(); foreach (var pair in Far) if (pair.Key == null) gone.Add(pair.Key); foreach (var go in gone) Far.Remove(go);
             SnapshotObjects();
             if (!_tracking) { for (int i = 0; i < _observationCount; i++) { var item = ObservationRoot(_observations[i]); if (item != null) Touched.Add(item.name); } _tracking = true; }
         }
+        /// <summary>Resolves an observation entry to its native object without assuming ownership.</summary>
         static GameObject ObservationRoot(object state) { return state as GameObject; }
+        /// <summary>Copies the native saved-item registry into a reusable bounded observation buffer.</summary>
         static void SnapshotObjects()
         {
             ICollection objects = _offlineItems;
@@ -108,17 +113,19 @@ namespace WildWasteland.Modules.Saves
             Array.Clear(_observations, 0, _observations.Length); if (objects != null) objects.CopyTo(_observations, 0);
             _observation = 0; _observationCount = count;
         }
+        /// <summary>Ages one positively identified abandoned object per scheduler slice.</summary>
         static bool ObservationStep()
         {
-            if (!Enabled.Value || !SavesSystem.LocalWorld || !GameRefs.InGame || SavesSystem.Busy || _observation >= _observationCount) return false;
+            if (!Enabled.Value || !SaveSystem.LocalWorld || !GameRefs.InGame || SaveSystem.Busy || _observation >= _observationCount) return false;
             object state = _observations[_observation]; _observations[_observation++] = null;
             var go = ObservationRoot(state); if (go == null) return _observation < _observationCount;
             if (go.transform.parent != null) Touched.Add(go.name);
             if (Protected(go) || !Category(go)) { Far.Remove(go); return _observation < _observationCount; }
             float age; Far.TryGetValue(go, out age);
-            Far[go] = SavesRuntime.PlayerDistance(go.transform.position, GameRefs.Player != null ? GameRefs.Player.transform : null) > Distance.Value ? age + _elapsed : 0;
+            Far[go] = SaveRuntime.PlayerDistance(go.transform.position, GameRefs.Player != null ? GameRefs.Player.transform : null) > Distance.Value ? age + _elapsed : 0;
             return _observation < _observationCount;
         }
+        /// <summary>Conservatively retains candidates referenced by another saved FSM, including inactive objects.</summary>
         static bool Referenced(GameObject candidate)
         {
             // On-save scan, not a gameplay scan. Check every retained FSM, including inactive saved objects.
@@ -136,7 +143,9 @@ namespace WildWasteland.Modules.Saves
             }
             return false;
         }
+        /// <summary>Tests whether a reference points to a candidate or any of its children.</summary>
         static bool Within(GameObject value, GameObject root) { return value != null && (value == root || value.transform.IsChildOf(root.transform)); }
+        /// <summary>Temporarily removes verified unreferenced candidates from native save lists before serialization.</summary>
         internal static void Prepare()
         {
             Candidates.Clear(); Removed.Clear(); RemovedKeys.Clear(); Registrations.Clear(); if (!Enabled.Value) return;
@@ -146,7 +155,7 @@ namespace WildWasteland.Modules.Saves
             foreach (var pair in Far)
             {
                 var go = pair.Key;
-                if (pair.Value < Minutes.Value * 60f || Protected(go) || !Category(go) || SavesRuntime.PlayerDistance(go.transform.position, GameRefs.Player != null ? GameRefs.Player.transform : null) <= Distance.Value) continue;
+                if (pair.Value < Minutes.Value * 60f || Protected(go) || !Category(go) || SaveRuntime.PlayerDistance(go.transform.position, GameRefs.Player != null ? GameRefs.Player.transform : null) <= Distance.Value) continue;
                 // Render children are harmless; a nested saved prefab may be cargo and must be retained.
                 bool nested = false;
                 foreach (var prefab in go.GetComponentsInChildren<ES3Internal.ES3Prefab>(true)) if (prefab.gameObject != go) { nested = true; break; }
@@ -160,17 +169,21 @@ namespace WildWasteland.Modules.Saves
             {
                 int at = go.name.LastIndexOf("(Clone)", StringComparison.Ordinal), number;
                 if (at >= 0 && int.TryParse(go.name.Substring(at + 7), out number))
-                { RemovedKeys.Add(go.name); ES3.DeleteKey(go.name, new ES3Settings(SavesSystem.ActiveFile) { location = ES3.Location.Cache }); }
+                { RemovedKeys.Add(go.name); ES3.DeleteKey(go.name, new ES3Settings(SaveSystem.ActiveFile) { location = ES3.Location.Cache }); }
             }
         }
+        /// <summary>Identifies only keys deliberately removed by the current cleanup transaction.</summary>
         internal static bool RemovesKey(string key) { return RemovedKeys.Contains(key); }
+        /// <summary>Persists exact current-world custody-protection names in the existing ES3 key.</summary>
         internal static void SaveProtection()
         {
             var names = new string[Touched.Count]; Touched.CopyTo(names);
-            ES3.Save<string[]>(ProtectionKey, names, new ES3Settings(SavesSystem.ActiveFile) { location = ES3.Location.Cache });
+            ES3.Save<string[]>(ProtectionKey, names, new ES3Settings(SaveSystem.ActiveFile) { location = ES3.Location.Cache });
         }
+        /// <summary>Restores every temporarily removed native save-list registration after failure.</summary>
         internal static void Rollback()
         { foreach (var pair in Registrations) if (pair.Value != null && !pair.Key.Contains(pair.Value)) pair.Key.Add(pair.Value); Registrations.Clear(); Candidates.Clear(); }
+        /// <summary>Destroys verified cleanup candidates only after the save transaction commits.</summary>
         internal static void Commit()
         {
             foreach (var go in Candidates) if (go != null) { Removed.Add(go); Far.Remove(go); UnityEngine.Object.Destroy(go); }

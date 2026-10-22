@@ -15,14 +15,14 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Loads the newest published snapshot through the normal singleplayer admission path.</summary>
         static void ContinueLatest()
         {
-            string file = SavesRuntime.Latest();
+            string file = SaveRuntime.Latest();
             if (file != null) SinglePlayerSaving.Load(file);
         }
         /// <summary>Reads the newest snapshot caption when a menu rebuild asks for it, without leaking the catalogue type.</summary>
         static string LatestCaption()
         {
-            string file = SavesRuntime.Latest();
-            return file == null ? "" : SavesSystem.Info(file).Name;
+            string file = SaveRuntime.Latest();
+            return file == null ? "" : SaveSystem.Info(file).Name;
         }
     }
 }

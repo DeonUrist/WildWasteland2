@@ -30,6 +30,15 @@ namespace WildWasteland.Modules.Saves
         {
             internal readonly List<SavedFsm> Fsms = new List<SavedFsm>();
         }
+        sealed class InstanceSite
+        {
+            internal bool Dirty;
+            internal GameObject Prefab;
+            internal readonly List<PlayMakerFSM> Fsms = new List<PlayMakerFSM>();
+            internal readonly List<PlayMakerFSM> Templates = new List<PlayMakerFSM>();
+        }
+        static ConditionalWeakTable<GameObject, InstanceSite> Instances = new ConditionalWeakTable<GameObject, InstanceSite>();
+        /// <summary>Caches action eligibility under a weak native FSM identity.</summary>
         sealed class SaveEligibility { internal bool Value; }
         static readonly ConditionalWeakTable<PlayMakerFSM, SaveEligibility> Eligibility = new ConditionalWeakTable<PlayMakerFSM, SaveEligibility>();
         static readonly Dictionary<GameObject, Layout> Layouts = new Dictionary<GameObject, Layout>();
@@ -64,30 +73,37 @@ namespace WildWasteland.Modules.Saves
             SaveBus.StateChanged += StateChanged;
         }
         /// <summary>Detaches resets and releases template/cache references while retaining immutable current-world history.</summary>
-        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; Layouts.Clear(); Components.Clear(); Site.Clear(); AtPath.Clear(); _restoreCache = null; _owner = null; }
+        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; Layouts.Clear(); Instances = new ConditionalWeakTable<GameObject, InstanceSite>(); Components.Clear(); Site.Clear(); AtPath.Clear(); _restoreCache = null; _owner = null; }
+        /// <summary>Installs a mandatory module-owned native observer or fails initialization.</summary>
         static void Require(Type type, string name, string before)
         { if (!Patches.Patch(_owner, AccessTools.Method(type, name), prefix: AccessTools.Method(typeof(WorldHistory), before))) throw new InvalidOperationException("Terrain history hook failed: " + name); }
+        /// <summary>Clears immutable history and prefab layouts at native world boundaries.</summary>
         static void StateChanged(string previous, string current)
-        { if (current == "LoadGame" || current == "setSeed" || current == "Start") { History.Clear(); Delta.Clear(); Layouts.Clear(); _restoreCache = null; _slot = null; _generation = -1; } }
+        { if (current == "LoadGame" || current == "setSeed" || current == "Start") { History.Clear(); Delta.Clear(); Layouts.Clear(); Instances = new ConditionalWeakTable<GameObject, InstanceSite>(); _restoreCache = null; _slot = null; _generation = -1; } }
+        /// <summary>Opens the active history ledger and turns storage failures into reload-required state.</summary>
         static bool Session()
         {
             try { return OpenSession(); }
             catch (Exception error) { Failed(error); return false; }
         }
+        /// <summary>Prevents later saves when streamed native state could not be preserved.</summary>
         static void Failed(Exception error)
-        { SavesSystem.ReloadRequired = true; SavesSystem.Status = "Location history unavailable; reload before saving: " + error.Message; Log.Error("[System] " + SavesSystem.Status, error); }
+        { SaveSystem.ReloadRequired = true; SaveSystem.Status = "Location history unavailable; reload before saving: " + error.Message; Log.Error("[System] " + SaveSystem.Status, error); }
+        /// <summary>Loads original ES3 records once per active slot and generation.</summary>
         static bool OpenSession()
         {
-            if (!SavesSystem.LocalReady || _running) return false;
-            string slot = SavesSystem.ActiveFile;
+            if (!SaveSystem.LocalReady || _running) return false;
+            string slot = SaveSystem.ActiveFile;
             if (_slot == slot && _generation == SaveBus.Generation) return true;
-            History.Clear(); Delta.Clear(); Layouts.Clear(); _restoreCache = null; _slot = slot; _generation = SaveBus.Generation;
+            History.Clear(); Delta.Clear(); Layouts.Clear(); Instances = new ConditionalWeakTable<GameObject, InstanceSite>(); _restoreCache = null; _slot = slot; _generation = SaveBus.Generation;
             ES3File file;
             if (ES3File.cachedFiles.TryGetValue(slot, out file)) foreach (var pair in _data(file)) History[pair.Key] = pair.Value;
             else if (File.Exists(SaveFiles.WorldPath(slot))) foreach (var pair in _data(new ES3File(SaveFiles.Disk(slot), true))) History[pair.Key] = pair.Value;
             return true;
         }
+        /// <summary>Captures location records before a terrain tile is moved or removed.</summary>
         static void BeforeTile(Component __instance) { try { if (__instance != null) Capture(__instance.gameObject); } catch (Exception error) { Failed(error); } }
+        /// <summary>Captures only the native pool range about to move.</summary>
         static void BeforePool(object __instance, int startNum, int endNum)
         {
             try {
@@ -95,6 +111,7 @@ namespace WildWasteland.Modules.Saves
             var items = _instances(__instance); for (int i = Mathf.Max(0, startNum); i < Mathf.Min(endNum, items.Count); i++) Capture(items[i] as GameObject, PoolPrefab(__instance));
             } catch (Exception error) { Failed(error); }
         }
+        /// <summary>Captures pool instances that shrinking is about to discard.</summary>
         static void BeforeClamp(object __instance, int targetCount)
         {
             try {
@@ -102,6 +119,7 @@ namespace WildWasteland.Modules.Saves
             var items = _instances(__instance); for (int i = Mathf.Max(0, targetCount); i < items.Count; i++) Capture(items[i] as GameObject, PoolPrefab(__instance));
             } catch (Exception error) { Failed(error); }
         }
+        /// <summary>Restores placed pool instances from authored defaults and retained records.</summary>
         static void AfterPool(object __instance, int startNum, int endNum)
         {
             try {
@@ -119,7 +137,16 @@ namespace WildWasteland.Modules.Saves
         { foreach (var transition in fsm.Fsm.GlobalTransitions) if (ReferenceEquals(transition.FsmEvent, eventType)) return true; return false; }
 
         /// <summary>Rechecks native save-action eligibility when a pooled or newly enabled FSM rebuilds its actions.</summary>
-        static void InvalidateEligibility(PlayMakerFSM fsm) { if (fsm != null) Eligibility.Remove(fsm); }
+        static void InvalidateEligibility(PlayMakerFSM fsm)
+        {
+            if (fsm == null) return;
+            Eligibility.Remove(fsm);
+            for (var t = fsm.transform; t != null; t = t.parent)
+            {
+                InstanceSite site;
+                if (Instances.TryGetValue(t.gameObject, out site)) site.Dirty = true;
+            }
+        }
 
         /// <summary>Caches native save-action eligibility per weak FSM identity; unloaded instances are not retained.</summary>
         static bool Saves(PlayMakerFSM fsm)
@@ -134,55 +161,84 @@ namespace WildWasteland.Modules.Saves
             return saves;
         }
 
-        /// <summary>Captures relative native FSM paths once per prefab, using the first real instance's initialized topology.</summary>
-        static Layout PrefabLayout(GameObject root, GameObject prefab)
+        /// <summary>Captures authored save paths once per prefab; instance additions remain in their separate weak cache.</summary>
+        static Layout PrefabLayout(GameObject prefab)
         {
             Layout layout;
             if (Layouts.TryGetValue(prefab, out layout)) return layout;
             layout = new Layout();
-            root.GetComponentsInChildren(true, Components);
+            prefab.GetComponentsInChildren(true, Components);
             foreach (var fsm in Components)
             {
                 if (!Saves(fsm)) continue;
-                string relative = "";
-                for (var t = fsm.transform; t != null && t != root.transform; t = t.parent) relative = "/" + t.name + relative;
-                var target = relative.Length == 0 ? prefab.transform : prefab.transform.Find(relative.TrimStart('/'));
+                string relative = Relative(fsm.transform, prefab.transform);
                 fsm.GetComponents(AtPath);
                 int ordinal = AtPath.IndexOf(fsm); AtPath.Clear();
-                layout.Fsms.Add(new SavedFsm { Relative = relative.TrimStart('/'), Name = fsm.FsmName, Ordinal = ordinal, Template = target == null ? null : FsmUtil.Find(target.gameObject, fsm.FsmName) });
+                layout.Fsms.Add(new SavedFsm { Relative = relative, Name = fsm.FsmName, Ordinal = ordinal, Template = fsm });
             }
             Components.Clear(); Layouts[prefab] = layout; return layout;
         }
 
-        /// <summary>Reuses component buffers for unknown tile roots; pooled sites resolve only cached prefab save paths.</summary>
+        /// <summary>Builds the native child-name path once for a prefab layout or a changed instance topology.</summary>
+        static string Relative(Transform child, Transform root)
+        {
+            string relative = "";
+            for (var t = child; t != null && t != root; t = t.parent) relative = "/" + t.name + relative;
+            return relative.TrimStart('/');
+        }
+
+        /// <summary>Resolves exact ordinal and name together, preserving independent defaults of duplicate-named FSM components.</summary>
+        static PlayMakerFSM Template(GameObject prefab, Layout layout, string relative, string name, int ordinal)
+        {
+            if (prefab == null) return null;
+            foreach (var saved in layout.Fsms)
+                if (saved.Relative == relative && saved.Name == name && saved.Ordinal == ordinal) return saved.Template;
+            // A non-authored instance shape may still map to a newly changed template node.
+            var target = relative.Length == 0 ? prefab.transform : prefab.transform.Find(relative);
+            if (target == null) return null;
+            target.GetComponents(AtPath);
+            var template = ordinal >= 0 && ordinal < AtPath.Count && AtPath[ordinal].FsmName == name ? AtPath[ordinal] : null;
+            AtPath.Clear(); return template;
+        }
+
+        /// <summary>Scans each live hierarchy once, then rebuilds only that weak instance after an FSM enable/topology change.</summary>
+        static InstanceSite Instance(GameObject root, GameObject prefab)
+        {
+            InstanceSite site;
+            if (Instances.TryGetValue(root, out site) && !site.Dirty && site.Prefab == prefab) return site;
+            if (site == null) { site = new InstanceSite(); Instances.Add(root, site); }
+            site.Fsms.Clear(); site.Templates.Clear(); site.Prefab = prefab;
+            Layout layout = prefab == null ? null : PrefabLayout(prefab);
+            root.GetComponentsInChildren(true, Components);
+            foreach (var fsm in Components)
+            {
+                if (!Saves(fsm)) continue;
+                site.Fsms.Add(fsm);
+                string relative = Relative(fsm.transform, root.transform);
+                fsm.GetComponents(AtPath);
+                int ordinal = AtPath.IndexOf(fsm); AtPath.Clear();
+                site.Templates.Add(Template(prefab, layout, relative, fsm.FsmName, ordinal));
+            }
+            Components.Clear(); site.Dirty = false; return site;
+        }
+
+        /// <summary>Reuses live site metadata while retaining instance-only save FSMs and checking native enabled/event state each visit.</summary>
         static List<PlayMakerFSM> SiteFsms(GameObject root, GameObject prefab, bool restore)
         {
             Site.Clear();
-            if (prefab == null)
+            var site = Instance(root, prefab);
+            for (int i = 0; i < site.Fsms.Count; i++)
             {
-                root.GetComponentsInChildren(true, Components);
-                foreach (var fsm in Components)
-                    if (fsm != null && fsm.enabled && fsm.Fsm.Initialized && Saves(fsm)) Site.Add(fsm);
-                Components.Clear(); return Site;
-            }
-            foreach (var saved in PrefabLayout(root, prefab).Fsms)
-            {
-                var target = saved.Relative.Length == 0 ? root.transform : root.transform.Find(saved.Relative);
-                if (target == null) continue;
-                target.GetComponents(AtPath);
-                if (saved.Ordinal >= 0 && saved.Ordinal < AtPath.Count)
+                var fsm = site.Fsms[i];
+                if (fsm == null || !fsm.enabled || !fsm.Fsm.Initialized || !Event(fsm, SaveEvent) || restore && !Event(fsm, LoadEvent)) continue;
+                var template = site.Templates[i];
+                if (restore && template != null)
                 {
-                    var fsm = AtPath[saved.Ordinal];
-                    if (fsm == null || fsm.FsmName != saved.Name || !fsm.enabled || !fsm.Fsm.Initialized || !Event(fsm, SaveEvent) || restore && !Event(fsm, LoadEvent)) { AtPath.Clear(); continue; }
-                    if (restore && saved.Template != null)
-                    {
-                        foreach (var v in fsm.FsmVariables.IntVariables) { var original = saved.Template.FsmVariables.FindFsmInt(v.Name); if (original != null) v.Value = original.Value; }
-                        foreach (var v in fsm.FsmVariables.FloatVariables) { var original = saved.Template.FsmVariables.FindFsmFloat(v.Name); if (original != null) v.Value = original.Value; }
-                        foreach (var v in fsm.FsmVariables.BoolVariables) { var original = saved.Template.FsmVariables.FindFsmBool(v.Name); if (original != null) v.Value = original.Value; }
-                    }
-                    Site.Add(fsm);
+                    foreach (var v in fsm.FsmVariables.IntVariables) { var original = template.FsmVariables.FindFsmInt(v.Name); if (original != null) v.Value = original.Value; }
+                    foreach (var v in fsm.FsmVariables.FloatVariables) { var original = template.FsmVariables.FindFsmFloat(v.Name); if (original != null) v.Value = original.Value; }
+                    foreach (var v in fsm.FsmVariables.BoolVariables) { var original = template.FsmVariables.FindFsmBool(v.Name); if (original != null) v.Value = original.Value; }
                 }
-                AtPath.Clear();
+                Site.Add(fsm);
             }
             return Site;
         }
@@ -193,7 +249,7 @@ namespace WildWasteland.Modules.Saves
             if (root == null || !Session()) return;
             var fsms = SiteFsms(root, prefab, false); if (fsms.Count == 0) return;
             Run(fsms, false); Site.Clear();
-            if (SavesSystem.Busy) SaveBus.ReportFailure("Terrain locations moved during the world save");
+            if (SaveSystem.Busy) SaveBus.ReportFailure("Terrain locations moved during the world save");
         }
 
         /// <summary>Restores pooled site defaults and retained ES3 data using the prefab's cached save-action layout.</summary>
@@ -204,6 +260,7 @@ namespace WildWasteland.Modules.Saves
             if (fsms.Count != 0) Run(fsms, true);
             Site.Clear();
         }
+        /// <summary>Runs native save/load events against a private cache and restores global ES3 settings afterward.</summary>
         static void Run(List<PlayMakerFSM> fsms, bool restore)
         {
             string path = ES3Settings.defaultSettings.path; var location = ES3Settings.defaultSettings.location;
@@ -224,9 +281,10 @@ namespace WildWasteland.Modules.Saves
                 if (_error != null) throw new IOException(_error);
                 if (!restore) { foreach (var pair in records) { History[pair.Key] = pair.Value; Delta[pair.Key] = pair.Value; } _restoreCache = null; }
             }
-            catch (Exception error) { SavesSystem.ReloadRequired = true; SavesSystem.Status = "Location history could not be preserved. Reload before saving: " + error.Message; Log.Error("[System] " + SavesSystem.Status, error); }
+            catch (Exception error) { SaveSystem.ReloadRequired = true; SaveSystem.Status = "Location history could not be preserved. Reload before saving: " + error.Message; Log.Error("[System] " + SaveSystem.Status, error); }
             finally { ES3Settings.defaultSettings.path = path; ES3Settings.defaultSettings.location = location; ES3File.cachedFiles.Remove(CaptureFile); _running = _restoring = false; }
         }
+        /// <summary>Handles expected new-site history misses and records other native save errors.</summary>
         internal static bool NativeError(string error)
         {
             if (!_running) return false;
@@ -234,17 +292,19 @@ namespace WildWasteland.Modules.Saves
             if (_restoring && error.IndexOf("KeyNotFoundException", StringComparison.Ordinal) >= 0) return true;
             _error = error; return false;
         }
+        /// <summary>Merges streamed location deltas into the native cache before its transaction stamp.</summary>
         internal static void Merge()
         {
-            if (SavesSystem.ReloadRequired) throw new IOException("Location history requires a reload");
+            if (SaveSystem.ReloadRequired) throw new IOException("Location history requires a reload");
             ES3File file;
-            if (Delta.Count == 0 || !ES3File.cachedFiles.TryGetValue(SavesSystem.ActiveFile, out file)) return;
+            if (Delta.Count == 0 || !ES3File.cachedFiles.TryGetValue(SaveSystem.ActiveFile, out file)) return;
             var records = _data(file); foreach (var pair in Delta) records[pair.Key] = pair.Value;
-            // SavesSystem.Stamp follows this call and marks the same cache dirty.
+            // SaveSystem.Stamp follows this call and marks the same cache dirty.
         }
+        /// <summary>Refreshes immutable location history only after verified save publication.</summary>
         internal static void Accepted()
         {
-            ES3File file; if (!ES3File.cachedFiles.TryGetValue(SavesSystem.ActiveFile, out file)) return;
+            ES3File file; if (!ES3File.cachedFiles.TryGetValue(SaveSystem.ActiveFile, out file)) return;
             History.Clear(); foreach (var pair in _data(file)) History[pair.Key] = pair.Value; Delta.Clear(); _restoreCache = null;
         }
     }
