@@ -64,6 +64,8 @@ namespace WildWasteland.Modules.NPC
         public void Forget(string poi) { PoiNav.Forget(poi); }
         /// <summary>Asks the native POI registry to reconcile current instances.</summary>
         public void Rescan() { PoiNav.Rescan(); }
+        /// <summary>Initializes normal NPC behavior for an unsaved editor test actor.</summary>
+        public void NotifyTestSpawn(GameObject actor) { if (actor != null) Brain.Spawned(actor); }
         /// <summary>Uses the canonical native type normalizer.</summary>
         public string TypeOf(string name) { return PoiNavStore.TypeOf(name); }
         /// <summary>Uses the canonical authored output path.</summary>
