@@ -68,13 +68,9 @@ namespace WildWasteland.Modules.Debug
             ModEvents.Subscribe<TileApplied>(this, TileAppliedTag);
             ModEvents.Subscribe<OriginShifted>(this, OriginTag);
             OptimizationMetrics.Marked += Measurements.MarkTag;
-            WeatherDiagnosticState.StateChanged += WeatherDiagnosticTools.OnStateChanged;
-            WeatherDiagnosticState.CameraRecordRequested += WeatherDiagnosticTools.OnCameraRecord;
-            WeatherDiagnosticState.Reset();
             Hotkeys.Register(this, _factionDumpKey, WriteFactionDump, CanDumpFaction);
             Scheduler.Gui(this, "Debug.PatrolOverlay", PatrolDiagnosticOverlay.Draw, PatrolOverlayWanted);
             Scheduler.Gui(this, "Debug.NavigationOverlay", NavigationOverlay.Draw, NavigationWanted);
-            Scheduler.Gui(this, "Debug.WeatherOverlay", WeatherDiagnosticTools.DrawOverlay, WeatherDiagnosticTools.WantsOverlay);
             Hotkeys.Register(this, MenuKey, _runtime.Toggle, null, true);
             Scheduler.EveryFrame(this, "Debug.Measurements", _runtime.Tick, Phase.EarlyUpdate);
             Scheduler.Gui(this, "Debug.Dashboard", _runtime.Draw, DashboardWanted);
@@ -86,7 +82,6 @@ namespace WildWasteland.Modules.Debug
             ModApi.Provide<ILogPolicy>(this, this);
             ModApi.Provide<ITraceControl>(this, this);
             ModApi.Provide<INavigationDiagnosticSink>(this, new NavigationMapExporter());
-            ModApi.Provide<IWeatherDiagnosticControls>(this, new WeatherDiagnosticTools());
         }
 
         /// <summary>Adds the shared logging level and dashboard launcher to Core's settings shell.</summary>
@@ -212,9 +207,6 @@ namespace WildWasteland.Modules.Debug
             _running = false;
             Core.Trace.Marked -= Measurements.MarkTag;
             OptimizationMetrics.Marked -= Measurements.MarkTag;
-            WeatherDiagnosticState.Reset();
-            WeatherDiagnosticState.StateChanged -= WeatherDiagnosticTools.OnStateChanged;
-            WeatherDiagnosticState.CameraRecordRequested -= WeatherDiagnosticTools.OnCameraRecord;
             VerboseLevel.SettingChanged -= PolicyChanged;
             _traceHandlers.SettingChanged -= PolicyChanged;
             _navigationOverlay.SettingChanged -= PolicyChanged;

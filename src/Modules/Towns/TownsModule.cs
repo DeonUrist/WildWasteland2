@@ -555,7 +555,7 @@ namespace WildWasteland.Modules.Towns
             try
             {
                 foreach (var live in _sites) TownFactory.Capture(live.Site, _records[live.Site.Plan.Key], live.Registration.Assets);
-                try { _gasStation.Save(slot); } catch (Exception e) { Log.Warn("[Towns] gas station spawner states not saved: " + e.Message); }
+                _gasStation.Save(slot);
                 TownSaveRecord.Save(slot, _records);
                 if (_dressing != null) _dressing.Markers.Save(slot);
             }
@@ -564,8 +564,7 @@ namespace WildWasteland.Modules.Towns
         internal void OnLoadBegin(string slot)
         {
             ClearSites(); _resume.Clear(); _epoch++; _blocked = false;
-            if (_gasStation != null) _gasStation.Load(slot);
-            try { if (_dressing != null) _dressing.Markers.Load(slot); _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
+            try { if (_gasStation != null) _gasStation.Load(slot); if (_dressing != null) _dressing.Markers.Load(slot); _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
             catch (Exception e) { _records.Clear(); Block("loading (saved data retained on disk)", e); }
         }
         public void NewWorld()

@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.Patrols
     // Foot patrols ([Patrols] Foot patrols, world traffic on): 2-5 walkers on a TrafficJourney (foot = true, vehicles empty) between camps of one
     // faction, over the same land routes the cars use. Virtual (TrafficJourney.Advance) away from the player; within FootPatrolLoadRange they
     // become real simple-bandit NPCs walked by Services.Npc.Travel along the route (journey.Follow the leader), and simulated again beyond
-    // FootPatrolUnloadRange. Real walkers are journey-owned: never in the native save lists (the journey is saved in the traffic sidecar).
+    // FootPatrolUnloadRange. Real walkers are journey-owned: never in the native save lists (the journey is saved in the embedded traffic record).
     // At a loaded destination they become ordinary camp residents (natively saved); unloaded / virtual arrivals just end.
     // Crew left without a usable car (CrewReturn.Stranded) are wrapped into a foot journey to the nearest uncleared camp of their faction.
     // Runs inside WorldTraffic.Tick (0.25 s): per walker work at most 1 Hz, one walker instantiated per tick, no per-tick allocation.
@@ -407,7 +407,7 @@ namespace WildWasteland.Modules.Patrols
                 var s = group[k];
                 walkers[k] = new TrafficWalker { identity = string.IsNullOrEmpty(s.Identity) ? CrewAppearance.Identity(s.Body, TemplateExporter.PrefabName(s.Body.name)) : s.Identity, health = s.Health != null ? s.Health.Value : -1f };
                 fl.Bodies[k] = s.Body; fl.Health[k] = s.Health; fl.Spawned[k] = true; fl.Ordered[k] = new Vector3(float.MaxValue, 0f, 0f);
-                Register.RemoveTree(s.Body);   // journey-owned: the traffic sidecar saves them now
+                Register.RemoveTree(s.Body);   // journey-owned: the embedded traffic record saves them now
                 try { if (api != null) api.Travel(s.Body, null, 0f); } catch (Exception) { }
             }
             var journey = new TrafficJourney { id = Guid.NewGuid().ToString("N"), name = FootName(first.Faction, first.Name), faction = first.Faction, source = "", destination = camp.id,

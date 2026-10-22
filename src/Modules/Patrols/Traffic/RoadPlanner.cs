@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.Patrols
             if(PatrolsModule.TrafficRoadRouting.Value&&Core.VistasWorldGen.Present)lines.AddRange(Core.VistasWorldGen.RoadLines);
             var blocks = new List<Bounds>(_blocks);
             var quiet = TrafficLocations.StartingBlocks(); blocks.AddRange(quiet);
-            if (Modules.Towns.TownsApi.Provider != null) Modules.Towns.TownsApi.Provider.TravelBlocks(blocks);
+            if (Core.ModApi.Get<Core.ITownTraffic>() != null) Core.ModApi.Get<Core.ITownTraffic>().TravelBlocks(blocks);
             Queue.Enqueue(new Request{Job=job,A=a,B=b,Hints=hints,
                 Elevation=nearby.Where(t=>t.Elevation!=null&&(foot||t.FinalGround)).Select(t=>t.Elevation).ToArray(),
                 Blocks=blocks.Where(box => bounds.Overlaps(new Rect(box.min.x, box.min.z, box.size.x, box.size.z))).ToArray(),Influence=PatrolsModule.TrafficRoadConnector.Value,Seed=seed,Lines=lines.ToArray(),Convoy=convoy,Foot=foot,

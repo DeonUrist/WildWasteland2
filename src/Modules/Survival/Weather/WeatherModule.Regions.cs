@@ -2,13 +2,13 @@ using System.Globalization;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     /// <summary>
     /// Survival part of the Weather entry (Wave A split, owner B14): up to four storm regions (manual previews and natural
     /// encounters), their per-frame movement/presentation tick, the hurricane hazard tick, column layout and asset preparation.
     /// </summary>
-    public sealed partial class WeatherModule
+    internal sealed partial class WeatherRuntime
     {
         /// <summary>Spawns a manual storm preview ahead of or around the player (not saved); up to four regions.</summary>
         private void Spawn(bool hurricane, bool here)
@@ -87,7 +87,7 @@ namespace WildWasteland.Modules.Weather
         /// <summary>FixedUpdate job: applies hurricane-wall hazards for every critical region between 30 s and 580 s of age.</summary>
         private void TickHazards()
         {
-            if (!_running || _native==null || _native.Saving || !GameRefs.InGame || WeatherDiagnosticState.Frozen) return;
+            if (!_running || _native==null || _native.Saving || !GameRefs.InGame) return;
             for (int i=0;i<_count;i++)
             {
                 var anchor=_anchors[i];
@@ -124,8 +124,7 @@ namespace WildWasteland.Modules.Weather
         {
             if (!_running || _count == 0) return;
             UpdateLayout();
-            float dt = GameRefs.InGame && !WeatherDiagnosticState.Frozen ? Time.deltaTime : 0;
-            WeatherDiagnosticState.Show(GameRefs.InPlay);
+            float dt = GameRefs.InGame ? Time.deltaTime : 0;
             _clock += dt;
             for (int i = _count - 1; i >= 0; i--)
             {
@@ -183,7 +182,6 @@ namespace WildWasteland.Modules.Weather
             for (int i=0;i<_count;i++) { if (_native!=null) _native.Remove(_anchors[i]); _anchors[i]=null; }
             if (_hazards!=null) _hazards.Reset();
             _count = 0; _clock = 0;
-            WeatherDiagnosticState.Reset();
             if (_audio != null) _audio.Stop();
             if (_visuals != null) { _visuals.Suspend(); _visuals.ClearGround(); }
             if (_draw != null) _draw.Enabled = false;

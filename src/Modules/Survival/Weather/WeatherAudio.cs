@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     internal sealed class WeatherAudio : IDisposable
     {

@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.Saves
         {
             Texture2D picture = null; if (_pictures.TryGetValue(file, out picture)) return picture;
             if (_pictures.Count >= 32) ReleasePictures();
-            try { string path = SaveFiles.ImagePath(file); if (File.Exists(path)) { picture = new Texture2D(2, 2, TextureFormat.RGB24, false); if (!picture.LoadImage(File.ReadAllBytes(path))) { UnityEngine.Object.Destroy(picture); picture = null; } } }
+            try { var disk = SaveFiles.Disk(file); string data = ES3.KeyExists(SaveSystem.PictureKey, disk) ? ES3.Load<string>(SaveSystem.PictureKey, disk) : null; if (!string.IsNullOrEmpty(data)) { picture = new Texture2D(2, 2, TextureFormat.RGB24, false); if (!picture.LoadImage(Convert.FromBase64String(data))) { UnityEngine.Object.Destroy(picture); picture = null; } } }
             catch (Exception error) { if (picture != null) UnityEngine.Object.Destroy(picture); picture = null; _message = "Preview unavailable: " + error.Message; }
             _pictures[file] = picture; return picture;
         }
@@ -192,8 +192,8 @@ namespace WildWasteland.Modules.Saves
             string[] label; if (_backupLabels.TryGetValue(path, out label)) return label;
             var info = SaveSystem.Info(file); string name = File.Exists(SaveFiles.WorldPath(file)) ? info.Name : "Deleted save", mode = "sp";
             var backup = SaveFiles.Read(path);
-            for (int i = 0; i < backup.Entries.Count; i++) if (backup.Entries[i].Path == SaveFiles.MetaPath(file) && backup.Entries[i].Existed)
-            { var lines = File.ReadAllLines(Path.Combine(path, "old-" + i + ".bin")); if (lines.Length >= 2 && lines[0] == "WW-SAVE-1") { name = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(lines[1])); if (lines.Length >= 9) mode = lines[7]; } break; }
+            for (int i = 0; i < backup.Entries.Count; i++) if (backup.Entries[i].Path == SaveFiles.WorldPath(file) && backup.Entries[i].Existed)
+            { var lines = SaveSystem.DescriptionLines(Path.Combine(path, "old-" + i + ".bin")); if (lines != null && lines.Length >= 2 && lines[0] == "WW-SAVE-1") { name = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(lines[1])); if (lines.Length >= 9) mode = lines[7]; } break; }
             label = new[] { name, Directory.GetCreationTime(path).ToString("yyyy-MM-dd HH:mm:ss"), mode }; _backupLabels[path] = label; return label;
         }
         /// <summary>Draws retained backups and title-only restore actions.</summary>
@@ -213,7 +213,7 @@ namespace WildWasteland.Modules.Saves
         }
         /// <summary>Records a destructive library operation for its existing confirmation surface.</summary>
         void Confirm(string kind, string file)
-        { _confirmKind = kind; _confirmFile = file; var info = kind == "restore" ? null : SaveSystem.Info(file); _confirmLabel = info != null ? info.Name + "  ·  " + info.World : "Restore the world and all matching companion files."; GUI.FocusControl(null); }
+        { _confirmKind = kind; _confirmFile = file; var info = kind == "restore" ? null : SaveSystem.Info(file); _confirmLabel = info != null ? info.Name + "  ·  " + info.World : "Restore the complete world save."; GUI.FocusControl(null); }
         /// <summary>Requires the existing confirmation before deleting or restoring saved files.</summary>
         void DrawConfirmation()
         {

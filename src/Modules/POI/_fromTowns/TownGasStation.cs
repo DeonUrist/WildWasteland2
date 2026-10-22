@@ -218,32 +218,32 @@ namespace WildWasteland.Modules.Towns
                 sb.Append('\n');
             }
             string value = sb.ToString();
-            var cache = new ES3Settings(slot) { location = ES3.Location.Cache };
-            ES3.Save<string>(SaveKey, value, cache);
-            SaveBus.AfterSave(() => { try { ES3.Save<string>(SaveKey, value, cache); } catch (Exception e) { Log.Warn("[Towns] gas station save: " + e.Message); } });
+            SaveBus.Key(SaveKey).Write(null, slot, value);
         }
         internal void Load(string slot)
         {
             _saved.Clear();
             if (string.IsNullOrEmpty(slot)) return;
-            try
+            var disk = new ES3Settings(slot) { location = ES3.Location.File };
+            if (!File.Exists(disk.FullPath) || !ES3.KeyExists(SaveKey, disk)) return;
+            foreach (string line in ES3.Load<string>(SaveKey, disk).Split('\n'))
             {
-                var disk = new ES3Settings(slot) { location = ES3.Location.File };
-                if (!File.Exists(disk.FullPath) || !ES3.KeyExists(SaveKey, disk)) return;
-                foreach (string line in ES3.Load<string>(SaveKey, disk).Split('\n'))
+                if (line.Length == 0) continue;
+                var parts = line.Split('\t');
+                if (parts.Length < 2 || string.IsNullOrEmpty(parts[0]) || _saved.ContainsKey(parts[0])) throw new InvalidDataException("Invalid gas station state identity");
+                var states = new SpawnerState[parts.Length - 1];
+                for (int i = 1; i < parts.Length; i++)
                 {
-                    var parts = line.Split('\t'); if (parts.Length < 2) continue;
-                    var states = new SpawnerState[parts.Length - 1];
-                    for (int i = 1; i < parts.Length; i++)
-                    {
-                        var v = parts[i].Split(','); if (v.Length < 4) continue;
-                        states[i - 1] = new SpawnerState { Path = v[0], OnOff = int.Parse(v[1], CultureInfo.InvariantCulture), Number = int.Parse(v[2], CultureInfo.InvariantCulture), NumberEnd = int.Parse(v[3], CultureInfo.InvariantCulture) };
-                    }
-                    _saved[parts[0]] = states;
+                    var v = parts[i].Split(',');
+                    if (v.Length != 4) throw new InvalidDataException("Invalid gas station spawner state");
+                    var state = new SpawnerState { Path = v[0], OnOff = int.Parse(v[1], CultureInfo.InvariantCulture), Number = int.Parse(v[2], CultureInfo.InvariantCulture), NumberEnd = int.Parse(v[3], CultureInfo.InvariantCulture) };
+                    if (state.OnOff < 0 || state.OnOff > 1 || state.Number < 0 || state.NumberEnd < 0) throw new InvalidDataException("Invalid gas station spawner progress");
+                    states[i - 1] = state;
                 }
+                _saved.Add(parts[0], states);
             }
-            catch (Exception e) { Log.Warn("[Towns] gas station spawner states not loaded: " + e.Message); _saved.Clear(); }
         }
+
         internal void NewWorld() { Clear(false); _saved.Clear(); }
 
         // ------------------------------------------------------------------ per tick: markers, the test pad's raiders

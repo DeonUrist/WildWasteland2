@@ -3,7 +3,7 @@ using ES3Internal;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Visual-only native stones: bounded pools, no rigidbodies, collisions, damage or managed particle loop.
     internal sealed class WeatherDebris : IDisposable
@@ -32,7 +32,7 @@ namespace WildWasteland.Modules.Weather
         }
         internal void Draw(int key, Vector3 position, Quaternion rotation, WeatherVisualDetail detail)
         {
-            if (!WeatherDiagnosticState.Full || (WeatherDiagnosticState.Enabled && WeatherDiagnosticState.Output != 0)) return;
+
             int slot = -1;
             for (int i=0;i<_limit;i++) if (_keys[i] == key) { slot=i; break; }
             if (slot < 0) for (int i=0;i<_limit;i++) if (!_used[i]) { slot=i; break; }
@@ -44,9 +44,9 @@ namespace WildWasteland.Modules.Weather
             var settings = system.main; settings.maxParticles = detail == WeatherVisualDetail.Low ? 32 : detail == WeatherVisualDetail.Max ? 96 : 64;
             settings.startColor = Color.white; // Independent dark material, not the bright hurricane palette.
             var emission = system.emission; emission.rateOverTimeMultiplier = settings.maxParticles*.5f; emission.enabled = true;
-            if (!GameRefs.InGame || WeatherDiagnosticState.Frozen) { if (system.isPlaying) system.Pause(); }
+            if (!GameRefs.InGame) { if (system.isPlaying) system.Pause(); }
             else if (!system.isPlaying) system.Play();
-            if (!_reported[slot] && GameRefs.InGame && !WeatherDiagnosticState.Frozen)
+            if (!_reported[slot] && GameRefs.InGame)
             {
                 if (_checkAt[slot] == 0) _checkAt[slot] = Time.time+3;
                 if (system.particleCount > 0 || Time.time >= _checkAt[slot])

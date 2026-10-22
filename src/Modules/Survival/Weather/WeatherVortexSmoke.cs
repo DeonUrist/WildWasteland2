@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Bounds only: all pixels integrate continuous dust, including from inside the eye.
     internal sealed class WeatherVortexSmoke : IDisposable

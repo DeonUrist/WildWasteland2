@@ -14,7 +14,7 @@ using UnityEngine.SceneManagement;
 
 namespace WildWasteland.Modules.NPC
 {
-    /// <summary>Senses part: the per-slot senses sidecar: written on save, restored after a load once the saved NPCs are back.</summary>
+    /// <summary>Senses part: the embedded senses record: written on save, restored after a load once the saved NPCs are back.</summary>
     internal static partial class Senses
     {
         /// <summary>(WW) Core.SaveBus.StateChanged: the SaveLoadGame state changes the old Persist.Tick polled for itself (same reactions, same order)</summary>
@@ -25,30 +25,27 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- persistence ----------
-        // A sidecar per save slot (BepInEx/config/WildWasteland/NPCAI/Saves/<SaveGameN.es3>.senses.txt)
-        // written when the game saves, read after a load once the NPCs (found by their saved names) are back. NPC names are unique per world
-        // (the Health FSM numbers them). File format unchanged (v1).
+        // Stored inside the native world save; NPC names identify restored agents after loading.
         internal static class Persist
         {
-            private static string _loadSlot; private static bool _restoring, _loadPending;
+            private static string _loadSlot; private static bool _restoring, _loadPending, _loadFailed;
             private static Coroutine _co;
             private static int _gen;        // bumped by every reset / clear / new load: a running Restore sees it and stops
             /// <summary>True while a load's senses restore is matching saved NPCs.</summary>
             internal static bool Restoring { get { return _restoring; } }
 
             /// <summary>Scene load: forgets the pending load and cancels a running restore.</summary>
-            internal static void ResetForScene() { _loadSlot = null; _restoring = false; _loadPending = false; _gen++; }
+            internal static void ResetForScene() { _loadSlot = null; _restoring = false; _loadPending = false; _loadFailed = false; _gen++; }
             /// <summary>Module stop: cancels a running restore coroutine.</summary>
             internal static void Shutdown() { _gen++; _restoring = false; _loadPending = false; if (_co != null) { Core.Scheduler.StopCoroutine(_co); _co = null; } }
 
-            /// <summary>SaveLoadGame state change: SaveGame writes the sidecar, LoadGame arms the restore, setSeed clears, the first isPlay after a load starts the restore.</summary>
+            /// <summary>SaveLoadGame state change: LoadGame arms the restore, setSeed clears, the first isPlay after a load starts the restore.</summary>
             internal static void OnState(string state)
             {
                 try
                 {
-                    if (state == "SaveGame") Save(Slot());
                     if (state == "LoadGame") { _loadSlot = Slot(); _loadPending = true; _gen++; _restoring = false; }   // a new load cancels a restore in progress
-                    if (state == "setSeed") Clear();
+                    if (state == "setSeed" || state == "Start") { Clear(); _loadFailed = false; Nests.NewWorld(); }
                     if (state == "isPlay" && _loadPending && !_restoring)
                     {
                         _loadPending = false;
@@ -70,19 +67,7 @@ namespace WildWasteland.Modules.NPC
                 return v != null ? v.Value : null;
             }
 
-            // the save file names Saves writes or the game's own slots (same rule as Saves' SaveRuntime.IsSaveFile / SaveBus.Slot)
-            private static readonly System.Text.RegularExpressions.Regex SlotFile = new System.Text.RegularExpressions.Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-            /// <summary>Sidecar path config/WildWasteland/NPCAI/Saves/&lt;slot&gt;.senses.txt for a valid save file name (false otherwise).</summary>
-            private static bool TryPath(string slot, out string path)
-            {
-                path = null;
-                string name = Path.GetFileName(slot ?? "");
-                if (SlotFile.IsMatch(name)) { path = Path.Combine(Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "Saves"), name + ".senses.txt"); return true; }
-                if (string.IsNullOrEmpty(name) || !name.StartsWith("SaveGame", StringComparison.OrdinalIgnoreCase)) return false;
-                foreach (char c in name) if (!(char.IsLetterOrDigit(c) || c == '.')) return false;
-                path = Path.Combine(Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "Saves"), name + ".senses.txt");
-                return true;
-            }
+            private static readonly Core.SaveKey Record = Core.SaveBus.Key("WildWasteland.NPCAI.Senses.v1");
 
             /// <summary>New world: every agent's alert state and every ghost are dropped.</summary>
             private static void Clear()
@@ -92,15 +77,14 @@ namespace WildWasteland.Modules.NPC
                 for (int i = _ghosts.Count - 1; i >= 0; i--) KillGhost(i);
             }
 
-            /// <summary>Writes the senses sidecar of a slot (v1: ghosts and alert agents with targets, ghosts and search time) through an atomic replace.</summary>
-            private static void Save(string slot)
+            /// <summary>Captures ghosts and alert agents into the active world save transaction.</summary>
+            internal static void Save(string slot)
             {
-                string path;
-                if (!TryPath(slot, out path)) { NpcaiRuntime.Warn("Senses: no save slot to write the senses for (" + slot + ")"); return; }
+                if (_loadFailed || _loadPending || _restoring) { Core.SaveBus.ReportFailure(NpcaiRuntime.Module, "NPC senses are unreadable or still restoring; refusing to replace the saved record"); return; }
                 var sb = new StringBuilder();
                 var ci = CultureInfo.InvariantCulture;
                 float now = Time.time;
-                sb.Append("v1 ").Append(Path.GetFileName(slot)).Append('\n');
+                sb.Append("v1\n");
                 foreach (var g in _ghosts)
                     sb.Append("ghost ").Append(g.Id).Append(' ').Append(g.Pos.x.ToString("0.00", ci)).Append(' ').Append(g.Pos.y.ToString("0.00", ci)).Append(' ').Append(g.Pos.z.ToString("0.00", ci))
                       .Append(' ').Append((int)g.Src).Append(' ').Append((now - g.Born).ToString("0", ci)).Append(' ').Append(g.About.Replace('\n', ' ')).Append('\n');
@@ -115,24 +99,78 @@ namespace WildWasteland.Modules.NPC
                       .Append(a.LastSeen.x.ToString("0.00", ci)).Append(' ').Append(a.LastSeen.y.ToString("0.00", ci)).Append(' ').Append(a.LastSeen.z.ToString("0.00", ci)).Append('\n');
                     n++;
                 }
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-                File.WriteAllText(path + ".tmp", sb.ToString());
-                Core.AtomicFile.Replace(path + ".tmp", path);   // (D17) same-directory replace, no Delete + Move window
+                Record.Write(NpcaiRuntime.Module, slot, sb.ToString());
                 if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: saved " + _ghosts.Count + " ghost(s), " + n + " alert NPC(s) for " + Path.GetFileName(slot));
             }
 
-            /// <summary>Restores the senses sidecar after a load: recreates the ghosts, then matches saved agents by name for up to 20 s as the NPCs register.</summary>
+            /// <summary>Reports damaged records and keeps a later save from replacing them with partial state.</summary>
+            private static string[] ReadLines(string slot)
+            {
+                try
+                {
+                    _loadFailed = false;
+                    string value = Record.Read(slot);
+                    if (value == null) return null;
+                    string[] lines = value.Split('\n');
+                    if (lines.Length == 0 || lines[0] != "v1") throw new InvalidDataException("Unsupported embedded NPC senses record");
+                    ValidateLines(lines);
+                    _loadFailed = false;
+                    return lines;
+                }
+                catch (Exception e)
+                {
+                    _loadFailed = true;
+                    Core.SaveBus.ReportFailure(NpcaiRuntime.Module, "NPC senses load failed: " + e.Message);
+                    NpcaiRuntime.Error("Senses persistence: " + e);
+                    return null;
+                }
+            }
+
+            /// <summary>Validates every row before touching live agents, including agents that are not yet spawned.</summary>
+            private static void ValidateLines(string[] lines)
+            {
+                var ghosts = new HashSet<int>();
+                var agents = new HashSet<string>(StringComparer.Ordinal);
+                var references = new List<int>();
+                var ci = CultureInfo.InvariantCulture;
+                for (int i = 1; i < lines.Length; i++)
+                {
+                    if (lines[i].Length == 0) continue;
+                    var p = lines[i].Split(' ');
+                    if (p[0] == "ghost" && p.Length >= 7)
+                    {
+                        int id = int.Parse(p[1], ci), source = int.Parse(p[5], ci);
+                        if (id < 0 || id == int.MaxValue || !ghosts.Add(id) || source < (int)Src.None || source > (int)Src.Vision) throw new InvalidDataException("Invalid ghost identity/source");
+                        Finite(p[2]); Finite(p[3]); Finite(p[4]);
+                        if (Finite(p[6]) < 0f) throw new InvalidDataException("Invalid ghost age");
+                    }
+                    else if (p[0] == "agent" && p.Length == 10)
+                    {
+                        int state = int.Parse(p[2], ci), ghost = int.Parse(p[4], ci), source = int.Parse(p[5], ci);
+                        if (p[1].Length == 0 || p[3].Length == 0 || !agents.Add(p[1]) || state < (int)State.Combat || state > (int)State.Hide || ghost < -1 || source < (int)Src.None || source > (int)Src.Vision) throw new InvalidDataException("Invalid agent identity/state");
+                        if (Finite(p[6]) < 0f) throw new InvalidDataException("Invalid agent search duration");
+                        Finite(p[7]); Finite(p[8]); Finite(p[9]);
+                        if (ghost >= 0) references.Add(ghost);
+                    }
+                    else throw new InvalidDataException("Malformed NPC senses row " + i);
+                }
+                foreach (int id in references) if (!ghosts.Contains(id)) throw new InvalidDataException("Missing NPC ghost " + id);
+            }
+
+            /// <summary>Parses finite invariant coordinates and durations; Unity cannot restore NaN/infinity positions.</summary>
+            private static float Finite(string value)
+            {
+                float parsed = float.Parse(value, CultureInfo.InvariantCulture);
+                if (float.IsNaN(parsed) || float.IsInfinity(parsed)) throw new InvalidDataException("Non-finite NPC senses value");
+                return parsed;
+            }
+
+            /// <summary>Restores the embedded senses record after a load: recreates the ghosts, then matches saved agents by name for up to 20 s as the NPCs register.</summary>
             private static IEnumerator Restore(string slot)
             {
                 _restoring = true;
-                string path;
-                if (!TryPath(slot, out path)) { _restoring = false; yield break; }
-                if (!File.Exists(path)) { _restoring = false; yield break; }
-                string[] lines;
-                try { lines = File.ReadAllLines(path); } catch (Exception e) { NpcaiRuntime.Warn("Senses: cannot read " + path + ": " + e.Message); _restoring = false; yield break; }
-                if (lines.Length == 0 || !lines[0].StartsWith("v1 ")) { _restoring = false; yield break; }
-                if (!string.Equals(lines[0].Substring(3).Trim(), Path.GetFileName(slot), StringComparison.OrdinalIgnoreCase))
-                { NpcaiRuntime.Warn("Senses: " + path + " was written for another slot, not restored"); _restoring = false; yield break; }
+                string[] lines = ReadLines(slot);
+                if (lines == null) { _restoring = false; yield break; }
                 Clear();
                 int gen = _gen;
                 _nextPlayerFind = 0f; FindPlayer();
@@ -157,7 +195,7 @@ namespace WildWasteland.Modules.NPC
                         }
                         else if (p[0] == "agent" && p.Length >= 10) pending.Add(p);
                     }
-                    catch (Exception e) { NpcaiRuntime.Warn("Senses: bad line in " + path + ": " + e.Message); }
+                    catch (Exception e) { _loadFailed = true; Core.SaveBus.ReportFailure(NpcaiRuntime.Module, "Invalid embedded NPC senses record: " + e.Message); NpcaiRuntime.Warn("Senses: bad embedded record line: " + e.Message); }
                 }
                 float until = Time.realtimeSinceStartup + 20f;
                 var byName = new Dictionary<string, Agent>();
@@ -191,7 +229,7 @@ namespace WildWasteland.Modules.NPC
                             }
                             restored++;
                         }
-                        catch (Exception e) { NpcaiRuntime.Warn("Senses: restore of " + p[1] + " failed: " + e.Message); }
+                        catch (Exception e) { _loadFailed = true; Core.SaveBus.ReportFailure(NpcaiRuntime.Module, "NPC senses restore failed: " + e.Message); NpcaiRuntime.Warn("Senses: restore of " + p[1] + " failed: " + e.Message); }
                     }
                     if (pending.Count > 0) yield return new WaitForSecondsRealtime(0.5f);
                     if (gen != _gen) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: restore of " + Path.GetFileName(slot) + " cancelled"); _restoring = false; yield break; }   // a new load / reset happened meanwhile

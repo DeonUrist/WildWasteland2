@@ -2,45 +2,26 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using WildWasteland.Modules.Towns;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Patrols
 {
-    internal sealed class TownStop
-    {
-        internal string Id, Name, Faction;
-        internal Vector3 Center, Parking, Heading;
-        internal Vector3? RoadApproach;
-        internal float Radius;
-        internal bool CanTravel;
-        internal bool MerchantSeeded;
-        internal bool Lane;   // (WW) a gas station parking lot: vehicles park one behind the other in its canopy lane, not side by side
-        internal Vector3 Approach
-        {
-            get
-            {
-                if (RoadApproach.HasValue) return RoadApproach.Value;
-                var delta = Parking - Center;
-                float x = Mathf.Abs(Heading.x) < .001f ? float.MaxValue : (Radius + 20f - Mathf.Sign(Heading.x) * delta.x) / Mathf.Abs(Heading.x);
-                float z = Mathf.Abs(Heading.z) < .001f ? float.MaxValue : (Radius + 20f - Mathf.Sign(Heading.z) * delta.z) / Mathf.Abs(Heading.z);
-                return Parking + Heading * Mathf.Max(60f, Mathf.Min(x, z));
-            }
-        }
-        internal TrafficBase Gate { get { return new TrafficBase { id = Id, apron = Approach }; } }
-    }
-
     internal sealed partial class WorldTraffic
     {
         private sealed class TownDeparture
-        { internal RoadJob Job; internal TownStop Source, Destination; internal TrafficJourney Journey; internal bool Existing; }
+        { internal RoadJob Job; internal TownTrafficStop Source, Destination; internal TrafficJourney Journey; internal bool Existing; }
         private readonly List<TownDeparture> _townDepartures = new List<TownDeparture>();
-        private readonly List<TownStop> _townStops = new List<TownStop>();
-        private float _nextTownStops, _nextResident;
+        private readonly List<TownTrafficStop> _townStops = new List<TownTrafficStop>();
+        private float _nextTownTrafficStops, _nextResident;
         private readonly Dictionary<string, GameObject> _townGuards = new Dictionary<string, GameObject>(StringComparer.Ordinal);
         private readonly Dictionary<string, float> _townGuardOrders = new Dictionary<string, float>(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _townGuardJourneys = new Dictionary<string, string>(StringComparer.Ordinal);
         private readonly Dictionary<string, float> _townRetry = new Dictionary<string, float>(StringComparer.Ordinal);
-        private static bool TownTravel { get { return TownsApi.Provider != null; } }
+        /// <summary>Converts a detached town stop into a local route endpoint without crossing module models.</summary>
+        private static TrafficBase TownGate(TownTrafficStop stop) { return new TrafficBase { id = stop.Id, apron = stop.Approach }; }
+        /// <summary>Preserves the existing deterministic FNV identity used for town merchant choices.</summary>
+        private static int TrafficHash(string value) { uint hash = 2166136261; foreach (char c in value) hash = unchecked((hash ^ c) * 16777619); return (int)(hash & 0x7fffffff); }
+        private static bool TownTravel { get { return ModApi.Get<ITownTraffic>() != null; } }
         internal static bool TownDismounted(GameObject car, GameObject mob)
         {
             if (_instance == null || car == null || mob == null) return false;
@@ -50,14 +31,14 @@ namespace WildWasteland.Modules.Patrols
             journey.townGuards = names.ToArray(); _instance._townGuards[mob.name] = mob; _instance._townGuardJourneys[mob.name] = journey.id;
             return true;
         }
-        private void RefreshTownStops()
+        private void RefreshTownTrafficStops()
         {
-            if (Time.time < _nextTownStops) return;
-            _nextTownStops = Time.time + 2f; _townStops.Clear();
-            if (TownTravel) { var stops = new List<Core.TownTrafficStop>(); TownsApi.Provider.TravelStops(stops); foreach (var stop in stops) _townStops.Add(new TownStop { Id = stop.Id, Name = stop.Name, Faction = stop.Faction, Center = stop.Center, Parking = stop.Parking, Heading = stop.Heading, RoadApproach = stop.RoadApproach, Radius = stop.Radius, CanTravel = stop.CanTravel, MerchantSeeded = stop.MerchantSeeded, Lane = stop.Lane }); }
+            if (Time.time < _nextTownTrafficStops) return;
+            _nextTownTrafficStops = Time.time + 2f; _townStops.Clear();
+            if (TownTravel) ModApi.Get<ITownTraffic>().TravelStops(_townStops);
         }
         private void ResetTownTraffic()
-        { _townDepartures.Clear(); _townStops.Clear(); _townGuards.Clear(); _townGuardOrders.Clear(); _townGuardJourneys.Clear(); _townRetry.Clear(); _nextTownStops = _nextResident = 0f; }
+        { _townDepartures.Clear(); _townStops.Clear(); _townGuards.Clear(); _townGuardOrders.Clear(); _townGuardJourneys.Clear(); _townRetry.Clear(); _nextTownTrafficStops = _nextResident = 0f; }
         internal static bool TownPlanning(string id)
         {
             if (_instance == null) return false;
@@ -105,7 +86,7 @@ namespace WildWasteland.Modules.Patrols
             || _townDepartures.Any(p => p.Journey.id != except && p.Destination.Id == stop); }
         private bool QueueTownDeparture(SpawnGroup group, int role, List<CarTemplate> roster)
         {
-            RefreshTownStops();
+            RefreshTownTrafficStops();
             if (_journeys.Count >= 120) return false; // Keep headroom inside the existing traffic-save record limit.
             if (_townDepartures.Any(d => d.Journey.merchant == (role == 2))) return false;
             var destinations = _townStops.Where(s => s.CanTravel && (role != 2 || s.Faction == "Coyotes") && !ParkingBusy(s.Id)).ToList();
@@ -121,13 +102,13 @@ namespace WildWasteland.Modules.Patrols
                 source = pair.A.Id, destination = pair.B.Id, merchant = role == 2, convoy = role == 1, townBound = true,
                 vehicles = roster.Select(Freeze).ToArray(), speed = PatrolsModule.TrafficConvoySpeed.Value / 3.6f };
             _townDepartures.Add(new TownDeparture { Source = pair.A, Destination = pair.B, Journey = journey,
-                Job = RoadPlanner.RequestRoute(pair.A.Gate, pair.B.Gate, true) });
+                Job = RoadPlanner.RequestRoute(TownGate(pair.A), TownGate(pair.B), true) });
             Core.Log.Info("[Patrols] Town route planning: " + pair.A.Name + " -> " + pair.B.Name);
             return true;
         }
-        private static Vector3 ParkPoint(TownStop stop, bool resident)
+        private static Vector3 ParkPoint(TownTrafficStop stop, bool resident)
         {
-            if (stop.Lane) return stop.Parking + stop.Heading * (resident ? -Towns.TownGasStation.LaneSpread : Towns.TownGasStation.LaneSpread);   // the bus deep under the canopy, visitors by its open end
+            if (stop.Lane) return stop.Parking + stop.Heading * (resident ? -ModApi.Get<ITownTraffic>().LaneSpread : ModApi.Get<ITownTraffic>().LaneSpread);   // the bus deep under the canopy, visitors by its open end
             return stop.Parking + Vector3.Cross(Vector3.up, stop.Heading) * (resident ? -6f : 5f);
         }
         private static void AdoptTownRoute(TownDeparture pending)
@@ -145,7 +126,7 @@ namespace WildWasteland.Modules.Patrols
         private void PumpTownRoutes()
         {
             if (!TownTravel) { _townStops.Clear(); _townDepartures.Clear(); return; }
-            RefreshTownStops();
+            RefreshTownTrafficStops();
             foreach (var pending in _townDepartures.ToArray())
             {
                 if (!pending.Job.Complete) continue;
@@ -173,9 +154,9 @@ namespace WildWasteland.Modules.Patrols
                 var destination = _townStops.Where(s => s.CanTravel && (!journey.merchant || s.Faction == "Coyotes") && !ParkingBusy(s.Id, journey.id)
                     && TrafficLocations.FlatDistance(s.Parking, journey.position) > 150f).OrderBy(s => TrafficLocations.FlatDistance(s.Parking, journey.position)).FirstOrDefault();
                 if (destination == null) continue;
-                var source = new TownStop { Id = journey.source ?? "", Name = journey.name, Parking = journey.position, Center = journey.position, Heading = journey.Heading };
+                var source = new TownTrafficStop { Id = journey.source ?? "", Name = journey.name, Parking = journey.position, Center = journey.position, Heading = journey.Heading };
                 var request = new TownDeparture { Journey = journey, Source = source, Destination = destination, Existing = true,
-                    Job = RoadPlanner.RequestRoute(source.Gate, destination.Gate, true) };
+                    Job = RoadPlanner.RequestRoute(TownGate(source), TownGate(destination), true) };
                 _townDepartures.Add(request);
                 break;
             }
@@ -189,7 +170,7 @@ namespace WildWasteland.Modules.Patrols
                     // Buses use the normal template builder, shop stock, health and save registration.
                     var groups = EditorStore.Data.Merchants.Where(g => g.Chance > 0f && g.Faction == "Coyotes").ToArray();
                     if (groups.Length == 0) break;
-                    var group = groups[TownPlanner.Hash(stop.Id + "/merchant") % groups.Length];
+                    var group = groups[TrafficHash(stop.Id + "/merchant") % groups.Length];
                     var template = group.Templates.Select(CarTemplate.Find).FirstOrDefault(candidate => candidate != null && candidate.Available && CrewFactions.Compatible(candidate, "Coyotes"));
                     if (template == null) break;
                     var t = template.CloneForSpawn(); MerchantRuntime.Configure(t, group); t.MerchantTravelling = true;
@@ -197,7 +178,7 @@ namespace WildWasteland.Modules.Patrols
                     _journeys.Add(new TrafficJourney { id = Guid.NewGuid().ToString("N"), name = stop.Name + " merchant", faction = "Coyotes", merchant = true,
                         townBound = true, townResident = true, townSeedBus = true, arrived = true, source = stop.Id, destination = stop.Id, position = point,
                         route = new[] { point + stop.Heading * 4f, point }, roadLegs = new bool[2], TerrainRoute = true, speed = PatrolsModule.TrafficConvoySpeed.Value / 3.6f, vehicles = new[] { Freeze(t) } });
-                    TownsApi.Provider.MerchantSeeded(stop.Id); stop.MerchantSeeded = true;
+                    ModApi.Get<ITownTraffic>().MerchantSeeded(stop.Id); stop.MerchantSeeded = true;
                     break; // One bus record per scheduler tick, never a construction burst.
                 }
             }
@@ -247,13 +228,13 @@ namespace WildWasteland.Modules.Patrols
             float retry;
             if (j.destinationSeconds >= j.townVisitSeconds && (!_townRetry.TryGetValue(j.id, out retry) || Time.time >= retry))
             {
-                RefreshTownStops();
+                RefreshTownTrafficStops();
                 var next = _townStops.Where(s => s.CanTravel && s.Faction == "Coyotes" && s.Id != j.destination && !ParkingBusy(s.Id, j.id)).OrderBy(s => TrafficLocations.FlatDistance(s.Parking, j.position)).Take(4).ToArray();
                 var source = _townStops.FirstOrDefault(s => s.Id == j.destination);
                 if (source != null && next.Length > 0)
                 {
                     var target = next[UnityEngine.Random.Range(0, next.Length)];
-                    _townDepartures.Add(new TownDeparture { Journey = j, Source = source, Destination = target, Existing = true, Job = RoadPlanner.RequestRoute(source.Gate, target.Gate, true) });
+                    _townDepartures.Add(new TownDeparture { Journey = j, Source = source, Destination = target, Existing = true, Job = RoadPlanner.RequestRoute(TownGate(source), TownGate(target), true) });
                 }
             }
             return false;
@@ -289,7 +270,7 @@ namespace WildWasteland.Modules.Patrols
                 _townGuardOrders[name] = Time.time + 5f;
                 if (Core.Services.Npc != null && Core.Services.Npc.IsIdle(body) && (body.transform.position - TrafficSpace.Scene(j.position)).sqrMagnitude > 144f)
                 {
-                    float angle = (TownPlanner.Hash(name) % 360) * Mathf.Deg2Rad;
+                    float angle = (TrafficHash(name) % 360) * Mathf.Deg2Rad;
                     Core.Services.Npc.Travel(body, TrafficSpace.Scene(j.position) + new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 7f, 3f);
                 }
             }

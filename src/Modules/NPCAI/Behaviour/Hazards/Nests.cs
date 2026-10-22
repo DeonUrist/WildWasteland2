@@ -41,36 +41,40 @@ namespace WildWasteland.Modules.NPC
         private const int GroundMask = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14) | (1 << 16);
         private const int Solid = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14) | (1 << 16);
 
-        // (1.7.4) the layout of every nest built so far (where its webs hang / lie, in the place's own coordinates), kept in
-        // BepInEx/config/WildWasteland/NPC/nest-layouts.txt: a nest is rebuilt exactly the same after a load, a restart or a return - and at once,
-        // without looking for spots again. Keyed by the map tile, the place's name and its position in the tile.
+        // Generated nest positions belong to the selected world, alongside the spiders they describe.
         private static Dictionary<string, string> _layouts;
-        /// <summary>(WW) config/WildWasteland/NPC/nest-layouts.txt</summary>
-        private static string LayoutFile { get { return System.IO.Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "nest-layouts.txt"); } }
-        /// <summary>Loads config/WildWasteland/NPCAI/nest-layouts.txt once (nest key -&gt; remembered web spots).</summary>
+        private static bool _layoutLoadFailed;
+        private static readonly Core.SaveKey LayoutRecord = Core.SaveBus.Key("WildWasteland.NPCAI.Nests.v1");
+        /// <summary>Loads remembered web positions lazily after native scene changes.</summary>
         private static void LoadLayouts()
         {
-            if (_layouts != null) return;
-            _layouts = new Dictionary<string, string>();
-            try
-            {
-                string file = LayoutFile;
-                if (!System.IO.File.Exists(file)) return;
-                foreach (var line in System.IO.File.ReadAllLines(file)) { int t = line.IndexOf('\t'); if (t > 0) _layouts[line.Substring(0, t)] = line.Substring(t + 1); }
-            }
-            catch (Exception e) { NpcaiRuntime.Warn("Nests: layouts not read: " + e.Message); }
+            if (_layouts == null) LoadWorld(Core.SaveBus.Slot);
         }
-        /// <summary>Writes the remembered nest layouts (temp file + atomic replace).</summary>
-        private static void SaveLayouts()
+        /// <summary>Restores only the selected world's generated nest layouts.</summary>
+        internal static void LoadWorld(string slot)
         {
-            try
+            _layouts = null; _layoutLoadFailed = true;
+            var layouts = new Dictionary<string, string>();
+            string value = string.IsNullOrEmpty(slot) ? null : LayoutRecord.Read(slot);
+            if (value != null) foreach (string line in value.Split('\n'))
             {
-                var lines = new List<string>(); foreach (var kv in _layouts) lines.Add(kv.Key + "\t" + kv.Value);
-                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(LayoutFile));
-                string file = LayoutFile; System.IO.File.WriteAllLines(file + ".tmp", lines.ToArray()); Core.AtomicFile.Replace(file + ".tmp", file);   // (D17) atomic publication, no half-written layouts file
+                int tab = line.IndexOf('\t');
+                if (tab > 0) layouts.Add(line.Substring(0, tab), line.Substring(tab + 1));
+                else if (line.Length != 0) throw new System.IO.InvalidDataException("Malformed embedded nest layout");
             }
-            catch (Exception e) { NpcaiRuntime.Warn("Nests: layouts not written: " + e.Message); }
+            _layouts = layouts; _layoutLoadFailed = false;
         }
+        /// <summary>Captures generated layouts once in the native world save transaction.</summary>
+        internal static void SaveWorld(string slot)
+        {
+            if (_layoutLoadFailed) throw new System.IO.InvalidDataException("Nest layouts could not be loaded; refusing to replace the saved record");
+            LoadLayouts();
+            var lines = new List<string>();
+            foreach (var pair in _layouts) lines.Add(pair.Key + "\t" + pair.Value);
+            LayoutRecord.Write(NpcaiRuntime.Module, slot, string.Join("\n", lines.ToArray()));
+        }
+        /// <summary>Starts a fresh world without borrowing another world's cached positions.</summary>
+        internal static void NewWorld() { _layouts = new Dictionary<string, string>(); _layoutLoadFailed = false; }
         /// <summary>Invariant "x,y,z" text of a vector (layout file).</summary>
         private static string F(Vector3 v) { return v.x.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," + v.y.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," + v.z.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture); }
         /// <summary>Parses an "x,y,z" layout vector.</summary>
@@ -97,7 +101,6 @@ namespace WildWasteland.Modules.NPC
             sb.Append(" G:");
             for (int i = 0; i < n.Ground.Count; i++) { if (i > 0) sb.Append('|'); sb.Append(F(n.Poi.InverseTransformPoint(n.Ground[i].Center))); }
             _layouts[n.Key] = sb.ToString();
-            SaveLayouts();
         }
         /// <summary>Rebuilds a nest's web spots from its remembered layout (false when there is none).</summary>
         private static bool Recall(Nest n)
@@ -120,7 +123,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>Scene load: every nest freed (webs destroyed), pending spiders and places forgotten.</summary>
-        internal static void OnSceneLoaded() { foreach (var n in _nests) Free(n, false); _nests.Clear(); _pending.Clear(); _pois.Clear(); _mapMagic = null; _nextMap = 0f; _nextPois = 0f; }
+        internal static void OnSceneLoaded() { foreach (var n in _nests) Free(n, false); _nests.Clear(); _pending.Clear(); _pois.Clear(); _mapMagic = null; _nextMap = 0f; _nextPois = 0f; _layouts = null; _layoutLoadFailed = false; }
 
         /// <summary>(WW) module shutdown: sitting spiders drop from their webs (not kinematic, brain hold lifted), every nest web is destroyed</summary>
         internal static void Shutdown()

@@ -43,7 +43,6 @@ namespace WildWasteland.Modules.NPCAI
         {
             NpcaiRuntime.Module = this;
             NpcaiSettings.Bind(cfg);
-            Sidecars.Register(this, "NPCAI/Saves/{slot}.senses.txt");   // per-slot senses sidecar (B04-2): journaled, backed up and copied by Saves
             BindNavigation(cfg);
         }
 
@@ -153,13 +152,17 @@ namespace WildWasteland.Modules.NPCAI
         public override void OnWorldReady() { WorldReadyNavigation(); }
 
         /// <summary>Native save started.</summary>
-        public override void OnSaveBegin(string slot) { SaveBeginNavigation(slot); }
+        public override void OnSaveBegin(string slot)
+        {
+            try { Senses.Persist.Save(slot); Nests.SaveWorld(slot); SaveBeginNavigation(slot); }
+            catch (Exception e) { SaveBus.ReportFailure(this, "NPC AI world state save failed: " + e.Message); throw; }
+        }
 
         /// <summary>Native save finished.</summary>
         public override void OnSaveEnd(string slot) { SaveEndNavigation(slot); }
 
         /// <summary>Native load started.</summary>
-        public override void OnLoadBegin(string slot) { LoadBeginNavigation(slot); }
+        public override void OnLoadBegin(string slot) { Nests.LoadWorld(slot); LoadBeginNavigation(slot); }
 
         /// <summary>
         /// Floating-origin shift (delta = old - new offset). The game's FloatingOrigin moves every scene root; the subsystems kept scene-space

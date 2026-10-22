@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Paused native particles: upload on layout/quality changes only. Unity sorts
     // billboards; texture animation and rolling movement remain on the GPU.

@@ -32,7 +32,7 @@ namespace WildWasteland.Modules.NPC
                 if (n.FromCache && n.Hanging.Count + n.Ground.Count == 0 && n.Poi != null)
                 {
                     // the remembered spots no longer hold (the place changed): forget them and build anew
-                    _layouts.Remove(n.Key); SaveLayouts();
+                    _layouts.Remove(n.Key);
                     n.FromCache = false; n.Logged = false; n.Phase = 0; n.Relaxed = true;
                     return;
                 }

@@ -43,8 +43,9 @@ namespace WildWasteland.Modules.POI
         /// <summary>Creates the town runtime under the same POI lifecycle owner.</summary>
         public PoiModule() { _towns = new Towns.TownRuntime(this); }
         private ConfigEntry<int> _chance;
-        private bool _running, _loaded;
-        private string _saves, _slot;
+        private bool _running, _loaded, _loadFailed;
+        private string _slot;
+        private static readonly SaveKey SpawnRecord = SaveBus.Key("WildWasteland.POI.Spawned.v1");
         public override string Id { get { return "POI"; } }
         public override string DisplayName { get { return "Points of interest"; } }
         public override void BindConfig(ModuleConfig cfg)
@@ -58,8 +59,7 @@ namespace WildWasteland.Modules.POI
         public override void ProvideApis() { ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
         public override void Init()
         {
-            _saves = Path.Combine(Assets.ModuleConfigDir(Id), "Saves");
-            Directory.CreateDirectory(_saves); _running = true;
+            _running = true;
             Services.Poi = this;
             _towns.Init();
             TerrainTile.OnBeforeTilePrepare += Prepare;
@@ -244,22 +244,24 @@ namespace WildWasteland.Modules.POI
         public override void OnSaveBegin(string slot)
         {
             _towns.OnSaveBegin(slot);
+            if (_loadFailed) { SaveBus.ReportFailure(this, "POI completion state could not be loaded; refusing to replace it"); return; }
             var snapshot = new List<string>(_spawned).ToArray();
             Write(slot, snapshot);
         }
+        /// <summary>Stores encounter completion keys in the same transaction as native world objects.</summary>
         private void Write(string slot, string[] snapshot)
         {
-            if (string.IsNullOrEmpty(slot)) return;
-            string path = Path.Combine(_saves, Path.GetFileName(slot) + ".poi.txt");
-            File.WriteAllLines(path + ".tmp", snapshot);
-            AtomicFile.Replace(path + ".tmp", path);   // D17: no Mono File.Replace (Win32 1175); same directory, target may be missing
+            SpawnRecord.Write(this, slot, string.Join("\n", snapshot));
         }
+        /// <summary>Restores only the selected save's encounter completion keys.</summary>
         private void Load(string slot)
         {
-            _spawned.Clear(); _loaded = true; _slot = slot;
-            if (string.IsNullOrEmpty(slot)) return;
-            string path = Path.Combine(_saves, Path.GetFileName(slot) + ".poi.txt");
-            if (File.Exists(path)) foreach (var key in File.ReadAllLines(path)) if (!string.IsNullOrEmpty(key)) _spawned.Add(key);
+            _spawned.Clear(); _loaded = false; _slot = slot;
+            string value;
+            try { value = string.IsNullOrEmpty(slot) ? null : SpawnRecord.Read(slot); }
+            catch (Exception e) { _loadFailed = true; SaveBus.ReportFailure(this, "POI completion state load failed: " + e.Message); throw; }
+            if (value != null) foreach (var key in value.Split('\n')) if (!string.IsNullOrEmpty(key)) _spawned.Add(key);
+            _loaded = true; _loadFailed = false;
         }
         public override void OnLoadBegin(string slot) { _towns.OnLoadBegin(slot); Load(slot); }
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; _towns.OnSceneLoaded(scene, mode); _sites.Clear(); _captures.Clear(); _spawned.Clear(); _loaded = false; }

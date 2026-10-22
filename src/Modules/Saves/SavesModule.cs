@@ -19,7 +19,6 @@ namespace WildWasteland.Modules.Saves
         {
             Instance = this;
             SaveSystem.Bind(cfg);
-            CompanionPolicy.RegisterDefaults(this);
             // ModuleHost attaches its toggle handler after BindConfig: restore the switch before it can stop a live transaction.
             cfg.Enabled.SettingChanged += EnabledChanged;
         }
@@ -63,7 +62,7 @@ namespace WildWasteland.Modules.Saves
         static void WeaponFired(ref Core.Events.WeaponFired shot) { SaveCombat.Activity(); }
         /// <summary>Defers autosaving when a typed NPC transition enters combat.</summary>
         static void NpcStateChanged(ref Core.Events.NpcStateChanged change) { if (change.New == NpcMode.Combat) SaveCombat.Activity(); }
-        /// <summary>Transfers sidecar failure into the current transaction's failure latch.</summary>
+        /// <summary>Transfers embedded record failure into the current transaction's failure latch.</summary>
         static void FailureReported(IModule owner, string message) { SaveSystem.Fail(message); }
         /// <summary>Extends autosave combat deferral for activity from other modules.</summary>
         static void CombatActivity(ref Core.Events.CombatActivity activity) { SaveCombat.Activity(); }

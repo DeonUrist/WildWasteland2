@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.AzureSky;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Camera-scoped native sky/lighting. No weather-controller state or GI probes are changed.
     internal sealed class WeatherSky : IDisposable
@@ -77,7 +77,7 @@ namespace WildWasteland.Modules.Weather
         internal static void NativeFogBefore(AzureFogScattering __instance, out Material __state)
         {
             __state = null;
-            if (!WeatherDiagnosticState.FogScope) return;
+
             var camera = GameRefs.MainCamera;
             if (camera == null || camera.gameObject != __instance.gameObject) return;
             // Use Azure's native unfiltered blit branch instead of its distance-scattering shader.

@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     internal static class WeatherPalette
     {
@@ -25,21 +25,8 @@ namespace WildWasteland.Modules.Weather
             _wall.SettingChanged += Changed; _main.SettingChanged += Changed; _hurricane.SettingChanged += Changed; _sand.SettingChanged += Changed;
         }
         private static void Changed(object sender, System.EventArgs args) { Revision++; }
-        internal static void Draw(ToolLayout l)
-        {
-            l.Heading("Storm colors");
-            DrawColor(l,_wall); DrawColor(l,_main); DrawColor(l,_hurricane); DrawColor(l,_sand);
-            if (l.Button("Reset storm colors")) { _wall.Value = (Color)_wall.DefaultValue; _main.Value = (Color)_main.DefaultValue; _hurricane.Value = (Color)_hurricane.DefaultValue; _sand.Value = (Color)_sand.DefaultValue; }
-            l.Entry(_darkening);
-        }
-        private static void DrawColor(ToolLayout l, ConfigEntry<Color> entry)
-        {
-            Color value = entry.Value;
-            l.Text(entry.Definition.Key+"  #"+ColorUtility.ToHtmlStringRGB(value));
-            Color next = new Color(l.Slider(entry.Definition.Key+" / Red",entry.Definition.Key+".R",value.r,0,1),
-                l.Slider(entry.Definition.Key+" / Green",entry.Definition.Key+".G",value.g,0,1),
-                l.Slider(entry.Definition.Key+" / Blue",entry.Definition.Key+".B",value.b,0,1),1);
-            if (next != value) entry.Value = next;
-        }
+        /// <summary>Copies the live palette controls for the Tools-owned authoring page.</summary>
+        internal static void Entries(System.Collections.Generic.List<ConfigEntryBase> into)
+        { into.Add(_wall); into.Add(_main); into.Add(_hurricane); into.Add(_sand); into.Add(_darkening); }
     }
 }
