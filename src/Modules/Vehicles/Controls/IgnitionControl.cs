@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.PlayerBody
                 {
                     if (fallback != KeyCode.None) _key = fallback;
                     Save();
-                    Log.Main(VehiclesModule.Instance, "Ignition key " + _key + " is on the game's Controls screen (" + _path + ")");
+                    if (Log.L1) Log.Main(VehiclesModule.Instance, "Ignition key " + _key + " is on the game's Controls screen (" + _path + ")");
                 }
             }
             catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Ignition key file: " + e.Message); }
@@ -100,7 +100,7 @@ namespace WildWasteland.Modules.PlayerBody
                     {   // rebound in the Controls screen
                         _key = _lastKey = ka.Key; _alt = _lastAlt = ka.AlternativeKey;
                         Save();
-                        Log.Main(VehiclesModule.Instance, "Controls: Ignition rebound to " + _key + (_alt != KeyCode.None ? " / " + _alt : ""));
+                        if (Log.L1) Log.Main(VehiclesModule.Instance, "Controls: Ignition rebound to " + _key + (_alt != KeyCode.None ? " / " + _alt : ""));
                     }
                 }
             }

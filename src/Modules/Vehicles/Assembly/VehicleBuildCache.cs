@@ -180,14 +180,14 @@ namespace WildWasteland.Modules.Patrols
             if (!LoadTime.IsRunning)
             {
                 LoadTime.Start();
-                Log.Main(VehiclesModule.Instance, "Vehicle load preparation started: " + LoadingBudgetMs + " ms/frame budget; " + ReserveCount + " reserves per variant.");
+                if (Log.L1) Log.Main(VehiclesModule.Instance, "Vehicle load preparation started: " + LoadingBudgetMs + " ms/frame budget; " + ReserveCount + " reserves per variant.");
             }
             LoadSliceTime.Restart();
             while (LoadSliceTime.Elapsed.TotalMilliseconds < LoadingBudgetMs && StepCore()) { }
             _loadWorkMs += LoadSliceTime.Elapsed.TotalMilliseconds;
             if (!Warming)
             {
-                Log.Main(VehiclesModule.Instance, "Vehicle load preparation finished: " + Entries.Count + " structural variant(s); " + LoadTime.ElapsedMilliseconds + " ms elapsed, " + (long)_loadWorkMs + " ms work.");
+                if (Log.L1) Log.Main(VehiclesModule.Instance, "Vehicle load preparation finished: " + Entries.Count + " structural variant(s); " + LoadTime.ElapsedMilliseconds + " ms elapsed, " + (long)_loadWorkMs + " ms work.");
                 LoadTime.Reset(); _loadWorkMs = 0;
             }
         }
