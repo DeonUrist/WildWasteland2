@@ -18,6 +18,11 @@ using Log = WildWasteland.Core.Log;
 
 namespace WildWasteland.Modules.Towns
 {
+    /// <summary>
+    /// Towns module entry (POI target, B13): terrain tile capture/plan/apply, sliced town construction, load handoff hold,
+    /// world save/load of town records. Wave A (A6): parts owned by other targets are partial files in their folders
+    /// (POI/_fromTowns/TownsModule.TownsApi.cs, NPCAI/Navigation|Population/_fromTowns, HUD/_fromTowns, Tools/_fromTowns, Debug/_fromTowns).
+    /// </summary>
     public sealed partial class TownsModule : ModuleBase
     {
         private sealed class Registration

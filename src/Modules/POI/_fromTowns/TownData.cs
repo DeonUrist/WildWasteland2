@@ -150,15 +150,13 @@ namespace WildWasteland.Modules.Towns
             center = Vector3.zero; rotation = Quaternion.identity; size = Vector2.zero; return false;
         }
     }
-    // Deliberately outside Core until source merge; future shops/quests can consume this API.
+    /// <summary>
+    /// The running Towns module for the Patrols queries (Pilot, CrewPoi, TrafficLocations, RoadPlanner, WorldTraffic, TownTraffic).
+    /// Wave A (A6): the unused public wrappers Count/Get/SetRole/SetCondition were deleted (README 7); B13 replaces this static
+    /// with the Core ITownsApi provider.
+    /// </summary>
     public static class TownsApi
     {
         internal static TownsModule Provider;
-        public static int Count { get { return Provider == null ? 0 : Provider.SiteCount; } }
-        public static TownSite Get(int index) { return Provider == null ? null : Provider.GetSite(index); }
-        public static bool SetRole(string townKey, int lot, TownRole role)
-        { return Provider != null && Provider.SetRole(townKey, lot, role); }
-        public static bool SetCondition(string townKey, TownCondition condition)
-        { return Provider != null && Provider.SetCondition(townKey, condition); }
     }
 }
