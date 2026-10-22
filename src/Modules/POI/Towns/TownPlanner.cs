@@ -22,8 +22,6 @@ namespace WildWasteland.Modules.POI
             {
                 var saved = input.Saved;
                 if (WorldGeneration.Present) { saved = saved.CopyPaths(); saved.AccessPath = new Vector3[0]; saved.GradeAccess = false; saved.Feather = 0; saved.MaximumEarthwork = 0; }
-                if (saved.HasTown && saved.PathsVersion < 7)
-                { saved = saved.CopyPaths(); TownParking.Outside(saved); TownWalkGraph.Build(saved, input.Buildings, stop); TownParking.Access(saved, heights, data.globals.height, avoid); }
                 return saved;
             }
             var plan = new TownPlan { Key = input.Key, Decision = "chance", Feather = WorldGeneration.Present ? 0 : input.Feather, StreetWidth = 1.5f };

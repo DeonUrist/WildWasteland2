@@ -66,6 +66,7 @@ namespace WildWasteland.Modules.POI
                     if (!Enum.IsDefined(typeof(TownCondition), p.Condition)) throw new InvalidDataException("Town condition");
                     if (string.IsNullOrEmpty(p.Key) || string.IsNullOrEmpty(p.TemplateId)) throw new InvalidDataException("Town identity/template");
                     if (p.HasTown) { p.Rules = TownTemplate.Parse(p.TemplateId, p.TemplateJson); }
+                    if (p.Radius < 0 || p.Feather < 0 || p.StreetWidth < 0 || p.OriginalRelief < 0 || p.MaximumEarthwork < 0) throw new InvalidDataException("Town geometry range");
                     p.LayoutVersion = r.ReadInt32();
                     
                     {
@@ -85,6 +86,7 @@ namespace WildWasteland.Modules.POI
                             lot.Hounds = r.ReadBoolean();
                             lot.Skipped = r.ReadBoolean(); lot.External = r.ReadBoolean();
                         }
+                        if (((int)lot.Role & ~63) != 0 || string.IsNullOrEmpty(lot.Prefab) || lot.HalfX < 0 || lot.HalfZ < 0) throw new InvalidDataException("Town lot role/geometry");
                         p.Lots[j] = lot;
                     }
                     
