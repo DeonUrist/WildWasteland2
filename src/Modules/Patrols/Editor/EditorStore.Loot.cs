@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,17 +14,6 @@ namespace WildWasteland.Modules.Patrols
     {
         /// <summary>Truck or car loot profile by id (case-insensitive), or null.</summary>
         internal static LootProfile Loot(bool truck, string id) { return (truck ? Data.TruckLoot : Data.CarLoot).FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase)); }
-
-        /// <summary>Weighted roll (SpawnChance) of a truck cargo option among the allowed ids (all when null); null when none is eligible.</summary>
-        internal static LootProfile RollTruckLoot(Func<double> random, IEnumerable<string> allowed = null)
-        {
-            var filter = allowed != null ? new HashSet<string>(allowed, StringComparer.OrdinalIgnoreCase) : null;
-            var eligible = Data.TruckLoot.Where(p => p.SpawnChance > 0 && (filter == null || filter.Contains(p.Id))).ToList(); double total = eligible.Sum(p => (double)p.SpawnChance);
-            if (total <= 0) return null;
-            double roll = Math.Min(.999999999999, Math.Max(0, random())) * total;
-            foreach (var p in eligible) { roll -= p.SpawnChance; if (roll < 0) return p; }
-            return eligible.LastOrDefault();
-        }
 
         /// <summary>Cargo container texture key: the profile's hint, "none" when empty (the rolled items do not matter).</summary>
         internal static string CargoTexture(Dictionary<string, int> items, string hint)

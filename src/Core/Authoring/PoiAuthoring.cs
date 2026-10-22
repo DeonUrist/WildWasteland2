@@ -6,7 +6,8 @@ namespace WildWasteland.Core
     /// <summary>Detached metadata of a live POI dressing instance.</summary>
     public sealed class PoiAuthoringSite { public int Id; public Transform Root; public string Type, Error, LayoutJson; public bool Ready; public Bounds Bounds; }
     /// <summary>Detached catalog entry; identifiers resolve only while the provider is alive.</summary>
-    public sealed class PoiAuthoringAsset { public long Id; public string Label, MeshName, Source, Category, MarkerKind; public Vector3 NativeScale,Offset; public Bounds Box; }
+    public sealed class PoiAuthoringAsset { public long Id; public string Label, MeshName, Source, Category, MarkerKind; public Vector3 NativeScale,Offset; public Bounds Box; public bool HasCollision; }
+    public interface IGasStationAuthoring { string Status {get;} int LoadedCount {get;} Transform TestRoot {get;} void Settings(List<BepInEx.Configuration.ConfigEntryBase> into); }
     /// <summary>Reusable static POI authoring operations. Draft rendering and input belong to Tools.</summary>
     public interface IPoiAuthoring
     {
@@ -17,6 +18,7 @@ namespace WildWasteland.Core
         void SetDressingVisible(int siteId,bool visible);
         bool Save(int siteId,string layoutJson,out string error);
         void Profiles(string kind,List<string> into);
+        int ProfileCount(string kind,string name);
         string LayoutPath(string type);
         string LayoutDirectory { get; }
         void RegisterSession(IModule owner,Func<bool> buildPreview,Action close);

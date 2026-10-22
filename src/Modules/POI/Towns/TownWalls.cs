@@ -109,19 +109,19 @@ namespace WildWasteland.Modules.POI
         private readonly GameObject _root;
         private int _next;
         private readonly TownBorderProps _border;
-        internal readonly TownVehicleGates Vehicles;
+        internal readonly TownVehicleGates VehicleRoutes;
         internal bool Ready { get { return _next >= _pieces.Count && _border.Ready; } }
-        internal bool Prepared { get { return Ready && Vehicles.Ready && Walkers.Ready; } }
-        internal readonly TownVehicleGates Walkers;
-        internal float Progress { get { return .65f * _next / Mathf.Max(1, _pieces.Count) + .25f * _border.Progress + .05f * (Vehicles.Progress + Walkers.Progress); } }
+        internal bool Prepared { get { return Ready && VehicleRoutes.Ready && WalkerRoutes.Ready; } }
+        internal readonly TownVehicleGates WalkerRoutes;
+        internal float Progress { get { return .65f * _next / Mathf.Max(1, _pieces.Count) + .25f * _border.Progress + .05f * (VehicleRoutes.Progress + WalkerRoutes.Progress); } }
         internal string Stage { get { return _next < _pieces.Count ? "Building town walls " + _next + "/" + _pieces.Count : !_border.Ready ? _border.Stage : "Connecting town gates"; } }
         internal TownWalls(TownSite site, TownAssets assets, Transform parent)
         {
             _site = site; _kit = assets.WallKit;
             _root = new GameObject("Towns perimeter " + site.Plan.Key); _root.transform.SetParent(parent, false);
             _border = new TownBorderProps(site, assets, _root.transform);
-            Vehicles = new TownVehicleGates(site.Plan, false, _border.Blockers);
-            Walkers = new TownVehicleGates(site.Plan, true, _border.Blockers);
+            VehicleRoutes = new TownVehicleGates(site.Plan, false, _border.Blockers);
+            WalkerRoutes = new TownVehicleGates(site.Plan, true, _border.Blockers);
             var frame = TownPerimeter.Frame(site.Plan);
             for (int side = 0; side < 4; side++)
             {
@@ -140,7 +140,7 @@ namespace WildWasteland.Modules.POI
         internal bool Step(out bool spawned)
         {
             spawned = false;
-            if (Ready) return Vehicles.Ready ? Walkers.Step() : Vehicles.Step();
+            if (Ready) return VehicleRoutes.Ready ? WalkerRoutes.Step() : VehicleRoutes.Step();
             if (_next >= _pieces.Count) return _border.Step(out spawned);
             var p = _pieces[_next]; var rotation = _site.Anchor.rotation * Quaternion.LookRotation(p.Direction);
             var position = _site.Ground(_site.Anchor.TransformPoint(_site.Plan.WorldCenter + p.Position));

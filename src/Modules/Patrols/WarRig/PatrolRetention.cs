@@ -8,14 +8,18 @@ using UnityEngine;
 namespace WildWasteland.Modules.Patrols.WarRig
 {
     /// <summary>Owns native far-cleanup protection for patrol/War Rig objects and trailer detachment.</summary>
-    internal static partial class PoiEncounter
+    internal static class PatrolRetention
     {
         private static readonly HashSet<GetDistance> CleanupChecks = new HashSet<GetDistance>();
         /// <summary>True once native far-cleanup distance checks have been identified for this world.</summary>
         internal static bool CleanupProtectionArmed { get { return CleanupChecks.Count > 0; } }
+        /// <summary>Captures native far-cleanup checks for this world without coupling to a POI encounter lifecycle.</summary>
+        internal static void Prepare() {CleanupChecks.Clear();var cleanup=Core.FsmUtil.Find(Core.GameRefs.GameManager,"DeleteFarAwayItems");if(cleanup!=null)foreach(var state in cleanup.FsmStates)foreach(var action in state.Actions)if(action is GetDistance distance)CleanupChecks.Add(distance);}
+        /// <summary>Releases native action identities at scene or module teardown.</summary>
+        internal static void Clear() {CleanupChecks.Clear();}
         /// <summary>Installs the patrol-owned native far-distance interception.</summary>
         internal static void InstallRetention(Core.IModule owner)
-        { Core.Patches.Patch(owner, AccessTools.Method(typeof(GetDistance), "OnEnter"), prefix: AccessTools.Method(typeof(PoiEncounter), nameof(BeforeCleanupDistance))); }
+        { Core.Patches.Patch(owner, AccessTools.Method(typeof(GetDistance), "OnEnter"), prefix: AccessTools.Method(typeof(PatrolRetention), nameof(BeforeCleanupDistance))); }
         /// <summary>Recognizes War Rig objects whose native cleanup is suppressed.</summary>
         internal static bool Protected(GameObject go)
         {

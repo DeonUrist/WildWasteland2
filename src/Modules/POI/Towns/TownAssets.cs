@@ -74,7 +74,7 @@ namespace WildWasteland.Modules.POI
             var allowed = new HashSet<string>(StringComparer.Ordinal);
             float margin = Mathf.Max(1, TownBakeBridge.Tuning("NavMargin", 4)), cell = Mathf.Max(.25f, TownBakeBridge.Tuning("NavCellSize", .5f));
             NavMaxStep = Mathf.Max(.1f, TownBakeBridge.Tuning("NavMaxStep", .45f));
-            foreach (string part in settings.Prefabs.Value.Split(',')) if (part.Trim().Length > 0) allowed.Add(part.Trim());
+            foreach (string part in settings.BuildingPrefabs.Value.Split(',')) if (part.Trim().Length > 0) allowed.Add(part.Trim());
             foreach (var generator in graph.generators)
             {
                 var output = generator as ObjectsOutput;

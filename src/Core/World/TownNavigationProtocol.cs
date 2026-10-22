@@ -20,9 +20,11 @@ namespace WildWasteland.Core
     /// <summary>Incrementally prepared navigation component owned by NPCAI.</summary>
     public interface ITownNavWork : IDisposable { bool Ready {get;} bool Failed {get;} float Progress {get;} bool Step(); }
     public interface ITownOverlayWork : ITownNavWork { void Reapply(bool dressing); void FinishPartial(); }
+    public interface IIsolatedNavWork : System.IDisposable { bool Ready {get;} float Progress {get;} string MapFile {get;} void Step(); }
     /// <summary>NPC movement and per-instance overlay service. Town construction only supplies geometry and lifetime.</summary>
     public interface ITownNavigation
     {
+        IIsolatedNavWork CreateIsolated(GameObject prefab);
         ITownNavWork CreateRouting(TownNavContext site); ITownOverlayWork CreateOverlay(TownNavContext site,bool dressing);
         bool Waypoint(TownNavContext site,GameObject actor,Vector3 from,Vector3 goal,out Vector3 point,out bool approach);
         void Release(TownNavContext site);

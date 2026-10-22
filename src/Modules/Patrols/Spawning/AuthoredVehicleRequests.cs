@@ -13,7 +13,16 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Prepares every structural variant of the authored definition through Vehicles.</summary>
         public bool Prepare(string definition) { var t=Resolve(definition);if(t==null||!t.Available)return false;if(ModApi.Get<IVehicleAssembly>()==null)return false;VehiclePreparation.Warm(t);return true; }
         /// <summary>Queues a clone of the immutable authored template for the normal build/crew/cargo pipeline.</summary>
-        public void Spawn(string definition,Vector3 position,Quaternion rotation,Action<GameObject> completed) { var t=Resolve(definition);if(t==null||!PatrolsModule.Running){if(completed!=null)completed(null);return;}PatrolsModule.Instance.SpawnPoi(t.CloneForSpawn(),position,rotation,completed??Ignore); }
+        public void Spawn(string definition,Vector3 position,Quaternion rotation,Action<GameObject> completed) { Spawn(new AuthoredVehicleSpawn {Definition=definition},position,rotation,completed); }
+        /// <summary>Copies encounter overrides into one actual queued instance, preserving cached definitions.</summary>
+        public void Spawn(AuthoredVehicleSpawn request,Vector3 position,Quaternion rotation,Action<GameObject> completed)
+        {
+            var template=request!=null?Resolve(request.Definition):null;if(template==null||!PatrolsModule.Running){if(completed!=null)completed(null);return;}
+            var t=template.CloneForSpawn();t.SetupOnly=request.SetupOnly;
+            if(request.Loot!=null)t.SpawnLoot=new Dictionary<string,int>(request.Loot,StringComparer.OrdinalIgnoreCase);
+            if(request.TrailerLoot!=null&&t.Trailer!=null)t.Trailer.SpawnLoot=new Dictionary<string,int>(request.TrailerLoot,StringComparer.OrdinalIgnoreCase);
+            PatrolsModule.Instance.SpawnPoi(t,position,rotation,completed??Ignore);
+        }
         /// <summary>Accepts an optional completion callback.</summary>
         private static void Ignore(GameObject vehicle) { }
     }

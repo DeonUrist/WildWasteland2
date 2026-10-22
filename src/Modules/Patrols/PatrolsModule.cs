@@ -42,12 +42,14 @@ namespace WildWasteland.Modules.Patrols
         Convoy _convoy; WorldTraffic _traffic; Cleanup _cleanup;
         SaveBus.StateChange _onSaveState;
 
+        private static void OnTownTrafficStopped(ref TownTrafficStopped stopped){WorldTraffic.TownsStopped();}
         // ---------------------------------------------------------------- lifecycle
 
         public override void Init()
         {
             try { InitInner(); }
             catch { Shutdown(); throw; }   // a failed start leaves nothing running (ModuleHost then removes hooks / jobs / patches)
+            ModEvents.Subscribe<TownTrafficStopped>(this,OnTownTrafficStopped);
             Running = true;   // last: per-object loops only run once everything is in place
             Services.FollowerVehicles = new QuestFollowers();
             Services.Camps = new TrafficCamps.Status();
@@ -94,6 +96,7 @@ namespace WildWasteland.Modules.Patrols
             TrafficRoads.CacheDir = Path.Combine(cfgDir, "roads");
 
             // hooks (Core dispatchers) and module patches, each in its own try like the old Awake
+            WarRig.PatrolRetention.InstallRetention(this);
             Try("Traffic roads", TrafficRoads.Install);
             Scheduler.Sliced(this, "Traffic final terrain", 500, TrafficRoads.GroundStep);
             Try("Camp status", () => TrafficCamps.Install(this));
@@ -106,6 +109,7 @@ namespace WildWasteland.Modules.Patrols
             Try("Motorcycle save hook (saved motorcycles may not load)", () => MotorcycleIntegration.Install(this));
 
             EditorStore.Load(DataDir);
+            Core.ModApi.Changed-=EditorStore.CargoApiChanged;Core.ModApi.Changed+=EditorStore.CargoApiChanged;EditorStore.CargoApiChanged(null);
             CarTemplates.Init(DataDir);
             CarTemplates.Load();
             Try("War Rig", () => WarRig.WarRigFeature.Install(this, Path.Combine(DataDir, "WarRig")));
@@ -123,12 +127,14 @@ namespace WildWasteland.Modules.Patrols
 
         public override void Shutdown()
         {
+            Core.ModApi.Changed-=EditorStore.CargoApiChanged;
             Services.NpcHurt-=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;
             CrewReturn.Reset();
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings;
             Running = false;
             LoadingProgress.Remove(this);
+            WarRig.PatrolRetention.Clear();
             VehicleRoutingApi.Reset();
             Try("build queue", BuildQueue.Reset);
             Try("vehicle build cache", VehiclePreparation.Reset);
@@ -156,14 +162,15 @@ namespace WildWasteland.Modules.Patrols
 
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            WarRig.PatrolRetention.Clear();
             TrafficCompass.Clear();
             PickupCatalog.Invalidate(); PatrolVisibility.Reset(); EnsureRunner(); Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); Convoy.ResetForScene();
-            WarRig.WarRigFeature.OnSceneLoaded();
+            
         }
 
         // Core.Origin (NWH FloatingOrigin.Jump): legacy physics caches of the pilots and PlayerRef move with the world
         public override void OnOriginShift(Vector3 delta) { TrafficSpace.OriginShift(delta); }
-        public override void OnWorldReady() { Prefabs.Refresh(); WarRig.PoiEncounter.Prepare(); WorldTraffic.RestoreTownGuards(); }
+        public override void OnWorldReady() { WarRig.PatrolRetention.Prepare(); Prefabs.Refresh();  WorldTraffic.RestoreTownGuards(); }
         internal void SpawnPoi(CarTemplate template, Vector3 position, Quaternion rotation, Action<GameObject> onDone)
         { if (_patrol != null && Running) _patrol.SpawnAt(template, position, rotation, true, onDone); else onDone(null); }
 

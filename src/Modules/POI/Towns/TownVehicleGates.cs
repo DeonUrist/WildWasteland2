@@ -5,8 +5,8 @@ namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Cached cardinal gates and inner/outer contour vertices of a walled town (Floyd-Warshall over a few nodes), not a town-wide bake.
-    /// Wave A (A6): split out of Towns/TownPerimeter.cs. One class, two instances per walled town: TownWalls.Walkers (NPC walkers,
-    /// B08) and TownWalls.Vehicles (Patrols driving, B11 needs its own copy reading the outline through ITownsApi).
+    /// Wave A (A6): split out of Towns/TownPerimeter.cs. One class, two instances per walled town: TownWalls.WalkerRoutes (NPC walkers,
+    /// B08) and TownWalls.VehicleRoutes (Patrols driving, B11 needs its own copy reading the outline through ITownsApi).
     /// </summary>
     internal sealed class TownVehicleGates : Core.ITownBoundary
     {

@@ -18,8 +18,12 @@ namespace WildWasteland.Modules.POI
     /// Developer test pads near the starting camp: the gas-station test (three melee raiders after its ground-floor bake) and the
     /// stripped Camp_10 test, plus the gas-station debug page. Wave A (A6): partial split of Towns/TownGasStation.cs (Tools part, B16).
     /// </summary>
-    internal sealed partial class TownGasStation
+    internal sealed partial class TownGasStation : IGasStationAuthoring
     {
+        public string Status=>_status;
+        public int LoadedCount=>_stations.Count;
+        public Transform TestRoot=>Root;
+        public void Settings(List<BepInEx.Configuration.ConfigEntryBase> into){into.Clear();into.Add(_settings.DesertGasStationChance);into.Add(_settings.GasStationParking);into.Add(_settings.TestGasStation);into.Add(_settings.GasStationScale);into.Add(_settings.TestCamp10);}
         // developer test pad
         private readonly List<Vector3> _cells = new List<Vector3>(256);
         private readonly List<Vector3> _spawnPoints = new List<Vector3>(3);
@@ -91,7 +95,7 @@ namespace WildWasteland.Modules.POI
                 // rigidbodies and colliders stay exactly as authored: the bake must match the town template (same collider set)
                 go.transform.SetParent(tile.objectsPool.transform, false);
                 go.transform.position = tile.mapMagic.transform.TransformPoint(request.Pad.WorldCenter);
-                if (VistasWorldGen.Present) { var p = go.transform.position; p.y = tile.main.terrain.SampleHeight(p) + tile.main.terrain.transform.position.y; go.transform.position = p; }
+                if (WorldGeneration.Present) { var p = go.transform.position; p.y = tile.main.terrain.SampleHeight(p) + tile.main.terrain.transform.position.y; go.transform.position = p; }
                 go.transform.rotation = tile.mapMagic.transform.rotation;
                 go.SetActive(true);
                 Physics.SyncTransforms(); TownBakeBridge.Discover(go);
@@ -158,14 +162,7 @@ namespace WildWasteland.Modules.POI
             // Native floating origin moves the roots and NPCs. Only our not-yet-used cell snapshots need correction.
             for (int i = 0; i < _spawnPoints.Count; i++) _spawnPoints[i] += delta;
         }
-        internal void Draw(ToolLayout l)
-        {
-            l.Entry(_settings.DesertGasStationChance); l.Entry(_settings.GasStationParking);
-            l.Entry(_settings.TestGasStation); l.Entry(_settings.GasStationScale); l.Entry(_settings.TestCamp10);
-            l.Text("Desert stations: per generated 5 km block, beside a road, with native loot and Scrapyard or animal spawners. Town stations stand beside the open parking lot. The test pad (reload after changing) is near the starting camp with three melee raiders.");
-            l.Value("Gas stations loaded", _stations.Count.ToString());
-            l.Value("Gas station test", _status);
-        }
+
         /// <summary>Adds the Camp_10 / gas-station test-pad requests of this tile (developer test pads near the starting camp).</summary>
         private void CaptureTests(TerrainTile tile, TileData data, TownAssets assets, ref List<Request> list)
         {

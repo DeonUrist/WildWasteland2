@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.POI
         }
         internal static void Access(TownPlan plan, MatrixWorld heights, float scale, List<Vector3> avoid)
         {
-            if (Core.VistasWorldGen.Present) { plan.AccessPath = new Vector3[0]; plan.GradeAccess = false; return; }
+            if (WorldGeneration.Present) { plan.AccessPath = new Vector3[0]; plan.GradeAccess = false; return; }
             foreach (var lot in plan.Lots) if (lot.IsParking)
             {
                 var stop = new Core.TownTrafficStop { Parking = plan.World(lot.LocalPosition), Center = plan.WorldCenter, Radius = plan.Radius,

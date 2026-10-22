@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static bool clearanceReady;
 
         /// <summary>Scene change: natural-rig notices and the clearance cache are dropped.</summary>
-        internal static void ResetForScene() { NaturalRigs.Clear(); NaturalNoticeUntil = 0f; clearanceReady = false; }
+        internal static void ResetForScene() { clearanceReady = false; }
 
         /// <summary>Samples the whole tanker footprint from above on exposed terrain (max 1.5 m relief), grounds the envelope and checks it is free; adjusts the height.</summary>
         internal static bool CanSpawnAt(ref Vector3 position, Quaternion rotation)
