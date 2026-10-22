@@ -28,10 +28,14 @@ namespace WildWasteland.Modules.Towns
             internal TownOverlayPlan.LotPatch Patch;   // worker-computed overlay for this lot; null = runtime projection fallback
             internal Grid[] Neighbours;
             internal Vector4 Bounds;
+            /// <summary>Anchor-relative centre of cell i.</summary>
             internal Vector3 Point(int i) { return Origin + Right * ((i % W + .5f) * Cell) + Forward * ((i / W + .5f) * Cell); }
+            /// <summary>Cell index of an anchor-relative point, or -1 outside.</summary>
             internal int Index(Vector3 p)
             { var d = p - Origin; int x = Mathf.FloorToInt(Vector3.Dot(d, Right) / Cell), z = Mathf.FloorToInt(Vector3.Dot(d, Forward) / Cell); return x < 0 || z < 0 || x >= W || z >= H ? -1 : z * W + x; }
+            /// <summary>True when cell i of the original map is wall or rock.</summary>
             internal bool Solid(int i) { return i >= 0 && (OriginalWhy[i] == 2 || OriginalWhy[i] == 3); }
+            /// <summary>True when two neighbouring cells are joined (original or overlaid arrays): walk edge within the step or hop edge.</summary>
             internal bool Step(int a, int b, bool original)
             {
                 var floor = original ? Local : Floor; var edge = original ? OriginalEdges : Edges;
@@ -43,6 +47,7 @@ namespace WildWasteland.Modules.Towns
                 int k = dz == 0 ? 0 : dx == 0 ? 1 : dx > 0 ? 2 : 3;
                 return Mathf.Abs(floor[a] - floor[b]) <= _step && (edge[a] & (1 << k)) != 0 || k < 2 && (edge[a] & (1 << (k + 4))) != 0;
             }
+            /// <summary>A step without cutting a corner (both side cells joined for a diagonal).</summary>
             internal bool Move(int a, int b)
             {
                 if (!Step(a, b, false)) return false;
@@ -61,8 +66,9 @@ namespace WildWasteland.Modules.Towns
         internal bool Ready { get; private set; }
         internal float Progress { get { return _grids == null ? 0 : _grid >= _grids.Length ? 1
             : (_grid + (_phase + (_phase == 2 ? _grids[_grid].Scan : _cell) / (float)_grids[_grid].Floor.Length) / 3) / _grids.Length; } }
+        /// <summary>Overlay of one town (dressing = wall/tower dressing boxes count too).</summary>
         internal TownOverlap(TownSite site, bool dressing) { _site = site; _dressing = dressing; }   // refs-ok: REFACTOR-REQUEST B08-6
-        // Walls/towers/props arrived after the first overlay (ownership confirmed later): redo it with the dressing boxes.
+        /// <summary>Walls/towers/props arrived after the first overlay (ownership confirmed later): redo it with the dressing boxes.</summary>
         internal void Reapply(bool dressing)
         { Restore(); _grids = null; _grid = _cell = _phase = _blocked = _edges = 0; _dressing = dressing; _warming = false; _retry = 0; Ready = false; }
         /// <summary>Hooks the town overlay into the NPCAI baker (ex Harmony patches on Nav.Make / BeginBake / CreateMap).</summary>
@@ -103,6 +109,7 @@ namespace WildWasteland.Modules.Towns
             if (Owners.TryGetValue(s, out owner))
             { owner.Restore(); owner._grids = null; owner._grid = owner._cell = owner._phase = 0; owner.Ready = false; owner._site.Navigation = new TownNavigation(owner._site); }
         }
+        /// <summary>Captures every building's baked map as an overlay grid (warming unbaked templates first); false = not ready yet.</summary>
         private bool Capture()
         {
             _warming = false;
@@ -163,6 +170,7 @@ namespace WildWasteland.Modules.Towns
             _grids = grids; foreach (var g in grids) Owners[g.Native] = this;
             return true;
         }
+        /// <summary>Applies the worker-computed lot patch: solid cells and cleared edges.</summary>
         private void ApplyPatch(Grid g)
         {
             var patch = g.Patch;
@@ -173,6 +181,7 @@ namespace WildWasteland.Modules.Towns
             for (int k = 0; k < patch.EdgeCells.Length; k++)
             { int i = patch.EdgeCells[k]; if ((g.Edges[i] & patch.EdgeClear[k]) != 0) { g.Edges[i] &= (byte)~patch.EdgeClear[k]; _edges++; } }
         }
+        /// <summary>Up to 32 walkable cells of root's map within 4 m of an entrance, nearest first, in the entrance's area.</summary>
         internal static int PortalCandidates(Transform root, Vector3 entrance, List<Vector3> into, out bool known, out bool baked)
         {
             into.Clear(); Nav.Structure native; known = Native.TryGetValue(root, out native); baked = known && native.Baked;
@@ -197,6 +206,7 @@ namespace WildWasteland.Modules.Towns
                 }
             return into.Count;
         }
+        /// <summary>One preparation slice: capture, project neighbours/props or apply the patch, near flags, areas; commits every grid together at the end.</summary>
         internal bool Step()
         {
             if (Ready || Time.unscaledTime < _retry) return false;
@@ -238,6 +248,7 @@ namespace WildWasteland.Modules.Towns
             }
             return true;
         }
+        /// <summary>Runtime projection of one cell: debris props and neighbouring buildings' walls block it, closed neighbour edges cut its edges.</summary>
         private void Project(Grid target, int i)
         {
             var point = target.Point(i);
@@ -277,6 +288,7 @@ namespace WildWasteland.Modules.Towns
                 }
             }
         }
+        /// <summary>One slice of the area flood fill over the overlaid grid; true when done.</summary>
         private static bool Components(Grid g)
         {
             if (g.Stack.Count > 0)
@@ -297,6 +309,7 @@ namespace WildWasteland.Modules.Towns
                 { g.Area = g.Sizes.Count; g.Size = 0; g.Comp[g.Scan] = g.Area; g.Stack.Push(g.Scan++); return false; }
             return g.Scan == g.Floor.Length;
         }
+        /// <summary>Swaps the overlaid arrays into the structure (heights back to scene space).</summary>
         private void Apply(Grid g)
         {
             for (int i = 0; i < g.Floor.Length; i++) g.Floor[i] += _site.Anchor.position.y;
@@ -309,6 +322,7 @@ namespace WildWasteland.Modules.Towns
 
         /// <summary>Every structure-independent route cache goes (exit picks, out plans, memos, relaxed fields, ring areas).</summary>
         private static void Invalidate() { Nav.InvalidateRouteCaches(); }
+        /// <summary>Puts the original arrays back into every overlaid structure.</summary>
         private void Restore()
         {
             if (_grids == null) return;
@@ -325,11 +339,13 @@ namespace WildWasteland.Modules.Towns
             }
             Invalidate();
         }
+        /// <summary>Town removed: originals restored, building structures forgotten.</summary>
         public void Dispose()
         {
             Restore();
             foreach (var building in _site.Buildings) if (building != null) Forget(building.transform);
         }
+        /// <summary>Loading must go on: applies the grids done so far and reports ready.</summary>
         internal void FinishPartial()
         {
             if (_grids != null)

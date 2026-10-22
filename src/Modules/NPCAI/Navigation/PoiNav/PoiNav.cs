@@ -306,10 +306,10 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
-        // the node under these feet: within 4 m flat, from 1.2 m below to 0.6 m above them; level and in plain sight first
+        /// <summary>the node under these feet: within 4 m flat, from 1.2 m below to 0.6 m above them; level and in plain sight first</summary>
         static long Bucket(int x, int z) { return ((long)x << 32) | (long)(uint)z; }
         private static readonly List<int> _nearNodes = new List<int>();
-        // World terrain projection changes Y only. Tilted roots retain the exact full-search fallback.
+        /// <summary>World terrain projection changes Y only. Tilted roots retain the exact full-search fallback.</summary>
         static bool Planar(Inst inst) { Vector3 up = inst.Root.up; return Mathf.Abs(up.x) < .000001f && Mathf.Abs(up.z) < .000001f && up.y > 0f; }
         static void Nearby(Inst inst, Vector3 p, float radius)
         {
@@ -596,11 +596,11 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // a link step (-(code + 1), code = link * 2 + backwards): where it starts / lands
+        /// <summary>a link step (-(code + 1), code = link * 2 + backwards): where it starts / lands</summary>
         static Vector3 StartOf(Inst inst, int step) { int code = -step - 1; var l = inst.Data.Links[code >> 1]; return inst.W((code & 1) == 0 ? l.From : l.To); }
         static Vector3 EndOf(Inst inst, int step) { int code = -step - 1; var l = inst.Data.Links[code >> 1]; return inst.W((code & 1) == 0 ? l.To : l.From); }
 
-        // the ladder link the player is on (his goal is the player, he climbs one of this POI's ladders), or -1
+        /// <summary>the ladder link the player is on (his goal is the player, he climbs one of this POI's ladders), or -1</summary>
         static int PlayerLadderLink(Inst inst, Vector3 goal)
         {
             var player = GameRefs.Player;

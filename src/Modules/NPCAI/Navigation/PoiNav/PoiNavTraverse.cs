@@ -29,8 +29,10 @@ namespace WildWasteland.Modules.NPC
         internal static bool Busy(GameObject owner) { return owner != null && _runs.ContainsKey(owner.GetInstanceID()); }
         internal static int Count { get { return _runs.Count; } }
 
-        // (WW) the stuck rescue: an NPC that has not moved on its POI route for a second slides (kinematic, through whatever holds its
-        // body) along the next route points - the route is known to be walkable, so the body's width is never what stops it
+        /// <summary>
+        /// (WW) the stuck rescue: an NPC that has not moved on its POI route for a second slides (kinematic, through whatever holds its
+        /// body) along the next route points - the route is known to be walkable, so the body's width is never what stops it
+        /// </summary>
         internal static bool Glide(GameObject owner, List<Vector3> feet)
         {
             if (owner == null || feet == null || feet.Count < 1 || Busy(owner)) return false;
@@ -138,7 +140,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // on a ladder / mid-climb an NPC neither swings nor shoots: its attack FSMs are paused for the move (and resumed after)
+        /// <summary>on a ladder / mid-climb an NPC neither swings nor shoots: its attack FSMs are paused for the move (and resumed after)</summary>
         static void NoAttack(Run r, bool on)
         {
             try
@@ -154,7 +156,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
         }
 
-        // a kinematic body moved by MovePosition shoves anything dynamic out of its way with unlimited force: the player is left alone
+        /// <summary>a kinematic body moved by MovePosition shoves anything dynamic out of its way with unlimited force: the player is left alone</summary>
         static void NoShove(Run r, bool on)
         {
             try
@@ -215,7 +217,7 @@ namespace WildWasteland.Modules.NPC
             foreach (int k in _done) { Run r; if (_runs.TryGetValue(k, out r)) End(r, k); }
         }
 
-        // true when finished
+        /// <summary>true when finished</summary>
         static bool Step(Run r, float dt)
         {
             r.T += dt;
@@ -302,7 +304,7 @@ namespace WildWasteland.Modules.NPC
                 }
             }
         }
-        // down a ladder: from the platform onto the top of the rung line, down the rungs (the animation plays backwards), off at the foot
+        /// <summary>down a ladder: from the platform onto the top of the rung line, down the rungs (the animation plays backwards), off at the foot</summary>
         static bool StepDown(Run r)
         {
             float rise = ModApi.Get<IAnimationApi>() != null ? ModApi.Get<IAnimationApi>().LadderCycleRise : 1.24f;
@@ -351,7 +353,7 @@ namespace WildWasteland.Modules.NPC
             return v >= 1f;
         }
 
-        // the player on this ladder: an NPC climbing towards him stops a body length short (and waits there) instead of passing him
+        /// <summary>the player on this ladder: an NPC climbing towards him stops a body length short (and waits there) instead of passing him</summary>
         static float PlayerCap(Run r, bool up)
         {
             var ladder = Services.PlayerLadder; var player = GameRefs.Player;
@@ -363,14 +365,14 @@ namespace WildWasteland.Modules.NPC
             return up ? (feet > r.H ? feet - 1.85f : float.MaxValue) : (feet < r.H ? feet + 1.85f : float.MinValue);
         }
 
-        // feet against feet (Bottom / Top are the body's pivot, Lift above its feet)
+        /// <summary>feet against feet (Bottom / Top are the body's pivot, Lift above its feet)</summary>
         static float NpcFeet(Run r) { return Mathf.Lerp(r.Bottom.y, r.Top.y, Mathf.Clamp01(r.H / r.Climb)) - r.Lift; }
         static float PlayerFeet(Run r)
         {
             var p = GameRefs.Player; if (p == null) return r.Bottom.y - r.Lift;
             var c = p.GetComponent<Collider>(); return c != null ? c.bounds.min.y : p.transform.position.y - .85f;
         }
-        // the player has been off every ladder for half a second (not the moment of a jump onto a platform)
+        /// <summary>the player has been off every ladder for half a second (not the moment of a jump onto a platform)</summary>
         static bool PlayerOff(Run r)
         {
             if (Services.PlayerLadder != null) { r.OffSince = -1f; return false; }
@@ -378,7 +380,7 @@ namespace WildWasteland.Modules.NPC
             return Time.time - r.OffSince > .5f;
         }
 
-        // down a ladder: a slide that speeds up to the player's slide speed (metres this step)
+        /// <summary>down a ladder: a slide that speeds up to the player's slide speed (metres this step)</summary>
         static float Slide(Run r, float dt) { r.SlideV = Mathf.Min(r.SlideV + 14f * dt, Services.LadderSlideSpeed); return r.SlideV * dt; }
         static void Move(Run r, Vector3 p) { r.Rb.MovePosition(p); r.Owner.transform.rotation = r.Facing; }
         static void Phase(Run r, float p) { if (r.Anim != null && r.Anim.Valid) r.Anim.Phase = p; }

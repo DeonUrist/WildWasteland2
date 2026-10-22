@@ -15,12 +15,15 @@ namespace WildWasteland.Modules.Towns
             internal int W, H; internal float Cell;
             internal int[] BaseSolid = new int[0], EdgeCells = new int[0], DressSolid = new int[0];
             internal byte[] EdgeClear = new byte[0];
+            /// <summary>True when the patch changes anything (dressing cells counted when asked).</summary>
             internal bool Any(bool dressing) { return BaseSolid.Length + EdgeCells.Length + (dressing ? DressSolid.Length : 0) > 0; }
         }
         internal LotPatch[] Lots;
         internal TownDressingPlan Dressing;   // refs-ok: REFACTOR-REQUEST B08-6
         internal int Blocked, Edges;
+        /// <summary>True when cell i of a template is wall or rock.</summary>
         private static bool Solid(TownBakeData map, int i) { return i >= 0 && (map.Why[i] == 2 || map.Why[i] == 3); }
+        /// <summary>True when two neighbouring template cells are joined within the step (or by a hop edge).</summary>
         private static bool Step(TownBakeData map, int a, int b, float step)
         {
             if (float.IsNaN(map.Floor[a]) || float.IsNaN(map.Floor[b])) return false;
@@ -31,8 +34,10 @@ namespace WildWasteland.Modules.Towns
             int k = dz == 0 ? 0 : dx == 0 ? 1 : dx > 0 ? 2 : 3;
             return Mathf.Abs(map.Floor[a] - map.Floor[b]) <= step && (map.Edges[a] & (1 << k)) != 0 || k < 2 && (map.Edges[a] & (1 << (k + 4))) != 0;
         }
+        /// <summary>True when a cell point at floor height is covered by a body-height part of the box.</summary>
         private static bool Inside(Bounds box, Vector3 p, float floor)
         { return p.x >= box.min.x && p.x <= box.max.x && p.z >= box.min.z && p.z <= box.max.z && floor + 1.8f >= box.min.y && floor + .1f <= box.max.y; }
+        /// <summary>Worker-thread overlay of a planned town: per lot the cells and edges its neighbours, shells and dressing block (physics-free, from the read-only templates).</summary>
         internal static TownOverlayPlan Build(TownPlan plan, BuildingSpec[] specs, TownDressingKit kit, List<Bounds> shells, float step, StopToken stop)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             int count = plan.LotCount; var result = new TownOverlayPlan { Lots = new LotPatch[count], Dressing = TownDressingPlan.Make(plan, kit, shells) };   // refs-ok: REFACTOR-REQUEST B08-6
@@ -110,13 +115,14 @@ namespace WildWasteland.Modules.Towns
             }
             return result;
         }
-        // Fallback for plans that reach the main thread without a worker-computed overlay (retained saved record, module restart).
+        /// <summary>Fallback for plans that reach the main thread without a worker-computed overlay (retained saved record, module restart).</summary>
         internal static TownDressingPlan DressingFor(TownPlan plan, TownAssets assets)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             if (plan.Overlay != null && plan.Overlay.Dressing != null) return plan.Overlay.Dressing;
             if (plan.DressingOnly == null) plan.DressingOnly = TownDressingPlan.Make(plan, assets.WallKit.Dressing, assets.ShellBounds);   // refs-ok: REFACTOR-REQUEST B08-6
             return plan.DressingOnly;
         }
+        /// <summary>True when two plans have the same lots, positions, yaws, skips and street count (the overlay can be reused).</summary>
         internal static bool SameLayout(TownPlan a, TownPlan b)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             if (a == null || b == null || a.LotCount != b.LotCount || a.Yaw != b.Yaw || a.LayoutVersion != b.LayoutVersion) return false;

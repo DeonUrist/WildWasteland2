@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.NPC
     // (shared by every NPC heading there) for FieldSeconds. Outside any footprint nothing runs.
     internal static partial class Nav
     {
-        // (WW) the roots of every known structure (POI navigation instances follow them)
+        /// <summary>(WW) the roots of every known structure (POI navigation instances follow them)</summary>
         internal static void Roots(List<Transform> into) { into.Clear(); foreach (var t in _structures) if (t.Root != null) into.Add(t.Root); }
 
         internal sealed class Structure
@@ -62,9 +62,11 @@ namespace WildWasteland.Modules.NPC
             public bool OverlayChecked, Overlaid;   // INavApi instance overlays looked at for this bake / changed the map (never written to disk)
         }
 
-        // (WW perf) a route field is expanded lazily: Build stops once the asking cell is settled and keeps its heap (H) to resume later
-        // (Expand); Settled = the key of the last cell popped: every cell with Dist <= Settled is final (Dijkstra), H == null = complete
-        // (WW perf) Pin: a field a sliced exit pick (PickJob) is still expanding / reading - never evicted while pinned
+        /// <summary>
+        /// (WW perf) a route field is expanded lazily: Build stops once the asking cell is settled and keeps its heap (H) to resume later
+        /// (Expand); Settled = the key of the last cell popped: every cell with Dist &lt;= Settled is final (Dijkstra), H == null = complete
+        /// (WW perf) Pin: a field a sliced exit pick (PickJob) is still expanding / reading - never evicted while pinned
+        /// </summary>
         internal sealed class Field { public float[] Dist; public float Made; public bool GoalInside; public int GoalCell; public Heap H; public float Settled; public bool Pin; }
         // distance arrays are big (W*H floats); fields that expire give theirs back here, Build takes one from here when it fits
         // (WW perf) pools of 32 (was 8: with 32 cached fields per structure an eviction burst threw most arrays away as garbage)
@@ -86,8 +88,10 @@ namespace WildWasteland.Modules.NPC
             f.Dist = null; f.Pin = false;
             if (f.H != null) { if (_heaps.Count < PoolCap) _heaps.Push(f.H); f.H = null; }
         }
-        // (WW perf) the per-structure cache: entries older than FieldSeconds go once there are 16; at 32 the least recently MADE one goes, one
-        // at a time (was: everything cleared at 32 - a rebuild storm for every NPC on the next think)
+        /// <summary>
+        /// (WW perf) the per-structure cache: entries older than FieldSeconds go once there are 16; at 32 the least recently MADE one goes, one
+        /// at a time (was: everything cleared at 32 - a rebuild storm for every NPC on the next think)
+        /// </summary>
         private static void MakeRoom(Structure s, float now, float life)
         {
             if (s.Fields.Count < 16) return;
@@ -209,8 +213,10 @@ namespace WildWasteland.Modules.NPC
 
         private static float BaseBudget() { return Mathf.Max(0.2f, NavSettings.BakeBudgetMs); }
 
-        // this frame's slice: [Nav] BakeBudgetMs; x4 when an NPC waits for the map, x3 when the player is at the structure, x2 when frames
-        // are cheap (above ~90 fps), x4 while the game is paused; halved below ~45 fps
+        /// <summary>
+        /// this frame's slice: [Nav] BakeBudgetMs; x4 when an NPC waits for the map, x3 when the player is at the structure, x2 when frames
+        /// are cheap (above ~90 fps), x4 while the game is paused; halved below ~45 fps
+        /// </summary>
         private static float FrameBudget()
         {
             float b = BaseBudget(), dt = _dtAvg > 0f ? _dtAvg : 1f / 60f;
@@ -288,7 +294,7 @@ namespace WildWasteland.Modules.NPC
 
         // Native names and the game's static-POI root tag allow custom structures without scanning their geometry every frame.
         private static readonly List<GameObject> _roots = new List<GameObject>();
-        // a structure instantiated with CreateObject: taken at once (MapMagic places its camps itself - those the sweep finds)
+        /// <summary>a structure instantiated with CreateObject: taken at once (MapMagic places its camps itself - those the sweep finds)</summary>
         internal static void Spawned(GameObject go)
         {
             if (go == null || !On || !IsStructure(go.transform)) return;
@@ -503,11 +509,13 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // the floor of a cell: the lowest walkable surface (upward facing, room for a body above it, not inside rock) within 6 m of the base height.
-        // Ray by ray from the top down (a multi-hit query reports one hit per collider, and a cave's roof and floor can be one mesh; ray
-        // casts skip back faces, so the inside of a cave roof is passed through and its floor is found).
-        // connected areas over open edges (flood fill); the size of each
-        // connected areas, a slice per frame: a flood fill over open edges whose stack and scan position live on the structure
+        /// <summary>
+        /// the floor of a cell: the lowest walkable surface (upward facing, room for a body above it, not inside rock) within 6 m of the base height.
+        /// Ray by ray from the top down (a multi-hit query reports one hit per collider, and a cave's roof and floor can be one mesh; ray
+        /// casts skip back faces, so the inside of a cave roof is passed through and its floor is found).
+        /// connected areas over open edges (flood fill); the size of each
+        /// connected areas, a slice per frame: a flood fill over open edges whose stack and scan position live on the structure
+        /// </summary>
         private static bool ComponentsStep(Structure s, float budget)
         {
             int n = s.W * s.H;
@@ -617,9 +625,11 @@ namespace WildWasteland.Modules.NPC
         }
         internal static bool IsFloorCollider(Collider c) { return c != null && (c.gameObject.layer == 14 || _floorCols.Contains(c.GetInstanceID())); }
 
-        // An overlap test against a non-convex mesh collider (a cave's rock) only sees its triangles, so a capsule wholly inside the rock
-        // passes as free and the terrain under the rock looked like floor. One ray up with back faces on: from inside solid rock it meets the
-        // inside of the rock's surface; under a real roof there is open air up to head height.
+        /// <summary>
+        /// An overlap test against a non-convex mesh collider (a cave's rock) only sees its triangles, so a capsule wholly inside the rock
+        /// passes as free and the terrain under the rock looked like floor. One ray up with back faces on: from inside solid rock it meets the
+        /// inside of the rock's surface; under a real roof there is open air up to head height.
+        /// </summary>
         private static bool InsideSolid(Vector3 floor)
         {
             bool old = Physics.queriesHitBackfaces;
@@ -634,7 +644,7 @@ namespace WildWasteland.Modules.NPC
                 && !Physics.CheckCapsule(f + Vector3.up * (BodyLo + BodyR), f + Vector3.up * Mathf.Max(BodyLo + BodyR, HeadTop - BodyR), BodyR, BakeMask, QueryTriggerInteraction.Ignore);
         }
 
-        // for the log: why the map has nothing walkable where an NPC stands
+        /// <summary>for the log: why the map has nothing walkable where an NPC stands</summary>
         internal static string Probe(Vector3 pos)
         {
             foreach (var s in _structures)
@@ -672,8 +682,10 @@ namespace WildWasteland.Modules.NPC
 
         private static bool Inside(Structure s, Vector3 p) { int x, z; return CellOf(s, p, out x, out z); }
 
-        // the nearest walkable cell within r cells (an NPC hugging a wall stands in a blocked cell)
-        // the cell an NPC really stands in / next to: nearest cells first, not in a tiny island, with no wall between the NPC and the cell
+        /// <summary>
+        /// the nearest walkable cell within r cells (an NPC hugging a wall stands in a blocked cell)
+        /// the cell an NPC really stands in / next to: nearest cells first, not in a tiny island, with no wall between the NPC and the cell
+        /// </summary>
         private static int NearestReachable(Structure s, Vector3 pos, int x, int z, int r)
         {
             if (x >= 0 && z >= 0 && x < s.W && z < s.H)
@@ -740,7 +752,7 @@ namespace WildWasteland.Modules.NPC
 
         private static bool Step(Structure s, int a, int b) { return EdgeKind(s, a, b) > 0; }
 
-        // 0 = no way, 1 = walk, 2 = hop (a lip / step the body hops; not while _noHop)
+        /// <summary>0 = no way, 1 = walk, 2 = hop (a lip / step the body hops; not while _noHop)</summary>
         private static int EdgeKind(Structure s, int a, int b)
         {
             float ya = s.FloorY[a], yb = s.FloorY[b];
@@ -757,7 +769,7 @@ namespace WildWasteland.Modules.NPC
             return 0;
         }
 
-        // the route from pos toward next (first 2 m) crosses a hop edge
+        /// <summary>the route from pos toward next (first 2 m) crosses a hop edge</summary>
         internal static bool HopAhead(Vector3 pos, Vector3 next)
         {
             int hc; var s = BakedAt(pos, out hc);
@@ -784,7 +796,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // a walkable cell with a walkable neighbour at a walkable height that it still can't reach (a wall / spike between them)
+        /// <summary>a walkable cell with a walkable neighbour at a walkable height that it still can't reach (a wall / spike between them)</summary>
         private static bool WallNext(Structure s, int i)
         {
             if (float.IsNaN(s.FloorY[i]) || s.Edges == null) return false;
@@ -864,8 +876,10 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // one step on the grid as a body takes it: a diagonal step also needs both cells beside it passable from here - no corner cutting
-        // (the route search, the straight-line check and the area grouping all use this, so they agree)
+        /// <summary>
+        /// one step on the grid as a body takes it: a diagonal step also needs both cells beside it passable from here - no corner cutting
+        /// (the route search, the straight-line check and the area grouping all use this, so they agree)
+        /// </summary>
         private static bool Move(Structure s, int a, int b)
         {
             if (!Step(s, a, b)) return false;
@@ -986,16 +1000,18 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- (1.6.0) a goal outside the footprint: the walk out is the walk in, reversed ----------
-        // Before 1.6 an outside goal was routed by a field seeded at every ring cell with its straight distance to the goal - a straight line
-        // that ignored the structure itself - and the map let go at the first ring cell. A ghost behind the camp: out of the gate, then the
-        // feelers aimed back through the wall, the map pulled outward again inside the margin (wall hugging, turnarounds).
-        // Now, like the walk home (a field seeded at ONE cell inside the map, then a straight line):
-        // - leg 1: the map walks the NPC to one exit cell, routed as an inside goal. The exit = the cell of the NPC's area with the shortest
-        //   map path + straight line to the goal among the cells whose straight line to the goal is clear on the map until it leaves the
-        //   footprint (OutClear): the cave mouth's apron when the goal is in front of it, the margin on the goal's side when it is behind.
-        //   Shared per (structure, area, goal 8 m bucket) for 5 s, then kept per NPC for the trip; re-picked when the goal moves > 8 m.
-        // - leg 2: standing on a cell with a clear line out, Next says "straight" (false). Drifting off the line picks a new exit from there
-        //   (the nearest clear line), never the old one behind it.
+        /// <summary>
+        /// Before 1.6 an outside goal was routed by a field seeded at every ring cell with its straight distance to the goal - a straight line
+        /// that ignored the structure itself - and the map let go at the first ring cell. A ghost behind the camp: out of the gate, then the
+        /// feelers aimed back through the wall, the map pulled outward again inside the margin (wall hugging, turnarounds).
+        /// Now, like the walk home (a field seeded at ONE cell inside the map, then a straight line):
+        /// - leg 1: the map walks the NPC to one exit cell, routed as an inside goal. The exit = the cell of the NPC's area with the shortest
+        /// map path + straight line to the goal among the cells whose straight line to the goal is clear on the map until it leaves the
+        /// footprint (OutClear): the cave mouth's apron when the goal is in front of it, the margin on the goal's side when it is behind.
+        /// Shared per (structure, area, goal 8 m bucket) for 5 s, then kept per NPC for the trip; re-picked when the goal moves &gt; 8 m.
+        /// - leg 2: standing on a cell with a clear line out, Next says "straight" (false). Drifting off the line picks a new exit from there
+        /// (the nearest clear line), never the old one behind it.
+        /// </summary>
         private sealed class OutPlan { public Structure S; public Vector3 Goal; public int Exit; public float Made; public bool Out; }
         private static readonly Dictionary<int, OutPlan> _outPlans = new Dictionary<int, OutPlan>();
         private sealed class OutMemo { public Structure S; public int Exit; public float Until; }
@@ -1003,8 +1019,10 @@ namespace WildWasteland.Modules.NPC
         private const float OutReplan = 8f; private const int MaxOutTests = 6000;
         private static float[] _ocKeys = new float[0]; private static int[] _ocIdx = new int[0];
 
-        // the straight line from cell a toward the goal crosses only cells a body walks through (the map's own step rule), up to the edge of
-        // the footprint (or the goal's cell)
+        /// <summary>
+        /// the straight line from cell a toward the goal crosses only cells a body walks through (the map's own step rule), up to the edge of
+        /// the footprint (or the goal's cell)
+        /// </summary>
         private static bool OutClear(Structure s, int a, Vector3 goal)
         {
             int x0 = a % s.W, z0 = a / s.W;
@@ -1119,8 +1137,10 @@ namespace WildWasteland.Modules.NPC
             _pickRun = null; _pickQueue.Clear(); _pickByKey.Clear(); _pickDone.Clear(); _pickWait.Clear();
         }
 
-        // the exit for an outside goal: the cheapest (map path + straight line) cell of the NPC's area with a clear line out; Pending while
-        // its job runs
+        /// <summary>
+        /// the exit for an outside goal: the cheapest (map path + straight line) cell of the NPC's area with a clear line out; Pending while
+        /// its job runs
+        /// </summary>
         private static int PickOutExit(GameObject owner, Structure s, int from, Vector3 goal, bool fresh)
         {
             int comp = s.Comp != null ? s.Comp[from] : 0;
@@ -1165,7 +1185,7 @@ namespace WildWasteland.Modules.NPC
             return Pending;
         }
 
-        // Nav.Tick: the running pick, PickBudgetMs a frame
+        /// <summary>Nav.Tick: the running pick, PickBudgetMs a frame</summary>
         private static void PickStep()
         {
             if (_pickRun == null && _pickQueue.Count == 0) return;
@@ -1196,7 +1216,7 @@ namespace WildWasteland.Modules.NPC
             _pickSw.Stop();
         }
 
-        // one slice of a pick (budget in ms; double.MaxValue = to the end). True when done (j.Exit set, memo stored, logged).
+        /// <summary>one slice of a pick (budget in ms; double.MaxValue = to the end). True when done (j.Exit set, memo stored, logged).</summary>
         private static bool PickRun(PickJob j, float now, double budget)
         {
             var s = j.S; int n = s.W * s.H;
@@ -1273,7 +1293,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // the candidate heap: ordered by cost, equal costs by cell index
+        /// <summary>the candidate heap: ordered by cost, equal costs by cell index</summary>
         private static bool Less(int a, int b) { float ka = _ocKeys[a], kb = _ocKeys[b]; return ka < kb || (ka == kb && _ocIdx[a] < _ocIdx[b]); }
         private static void SiftDown(int i, int cnt)
         {
@@ -1288,7 +1308,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // down the field up to 16 cells: the farthest cell still in grid sight (next to an obstacle: no farther than the first such cell)
+        /// <summary>down the field up to 16 cells: the farthest cell still in grid sight (next to an obstacle: no farther than the first such cell)</summary>
         private static int Descend(Structure s, Field f, int from)
         {
             int cur = from, pick = from;
@@ -1316,7 +1336,7 @@ namespace WildWasteland.Modules.NPC
         private static float FlatDist(Vector3 a, Vector3 b) { a.y = b.y = 0f; return Vector3.Distance(a, b); }
 
         // ---------- the way out when the map can't reach the goal ----------
-        // The answer depends on the area the NPC is in and the goal, not on the NPC: one memo per (structure, area, goal bucket), 2 s
+        /// <summary>The answer depends on the area the NPC is in and the goal, not on the NPC: one memo per (structure, area, goal bucket), 2 s</summary>
         private sealed class ExitMemo { public int Exit; public float Until; public bool Relaxed; public Structure S; }
         private static readonly Dictionary<long, ExitMemo> _exits = new Dictionary<long, ExitMemo>();
         private static int ExitCell(GameObject owner, Structure s, int from, Vector3 goal, bool goalInside, int goalCell, out bool exitRelaxed)
@@ -1449,7 +1469,7 @@ namespace WildWasteland.Modules.NPC
             return bi;
         }
 
-        // every cell on the grid line between two cells walkable and step-connected (a body-wide corridor, since cells are body-checked)
+        /// <summary>every cell on the grid line between two cells walkable and step-connected (a body-wide corridor, since cells are body-checked)</summary>
         private static bool GridSight(Structure s, int a, int b)
         {
             int x0 = a % s.W, z0 = a / s.W, x1 = b % s.W, z1 = b / s.W;
@@ -1468,7 +1488,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // the field for a goal, expanded (at least) up to cell until - the cell the caller reads
+        /// <summary>the field for a goal, expanded (at least) up to cell until - the cell the caller reads</summary>
         private static Field FieldFor(Structure s, Vector3 goal, bool inside, int goalCell, int until)
         {
             float now = Time.time;
@@ -1487,8 +1507,10 @@ namespace WildWasteland.Modules.NPC
         }
         private static float Settle(Structure s, Field f, int cell) { Expand(s, f, cell); return f.Dist[cell]; }
 
-        // Dijkstra over the grid (8 neighbours, no corner cutting, step limit); the whole reachable area (until < 0) or only up to the cell
-        // until (then Expand resumes it when a farther cell is asked for)
+        /// <summary>
+        /// Dijkstra over the grid (8 neighbours, no corner cutting, step limit); the whole reachable area (until &lt; 0) or only up to the cell
+        /// until (then Expand resumes it when a farther cell is asked for)
+        /// </summary>
         private static Field Build(Structure s, Vector3 goal, bool inside, int goalCell) { return Build(s, goal, inside, goalCell, -1); }
         private static Field Build(Structure s, Vector3 goal, bool inside, int goalCell, int until)
         {
@@ -1508,13 +1530,17 @@ namespace WildWasteland.Modules.NPC
             return f;
         }
 
-        // resumes the field's Dijkstra until cell until is settled (its distance final: Dist <= Settled) or the area is exhausted (until < 0:
-        // the whole field, for the readers that scan every cell). The pops continue exactly where they stopped, so every settled distance
-        // equals the full build's; Downhill only steps to cells with a smaller distance than a settled one, which are settled too.
+        /// <summary>
+        /// resumes the field's Dijkstra until cell until is settled (its distance final: Dist &lt;= Settled) or the area is exhausted (until &lt; 0:
+        /// the whole field, for the readers that scan every cell). The pops continue exactly where they stopped, so every settled distance
+        /// equals the full build's; Downhill only steps to cells with a smaller distance than a settled one, which are settled too.
+        /// </summary>
         private static void Expand(Structure s, Field f, int until) { ExpandCore(s, f, until, int.MaxValue); }
 
-        // (WW perf) the same, at most maxPops pops (the sliced exit pick): stops with Settled = the last popped key (every cell at or below
-        // it is final, exactly as when it stops at until). True = the field is complete.
+        /// <summary>
+        /// (WW perf) the same, at most maxPops pops (the sliced exit pick): stops with Settled = the last popped key (every cell at or below
+        /// it is final, exactly as when it stops at until). True = the field is complete.
+        /// </summary>
         private static bool ExpandCore(Structure s, Field f, int until, int maxPops)
         {
             var heap = f.H;
@@ -1661,7 +1687,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // (1.1.0) Passthrough: the NPC stands on a map cell next to a wall / obstacle (a corridor, a doorway, a tunnel)
+        /// <summary>(1.1.0) Passthrough: the NPC stands on a map cell next to a wall / obstacle (a corridor, a doorway, a tunnel)</summary>
         internal static bool NearWall(Vector3 pos)
         {
             int c; var s = BakedAt(pos, out c);
@@ -1717,7 +1743,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- for Idle (read-only) ----------
-        // the root of the structure whose footprint contains p (any bake state), or null
+        /// <summary>the root of the structure whose footprint contains p (any bake state), or null</summary>
         internal static Transform StructureRootAt(Vector3 p)
         {
             Transform best = null; float bestDy = float.MaxValue;
@@ -1730,7 +1756,7 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
-        // the baked structure under p whose floor there is closest to p.y (the NPC is on that map), or null (not baked yet / outside)
+        /// <summary>the baked structure under p whose floor there is closest to p.y (the NPC is on that map), or null (not baked yet / outside)</summary>
         private static Structure BakedAt(Vector3 p, out int cell)
         {
             cell = -1; Structure best = null; float bestDy = float.MaxValue;
@@ -1746,10 +1772,12 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
-        // Up to max patrol points around home, each CLEARLY reachable on a straight line: every cell of the line walkable and connected to
-        // the next one (Move: no wall, spike or step), the cells half a metre either side walkable too (elbow room), the end at least 1 m
-        // from anything unwalkable, and a body-sized capsule swept along the line hits nothing solid. 16 bearings x 5 distances (longest
-        // clear one per bearing), then the points are picked >= 60 deg apart, longest first. -1 = home's map is not baked (yet), 0 = none.
+        /// <summary>
+        /// Up to max patrol points around home, each CLEARLY reachable on a straight line: every cell of the line walkable and connected to
+        /// the next one (Move: no wall, spike or step), the cells half a metre either side walkable too (elbow room), the end at least 1 m
+        /// from anything unwalkable, and a body-sized capsule swept along the line hits nothing solid. 16 bearings x 5 distances (longest
+        /// clear one per bearing), then the points are picked &gt;= 60 deg apart, longest first. -1 = home's map is not baked (yet), 0 = none.
+        /// </summary>
         internal static int PatrolPoints(Vector3 home, List<Vector3> pts, int max, float minD, float maxD)
         {
             _noHop = true;
@@ -1833,10 +1861,12 @@ namespace WildWasteland.Modules.NPC
             return CellOf(s, p, out x, out z) && !float.IsNaN(s.FloorY[z * s.W + x]);
         }
 
-        // Points for a search round around origin: the camp map's patrol points when origin is on a baked map, otherwise physics only:
-        // 12 bearings, the longest of 3 distances where a body sweep is clear, the ground under the end (and the middle) is walkable
-        // (normal >= WalkNormal, within 1.5 m of origin's height) - no cliffs, no rock; picked >= 60 deg apart. Returns the count, or
-        // -(count) - 1 when it had to go by physics (so the caller can tell; 0 points then = -1).
+        /// <summary>
+        /// Points for a search round around origin: the camp map's patrol points when origin is on a baked map, otherwise physics only:
+        /// 12 bearings, the longest of 3 distances where a body sweep is clear, the ground under the end (and the middle) is walkable
+        /// (normal &gt;= WalkNormal, within 1.5 m of origin's height) - no cliffs, no rock; picked &gt;= 60 deg apart. Returns the count, or
+        /// -(count) - 1 when it had to go by physics (so the caller can tell; 0 points then = -1).
+        /// </summary>
         internal static int SearchPoints(Vector3 origin, List<Vector3> pts, int max, float minD, float maxD)
         {
             int r = PatrolPoints(origin, pts, max, minD, maxD);
@@ -1882,10 +1912,12 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // The ankle-high line between two neighbouring cells. Hitting something there used to make a wall - but the rim of a camp's base plate
-        // (camp_base_rock, a few cm higher than the line) is just ground the body walks over: that made the orange ring around Camp_7 that
-        // sealed the camp and its cave off from the outside. So when the line hits, measure the top of what it hit: no higher than
-        // MaxStep above the higher of the two floors = a rim the body steps over (clear); higher = a lip / kerb / wall.
+        /// <summary>
+        /// The ankle-high line between two neighbouring cells. Hitting something there used to make a wall - but the rim of a camp's base plate
+        /// (camp_base_rock, a few cm higher than the line) is just ground the body walks over: that made the orange ring around Camp_7 that
+        /// sealed the camp and its cave off from the outside. So when the line hits, measure the top of what it hit: no higher than
+        /// MaxStep above the higher of the two floors = a rim the body steps over (clear); higher = a lip / kerb / wall.
+        /// </summary>
         private static bool LowWayClear(Vector3 a, Vector3 b, float topFloor)
         {
             RaycastHit h;
@@ -1902,10 +1934,12 @@ namespace WildWasteland.Modules.NPC
             return top.collider == h.collider && top.point.y - topFloor <= step && top.normal.y >= 0.5f;
         }
 
-        // (1.4.9) The way between two neighbouring cells for the whole body: the NPC's own capsule (r 0.28, up to the shoulders at 1.5 m)
-        // swept from one cell centre to the other, from lo above the higher floor (0.3: what LowWayClear / a step leaves; 0.6 over a hop).
-        // The old test was two thin lines (0.5 and 1.2 m) between the centres: a diagonal spike or a pipe at chest height passing between
-        // them, or between two cell centres, was invisible to the map while the body ran into it.
+        /// <summary>
+        /// (1.4.9) The way between two neighbouring cells for the whole body: the NPC's own capsule (r 0.28, up to the shoulders at 1.5 m)
+        /// swept from one cell centre to the other, from lo above the higher floor (0.3: what LowWayClear / a step leaves; 0.6 over a hop).
+        /// The old test was two thin lines (0.5 and 1.2 m) between the centres: a diagonal spike or a pipe at chest height passing between
+        /// them, or between two cell centres, was invisible to the map while the body ran into it.
+        /// </summary>
         private static bool BodySweep(Vector3 a, Vector3 b, float top, float lo)
         {
             Vector3 d = new Vector3(b.x - a.x, 0f, b.z - a.z);
@@ -1916,7 +1950,7 @@ namespace WildWasteland.Modules.NPC
             return !Physics.CapsuleCast(p1, p2, BodyR, d / len, len, BakeMask, QueryTriggerInteraction.Ignore);   // with the clearance margin
         }
 
-        // a body capsule swept from a to b (patrol legs are re-checked before walking: a car parked there since the bake)
+        /// <summary>a body capsule swept from a to b (patrol legs are re-checked before walking: a car parked there since the bake)</summary>
         internal static bool BodyPathClear(Vector3 a, Vector3 b)
         {
             Vector3 flat = new Vector3(b.x - a.x, 0f, b.z - a.z);
@@ -1925,7 +1959,7 @@ namespace WildWasteland.Modules.NPC
             return flat.sqrMagnitude < 0.01f || !Physics.CapsuleCast(a1, a2, Radius, flat.normalized, flat.magnitude, BakeMask, QueryTriggerInteraction.Ignore);
         }
 
-        // (WW) Core.Services.Npc.Structures: what Apocapatrol read from _structures by reflection (Root, Box, Baked, FloorY, W, Cell)
+        /// <summary>(WW) Core.Services.Npc.Structures: what Apocapatrol read from _structures by reflection (Root, Box, Baked, FloorY, W, Cell)</summary>
         internal static void Structures(List<Core.NavStructure> into)
         {
             if (into == null) return;

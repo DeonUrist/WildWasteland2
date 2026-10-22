@@ -31,6 +31,7 @@ namespace WildWasteland.Modules.NPC
         }
         private static readonly Dictionary<ulong, MapTemplate> _templates = new Dictionary<ulong, MapTemplate>();
         private const int TemplateLimit = 96;
+        /// <summary>Keeps a loaded/saved map in memory (root-relative heights, areas, floor colliders) so a second instance of the prefab clones it instead of reading the file again.</summary>
         private static void RememberTemplate(Structure s)
         {
             if (s.Overlaid || !(s.LoadedMap || s.MapSaved) || s.MapKey == 0 || s.MapFile == null || s.Root == null || s.FloorY == null || s.Comp == null || s.CompSize == null || s.Near == null) return;
@@ -46,6 +47,7 @@ namespace WildWasteland.Modules.NPC
                 { int count; t.Floors[i] = (byte)(colliders[i] != null && s.FloorHits.TryGetValue(colliders[i].GetInstanceID(), out count) && count >= FloorColCells ? 1 : 0); }
             _templates[s.MapKey] = t;
         }
+        /// <summary>Fills s from the in-memory template of its map key (when compatible); true = s is at phase 2 with a loaded map.</summary>
         private static bool CloneTemplate(Structure s)
         {
             MapTemplate t; int n = s.W * s.H;
@@ -62,6 +64,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: cloned map " + s.Name + " from memory (" + (t.Vanilla ? "vanilla" : "custom cache") + "); " + t.Source);
             return true;
         }
+        /// <summary>Drops the in-memory templates (custom ones only unless vanillaToo), e.g. after the custom cache was reset.</summary>
         internal static void ForgetTemplates(bool vanillaToo)
         {
             if (vanillaToo) { _templates.Clear(); return; }
@@ -72,20 +75,28 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Logical name prefix of the embedded vanilla map pack (D13: module folder + path).</summary>
         internal const string VanillaResourcePrefix = "NPCAI.NavMaps.Vanilla.";
 
+        /// <summary>Folder of the custom map cache written by the baker: config/WildWasteland/NPCAI/NavMaps/Custom (D13).</summary>
         internal static string CustomMapDir { get { return System.IO.Path.Combine(Core.Assets.ModuleConfigDir("NPCAI"), "NavMaps", "Custom"); } }
+        /// <summary>Optional plugin folder of shipped vanilla maps: plugins/WildWasteland/NPCAI/NavMaps/Vanilla (D13; the embedded pack is read first).</summary>
         internal static string VanillaMapDir { get { return System.IO.Path.Combine(Core.Assets.ModuleDir("NPCAI"), "NavMaps", "Vanilla"); } }
         internal static string MapActionStatus;
 
         private struct MapHash
         {
             internal ulong Value;
+            /// <summary>Mixes one 64-bit value into the FNV-1a style hash.</summary>
             internal void Add(long v) { unchecked { Value = (Value ^ (ulong)v) * 1099511628211UL; } }
+            /// <summary>Mixes a float rounded to 1/10000 (stable across tiny float noise).</summary>
             internal void Add(float v) { Add((long)Math.Round(v * 10000d)); }
+            /// <summary>Mixes the three components of a vector.</summary>
             internal void Add(Vector3 v) { Add(v.x); Add(v.y); Add(v.z); }
+            /// <summary>Mixes the centre and size of bounds.</summary>
             internal void Add(Bounds b) { Add(b.center); Add(b.size); }
+            /// <summary>Mixes every character of a string plus a terminator (null mixes only the terminator).</summary>
             internal void Add(string s) { if (s != null) foreach (char c in s) Add((long)c); Add(-1L); }
         }
 
+        /// <summary>True for a collider the map signature and the bake count: enabled, active, solid, on a bake layer, static or kinematic.</summary>
         private static bool MapCollider(Collider c)
         {
             return c != null && c.enabled && c.gameObject.activeInHierarchy && !c.isTrigger
@@ -93,6 +104,7 @@ namespace WildWasteland.Modules.NPC
                 && (c.attachedRigidbody == null || c.attachedRigidbody.isKinematic);
         }
 
+        /// <summary>Prefab-aligned grid frame and map key (signature of build, colliders, transforms, scale and bake settings) of s, plus its custom/vanilla map file names; tilted/mirrored roots or unsupported colliders keep the world-aligned per-instance bake.</summary>
         private static void ConfigureMap(Structure s, Collider[] colliders, float margin)
         {
             // Yaw and positive scale preserve the horizontal grid and world-sized NPC clearance. Other placements retain the old bake.
@@ -173,6 +185,7 @@ namespace WildWasteland.Modules.NPC
             s.VanillaMapFile = System.IO.Path.Combine(VanillaMapDir, file);
         }
 
+        /// <summary>Starts loading s's map: memory template, embedded vanilla pack, plugin vanilla file or custom cache (header validated); false = bake it.</summary>
         private static bool OpenMap(Structure s)
         {
             if (s.MapFile == null) return false;
@@ -227,6 +240,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { bool vanilla = RejectMap(s, e); s.FloorHits.Clear(); return vanilla && OpenMap(s); }
         }
 
+        /// <summary>One budgeted slice of reading the open map's cells; a corrupt map is rejected and the bake restarts.</summary>
         private static void ReadMap(Structure s, float budget)
         {
             try
@@ -251,6 +265,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { bool vanilla = RejectMap(s, e); BeginBake(s, vanilla); }
         }
 
+        /// <summary>Opens a temp file and writes the header of s's map to the custom cache (not for overlaid / non-writable / already present maps); false = nothing to write.</summary>
         private static bool CreateMap(Structure s)
         {
             if (s.MapFile == null || s.MapStep != NavSettings.Step || s.Overlaid) return false;
@@ -276,6 +291,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { MapWriteFailed(s, e); return false; }
         }
 
+        /// <summary>One budgeted slice of writing the cells; at the end the checksum is written and the temp file published with AtomicFile (D17). True = done.</summary>
         private static bool WriteMap(Structure s, float budget)
         {
             try
@@ -305,6 +321,7 @@ namespace WildWasteland.Modules.NPC
             [FieldOffset(0)] internal float Float;
             [FieldOffset(0)] internal uint Bits;
         }
+        /// <summary>FNV-1a checksum step over one cell's floor bits, reason, sky flag and edge bits.</summary>
         private static uint MapChecksum(uint hash, float y, byte why, byte sky, byte edges)
         {
             unchecked
@@ -315,6 +332,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Rejects a bad map: a vanilla one is skipped for this structure (custom next), a custom one gets replaced; returns whether it was vanilla.</summary>
         private static bool RejectMap(Structure s, Exception e)
         {
             bool vanilla = s.MapJob != null && s.MapJob.Vanilla;
@@ -325,10 +343,12 @@ namespace WildWasteland.Modules.NPC
             WildWasteland.Core.Log.Warn(NavRuntime.Owner, "Nav: rejected map " + s.Name + " (" + e.Message + "); " + (vanilla ? "trying custom cache; " : "rebaking; ") + source);
             return vanilla;
         }
+        /// <summary>A map write failed: the job is closed and the live bake is used.</summary>
         private static void MapWriteFailed(Structure s, Exception e)
         {
             CloseMap(s); WildWasteland.Core.Log.Warn(NavRuntime.Owner, "Nav: could not save map " + s.Name + " (" + e.Message + "); using the live bake");
         }
+        /// <summary>Closes s's map job: reader/writer disposed, unfinished temp file deleted.</summary>
         private static void CloseMap(Structure s)
         {
             var job = s.MapJob; if (job == null) return; s.MapJob = null;

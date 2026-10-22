@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Towns
         private sealed class Detour { internal GameObject Owner; internal Vector3 Goal; internal readonly Vector3[] Points = new Vector3[4]; internal int Count, Index; }
         private readonly Dictionary<int, Detour> _detours = new Dictionary<int, Detour>();
         private readonly List<int> _dead = new List<int>();
+        /// <summary>Gate positions, outside corners (12 m off the wall frame) and the shortest way round the wall between every two corners.</summary>
         internal TownApproach(TownPlan plan)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             _outline = TownPerimeter.Outline(plan); var frame = TownPerimeter.Frame(plan);   // refs-ok: REFACTOR-REQUEST B08-6
@@ -27,7 +28,9 @@ namespace WildWasteland.Modules.Towns
                 _cost[a, b] = Mathf.Min(forward, perimeter - forward); _direction[a, b] = forward <= perimeter - forward ? 1 : -1;
             }
         }
+        /// <summary>True when the town-local point lies inside the town outline.</summary>
         internal bool Inside(Vector3 p) { return _outline.Contains(p, 0f); }
+        /// <summary>Detour around the walls for a straight line that would cross the outline: the next outside corner of the cheapest corner path (kept per NPC while the goal stays within 2 m).</summary>
         internal bool Around(GameObject owner, Vector3 position, Vector3 goal, out Vector3 point)
         {
             position.y = goal.y = 0f; point = goal; int id = owner == null ? 0 : owner.GetInstanceID();
@@ -58,6 +61,7 @@ namespace WildWasteland.Modules.Towns
             if (owner != null) _detours[id] = route;
             point = route.Points[0]; return true;
         }
+        /// <summary>The approach point of the best gate for an NPC outside: 16 m out in front of it, or 5 m inside once lined up within 18 m.</summary>
         internal Vector3 Entrance(Vector3 position)
         {
             position.y = 0f; int best = -1; float cost = float.PositiveInfinity;

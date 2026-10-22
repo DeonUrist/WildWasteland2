@@ -17,11 +17,14 @@ namespace WildWasteland.Modules.Towns
         internal float[] Floor;
         internal byte[] Why, Sky, Edges;
         internal string Source;
+        /// <summary>Float/uint overlay for the checksum.</summary>
         [StructLayout(LayoutKind.Explicit)]
         private struct Bits { [FieldOffset(0)] internal float F; [FieldOffset(0)] internal uint U; }
+        /// <summary>Checksum step identical to the grid baker's map checksum.</summary>
         private static uint Sum(uint sum, float y, byte why, byte sky, byte edge)
         { unchecked { sum = (sum ^ new Bits { F = y }.U) * 16777619; sum = (sum ^ why) * 16777619; sum = (sum ^ sky) * 16777619; return (sum ^ edge) * 16777619; } }
         internal static string LastMiss = "";
+        /// <summary>The saved grid map of a building template: an exact match first, then one of the same grid whose collider count differs; null when none (LastMiss says why).</summary>
         internal static TownBakeData Load(BuildingSpec spec, float margin, float cell)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             // exact maps first; then (WW) a map of the same grid whose collider count differs (loose / dynamic props counted
@@ -29,6 +32,7 @@ namespace WildWasteland.Modules.Towns
             var map = Load(spec, margin, cell, true);
             return map ?? Load(spec, margin, cell, false);
         }
+        /// <summary>Searches the embedded vanilla pack, then the plugin vanilla and custom map folders of the grid baker, for a map of spec's grid size.</summary>
         private static TownBakeData Load(BuildingSpec spec, float margin, float cell, bool strict)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             cell = Mathf.Max(cell, Mathf.Max(spec.HalfX * 2 + margin * 2, spec.HalfZ * 2 + margin * 2) / 600f);
@@ -49,6 +53,7 @@ namespace WildWasteland.Modules.Towns
             LastMiss = "wants " + w + "x" + h + " cells of " + cell.ToString("0.###") + " m, " + spec.ColliderCount + " colliders";
             return null;
         }
+        /// <summary>Reads one .wwnav map when its grid matches (and its collider count, when strict); throws on a corrupt map.</summary>
         private static TownBakeData Read(Stream stream, string source, BuildingSpec spec, int w, int h, float cell, float margin, bool strict)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             using (var r = new BinaryReader(stream))
@@ -73,15 +78,19 @@ namespace WildWasteland.Modules.Towns
                 return map;
             }
         }
+        /// <summary>Cell index of a template-local point, or -1 outside the grid.</summary>
         internal int Index(Vector3 local)
         {
             int x = Mathf.FloorToInt((local.x - Min.x) / Cell), z = Mathf.FloorToInt((local.z - Min.z) / Cell);
             return x < 0 || z < 0 || x >= W || z >= H ? -1 : z * W + x;
         }
+        /// <summary>Template-local centre of cell i at its floor height (0 without floor).</summary>
         internal Vector3 Point(int i)
         { return new Vector3(Min.x + (i % W + .5f) * Cell, float.IsNaN(Floor[i]) ? 0 : Floor[i], Min.z + (i / W + .5f) * Cell); }
+        /// <summary>True for a wall/rock cell or a walkable cell under a roof (dressing must not cover it).</summary>
         internal bool Protected(int i)
         { return i >= 0 && (Why[i] == 2 || Why[i] == 3 || (!float.IsNaN(Floor[i]) && Sky[i] == 0)); }
+        /// <summary>True when two neighbouring cells are joined by a walk or hop edge of the bake.</summary>
         internal bool Walk(int a, int b)
         {
             if (a < 0 || b < 0 || a >= Floor.Length || b >= Floor.Length || float.IsNaN(Floor[a]) || float.IsNaN(Floor[b])) return false;
@@ -92,6 +101,7 @@ namespace WildWasteland.Modules.Towns
             int k = dz == 0 ? 0 : dx == 0 ? 1 : dx > 0 ? 2 : 3;
             return (Edges[a] & (1 << k)) != 0 || (k < 2 && (Edges[a] & (1 << (k + 4))) != 0);
         }
+        /// <summary>Measures the building's entrance: a roofed walkable cell next to an outside sky cell reachable from the boundary with a clear way out (roofless ruins: a clear opening along the footprint); writes spec.Entry/Outward.</summary>
         internal bool FindEntry(BuildingSpec spec)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             // Exterior sky cells reachable from the map boundary, without crossing a wall or roof.
@@ -142,6 +152,7 @@ namespace WildWasteland.Modules.Towns
             if (float.IsNegativeInfinity(best)) return false;
             spec.Entry = entry; spec.Outward = normal; return true;
         }
+        /// <summary>True when a straight walk from a cell in direction leaves the grid without a blocked step.</summary>
         private bool RayOut(int start, Vector3 direction)
         {
             int previous = start; var p = Point(start);

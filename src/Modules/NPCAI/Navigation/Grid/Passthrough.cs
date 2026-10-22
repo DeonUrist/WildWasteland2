@@ -42,13 +42,16 @@ namespace WildWasteland.Modules.NPC
             foreach (var kv in _pairs) if (kv.Value.Key.Owner != null && kv.Value.Value.Owner != null) { try { Set(kv.Value.Key, kv.Value.Value, false); } catch (System.Exception) { } }
             _pairs.Clear(); _cols.Clear();
         }
+        /// <summary>Number of NPC pairs that currently walk through each other (debug page).</summary>
         internal static int Pairs { get { return _pairs.Count; } }
 
+        /// <summary>True while an NPC fights, searches, has a ghost or walks home (pairs are only made / kept while busy).</summary>
         private static bool Busy(Senses.Agent a)
         {
             return a.State != Senses.State.Idle || a.Target != null || a.Ghost != null || Idle.Busy(a.Owner);
         }
 
+        /// <summary>The NPC's solid colliders (cached per NPC).</summary>
         private static Collider[] Cols(Senses.Agent a)
         {
             Collider[] c;
@@ -63,12 +66,14 @@ namespace WildWasteland.Modules.NPC
             return c;
         }
 
+        /// <summary>Ignores (or restores) collisions between every solid collider of two NPCs.</summary>
         private static void Set(Senses.Agent a, Senses.Agent b, bool ignore)
         {
             var ca = Cols(a); var cb = Cols(b);
             for (int i = 0; i < ca.Length; i++) { var x = ca[i]; if (x == null) continue; for (int k = 0; k < cb.Length; k++) { var y = cb[k]; if (y != null) Physics.IgnoreCollision(x, y, ignore); } }
         }
 
+        /// <summary>Order-independent pair key of two instance ids.</summary>
         private static long Key(int a, int b) { if (a > b) { int t = a; a = b; b = t; } return ((long)a << 32) ^ (uint)b; }
 
         /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs "NPCAI.Passthrough".</summary>

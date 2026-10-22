@@ -8,6 +8,7 @@ namespace WildWasteland.Modules.Patrols
     internal static class TerrainWaypoints
     {
         private static readonly float[] Sides={-1400f,-1000f,-650f,-350f,-150f,0f,150f,350f,650f,1000f,1400f};
+        /// <summary>Long foot route from a to b over the elevation grids: a dynamic-programming pick among lateral offsets and road hints per step (slopes, climbs and blocked boxes cost); falls back to RoadPlanner.Build without grids or route. roads flags the points taken from road hints.</summary>
         internal static Vector3[] Build(Vector3 a,Vector3 b,Vector3[][] hints,Bounds[] blocks,float influence,int seed,ElevationGrid[] grids,out bool[] roads)   // refs-ok: REFACTOR-REQUEST B08-3
         {
             if(grids.Length==0)return RoadPlanner.Build(a,b,hints,blocks,influence,seed,out roads);   // refs-ok: REFACTOR-REQUEST B08-3
@@ -55,8 +56,10 @@ namespace WildWasteland.Modules.Patrols
             for(int i=steps;i>=0;i--){route[i]=points[i,pick];roads[i]=onRoad[i,pick];pick=parent[i,pick];}
             return route;
         }
+        /// <summary>True when the flat point lies in one of the blocked boxes.</summary>
         private static bool Inside(Bounds[] blocks,Vector3 p)
         {p.y=0f;foreach(var box in blocks)if(box.Contains(p))return true;return false;}
+        /// <summary>Cost of one leg: its length, crossing blocked boxes (infinite), climbing above the a-b baseline, height changes and slope samples.</summary>
         private static float Leg(Vector3 a,Vector3 b,Vector3 origin,Vector3 destination,ElevationGrid[] grids,Bounds[] blocks)   // refs-ok: REFACTOR-REQUEST B08-3
         {
             var aa=a;var bb=b;aa.y=bb.y=0f;var delta=bb-aa;float length=delta.magnitude;

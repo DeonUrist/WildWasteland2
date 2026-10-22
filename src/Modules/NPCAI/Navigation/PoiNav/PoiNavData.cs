@@ -10,13 +10,15 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
-    // (WW) Pre-recorded POI navigation, one file per POI type, all positions POI-local (root.InverseTransformPoint):
-    //   nodes  - walkable points (~2 m apart) on every standable surface; Surface = connected walkable patch ("level"), Terrain = ground
-    //            nodes that are re-projected onto the real terrain per instance
-    //   edges  - straight walks between nodes of one surface
-    //   links  - traversals between surfaces: Ladder (From = foot of the ladder, To = platform, LineBottom/LineTop = the rung line),
-    //            Climb (From = below the ledge, To = on top) and Drop (jump down). Manual links come from the editor and survive rebakes;
-    //            Off links (also baked ones switched off in the editor) are kept but never used.
+    /// <summary>
+    /// (WW) Pre-recorded POI navigation, one file per POI type, all positions POI-local (root.InverseTransformPoint):
+    /// nodes  - walkable points (~2 m apart) on every standable surface; Surface = connected walkable patch ("level"), Terrain = ground
+    /// nodes that are re-projected onto the real terrain per instance
+    /// edges  - straight walks between nodes of one surface
+    /// links  - traversals between surfaces: Ladder (From = foot of the ladder, To = platform, LineBottom/LineTop = the rung line),
+    /// Climb (From = below the ledge, To = on top) and Drop (jump down). Manual links come from the editor and survive rebakes;
+    /// Off links (also baked ones switched off in the editor) are kept but never used.
+    /// </summary>
     internal enum PoiLinkKind { Ladder, Climb, Drop }
 
     internal sealed class PoiNavNode { public Vector3 Pos; public int Surface; public bool Terrain; }

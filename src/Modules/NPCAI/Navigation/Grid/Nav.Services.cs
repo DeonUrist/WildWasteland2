@@ -40,6 +40,7 @@ namespace WildWasteland.Modules.NPC
 
         // ------------------------------------------------------------------ waypoint providers (ex Harmony prefix/postfix on Nav.Next)
 
+        /// <summary>One registered waypoint provider with its id, order and owner.</summary>
         private sealed class WaypointEntry { internal int Id, Order; internal IModule Owner; internal IWaypointProvider Provider; }
         private static readonly List<WaypointEntry> _waypoints = new List<WaypointEntry>();
         private static int _nextWaypointId = 1;
@@ -110,6 +111,7 @@ namespace WildWasteland.Modules.NPC
 
         // ------------------------------------------------------------------ instance overlays (INavApi.RegisterOverlay)
 
+        /// <summary>One registered instance overlay with its id, owner and structure root.</summary>
         private sealed class OverlayEntry { internal int Id; internal IModule Owner; internal Transform Root; internal INavOverlay Overlay; }
         private static readonly List<OverlayEntry> _overlays = new List<OverlayEntry>();
         private static int _nextOverlayId = 1;

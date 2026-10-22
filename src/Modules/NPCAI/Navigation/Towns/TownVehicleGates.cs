@@ -19,7 +19,9 @@ namespace WildWasteland.Modules.Towns
         private readonly float[,] _cost;
         private readonly int[,] _next;
         private bool _ready;
+        /// <summary>All-pairs routes between the gate/contour nodes are built.</summary>
         internal bool Ready { get { return _ready; } }
+        /// <summary>Preparation progress 0..1.</summary>
         internal float Progress { get { return Mathf.Clamp01(_row / (2f * _nodes.Length)); } }
         private readonly float _margin;
         private readonly bool _walking;
@@ -27,7 +29,9 @@ namespace WildWasteland.Modules.Towns
         private int _row;
         private long _fromKey = long.MinValue, _toKey = long.MinValue;
         private float _fromAt, _toAt;
+        /// <summary>2 m cell key of a point (visibility memo).</summary>
         private static long Bucket(Vector3 p) { return ((long)Mathf.FloorToInt(p.x / 2f) << 32) ^ ((long)Mathf.FloorToInt(p.z / 2f) & 0xFFFFFFFFL); }
+        /// <summary>Gate and contour nodes of a walled town (walkers: inside/outside gate points and outline offsets; vehicles: the four frame corners).</summary>
         internal TownVehicleGates(TownPlan plan, bool walking = false, List<Bounds> props = null)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             _frame = TownPerimeter.Frame(plan); _walking = walking; _margin = walking ? .5f : 3f;   // refs-ok: REFACTOR-REQUEST B08-6
@@ -49,6 +53,7 @@ namespace WildWasteland.Modules.Towns
             if (!walking)
             { _nodes = new Vector3[4]; for (int i = 0; i < 4; i++) _nodes[i] = TownPerimeter.Corner(_frame, i, 20f); }   // refs-ok: REFACTOR-REQUEST B08-6
         }
+        /// <summary>True when a straight segment crosses no wall (with margin), prop and, for vehicles, no building or frame.</summary>
         private bool Clear(Vector3 a, Vector3 b)
         {
             if (!_walking && CrossesFrame(a, b)) return false;
@@ -62,12 +67,14 @@ namespace WildWasteland.Modules.Towns
             }
             return true;
         }
+        /// <summary>True when a segment enters the wall frame (+6 m).</summary>
         private bool CrossesFrame(Vector3 a, Vector3 b)
         {
             float lo = 0, hi = 1;
             return TownPerimeter.Clip(a.x - _frame.center.x, b.x - a.x, _frame.extents.x + 6f, ref lo, ref hi)   // refs-ok: REFACTOR-REQUEST B08-6
                 && TownPerimeter.Clip(a.z - _frame.center.z, b.z - a.z, _frame.extents.z + 6f, ref lo, ref hi);   // refs-ok: REFACTOR-REQUEST B08-6
         }
+        /// <summary>True when a segment crosses a dressing prop box.</summary>
         private bool Props(Vector3 a, Vector3 b)
         {
             foreach (var box in _props)
@@ -78,6 +85,7 @@ namespace WildWasteland.Modules.Towns
             }
             return false;
         }
+        /// <summary>One row of visibility, then one Floyd-Warshall pass per call; false when ready.</summary>
         internal bool Step()
         {
             if (_ready) return false;
@@ -96,6 +104,7 @@ namespace WildWasteland.Modules.Towns
             }
             _ready = ++_row >= _nodes.Length * 2; return true;
         }
+        /// <summary>Next node from a toward b when the straight way is blocked; hold = wait (not ready / no clear node).</summary>
         internal bool Waypoint(Vector3 a, Vector3 b, out Vector3 point, out bool hold)
         {
             point = b; hold = false;
