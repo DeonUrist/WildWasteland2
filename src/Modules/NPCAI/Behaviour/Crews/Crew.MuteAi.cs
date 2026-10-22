@@ -43,7 +43,7 @@ namespace WildWasteland.Modules.Patrols
         {
             if (_driver == null) return;
             if (_driverFsms == null || _driverFsmsOf != _driver) { _driverFsms = _driver.GetComponents<PlayMakerFSM>(); _driverFsmsOf = _driver; }
-            MuteAi(_driverFsms, Marker?.SetupOnly!=true && _driver.GetComponent<PassengerGuard>() != null ? PassengerGuard.CombatFsms : null);
+            MuteAi(_driverFsms, Marker?.SetupOnly!=true && _driver.GetComponent<PassengerGuard>() != null ? PassengerGuard.CombatFsms : null);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         }
     }
 }

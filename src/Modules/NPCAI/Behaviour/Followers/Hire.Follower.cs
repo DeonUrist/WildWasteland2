@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.Quests
                 if (log) calmFast = Time.time + 20f;
                 bool did = false;
                 if (Game.IsPlayerEnemy(npc) && Game.SetPlayerEnemy(npc, false)) did = true;
-                foreach (PlayMakerFSM f in QuestWorld.Fsms(npc))
+                foreach (PlayMakerFSM f in NpcWorld.Fsms(npc))
                 {
                     if (f == null || (f.FsmName != "Detection" && f.FsmName != "Attack")) continue;
                     FsmGameObject v = f.FsmVariables.GetFsmGameObject("detectedObj");
@@ -91,14 +91,16 @@ namespace WildWasteland.Modules.Quests
             if (npc == null) return;
             try
             {
-                foreach (Component c in npc.GetComponents<Component>())
+                var release = ModApi.Get<IFollowerRelease>();
+                if (release != null) release.Release(npc);      // Patrols removes the crew / seat components it added (A8-8)
+                else foreach (Component c in npc.GetComponents<Component>())
                 {
                     if (c == null) continue;
                     string tn = c.GetType().FullName;
-                    if (tn == "WildWasteland.Modules.Patrols.PassengerGuard" || tn == "WildWasteland.Modules.Patrols.Pose") UnityEngine.Object.Destroy(c);
+                    if (tn.EndsWith(".Patrols.PassengerGuard", StringComparison.Ordinal) || tn.EndsWith(".Patrols.Pose", StringComparison.Ordinal)) UnityEngine.Object.Destroy(c);   // refs-ok: REFACTOR-REQUEST B07-14 (fallback until Patrols provides IFollowerRelease)
                 }
                 foreach (var kv in fsmSnap) if (kv.Key != null) kv.Key.enabled = kv.Value;
-                foreach (PlayMakerFSM f in QuestWorld.Fsms(npc))
+                foreach (PlayMakerFSM f in NpcWorld.Fsms(npc))
                 {
                     if (f == null) continue;
                     if (f.FsmName == "Detection" || f.FsmName == "Attack")
@@ -124,7 +126,7 @@ namespace WildWasteland.Modules.Quests
         {
             Transform best = null;
             float bd = float.MaxValue;
-            var all = QuestWorld.People;
+            var all = NpcWorld.People;
             if (all == null) return null;
             for (int i = 0; i < all.Count; i++)
             {
@@ -217,7 +219,7 @@ namespace WildWasteland.Modules.Quests
             try
             {
                 PlayMakerFSM atk = null, det = null, dr = null, raw = null;
-                foreach (PlayMakerFSM f in QuestWorld.Fsms(npc))
+                foreach (PlayMakerFSM f in NpcWorld.Fsms(npc))
                 {
                     if (f == null) continue;
                     if (f.FsmName == "Attack") atk = f; else if (f.FsmName == "Detection") det = f; else if (f.FsmName == "Damage Ranged") dr = f; else if (f.FsmName == "RangedAttackWait") raw = f;
@@ -253,7 +255,7 @@ namespace WildWasteland.Modules.Quests
             if (target == null) { footSince = -1f; EndFootShot(); return; }
             if (!Alive(target)) { target = null; footSince = -1f; EndFootShot(); return; }
             if (footSince < 0f) { footSince = now; footShotAt = now; }
-            foreach (PlayMakerFSM f in QuestWorld.Fsms(npc))
+            foreach (PlayMakerFSM f in NpcWorld.Fsms(npc))
             {
                 if (f == null || !f.enabled) continue;
                 string st = f.ActiveStateName;
@@ -330,7 +332,7 @@ namespace WildWasteland.Modules.Quests
                 Vector3 d = to - from; float len = d.magnitude;
                 if (len < 0.5f) return true;
                 Transform troot = target.transform.root;
-                foreach (RaycastHit h in QuestWorld.RaycastAll(from, d / len, len))
+                foreach (RaycastHit h in NpcWorld.RaycastAll(from, d / len, len))
                 {
                     if (h.collider == null || h.collider.isTrigger) continue;
                     Transform t = h.collider.transform;
@@ -349,7 +351,7 @@ namespace WildWasteland.Modules.Quests
 
         static bool Hostile(GameObject go)
         {
-            PlayMakerFSM[] fsms = QuestWorld.Fsms(go);
+            PlayMakerFSM[] fsms = NpcWorld.Fsms(go);
             for (int i = 0; i < fsms.Length; i++)
                 if (fsms[i] != null && fsms[i].FsmName == "PlayerIsEnemy") return fsms[i].ActiveStateName == "PlayerEnemy";
             return true;
@@ -387,7 +389,7 @@ namespace WildWasteland.Modules.Quests
             if (target != null && !hurt) return;
             float radius = hurt ? 55f : 10f;
             if (mounted && guardComp != null) radius = PatrolShootDistance();          // in the car: only what Apocapatrol's gunner could shoot at
-            List<EnemyInfo> foes = Game.FindEnemies(pl.position, radius);
+            List<EnemyInfo> foes = Game.FindEnemies(pl.position, radius);   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
             bool shooter = shootFromCar.Value && IsRangedNpc(npc);
             GameObject best = null;
             float bd = float.MaxValue;
@@ -484,7 +486,7 @@ namespace WildWasteland.Modules.Quests
                     Vector3 dir = Quaternion.Euler(0f, a * 45f, 0f) * pl.right;
                     Vector3 p = pl.position + dir * radii[r];
                     // from well above, so a rise in the ground cannot hide the surface; the first surface the NPC can actually stand on
-                    RaycastHit[] hits = QuestWorld.RaycastAll(new Vector3(p.x, pl.position.y + 40f, p.z), Vector3.down, 80f, ~0, QueryTriggerInteraction.Ignore);
+                    RaycastHit[] hits = NpcWorld.RaycastAll(new Vector3(p.x, pl.position.y + 40f, p.z), Vector3.down, 80f, ~0, QueryTriggerInteraction.Ignore);
                     Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance));
                     for (int i = 0; i < hits.Length; i++)
                     {
@@ -555,7 +557,7 @@ namespace WildWasteland.Modules.Quests
 
         static bool RangedUncached(GameObject go)
         {
-            foreach (PlayMakerFSM f in QuestWorld.Fsms(go))
+            foreach (PlayMakerFSM f in NpcWorld.Fsms(go))
                 if (f != null && (f.FsmName == "RangedAttackWait" || f.FsmName == "Damage Ranged")) return true;
             if (FindDeep(go.transform, "AttackRaycast_Ranged") != null) return true;
             return NamedRanged(go);

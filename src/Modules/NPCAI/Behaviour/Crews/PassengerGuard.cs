@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.Patrols
         private GameObject[] _meleeWeapons;
         private Renderer[] _meleeRenderers = new Renderer[0];
         private Collider[] _meleeColliders = new Collider[0];
-        private Pose _pose;
+        private Pose _pose;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         private bool _rangedPrefab, _ranged, _targetDiagnosticLogged, _targetAcquired;
         // target sources, resolved once by reflection (was: every frame): FsmGameObject variables and action fields whose
         // name suggests a target, with their score
@@ -84,14 +84,14 @@ namespace WildWasteland.Modules.Patrols
         // a human turret gunner (2.2.0) also needs [Combat] HumanTurrets
         private bool _turret; private float _turretArc;   // arc 0 = all around (roof); a motorcycle seat: BikeArc
         // Perf: verdict + car marker cached for 0.25 s (random first phase per guard), was ~8 GetComponent + journey scan per frame
-        private float _nextCombatCheck; private bool _combatAllowed, _combatPhased; private PatrolMarker _marker;
+        private float _nextCombatCheck; private bool _combatAllowed, _combatPhased; private PatrolMarker _marker;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         private bool CombatAllowed
         {
             get
             {
                 if (Time.time < _nextCombatCheck) return _combatAllowed;
                 _nextCombatCheck = Time.time + (_combatPhased ? 0.25f : 0.25f * UnityEngine.Random.value); _combatPhased = true;
-                _marker = _car != null ? _car.GetComponent<PatrolMarker>() : null;
+                _marker = _car != null ? _car.GetComponent<PatrolMarker>() : null;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
                 _combatAllowed = CombatAllowedNow; return _combatAllowed;
             }
         }
@@ -174,7 +174,7 @@ namespace WildWasteland.Modules.Patrols
             if (passenger == null) return false;
             string name = passenger.name;
             int suffix = name.IndexOf('('); if (suffix >= 0) name = name.Substring(0, suffix);
-            name = CrewAppearance.BasePrefab(name);
+            name = CrewAppearance.BasePrefab(name);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
             if (Array.FindIndex(RangedHumans, n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase)) < 0) return false;
             bool wait = Array.Exists(passenger.GetComponents<PlayMakerFSM>(), f => f.FsmName == "RangedAttackWait");
             return wait && Patrol.FindChild(passenger.transform, "AttackRaycast_Ranged") != null;
@@ -203,7 +203,7 @@ namespace WildWasteland.Modules.Patrols
 
             GameObject target = _questFollower ? _questTarget : _marker!=null?TrafficFactions.ForCar(_car,_marker):FindVanillaTarget();
             if(_targetVars!=null)for(int i=0;i<_targetVars.Length;i++)_targetVars[i].Value=target;
-            if (_turret && target != null && PlayerRef.Player != null && target == PlayerRef.Player.gameObject && PlayerRef.GodMode) target = null;   // a human turret leaves a god-mode player alone
+            if (_turret && target != null && Core.PlayerState.Transform != null && target == Core.PlayerState.Transform.gameObject && Core.PlayerState.GodMode) target = null;   // a human turret leaves a god-mode player alone
             Vector3 aimPoint = Vector3.zero;
             if (target != null) { _targetAcquired = true; aimPoint = AimPoint(target); }
             if (Time.time >= _nextFireCheck || target == null || target != _fireTarget)
@@ -224,7 +224,7 @@ namespace WildWasteland.Modules.Patrols
             if (_questFollower && Time.time < _questBlockedUntil) _canFire = false;
             bool inArc = _canFire;   // held for the interval (the aim itself still follows the target every frame)
             // awareness handover at dismount (CrewReturn): this crew is engaging the player
-            if (inArc && _marker != null && !_questFollower && target != null) { var pl = PlayerRef.Player; if (pl != null && ReferenceEquals(target, pl.gameObject)) _marker.PlayerContactAt = Time.time; }
+            if (inArc && _marker != null && !_questFollower && target != null) { var pl = Core.PlayerState.Transform; if (pl != null && ReferenceEquals(target, pl.gameObject)) _marker.PlayerContactAt = Time.time; }
 
             if (_driverMode)
             {

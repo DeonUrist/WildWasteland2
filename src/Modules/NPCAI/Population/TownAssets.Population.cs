@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.Towns
     /// </summary>
     internal sealed partial class TownAssets
     {
-        internal readonly Dictionary<TownFaction, List<GameObject>> Population = new Dictionary<TownFaction, List<GameObject>>();
+        internal readonly Dictionary<TownFaction, List<GameObject>> Population = new Dictionary<TownFaction, List<GameObject>>();   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         internal readonly List<GameObject> Hounds = new List<GameObject>();
         private readonly Dictionary<GameObject, bool> _bosses = new Dictionary<GameObject, bool>();
         internal bool IsBoss(GameObject prefab)
@@ -32,20 +32,20 @@ namespace WildWasteland.Modules.Towns
                 if (proxy.preFillGameObjectList != null) foreach (var prefab in proxy.preFillGameObjectList)
                 {
                     if (prefab == null || IsBoss(prefab)) continue;
-                    TownFaction faction;
-                    if (prefab.CompareTag("Mutant")) faction = TownFaction.Mutants;
-                    else if (prefab.CompareTag("Carnivore") || prefab.CompareTag("Herbivore")) faction = TownFaction.Animals;
-                    else if (prefab.CompareTag("Scrapyard")) faction = TownFaction.Scrapyard;
-                    else if (prefab.CompareTag("Coyotes")) faction = TownFaction.Coyotes;
+                    TownFaction faction;   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
+                    if (prefab.CompareTag("Mutant")) faction = TownFaction.Mutants;   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
+                    else if (prefab.CompareTag("Carnivore") || prefab.CompareTag("Herbivore")) faction = TownFaction.Animals;   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
+                    else if (prefab.CompareTag("Scrapyard")) faction = TownFaction.Scrapyard;   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
+                    else if (prefab.CompareTag("Coyotes")) faction = TownFaction.Coyotes;   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
                     else continue;
                     NativePoiPopulation.Catalog(prefab, faction.ToString());
-                    if (faction == TownFaction.Scrapyard || faction == TownFaction.Coyotes)
+                    if (faction == TownFaction.Scrapyard || faction == TownFaction.Coyotes)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
                     {
                         // Keep accompanying Yard Hounds separate so a base cannot roll only dogs.
                         var animator = prefab.GetComponentInChildren<Animator>(true);
                         if (animator == null || animator.avatar == null || !animator.avatar.isHuman)
                         {
-                            if (faction == TownFaction.Scrapyard && prefab.name == "Yard Hound" && !Hounds.Contains(prefab)) Hounds.Add(prefab);
+                            if (faction == TownFaction.Scrapyard && prefab.name == "Yard Hound" && !Hounds.Contains(prefab)) Hounds.Add(prefab);   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
                             continue;
                         }
                     }

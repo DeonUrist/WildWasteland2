@@ -74,7 +74,8 @@ namespace WildWasteland.Modules.NPCAI
             InstallHooks();
             InstallPatches();
             SeatedLosGuard.Install(this);                  // seated crews' target-less LOS actions (ex Patrols; after Senses on the same dispatchers)
-            Bosses.Install(this);                          // human boss health: FsmIndex "BossUI" tracking (ex Guns entry)
+            Bosses.Install(this);
+            NpcWorld.Install(this);                        // Health / ID FSM tracking for the follower and walker code (ex Quests QuestWorld)                          // human boss health: FsmIndex "BossUI" tracking (ex Guns entry)
             InteriorPopulation.Install(this);              // interior / native-POI population rules (ex Towns entry): hooks + jobs
 
             // the old NPCAI.Runner, in its order (load-bearing: Brain/Idle body hand-over, DogAnimations restore in Update / sample in LateUpdate)
@@ -141,7 +142,7 @@ namespace WildWasteland.Modules.NPCAI
         {
             Aim.OnSceneLoaded(); Brain.OnSceneLoaded(); Senses.OnSceneLoaded(); Idle.OnSceneLoaded();
             Burrow.OnSceneLoaded(); Pounce.OnSceneLoaded(); Webs.OnSceneLoaded(); Nests.OnSceneLoaded(); Ambush.OnSceneLoaded(); DogBite.OnSceneLoaded();
-            Bosses.OnSceneLoaded();
+            Bosses.OnSceneLoaded(); NpcWorld.Clear();
         }
 
         /// <summary>Scene load: every behaviour registry reset, then the Navigation part.</summary>

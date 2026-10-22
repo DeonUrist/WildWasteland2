@@ -57,7 +57,7 @@ namespace WildWasteland.Modules.NPC
             public object Body; public float RigTried; public bool Strafing, RigQueued;     // (1.2.0) this gunman's Apocaplayer ModAPI character (ApBody): the player's clips and logic
             public int ReloadRounds; public bool ReloadShown, Cocks, WasBurst;     // (1.2.0) one-round-at-a-time reloads, the reload shown on the body, pump / bolt guns, the last frame's burst
             public Transform Weapon; public string WeaponKey;                       // the gun model in its hand and the pose table's key for it
-            public int Shots, Magazine; public bool Reloading; public float ReloadUntil, ReloadLen; public int ReloadSoundsPlayed;   // (1.1.2) the magazine: shots since the last reload, its size (0 = never reloads)
+            public int Shots, Magazine; public bool Reloading; public float ReloadUntil, ReloadLen; public int ReloadSoundsPlayed;   // (1.1.2) the magazine: shots since the last reload, its size (0 = never reloads)   // refs-ok: field name, not the Gunplay type
             public bool WeaponDirty; public float SpeedCap;                         // the game toggled something of this NPC (its gun models) -> re-find the gun; max ground speed for the clip that plays (no sliding)
             public float StrafeDev;                                                  // (1.1.1) chasing with clips: the heading's angle off the facing when the body keeps facing the target and the legs strafe (0 = turn as usual)
             public bool Crouched; public float Drop;
@@ -126,7 +126,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly float[] _scores = new float[32];
         private static readonly float[] _blocks = new float[32];
 
-        public static void OnSceneLoaded() { ClearRigs(); foreach (var kv in _npcs) if (kv.Value.Body != null) ApBody.Detach(kv.Value.Body); _npcs.Clear(); _ignored.Clear(); _arrive.Clear(); _active = 0; ReloadSounds.Clear(); _pending.Clear(); _pendingAt.Clear(); ApBody.Reset(); }
+        public static void OnSceneLoaded() { ClearRigs(); foreach (var kv in _npcs) if (kv.Value.Body != null) ApBody.Detach(kv.Value.Body); _npcs.Clear(); _ignored.Clear(); _arrive.Clear(); _active = 0; ReloadSounds.Clear(); _pending.Clear(); _pendingAt.Clear(); ApBody.Reset(); }   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
 
         // (WW) module shutdown: every brain lets go (the game's pedal, facing, Unstuck and animation again), kneeling gunmen stand up, frozen
         // aim poses play on, bodies animated by the player animation framework are handed back
@@ -136,11 +136,11 @@ namespace WildWasteland.Modules.NPC
             foreach (var kv in _npcs)
             {
                 var n = kv.Value;
-                if (n.Owner == null) { if (n.Body != null) { try { ApBody.Detach(n.Body); } catch (Exception) { } n.Body = null; } continue; }
+                if (n.Owner == null) { if (n.Body != null) { try { ApBody.Detach(n.Body); } catch (Exception) { } n.Body = null; } continue; }   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
                 try { if (n.Mode != Mode.Off) SetMode(n, Mode.Off, "module off"); } catch (Exception e) { NpcaiRuntime.Warn("Brain shutdown of " + n.Owner.name + ": " + e.Message); }
                 try { Unfreeze(n); Crouch(n, false); if (n.Anim != null && n.Anim.speed == 0f) n.Anim.speed = 1f; } catch (Exception) { }
                 n.Halted = false; n.Travel = false; n.BoostUntil = 0f;
-                if (n.Body != null) { try { ApBody.Detach(n.Body); } catch (Exception) { } n.Body = null; }
+                if (n.Body != null) { try { ApBody.Detach(n.Body); } catch (Exception) { } n.Body = null; }   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
             }
             _npcs.Clear(); _pending.Clear(); _pendingAt.Clear(); _ignored.Clear();
         }
@@ -179,7 +179,7 @@ namespace WildWasteland.Modules.NPC
                 foreach (var kv in _npcs)
                 {
                     var np = kv.Value;
-                    if (np.Owner == null) { if (np.Body != null) ApBody.Detach(np.Body); _dead.Add(kv.Key); }
+                    if (np.Owner == null) { if (np.Body != null) ApBody.Detach(np.Body); _dead.Add(kv.Key); }   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
                     else if (np.Mode != Mode.Off) n++;
                     if (np.Owner != null && cam != null)
                     {
@@ -192,7 +192,7 @@ namespace WildWasteland.Modules.NPC
                 _active = n;
                 _interval = (NpcaiSettings.ScaleWithActors.Value ? (n <= 5 ? 0.1f : n <= 10 ? 0.2f : n <= 20 ? 0.3f : 0.5f) : 0.1f) * R;
             }
-            if (ApBody.Available) RegisterPending();        // spawned gunmen get their rig before they ever engage
+            if (ApBody.Available) RegisterPending();        // spawned gunmen get their rig before they ever engage   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
             bool on = On;
             float turn = Mathf.Max(10f, NpcaiSettings.TurnRate.Value) * dt;
             // (perf) per-frame think cap: the engaged NPCs' average thinks per frame + 1; one over the cap keeps its overdue NextTick and
@@ -206,7 +206,7 @@ namespace WildWasteland.Modules.NPC
                 if (n.FollowerDriven) continue;
                 // #63: a seated simple convoy bandit is skipped here, before Drive() could suspend its body; one registered in the moment it was
                 // spawned (before Patrols seated it) kept the player animation framework on, which then animated the car's motion as a run
-                if(SimpleBandits.Has(n.Owner)&&!SimpleBandits.Fighting(n.Owner)){if(n.Body!=null&&!ApBody.Suspended(n.Body))ApBody.Suspend(n.Body,true);continue;}
+                if(SimpleBandits.Has(n.Owner)&&!SimpleBandits.Fighting(n.Owner)){if(n.Body!=null&&!ApBody.Suspended(n.Body))ApBody.Suspend(n.Body,true);continue;}   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
                 if (!on)
                 {
                     if (n.Mode != Mode.Off) SetMode(n, Mode.Off, "brain off");
@@ -223,7 +223,7 @@ namespace WildWasteland.Modules.NPC
                 if (now < n.FrightUntil && n.T.parent == null && (n.HpVar == null || n.HpVar.Value >= 1f)) engaged = true;
                 if (n.Ranged && n.Body == null && now < n.MadeAt + 60f) TryRig(n);
                 if (n.Body != null) Drive(n, state ?? AttackState(n), now, dt);                     // (1.2.0) Apocaplayer's ModAPI: this frame's situation, engaged or not
-                if (n.Reloading) ReloadSounds.Tick(n, now);                                           // (1.1.2) the reload's sounds, rig or not
+                if (n.Reloading) ReloadSounds.Tick(n, now);                                           // (1.1.2) the reload's sounds, rig or not   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
                 if (!engaged)
                 {
                     n.WasEngaged = false;
@@ -410,7 +410,7 @@ namespace WildWasteland.Modules.NPC
                     if (lost) { SetMode(n, Mode.Chase, !WildWasteland.Core.Log.L2 ? "" : los ? "target at " + d.ToString("0") + " m" : "no line of sight"); }
                     else if (now >= n.NextRecheck)
                     {
-                        n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;
+                        n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;   // refs-ok: own type NPC.Aim (the Brain.Aim method hides the simple name)
                         // advances more when the target has not fired for 8 s (reloading, hiding), never when hurt (below CoverBelow)
                         float adv = NpcaiSettings.AdvanceChance.Value;
                         if (Time.time - Senses.LastPlayerShotAt > 8f) adv *= 2.5f;
@@ -434,7 +434,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 else if (n.Mode == Mode.Chase && good && n.LosLooks >= 2)        // two thinks in a row: a fence bar flickering across the line doesn't stop and start the hold
                 {
-                    n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;
+                    n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;   // refs-ok: own type NPC.Aim (the Brain.Aim method hides the simple name)
                     SetMode(n, Mode.Hold, !WildWasteland.Core.Log.L2 ? "" : "line of sight at " + d.ToString("0") + " m (engages within " + engage.ToString("0") + ")");
                     return;
                 }
@@ -565,7 +565,7 @@ namespace WildWasteland.Modules.NPC
             n.NextDogCoverCheck = now + .5f;
             var agent = Senses.AgentFor(n.Owner);
             if (agent == null || !agent.Human || !agent.Hostile.Contains("Player") || (agent.State != Senses.State.Combat && agent.State != Senses.State.Hide)) return;
-            var threat = DogCompanionCompat.CloseThreat(n.Owner, 3f);
+            var threat = DogCompanionCompat.CloseThreat(n.Owner, 3f);   // refs-ok: REFACTOR-REQUEST B07-11 (Dog Companion threat query)
             if (threat == null) return;
             foreach (var fsm in n.Owner.GetComponents<PlayMakerFSM>()) if (fsm.FsmName == "BossUI") return;
             Vector3 dogPos = threat.transform.position, spot = Vector3.zero;
@@ -1272,7 +1272,7 @@ namespace WildWasteland.Modules.NPC
             var target = n.Target != null ? n.Target.Value : null;
             if (n.Ranged && !n.ToGhost && target != null && n.Dist <= WeaponRanges.RangeOf(n.Kind) && LineOfSight(n, target, target.transform.position))
             {
-                n.NextRecheck = now + global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax * R;
+                n.NextRecheck = now + global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax * R;   // refs-ok: own type NPC.Aim (the Brain.Aim method hides the simple name)
                 SetMode(n, Mode.Hold, "stuck, shoots from here");
                 return;
             }
@@ -1314,7 +1314,7 @@ namespace WildWasteland.Modules.NPC
             if (Physics.Raycast(knee, fwd, reach + 0.2f, PathMask, QueryTriggerInteraction.Ignore)) return false;      // something higher: not a hop
             n.LastHop = now;
             n.Rb.AddForce(Vector3.up * 3.2f + fwd * 1.5f, ForceMode.VelocityChange);
-            if (n.Body != null && !ApBody.Suspended(n.Body)) ApBody.Jump(n.Body);
+            if (n.Body != null && !ApBody.Suspended(n.Body)) ApBody.Jump(n.Body);   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " hops over a low edge (" + h.collider.name + ")");
             return true;
         }

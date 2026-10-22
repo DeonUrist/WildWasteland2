@@ -384,7 +384,7 @@ namespace WildWasteland.Modules.NPC
             if (a.CaveWeb) { if ((tp - a.T.position).sqrMagnitude > 9f) return false; range = Mathf.Max(range, 3f); }
             // (WW) footsteps: the player walking within [Detection] FootstepRadius is heard whatever way the NPC faces and whatever the light,
             // as long as the usual sight lines are clear (the same obstruction check: a wall still hides him)
-            bool steps = isPlayer && _playerMoving && d <= NpcaiSettings.FootstepRadius.Value * (WeaponsPackCompat.ChainsawDrawn ? 3f : 1f) && !a.CaveWeb;
+            bool steps = isPlayer && _playerMoving && d <= NpcaiSettings.FootstepRadius.Value * (WeaponsPackCompat.ChainsawDrawn ? 3f : 1f) && !a.CaveWeb;   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
             if (d > range && !steps) { if (tracked) a.SightMiss = "outside light/storm sight range"; return false; }
             if (!tracked && !steps && Vector3.Angle(a.T.forward, flat) > Mathf.Clamp(ConeOf(a), 10f, 360f) * 0.5f) return false;
             Transform troot = target.transform.root;

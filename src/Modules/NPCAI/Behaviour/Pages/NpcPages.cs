@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Baking", Nav.BakingText);
                 l.Value("Bake cost", F(Nav.MsPerCell, "0.000") + " ms per cell" + (Nav.Needed ? " (an NPC waits: x4 budget)" : Nav.Urgent ? " (player at it: x3 budget)" : ""));
                 l.Value("Idle controllers", I(Idle.Count) + " (" + I(Idle.Walking) + " walking)");
-                l.Value("Animation framework", ApBody.Available ? "in use (gunmen use the player's clips)" : "not available (game clips)");
+                l.Value("Animation framework", ApBody.Available ? "in use (gunmen use the player's clips)" : "not available (game clips)");   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
                 l.Value("Guns integration", Services.Guns != null ? (WeaponRanges.ProjectilesEnabled ? "Guns module, projectiles on" : "Guns module, vanilla hitscan") : "off (fallback ranges)");
 
             }));
@@ -115,7 +115,7 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Pouncers", I(Pounce.Count) + " (" + I(Pounce.Airborne) + " in the air)");
                 l.Value("Dogs", I(DogBite.Count) + " (" + I(DogAnimations.DogCount) + " animated)");
                 l.Value("Dog animation bundle", DogAnimations.BundleLoaded ? I(DogAnimations.ClipCount) + " clips (NPC/Models/npcai_dogs.bundle)" : "not loaded - procedural bite");
-                l.Value("Dog Companion", DogCompanionCompat.Present ? (NpcaiSettings.DogCompanionCompatEnabled.Value ? I(DogCompanionCompat.Count) + " companion(s) driven" : "installed, compatibility off (F6)") : "not installed");
+                l.Value("Dog Companion", DogCompanionCompat.Present ? (NpcaiSettings.DogCompanionCompatEnabled.Value ? I(DogCompanionCompat.Count) + " companion(s) driven" : "installed, compatibility off (F6)") : "not installed");   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
             }, NSec("Behaviour"), NSec("Burrow"), NSec("Hunt"), NSec("Ambush"), NSec("Pounce"), NSec("Dogs")));
 
             pages.Add(new LivePage(m, "Hazards (nests, webs, storms)", "Spider nests and their webs (built in slices while you are far away, layouts kept in config/WildWasteland/NPCAI/nest-layouts.txt) and sandstorms.", l =>

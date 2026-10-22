@@ -14,15 +14,15 @@ namespace WildWasteland.Modules.Quests
         public static List<string> FindNpcNames(string faction)
         {
             var names = new List<string>();
-            var all = QuestWorld.People;
+            var all = NpcWorld.People;
             if (all == null) return names;
-            string want = Util.Norm(faction);
+            string want = NpcWorld.Norm(faction);
             for (int i = 0; i < all.Count; i++)
             {
                 PlayMakerFSM f = all[i];
                 if (f == null || f.FsmName != "Health" || f.ActiveStateName != "health") continue;
                 GameObject go = f.gameObject;
-                if (go == null || !go.activeInHierarchy || Util.Norm(go.tag) != want) continue;
+                if (go == null || !go.activeInHierarchy || NpcWorld.Norm(go.tag) != want) continue;
                 names.Add(BaseName(go.name));
             }
             return names;
@@ -54,10 +54,10 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Living enemies (objects whose Health FSM is still in its "health" state) within radius of center.
-        public static List<EnemyInfo> FindEnemies(Vector3 center, float radius)
+        public static List<EnemyInfo> FindEnemies(Vector3 center, float radius)   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
         {
-            var list = new List<EnemyInfo>();
-            var all = QuestWorld.People;
+            var list = new List<EnemyInfo>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
+            var all = NpcWorld.People;
             if (all == null) return list;
             for (int i = 0; i < all.Count; i++)
             {
@@ -69,7 +69,7 @@ namespace WildWasteland.Modules.Quests
                 if (name.StartsWith("Player", StringComparison.OrdinalIgnoreCase) || name.EndsWith("_Dead", StringComparison.OrdinalIgnoreCase)) continue;
                 if (f.ActiveStateName != "health") continue;
                 if (HDist(go.transform.position, center) > radius) continue;
-                var e = new EnemyInfo();
+                var e = new EnemyInfo();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
                 e.Name = name;
                 e.Tag = go.tag;
                 e.Pos = go.transform.position;
@@ -91,7 +91,7 @@ namespace WildWasteland.Modules.Quests
             if (now - liveNamesAt < 1f && now >= liveNamesAt) return liveNames;
             liveNamesAt = now;
             liveNames.Clear();
-            var all = QuestWorld.People;
+            var all = NpcWorld.People;
             if (all == null) return liveNames;
             for (int i = 0; i < all.Count; i++)
             {
@@ -118,10 +118,10 @@ namespace WildWasteland.Modules.Quests
 
         // Everything alive and named like one of the keywords (NPCs and people-type enemies), found live through the
         // PlayMaker FSM list so NPCs that spawn later are picked up the next time this is called.
-        public static List<EnemyInfo> FindPeople(string[] keywords)
+        public static List<EnemyInfo> FindPeople(string[] keywords)   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
         {
-            var list = new List<EnemyInfo>();
-            var all = QuestWorld.People;
+            var list = new List<EnemyInfo>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
+            var all = NpcWorld.People;
             if (all == null || keywords == null) return list;
             var seen = new HashSet<int>();
             for (int i = 0; i < all.Count; i++)
@@ -132,11 +132,11 @@ namespace WildWasteland.Modules.Quests
                 if (go == null || !go.activeInHierarchy) continue;
                 string name = BaseName(go.name);
                 if (name.EndsWith("_Dead", StringComparison.OrdinalIgnoreCase)) continue;
-                string n = Util.Norm(name);
+                string n = NpcWorld.Norm(name);
                 bool match = false;
                 for (int k = 0; k < keywords.Length && !match; k++) if (keywords[k].Length > 0 && n.Contains(keywords[k])) match = true;
                 if (!match || !seen.Add(go.GetInstanceID())) continue;
-                var e = new EnemyInfo();
+                var e = new EnemyInfo();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
                 e.Name = name;
                 e.Tag = go.tag;
                 e.Pos = go.transform.position;
@@ -152,7 +152,7 @@ namespace WildWasteland.Modules.Quests
         public static List<GameObject> FindBodies(Vector3 center, float radius)
         {
             var list = new List<GameObject>();
-            var all = QuestWorld.People;
+            var all = NpcWorld.People;
             if (all == null) return list;
             var seen = new HashSet<int>();
             for (int i = 0; i < all.Count; i++)

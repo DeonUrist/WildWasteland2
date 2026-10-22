@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.Quests
         static readonly Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
 
         // walks that were saved with the quests and still have to be picked up again after a load
-        static readonly List<SavedWalk> pending = new List<SavedWalk>();
+        static readonly List<SavedWalk> pending = new List<SavedWalk>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
 
         static float pendingUntil, nextPending;
 
@@ -40,16 +40,16 @@ namespace WildWasteland.Modules.Quests
         static float settleUntil;
 
         // lines for the save: object name and origin-relative target of everybody still walking
-        public static List<SavedWalk> ActiveWalks()
+        public static List<SavedWalk> ActiveWalks()   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
         {
-            var res = new List<SavedWalk>();
+            var res = new List<SavedWalk>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
             for (int i = 0; i < walkers.Count; i++)
-                if (walkers[i].Go != null) res.Add(new SavedWalk { Name = walkers[i].Go.name, TargetRel = walkers[i].TargetRel, CampKey = walkers[i].CampKey ?? "" });
+                if (walkers[i].Go != null) res.Add(new SavedWalk { Name = walkers[i].Go.name, TargetRel = walkers[i].TargetRel, CampKey = walkers[i].CampKey ?? "" });   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
             for (int i = 0; i < pending.Count; i++) res.Add(pending[i]);
             return res;
         }
 
-        public static void RestoreWalks(List<SavedWalk> saved)
+        public static void RestoreWalks(List<SavedWalk> saved)   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
         {
             walkers.Clear();
             pending.Clear();
@@ -138,7 +138,7 @@ namespace WildWasteland.Modules.Quests
         // state), which stands in a T-pose and never moves, so those are never used.
         static bool Usable(GameObject go)
         {
-            PlayMakerFSM[] fsms = QuestWorld.Fsms(go);
+            PlayMakerFSM[] fsms = NpcWorld.Fsms(go);
             for (int i = 0; i < fsms.Length; i++) if (fsms[i] != null && fsms[i].FsmName == "Movement") return true;
             return false;
         }
@@ -152,7 +152,7 @@ namespace WildWasteland.Modules.Quests
             var res = new List<string>();
             for (int i = 0; i < names.Count; i++)
             {
-                string n = Util.Norm(names[i]);
+                string n = NpcWorld.Norm(names[i]);
                 bool skip = false;
                 for (int k = 0; k < NonFighters.Length && !skip; k++) if (n.Contains(NonFighters[k])) skip = true;
                 if (!skip) res.Add(names[i]);
@@ -179,7 +179,7 @@ namespace WildWasteland.Modules.Quests
         static GameObject ScanForPrefab(string name)
         {
             GameObject living = null;
-            var all = QuestWorld.Objects;
+            var all = QuestWorld.Objects;   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
             for (int i = 0; i < all.Count; i++)
             {
                 GameObject go = all[i];
@@ -203,7 +203,7 @@ namespace WildWasteland.Modules.Quests
 
         static PlayMakerFSM MoveFsm(GameObject go)
         {
-            PlayMakerFSM[] fsms = QuestWorld.Fsms(go);
+            PlayMakerFSM[] fsms = NpcWorld.Fsms(go);
             for (int i = 0; i < fsms.Length; i++) if (fsms[i] != null && fsms[i].FsmName == "Movement") return fsms[i];
             return null;
         }

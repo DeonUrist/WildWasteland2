@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.Patrols
             if(Time.time<_next)return;_next=Time.time+0.6f;Relations();if(transform.parent!=null)return;
             if(Health==null){Fs.Clear();GetComponents(Fs);foreach(var f in Fs)if(f.FsmName=="Health")Health=f.FsmVariables.GetFsmFloat("Health");Fs.Clear();}
             if(Health!=null&&Health.Value<=0f)return;
-            SimpleBanditBridge.Target(gameObject,TrafficFactions.FootTarget(Faction,transform.position));
+            SimpleBanditBridge.Target(gameObject,TrafficFactions.FootTarget(Faction,transform.position));   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         }
     }
 }

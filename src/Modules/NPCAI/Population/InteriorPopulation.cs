@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.Towns
     internal static class InteriorPopulation
     {
         private sealed class Location { internal Transform Root; internal readonly List<Group> Groups = new List<Group>(); internal bool Arrived; }
-        private sealed class Group { internal PlayMakerFSM Fsm; internal TownSite Town; internal PoiDressing.Site Dressing; internal Location Location; internal bool Started, Suspended; internal int Attempts; internal float StartedAt; internal FsmEvent Deferred; internal FsmState DeferredState; }
+        private sealed class Group { internal PlayMakerFSM Fsm; internal TownSite Town; internal PoiDressing.Site Dressing; internal Location Location; internal bool Started, Suspended; internal int Attempts; internal float StartedAt; internal FsmEvent Deferred; internal FsmState DeferredState; }   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         private static readonly Dictionary<object, Location> Locations = new Dictionary<object, Location>();
         private sealed class Member { internal GameObject Owner; internal FsmFloat Health; internal Senses.Agent Agent; internal string Name; }
         private static readonly Dictionary<PlayMakerFSM, Group> Groups = new Dictionary<PlayMakerFSM, Group>();
@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.Towns
             for (var t = f.transform; t != null; t = t.parent) if (NativePoiPopulation.TownBuilding(t)) return;
             Add(f, null);
         }
-        private static void Add(PlayMakerFSM f, TownSite town, Transform markerRoot = null)
+        private static void Add(PlayMakerFSM f, TownSite town, Transform markerRoot = null)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
             Transform root = town == null ? f.transform : town.Anchor;
             if (town == null) for (var t = f.transform.parent; t != null; t = t.parent)
@@ -100,12 +100,12 @@ namespace WildWasteland.Modules.Towns
 
         internal static void OwnMarker(PlayMakerFSM f, PoiDressing.Site site)
         { Add(f, site.Town, site.Town == null ? site.Root : null); Groups[f].Dressing = site; Groups[f].Suspended = true; f.enabled = false; }
-        internal static void OwnTown(TownSite site, int lot)
+        internal static void OwnTown(TownSite site, int lot)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
             for (int n = 0; n < site.Spawners[lot].Length; n++)
             {
                 var f = site.Spawners[lot][n];
-                if (f != null && site.Plan.Lots[lot].IsMerchant && site.Plan.Faction == TownFaction.Coyotes
+                if (f != null && site.Plan.Lots[lot].IsMerchant && site.Plan.Faction == TownFaction.Coyotes   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
                     && f.gameObject.name.StartsWith("CoyotesMerchantSpawn", StringComparison.Ordinal))
                 { Add(f, site); continue; } // Shopkeepers use the same native trigger sequence as town enemies.
                 if (f != null && f.gameObject.name.StartsWith("EnemySpawn", StringComparison.Ordinal)
@@ -147,7 +147,7 @@ namespace WildWasteland.Modules.Towns
             }
             return true;
         }
-        internal static bool TownReady(TownSite site)
+        internal static bool TownReady(TownSite site)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
             foreach (var group in Pending) if (group.Town == site && group.Fsm != null && Near(group.Fsm) && group.Fsm.gameObject.activeInHierarchy && (group.Fsm.enabled || group.Suspended) && Value(group.Fsm, "OnOff") == 0) return false;
             return true;

@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 to = point - origin;
             if (to.magnitude > d.Reach + .2f || Mathf.Abs(to.y) > 1.2f) return false;
             Vector3 planar = to; planar.y = 0f;
-            if (planar.sqrMagnitude > .01f && Vector3.Dot(d.Agent.T.forward, planar.normalized) < (d.Pose == Pose.RunningBite ? .65f : .45f)) return false;
+            if (planar.sqrMagnitude > .01f && Vector3.Dot(d.Agent.T.forward, planar.normalized) < (d.Pose == Pose.RunningBite ? .65f : .45f)) return false;   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation dog pose enum of the shared DogAnimations type)
             if (d.ReachLine == 0)
             {
                 RaycastHit hit;
@@ -80,7 +80,7 @@ namespace WildWasteland.Modules.NPC
         private static void StartAttack(Dog d, Fsm damage, bool running)
         {
             d.BiteTarget = d.Agent.Target; d.DamageFsm = damage; d.HitSent = false;
-            Switch(d, running ? Pose.RunningBite : Pose.Bite, running ? "MovingBite" : "Bite");
+            Switch(d, running ? Pose.RunningBite : Pose.Bite, running ? "MovingBite" : "Bite");   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation dog pose enum of the shared DogAnimations type)
             d.AttackRate = d.Clips[d.Playing].length / (running ? .70f : .48f);
             d.NextBite = Time.time + (running ? 1.02f : .58f) + UnityEngine.Random.Range(0f, .04f);
             if (d.Companion != null) d.Companion.SetCooldown(d.NextBite);
@@ -99,7 +99,7 @@ namespace WildWasteland.Modules.NPC
         private static void TryAttack(Dog d)
         {
             var a = d.Agent;
-            if (d.Pose != Pose.Locomotion || a.State != Senses.State.Combat || a.Target == null || Time.time < d.NextBite || !DamageReady(d)) return;
+            if (d.Pose != Pose.Locomotion || a.State != Senses.State.Combat || a.Target == null || Time.time < d.NextBite || !DamageReady(d)) return;   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation dog pose enum of the shared DogAnimations type)
             Vector3 to = TargetPoint(d, a.Target) - a.T.position; to.y = 0f;
             float distance = to.magnitude;
             var damage = d.Companion != null ? null : d.DamageComponent.Fsm;
@@ -127,7 +127,7 @@ namespace WildWasteland.Modules.NPC
             var fsm = __instance.Fsm; Dog d;
             if (fsm == null || fsm.Name != "Damage" || fsm.ActiveStateName != "attack" || fsm.GameObject == null || !Dogs.TryGetValue(fsm.GameObject.GetInstanceID(), out d) || !Eligible(d) || __instance.time == null) return;
             if (!d.OriginalWaits.ContainsKey(__instance)) d.OriginalWaits[__instance] = __instance.time.Value;
-            __instance.time.Value = d.Pose == Pose.RunningBite ? .48f : .32f;
+            __instance.time.Value = d.Pose == Pose.RunningBite ? .48f : .32f;   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation dog pose enum of the shared DogAnimations type)
         }
 
         /// <summary>Fsm.ProcessEvent prefix: native damage events of driven dogs only when the bite really connects.</summary>
@@ -137,11 +137,11 @@ namespace WildWasteland.Modules.NPC
             if (__instance == null || fsmEvent == null || fsmEvent.Name != "attack" || __instance.Name != "Damage" || __instance.GameObject == null) return true;
             Dog d;
             if (!Dogs.TryGetValue(__instance.GameObject.GetInstanceID(), out d) || !Eligible(d) || d.Committing) return true;
-            if (d.Pose == Pose.Bite || d.Pose == Pose.RunningBite || d.Pose == Pose.JumpAttack || d.Pose == Pose.LieDown || d.Pose == Pose.Rest || d.Pose == Pose.GetUp || Time.time < d.NextBite) return false;
+            if (d.Pose == Pose.Bite || d.Pose == Pose.RunningBite || d.Pose == Pose.JumpAttack || d.Pose == Pose.LieDown || d.Pose == Pose.Rest || d.Pose == Pose.GetUp || Time.time < d.NextBite) return false;   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation dog pose enum of the shared DogAnimations type)
             if (d.Agent.State != Senses.State.Combat || d.Agent.Target == null) return true;
             StartAttack(d, __instance, false);
             bool leap = jumping.Value && d.Clips.ContainsKey("JumpAttack") && Grounded(d) && !Senses.PlayerInCar && UnityEngine.Random.value < .25f;
-            if (leap) { Switch(d, Pose.JumpAttack, "JumpAttack"); d.NextBite = Time.time + d.Clips[d.Playing].length; }
+            if (leap) { Switch(d, Pose.JumpAttack, "JumpAttack"); d.NextBite = Time.time + d.Clips[d.Playing].length; }   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation dog pose enum of the shared DogAnimations type)
             if (leap)
             {
                 Vector3 direction = d.BiteTarget.transform.position - d.Agent.T.position; direction.y = 0f;

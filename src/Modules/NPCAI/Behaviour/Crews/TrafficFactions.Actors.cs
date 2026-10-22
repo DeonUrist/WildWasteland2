@@ -14,18 +14,18 @@ namespace WildWasteland.Modules.Patrols
         {
             if(npc==null)return;faction=Normalize(faction);npc.tag=faction;
             var actor=npc.GetComponent<TrafficActor>()??npc.AddComponent<TrafficActor>();actor.Faction=faction;
-            if(npc.transform.parent==null)SimpleBanditBridge.Target(npc,FootTarget(faction,npc.transform.position));
+            if(npc.transform.parent==null)SimpleBanditBridge.Target(npc,FootTarget(faction,npc.transform.position));   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         }
-        internal static void Crew(GameObject car,PatrolMarker marker)
+        internal static void Crew(GameObject car,PatrolMarker marker)   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         {
             Actor(marker.Driver,marker.Faction);Actor(marker.Passenger,marker.Faction);
             foreach(var rider in marker.Riders)Actor(rider,marker.Faction);
-            var battle=car.GetComponent<BattleCar>();if(battle!=null)foreach(var actor in car.GetComponentsInChildren<TrafficActor>(true)){actor.Battle=battle.Battle;actor.Side=battle.Side;}
+            var battle=car.GetComponent<BattleCar>();if(battle!=null)foreach(var actor in car.GetComponentsInChildren<TrafficActor>(true)){actor.Battle=battle.Battle;actor.Side=battle.Side;}   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         }
         internal static void Dismount(GameObject npc,GameObject car)
         {
-            Actor(npc,car!=null?car.GetComponent<PatrolMarker>()?.Faction:"Scrapyard");
-            var battle=car!=null?car.GetComponent<BattleCar>():null;var actor=npc!=null?npc.GetComponent<TrafficActor>():null;
+            Actor(npc,car!=null?car.GetComponent<PatrolMarker>()?.Faction:"Scrapyard");   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+            var battle=car!=null?car.GetComponent<BattleCar>():null;var actor=npc!=null?npc.GetComponent<TrafficActor>():null;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
             if(battle!=null&&actor!=null){actor.Battle=battle.Battle;actor.Side=battle.Side;}
         }
 
@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.Patrols
         {
             var best=NearestOpposed(faction,position);
             if(best!=null)return best;
-            var player=PlayerRef.Player;if(player==null||PlayerRef.GodMode||!PlayerHostile(faction))return null;
+            var player=Core.PlayerState.Transform;if(player==null||Core.PlayerState.GodMode||!PlayerHostile(faction))return null;
             float range=PatrolsModule.FootTargetRange!=null?PatrolsModule.FootTargetRange.Value:350f;
             return (player.position-position).sqrMagnitude<=range*range?player.gameObject:null;
         }
