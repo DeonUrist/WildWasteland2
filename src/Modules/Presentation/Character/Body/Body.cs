@@ -646,18 +646,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         /// <summary>A new upper-body avatar mask (body, head, arms, fingers, hand IK).</summary>
-        private static AvatarMask UpperMask()
-        {
-            var mask = new AvatarMask();
-            foreach (AvatarMaskBodyPart part in Enum.GetValues(typeof(AvatarMaskBodyPart)))
-            {
-                if (part == AvatarMaskBodyPart.LastBodyPart) continue;
-                bool upper = part == AvatarMaskBodyPart.Body || part == AvatarMaskBodyPart.Head || part == AvatarMaskBodyPart.LeftArm || part == AvatarMaskBodyPart.RightArm
-                          || part == AvatarMaskBodyPart.LeftFingers || part == AvatarMaskBodyPart.RightFingers || part == AvatarMaskBodyPart.LeftHandIK || part == AvatarMaskBodyPart.RightHandIK;
-                mask.SetHumanoidBodyPartActive(part, upper);
-            }
-            return mask;
-        }
+        private static AvatarMask UpperMask() { return CharacterRig.UpperMask(); }   // (B05) the shared, cached mask (was a new mask per body)
 
         /// <summary>standing still in third person her whole body follows the clip's root motion (the bundle puts a clip's sideways/forward motion in the root): the Idle's sway moves her hips and body while the feet stay planted. Moving / first person: back to the middle at once. A slow pull to the middle keeps a clip whose loop doesn't close from drifting away.</summary>
         private void Sway(View view, float dt)
@@ -776,17 +765,11 @@ namespace WildWasteland.Modules.PlayerBody
         {
             Transform t;
             if (!Bones.TryGetValue(bone, out t)) return;
-            var q = AnimSpace(t);
-            t.localRotation = t.localRotation * Quaternion.Inverse(q) * Quaternion.AngleAxis(deg, axisAnim) * q;
+            CharacterRig.Turn(t, _anim, axisAnim, deg);
         }
 
         /// <summary>Rotation of a bone in the Anim object's space.</summary>
-        private Quaternion AnimSpace(Transform t)
-        {
-            var q = Quaternion.identity;
-            for (var x = t; x != null && x != _anim; x = x.parent) q = x.localRotation * q;
-            return q;
-        }
+        private Quaternion AnimSpace(Transform t) { return CharacterRig.SpaceOf(t, _anim); }
 
         /// <summary>Lowers the hips by the crouch drop (or a jump drop) and bends hips, knees and ankles to keep the feet.</summary>
         private void Crouch(float k, float jumpDrop = -1f)

@@ -308,14 +308,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             Transform s, e, h;
             if (!Bones.TryGetValue(upper, out s) || !Bones.TryGetValue(lower, out e) || !Bones.TryGetValue(hand, out h)) return;
-            var hr = h.rotation;
-            var t = h.position + d;
-            Vector3 sp = s.position, ep = e.position, hp = h.position; double nx, ny, nz;   // (WW perf) no double[] per call
-            AimLift.Elbow(sp.x, sp.y, sp.z, ep.x, ep.y, ep.z, hp.x, hp.y, hp.z, t.x, t.y, t.z, out nx, out ny, out nz);
-            var E = new Vector3((float)nx, (float)ny, (float)nz);
-            s.rotation = Quaternion.FromToRotation(e.position - s.position, E - s.position) * s.rotation;
-            e.rotation = Quaternion.FromToRotation(h.position - e.position, t - e.position) * e.rotation;
-            h.rotation = hr;
+            CharacterRig.LiftArm(s, e, h, d);
         }
 
         private readonly float[] _armPose = new float[10];
@@ -356,12 +349,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float _pumpUntil; private bool _cocking, _pumpStart;
         private int _locoKind;
         /// <summary>Facing of the line a-b (pointing to her right) about her up axis, degrees.</summary>
-        private float YawIn(Transform a, Transform b)   // facing of the line a->b (pointing to her right) about her up axis, + = right
-        {
-            var s = _anim.InverseTransformDirection(b.position - a.position); s.y = 0f;
-            var f = Vector3.Cross(s, Vector3.up);
-            return Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
-        }
+        private float YawIn(Transform a, Transform b) { return CharacterRig.YawIn(_anim, a, b); }
         /// <summary>Turns the spine so the chest follows the shoulders' facing by <paramref name="follow"/> (LocoPlan.Twist).</summary>
         private void TwistSpine(float follow)
         {

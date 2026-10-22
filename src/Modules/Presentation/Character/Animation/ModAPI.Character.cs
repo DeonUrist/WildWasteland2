@@ -198,7 +198,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _up0 = Clip(_g, _fallback); _up0n = ""; _up1n = null;
                 _g.Connect(_up0, 0, _upMix, 0); _upMix.SetInputWeight(0, 1f); _upMix.SetInputWeight(1, 0f);
                 _g.Connect(_upMix, 0, _layers, 2); _layers.SetInputWeight(2, 0f);
-                _layers.SetLayerMaskFromAvatarMask(2u, UpperMask());
+                _layers.SetLayerMaskFromAvatarMask(2u, CharacterRig.UpperMask());
                 output.SetSourcePlayable(_layers);
                 _rootMotionWas = _a.applyRootMotion; _a.applyRootMotion = false;
                 // always evaluated while the player's clips drive it: the procedural turns after the Animator are applied to its pose of this
@@ -220,22 +220,6 @@ namespace WildWasteland.Modules.PlayerBody
                 p.SetApplyFootIK(false); p.SetSpeed(0);
                 return p;
             }
-            private static AvatarMask _mask;
-            /// <summary>The shared upper-body avatar mask (body, head, arms, fingers, hand IK).</summary>
-            private static AvatarMask UpperMask()
-            {
-                if (_mask != null) return _mask;
-                _mask = new AvatarMask { hideFlags = HideFlags.DontUnloadUnusedAsset };
-                foreach (AvatarMaskBodyPart part in Enum.GetValues(typeof(AvatarMaskBodyPart)))
-                {
-                    if (part == AvatarMaskBodyPart.LastBodyPart) continue;
-                    bool upper = part == AvatarMaskBodyPart.Body || part == AvatarMaskBodyPart.Head || part == AvatarMaskBodyPart.LeftArm || part == AvatarMaskBodyPart.RightArm
-                              || part == AvatarMaskBodyPart.LeftFingers || part == AvatarMaskBodyPart.RightFingers || part == AvatarMaskBodyPart.LeftHandIK || part == AvatarMaskBodyPart.RightHandIK;
-                    _mask.SetHumanoidBodyPartActive(part, upper);
-                }
-                return _mask;
-            }
-
             // ---- the UpperRig: an invisible, stripped copy of the character's Animator object (bones + Animator only), on its own manual graph
             private static GameObject _rigRoot;
             /// <summary>Builds the UpperRig: an invisible skeleton copy with its own manual graph whose upper-body bones are copied onto the character.</summary>
@@ -601,28 +585,16 @@ namespace WildWasteland.Modules.PlayerBody
                     if (Mathf.Abs(_armPose[i + 4]) > .01f) Turn(upper, Vector3.forward, _armPose[i + 4]);
                 }
             }
-            /// <summary>Moves a hand by <paramref name="d"/> with a two-bone elbow solve, keeping the hand's rotation.</summary>
+            /// <summary>Moves a hand by <paramref name="d"/> with the shared two-bone elbow solve, keeping the hand's rotation.</summary>
             private void LiftArm(HumanBodyBones upper, HumanBodyBones lower, HumanBodyBones hand, Vector3 d)
             {
                 Transform s, e, h;
                 if (!_b.TryGetValue(upper, out s) || !_b.TryGetValue(lower, out e) || !_b.TryGetValue(hand, out h)) return;
-                var hr = h.rotation;
-                var t = h.position + d;
-                Vector3 sp = s.position, ep = e.position, hp = h.position; double nx, ny, nz;   // (WW perf) no double[] per call
-                AimLift.Elbow(sp.x, sp.y, sp.z, ep.x, ep.y, ep.z, hp.x, hp.y, hp.z, t.x, t.y, t.z, out nx, out ny, out nz);
-                var E = new Vector3((float)nx, (float)ny, (float)nz);
-                s.rotation = Quaternion.FromToRotation(e.position - s.position, E - s.position) * s.rotation;
-                e.rotation = Quaternion.FromToRotation(h.position - e.position, t - e.position) * e.rotation;
-                h.rotation = hr;
+                CharacterRig.LiftArm(s, e, h, d);
             }
 
             /// <summary>Yaw of the line a-b in the character's frame (hips or shoulders direction), degrees.</summary>
-            private float YawIn(Transform a, Transform b)
-            {
-                var s = _root.InverseTransformDirection(b.position - a.position); s.y = 0f;
-                var f = Vector3.Cross(s, Vector3.up);
-                return Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
-            }
+            private float YawIn(Transform a, Transform b) { return CharacterRig.YawIn(_root, a, b); }
             /// <summary>Turns the spine so the chest follows the shoulders' facing by <paramref name="follow"/> (LocoPlan.Twist).</summary>
             private void TwistSpine(float follow)
             {
@@ -640,10 +612,7 @@ namespace WildWasteland.Modules.PlayerBody
             private void Turn(HumanBodyBones bone, Vector3 axis, float deg)
             {
                 Transform t;
-                if (!_b.TryGetValue(bone, out t)) return;
-                var q = Quaternion.identity;
-                for (var x = t; x != null && x != _root; x = x.parent) q = x.localRotation * q;
-                t.localRotation = t.localRotation * Quaternion.Inverse(q) * Quaternion.AngleAxis(deg, axis) * q;
+                if (_b.TryGetValue(bone, out t)) CharacterRig.Turn(t, _root, axis, deg);
             }
         }
     }
