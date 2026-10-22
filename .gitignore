@@ -1,0 +1,18 @@
+# Build output
+bin/
+obj/
+*.dll
+*.pdb
+*.user
+.vs/
+.vscode/
+*.swp
+# Game / BepInEx artefacts copied in for inspection
+LogOutput.log
+Player.log
+*.cfg
+fsm_dump.txt
+fsm_detail.txt
+# Raw profiler captures (keep summaries in docs/perf-log.md)
+verification/perf/raw/
+verification/runtime*/

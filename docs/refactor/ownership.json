@@ -1,0 +1,227 @@
+{
+ "common": [
+  "docs/refactor/reports/{package}.md",
+  "docs/refactor/requests/{package}.md",
+  "docs/refactor/state/{package}.md",
+  "docs/refactor/assets/{package}.tsv"
+ ],
+ "packages": {
+  "W0-A": [
+   "src/Core/ModApi/**",
+   "src/Core/Boot/**",
+   "src/Core/Modules/**",
+   "src/Core/Scheduling/**",
+   "src/Core/Harmony/**",
+   "src/Core/Log/**",
+   "src/Core/Persistence/**",
+   "src/Core/Input/**",
+   "src/Core/UI/SettingsShell.cs",
+   "src/Core/Plugin.cs",
+   "src/Core/Runner.cs",
+   "src/Core/ModuleBase.cs",
+   "src/Core/ModuleHost.cs",
+   "src/Core/ModuleConfig.cs",
+   "src/Core/Scheduler.cs",
+   "src/Core/WorldWork.cs",
+   "src/Core/LoadingProgress.cs",
+   "src/Core/Hooks.cs",
+   "src/Core/Patches.cs",
+   "src/Core/Services.cs",
+   "src/Core/QuestServices.cs",
+   "src/Core/Log.cs",
+   "src/Core/SaveBus.cs",
+   "src/Core/SaveTypes.cs",
+   "src/Core/GameRefs.cs",
+   "src/Core/Origin.cs",
+   "src/Core/Hotkeys.cs",
+   "src/Core/Assets.cs",
+   "src/Core/Game/EntityRegistry*.cs",
+   "src/Modules/Debug/DebugModule.cs",
+   "src/Modules/Presentation/PresentationModule.cs",
+   "src/Modules/NPCAI/NPCAIModule.cs",
+   "src/Modules/Gunplay/GunplayModule.cs",
+   "src/Modules/Vehicles/VehiclesModule.cs",
+   "src/Modules/Loot/LootModule.cs",
+   "src/Modules/Tools/ToolsModule.cs",
+   "src/Modules/Developer/DeveloperModule.cs",
+   "src/Modules/Compatibility/CompatibilityModule.cs",
+   "src/Modules/Saves/SavesModule.cs",
+   "tools/refactor/**"
+  ],
+  "W0-B": [
+   "src/Core/Util/**",
+   "src/Core/Game/WorldIndex.cs",
+   "src/Core/Game/WorldTiles.cs",
+   "src/Core/Game/FsmIndex.cs",
+   "src/Core/Game/FsmPause.cs",
+   "src/Core/Game/PrefabCatalog.cs",
+   "src/Core/Game/ItemSpawner.cs",
+   "src/Core/Game/Factions.cs",
+   "src/Core/Game/Clock.cs",
+   "src/Core/Game/Names.cs",
+   "src/Core/Game/Layers.cs",
+   "src/Core/Game/CameraArbiter.cs",
+   "src/Core/Game/PlayerState.cs"
+  ],
+  "A1": [
+   "src/Core/*.cs",
+   "src/Core/UI/**",
+   "!src/Core/UI/SettingsShell.cs",
+   "src/Core/Optimization/**",
+   "src/Core/Fixes/**",
+   "src/Core/Bridges/**",
+   "src/Modules/Performance/**",
+   "src/Modules/*/**/_fromCore/**",
+   "src/Modules/*/**/_fromPerformance/**",
+   "!src/Core/**/_from*/**"
+  ],
+  "A2": [
+   "src/Modules/PlayerBody/**",
+   "!src/Modules/PlayerBody/Embedded/**",
+   "src/Modules/*/**/_fromPlayerBody/**",
+   "src/Core/**/_fromPlayerBody/**"
+  ],
+  "A3": [
+   "src/Modules/NPC/**",
+   "!src/Modules/NPC/Embedded/**",
+   "src/Modules/*/**/_fromNPC/**",
+   "src/Core/**/_fromNPC/**"
+  ],
+  "A4": [
+   "src/Modules/Patrols/**",
+   "!src/Modules/Patrols/Embedded/**",
+   "src/Modules/*/**/_fromPatrols/**",
+   "src/Core/**/_fromPatrols/**"
+  ],
+  "A5": [
+   "src/Modules/Guns/**",
+   "!src/Modules/Guns/Embedded/**",
+   "src/Modules/*/**/_fromGuns/**",
+   "src/Core/**/_fromGuns/**",
+   "src/Modules/HUD/**",
+   "!src/Modules/HUD/Embedded/**",
+   "src/Modules/*/**/_fromHUD/**",
+   "src/Core/**/_fromHUD/**",
+   "src/Modules/CleanHUD/**",
+   "!src/Modules/CleanHUD/Embedded/**",
+   "src/Modules/*/**/_fromCleanHUD/**",
+   "src/Core/**/_fromCleanHUD/**"
+  ],
+  "A6": [
+   "src/Modules/Towns/**",
+   "!src/Modules/Towns/Embedded/**",
+   "src/Modules/*/**/_fromTowns/**",
+   "src/Core/**/_fromTowns/**",
+   "src/Modules/POI/**",
+   "!src/Modules/POI/Embedded/**",
+   "src/Modules/*/**/_fromPOI/**",
+   "src/Core/**/_fromPOI/**"
+  ],
+  "A7": [
+   "src/Modules/Survival/**",
+   "!src/Modules/Survival/Embedded/**",
+   "src/Modules/*/**/_fromSurvival/**",
+   "src/Core/**/_fromSurvival/**",
+   "src/Modules/Weather/**",
+   "!src/Modules/Weather/Embedded/**",
+   "src/Modules/*/**/_fromWeather/**",
+   "src/Core/**/_fromWeather/**"
+  ],
+  "A8": [
+   "src/Modules/Quests/**",
+   "!src/Modules/Quests/Embedded/**",
+   "src/Modules/*/**/_fromQuests/**",
+   "src/Core/**/_fromQuests/**",
+   "src/Modules/QuestsCompat/**",
+   "!src/Modules/QuestsCompat/Embedded/**",
+   "src/Modules/*/**/_fromQuestsCompat/**",
+   "src/Core/**/_fromQuestsCompat/**",
+   "src/Modules/EngineSimCompat/**",
+   "!src/Modules/EngineSimCompat/Embedded/**",
+   "src/Modules/*/**/_fromEngineSimCompat/**",
+   "src/Core/**/_fromEngineSimCompat/**"
+  ],
+  "B01": [
+   "src/Core/**",
+   "!src/Core/Optimization/**",
+   "!src/Core/ModApi/Contracts/**",
+   "!src/Core/ModApi/Events/**"
+  ],
+  "B02": [
+   "src/Core/Optimization/**"
+  ],
+  "B03": [
+   "src/Modules/Debug/**",
+   "developer/**"
+  ],
+  "B04": [
+   "src/Modules/Saves/**"
+  ],
+  "B05": [
+   "src/Modules/Presentation/Character/**",
+   "src/Modules/Presentation/Player/**",
+   "src/Modules/Presentation/PresentationModule*.cs",
+   "!src/Modules/Presentation/PresentationModule.World.cs",
+   "src/Modules/PlayerBody/PlayerBodyModule.cs"
+  ],
+  "B06": [
+   "src/Modules/Presentation/Camera/**",
+   "src/Modules/Presentation/Traversal/**",
+   "src/Modules/Presentation/Seats/**",
+   "src/Modules/Presentation/VehicleSkins/**",
+   "src/Modules/Presentation/PresentationModule.World.cs"
+  ],
+  "B07": [
+   "src/Modules/NPCAI/Behaviour/**",
+   "src/Modules/NPCAI/Population/**",
+   "src/Modules/NPCAI/NpcaiModule*.cs",
+   "src/Modules/NPCAI/NPCAIModule*.cs",
+   "src/Modules/NPC/NpcModule.cs",
+   "src/Modules/NPC/NpcModule.Config.cs"
+  ],
+  "B08": [
+   "src/Modules/NPCAI/Navigation/**"
+  ],
+  "B09": [
+   "src/Modules/Gunplay/**",
+   "src/Modules/Guns/GunsModule.cs"
+  ],
+  "B10": [
+   "src/Modules/HUD/**",
+   "src/Modules/CleanHUD/CleanHudModule.cs"
+  ],
+  "B11": [
+   "src/Modules/Patrols/**",
+   "!src/Modules/Patrols/Embedded/**"
+  ],
+  "B12": [
+   "src/Modules/Vehicles/**"
+  ],
+  "B13": [
+   "src/Modules/POI/**",
+   "src/Modules/Towns/TownsModule.cs"
+  ],
+  "B14": [
+   "src/Modules/Survival/**",
+   "src/Modules/Weather/WeatherModule.cs"
+  ],
+  "B15": [
+   "src/Modules/Loot/**"
+  ],
+  "B16": [
+   "src/Modules/Tools/**",
+   "src/Modules/Developer/**"
+  ],
+  "B17": [
+   "src/Modules/Compatibility/**",
+   "src/Modules/EngineSimCompat/EngineSimCompatModule.cs"
+  ],
+  "B18": [
+   "src/Modules/Quests/**",
+   "!src/Modules/Quests/Embedded/**"
+  ],
+  "C": [
+   "**"
+  ]
+ }
+}

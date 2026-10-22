@@ -1,0 +1,341 @@
+# Apocalypter Quests: hand-written quests
+#
+# Each quest starts with a [name] line (the name is its id; keep it unique) followed by key = value lines.
+# Lines starting with # are ignored. Texts may use these placeholders:
+#   {n} count   {item} / {target} what to bring or kill   {reward} nuts   {have} items you have
+#   {progress} kills so far   {giver} who gave the job   {dist} {dir} distance and compass direction   {radius}   {poi} the kind of place (goto)
+#   {where} directions to the objective, e.g. "The nearest Dogfood is 340 m north-east of you." (use it in accept / remind; empty when unknown)
+#   {place} where a delivery goes (e.g. Coyotes camp)   {minutes} a delivery's time limit
+#
+# Keys
+#   type     fetch | kill | goto | talk | clear | takeover | deliver
+#   title    name shown in the quest log
+#   giver    who may offer it: * = anyone, or a comma list matched against the NPC name, e.g. merchant,elder
+#   target   fetch: an item's prefab name, display name or ID category (see below). A trailing * means "starts with".
+#                   A leading = means that prefab only (=dogfood_can: alcohol canisters share the ID dogfood_can).
+#            kill:  a word from the enemy's name (grimhound, nightwalker, spider, bolter, zombie, scorpion; no lizard jobs),
+#                   several allowed with commas, or "any"
+#            goto:  which kind of point of interest: camp, cave, building, wreck (blank/any = any kind). The quest picks a real
+#                   one in the distance range around the giver; if none exists nearby the quest is not offered.
+#            takeover: the faction whose camp to take (scrapyard, coyotes), or blank = any faction that is not the giver's
+#                   or an ally's. The camp is picked from real camps in the distance range around the giver.
+#            talk:  * = any NPC, or an NPC name word
+#            deliver: the item's prefab name (best with a leading =, e.g. =dogfood_can). The giver puts `count` of them on
+#                   the ground in front of them when you accept; take them to a friendly camp (the giver's faction or an
+#                   ally, never the giver's own camp) in the distance range and talk to anyone there who isn't hostile.
+#   label    how the target is shown in text (optional)
+#   count    how many items / kills (takeover: how many of the camp's people you must kill, default 4; never more
+#            than the camp really has)
+#   reward   nuts paid on completion
+#   distance goto: how far away the spot is. talk: how far from where you accepted the recipient has to be.
+#            deliver: how far the destination camp may be from the giver (default 400-3000).
+#            One number or a range like 600-1200 (picked randomly each time it is offered).
+#   range    kill: only enemies within this many metres of the giver count (default = [Kills] QuestRange in the config,
+#            4000 m; 0 = anywhere). The quest is only offered when at least `count` matching enemies are alive in that range.
+#   radius   takeover: kills of the camp's people within this many metres of the camp count (default 120).
+#   radius   goto: how close you must get (default 50 m). clear: size of the area (default 250 m).
+#   radius   deliver: how close to the camp the person you hand the goods to must be (default 120 m).
+#   minutes  deliver: time limit in IN-GAME minutes (default: [Deliver] GameHoursBase + GameHoursPerKm per km). When it runs
+#            out you keep the goods and lose [Reputation] StolenPenalty with the giver's faction.
+#   return   yes | no  - must you report back to the giver? (default: yes, except for talk; kill and fetch always do)
+#   once     yes | no  - how often the quest can be taken in one save slot.
+#              once = yes (default): after you complete it, no NPC offers it again. Good for story-like jobs.
+#              once = no: it can be offered again after you finish it, so it works as a repeatable job.
+#              (A quest you are currently carrying is never offered a second time at the same moment either way.)
+#   needpoi    any type: only offered when a point of interest of this kind (camp, cave, building, wreck, or any) is within
+#              needrange metres of the giver. Example: needpoi = camp
+#   needenemy  any type: only offered when this enemy (same words as kill targets, commas allowed) is alive within
+#              needrange metres of the giver. Example: needenemy = grimhound
+#   needrange  metres around the giver for needpoi / needenemy (default 500)
+#   needcount  how many of needenemy must be alive there (default 1)
+#   checkup  goto: yes = a check-up on a camp the giver's own faction holds (pays less); the default goto is only
+#            offered for places you have not found yet and never for a camp the giver's faction holds.
+#   hours    time limit in in-game hours (never less than [Quests] MinimumHours, 24 = one day). Every job except a
+#            delivery has one: when it runs out the job fails and you lose 1 reputation. Default: one day plus a few
+#            hours per km to the target.
+#   rep      reputation with the giver's faction for finishing it (default: grows with the reward, 1 to 6).
+#   chain    name of a quest chain (shown in the quest log). Steps of a chain are done once and always offered (see the
+#            chain example near the end of this file).
+#   after    ids of quests (comma list) that must be done first: the quest is offered only after them, and by
+#            preference over everything else. This is how a chain is written: step 2 says after = step1.
+#   offer / accept / remind / done   the dialogue lines (optional, a default is used when left out)
+#
+# The full list of every item (with prefab names) is in item_list.txt next to this file.
+# Item targets that exist in the game (from the FSM dump): bandage_1, first_aid_1, sanity_pills, cigarette_bactrian,
+# weed_bag, alcohol_canister, dogfood_can, Rat_cooked, meat_mutant_cooked, meat_insect_cooked, plant_tobacco, plant_weed,
+# Water_Can_Plastic, Diesel_Can, Gasoline_Can, MotorOil_Can_Small, ammo_box_9mm, ammo_box_22, ammo_box_12gauge,
+# ammo_box_556mm, ammo_box_762mm, ammo_box_3006, ammo_arrow, Toolbox, Repairbox_Small, armorplate, bedroll, binocular,
+# flashlight1, gasoline_stove, dew_collector_portable, bodyarmor_type_0, backpack_small, old_knife, machete,
+# 22_pipe_pistol, 22_pipe_revolver, crossbow, slamfire_shotgun, radiator_small, radiator_medium, radio_car ...
+# ID categories also work, e.g. target = meat or target = ammo or target = bandage.
+#
+# Fetch quests count items in your hand and quick slots, plus items lying on the ground within [Items] HandInRadius
+# (10 m) of you. A fetch quest is only offered when at least `count` of the item exist within [Quests] ItemRange (4 km) of
+# the giver (in the part of the world that is loaded). Items that are currently for sale at a merchant are never counted. Cans and other containers only
+# count when at least [Items] MinLiquidFraction (half) full.
+
+# ---------------------------------------------------------------------------------------------------------
+# Reference lists (words you can use in the keys above; matching ignores case, spaces and underscores)
+#
+# giver = (NPC names) bodyguard, pistoleer, pup, merchant, bolter, lugger, scout, scraper, chieftain, elder
+#         These come from the game's files. People of a hostile faction (Scrapyard) never give quests. Turn on
+#         [Debug] RecordNpcNames in the config and the mod writes every NPC you talk to into npc_names.txt (next to the
+#         DLL), so you can check the exact spelling and find any NPC missing here.
+#
+# target = (enemies, for kill / needenemy)
+#         grimhound, nightwalker, spider (Spider_Small), bolter, boltjaw, zombie (Zombie_Runner),
+#         scorpion (Scorpion_Big), yard hound, spanna, bat      - or "any" for every hostile
+#
+# target = (points of interest, for goto) / needpoi =
+#         camp, cave, building, wreck   - or leave blank / "any" for every kind
+# ---------------------------------------------------------------------------------------------------------
+
+[field_medic]
+type = fetch
+title = Field Medic
+giver = *
+target = bandage_1
+label = Bandage
+count = 3
+reward = 55
+offer = We got hit a little while back and are running low on bandages. Could you find some for us?
+accept = Knew we could count on you. {where}
+remind = We still need some more bandages. {where}
+done = That'll hold us for a little bit. {reward} nuts, as promised.
+once = no
+
+[dry_throats]
+type = fetch
+title = Dry Throats
+giver = *
+target = Water_Can_Plastic
+label = Water Can
+count = 1
+reward = 100
+rep = 2
+once = no
+offer = We are almost out of water and won't last long without more. Can you please help us? Even half a can will do.
+accept = And they say kindness is dead. {where}
+remind = We are still running low. {where}
+done = You saved some lives today. Thank you. {reward} nuts, as promised.
+
+[rations_run]
+type = fetch
+title = Rations Run
+giver = merchant,scraper,lugger
+target = =dogfood_can
+label = Dogfood
+count = 3
+rep = 3
+reward = 170
+offer = We are stocking up on food and looking for some more canned goods. Bring us {n} {item}, and I will pay you {reward} nuts.
+accept = Don't take too long now. {where}
+remind = Got the grub? {where}
+done = {reward} nuts, as promised.
+once = no
+
+[fuel_shortage]
+type = fetch
+title = Fuel Shortage
+giver = lugger,merchant,pistoleer
+target = Gasoline_Can
+label = Gasoline Can
+count = 1
+reward = 250
+offer = The world runs on Guzzolene, and so do we, but we are running low. If you can bring us at least half a can, we will pay you {reward} nuts for it.
+accept = Good on ya. {where}
+remind = That Guzzolene won't find itself. {where}
+done = That's the good stuff! {reward} nuts, as promised.
+once = no
+
+[hound_trouble]
+type = kill
+title = Hound Trouble
+giver = *
+target = grimhound
+label = Grimhounds
+count = 3
+reward = 150
+offer = We spotted some Grimhounds around the camp last night. We lost one of our pups who went to take a leak. If you can track them down and deal with them, I will pay you {reward}.
+accept = Good hunting. {where}
+remind = They are still lurking in the night. {where}
+done = {reward} nuts for you, hunter.
+once = no
+
+[night_terror]
+type = kill
+title = Night Terror
+giver = bodyguard,chieftain,scout
+target = nightwalker
+label = Nightwalkers
+count = 2
+reward = 200
+offer = I can't get any sleep knowing that those monsters are lurking about. A good night's rest is worth {reward} nuts to me if you fancy hunting some Nightwalkers.
+accept = Thanks. I can hear them all hours, just howling. {where}
+remind = Nightwalkers... Why can't they just be daywalkers? {where}
+done = {reward} nuts as agreed. Now maybe I can get some rest...
+once = no
+
+[clear_the_camp]
+type = clear
+title = Patrol Camp
+giver = chieftain,elder,bodyguard
+count = 5
+radius = 1000
+reward = 250
+offer = We have too many dangers too close to our camp. If you care to make a little patrol and kill some dangers within 1 km of our camp, I will pay you {reward} nuts.
+accept = Be safe out there. {where}
+remind = Your patrol is not over yet. {where}
+done = Good. I knew you had it in you. Here is your pay, {reward} nuts.
+once = no
+
+[scout_the_ridge]
+type = goto
+title = Scout the Area
+giver = scout,pistoleer
+target = camp
+distance = 400-1500
+radius = 50
+reward = 70
+offer = We have word of a camp nearby. If you can scout it out, I will pay you {reward} nuts.
+accept = Remember, this is just a scouting mission; you don't have to fight if you don't want to. {where}
+remind = Be careful and good luck. {where}
+done = Thanks for the intel. Here are your {reward} nuts.
+once = no
+
+[carry_word]
+type = talk
+title = Carry Word
+giver = *
+target = *
+distance = 600-1400
+reward = 65
+offer = I have a message that I need to get to some friends. If you carry it to them, they will pay you {reward} nuts.
+accept = Thanks. {where}
+remind = Did you make it out to them yet? {where}
+done = This for me? Okay, here you go, {reward} nuts.
+once = no
+
+[cave_check]
+type = goto
+title = Cave Check
+giver = scout,elder
+target = cave
+distance = 200-1200
+radius = 25
+reward = 60
+offer = We have a cave nearby, and something is nesting there. If you can find out what it is, I will pay you {reward} nuts.
+accept = Stay safe out there. Don't want to lose another scout. {where}
+remind = Keep an eye out. You never know what it could be. {where}
+done = Good to know; here is your pay, {reward} nuts.
+once = no
+
+[Repairs]
+type = fetch
+title = Repairs
+giver = *
+target = Toolbox
+label = Toolbox
+count = 1
+reward = 75
+offer = So much stuff is falling apart around here. If you can bring me a toolbox, I will pay you {reward} nuts.
+accept = Thanks. Try and hurry if you can. {where}
+remind = Got those tools yet? {where}
+done = Great, this will be a huge help. Here is your pay, {reward} nuts.
+once = no
+
+# Takeover: the giver must belong to a faction (an NPC with a faction tag such as Coyotes). Kill the camp's people near it
+# (how many there are is only known once you are close enough to see the camp; the quest log is updated then, unless you
+# set count = ...). When the last one falls, the camp changes owner, the old faction's spawners there are switched off,
+# and a group of the giver's faction appears about 250 m away ([Takeover] WalkerSpawnDistance) and walks in to settle it.
+
+[take_their_camp]
+type = takeover
+title = Take the Camp
+giver = chieftain,elder,bodyguard
+distance = 50-1000
+reward = 400
+offer = We are tired of those punks preying on us. They have a camp not far from here. If you can take it over, I will send some guys to keep guard over it and pay you {reward} nuts.
+accept = We need more good soldiers like you. {where}
+remind = What are you waiting for? {where}
+done = Good job. This place will be a lot safer now. Here is your pay, {reward} nuts.
+once = no
+
+# Delivery: the giver hands you the goods; get them to a friendly camp before the time runs out.
+[supply_run]
+type = deliver
+title = Supply Run
+giver = merchant,elder,chieftain
+target = =dogfood_can
+label = Dogfood
+count = 3
+distance = 400-4000
+reward = 200
+offer = Our people at the {place} are running low on food. Take these {n} {item} to them. It's {dist} m {dir} from here. They need it within the next {minutes}. They will pay you {reward} nuts when they have it. If you steal it, we will know. If you can't make it, just give it back to me; otherwise, we will think you stole it.
+accept = Thanks. They would starve without you. {where}
+remind = They are counting on that food. {where}
+done = Thanks! This is just what we needed. Here is your pay, {reward} nuts.
+once = no
+
+# ---------------------------------------------------------------------------------------------------------
+# A quest chain: three jobs in a row ("The Bad Batch"). Each step is only offered after the one before it is done, and
+# every step is ALWAYS offered, before any ordinary job, by an NPC the `giver` line allows (unless a different NPC offered
+# that same step in the last 24 in-game hours). A chain is done once only.
+# A blank template is in quest_chain_template.txt.
+
+# ---------------------------------------------------------------------------------------------------------
+# STEP 1
+# ---------------------------------------------------------------------------------------------------------
+[The Bad Batch 1]
+type = fetch
+chain = The Bad Batch
+title = The Bad Batch (1/3): Doggy Don't
+giver = merchant,elder
+target = =dogfood_can
+label = Dogfood
+count = 3
+reward = 150
+hours = 72
+rep = 5
+offer = We got a bad batch of food in. A trader came through and offered us a deal that was too good to be true, and like a lot of fools, we took it. If you want to help, please bring me {n} {item}. I will pay you {reward} nuts. I know it's not much, but we don't have a lot left, and we would be thankful.
+accept = Thank you. Please hurry; we won't make it much longer without food. {where}
+remind = We still need that food. Please hurry. {where}
+done = Thank you. Here are your nuts. If you want to help again, come back later after we have tracked this guy down. He may be far from here, so ask around if you find yourself at another camp.
+
+# ---------------------------------------------------------------------------------------------------------
+# STEP 2
+# ---------------------------------------------------------------------------------------------------------
+[The Bad Batch 2]
+type = takeover
+chain = The Bad Batch
+after = The Bad Batch 1
+title = The Bad Batch (2/3): Payback
+giver = merchant,elder
+reward = 400
+distance = 300-4000
+hours = 72
+rep = 5
+offer = We found the trader's camp. We want you to go there and kill them all. You can keep anything you find. After you are done, I will send some guys to take the place over.
+accept = Best of luck to you, and be careful. {where}
+remind = They are still out there. {where}
+done = A job well done. Here is your pay. We gathered a good payday for you this time.
+
+# ---------------------------------------------------------------------------------------------------------
+# STEP 3
+# ---------------------------------------------------------------------------------------------------------
+[The Bad Batch 3]
+type = deliver
+chain = The Bad Batch
+after = The Bad Batch 2
+title = The Bad Batch (3/3): Food Run
+giver = merchant,elder
+target = =dogfood_can
+label = Dogfood
+count = 3
+distance = 400-5000
+reward = 300
+rep = 10
+offer = We found some more food at that trader's camp. We don't want a repeat of last time, so take these {n} {item} to our people at the {place}. It's {dist} m {dir} from here. You've got {minutes}. You'll get {reward} nuts when they have it.
+accept = Best of luck to you, and be careful. {where}
+remind = They still need that food. {where}
+done = Thanks for the run. You are a true friend to us.

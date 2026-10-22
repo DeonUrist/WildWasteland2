@@ -1,0 +1,26 @@
+using UnityEngine;
+namespace WildWasteland.Modules.Towns
+{
+    internal static class TownDebris
+    {
+        internal static void Build(TownSite site, TownAssets assets, Transform root)
+        {
+            if (site.Plan.LayoutVersion < 7 || site.Plan.LotCount < 5 || assets.CarShells.Count == 0) return;
+            var random = new System.Random(TownPlanner.Hash(site.Plan.Key + "/wreck-garden"));
+            for (int i = 0; i < 2; i++)
+            {
+                var shell = assets.CarShells[random.Next(assets.CarShells.Count)]; var bounds = shell.Mesh.bounds;
+                float scale = Mathf.Min(1, 2.4f / Mathf.Max(.1f, Mathf.Max(bounds.extents.x, bounds.extents.z)));
+                var rotation = site.Anchor.rotation * Quaternion.Euler(0, site.Plan.Yaw + (i == 0 ? 58 : -64), 0);
+                var point = new Vector3(i == 0 ? -3.1f : 3.1f, 0, .4f * i);
+                var go = new GameObject("Towns crashed car " + i); go.transform.SetParent(root, false);
+                go.transform.rotation = rotation; go.transform.localScale = Vector3.one * scale;
+                go.transform.position = site.Scene(point) - rotation * (new Vector3(bounds.center.x, bounds.min.y, bounds.center.z) * scale);
+                go.AddComponent<MeshFilter>().sharedMesh = shell.Mesh;
+                var renderer = go.AddComponent<MeshRenderer>(); renderer.sharedMaterials = shell.Materials;
+                var collider = go.AddComponent<BoxCollider>(); collider.center = bounds.center; collider.size = bounds.size;
+                var blocker = renderer.bounds; blocker.center -= site.Anchor.position; blocker.Expand(.3f); site.DebrisBlockers.Add(blocker);
+            }
+        }
+    }
+}

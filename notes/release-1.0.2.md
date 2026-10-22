@@ -1,0 +1,11 @@
+# Wild Wasteland 1.0.2 — driver wheel grips
+
+Corrects the seated fists regression: drivers with nothing equipped and fists lowered again grip and animate the steering wheel or motorcycle handlebars. Readied fists retain their resting/punch path; tools still allow the free hand to grip the wheel. Missing-wheel behavior, seated melee/lance/grenade/gun animation and camera fit are retained.
+
+Cause: the fists follow-up changed every `wheel` arm owner to `rest`, so LateWheelArms selected knee-rest before reaching WheelArms.Solve. That solver accepts wheel/tool owners. Remove only the `|| _wheelArmOwner == "wheel"` clause in Body.cs; ready fists are still identified by active native weapon `hands`. Native WeaponInHand/hands activates that child; Deactivate disables the weapon children (Sources/fsm/scene1_game/PlayerCameraHolder.md around2305). Identical one-line fix applied to WWMP; its separate CarSeat.Passenger gate keeps unarmed passengers resting. No new jobs/hooks, config keys, poses, assets, save or protocol changes.
+
+Both Windows Release/Deploy=false builds passed zero warnings/errors. No game/harness/runtime verification. Standard-WW deployment remains disabled; current game installation is MP. Publication does not mark visuals/performance Verified. Runtime-only archive includes the approved catalog icon, all1.0.1 runtime assets and loading artwork; documentation stays on GitHub.
+
+Denis checks a driver with fists lowered: both hands grip while steering left/right and returning to centre. Ready fists, punch, then lower them: wheel grip returns. Repeat with a tool, missing wheel, motorcycle, both camera modes and male/female. Regress melee/lance/grenade/gun and turning. In MP additionally compare an unarmed passenger's knee-rest and host/guest/guest-observer poses. Existing verbose `Wheel arms: owner ...; IK bypassed` should not report rest for the ordinary unarmed driver; wheel fit/grip trace confirms solver execution but cannot establish visual fit.
+
+Release package evidence: 218487076 bytes / 199 files; DLL MD5 `BB85DA11D20CF1D7FC3A4DF9FB50B9B7`; ZIP SHA256 `c13866a35bc05f6489b78ce4ad31fe4d02e2c9f33b390eb5a70d6f846c29871a`. Exact unique stage: `V:/Repos/Apocalypter/_releases/WildWasteland_1.0.2a.dll`. CRC/unique entries/replacement bytes and retained runtime assets verified; no docs/personal data/dependency DLLs.

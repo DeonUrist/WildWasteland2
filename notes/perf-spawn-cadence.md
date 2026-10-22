@@ -1,0 +1,23 @@
+# Slower traffic construction / two merchants — 2026-10-16 — Testing
+
+Denis requested a 750 m traffic materialization range, slower spawning, and a merchant population cap of two. He confirmed that slower spawning means spreading construction over time, leaving convoy encounter frequency unchanged, then confirmed the game closed and authorized deployment/settings updates.
+
+Changes are confined to three Patrols files:
+
+- `PatrolsSettings.cs`: LoadRange default 650 -> 750 m; Max merchants default 3 -> 2. Existing settings keys and allowed ranges stay compatible. No new entries.
+- `Spawning/BuildQueue.cs`: at least 50 ms between yielded assembly stages and two seconds after completed assembly before the next request can begin. Native frame/physics/ignition waits remain; the existing 1 ms slice and 2 ms whole-frame budget are unchanged. Scene/module reset clears the cadence timer.
+- `Spawning/Convoy.cs`: wait for all callbacks while the same scene/runner remains valid, replacing the old 30-second release timeout so larger, slower groups do not depart before their last cars are ready.
+
+This spaces costly steps over time but does not divide the previously measured approximately 105 ms first construction step. Automatic traffic and debug convoy builders share the queue; convoy encounter frequency is unchanged. Merchant population uses the existing reconciliation: pending/excess virtual routes are removed on the merchant check, while a physically loaded bus finishes its visit. No loaded merchant or saved vehicle is forcibly deleted.
+
+Windows Release build with Deploy=false compiled with zero errors and ten existing warnings while the game was running. After Denis confirmed closure, the required Release/Deploy=true build passed with zero errors (incremental build: zero warnings) and copied the DLL. Staging binary is under ignored `verification/runtime-perf/20261016-spawn-cadence/WildWasteland_0.1.26m.dll`; installed MD5 `63FAC347149992B654184F48C4986287`. Numeric version stays 0.1.26. Source and documentation are recorded as `Fix #133: pace vehicle builds and queue NPC rigs` under Denis's explicit commit/push instruction; local settings, backups and runtime artifacts remain outside Git.
+
+The initial deployment guard stopped before any DLL/config writes when Apocalypter restarted. After confirmed closure, settings.cfg/tools.cfg were backed up as `*.before` in the staging folder and only the existing `Max merchants` / `LoadRange` values were changed to 2 / 750. The 1000 m unload range remains. Existing settings must be updated as well as source defaults; defaults alone do not replace saved values. No new entries/config schema, Core changes or save-format changes.
+
+The authorized copied-save headless run `cadence-on-m` completed **42 checks passed / 0 failed**. It confirmed configured values 750 m / two merchants, three successful builds, serialized assembly, one NPC rig/frame, native save/title/reload survival and scene cancellation of one active plus two pending builds. Across 95 progress samples, minimum stage spacing was 0.04999924 s (50 ms within float timer precision); both measured inter-vehicle gaps were >=2 s, minimum 2.050037 s. The existing crew/melee/ram/bailout checks also passed. It uses the same isolated driver documented in `perf-queue-verification.md`; no normal-game automation. Original ES3 SHA256 hashes: zero differences.
+
+Both scheduler jobs reported zero exceptions. Instrumented max Build step remained 123.386 ms / NPC.Rigs 2.631 ms; the pacing change spreads work and does not remove that first construction spike. Compiler queue finished empty (225 accessors / 20 batches, worst 12 ms background). No managed exception, native crash signature, patch conflict or disabled-job line was found in the captured logs. The player self-quit and the sandbox driver DLL was disabled again; it was never deployed to the normal game.
+
+Logs/report/cadence samples/job timings/run metadata/save hashes are under ignored `verification/runtime-perf/sandbox/Game/VerificationRuns/cadence-on-m/`. Normal-game DLL MD5 and saved values were checked after the run. No new runtime log switch or log message was introduced.
+
+Denis: load a save, approach traffic and spawn a multi-car convoy in the editor. Construction should take longer, with the group held until its final car finishes, then normal driving. F3 should show LoadRange 750 and Max merchants 2. Existing loaded merchant buses finish their visits; excess virtual routes reconcile at the existing five-minute merchant check. Confirm vehicle/crew retention after save/title/reload. These bounded headless checks do not establish a sustained FPS gain, visual pop-in or long driving/tile/origin behavior.

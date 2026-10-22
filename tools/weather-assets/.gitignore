@@ -1,0 +1,14 @@
+Unity/Library/
+Unity/Temp/
+Unity/Logs/
+Unity/obj/
+Unity/Assets/Weather/Generated/
+Unity/Assets/Weather/Generated.meta
+Unity/Assets/Weather/Preview.unity*
+Unity/UserSettings/
+Downloads/
+Sources/
+Bakes/
+Output/
+Tools/
+*.log

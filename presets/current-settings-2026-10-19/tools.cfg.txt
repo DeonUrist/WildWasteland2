@@ -1,0 +1,883 @@
+## Captured SP-compatible settings; preserve existing saved values.
+
+[Core]
+Frame budget (ms) = 2
+
+[Guns / Ammo]
+AnimationTimeout = 4
+
+[Guns / Ballistics]
+PlayerGuns = true
+FullDamageUntil = 50
+NpcHitRadius = 0.05
+NpcShotgunDamage = 1.7
+ShotgunPellets = 3
+ShotgunPelletSpread = 1
+PlayerAccuracy = 100
+NpcAccuracy = 50
+PlayerBodyRadius = 0.22
+PlayerHeadRadius = 0.14
+VehicleDamagePer1 = 20
+WheelDamageMultiplier = 5
+
+[Guns / Melee]
+StabWeapons = knife,shiv,machete
+StabSound = Sounds/knifestab.wav
+
+[Guns / NPC aim]
+NpcAimAtBody = true
+LeadTargets = true
+LeadAccuracy = 0.75
+LeadError = 30
+MaxLeadTime = 1.5
+
+[Guns / Tracers]
+TracerColor = FFC759FF
+Glow = 1.5
+TracerLength = 4
+TracerWidth = 0.1
+BoltColor = D9B880FF
+BoltLength = 0.8
+BoltWidth = 0.04
+MaxTracers = 300
+ImpactEffects = true
+MetalSparks = true
+MetalSparksScale = 0.1
+
+[HUD / Crosshair]
+DotScale = 0.3
+SearchSeconds = 1
+
+[HUD / Headshot sound]
+Gain = 1.3
+MinInterval = 0.075
+
+[HUD / Hit feedback]
+DamageFontSize = 14
+HitMarkerSize = 22
+NumberSeconds = 1.2
+ListSeconds = 4
+ListLines = 8
+MarkerSeconds = 0.18
+MergeSeconds = 0.05
+
+[NPC / Ambush]
+Prefabs = Scorpion_Small,Scorpion_Big,Spider_Small,Spider_Big
+MinDistance = 3
+MaxDistance = 5
+
+[NPC / Behaviour]
+DogIdlePoseMinSeconds = 10
+DogIdlePoseMaxSeconds = 25
+DogLieFrontLift = 0
+
+[NPC / Brain]
+ReactionTime = 100
+TurnRate = 210
+AimPose = true
+CrouchChance = 50
+FeelerLength = 3.5
+MeleeFeelerLength = 2.5
+FeelerAngle = 60
+FeelerCount = 7
+DropCheck = true
+AdvanceChance = 10
+AdvanceMin = 2
+AdvanceMax = 4
+StuckBackupSeconds = 0.8
+StuckMemorySeconds = 5
+StuckGiveUpCount = 3
+ApocaplayerClips = true
+StrafeAngle = 50
+CoverBelow = 50
+CoverRange = 25
+CoverMin = 20
+CoverMax = 40
+MaxDistance = 150
+
+[NPC / Burrow]
+Prefabs = Scorpion_Small
+MinSeconds = 10
+MaxSeconds = 30
+AmbushMin = 3
+AmbushMax = 5
+SeenFrom = 5
+BurrowSeconds = 0.9
+RiseSeconds = 0.7
+Depth = 0.75
+SandKeywords = sand
+UseTextureLayers = false
+TerrainIsSand = true
+FxScale = 0.3
+FxVolume = 0.35
+FxPitch = 1.5
+FxRange = 45
+Log = false
+
+[NPC / Debug]
+VerboseLog = false
+NavDump = false
+ShowNavigation = false
+HighlightUnbakedMapPois = false
+
+[NPC / Detection]
+SightConeInsects = 210
+SightConeBeasts = 190
+SightConeBrutes = 210
+SightConeBosses = 300
+SightConeBurrowers = 360
+ConeInsects = Spider,Scorpion,Wasp,Arachnid
+ConeBeasts = Rat,Hound,Skinwal,Nightwalker
+ConeBrutes = Professor,Teacher,Juggernaut
+ConeBurrowers = Burrower
+
+[NPC / Dogs]
+Prefabs = Wild Hound,Yard Hound,Grimhound,Nightwalker,Alpha_Nightwalker
+Log = false
+
+[NPC / Hunt]
+Prefabs = Scorpion_Big
+Range = 15
+MaxDistance = 60
+Behind = 2.5
+Speed = 5
+Cooldown = 6
+DiveSeconds = 1.6
+RiseSeconds = 1
+FallbackMin = 3
+FallbackMax = 5
+TravelSpeedFactor = 2
+BurrowSlowdown = 2
+FxScale = 0.9
+FxVolume = 1
+FxPitch = 1
+
+[NPC / Idle]
+ReturnDelay = 0
+ReturnTries = 10
+RetrySeconds = 5
+TravelRunBeyond = 25
+WalkRadius = 200
+
+[NPC / Movement]
+FullSpeedAngle = 30
+SlowestAngle = 120
+SlowestSpeed = 0.1
+BlockedRatio = 0.33
+BlockedSeconds = 0.5
+BlockedMemory = 1.5
+
+[NPC / Nav]
+BakeRange = 200
+CellSize = 0.5
+Margin = 4
+MaxStep = 0.25
+BakeBudgetMs = 1
+FieldSeconds = 1
+
+[NPC / Nests]
+Prefabs = Spider_Small,Spider_Big
+Sitters = Spider_Big
+BuildRange = 520
+FreeRange = 750
+PlaceRadius = 80
+MaxRadius = 35
+MinHangingWebs = 3
+MaxHangingWebs = 7
+MinGroundWebs = 4
+MaxGroundWebs = 7
+SpotsTried = 70
+FrameBudgetMs = 1
+AlarmSpeed = 1.5
+AlarmSeconds = 20
+AlarmCooldown = 5
+SitterReach = 1
+Log = false
+
+[NPC / NpcAim]
+AimTimeScale = 50
+FacingTolerance = 8
+EngagePercent = 85
+Magazines = true
+MagazineTable = 22_pipe_pistol=1, 22_pipe_revolver=5, 22_pipe_smg=30, akm_drum=70, akm_trash=30, akms=30, borz_smg=25, crossbow=1, folk_17=17, m16a1=30, redmark_m11=4, redmark_m11_scoped=4, rochester_m24=2, rochester_m24_chopped=2, slamberg_500=5, slamberg_500_chopped=5, slamfire_shotgun=1
+SingleShotReload = 1
+ReloadVolume = 1
+ReloadSoundRange = 35
+RoundSeconds = 0.6
+ReloadSeconds = 2.5
+
+[NPC / Pounce]
+Prefabs = Spider_Small
+ZigzagFromMin = 8
+ZigzagFromMax = 11
+LeapFromMin = 5
+LeapFromMax = 6
+ZigzagAngle = 35
+ZigzagSeconds = 0.35
+ZigzagSpeed = 1.3
+LeapSpeed = 10
+Pitch = 70
+RunOffMin = 1.5
+RunOffMax = 2.5
+CooldownMin = 4
+CooldownMax = 7
+Log = false
+
+[NPC / Senses]
+NightHours = 20=100, 21=75, 22=35, 23=0, 4=35, 5=75, 6=100
+FlankDistance = 15
+FlankWidth = 10
+NoticeSeconds = 0.2
+NoticeFar = 2
+LoseSeconds = 5
+FoughtMemorySeconds = 90
+Guesses = 3
+GuessRadius = 8
+Trackers = Hound,Grimhound,Pup,Nightwalker,Spider,Arachnid,Scorpion
+TauntMin = 12
+TauntMax = 25
+GunshotResponders = 4
+GunshotNearRange = 25
+SearchSeconds = 30
+GhostTimeout = 60
+ArriveDistance = 1.5
+LookInterval = 0.15
+ShotRangePistol = 80
+ShotRangeSmg = 120
+ShotRangeRifle = 150
+ShotRangeSniper = 150
+ShotRangeShotgun = 150
+ShotRangeCrossbow = 15
+NpcShotRanges = Flexa=150, Gungirl=150, Lugnut=150, Scrud=150, Boltjaw=120, Sprokka=80, Shoota=80, Pistoleer=80, Gunnar=150, Lugger=150
+AllClearRange = 30
+TauntRange = 15
+ShoutBlocksButtons = Kick,ShiftDown
+PlayerShoutRange = 25
+ShoutCooldown = 1.5
+StormSight = 80
+StormHearing = 50
+StormRadius = 2500
+ShoutVolume = 1
+HumanFactions = Scrapyard,Coyotes
+EngineMinRange = 50
+EngineMaxRange = 150
+EngineMinHp = 40
+EngineMaxHp = 300
+EngineIdleFactor = 50
+BailOutAware = true
+BailOutAwareRange = 150
+ExplosionRange = 150
+BlastRange = 150
+BlastPrefabs = Explosion_Grenade,Explosion_Can,Explosion_BlastRat,Explosion_BlastZombie
+ThrowRange = 10
+
+[Patrols / AI]
+Throttle = 1
+DriveByOffset = 5
+LeadTime = 1
+CommitSeconds = 0.5
+SteerRate = 1.5
+SteerAngle = 30
+MaxSteerAtSpeed = 0.35
+TurnSafeSpeed = 18
+RamDistance = 15
+PassWidth = 12
+RunOutMeters = 30
+RunOutMaxSeconds = 4
+ReverseSeconds = 2
+ReverseThrottle = 0.6
+StuckSeconds = 2
+RecoverWindow = 30
+MaxRecovers = 2
+WaitSeconds = 4
+FeelerRange = 10
+FeelerSpeedFactor = 0.6
+FrontOffset = 2
+MaxSlopeDeg = 35
+AvoidGain = 1.2
+IgnoreMassBelow = 40
+GiveUpDistance = 700
+InvertSteering = false
+
+[Patrols / Audio]
+AudioVoices = 64
+
+[Patrols / Cleanup]
+RemoveAfterMinutes = 10
+MaxCars = 30
+MinDistance = 800
+
+[Patrols / Combat tuning]
+FireArcHalfAngle = 100
+MaxAimPitch = 35
+AimTurnSpeed = 180
+FireBurstSeconds = 3
+FireIntervalMin = 8
+FireIntervalMax = 20
+RamDamageMultiplier = 1
+RamDamageByBody = Junker=50, Rust*=70, Scrapwagon=70, PigPen=50
+RamFullSpeedKmh = 30
+RamPushStrength = 1
+RamInCarFactor = 1
+RiderRange = 35
+RiderMaxThrowAngle = 20
+RiderJumpRange = 15
+RiderIntervalMin = 5
+RiderIntervalMax = 9
+RiderLeapReachPercent = 80
+RiderBailRange = 6
+SuspensionLiftCenterOfMass = true
+RiderLeapSpeed = 11
+RiderBlastDamage = 60
+RiderBlastRadius = 7
+RiderLanceSpeed = 30
+
+[Patrols / Debug]
+TurretSpotEditor = false
+Bus passenger pose editor = false
+Merchant item editor = false
+AllowDebugSpawns = true
+AiOverlay = false
+Hide missing-FSM warnings = true
+ExitSpeedKmh = 30
+
+[Patrols / Driving]
+StuckPedalChance = 5
+BailChance = 25
+StuckBailChance = 100
+
+[Patrols / Loot]
+MinPartsFill = 15
+MaxPartsFill = 60
+
+[Patrols / Pose]
+OffsetX = 0
+OffsetY = -0.3
+OffsetZ = 0
+Enabled = true
+ThighAngle = 85
+KneeAngle = 30
+ArmAngle = 65
+LeftLegCloser = 10
+RightLegCloser = 10
+LeftArmCloser = 10
+RightArmCloser = 10
+BikeArmAngle = 55
+BikeArmSpread = 22
+ElbowAngle = 25
+
+[Patrols / Pose.Boltjaw]
+LeftArmVertical = 80
+LeftArmHorizontal = 35
+LeftArmRotation = -15.6
+LeftElbowVertical = 25
+LeftElbowHorizontal = 0
+LeftElbowRotation = 0
+LeftHandVertical = 0
+LeftHandHorizontal = 0
+LeftHandRotation = 0
+RightArmVertical = -20
+RightArmHorizontal = 50
+RightArmRotation = -20
+RightElbowVertical = 125
+RightElbowHorizontal = 0
+RightElbowRotation = 25
+RightHandVertical = 0
+RightHandHorizontal = 25
+RightHandRotation = -25
+WeaponPositionX = 0
+WeaponPositionY = 0
+WeaponPositionZ = 0
+WeaponRotationX = -15
+WeaponRotationY = 20
+WeaponRotationZ = 0
+
+[Patrols / Pose.Flexa]
+LeftArmVertical = 80
+LeftArmHorizontal = 35
+LeftArmRotation = -15.652
+LeftElbowVertical = 25
+LeftElbowHorizontal = 0
+LeftElbowRotation = 0
+LeftHandVertical = 0
+LeftHandHorizontal = 0
+LeftHandRotation = 0
+RightArmVertical = 5
+RightArmHorizontal = -10
+RightArmRotation = 0
+RightElbowVertical = 120
+RightElbowHorizontal = 0
+RightElbowRotation = 0
+RightHandVertical = 0
+RightHandHorizontal = 25
+RightHandRotation = -45
+WeaponPositionX = 0
+WeaponPositionY = 0
+WeaponPositionZ = 0
+WeaponRotationX = -15
+WeaponRotationY = 20
+WeaponRotationZ = 0
+
+[Patrols / Pose.Lugnut]
+LeftArmVertical = 85
+LeftArmHorizontal = 34
+LeftArmRotation = 0
+LeftElbowVertical = 0
+LeftElbowHorizontal = 0
+LeftElbowRotation = 0
+LeftHandVertical = 5
+LeftHandHorizontal = 15
+LeftHandRotation = -10
+RightArmVertical = 80
+RightArmHorizontal = 60
+RightArmRotation = 20
+RightElbowVertical = 20
+RightElbowHorizontal = -140
+RightElbowRotation = 0
+RightHandVertical = -40
+RightHandHorizontal = 50
+RightHandRotation = 0
+WeaponPositionX = 0
+WeaponPositionY = -0.1
+WeaponPositionZ = 0
+WeaponRotationX = -15
+WeaponRotationY = 0
+WeaponRotationZ = 0
+
+[Patrols / Pose.Scraffa]
+LeftArmVertical = 65
+LeftArmHorizontal = 10
+LeftArmRotation = 0
+LeftElbowVertical = 25
+LeftElbowHorizontal = 0
+LeftElbowRotation = 0
+LeftHandVertical = 0
+LeftHandHorizontal = 0
+LeftHandRotation = 0
+RightArmVertical = 65
+RightArmHorizontal = -10
+RightArmRotation = 0
+RightElbowVertical = 25
+RightElbowHorizontal = 0
+RightElbowRotation = 0
+RightHandVertical = 0
+RightHandHorizontal = 0
+RightHandRotation = 0
+
+[Patrols / Pose.Scrud]
+LeftArmVertical = 78
+LeftArmHorizontal = 20
+LeftArmRotation = 30
+LeftElbowVertical = 25
+LeftElbowHorizontal = 0
+LeftElbowRotation = 0
+LeftHandVertical = 0
+LeftHandHorizontal = 0
+LeftHandRotation = 0
+RightArmVertical = 75
+RightArmHorizontal = -20
+RightArmRotation = -30
+RightElbowVertical = 25
+RightElbowHorizontal = 0
+RightElbowRotation = 0
+RightHandVertical = 0
+RightHandHorizontal = 0
+RightHandRotation = 0
+WeaponPositionX = 0
+WeaponPositionY = 0
+WeaponPositionZ = 0
+WeaponRotationX = -25
+WeaponRotationY = 35
+WeaponRotationZ = 0
+
+[Patrols / Pose.Spanna]
+LeftArmVertical = 65
+LeftArmHorizontal = 10
+LeftArmRotation = 0
+LeftElbowVertical = 25
+LeftElbowHorizontal = 0
+LeftElbowRotation = 0
+LeftHandVertical = 0
+LeftHandHorizontal = 0
+LeftHandRotation = 0
+RightArmVertical = 65
+RightArmHorizontal = -10
+RightArmRotation = 0
+RightElbowVertical = 25
+RightElbowHorizontal = 0
+RightElbowRotation = 0
+RightHandVertical = 0
+RightHandHorizontal = 0
+RightHandRotation = 0
+
+[Patrols / Pose.Sprokka]
+LeftArmVertical = 105
+LeftArmHorizontal = 10
+LeftArmRotation = 0
+LeftElbowVertical = 0
+LeftElbowHorizontal = 0
+LeftElbowRotation = 0
+LeftHandVertical = 0
+LeftHandHorizontal = 0
+LeftHandRotation = 0
+RightArmVertical = 15
+RightArmHorizontal = -27
+RightArmRotation = -30
+RightElbowVertical = 25
+RightElbowHorizontal = 0
+RightElbowRotation = 0
+RightHandVertical = 0
+RightHandHorizontal = 0
+RightHandRotation = 0
+WeaponPositionX = 0
+WeaponPositionY = 0
+WeaponPositionZ = 0.03
+WeaponRotationX = 0
+WeaponRotationY = 15
+WeaponRotationZ = 0
+
+[Patrols / Spawner]
+SpawnDistance = 350
+
+[Patrols / Traffic tuning]
+DebugMap = true
+Real patrol names = true
+hide route type = false
+FollowRoads = true
+MaxRoadConnectorMetres = 350
+MaxGroups = 24
+MaxRealCars = 24
+LoadRange = 750
+UnloadRange = 1000
+DestinationGraceSeconds = 180
+ConvoyGuardRange = 300
+PatrolMemorySeconds = 20
+FootPatrolMaxActive = 2
+FootPatrolSpawnChance = 35
+FootPatrolCheckSeconds = 60
+FootPatrolSpeed = 1.3
+FootPatrolLoadRange = 280
+FootPatrolUnloadRange = 400
+FootPatrolMinPoiMetres = 1000
+FootPatrolMinSourceDistance = 500
+StrandedIdleSeconds = 30
+ReturnToCarTimeoutSeconds = 120
+ReturnToCarMaxDistance = 300
+DismountMemorySeconds = 90
+FootTargetRange = 350
+
+[Patrols / Turret pose]
+TurretThigh = 80
+TurretKnee = 130
+TurretHipHeight = 0.4
+RiderLanceOffset = 0, 0, 0
+RiderLanceRotation = 0, 0, 0
+
+[Performance / Game logic]
+Culler = On
+Hinge polls = On
+Vehicle reflection = On
+Wait-until polls = On
+Light flicker = On
+HUD FSMs = On
+Coyote broadcast = On
+Duplicate Rigidbody = On
+Data FSM restart = On
+Option toggles = On
+Player capsule = On
+
+[Performance / PlayMaker]
+Targeted events = On
+Fast FSM list removal = On
+Broadcast events = On
+GUI loop = On
+Trigger events = On
+Shared camera pick = On
+Number to text = On
+FSM sleep = On
+Compiled properties = On
+Compiled CallMethod = On
+Fast action loading = On
+
+[Performance / Preset]
+Preset = Vanilla
+
+[Performance / Rendering]
+Light shadows = On
+Dead post effects = On
+Anti-aliasing = On
+Sun shadows = On
+Terrain detail = On
+Particles = On
+Small shadow casters = On
+Size culling = On
+Layer cull distances = On
+Far clip = On
+Texture quality = On
+
+[Performance / Telemetry]
+Periodic census = false
+
+[Performance / Tuning]
+Light flicker / Rate (Hz) = -1
+Light flicker / Distance (m) = -1
+Light shadows / Shadowed point lights = -1
+Light shadows / Shadow radius = -1
+Light shadows / Shadow resolution = -1
+Light shadows / Cull factor = -1
+Light shadows / Cull minimum = -1
+Light shadows / Pixel lights = -1
+Light shadows / Headlight range = -1
+Light shadows / Headlight shadow = -1
+Anti-aliasing / Mode = -1
+Anti-aliasing / SMAA quality = -1
+Anti-aliasing / Stop NaN = -1
+Sun shadows / Distance = -1
+Sun shadows / Cascades = -1
+Sun shadows / Resolution = -1
+Sun shadows / Skin weights = -1
+Sun shadows / Layer cull scale = -1
+Terrain detail / Pixel error = -1
+Terrain detail / Base map distance = -1
+Terrain detail / Grass distance = -1
+Terrain detail / Grass density = -1
+Particles / No prewarm = -1
+Particles / Off-screen culling = -1
+Particles / Low collision = -1
+Particles / No particle lights = -1
+Particles / Max particles = -1
+Small shadow casters / Half extent (m) = -1
+Size culling / LOD bias = -1
+Size culling / Injected scale = -1
+Layer cull distances / Scale = -1
+Far clip / Far plane = -1
+Texture quality / Texture limit = -1
+Texture quality / Anisotropic cap = -1
+Car LOD / Kinematic distance (m) = -1
+Car LOD / Presentation distance (m) = -1
+MapMagic budget / Threads = -1
+MapMagic budget / Objects per frame = -1
+MapMagic budget / Apply budget (ms) = -1
+Time and sleep / Max delta time = -1
+Time and sleep / Sleep threshold = -1
+Animator culling / Cull NPC animators = -1
+Animator culling / IK distance = -1
+Azure weather / Interval (s) = -1
+GC time slice / Slice (ms) = -1
+
+[Performance / World]
+Car LOD = On
+MapMagic budget = On
+CCD sweep = On
+Time and sleep = On
+Animator culling = On
+Origin jump = On
+Azure sun = On
+Azure weather = On
+GC time slice = On
+
+[PlayerBody / Animation]
+JumpClipStart = 0.2
+StrikeWindup = 0.08
+HipsDrift = 0.25
+BundleWalkSpeed = 1.4
+BundleRunSpeed = 3.8
+BundleCrouchSpeed = 1
+BundleSprintSpeed = 5.5
+RunFrom = 3.2
+SprintFrom = 4.3
+UpperPhase = 0
+TurnClipAngle = 70
+TurnStartRate = 8
+PumpClipSpeed = 2
+DirBlendSpeed = 360
+FootIK = true
+RunLegsIn = 10
+WalkToStop = true
+RunLegsTurn = 75
+CrouchDrop = 0.42
+AimPitch = 0.9
+
+[PlayerBody / Animation (fallback clips)]
+IdleClip = merchant_idle
+RunClip = enemy_1_run
+RifleClip = enemy_machinegun
+PistolClip = sprokka_shoot
+MeleeClip = enemy_1_attack
+RunClipSpeed = 4.5
+WalkStride = 1.25
+ThighSwing = 26
+KneeBend = 38
+ArmSwing = 16
+HipBob = 0.025
+RightHanded = true
+
+[PlayerBody / Camera]
+ThirdPersonDistance = 2.23
+ThirdPersonCarDistance = 4.17
+ThirdHeight = 0.25
+ThirdShoulder = 0.45
+ThirdCarHeight = 1.1
+OrbitSpeed = 3
+EnableMMB = false
+AimDownSightsTime = 0.2
+PickAssistRadius = 0.06
+
+[PlayerBody / Camera culling]
+OcclusionOpacity = 0.2
+OcclusionRadius = 0.55
+
+[PlayerBody / Car seat]
+FirstPersonDrivingX = 0
+FirstPersonDrivingY = 0
+FirstPersonDrivingZ = 0
+CarCameraForward = 0.12
+SeatDrop = 0.05
+
+[PlayerBody / Climbing]
+MinimumHeight = 0.45
+MaximumHeight = 2.5
+Reach = 0.85
+WaistHeightLimit = 1.25
+AnimationSpeed = 1.5
+
+[PlayerBody / Editors]
+Pose key: Select weapon / arm = Keypad0
+Pose key: Move / rotate = Keypad5
+Pose key: Up / pitch up = Keypad8
+Pose key: Down / pitch down = Keypad2
+Pose key: Right / yaw right = Keypad6
+Pose key: Left / yaw left = Keypad4
+Pose key: Forward / roll right = Keypad7
+Pose key: Back / roll left = Keypad1
+WeaponAdjustment = false
+
+[PlayerBody / First person]
+FirstPersonBodyX = 0
+FirstPersonBodyY = 0
+FirstPersonBodyZ = 0
+FirstPersonBodyBack = 0.08
+BodyBackDown = 0.08
+FirstPersonWeaponBack = 0.08
+FirstPersonChestLean = 20
+
+[PlayerBody / ModAPI]
+VerboseModApi = false
+
+[PlayerBody / Model]
+Model = Models/Player_female.glb
+Texture = Models/Player_female.png
+ArmsTexture = Models/Player2_female_arms.png
+AnimationBundle = Models/apocaplayer_anims.bundle
+
+[Quests / Advanced]
+MoneyVariable = 
+
+[Quests / Debug]
+FactionDumpKey = None
+RecordNpcNames = false
+
+[Quests / Deliver]
+MinDistance = 400
+MaxDistance = 3000
+GameHoursBase = 24
+GameHoursPerKm = 4
+CampRadius = 120
+
+[Quests / Factions]
+HomeRadius = 120
+HumanFactions = Scrapyard,Coyotes
+PeopleNames = bodyguard,pistoleer,pup,merchant,bolter,lugger,scout,scraper,chieftain,elder
+
+[Quests / Goto]
+MinDistance = 150
+MaxDistance = 1800
+
+[Quests / Hire]
+Hirable = Bodyguard=5,Pup=1,Bolter=5,Pistoleer=5,Gunnar=15,Lugger=10
+DurationGameHours = 24
+DeathPenalty = 1
+FollowDistance = 6
+CatchUpDistance = 70
+IgnoreCritters = Lizard
+LeashDistance = 28
+RealShooting = true
+ShotAnimation = false
+RecoilDegrees = 10
+MagazineOverride = 
+ReloadOverride = 
+ReloadSoundFrom = Bolter=crossbow
+ShotDamage = 7
+ShotInterval = 0.9
+RangedHires = Bolter
+ArmPoseLike = Pistoleer=Scrud,Gunnar=Flexa,Lugger=Lugnut,Bolter=Boltjaw,Lugnut
+RideRange = 35
+
+[Quests / Items]
+HandInRadius = 10
+MinLiquidFraction = 0.5
+
+[Quests / Kills]
+BodyRadius = 35
+BodyBonus = 0.1
+KillRadius = 300
+QuestRange = 1000
+
+[Quests / Legacy]
+Apocasetter = true
+
+[Quests / Quests]
+GiverCooldownDays = 1
+ItemRange = 4000
+MinimumHours = 24
+ExtraHoursPerKm = 4
+MaximumHours = 96
+NoRepeatDistance = 400
+NoRepeatGameHours = 12
+ChainOfferGameHours = 24
+GiverRespawnDistance = 500
+
+[Quests / Reputation]
+StolenPenalty = 3
+FailPenaltyMultiplier = 2
+HostileAtRep = 0
+RecoverGameHours = 24
+PayPerRep = 0.005
+MinimumPayFraction = 0.1
+MaximumPayMultiplier = 0
+
+[Quests / RepVendor]
+BuyPrice = 20
+SellPrice = 10
+MaxPerDeal = 100
+Npcs = merchant
+
+[Quests / Takeover]
+CampRadius = 120
+MinDistance = 200
+MaxDistance = 4000
+KillsNeeded = 4
+WalkerSpawnDistance = 250
+GroupSize = 5
+WalkSeconds = 300
+GarrisonSize = 4
+GarrisonRange = 500
+GarrisonCooldownGameHours = 12
+ScoutRange = 250
+PatrolAtCamp = true
+
+[Quests / Voice]
+Spatial = 0
+
+[Survival / Debug]
+VerboseLog = false
+AllowStewPotSpilling = false
+
+[Survival / Model]
+Scale = 0.2
+
+[Survival / Stew Pot]
+Nutrition conversion multiplier = 2
+Cooking rate = 0.25
+Insanity boilaway rate = 0.25
+Spoiling rate = 0.002604167

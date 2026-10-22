@@ -1,0 +1,30 @@
+{
+  "columns": 4,
+  "rows": 2,
+  "frames": 8,
+  "fps": 12,
+  "loop": false,
+  "order": "top-left row-major",
+  "cell_pixels": 256,
+  "padding_per_edge": 2,
+  "width": 1024,
+  "height": 512,
+  "rgba8_bytes_without_mips": 2097152,
+  "shader_sheet": [
+    4,
+    2,
+    8,
+    0
+  ],
+  "source_frames": [
+    "cloud01-view00.png",
+    "cloud01-view01.png",
+    "cloud02-view00.png",
+    "cloud02-view01.png",
+    "cloud03-view00.png",
+    "cloud03-view01.png",
+    "cloud04-view00.png",
+    "cloud04-view01.png"
+  ],
+  "note": "Static variants select _FrameOffset with fps=0. For animated persistent storms use loop=true sources; crossfade does not make a nonlooping source seamless."
+}

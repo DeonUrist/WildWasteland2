@@ -1,0 +1,11 @@
+# Fixed line endings: mixed CRLF/LF broke build.sh and git apply in other repos.
+* text=auto
+*.sh   text eol=lf
+*.py   text eol=lf
+*.cs   text eol=crlf
+*.csproj text eol=crlf
+*.md   text eol=lf
+*.json text eol=lf
+*.png  binary
+*.dll  binary
+*.zip  binary

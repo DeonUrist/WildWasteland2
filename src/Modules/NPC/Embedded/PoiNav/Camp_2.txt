@@ -1,0 +1,343 @@
+WWPOINAV 1
+poi Camp_2
+sig 57:16.8x5.4x16.5
+node -7.685 -2.056 -7.072 0 1
+node -5.705 -1.527 -7.072 0 1
+node -3.725 -1.092 -7.072 0 1
+node -1.745 -0.657 -7.072 0 1
+node 0.235 -0.296 -7.072 0 1
+node 2.215 0.056 -7.072 0 1
+node 4.525 0.406 -7.402 0 1
+node 6.175 0.686 -7.072 0 1
+node 7.825 0.947 -7.072 0 1
+node -7.355 -1.844 -5.422 0 1
+node -5.705 -1.36 -5.092 0 1
+node -3.725 -0.939 -5.422 0 1
+node -1.415 -0.441 -5.422 0 1
+node 0.565 -0.095 -5.422 0 1
+node 2.215 0.227 -5.092 0 1
+node 4.195 0.548 -5.092 0 1
+node 6.505 0.829 -5.422 0 1
+node 7.825 1.056 -5.092 0 1
+node -7.685 -1.847 -3.112 0 1
+node -5.705 -1.275 -3.442 0 1
+node -3.725 -0.01 -3.442 0 1
+node -1.085 -0.01 -3.442 0 1
+node 0.235 0.027 -3.442 0 1
+node 2.545 0.43 -3.442 0 1
+node 4.195 0.732 -3.112 0 1
+node 6.175 0.988 -3.112 0 1
+node 7.825 1.183 -3.112 0 1
+node -2.075 0.883 -2.782 1 0
+node -2.735 0.796 -2.782 1 0
+node -7.685 -1.857 -1.462 0 1
+node -5.705 -1.179 -1.462 0 1
+node -4.055 -0.01 -1.792 0 1
+node -3.065 1.305 -1.132 1 0
+node -2.075 1.209 -2.122 1 0
+node -1.415 -0.01 -1.132 0 1
+node 0.235 0.094 -1.462 0 1
+node 2.215 0.419 -1.792 0 1
+node 4.525 0.757 -1.462 0 1
+node 6.175 0.967 -1.462 0 1
+node 8.155 1.191 -1.132 0 1
+node -7.355 -1.825 0.848 0 1
+node -5.705 -1.24 0.518 0 1
+node -3.725 -0.01 1.178 0 1
+node -2.735 1.278 -0.142 1 0
+node -1.415 -0.01 0.848 0 1
+node 0.565 0.054 0.848 0 1
+node 2.545 0.645 0.848 0 0
+node 4.525 0.664 0.848 0 1
+node 6.175 0.899 0.518 0 1
+node 7.825 1.121 0.518 0 1
+node -2.405 1.125 0.188 1 0
+node -7.355 -1.875 2.828 0 1
+node -5.705 -1.327 2.828 0 1
+node -3.725 -0.01 2.498 0 1
+node -1.745 -0.01 2.498 0 1
+node 0.565 -0.01 2.498 0 1
+node 2.215 0.238 2.498 0 1
+node 4.195 0.532 2.498 0 1
+node 6.175 0.803 2.498 0 1
+node 7.825 1.019 2.498 0 1
+node -7.355 -1.944 4.808 0 1
+node -5.705 -1.405 4.808 0 1
+node -3.395 -0.913 5.138 0 1
+node -1.415 -0.01 4.478 0 1
+node 0.565 -0.01 4.478 0 1
+node 2.545 0.102 4.808 0 1
+node 4.525 0.396 4.808 0 1
+node 6.175 0.657 4.478 0 1
+node 7.825 0.888 4.478 0 1
+node -7.355 -1.985 6.458 0 1
+node -5.375 -1.389 6.788 0 1
+node -3.395 -0.955 6.788 0 1
+node -1.415 -0.625 6.788 0 1
+node 0.235 -0.303 6.458 0 1
+node 2.545 -0.017 6.788 0 1
+node 4.525 0.245 6.788 0 1
+node 6.505 0.527 6.788 0 1
+node 8.155 0.781 6.788 0 1
+node -7.355 -1.941 7.778 0 1
+node -5.375 -1.416 7.778 0 1
+node -3.725 -1.036 7.778 0 1
+node -1.415 -0.65 7.778 0 1
+node 0.235 -0.363 8.108 0 1
+node 2.545 -0.032 7.778 0 1
+node 4.525 0.251 7.778 0 1
+node 6.175 0.504 8.108 0 1
+node 8.155 0.802 7.778 0 1
+node -2.405 -0.01 -0.472 0 1
+node -2.735 1.241 -0.472 1 0
+node -3.065 1.234 0.188 1 0
+node -3.065 -0.01 0.848 0 1
+node -4.715 -1.087 -4.432 0 1
+node -3.065 0.753 -2.782 1 0
+edge 0 1
+edge 0 9
+edge 0 10
+edge 1 2
+edge 1 9
+edge 1 10
+edge 1 11
+edge 2 3
+edge 2 10
+edge 2 11
+edge 2 12
+edge 3 4
+edge 3 11
+edge 3 12
+edge 3 13
+edge 4 5
+edge 4 12
+edge 4 13
+edge 4 14
+edge 5 6
+edge 5 13
+edge 5 14
+edge 5 15
+edge 6 7
+edge 6 14
+edge 6 15
+edge 6 16
+edge 7 8
+edge 7 15
+edge 7 16
+edge 7 17
+edge 8 16
+edge 8 17
+edge 9 10
+edge 9 18
+edge 9 19
+edge 10 11
+edge 10 18
+edge 10 19
+edge 11 12
+edge 11 19
+edge 12 13
+edge 13 14
+edge 13 22
+edge 13 23
+edge 14 15
+edge 14 22
+edge 14 23
+edge 14 24
+edge 15 16
+edge 15 23
+edge 15 24
+edge 15 25
+edge 16 17
+edge 16 24
+edge 16 25
+edge 16 26
+edge 17 25
+edge 17 26
+edge 18 19
+edge 18 29
+edge 18 30
+edge 19 29
+edge 19 30
+edge 21 22
+edge 21 35
+edge 22 23
+edge 22 35
+edge 23 24
+edge 23 36
+edge 23 37
+edge 24 25
+edge 24 36
+edge 24 37
+edge 24 38
+edge 25 26
+edge 25 37
+edge 25 38
+edge 25 39
+edge 26 38
+edge 26 39
+edge 27 33
+edge 28 27
+edge 28 33
+edge 29 30
+edge 29 40
+edge 29 41
+edge 30 40
+edge 30 41
+edge 32 43
+edge 34 35
+edge 34 44
+edge 34 45
+edge 35 44
+edge 35 45
+edge 37 38
+edge 37 47
+edge 37 48
+edge 38 39
+edge 38 47
+edge 38 48
+edge 38 49
+edge 39 48
+edge 39 49
+edge 40 41
+edge 40 51
+edge 40 52
+edge 41 51
+edge 41 52
+edge 42 44
+edge 42 53
+edge 42 54
+edge 43 50
+edge 44 45
+edge 44 53
+edge 44 54
+edge 44 55
+edge 45 54
+edge 45 55
+edge 45 56
+edge 46 47
+edge 46 55
+edge 47 48
+edge 47 56
+edge 47 57
+edge 47 58
+edge 48 49
+edge 48 57
+edge 48 58
+edge 48 59
+edge 49 58
+edge 49 59
+edge 51 52
+edge 51 60
+edge 51 61
+edge 52 60
+edge 52 61
+edge 53 54
+edge 53 63
+edge 55 56
+edge 55 64
+edge 55 65
+edge 56 57
+edge 56 64
+edge 56 65
+edge 56 66
+edge 57 58
+edge 57 65
+edge 57 66
+edge 57 67
+edge 58 59
+edge 58 66
+edge 58 67
+edge 58 68
+edge 59 67
+edge 59 68
+edge 60 61
+edge 60 69
+edge 60 70
+edge 61 62
+edge 61 69
+edge 61 70
+edge 61 71
+edge 62 70
+edge 62 71
+edge 62 72
+edge 63 64
+edge 64 65
+edge 64 73
+edge 64 74
+edge 65 66
+edge 65 73
+edge 65 74
+edge 65 75
+edge 66 67
+edge 66 74
+edge 66 75
+edge 66 76
+edge 67 68
+edge 67 75
+edge 67 76
+edge 67 77
+edge 68 76
+edge 68 77
+edge 69 70
+edge 69 78
+edge 69 79
+edge 70 71
+edge 70 78
+edge 70 79
+edge 70 80
+edge 71 72
+edge 71 79
+edge 71 80
+edge 71 81
+edge 72 73
+edge 72 80
+edge 72 81
+edge 72 82
+edge 73 74
+edge 73 81
+edge 73 82
+edge 73 83
+edge 74 75
+edge 74 82
+edge 74 83
+edge 74 84
+edge 75 76
+edge 75 83
+edge 75 84
+edge 75 85
+edge 76 77
+edge 76 84
+edge 76 85
+edge 76 86
+edge 77 85
+edge 77 86
+edge 78 79
+edge 79 80
+edge 80 81
+edge 81 82
+edge 82 83
+edge 83 84
+edge 84 85
+edge 85 86
+edge 34 87
+edge 35 87
+edge 43 88
+edge 43 89
+edge 50 89
+edge 88 89
+edge 42 90
+edge 44 90
+edge 53 90
+edge 54 90
+edge 1 91
+edge 2 91
+edge 9 91
+edge 10 91
+edge 11 91
+edge 19 91
+edge 27 92
+edge 28 92
+edge 33 92
+link Climb 0 0 -2.405 -0.01 -0.472 -2.735 1.241 -0.472 -2.405 -0.01 -0.472 -2.735 1.241 -0.472 270 0 1
+link Drop 0 0 -3.065 1.234 0.188 -3.065 -0.01 0.848 -3.065 1.234 0.188 -3.065 -0.01 0.848 0 1 0
+link Climb 0 0 -4.715 -1.087 -4.432 -3.065 0.753 -2.782 -4.715 -1.087 -4.432 -3.065 0.753 -2.782 45 0 1

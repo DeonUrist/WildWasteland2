@@ -1,0 +1,74 @@
+# Quest chain template for Apocalypter Quests
+#
+# Copy the blocks you want into quests.txt (anywhere below the header comments), rename the ids and edit the
+# text. Every block starts with a [unique_id] line. Lines starting with # are ignored. Delete the keys you don't need:
+# each one has a default.
+#
+# How a chain behaves:
+#  * Every step has `chain = <same name>`. Steps 2, 3 ... also have `after = <id of the step before>`.
+#  * A step is done ONCE per save slot, never offered again afterwards.
+#  * It is ALWAYS offered, before any ordinary or random job, when you ask an NPC for work who is allowed by the
+#    `giver` line, once the step before it is done. The only exception: if a different NPC offered that same step
+#    in the last 24 in-game hours (setting [Quests] ChainOfferGameHours), it waits.
+#  * A step can still be refused by the usual things: the NPC is on cooldown, you already carry too many jobs, the
+#    giver's faction is hostile, or the step needs something that doesn't exist right now (needenemy / needpoi,
+#    a goto with no unfound place nearby ...).
+#  * Placeholders for texts: {n} {item} {target} {reward} {have} {progress} {giver} {dist} {dir} {radius} {poi} {place} {minutes}
+#  * type is one of: fetch | kill | goto | talk | clear | takeover | deliver  (see the header of quests.txt for what
+#    target / count / distance / radius mean for each type).
+#  * Kill steps: bodies of the kills brought back to the giver pay a bonus ([Kills] BodyBonus); no need to write that.
+#  * Dialogue-file (Talk) users can also hand out a step with  action = quest.give:<id>  and react to the flags
+#    quest_<id>_active / quest_<id>_done / quest_<id>_failed.
+
+# ---------------------------------------------------------------------------------------------------------
+# STEP 1
+# ---------------------------------------------------------------------------------------------------------
+[my_chain_1]
+type = fetch
+chain = My Chain Name
+title = My Chain Name (1/3): Short Title
+giver = merchant,elder
+target = Toolbox
+label = Toolbox
+count = 2
+reward = 100
+# hours = 48
+# rep = 3
+offer = What the NPC says when offering step 1. Bring me {n} {item}. {reward} nuts.
+accept = What the NPC says when you accept. (optional)
+remind = What the NPC says if you come back too early. (optional)
+done = What the NPC says when you finish step 1. (optional)
+
+# ---------------------------------------------------------------------------------------------------------
+# STEP 2
+# ---------------------------------------------------------------------------------------------------------
+[my_chain_2]
+type = kill
+chain = My Chain Name
+after = my_chain_1
+title = My Chain Name (2/3): Short Title
+giver = merchant,elder
+target = grimhound
+label = Grimhounds
+count = 3
+reward = 200
+needenemy = grimhound
+needrange = 1500
+offer = What the NPC says when offering step 2. Kill {n} {target}. {reward} nuts.
+done = Step 2 finished text. (optional)
+
+# ---------------------------------------------------------------------------------------------------------
+# STEP 3 (last step): give it a bigger reward and reputation
+# ---------------------------------------------------------------------------------------------------------
+[my_chain_3]
+type = goto
+chain = My Chain Name
+after = my_chain_2
+title = My Chain Name (3/3): Short Title
+giver = merchant,elder
+target = building
+distance = 200-1500
+reward = 300
+rep = 5
+offer = What the NPC says when offering step 3. Go to the building about {dist} m {dir} of here and report back. {reward} nuts.
+done = The ending. {reward} nuts.

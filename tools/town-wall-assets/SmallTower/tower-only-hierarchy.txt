@@ -1,0 +1,59 @@
+  - tent_1_support [layer Default]  pos(0.01,8.077,0.832) rot(0,-1,0,2.95e-06) scl(1,1,1)
+      * MeshFilter mesh=Mesh:tent_support
+      * MeshRenderer mats=[metal_rusted_1]
+    - collider [layer Default]  pos(-1.2428,-0.9942,-0.2719) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(0.0742,2.5894,0.0742) center(0,0,0)
+    - collider [layer Default]  pos(1.2834,-0.9942,-0.2719) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(0.0742,2.5894,0.0742) center(0,0,0)
+    - collider [layer Default]  pos(-1.25,0.42,0.68) rot(0.7071,2.274e-13,-2.274e-13,0.7071) scl(1,1,1)
+        * BoxCollider size(0.0742,2.5894,0.0742) center(0,0,0)
+    - collider [layer Default]  pos(1.28,0.42,0.68) rot(0.7071,2.274e-13,-2.274e-13,0.7071) scl(1,1,1)
+        * BoxCollider size(0.0742,2.5894,0.0742) center(0,0,0)
+    - collider [layer Default]  pos(0.041,0.487,-0.319) rot(0.5,-0.5,0.5,0.5) scl(1,1,1)
+        * BoxCollider size(0.0742,2.5894,0.0742) center(0,0,0)
+  - tent_1 [layer Default]  pos(-0.01,8.25,-0.9199) rot(0,0,0,1) scl(1,1,1)
+      * MeshFilter mesh=Mesh:tent_support
+      * MeshRenderer mats=[metal_rusted_1]
+    - fabric_tent [layer Default]  pos(0.0062,0.2645,0.7818) rot(0,0,0,1) scl(1,1,1)
+        * MeshFilter mesh=Mesh:fabric_tent.001
+        * MeshRenderer mats=[fabric_torn_1]
+    - collider [layer Default]  pos(0.0049,0.3109,0.8633) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(2.4524,0.112,2.374) center(0.0166,-0.004,0.0011)
+    - collider [layer Default]  pos(-1.2428,-0.9942,-0.2719) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(0.0742,2.5894,0.0742) center(0,0,0)
+    - collider [layer Default]  pos(1.2834,-0.9942,-0.2719) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(0.0742,2.5894,0.0742) center(0,0,0)
+  - container_3 [layer Default]  pos(0,2.98,0) rot(-0.7071,0,0,0.7071) scl(1,1,1)
+      * MeshFilter mesh=Mesh:shipping_container
+      * MeshRenderer mats=[shipping_container_6m_3]
+    - collider [layer Default]  pos(-0.0175,1.2481,-0.0009766) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(2.4524,0.112,6.0649) center(0.0166,-0.004,0.0028)
+    - collider [layer Default]  pos(-0.0175,-1.24,-0.0009766) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(2.4524,0.112,6.0649) center(0.0166,-0.004,0.0028)
+    - collider [layer Default]  pos(1.1647,-0.0251,-0.0009766) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(0.112,2.4524,6.0649) center(-0.004,-0.0166,0.0028)
+    - collider [layer Default]  pos(-1.1646,-0.0251,-0.0009766) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(0.112,2.4524,6.0649) center(-0.004,-0.0166,0.0028)
+    - collider [layer Default]  pos(-0.0175,0.0196,2.9795) rot(0,0,0,1) scl(1,1,1)
+        * BoxCollider size(2.4524,2.5766,0.112) center(0.0166,-0.0236,-0.004)
+    - fence_small_4 [layer Default]  pos(-1.23,6.301,-0.0139) rot(0,0.7071,0,0.7071) scl(0.6338,0.6338,0.6338)
+        * MeshFilter mesh=Mesh:fence.007
+        * MeshRenderer mats=[metal_shanty_1]
+        * BoxCollider size(4.2,2.0269,0.1289) center(-0.0232,-0.2203,-0.0228)
+    - ladder_L [layer SeeTrough]  pos(2.63,0.71,-0.71) rot(0.0923,-0.7011,0.0923,0.7011) scl(1,1,1)
+        * MeshFilter mesh=Mesh:ladder_M
+        * MeshRenderer mats=[metal_rusted_1]
+        * BoxCollider size(0.7327,7.4083,0.0767) center(-0.0013,1.7753,0.0162)
+      - ladder [layer Default]  pos(0,3.712,0) rot(0,0,0,1) scl(1,1,1)
+          * MeshFilter mesh=Mesh:ladder_M
+          * MeshRenderer mats=[metal_rusted_1]
+      - ladder_trigger tag=Ladder [layer Ignore Raycast]  pos(0,0,0) rot(0,0,0,1) scl(1,1,1)
+          * BoxCollider trigger size(0.7327,8.3226,0.1131) center(-0.0013,2.2325,-0.002)
+    - fence_small_4 (1) [layer Default]  pos(0.078,6.301,-1.2991) rot(0,-4.47e-08,0,1) scl(0.6338,0.6338,0.6338)
+        * MeshFilter mesh=Mesh:fence.007
+        * MeshRenderer mats=[metal_shanty_1]
+        * BoxCollider size(4.2,2.0269,0.1289) center(-0.0232,-0.2203,-0.0228)
+    - fence_small_3 [layer Default]  pos(0.073,6.195,1.3071) rot(0,0,0,1) scl(0.63,0.63,0.63)
+        * MeshFilter mesh=Mesh:fence.003
+        * MeshRenderer mats=[metal_shanty_1]
+        * BoxCollider size(4.2438,2.2967,0.1289) center(-0.0263,-0.3413,-0.0017)

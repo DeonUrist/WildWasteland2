@@ -1,0 +1,1014 @@
+{
+  "purpose": "Read-only baseline inventory for the planned native WW Quests integration; not an activated module",
+  "reviewed": "2026-10-18",
+  "version": "1.8.2",
+  "guid": "local.apocalypterquests",
+  "sourceRoot": "V:/Repos/Apocalypter/ApocalypterQuests/Quest Mod",
+  "sourceGitCommit": null,
+  "sourceFingerprint": "85dc7822106ea5783d7eebb5b5c40f19b36a39392562ca417a17cbe7612e285b",
+  "authorization": "Denis stated on 2026-10-18 that the author granted him maintenance rights and requested integration preparation",
+  "sourceBuildSha256": "0ea98f1088738804cc088076d201a5bf57d277c84d65399c7cb054c0dd265904",
+  "installedDisabledSha256": "0ea98f1088738804cc088076d201a5bf57d277c84d65399c7cb054c0dd265904",
+  "sourceCsFiles": 10,
+  "voiceFiles": 76,
+  "voiceBytes": 34534926.0,
+  "actors": [
+    "LostSilver666",
+    "Soldier96"
+  ],
+  "configBindings": [
+    {
+      "file": "Hire.cs",
+      "line": 101,
+      "section": "Hire",
+      "key": "Enabled"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 102,
+      "section": "Hire",
+      "key": "Hirable"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 103,
+      "section": "Hire",
+      "key": "DurationGameHours"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 104,
+      "section": "Hire",
+      "key": "DeathPenalty"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 105,
+      "section": "Hire",
+      "key": "FollowDistance"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 106,
+      "section": "Hire",
+      "key": "CatchUpDistance"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 107,
+      "section": "Hire",
+      "key": "IgnoreCritters"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 108,
+      "section": "Hire",
+      "key": "LeashDistance"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 109,
+      "section": "Hire",
+      "key": "RideInCars"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 110,
+      "section": "Hire",
+      "key": "ShootFromCar"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 111,
+      "section": "Hire",
+      "key": "RealShooting"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 112,
+      "section": "Hire",
+      "key": "ShotAnimation"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 113,
+      "section": "Hire",
+      "key": "RecoilDegrees"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 115,
+      "section": "Hire",
+      "key": "MagazineOverride"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 116,
+      "section": "Hire",
+      "key": "ReloadOverride"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 117,
+      "section": "Hire",
+      "key": "ReloadSoundFrom"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 118,
+      "section": "Hire",
+      "key": "ShotDamage"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 119,
+      "section": "Hire",
+      "key": "ShotInterval"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 120,
+      "section": "Hire",
+      "key": "RangedHires"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 121,
+      "section": "Hire",
+      "key": "ArmPoseLike"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 122,
+      "section": "Hire",
+      "key": "RideRange"
+    },
+    {
+      "file": "Hire.cs",
+      "line": 123,
+      "section": "Hire",
+      "key": "DismissKey"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 127,
+      "section": "General",
+      "key": "Apocasetter"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 128,
+      "section": "General",
+      "key": "QuestLogKey"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 129,
+      "section": "Debug",
+      "key": "FactionDumpKey"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 130,
+      "section": "Debug",
+      "key": "RecordNpcNames"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 131,
+      "section": "General",
+      "key": "MaxActiveQuests"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 132,
+      "section": "General",
+      "key": "RewardMultiplier"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 133,
+      "section": "General",
+      "key": "ShowTracker"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 134,
+      "section": "Generated",
+      "key": "Enabled"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 135,
+      "section": "Generated",
+      "key": "Types"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 136,
+      "section": "Advanced",
+      "key": "MoneyVariable"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 137,
+      "section": "Items",
+      "key": "HandInRadius"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 138,
+      "section": "Items",
+      "key": "MinLiquidFraction"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 141,
+      "section": "Quests",
+      "key": "GiverCooldownDays"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 142,
+      "section": "Quests",
+      "key": "ItemRange"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 143,
+      "section": "Quests",
+      "key": "MinimumHours"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 144,
+      "section": "Quests",
+      "key": "ExtraHoursPerKm"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 145,
+      "section": "Quests",
+      "key": "MaximumHours"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 146,
+      "section": "Quests",
+      "key": "NoRepeatDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 147,
+      "section": "Quests",
+      "key": "NoRepeatGameHours"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 148,
+      "section": "Items",
+      "key": "CountCarriedItems"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 149,
+      "section": "Quests",
+      "key": "ChainOfferGameHours"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 150,
+      "section": "Kills",
+      "key": "BodyRadius"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 151,
+      "section": "Kills",
+      "key": "BodyBonus"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 152,
+      "section": "Kills",
+      "key": "KillRadius"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 153,
+      "section": "Kills",
+      "key": "QuestRange"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 155,
+      "section": "Goto",
+      "key": "MinDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 156,
+      "section": "Goto",
+      "key": "MaxDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 158,
+      "section": "Takeover",
+      "key": "CampRadius"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 159,
+      "section": "Takeover",
+      "key": "MinDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 160,
+      "section": "Takeover",
+      "key": "MaxDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 161,
+      "section": "Takeover",
+      "key": "KillsNeeded"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 162,
+      "section": "Takeover",
+      "key": "WalkerSpawnDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 163,
+      "section": "Takeover",
+      "key": "GroupSize"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 164,
+      "section": "Takeover",
+      "key": "WalkSeconds"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 165,
+      "section": "Takeover",
+      "key": "GarrisonSize"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 166,
+      "section": "Takeover",
+      "key": "GarrisonRange"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 167,
+      "section": "Quests",
+      "key": "GiverRespawnDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 168,
+      "section": "Takeover",
+      "key": "GarrisonCooldownGameHours"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 169,
+      "section": "Deliver",
+      "key": "MinDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 170,
+      "section": "Deliver",
+      "key": "MaxDistance"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 171,
+      "section": "Deliver",
+      "key": "GameHoursBase"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 172,
+      "section": "Deliver",
+      "key": "GameHoursPerKm"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 173,
+      "section": "Deliver",
+      "key": "CampRadius"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 174,
+      "section": "Reputation",
+      "key": "StolenPenalty"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 175,
+      "section": "Reputation",
+      "key": "FailPenaltyMultiplier"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 176,
+      "section": "Reputation",
+      "key": "HostileAtRep"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 177,
+      "section": "Reputation",
+      "key": "RecoverGameHours"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 178,
+      "section": "Reputation",
+      "key": "PayPerRep"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 179,
+      "section": "Reputation",
+      "key": "MinimumPayFraction"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 180,
+      "section": "Reputation",
+      "key": "MaximumPayMultiplier"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 181,
+      "section": "RepVendor",
+      "key": "Enabled"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 182,
+      "section": "RepVendor",
+      "key": "BuyPrice"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 183,
+      "section": "RepVendor",
+      "key": "SellPrice"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 184,
+      "section": "RepVendor",
+      "key": "MaxPerDeal"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 185,
+      "section": "RepVendor",
+      "key": "Npcs"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 187,
+      "section": "Takeover",
+      "key": "ScoutRange"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 188,
+      "section": "Takeover",
+      "key": "PatrolAtCamp"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 202,
+      "section": "Factions",
+      "key": "HomeRadius"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 203,
+      "section": "Factions",
+      "key": "HumanFactions"
+    },
+    {
+      "file": "Plugin.cs",
+      "line": 204,
+      "section": "Factions",
+      "key": "PeopleNames"
+    },
+    {
+      "file": "Voice.cs",
+      "line": 28,
+      "section": "Voice",
+      "key": "Enabled"
+    },
+    {
+      "file": "Voice.cs",
+      "line": 29,
+      "section": "Voice",
+      "key": "Volume"
+    },
+    {
+      "file": "Voice.cs",
+      "line": 31,
+      "section": "Voice",
+      "key": "Spatial"
+    },
+    {
+      "file": "Voice.cs",
+      "line": 32,
+      "section": "Voice",
+      "key": "Folder"
+    }
+  ],
+  "files": [
+    {
+      "path": "ApocalypterQuests.csproj",
+      "bytes": 7392,
+      "sha256": "c5a6675ed489f30e09a82c6ffc34ced99537b36217fb5db83f456f4b65d3ffd3"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 31424,
+      "sha256": "8b5ae99d340e59402660b4b5c95ab1523ba0e9c601681e97976847f6ea48a3a4"
+    },
+    {
+      "path": "FactionDump.cs",
+      "bytes": 7200,
+      "sha256": "555221c14bc17739799a8c4c1185b7f8ef86fee8ada4f9e524d4beddb2de4811"
+    },
+    {
+      "path": "Factions.cs",
+      "bytes": 11840,
+      "sha256": "68b0e50140be40f8dbcfda3ee6d6b5c4649612b4f0f12a52d691a819376fe1b6"
+    },
+    {
+      "path": "factions.txt",
+      "bytes": 2200,
+      "sha256": "0b8b6b6ee0f9b0175192fc4ef36881d9b314c9eb2d4f914d4f7b6b7b4cf4aac9"
+    },
+    {
+      "path": "Game.cs",
+      "bytes": 42852,
+      "sha256": "9cfa4e0aef1f979d68d8b103843d8e3f1e0afde99a1b0071048666f152ddb5cd"
+    },
+    {
+      "path": "Hire.cs",
+      "bytes": 117618,
+      "sha256": "3fe18fc11bd39df9a804769c4a188c1518d117e35f61a2f475f11127bda29bc6"
+    },
+    {
+      "path": "item_list.txt",
+      "bytes": 14933,
+      "sha256": "0dbf53cb4f1b87b0168709d5673f17f42e631cd490a793905035859ae8f20761"
+    },
+    {
+      "path": "MapLink.cs",
+      "bytes": 4547,
+      "sha256": "a5897586cbb27a157e0c8fd650b911225086594d0aec43de874a9ddfd074221e"
+    },
+    {
+      "path": "Plugin.cs",
+      "bytes": 147084,
+      "sha256": "36210a65e741cc7ad1c8df0bdb66b2e8c05b49f551347fe0720c3e8096050240"
+    },
+    {
+      "path": "quest_chain_template.txt",
+      "bytes": 3577,
+      "sha256": "358f101d66ff1f51ea8e305646e219062f37bd77666e863c540ac27362762898"
+    },
+    {
+      "path": "quest_chain.talk.txt.example",
+      "bytes": 2393,
+      "sha256": "2e6870709e0d68d22a9458a22ee5d80799258b5d5a20c5f2d2b361b340643849"
+    },
+    {
+      "path": "QUEST_GUIDE.md",
+      "bytes": 20301,
+      "sha256": "613440af92c530c1593dde58f922adc7b86c11acecd2d679f1742808f5dbcce1"
+    },
+    {
+      "path": "Quests.cs",
+      "bytes": 60115,
+      "sha256": "b3e8b567f720cd614da85d6f97b14d6ef605030789daf4074bcdd34f1f09822f"
+    },
+    {
+      "path": "quests.txt",
+      "bytes": 17795,
+      "sha256": "b286957e0bec40ad07f127464251f0b866d8af5ef1e4e41cc37138adc80c81b1"
+    },
+    {
+      "path": "README.md",
+      "bytes": 20507,
+      "sha256": "a4bf814ce5b92fdf46eb027e2fe0599381cf6cb4ce8aa00ef0189cebba307e1f"
+    },
+    {
+      "path": "Takeover.cs",
+      "bytes": 39235,
+      "sha256": "2295347223e654681f821d8e404389dbe7de820480007419cf4e87f2a322f3a8"
+    },
+    {
+      "path": "TalkHook.cs",
+      "bytes": 15953,
+      "sha256": "b860c558fe928fbf673d9dfde4d4b1dcd1c1117fd2c32d31ef33088501dfe731"
+    },
+    {
+      "path": "Voice Actors/LostSilver666/field_medic/accept.wav",
+      "bytes": 247628,
+      "sha256": "9c11523c4dea124e52b20d7bff25ed294c685114edef748974ed0ed9dd4de29d"
+    },
+    {
+      "path": "Voice Actors/LostSilver666/field_medic/done.wav",
+      "bytes": 476028,
+      "sha256": "e3aec780c75560b972e2377efa7433bff0d5fa2f8ae842a2676745d8e7c525c9"
+    },
+    {
+      "path": "Voice Actors/LostSilver666/field_medic/offer.wav",
+      "bytes": 626028,
+      "sha256": "87a507481044361f650af6f06bb41553b8e82c4f54186f42a229084069bd5fdb"
+    },
+    {
+      "path": "Voice Actors/LostSilver666/field_medic/remind.wav",
+      "bytes": 265516,
+      "sha256": "943100d14e050e520f2e8d0a388b907178b400c9d7b60757565f0c14dfbc7efe"
+    },
+    {
+      "path": "Voice Actors/LostSilver666/scout_the_ridge/accept.wav",
+      "bytes": 520074,
+      "sha256": "2fca2650fc64acbb45081d46c6135f24af093b7bc5d723b64df3c83c70fe1862"
+    },
+    {
+      "path": "Voice Actors/LostSilver666/scout_the_ridge/done.wav",
+      "bytes": 353580,
+      "sha256": "21b404e3ee19517b63fdc707f5c11086f7df55c6ae23cef93e64a8f264eba8e3"
+    },
+    {
+      "path": "Voice Actors/LostSilver666/scout_the_ridge/offer.wav",
+      "bytes": 558604,
+      "sha256": "2a3aa77e6d5005986a1d4dccaca661c199aa0f63938a5dcff22d5afd97c27f51"
+    },
+    {
+      "path": "Voice Actors/LostSilver666/scout_the_ridge/remind.wav",
+      "bytes": 251756,
+      "sha256": "06da136fc36b566da3495277f97e8303c7e415543f5ea18c35596ba2ed053041"
+    },
+    {
+      "path": "Voice Actors/Soldier96/carry_word/accept.wav",
+      "bytes": 149838,
+      "sha256": "6f3bf0503be664a5783f003d7451c9b9c449d7d8aa3b40433d44f3c21864cb02"
+    },
+    {
+      "path": "Voice Actors/Soldier96/carry_word/done.wav",
+      "bytes": 380238,
+      "sha256": "d0df1a6292ad6dff8c43908d0d30e0b334f691e34b05a4e67df697b2505c60c9"
+    },
+    {
+      "path": "Voice Actors/Soldier96/carry_word/offer.wav",
+      "bytes": 534606,
+      "sha256": "6a23e32ff5554ea9090bbc14511573c53b84c6bc4b66cb85ce41dcaf2e275811"
+    },
+    {
+      "path": "Voice Actors/Soldier96/carry_word/remind.wav",
+      "bytes": 248910,
+      "sha256": "7cdfbe75b55fdbbf4b0f74d6e6c96530b8213c465a91353592123a4ef76484c6"
+    },
+    {
+      "path": "Voice Actors/Soldier96/cave_check/accept.wav",
+      "bytes": 366414,
+      "sha256": "5e26ca9e645c735b8f3be0b14b2b2d051dcf17669c0ebbe8bbaf79bb3c3a025e"
+    },
+    {
+      "path": "Voice Actors/Soldier96/cave_check/done.wav",
+      "bytes": 276558,
+      "sha256": "feb7b13befd83b6dba79fbc82bfc4960e445046cd279220644b3314eb72f0004"
+    },
+    {
+      "path": "Voice Actors/Soldier96/cave_check/offer.wav",
+      "bytes": 702798,
+      "sha256": "da8c3cdb263d48a42b2cfe2dafbe0353a79d9da23ca475e0b23564ed0bb04491"
+    },
+    {
+      "path": "Voice Actors/Soldier96/cave_check/remind.wav",
+      "bytes": 306510,
+      "sha256": "7ed016d8606d30a5f6ab5dbc28badf32b8d3aabf258d73922d69abd580efa2f3"
+    },
+    {
+      "path": "Voice Actors/Soldier96/clear_the_camp/accept.wav",
+      "bytes": 191310,
+      "sha256": "9e36336d9b52149deb863c4d3ade7d782f3fdad79aaa51c8585e03917847eb02"
+    },
+    {
+      "path": "Voice Actors/Soldier96/clear_the_camp/done.wav",
+      "bytes": 453966,
+      "sha256": "ce514129ea067cf33a48a425f4fe4b86dd9b9c174c613f364f2ee91e0b0a7339"
+    },
+    {
+      "path": "Voice Actors/Soldier96/clear_the_camp/offer.wav",
+      "bytes": 1092174,
+      "sha256": "381c1bbe364243d4a8fedd1187da89d37a4e8d71974dce84b321dc14893b0754"
+    },
+    {
+      "path": "Voice Actors/Soldier96/clear_the_camp/Record (online-voice-recorder.com) (1).mp3",
+      "bytes": 63744,
+      "sha256": "0184518cdb47345624b808f46a257ba34e0630235e096634c0d2832c4c483150"
+    },
+    {
+      "path": "Voice Actors/Soldier96/clear_the_camp/Record (online-voice-recorder.com) (2).mp3",
+      "bytes": 91392,
+      "sha256": "e2d2cc80c4563f6b0bd713c98b66c9ce284fd4d12f20b00fbfa5f30335e1685e"
+    },
+    {
+      "path": "Voice Actors/Soldier96/clear_the_camp/Record (online-voice-recorder.com) (3).mp3",
+      "bytes": 151296,
+      "sha256": "ff29d5e84440ccb0c8b28e30b9e76212077296609a9e6d85fe3edf5e5b364f9a"
+    },
+    {
+      "path": "Voice Actors/Soldier96/clear_the_camp/Record (online-voice-recorder.com).mp3",
+      "bytes": 364032,
+      "sha256": "db026fa064558c548c3118d69df4645055a4d1ecc1e3f12d132096b8f100c069"
+    },
+    {
+      "path": "Voice Actors/Soldier96/clear_the_camp/remind.wav",
+      "bytes": 274254,
+      "sha256": "2268ddf53dd3424f4048415e2bd43be7f9b1b280c6c35a2685c27ed5729da126"
+    },
+    {
+      "path": "Voice Actors/Soldier96/dry_throats/accept.wav",
+      "bytes": 343374,
+      "sha256": "f90537def832b1eceed652bda6f7d8df6bed2702c1f1a17c627c8e485597392c"
+    },
+    {
+      "path": "Voice Actors/Soldier96/dry_throats/done.wav",
+      "bytes": 329550,
+      "sha256": "a6e93bb38d6cf7058973d78b31c38d1a1a18b73927cf15a76ce112f387f8caba"
+    },
+    {
+      "path": "Voice Actors/Soldier96/dry_throats/offer.wav",
+      "bytes": 827214,
+      "sha256": "1a69f31040bfa876a7a6c805bef8c2f050f0d16f4fb6cbe20c5ab614d3e6b53c"
+    },
+    {
+      "path": "Voice Actors/Soldier96/dry_throats/remind.wav",
+      "bytes": 218958,
+      "sha256": "82dc9f93b27c5e970fb8723e80caf9159f4635f7e2b2e61056ffcad72a304103"
+    },
+    {
+      "path": "Voice Actors/Soldier96/field_medic/accept.wav",
+      "bytes": 244302,
+      "sha256": "f24ebee67eee6be510244ffd03d2b8f042740dfc26e503cb5eaf19d035eb909b"
+    },
+    {
+      "path": "Voice Actors/Soldier96/field_medic/done.wav",
+      "bytes": 532302,
+      "sha256": "0341c78ddaef334deb5dd80944caa6a4291d89457b4c5e04605e591b17cba690"
+    },
+    {
+      "path": "Voice Actors/Soldier96/field_medic/offer.wav",
+      "bytes": 606030,
+      "sha256": "386b8e8a4cff7598bfe6ab0414731af9b76a80a93c9e5a87de17ea48f746a65a"
+    },
+    {
+      "path": "Voice Actors/Soldier96/field_medic/remind.wav",
+      "bytes": 313422,
+      "sha256": "aafb37b4ecc8d84df25410edc73878fd64ff0d84d2e8314c69db15d1631f1f59"
+    },
+    {
+      "path": "Voice Actors/Soldier96/fuel_shortage/accept.wav",
+      "bytes": 179790,
+      "sha256": "16037efac65f7865cb5caaaccd5305c77c2bc277a12b035831d0279682325095"
+    },
+    {
+      "path": "Voice Actors/Soldier96/fuel_shortage/done.wav",
+      "bytes": 292686,
+      "sha256": "e30e5452a7e1907a9e7400373278c1d5cbf233d1b69eecb9d6433853b8241d3d"
+    },
+    {
+      "path": "Voice Actors/Soldier96/fuel_shortage/offer.wav",
+      "bytes": 1066830,
+      "sha256": "33ab703b7629bffcbac9dc1370300ac0136ef9ece66f473c19f9ab8c5d76c0b4"
+    },
+    {
+      "path": "Voice Actors/Soldier96/fuel_shortage/remind.wav",
+      "bytes": 290382,
+      "sha256": "cb2ffc88bc2d644bee166bcb73f5abae8f63731b245e6d1cf8ad36e2e02d0ca4"
+    },
+    {
+      "path": "Voice Actors/Soldier96/hound_trouble/accept.wav",
+      "bytes": 138318,
+      "sha256": "d13c13a4414c13c588c3e04a48e0f670470ef1ae695eb66f36e5945ae911eb90"
+    },
+    {
+      "path": "Voice Actors/Soldier96/hound_trouble/done.wav",
+      "bytes": 244302,
+      "sha256": "017b591971a0b3e4beccd2ad2a96b38513945f30d329f6a7ee45d44f3a1e57c4"
+    },
+    {
+      "path": "Voice Actors/Soldier96/hound_trouble/offer.wav",
+      "bytes": 1087566,
+      "sha256": "2699862b87c658974fdff59783e45429cc920328bd60e79653c16535e40e086f"
+    },
+    {
+      "path": "Voice Actors/Soldier96/hound_trouble/remind.wav",
+      "bytes": 276558,
+      "sha256": "48c6a3b419328bbe258c39cc3ae70ece199aeb6ff9604624d995def861f3c3b4"
+    },
+    {
+      "path": "Voice Actors/Soldier96/night_terror/accept.wav",
+      "bytes": 465486,
+      "sha256": "32529669f02f34ecf9a6a613d9485dc914475e137767b18a615d2933196c4c26"
+    },
+    {
+      "path": "Voice Actors/Soldier96/night_terror/done.wav",
+      "bytes": 458574,
+      "sha256": "55ea8e5879ab5790a9ac953f2d58121b056dd86d73f19df70b39dbba82d4fcfa"
+    },
+    {
+      "path": "Voice Actors/Soldier96/night_terror/offer.wav",
+      "bytes": 923982,
+      "sha256": "19631bcd4eb819a4f5d077041be97a6be40664b3276115700d9fbccfa30b63b4"
+    },
+    {
+      "path": "Voice Actors/Soldier96/night_terror/remind.wav",
+      "bytes": 424014,
+      "sha256": "9b23f7c4330493f7ef58347f2a31e28ccac8dde17c616a8338e65c92444e3c58"
+    },
+    {
+      "path": "Voice Actors/Soldier96/rations_run/accept.wav",
+      "bytes": 239694,
+      "sha256": "b80c9d6197500bff6e36450d2b888136ec00a8f51560eeb2872236a77308e46d"
+    },
+    {
+      "path": "Voice Actors/Soldier96/rations_run/done.wav",
+      "bytes": 239694,
+      "sha256": "00a8deb88b54d432e6a5a6ed490101fe11701034025306ef06d7382629bac911"
+    },
+    {
+      "path": "Voice Actors/Soldier96/rations_run/offer.wav",
+      "bytes": 735054,
+      "sha256": "dcca76bb1ced88b168ac893029e4ae31b93221a5c9a91ae8dc2e4f56907ca5be"
+    },
+    {
+      "path": "Voice Actors/Soldier96/rations_run/remind.wav",
+      "bytes": 202830,
+      "sha256": "41b097b08d2b271071f92ef67fdf58244fb4919f5ae146a22832ebacfb71a4e6"
+    },
+    {
+      "path": "Voice Actors/Soldier96/Repairs/accept.wav",
+      "bytes": 297294,
+      "sha256": "c9a0deabcc09b95bd32f62603e5afefc52e79626f0c08e1c8daa802fe5cb526a"
+    },
+    {
+      "path": "Voice Actors/Soldier96/Repairs/done.wav",
+      "bytes": 444750,
+      "sha256": "3f84ca48c64555f1e949cd11c4a03d16bc0f480a33c95e4a5bce522a86af7e8c"
+    },
+    {
+      "path": "Voice Actors/Soldier96/Repairs/offer.wav",
+      "bytes": 606030,
+      "sha256": "6bf11ba8e79b2c0df148b098e03e15fe4f8c437a07884935dfc79c912f6db997"
+    },
+    {
+      "path": "Voice Actors/Soldier96/Repairs/remind.wav",
+      "bytes": 218958,
+      "sha256": "c451a39cd61d6d080421d1b6b191d981d0e304690414d0e1ff9a9d0620e587c4"
+    },
+    {
+      "path": "Voice Actors/Soldier96/scout_the_ridge/accept.wav",
+      "bytes": 543822,
+      "sha256": "3d01c2552b4ce44868874e53805bfbb95d94dc8f87a27ea46bf88b5ae1aa0332"
+    },
+    {
+      "path": "Voice Actors/Soldier96/scout_the_ridge/done.wav",
+      "bytes": 292686,
+      "sha256": "ae9c030311c2a26accfaa76e73ee97c5cf1cf9c3a7fba1977e8bdf06a5c80884"
+    },
+    {
+      "path": "Voice Actors/Soldier96/scout_the_ridge/offer.wav",
+      "bytes": 580686,
+      "sha256": "2a43ec1e09c014a2316ccddd6d8b862080d5ac75002e529b9dbefed83e9cc2c8"
+    },
+    {
+      "path": "Voice Actors/Soldier96/scout_the_ridge/remind.wav",
+      "bytes": 195918,
+      "sha256": "c8ac68235f586d57efba93de570181a444e2ea3a9f1aafb96c39be1ac0275775"
+    },
+    {
+      "path": "Voice Actors/Soldier96/supply_run/accept.wav",
+      "bytes": 281166,
+      "sha256": "bb91b15f3fd538b3b106ae1fb3ef911d7597e26fc8b24abfcd4cb3facca143c1"
+    },
+    {
+      "path": "Voice Actors/Soldier96/supply_run/done.wav",
+      "bytes": 380238,
+      "sha256": "16f2f85bff10275f31c0ae5a46d3c8a15695b7ec5f20ea0fed422a513cbdef34"
+    },
+    {
+      "path": "Voice Actors/Soldier96/supply_run/offer.wav",
+      "bytes": 1956174,
+      "sha256": "d4750e3fb1dd558512f9245cb30ad35b9a89f8139049eeddc77b415c1e2e3db2"
+    },
+    {
+      "path": "Voice Actors/Soldier96/supply_run/remind.wav",
+      "bytes": 237390,
+      "sha256": "d777fcf4578eaa993a279d8f754bd4d382327d562122ccaabf2dbab0c6319d48"
+    },
+    {
+      "path": "Voice Actors/Soldier96/take_their_camp/accept.wav",
+      "bytes": 260430,
+      "sha256": "433761bcd9e29fa1867bae0acec7eaf6e9dd24765c39e073d38db41ba5f71ff9"
+    },
+    {
+      "path": "Voice Actors/Soldier96/take_their_camp/done.wav",
+      "bytes": 444750,
+      "sha256": "0677c14ab04b60bcf2ac9b612632603d1d3ccefff5892d417fde1d114d801e96"
+    },
+    {
+      "path": "Voice Actors/Soldier96/take_their_camp/offer.wav",
+      "bytes": 1064526,
+      "sha256": "92a35060ea87837d6a150b7f581c2c3a5293a31e689943125b84e17007d1a681"
+    },
+    {
+      "path": "Voice Actors/Soldier96/take_their_camp/remind.wav",
+      "bytes": 253518,
+      "sha256": "58517a8d1361181690a8140d153ef1e20f2c5bb8d8816206eb906659c97f6754"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 1/accept.wav",
+      "bytes": 260430,
+      "sha256": "433761bcd9e29fa1867bae0acec7eaf6e9dd24765c39e073d38db41ba5f71ff9"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 1/done.wav",
+      "bytes": 444750,
+      "sha256": "0677c14ab04b60bcf2ac9b612632603d1d3ccefff5892d417fde1d114d801e96"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 1/offer.wav",
+      "bytes": 1064526,
+      "sha256": "92a35060ea87837d6a150b7f581c2c3a5293a31e689943125b84e17007d1a681"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 1/remind.wav",
+      "bytes": 253518,
+      "sha256": "58517a8d1361181690a8140d153ef1e20f2c5bb8d8816206eb906659c97f6754"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 2/accept.wav",
+      "bytes": 260430,
+      "sha256": "433761bcd9e29fa1867bae0acec7eaf6e9dd24765c39e073d38db41ba5f71ff9"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 2/done.wav",
+      "bytes": 444750,
+      "sha256": "0677c14ab04b60bcf2ac9b612632603d1d3ccefff5892d417fde1d114d801e96"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 2/offer.wav",
+      "bytes": 1064526,
+      "sha256": "92a35060ea87837d6a150b7f581c2c3a5293a31e689943125b84e17007d1a681"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 2/remind.wav",
+      "bytes": 253518,
+      "sha256": "58517a8d1361181690a8140d153ef1e20f2c5bb8d8816206eb906659c97f6754"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 3/accept.wav",
+      "bytes": 318030,
+      "sha256": "25afeb4ee0688b5cd879e99bd62894824860d79d7a0ab8e32504cc2d5d3d3a8b"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 3/done.wav",
+      "bytes": 451662,
+      "sha256": "ebdedb0e822217f3125d0305d566092fffafab71aa35b925e2cb7f859a7aa4bb"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 3/offer.wav",
+      "bytes": 1776462,
+      "sha256": "23d318f3c9a1465283fdcf78710a9fdd527f02469340ce6b064c243807606f4c"
+    },
+    {
+      "path": "Voice Actors/Soldier96/The Bad Batch 3/remind.wav",
+      "bytes": 255822,
+      "sha256": "acbd485dc378fa7afdb93e9b55b432633475c1b0305fbe66aa452a94510b519c"
+    },
+    {
+      "path": "Voice.cs",
+      "bytes": 9179,
+      "sha256": "d38677faa10274b026cf9297a0ac861f45cb3478a87c500fe76a7344a3c50a0c"
+    }
+  ]
+}

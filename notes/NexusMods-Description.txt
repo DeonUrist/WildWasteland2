@@ -1,0 +1,172 @@
+[center][size=6][b]WILD WASTELAND[/b][/size]
+[size=4][i]The wasteland fights back.[/i][/size]
+
+[size=3]A full gameplay overhaul for Apocalypter. Smarter enemies, real bullets, raider convoys on the roads, a body you can see, and a wasteland that keeps living while you drive through it.[/size][/center]
+
+[line]
+
+[size=5][b]What is Wild Wasteland?[/b][/size]
+
+Wild Wasteland brings together the best gameplay mods for Apocalypter into [b]one single package[/b]. Everything was rebuilt to work together, so you get all the features with none of the clashes, and the game stays smooth even when the desert is full of raiders, gunfire and burning cars.
+
+It is made of [b]modules[/b]. Each module is a big chunk of gameplay, and you can switch every module (and almost every feature inside it) on or off from the in-game settings. Want the smart enemies but not the new HUD? Turn the HUD off. Want a quiet trip without raider cars? Pick the [b]Loner[/b] setting. You are in control.
+
+[line]
+
+[size=5][b]PLAYER BODY & ANIMATION[/b][/size]
+[i]You are not a floating camera anymore.[/i]
+
+[list]
+[*][b]A real body.[/b] Look down and see your legs, your torso and your shadow. Choose a female or male character.
+[*][b]Third-person camera.[/b] Press the Change Camera key to see your character from over the shoulder, on foot or behind the wheel. Zoom with the mouse wheel, orbit around yourself, and aim with a crosshair that shows where your shots will really land.
+[*][b]Full animations.[/b] Walking, running, sprinting, crouching, jumping, kicking, aiming, reloading one shell at a time, pumping a shotgun, throwing grenades and blast lances, swinging melee weapons. Every move is animated.
+[*][b]Your gear on your back.[/b] Your backpack, rifles, pistols, blades, binoculars and flashlight hang on your body where they belong.
+[*][b]Climbing.[/b] Push into a ledge, press Jump, and pull yourself up onto walls, rocks, crates and parked cars.
+[*][b]You in the driver's seat.[/b] Your own character drives the car. Lean out and shoot, throw grenades or blast lances from the seat, turn the key in the ignition with one button.
+[*][b]Smoother feel.[/b] Gentle weapon sway, eased aim-down-sights, and a proper ragdoll when you fall.
+[/list]
+
+[line]
+
+[size=5][b]NPC AI & NAVIGATION[/b][/size]
+[i]The wasteland's people and beasts finally think.[/i]
+
+[list]
+[*][b]They see and hear.[/b] Enemies look with real eyes, so darkness hides you and your flashlight gives you away. They hear gunshots, explosions, your engine, your horn and anything you throw.
+[*][b]They remember and search.[/b] Break line of sight and raiders go to where they last saw you and hunt for you. Humans guess where you went. Hounds follow your scent. Friends call each other with shouts.
+[*][b]They fight smart.[/b] Gunmen move to a spot where they can hit you, kneel, take cover when hurt, step aside when shot and pace their bursts. No more running in circles.
+[*][b]They know their home.[/b] Camps, caves and buildings are mapped, so enemies find their way through doors and tunnels instead of running into walls. When things calm down they walk patrols around their camp.
+[*][b]Creatures with personality.[/b]
+[list]
+[*]Small scorpions hide under the sand with only their eyes showing and burst out when you get close.
+[*]Big scorpions dive underground and come up behind you.
+[*]Spiders zigzag toward you and leap through the air to bite.
+[*]Caves and wrecks full of spiders become [b]nests with webs[/b]. Touch one strand and the whole nest wakes up.
+[*]Dogs and hounds bite properly, rest, lie down and lunge, with real animations.
+[/list]
+[*][b]Sandstorms matter.[/b] Inside a storm, enemies can barely see or hear you. Use it.
+[*][b]Shout.[/b] Yell like a raider to pull nearby enemies toward you, right into your trap.
+[/list]
+
+[line]
+
+[size=5][b]GUNS, AMMO & TRACERS[/b][/size]
+[i]Every bullet is real.[/i]
+
+[list]
+[*][b]Real bullets.[/b] Every shot from you and from enemies flies through the air, with glowing tracers you can see. Damage drops over long distances. Headshots hit hard.
+[*][b]Crossbow bolts you can watch.[/b] Bolts fly through the air and stick into your targets, and they stay in the bodies.
+[*][b]Shoot cars apart.[/b] Bullets damage the exact car part they hit. Pop off wheels, punch through doors and glass to hit the driver behind them.
+[*][b]Smarter enemy gunners.[/b] Enemies aim at your body and lead you when you run. Zig-zag to stay alive.
+[*][b]Every gun has its own magazine.[/b] Two rifles of the same kind keep their own ammo. Hold Reload to empty a gun back into your backpack.
+[*][b]Nothing is lost.[/b] Switch to a smaller backpack or lighter armor and the extra ammo or armor drops on the ground instead of vanishing.
+[*][b]Better shooting.[/b] Scroll to zoom while aiming down sights, smooth weapon switching, an option to toggle aim instead of holding it, and nicer shotgun spread.
+[*][b]Melee that counts.[/b] Slash the tyres of raider cars, stab corpses with real blood and sound.
+[*][b]Fair fights.[/b] Monster spit no longer flies through walls, and you can adjust how tough the human bosses are.
+[/list]
+
+[line]
+
+[size=5][b]COMBAT HUD[/b][/size]
+[i]Feel every hit.[/i]
+
+[list]
+[*]Choose your crosshair: classic, two lines, a small dot or none at all.
+[*]A hit marker flashes white for body shots and red for headshots.
+[*]Damage numbers float up from your target, or show as a list in the corner.
+[*]A satisfying sound plays on every headshot.
+[/list]
+
+[line]
+
+[size=5][b]CLEAN HUD & MENUS[/b][/size]
+[i]A fresh, clean look for the whole game.[/i]
+
+[list]
+[*]A new clean HUD: health and armor, bandages and quick slots, your weapon with its picture and ammo count.
+[*]A scrolling compass bar at the top of the screen.
+[*]A neat message log that stacks repeated messages.
+[*]Restyled main and pause menus, with a controls page that shows every key from the game and your mods and warns you about doubled keys.
+[*]Custom loading screens with tips. Add your own pictures if you like.
+[/list]
+
+[line]
+
+[size=5][b]PATROLS, TRAFFIC & THE WAR RIG[/b][/size]
+[i]The roads belong to the raiders. Take them back.[/i]
+
+[list]
+[*][b]Raider cars with real crews.[/b] A driver, a passenger and gunners on the roof. Kill the driver and the passenger climbs over and keeps driving, or jumps out and fights you on foot.
+[*][b]Patrols and convoys.[/b] The farther you travel and the more bosses you kill, the more dangerous the roads get. Fast hunting packs, heavy loot trucks with escorts, and raider bikes.
+[*][b]Living world traffic.[/b] Raider gangs and traders really travel between camps across the map, even when you are not looking. Scrapyard and Coyote gangs meet and fight each other, leaving wrecks and bodies behind.
+[*][b]Traveling merchants.[/b] Coyote trader buses roam the map. Honk your horn to wave one down and shop right there on the road.
+[*][b]Hit-and-run drivers.[/b] Raider cars charge, ram, drive past, spin around and come back for more. Getting rammed hurts.
+[*][b]"Witness me!"[/b] Crazed roof riders throw blast lances, and some will leap at your car and blow themselves up.
+[*][b]Loud and wild.[/b] Raider cars blast their cassettes, wear custom paint jobs, and can explode into burning wrecks when their crew is dead. Loot trucks can be looted.
+[*][b]The War Rig.[/b] A huge six-wheel tanker trailer for the Rustchief, with a furnished inside and a ladder to the hatch. Hide inside to stay safe from sandstorms.
+[*][b]Make your own gangs.[/b] Build a car in the game, save it as a raider template, and create your own patrols and convoys with the built-in editor.
+[*][b]Pick your danger level.[/b]
+[list]
+[*][b]Loner[/b] - no raider cars at all.
+[*][b]New arrival[/b] - the roads grow more dangerous as you progress.
+[*][b]Fury road[/b] - everything, everywhere, from day one.
+[/list]
+[/list]
+
+[line]
+
+[size=5][b]POINTS OF INTEREST[/b][/size]
+[i]New places to discover.[/i]
+
+[list]
+[*]New sites appear as the world is built around you, away from the usual locations.
+[*][b]The abandoned War Rig:[/b] find a broken-down Rustchief and its tanker sitting in the desert, guarded by the dead and the hungry. Clear it out, grab the supplies, fix it up and make it yours.
+[*]Fresh sites show up on your map, so you know where adventure is waiting.
+[/list]
+
+[line]
+
+[size=5][b]SMALL THINGS THAT MAKE A BIG DIFFERENCE[/b][/size]
+[list]
+[*]Bandages and first-aid kits stack properly in your slots.
+[*]No more getting stuck in the doors of the Rustliner bus.
+[*]Blast lances thrown from your car no longer blow up on your own door.
+[*]A small icon panel while driving shows ignition, handbrake and your music.
+[*]Picking up items in third person is easy and forgiving.
+[/list]
+
+[line]
+
+[size=5][b]BUILT TO RUN SMOOTH[/b][/size]
+
+Apocalypter can slow down when mods fight over the same things. Wild Wasteland was built from the ground up so all of its parts share the work and stay out of each other's way. Heavy jobs are spread out over time so you do not feel them, and if one part ever runs into trouble, it switches itself off instead of ruining your game.
+
+[line]
+
+[size=5][b]INSTALLATION[/b][/size]
+
+[list=1]
+[*]Install [b]BepInEx 5[/b] for Apocalypter. [b]Apocasetter[/b] is recommended for easy in-game settings.
+[*]If you used any of the mods that Wild Wasteland includes (Apocaplayer, Apocaclimber, NPC Overhaul, Gunplay, Gunplay HUD, Apocaunloader, CleanHUD, Apocapatrol, War Rig), [b]remove them[/b] first. Your old settings are carried over automatically.
+[*]Drop the Wild Wasteland folder into BepInEx\plugins.
+[*]Start the game and hit the road.
+[/list]
+
+Your saves are safe. Saves from the old standalone mods load fine in Wild Wasteland.
+
+[line]
+
+[size=5][b]WORKS WELL WITH[/b][/size]
+[list]
+[*]Dog Companion - your dog uses the new dog animations and fights alongside you.
+[*]ApocaDustStorm - storms blind enemies, and the War Rig becomes a safe shelter.
+[*]Apocasaver, Apocaspawner and Part Adjustment.
+[/list]
+
+[line]
+
+[size=5][b]EARLY ACCESS NOTE[/b][/size]
+
+Wild Wasteland is young and growing fast, with new features added all the time. If something feels off, please post a bug report with your log file. Every report helps make the wasteland wilder.
+
+[center][size=4][b]Grab your gun, fill your tank, and survive the Wild Wasteland.[/b][/size][/center]

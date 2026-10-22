@@ -1,0 +1,8 @@
+## Captured SP-compatible settings; preserve existing saved values.
+
+[General]
+Apocasetter = true
+Enable Debug = false
+
+[Keys]
+In-Game Settings Button = F3

@@ -1,0 +1,27 @@
+{
+  "author": "Wild Wasteland original procedural artwork",
+  "seed": 837219,
+  "cloud": {
+    "frames": 32,
+    "grid": [
+      4,
+      8
+    ],
+    "cell": 512,
+    "volume_grid": 192,
+    "lighting": "offline approximate single scattering; upper-left broad light",
+    "loop": true
+  },
+  "flow": {
+    "frames": 16,
+    "grid": [
+      4,
+      4
+    ],
+    "cell": 256,
+    "loop": true,
+    "channels": "density, broad density, horizontal ridge lighting"
+  },
+  "vortex_density": {"grid": [128,128,128], "format": "R8", "bytes": 2097152},
+  "note": "No ApocaDustStorm images/code or movie-frame pixels are included. Runtime uses baked textures only."
+}

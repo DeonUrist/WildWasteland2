@@ -1,0 +1,53 @@
+# ======================================================================
+#  EXAMPLE: the "The Bad Batch" quest chain (quests.txt: [The Bad Batch 1], [The Bad Batch 2], [The Bad Batch 3])
+#  offered through Apocalypter Talk's own dialogue, with Apocalypter Quests doing the work.
+#
+#  To switch it on, rename it to   quest_chain.talk.txt   and put it anywhere under BepInEx/plugins.
+#  Press F10 in game to load it.
+#
+#  Apocalypter Quests adds these actions:
+#     quest.give:<id>       start the quest [id] from quests.txt now (its target is picked as for a normal offer)
+#     quest.complete:<id>   pay the reward of an active quest and finish it
+#     quest.abandon:<id>    call off an active quest (no reputation change)
+#  and keeps these flags up to date for every quest that has a hand-written id:
+#     quest_<id>_active     the quest is in your quest log
+#     quest_<id>_done       you finished it
+#     quest_<id>_failed     it ran out of time, was abandoned, or the giver died
+#  (ids are lower-cased; anything that is not a letter or digit becomes _, so [The Bad Batch 1] gives quest_the_bad_batch_1_done)
+#
+#  Without these prompts the chain still works: Merchants and elders simply offer each step in turn when you ask
+#  them for work ("Any work for me?"), because quests.txt says `after = The Bad Batch 1` and so on.
+# ======================================================================
+
+[prompt]
+id     = bad_batch_ask_1
+npc    = Merchant
+if     = !quest_the_bad_batch_1_active, !quest_the_bad_batch_1_done
+order  = -5
+text   = Heard you got a bad batch of food. Can I help?
+reply  = Please. Bring me three cans of dogfood and I'll pay what I can.
+action = quest.give:The Bad Batch 1
+
+[prompt]
+id     = bad_batch_ask_2
+npc    = Merchant
+if     = quest_the_bad_batch_1_done, !quest_the_bad_batch_2_active, !quest_the_bad_batch_2_done
+order  = -5
+text   = About the trader. What now?
+reply  = We found his camp. Make him pay.
+action = quest.give:The Bad Batch 2
+
+[prompt]
+id     = bad_batch_ask_3
+npc    = Merchant
+if     = quest_the_bad_batch_2_done, !quest_the_bad_batch_3_active, !quest_the_bad_batch_3_done
+order  = -5
+text   = The camp is ours. Anything else?
+reply  = There is food there. Take some to our people.
+action = quest.give:The Bad Batch 3
+
+[intro]
+npc      = Merchant
+if       = quest_the_bad_batch_3_done
+priority = 30
+line     = You saved us. We owe you.

@@ -1,0 +1,6126 @@
+[
+{
+"path": "Core/ApocasaverExclusion.cs",
+"lines": 34,
+"owner": "A1-Core",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; HandPose handlers (`SaveCompatibility.SetPose/GetPose`) reached through Saves ModAPI",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B17"
+},
+{
+"path": "Core/ApocasetterBridge.cs",
+"lines": 173,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; replace `Expression.Compile` (line 41, interpreted on this runtime) with Core access helper",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Assets.cs",
+"lines": 38,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/AtomicFile.cs",
+"lines": 34,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (users: Saves, Towns PoiDressLayout, CleanHUD LocationMarkers)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/ColorGrading.cs",
+"lines": 28,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/DiskResources.cs",
+"lines": 46,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/GameRefs.cs",
+"lines": 99,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/HealthStacks.cs",
+"lines": 145,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Hooks.cs",
+"lines": 365,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE: table-driven registry (one list drives RemoveAll/ApplyUsed/Summary - `FsmEnable` is missing from RemoveAll, see 5.1); optional per-handler timing for Debug; add dispatchers for targets Performance patches twice (3.3)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Hotkeys.cs",
+"lines": 78,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/ITweenGuard.cs",
+"lines": 74,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/InventorySupplies.cs",
+"lines": 119,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; replace `SaveSystem.LocalReady/SinglePlayerSaving/SaveRuntime.Health` (line 19) with SaveBus/GameRefs queries; sliced prefab discovery job registered from SaveRuntime (move registration)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/LoadingProgress.cs",
+"lines": 67,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"HUD"
+],
+"action": "MOVE",
+"detail": "MOVE; `MenusBlocked` must read Saves state via SaveBus, not `SinglePlayerSaving`",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Log.cs",
+"lines": 39,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"Debug"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Log` API stays Core (add `Level 0/1/2`); level switch/UI -> Debug; remove `SaveSystem.Fail` call (Log.cs:23-24) -> Saves subscribes to an error event",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/ModuleBase.cs",
+"lines": 69,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/ModuleConfig.cs",
+"lines": 122,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; delete unused `Legacy.ParseFloat`",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/ModuleHost.cs",
+"lines": 273,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (add module-state events to ModAPI; `Restart` unused)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/NativeAccess.cs",
+"lines": 70,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO new `Core/Access` (with OptionalAccess, Performance FastReflect, BatchCompiler)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/OptionalAccess.cs",
+"lines": 36,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO `Core/Access`",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Origin.cs",
+"lines": 51,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Patches.cs",
+"lines": 154,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Plugin.cs",
+"lines": 183,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT: boot/registration/Core.Frame stay; `ApplyAudioVoices` + `Modules.Patrols.PatrolsModule.AudioVoices` (line 114) -> Core audio setting; Saves install/recover (106-108) -> Saves.Init; VistasWorldGen/ApocasaverExclusion init (105,109) -> Compatibility.Init; fixes list -> Core/Fixes registry",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/QuestServices.cs",
+"lines": 46,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO ModAPI (quests/dialogue contracts file)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/QuietFsm.cs",
+"lines": 49,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"Debug"
+],
+"action": "MOVE",
+"detail": "MOVE; its switch `On` is bound by **Patrols** (`PatrolsSettings.cs:120`) - give it a Core/Debug key",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/ReplacementGuard.cs",
+"lines": 146,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"HUD"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Prepare/Disable/Status/LateConflict/Tick` stay Core; `Draw/WantsNotice/RebuildNotice` -> HUD (uses CleanHUD GlyphFont/AccentTheme/Assets, lines 35-36, 113-116) via Core notice API",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Runner.cs",
+"lines": 65,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/SaveBus.cs",
+"lines": 126,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT: watcher/StateChanged/AfterSave/Slot/ReportFailure stay Core; `CancelSave`, `SaveCancelled`, `CleanupSettings/DrawCleanupSettings` (Patrols UI hook) -> Saves",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/SaveCleanup.cs",
+"lines": 166,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/SaveCombat.cs",
+"lines": 83,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; consume NPCAI/Gunplay combat via ModAPI event instead of `Services.VehicleCombatActive`/`ReportCombat`",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/SaveCompatibility.cs",
+"lines": 61,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [
+"Compatibility"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `BeforeSave/AfterSave/BeforeLoad/AfterLoad/Stable/SavePoses` -> Saves; `SetPose/GetPose` (Apocasaver API takeover) -> Compatibility; `VehicleLoadPlacement.LoadedStance` call (42) -> Saves \"PlayerVariableLoaded\" event",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/SaveFiles.cs",
+"lines": 219,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; replace hard-coded module sidecars in `Participants` (183-190) with Core sidecar registry API",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/SaveRuntime.cs",
+"lines": 149,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [
+"HUD",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: menu event/launch/IsSaveFile/ActiveFile -> Saves; `DrawSaving` (uses CleanHUD GlyphFont, 113) -> HUD; `Surface` -> Core util (VehicleLoadPlacement); `Health/InCar` -> GameRefs queries; `InventorySupplies.Install()` (40) -> Core/Fixes",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/SaveSystem.cs",
+"lines": 433,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; `Modules.CleanHUD.MessageHook.Push` (121) -> HUD notify via ModAPI; Towns key check (264-265) -> sidecar registry",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/SaveTerrain.cs",
+"lines": 48,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/SaveTypes.cs",
+"lines": 74,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"Saves"
+],
+"action": "MOVE",
+"detail": "MOVE; must gain aliases for every namespace the refactor renames (section 9)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/SaveWarning.cs",
+"lines": 34,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [
+"HUD"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Show/phase` -> Saves; `Draw` (uses `CleanHud.Hud.SaveWarningAnchor`, `GlyphFont`) -> HUD",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/Scheduler.cs",
+"lines": 239,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; fix `RemoveAll` not marking `Removed` (5.1)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/Services.cs",
+"lines": 402,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE into typed ModAPI + event bus (split contracts per domain; raw ladder fields -> query/event)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/SinglePlayerSaving.cs",
+"lines": 107,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/TunedSettings.cs",
+"lines": 57,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; rename resource prefixes `CleanHUD.DefaultSettings.*` / `CleanHUD.DefaultProfiles.*` (20, 44) to Core-owned names (keep old names readable)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/UI/CorePages.cs",
+"lines": 513,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"Debug"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Register/Modules/ResetSettings` (generic part)/`DrawDebugPage`/Category plumbing -> Core shell; `DrawPlayer/BodySelection` -> Presentation contribution; `DrawWorld/NavigationSettings/CompassDetail` -> Patrols/HUD/POI/Survival contributions; `DrawHud/CrosshairSelection/FeedbackSwitch` -> HUD/Gunplay contributions; `DebugSetting/RetainedDebugSetting/DeveloperSetting/VerboseSetting/Logging` -> Debug (single VerboseLog); `Performance(ToolLayout)` -> Debug; `Harmony(l, owner)` -> Debug. Remove all `WildWasteland.Modules.*` refs (lines 5-8, 30, 49, 56, 75-76, 91-151, 181-206, 230-247, 266, 277, 290-300, 337-350, 369) via a \"settings row\" ModAPI",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/UI/EditorSession.cs",
+"lines": 63,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (make `Acquire(bool,bool)` public so Debug needs no reflection)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/UI/Ledger.cs",
+"lines": 440,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (default `Header(width)` \"APOCAPATROL\" is Patrols-specific)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/UI/SaveLibraryPage.cs",
+"lines": 222,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (drawn in Core shell)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/UI/Skin.cs",
+"lines": 324,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; DELETE unused `PlankButton`, `Frame`, `PitBox`, `SlotBox`, `HazardStrip` (0 call sites)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/UI/ToolPage.cs",
+"lines": 412,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/UI/ToolWindow.cs",
+"lines": 263,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; replace CleanHUD refs (lines 4, 24-26, 147-155, 175-183) with a Core \"theme/glyph font\" service provided by HUD",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/VehicleLoadPlacement.cs",
+"lines": 120,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; triggered by Saves hooks (`SaveSystem.LoadedPath`, `SaveCompatibility.AfterLoad`) -> needs SaveBus events; uses `SaveRuntime.Surface/Health`",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/VistasWorldGen.cs",
+"lines": 203,
+"owner": "A1-Core",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; publish `PlaceEntered`, `TerrainEdited`, `RoadLines/RoadRevision/RoadIdentity`, `Present`, `BannerHeight`, `CleanBanners` through Core ModAPI (consumers: Towns x6 files, CleanHUD, Patrols)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B17"
+},
+{
+"path": "Core/VoiceAudio.cs",
+"lines": 52,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (consolidation target for other WAV decoders, e.g. Quests `ReadWav`)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Core/WorldHistory.cs",
+"lines": 174,
+"owner": "A1-Core",
+"primary": "Saves",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B04"
+},
+{
+"path": "Core/WorldWork.cs",
+"lines": 33,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (read Saves busy state through SaveBus)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B01"
+},
+{
+"path": "Modules/CleanHUD/AccentTheme.cs",
+"lines": 92,
+"owner": "A5-GunsHud",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Core `ToolWindow` (l.147-183) and `ReplacementGuard` (l.113-115) use it.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B01"
+},
+{
+"path": "Modules/CleanHUD/Api.cs",
+"lines": 112,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the internal `CompassMarkers` store behind Core `ICompassMarkers`. DELETE the unused public surface (\u00a75).",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/ApocaLanguageMenu.cs",
+"lines": 46,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (provides `ILanguageMenu` to HUD menu)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/CleanHUD/ApocapocketInventory.cs",
+"lines": 131,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. It provides `IInventorySlots` to HUD and Presentation; PlayerBody `EquipmentInventory` reads Apocapocket separately.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/CleanHUD/ApocasaverLoading.cs",
+"lines": 125,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [
+"Saves"
+],
+"action": "MOVE",
+"detail": "MOVE. `SaveActive` (l.13) -> a Saves query that ORs Apocasaver's state in.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/CleanHUD/Assets.cs",
+"lines": 387,
+"owner": "A5-GunsHud",
+"primary": "Core",
+"secondary": [
+"Gunplay",
+"HUD"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Tex/White/VGradient/CompassLine/CompassShadow/Caret/Fade/Preload/Dispose` -> Core/UI theme assets (Core uses `Tex(\"panel_menu\")` and `VGradient`). `WeaponInfo`, `Weapons` table, `Describe` -> Gunplay `WeaponCatalog` (`IWeaponStats`). `KeyOf/WeaponIcon/RenderStep/BeginRender/IconRenderer` -> HUD. `IconRenderer.Prefab` (l.255-264, `FindObjectsOfTypeAll`) -> Core prefab index.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B01"
+},
+{
+"path": "Modules/CleanHUD/Bindings.cs",
+"lines": 231,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Ammo, health and grenades are parsed from UI text (`Number/Digits`). Later, read ammo from Gunplay `IWeaponState`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/Binoculars.cs",
+"lines": 147,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `PreCull/PostRender/Restore`, the wheel/lerp in `Tick` -> Core camera-zoom arbiter (same code as Ironsights). `Observe/Sees/Caption/Raised/Scoped` -> HUD.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/ChaseCameraHud.cs",
+"lines": 187,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE and merge with PlayerBody `ChaseCameraCompat.cs`. It provides `IDrivingTelemetry`/heading to HUD. Core `CorePages:49,141` reads `ChaseCameraHud.HudEnabled` directly.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/CleanHUD/CleanHudModule.cs",
+"lines": 288,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the single HUD module entry. `Log()` (l.278, `Log.Always`) is replaced by the Debug levels (\u00a74).",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/DamageDirection.cs",
+"lines": 101,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; subscribe to Gunplay's Hurt event (\u00a72, \u00a75)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/DialogueWidgets.cs",
+"lines": 45,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [
+"Core"
+],
+"action": "MOVE",
+"detail": "MOVE. `DialogueWidgets.Gold` is used by Core `ToolWindow`/`ReplacementGuard`, so the palette goes to the Core theme.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/GlyphText.cs",
+"lines": 212,
+"owner": "A5-GunsHud",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Used by Core `ToolWindow:24-26`, `ReplacementGuard:35-36`, `SaveRuntime:113`, and `SaveWarning:30`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B01"
+},
+{
+"path": "Modules/CleanHUD/Hud.cs",
+"lines": 937,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE and rename to `HudView`. `SaveWarningAnchor` (l.16, used by Core `SaveWarning.cs:26`) -> HUD ModAPI query.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/InventoryStyle.Drops.cs",
+"lines": 101,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (already uses Core `InventorySupplies`)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/InventoryStyle.cs",
+"lines": 329,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. View/Build/Refresh/EquipmentPointer -> HUD. `Drop(Slot)` (l.262-302: native TakeItem/Visibility recipe plus armor/backpack capacity resets) -> a Core inventory service (`IInventory.DropEquipment`). It overlaps Gunplay `BackpackOverflow.Tick` (\u00a75).",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/Json.cs",
+"lines": 122,
+"owner": "A5-GunsHud",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO `Core.Json`. There are 7 copies: CleanHUD, NPC/Women, Patrols/WarRig, Patrols/Vehicles/CarTemplateFile, PlayerBody/Body, Survival/StewPot, Towns/GasStation.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B01"
+},
+{
+"path": "Modules/CleanHUD/Keys.cs",
+"lines": 691,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. List WW keys through `Core.Hotkeys` instead of scanning WildWasteland.dll (\u00a75).",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/Layout.cs",
+"lines": 146,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/LoadingScreen.cs",
+"lines": 313,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [
+"Saves"
+],
+"action": "MOVE",
+"detail": "MOVE. Drive it from Saves ModAPI events (Begin/Progress/End) instead of SaveBus states plus polling `Core.SinglePlayerSaving.Serializing` (l.256) and `SaveSystem.AutomaticSaving`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/LocationMarkers.cs",
+"lines": 187,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [
+"Saves"
+],
+"action": "MOVE",
+"detail": "MOVE. Sidecar IO (`WorldReady` l.45, `SaveEnded` l.62) -> Saves sidecar API. Add an `ILocationMarkers` ModAPI (exclude root, override icon) so Towns stops Harmony-patching it (\u00a72).",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/MapFog.cs",
+"lines": 337,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [
+"Saves",
+"Compatibility"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Grid/`Paint/PaintStep/Tick/Build/Recenter/Hides/Explored` -> HUD. `SaveEnded/SaveState/Write/Read/WorldReady` file IO -> the Saves sidecar API. Immersive Map import (`WorldReady` l.262 source path; `Init` stand-down l.54-55) -> Compatibility.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/MapFrame.cs",
+"lines": 58,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/MapIcons.cs",
+"lines": 41,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/Menu.cs",
+"lines": 1542,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [
+"Saves",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `MenuButton/BarDrag/MenuScrollRect/ClickZone` -> HUD/UI widgets. `SettingsModel`/`Display` (native SaveSettings.es3/Settings.xml) -> HUD menus. The `Menu` screens -> HUD. Save/load pieces (`BeginLoad` l.938, `SaveFile/SlotUsed`, `LatestSave` l.950, `SlotLabel`, `ContinueLatest` l.973, `OpenSave` l.976, `ShowSlots` l.1049 legacy fallback, `SaveTo` l.1084) -> call the Saves ModAPI (`ISaveMenu`), not Core internals. `CheckUpdates` (l.274, GitHub) -> Core. `CancelHook` (l.1533) -> HUD.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/MenuReference.cs",
+"lines": 215,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/MessageLog.cs",
+"lines": 164,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. `MessageHook.Push` becomes the HUD `INotifications` service; Core `SaveSystem.cs:121` calls the type directly today.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/PauseCursorFix.cs",
+"lines": 28,
+"owner": "A5-GunsHud",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (vanilla fix; affects the F3 EditorSession)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B01"
+},
+{
+"path": "Modules/CleanHUD/QuestDialogue.cs",
+"lines": 146,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/QuestJournal.cs",
+"lines": 89,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; drop the dead usings",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/QuestMap.cs",
+"lines": 239,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE and rename `MapMarkers`; it is not quest-specific. Its consumers are Quests, Patrols, Towns and PlayerBody.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/QuestNotifications.cs",
+"lines": 17,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/QuestTracker.cs",
+"lines": 80,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; drop the dead usings (l.3-11)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/SceneCache.cs",
+"lines": 110,
+"owner": "A5-GunsHud",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO a Core scene index next to `GameRefs`. It duplicates GameRefs lookups (`__GameManager__`, `PlayerCamera`). LocationMarkers and KeyCatalog become subscribers.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B01"
+},
+{
+"path": "Modules/CleanHUD/TalkDialogue.cs",
+"lines": 163,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Apocatalker reflection (`Install/Get/Changed/Tick` source reads, `RestoreSource`) -> Compatibility; it feeds an `IQuestConversation`-like model to HUD's dialogue window (reuse the QuestDialogue view). `Wrap()` (l.132, used by QuestJournal and QuestDialogue) -> Core/UI `GlyphFont.Wrap`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/CleanHUD/VantageDiscovery.cs",
+"lines": 60,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/VehicleStatusIcon.cs",
+"lines": 86,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/VistasBanners.cs",
+"lines": 54,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. The bridge already lives in Core/VistasWorldGen, which should become Compatibility; this widget stays HUD.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/CleanHUD/VistasEngineHud.cs",
+"lines": 50,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (uses HUD `INotifications`)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/CleanHUD/WeaponsPackIcons.cs",
+"lines": 60,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the single WeaponsPack bridge (see WeaponsPackSound)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/CleanHUD/WeatherMap.cs",
+"lines": 124,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/EngineSimCompat/EngineDiscovery.cs",
+"lines": 95,
+"owner": "A8-Quests",
+"primary": "Compatibility",
+"secondary": [
+"Core"
+],
+"action": "MOVE",
+"detail": "MOVE. Use the Core WorldIndex walker instead of its own root walk.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B17"
+},
+{
+"path": "Modules/EngineSimCompat/EngineSimCompatModule.cs",
+"lines": 295,
+"owner": "A8-Quests",
+"primary": "Compatibility",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. The bridge moves to Compatibility. `IVehicleIgnition` stays a Core ModAPI service (consumers: Vehicles/PlayerBody `Car.TickIgnition`, Patrols `Patrol.StartUp/EngineRunning/StartEngine/StopEngine`). The `Get/Set/Call/Call<T>` Expression.Compile helpers (269-293) MERGE-INTO `Core.OptionalAccess`.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B17"
+},
+{
+"path": "Modules/Guns/Ammo/AmmoMechanics.cs",
+"lines": 558,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `AmmoRunner`+`Unloader`+`GetButtonDown_Patch`+`Fsm_Event_Patch` -> Gunplay/Ammo. `BackpackOverflow`+`AmmoCapacity_Patch` -> Gunplay/Ammo. `BackpackSlot_Patch` (l.514, direct `FsmState.OnEnter`) -> MERGE-INTO the `Hooks.EnterState` postfix. `AmmoBox` (l.373-502) -> MERGE-INTO a Core `IItemSpawner` (save-registered spawn); `InventorySupplies.Drop` and Loot need the same recipe.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Ammo/AmmoSettings.cs",
+"lines": 40,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. `ReloadHeld` key fallback could use `Core.Hotkeys.Held`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Ammo/ArmorOverflow.cs",
+"lines": 70,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Uses `AmmoBox.Drop(\"armorplate\")`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Ammo/ArmorOverflowTransfer.cs",
+"lines": 43,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO `OverflowTransfer` as a generic/numeric single class (the logic is a line-for-line duplicate)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Ammo/MagazineLedger.cs",
+"lines": 85,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "Magazine ledger text codec (|1 format of ES3 key Apocaunloader.Magazines) - format frozen.",
+"decision": true,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Ammo/OverflowTransfer.cs",
+"lines": 44,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MERGE",
+"detail": "MERGE (see above)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Ammo/PerGunAmmo.cs",
+"lines": 321,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [
+"Saves"
+],
+"action": "SPLIT",
+"detail": "SPLIT. The ledger logic (`Draw/Holster/Capture/AdoptDrawn/Tick`) -> Gunplay. The save plumbing (`BeforeState` SaveLoadGame branch l.133-142, `SaveGlobal/CacheSnapshot/BeforeStore/LoadGlobal`, the three ES3 patch classes l.301-320) -> the Saves ES3-key/sidecar API, which today duplicates SaveBus.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/ApocaspawnerDamage.cs",
+"lines": 37,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE + REWRITE: compiled field delegates; get the multiplier from `IWeaponStats`",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/Guns/BloodFxCompat.cs",
+"lines": 55,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (nothing gun-specific); compiled getter for `relayOwner`",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/Guns/Bosses/Bosses.cs",
+"lines": 148,
+"owner": "A5-GunsHud",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE + REWRITE `Scan()` (l.83-96, `FindObjectsOfType` every 5/60 s)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B07"
+},
+{
+"path": "Modules/Guns/Camera/Ironsights.cs",
+"lines": 131,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `BeforeGetButton` (toggle), the `Tick` zoom target, and `Aiming` -> Gunplay. `PreCull/PostRender/Restore` (l.112-129, projection write) -> a Core camera-zoom arbiter shared with CleanHUD `Binoculars` and PlayerBody `ThirdPerson`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Camera/WeaponTransition.cs",
+"lines": 122,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `BeforeEvent/AfterActivate/Tick/Replay` (switch timing) -> Gunplay. `Pose()` (l.112-121, `Parent` offset) -> Presentation as `IWeaponPose.SetLowerWeight(w)`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/EmptyGunSound.cs",
+"lines": 35,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Add a length gate to the filter (\u00a76).",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/GunsApi.cs",
+"lines": 72,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `GunsApi` -> Gunplay ModAPI provider, extended to `IWeaponStats` (\u00a77, design note). `Bridge.Shot/Hurt/PlayerHit/PartHit` -> replace with Core events WeaponFired/Hurt/ProjectileHit/VehiclePartHit. `Bridge.SpreadFactor` stays a query on `INpcApi`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/GunsModule.cs",
+"lines": 371,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [
+"Core",
+"NPCAI"
+],
+"action": "REWRITE",
+"detail": "REWRITE as `GunplayModule`. `PlayerRig` (l.350-370) -> MERGE-INTO Core `GameRefs` (PlayerCamera/WeaponsArm/Parent); HUD `CrosshairController.NeedsCocking` and PlayerBody need it too. The boss part of `AfterCreateObject` (l.326-337) moves with Bosses to NPCAI. `SyncHud` (l.310) is deleted once hits go over the event bus (\u00a77).",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/GunsPages.cs",
+"lines": 115,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `LiveBosses` and the Bosses page go to NPCAI; the rest MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/LegacyConfig.cs",
+"lines": 75,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Keep it (first-run only). Add the `[Guns*]` -> `[Gunplay*]` section migration here if the Id changes (\u00a79). l.110 logs a migration with `Log.Info`; it should use `Log.Always` (AGENTS 5.5).",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Tracers/BoltAttachment.cs",
+"lines": 117,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE + REWRITE `BoltSurface` (\u00a76)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Tracers/Bolts.cs",
+"lines": 99,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Tracers/Orbs.cs",
+"lines": 213,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Tracers/Tracers.cs",
+"lines": 1788,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT by class/method: **NPC shots**: `BeforeRayHit`, `Info`, `MuzzleOf`, `VelocityOf`, `TrackPlayer`, `GunKindOf` -> Gunplay/Projectiles. **Player shots**: `BeforeRaycast`, `MakeGun`, `FirstHit`, `SpreadOffset` -> Gunplay/Projectiles; the stats parts of `MakeGun` go behind `IWeaponStats`. **Ballistics**: `Step`, `RenderOf`, `Falloff`, `RangeOf`, `HitTarget`, `PlayerHit(ref Shot\u2026)`, `Replay`, `HeadFactor`, `Penetrates`, `WentThrough`, `MatOf`, `HitWorld`, `PopOff`, `IsWheel`, `OnCar`, the virtual player hitbox (`PlayerHit(Vector3\u2026)`, `RaySphere`, `SegCapsule`, `PlayerCapsule`, `BodyRootOf`, `HeadOf`) -> Gunplay/Ballistics. **Melee**: `AfterGetLayer`, `AfterSetAudioClip`, `BeforeMeleeEffect`, `IsBlade`, `StabClip`, `IsPlayerMelee`, `AfterSetFsmFloat`, `SwingAtFittedWheels`, `FittedWheelAt`, `SwingDamage`, `PartCondition`, `CheckMeleeWheels` -> Gunplay/Melee. **Effects**: `FindEffects`, `WorldImpact`, `MetalSparks`, `IsCarMetal` -> Gunplay/Effects. **Drawing**: `Draw` -> Gunplay/Tracers. **Actor/part classification** (`Creature`, `RootOf`, `OwningPart`, `IsVehiclePart`, `HasBodypart`, `IsCorpse`, `HealthOf`, `IsPlayerObj`, `col_isHead`) -> MERGE-INTO a Core `ActorQuery` service. HUD `VanillaHits` (l.313-343) and NPC duplicate this logic.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/Guns/Tracers/Wav.cs",
+"lines": 61,
+"owner": "A5-GunsHud",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO a Core audio decoder. Duplicates: `Modules/NPC/Women/Wav.cs`, `Core/VoiceAudio.cs`, and the RIFF code in `Modules/Patrols/Crews/Rider.cs`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B01"
+},
+{
+"path": "Modules/Guns/WeaponDamageText.cs",
+"lines": 33,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE + REWRITE. Read the value from `IWeaponStats` instead of the literal. The `UiTextSetText.OnEnter` target is shared with `MessageHook` -> a Hooks dispatcher.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/Guns/WeaponsPackSound.cs",
+"lines": 49,
+"owner": "A5-GunsHud",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO one WeaponsPack bridge (with NPC `WeaponsPackCompat.cs`, PlayerBody `WeaponsPackShadows.cs`, CleanHUD `WeaponsPackIcons.cs`). It needs the stab clip from Gunplay through ModAPI.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B17"
+},
+{
+"path": "Modules/HUD/Crosshair/CrosshairController.cs",
+"lines": 281,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. `NeedsCocking` (l.26-47) reads weapon FSMs -> Gunplay query `IWeaponState.NeedsCocking`. Remove the `GameObject.Find` at l.141. Expose `PreparePreview/DrawPreview` through a HUD ModAPI; Core `CorePages` calls the type directly today.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/HUD/Crosshair/CrosshairMigration.cs",
+"lines": 31,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (first-run config migration; keep)",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/HUD/HitFeedback/HeadshotAudio.cs",
+"lines": 139,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/HUD/HitFeedback/HeadshotSoundGate.cs",
+"lines": 20,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/HUD/HitFeedback/Hud.cs",
+"lines": 212,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE and rename to `HitFeedbackOverlay` (two `Hud` classes today). Draw it on the CleanHUD uGUI canvas with GlyphText so the IMGUI Gui job is not needed; keep the merge/lifetime logic.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/HUD/HitFeedback/VanillaHits.cs",
+"lines": 150,
+"owner": "A5-GunsHud",
+"primary": "Gunplay",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT. Hit detection (`BeforeSetFsmFloat`, `CreatureHealth`, `Condition`, `Health`, `Flush`) -> Gunplay's single vanilla-hit observer, merged with NPC `VanillaEvents.AfterDamage`; it publishes the Hurt/PlayerHit event. HUD only subscribes.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B09"
+},
+{
+"path": "Modules/HUD/HudModule.cs",
+"lines": 214,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the single HUD module entry (with `CleanHudModule`). `HitFeedbackService` stays as a shim until Gunplay publishes the Hit events, then DELETE. `AssetPath/ReadAsset` -> Core `Assets`/`DiskResources`.",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/HUD/LegacyConfig.cs",
+"lines": 40,
+"owner": "A5-GunsHud",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; merge with CleanHUD's migrations into one HUD LegacyConfig",
+"decision": false,
+"inv": "guns-hud.md",
+"B": "B10"
+},
+{
+"path": "Modules/NPC/Animals/Burrow.cs",
+"lines": 526,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Tick`, the hunt (`Dive`/`Travel`/`Rise`), the sand test and `Register` stay in NPCAI. The visual parts go to Pres: `LateTick` (l.371, sinking the rig) and the puff FX (l.386-468, the Burrower_Effect pool).",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Animals/DogAnimations.cs",
+"lines": 695,
+"owner": "A3-NPC",
+"primary": "Presentation",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Pres gets `LoadBundles`, `Switch`, `Prepare`/`Restore`/`Release`, `MeshCulling`, `SampleDog`, `FrontLegs`, `LevelFront`, `PawsOnGround`, `AlignCompanion`, `LateTick`/`LateCompanion` and the `Dog` pose state. NPCAI gets the decisions: `StartAttack`, `TryAttack`, `DriveDash`, `InReach`/`ReachPoint`, `DamageReady`, the rest/idle timers (`IdleSpan`), and the hooks `BeforeDamageEvent`, `BeforeDamageWait` and `BeforeSetVelocity`.",
+"decision": false,
+"inv": "npc.md",
+"B": "B05"
+},
+{
+"path": "Modules/NPC/Animals/DogBite.cs",
+"lines": 141,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Tick`, `Register` and `AfterSetFsmFloat` (bite detection) stay in NPCAI. `LateTick` (l.117, bone lunge) goes to Pres.",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Animals/DogCompanionCompat.cs",
+"lines": 384,
+"owner": "A3-NPC",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Compat. Today it reaches DogAnimations internals (`RegisterCompanion`, `TickCompanion`, `LateCompanion`, `CompanionDashing`, `RemoveCompanion`). It needs a Pres ModAPI such as `IQuadrupedAnimation` and an NPCAI ModAPI for threats (`Brain.cs:571 CloseThreat` is the reverse dependency).",
+"decision": false,
+"inv": "npc.md",
+"B": "B17"
+},
+{
+"path": "Modules/NPC/Animals/DogCompanionSeating.cs",
+"lines": 11,
+"owner": "A3-NPC",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO DogCompanionCompat.cs. Its only use is DogCompanionCompat.cs:372.",
+"decision": false,
+"inv": "npc.md",
+"B": "B17"
+},
+{
+"path": "Modules/NPC/Animals/Pounce.cs",
+"lines": 427,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Tick`, `Register`, `Room` and the bite stay in NPCAI. `LateTick` (l.379, rear pose) and the airborne carcass tumble in `AfterCreateObject` (l.397) go to Pres.",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Brain/Aim.cs",
+"lines": 227,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Gunplay"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Decision prefixes `BeforeSendEvent`/`BeforeRandomWait` stay in NPCAI. `SpreadFactor`/`Steps` go to Gunplay, which already owns spread and lead (\"NPC aim\" tools section in Guns).",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Brain/Ambush.cs",
+"lines": 56,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Brain/ApBody.cs",
+"lines": 120,
+"owner": "A3-NPC",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Pres. It becomes the Pres-side NPC character driver. `WeaponKey` (l.44) and `IsPistol` (l.55) duplicate `IAnimationApi.WeaponKey`/`WeaponKind`: DELETE them and call the API.",
+"decision": false,
+"inv": "npc.md",
+"B": "B05"
+},
+{
+"path": "Modules/NPC/Brain/Brain.Weapons.cs",
+"lines": 98,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Make it generic: `Frighten(npc, threat, seconds)` without Weapons Pack wording.",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Brain/Brain.cs",
+"lines": 1983,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Presentation",
+"Debug"
+],
+"action": "SPLIT",
+"detail": "SPLIT. NPCAI keeps `Tick`, `Think`, `MoveToward`, `Steer`, `NavSteer`, `Cover*`, `OnStuck`, `TryHop`, the hooks and `Make`/`Of`. Pres gets `Drive` (l.1208), `Aim`/`Unfreeze` (animator freeze), `StrafeClip`, `Crouch` (capsule plus clip), `HeldWeapon`/`GunPoses`, `TryRig`/`BuildRig`/`HopAnim`. NPCAI publishes a per-NPC \"situation\" (crouched, aiming, firing, airborne, pitch, reload) that Pres consumes. Debug gets `TraceDump` (l.778), `LogAhead` (l.1456, uses RaycastAll) and the `Status` strings. Magazines (`MagazineOf`/`NeedsReload`/`Shot`, l.1288-1370) go to Gunplay. Delete `LateTick` (l.1453, empty and never registered).",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Brain/Idle.cs",
+"lines": 832,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Presentation",
+"Debug"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Behaviour stays in NPCAI. `Drive`'s `Anim.Play(\"run\")`/speed (l.751-755) and `RunInPlace` go to Pres. `DrawDebug` (l.791) goes to Debug. The `Drive` steering duplicates Brain's (see 5).",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Brain/ReloadSounds.cs",
+"lines": 84,
+"owner": "A3-NPC",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Pres. Today it creates a `new GameObject` per sound (l.74); pool it instead.",
+"decision": false,
+"inv": "npc.md",
+"B": "B05"
+},
+{
+"path": "Modules/NPC/Brain/SimpleBandits.cs",
+"lines": 118,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Patrols drives it via `INpcApi.SetSimpleConvoyBandit*`.",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/ChainsawLimbs.cs",
+"lines": 158,
+"owner": "A3-NPC",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "#if false since 2026-10-21 (dismemberment disabled at Denis's request); only comment references remain.",
+"decision": true,
+"inv": "npc.md",
+"B": "-"
+},
+{
+"path": "Modules/NPC/Debug/DebugOverlay.cs",
+"lines": 62,
+"owner": "A3-NPC",
+"primary": "Debug",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "npc.md",
+"B": "B03"
+},
+{
+"path": "Modules/NPC/Debug/NpcPages.cs",
+"lines": 143,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Debug",
+"Tools",
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT. ConfigPages follow their entries. \"AI overview\" job times go to Debug (Performance already shows per-job times). The Debug page (toggles, Reset/Export maps) goes to Debug and Tools. \"POI pathfinding\" goes to Tools. Population stays in NPCAI; Appearance/voices go to Pres.",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Detection/CaveDarknessBridge.cs",
+"lines": 60,
+"owner": "A3-NPC",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Compat. Expose it as a Core query `Light.AmbientAt(pos)`.",
+"decision": false,
+"inv": "npc.md",
+"B": "B17"
+},
+{
+"path": "Modules/NPC/Detection/CrewOrders.cs",
+"lines": 46,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. This is behaviour; Patrols only calls it.",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Detection/Senses.Spiders.cs",
+"lines": 144,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Detection/Senses.cs",
+"lines": 2166,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Presentation",
+"Compatibility",
+"Debug",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. NPCAI keeps `Tick`, `Look`, `Visible`, `Noise`, ghosts, `Engage`, `Make`/`Register`, `Persist`, `CrewOrder`, `Remember`, `Hurt`/`Shot`. Pres gets `Taunt`/`BeforeAudioPlay` audio swap (l.1125-1197), `Voice()`/`FlexaClips`/`VoiceSource`. The shout input (`ShoutPressed`, `ModifierHeld`, `BeforeGetButton*`, l.1199-1283) goes to Core Hotkeys, with NPCAI reacting through a `PlayerShout` event. Compat or Core gets `Nwh` (l.1955-1988), replaced by the existing `Services.VehicleIgnition.TryRunning`. Debug gets `DrawDebug` (l.1925) and `Log(Agent,\u2026)` (l.1876).",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Detection/VanillaEvents.cs",
+"lines": 192,
+"owner": "A3-NPC",
+"primary": "Gunplay",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Gunplay gets `BeforeNpcShot` ray-length extension (l.32-49) and its finalizer `AfterNpcShot`. Gunplay or Core also gets `BeforePlayerShot` and `AfterDamage`, which raise `WeaponFired`/`NpcHurt` events. NPCAI only consumes those events (`Senses.Shot`/`Hurt`, `Brain.Shot`).",
+"decision": false,
+"inv": "npc.md",
+"B": "B09"
+},
+{
+"path": "Modules/NPC/Detection/WeaponRanges.cs",
+"lines": 153,
+"owner": "A3-NPC",
+"primary": "Gunplay",
+"secondary": [
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Gunplay gets `Kind`, `Classify`, `RangeOf`, `GunKindOf` and `ProjectilesEnabled` (they duplicate Guns Tracers.cs:746 `Classify` and Tracers.cs:678 fire_effect lookup). Pres or Core gets `ScanHands`/`WeaponOf`/`UnderHand` (held-model lookup, also used by Brain.Drive).",
+"decision": false,
+"inv": "npc.md",
+"B": "B09"
+},
+{
+"path": "Modules/NPC/Hazards/Nests.cs",
+"lines": 632,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. `Pois()` (l.242) should use the shared POI index from Core/POI (see 5).",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Hazards/Storm.cs",
+"lines": 166,
+"owner": "A3-NPC",
+"primary": "Survival",
+"secondary": [
+"Compatibility"
+],
+"action": "REWRITE",
+"detail": "REWRITE. Survival (Weather) provides `IWeatherRegions.StormAt(pos)` and `FunnelAt(pos)`. The DustStorm reflection (l.41-75) merges into the single Compat DustStorm bridge (Patrols/WarRig/DustStormBridge.cs). NPCAI keeps only `StormSight`/`StormHearing` factors.",
+"decision": false,
+"inv": "npc.md",
+"B": "B14"
+},
+{
+"path": "Modules/NPC/Hazards/Webs.cs",
+"lines": 400,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Presentation"
+],
+"action": "MOVE",
+"detail": "MOVE. See 8 for why this stays in NPCAI rather than Pres.",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/Navigation/Nav.cs",
+"lines": 2126,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Debug"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Routing and bake stay in NPCAI. `Dump`/`TraceDump`/`Paint`/`TraceInfo`/`CellText` (l.947-1512) and `DrawDebug` (l.2052) go to Debug. `SweepStep` discovery (l.222) moves to a Core/POI world index (see 5). Delete `MasksNow` (l.801, unused).",
+"decision": false,
+"inv": "npc.md",
+"B": "B08"
+},
+{
+"path": "Modules/NPC/Navigation/NavMapHighlight.cs",
+"lines": 80,
+"owner": "A3-NPC",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Tools, or DELETE once the vanilla pack is complete. 41 maps cover all 39 types today, so it is only useful for custom POIs.",
+"decision": false,
+"inv": "npc.md",
+"B": "B16"
+},
+{
+"path": "Modules/NPC/Navigation/NavMapTools.cs",
+"lines": 131,
+"owner": "A3-NPC",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Tools via a ModAPI call (`Nav.ResetCustom`, `Nav.ExportVanilla`)",
+"decision": false,
+"inv": "npc.md",
+"B": "B16"
+},
+{
+"path": "Modules/NPC/Navigation/NavMaps.cs",
+"lines": 339,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "npc.md",
+"B": "B08"
+},
+{
+"path": "Modules/NPC/Navigation/Passthrough.cs",
+"lines": 115,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "npc.md",
+"B": "B08"
+},
+{
+"path": "Modules/NPC/NpcApi.cs",
+"lines": 32,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. It becomes the NPCAI ModAPI provider. `SpreadFactor` moves to Gunplay (see 8).",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/NpcModule.Config.cs",
+"lines": 340,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Debug",
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Behaviour entries stay in NPCAI. The Debug entries (`VerboseLog`, `NavDump`, `ShowNavigation`, `HighlightUnbakedMapPois`) and the four `<X> / Log` entries go to Debug. The alias line 334-336 is deleted. Presentation entries go to Pres: `Brain/ApocaplayerClips`, `AimPose`, `NpcAim/ReloadVolume`, `ReloadSoundRange`, `DogAnimations`, `DogsLieDown` (pose timers), `DogLieFrontLift`.",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/NpcModule.cs",
+"lines": 281,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Debug",
+"Tools"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `NpcModule` lifecycle, `InstallHooks`, `InstallPatches`, `OnOriginShift` and `ResetAll` stay in NPCAI. `LogAdapter` and `Verbose()`/`Warn()` (l.35-44) go to Debug (one `Log.L1/L2`). PoiNav editor/view/setup jobs and the editor hotkey (l.108-115) go to Tools. The commented ChainsawLimbs lines 175-176 are deleted. `MigrateData` stays for now (see section 9).",
+"decision": false,
+"inv": "npc.md",
+"B": "B07"
+},
+{
+"path": "Modules/NPC/PoiNav/PoiNav.cs",
+"lines": 722,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Delete `LearnLadderSide` (l.205-235, dead after `return;`). Take `WalkerTick` back from the view job (see 3).",
+"decision": false,
+"inv": "npc.md",
+"B": "B08"
+},
+{
+"path": "Modules/NPC/PoiNav/PoiNavBake.cs",
+"lines": 598,
+"owner": "A3-NPC",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Tools. Its `Mask` constant is used at runtime (PoiNav.Walk), so it moves to NPCAI.",
+"decision": false,
+"inv": "npc.md",
+"B": "B16"
+},
+{
+"path": "Modules/NPC/PoiNav/PoiNavData.cs",
+"lines": 213,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Tools uses it through ModAPI.",
+"decision": false,
+"inv": "npc.md",
+"B": "B08"
+},
+{
+"path": "Modules/NPC/PoiNav/PoiNavEditor.cs",
+"lines": 481,
+"owner": "A3-NPC",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Tools",
+"decision": false,
+"inv": "npc.md",
+"B": "B16"
+},
+{
+"path": "Modules/NPC/PoiNav/PoiNavSetup.cs",
+"lines": 199,
+"owner": "A3-NPC",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Tools. The flag becomes a Core ModAPI `WorldGenerationSuspended` read by Towns/POI.",
+"decision": false,
+"inv": "npc.md",
+"B": "B16"
+},
+{
+"path": "Modules/NPC/PoiNav/PoiNavTraverse.cs",
+"lines": 407,
+"owner": "A3-NPC",
+"primary": "NPCAI",
+"secondary": [
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT lightly. The move logic stays in NPCAI. Animation phase calls (`Phase`, `Anim`) already go through `Services.Animation` (Pres).",
+"decision": false,
+"inv": "npc.md",
+"B": "B08"
+},
+{
+"path": "Modules/NPC/PoiNav/PoiNavView.cs",
+"lines": 130,
+"owner": "A3-NPC",
+"primary": "Tools",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Display goes to Tools. `PoiNav.WalkerTick()` (l.27) moves to an NPCAI job. Delete `LearnLadderSide()` (l.26).",
+"decision": false,
+"inv": "npc.md",
+"B": "B16"
+},
+{
+"path": "Modules/NPC/WeaponsPackCompat.cs",
+"lines": 188,
+"owner": "A3-NPC",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Compat. Replace the `Brain.FireRetreat`, `Brain.ChainsawWitnesses` and `ChainsawDrawn` calls with ModAPI calls: `Npc.Frighten(id, pos, secs)`, an event `KillWitnessed`, and a flag `PlayerNoiseFactor`.",
+"decision": false,
+"inv": "npc.md",
+"B": "B17"
+},
+{
+"path": "Modules/NPC/Women/Bindposes.cs",
+"lines": 36,
+"owner": "A3-NPC",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "Duplicate of the Core/Util copy created in Wave 0 (identical apart from namespace).",
+"decision": true,
+"inv": "npc.md",
+"B": "-"
+},
+{
+"path": "Modules/NPC/Women/Gltf.cs",
+"lines": 417,
+"owner": "A3-NPC",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "Duplicate of the Core/Util copy created in Wave 0 (identical apart from namespace).",
+"decision": true,
+"inv": "npc.md",
+"B": "-"
+},
+{
+"path": "Modules/NPC/Women/Gungirl.cs",
+"lines": 615,
+"owner": "A3-NPC",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "DECISION (Denis 2026-10-22): Women of Wasteland is Presentation (female skins/voices). Whole file incl. the female spawn roll and identity rename (an appearance rule). Saved name prefixes (Gungirl(Clone)N) must not change. Config entries keep [NPC / Women of Wasteland]/[NPC / Gungirl]/[NPC / Shoota] on disk via legacy prefix.",
+"decision": true,
+"inv": "npc.md",
+"B": "B05"
+},
+{
+"path": "Modules/NPC/Women/Json.cs",
+"lines": 117,
+"owner": "A3-NPC",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "Duplicate of the Core/Util copy created in Wave 0 (identical apart from namespace).",
+"decision": true,
+"inv": "npc.md",
+"B": "-"
+},
+{
+"path": "Modules/NPC/Women/Level.cs",
+"lines": 76,
+"owner": "A3-NPC",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "Core/Util/Audio (loudness helper next to the single WAV decoder).",
+"decision": true,
+"inv": "npc.md",
+"B": "B01"
+},
+{
+"path": "Modules/NPC/Women/NpcModule.Women.cs",
+"lines": 51,
+"owner": "A3-NPC",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "DECISION (Denis 2026-10-22): Women of Wasteland is Presentation (female skins/voices). Whole file incl. the female spawn roll and identity rename (an appearance rule). Saved name prefixes (Gungirl(Clone)N) must not change. Config entries keep [NPC / Women of Wasteland]/[NPC / Gungirl]/[NPC / Shoota] on disk via legacy prefix.",
+"decision": true,
+"inv": "npc.md",
+"B": "B05"
+},
+{
+"path": "Modules/NPC/Women/Voice.cs",
+"lines": 354,
+"owner": "A3-NPC",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "DECISION (Denis 2026-10-22): Women of Wasteland is Presentation (female skins/voices). Whole file incl. the female spawn roll and identity rename (an appearance rule). Saved name prefixes (Gungirl(Clone)N) must not change. Config entries keep [NPC / Women of Wasteland]/[NPC / Gungirl]/[NPC / Shoota] on disk via legacy prefix.",
+"decision": true,
+"inv": "npc.md",
+"B": "B05"
+},
+{
+"path": "Modules/NPC/Women/Wav.cs",
+"lines": 61,
+"owner": "A3-NPC",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "Duplicate of the Core/Util copy created in Wave 0 (identical apart from namespace).",
+"decision": true,
+"inv": "npc.md",
+"B": "-"
+},
+{
+"path": "Modules/NPC/Women/WomenFeature.cs",
+"lines": 104,
+"owner": "A3-NPC",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "DECISION (Denis 2026-10-22): Women of Wasteland is Presentation (female skins/voices). Whole file incl. the female spawn roll and identity rename (an appearance rule). Saved name prefixes (Gungirl(Clone)N) must not change. Config entries keep [NPC / Women of Wasteland]/[NPC / Gungirl]/[NPC / Shoota] on disk via legacy prefix.",
+"decision": true,
+"inv": "npc.md",
+"B": "B05"
+},
+{
+"path": "Modules/POI/PoiGenerators.cs",
+"lines": 94,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Fold the starting-chunk check from TownPoiSettings.AllowPoi into `Generate`.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/POI/PoiModule.cs",
+"lines": 286,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Merge the terrain-tile event plumbing and graph scan with TownsModule (both subscribe the same 4 TerrainTile events and both scan `graph.generators` for native POI outlets). `PoiSite` is a MonoBehaviour.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Patrols/Crews/BusPassengerPose.cs",
+"lines": 126,
+"owner": "A4-Patrols",
+"primary": "Presentation",
+"secondary": [
+"Developer"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `BusPassengerPreset`,`BusPassengerPoseStore` -> Pres; `BusPassengerPoseEditor` -> Dev",
+"decision": false,
+"inv": "patrols.md",
+"B": "B06"
+},
+{
+"path": "Modules/Patrols/Crews/Crew.cs",
+"lines": 697,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT: stays Pat except `MuteAi(...)` (disables NPC AI FSMs directly) -> NPC service `INpcApi.SetSeated(npc,bool)`; `ApplyOverheat*` (part heat FSM) -> Veh",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/CrewAppearance.cs",
+"lines": 51,
+"owner": "A4-Patrols",
+"primary": "Presentation",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "Presentation character appearance API (faction outfits/skins). Alias table merges with Women identity aliases.",
+"decision": true,
+"inv": "patrols.md",
+"B": "B05"
+},
+{
+"path": "Modules/Patrols/Crews/CrewBusDefence.cs",
+"lines": 101,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/CrewCombat.cs",
+"lines": 83,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (decision is \"vehicle crew\" level; uses NPC only via events)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/CrewFactions.cs",
+"lines": 20,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; roster lists overlap NPC population/Quests factions (see 5)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/CrewPoi.cs",
+"lines": 184,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; replace `TownsApi.Provider.ParkingOutside` (CrewPoi.cs:50) with ModAPI; share Structures snapshot with TrafficLocations",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/CrewReturn.cs",
+"lines": 437,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (already uses Services.Npc; `HealthVar` -> Core FsmUtil helper)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/MeleeWheels.cs",
+"lines": 251,
+"owner": "A4-Patrols",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "Duplicate of Gunplay melee-on-wheels (Tracers MeleeOnWheels, default on); Apocaraider fallback no longer needed.",
+"decision": true,
+"inv": "patrols.md",
+"B": "-"
+},
+{
+"path": "Modules/Patrols/Crews/Passenger.cs",
+"lines": 435,
+"owner": "A4-Patrols",
+"primary": "NPCAI",
+"secondary": [
+"Presentation",
+"Patrols"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `CombatAllowed/CanAnswer/FindVanillaTarget/IndexTargetSources/Consider/ForceRangedOnly/MuteNonCombatAi/Quest*` -> NPC (seated combat service, also used by Quests); `LateUpdate` aim/`HideMeleeWeapons`/`AimPoint` pose part -> Pres; `AttachDriver/AttachTurret/SetDriverMode/ScheduleBurst` orchestration stays Pat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B07"
+},
+{
+"path": "Modules/Patrols/Crews/Pilot.cs",
+"lines": 1006,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Pilot` stays Pat (driving AI); `PlayerRef` (l.835-1006) -> Core.GameRefs (`PlayerCar`, `PlayerVelocity`, `GodMode`, `Target`)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/PlayerAnims.cs",
+"lines": 74,
+"owner": "A4-Patrols",
+"primary": "Presentation",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Presentation animation service (becomes internal call)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B05"
+},
+{
+"path": "Modules/Patrols/Crews/Pose.cs",
+"lines": 412,
+"owner": "A4-Patrols",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (type name `Pose` must stay resolvable: Quests Hire.cs:281 and saves)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B06"
+},
+{
+"path": "Modules/Patrols/Crews/QuestFollowers.cs",
+"lines": 61,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Presentation",
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `IsSeated/IsCrew/FormerCrew/IsHired` stay Pat; `SeatPose/ReleasePose/Animated` -> Pres; `SeatCombat/CanFire/Combat/ShootDistance` -> NPC; `ResolveType` DELETE (no caller; QuestsCompat retired)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/Ram.cs",
+"lines": 264,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Vehicles"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Sensor`,`Hit`,`HurtPlayer`,`Push`,`BeforeSetFsmFloat`,`BeforeSendEvent` stay Pat; `AfterSetFsmFloat` (all cars' damage x NpcRamDamageMultiplier) -> Veh",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/Rider.cs",
+"lines": 1173,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"NPCAI",
+"Presentation",
+"Gunplay",
+"Developer",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Rider.Seat/Slots/AutoSpot/TopAt/IsGunner/IsWarboy/Display/Stored/IsBikeBody/TurretChoices` -> Pat; `RiderGuard` decisions (`Update` witness/leap/throw choice, `CanLeap/Leap/Fly/JumpOff/CombatDismount/SpawnMob/Hop/Land`) -> NPC; `RiderGuard.BuildGraph/Play/Blend`, `JumpClip`, `Rider.Clip/Bone` -> Pres; `Solve/U/FlatLeap/BuildLance/Release`, `Detonator`, `LanceFuse`, `ExplosionPrefab/Boom/Kaboom` -> Gun (projectiles); `Wav` -> Core (dup); `RiderApi` -> Dev (TurretSpotter only), delete `MoveAnchor/SaveLance/LanceOffset/LanceEuler` (retired Apocaspotter shim)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Crews/RiderAnchorGuard.cs",
+"lines": 38,
+"owner": "A4-Patrols",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B06"
+},
+{
+"path": "Modules/Patrols/Crews/SeatedLosGuard.cs",
+"lines": 27,
+"owner": "A4-Patrols",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (NPC senses domain; NPC already prefixes same dispatcher)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B07"
+},
+{
+"path": "Modules/Patrols/Crews/SimpleBanditBridge.cs",
+"lines": 37,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (internal ModAPI client, not third-party; rename e.g. `CrewNpcMode`)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Editor/EditorData.cs",
+"lines": 192,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Loot",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `SpawnGroup`,`EditorData` -> Pat data model; `LootProfile`,`LootItem` -> Loot; `StoreJson` -> Core.Json",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Editor/EditorSelection.cs",
+"lines": 14,
+"owner": "A4-Patrols",
+"primary": "Tools",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO TemplateMenu",
+"decision": false,
+"inv": "patrols.md",
+"B": "B16"
+},
+{
+"path": "Modules/Patrols/Editor/EditorStore.cs",
+"lines": 187,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Loot",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: store stays Pat (Loot part -> Loot store); `AtomicWrite` -> Core.AtomicFile; `SafePath/UniquePath` -> Core",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Editor/MerchantEditor.cs",
+"lines": 78,
+"owner": "A4-Patrols",
+"primary": "Developer",
+"secondary": [],
+"action": "MOVE",
+"detail": "DECISION: merchant item placement -> Developer module (deprecation candidate).",
+"decision": true,
+"inv": "patrols.md",
+"B": "B16"
+},
+{
+"path": "Modules/Patrols/Editor/PickupCatalog.cs",
+"lines": 56,
+"owner": "A4-Patrols",
+"primary": "Loot",
+"secondary": [
+"Compatibility"
+],
+"action": "SPLIT",
+"detail": "SPLIT: catalog -> Loot built on Core prefab catalog (dup of `Prefabs.Scan`); Apocaspawner cfg name read -> Compat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B15"
+},
+{
+"path": "Modules/Patrols/Editor/ShellRecycle.cs",
+"lines": 55,
+"owner": "A4-Patrols",
+"primary": "Tools",
+"secondary": [
+"Core"
+],
+"action": "MOVE",
+"detail": "MOVE to Core utility (generic)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B16"
+},
+{
+"path": "Modules/Patrols/Editor/TemplateExporter.cs",
+"lines": 456,
+"owner": "A4-Patrols",
+"primary": "Tools",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "DECISION: template recorder becomes the \"Template\" tab of the Patrols editor (Tools), shown when the player sits in a supported vehicle and when editing a template. PrefabName/CloneSuffix -> Core/Game/Names.",
+"decision": true,
+"inv": "patrols.md",
+"B": "B16"
+},
+{
+"path": "Modules/Patrols/Editor/TemplateMenu.Ledger.cs",
+"lines": 477,
+"owner": "A4-Patrols",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (via ModAPI only); `MoveTemplate` DELETE (dead)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B16"
+},
+{
+"path": "Modules/Patrols/Editor/TemplateMenu.cs",
+"lines": 87,
+"owner": "A4-Patrols",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B16"
+},
+{
+"path": "Modules/Patrols/Editor/TurretSpotter.cs",
+"lines": 148,
+"owner": "A4-Patrols",
+"primary": "Developer",
+"secondary": [],
+"action": "MOVE",
+"detail": "DECISION: turret spot editor -> Developer module (deprecation candidate).",
+"decision": true,
+"inv": "patrols.md",
+"B": "B16"
+},
+{
+"path": "Modules/Patrols/Merchants/MerchantGuards.cs",
+"lines": 55,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Merchants/MerchantModel.cs",
+"lines": 98,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Developer",
+"Loot"
+],
+"action": "SPLIT",
+"detail": "SPLIT: DTOs/catalog stay Pat; `MerchantCatalog.Goods` -> Loot; `MerchantApi` (public, Dev only) -> Dev-facing ModAPI; layouts store stays Pat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Merchants/MerchantRuntime.cs",
+"lines": 210,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Loot"
+],
+"action": "MOVE",
+"detail": "MOVE; stock goods lookup could use Loot API",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Merchants/TrafficMerchants.cs",
+"lines": 95,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/PatrolsData.cs",
+"lines": 66,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Vehicles"
+],
+"action": "MOVE",
+"detail": "MOVE (keep for >=1 release; WarRig branch goes with Vehicles)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/PatrolsModule.cs",
+"lines": 291,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: lifecycle/jobs stay Pat; `EnsureGameFont`/`Pressed` -> Core (`Hotkeys.Pressed`, Skin); editor components (`_menu,_exporter,_spotter,_busPose,_merchantEditor`, their jobs/hotkeys) -> Tools/Dev; `Services.FollowerVehicles` provider moves with QuestFollowers split",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/PatrolsPages.cs",
+"lines": 234,
+"owner": "A4-Patrols",
+"primary": "Tools",
+"secondary": [
+"Developer",
+"Patrols",
+"Vehicles"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `PatrolEditorPage`,`RecorderPage` -> Tools; `TurretSpotPage`,`BusPosePage`,`MerchantSpotPage` -> Dev; `WarRigPage` -> Veh/POI; `DebugPage` -> Dbg; `WorldTrafficPage`,`SpawningPage`,`MerchantsPage` stay Pat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B16"
+},
+{
+"path": "Modules/Patrols/PatrolsSettings.cs",
+"lines": 573,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Vehicles",
+"Presentation",
+"NPCAI",
+"Tools",
+"Developer",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `BonePoseConfig/PoseFloat/PoseBool/ArmPoseProfile/WeaponPoseConfig`, `[Patrols / Pose]`, `Pose.<Human>`x7, `Turret pose` -> Pres; `War Rig spawns/ground recovery`, `ExitSpeedKmh`, `SuspensionLiftCenterOfMass`, `NPC ram damage multiplier` -> Veh; `AudioVoices` (read by Core/Plugin.cs:114) and `Hide missing-FSM warnings` (drives Core.QuietFsm) -> Core; editor keys/toggles (`MenuKey`,`TemplateDumpKey`,`AllowDebugSpawns`) -> Tools; `TurretSpotEditor`, `Bus passenger pose editor`, `Merchant item editor` (+keys) -> Dev; `AiOverlay`, `DebugMap` -> Dbg; Rider combat tuning (`Rider*` in Combat tuning) -> NPC; rest Pat. Keys must keep section/key (see 9)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Persistence/PatrolCrewDelta.cs",
+"lines": 110,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Persistence/PatrolLoadPreparation.cs",
+"lines": 36,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Core"
+],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core load barrier (`LoadingProgress`/VehicleLoadPlacement share the same prefix)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Persistence/Persistence.cs",
+"lines": 663,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `PatrolMarker` stays Pat; I/O (ES3 key, sidecar, `AtomicWrite`, slot paths, quit flush) -> Core SaveBus sidecar API; format code stays Pat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Spawning/BuildQueue.cs",
+"lines": 101,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [
+"Core"
+],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core.WorldWork queue (see 5 dup budgets)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Spawning/Cleanup.cs",
+"lines": 110,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Core"
+],
+"action": "REWRITE",
+"detail": "REWRITE as participant of Core.SaveCleanup (same far-timer pattern)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Spawning/Convoy.cs",
+"lines": 304,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Compatibility",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: progression/roll/BuildAll stay Pat; `AutosaveSoon` -> Core SaveSystem query (Apocasaver is replaced by WW saves); `BossKills` -> Core progression query; `DebugSpawn/DebugRoll` DELETE (dead)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Spawning/EventBudget.cs",
+"lines": 42,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE, rename `EncounterCap` (NOT a frame budget)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Spawning/Patrol.cs",
+"lines": 1890,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Vehicles",
+"Core",
+"Survival"
+],
+"action": "SPLIT",
+"detail": "SPLIT (biggest file, 9 classes): see 1a",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Spawning/PatrolVisibility.cs",
+"lines": 51,
+"owner": "A4-Patrols",
+"primary": "NPCAI",
+"secondary": [
+"Patrols"
+],
+"action": "SPLIT",
+"detail": "SPLIT: sensing -> NPC senses service; empty `PatrolVisibility` MonoBehaviour must stay as save-compat type (see 9)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B07"
+},
+{
+"path": "Modules/Patrols/Spawning/VehicleBuildCache.cs",
+"lines": 252,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (Vehicles assembly)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Traffic/RoadPath.cs",
+"lines": 88,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/RoadPlanner.cs",
+"lines": 199,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; Towns' Harmony patch on `Build` replaced by ModAPI hint provider",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TownTraffic.cs",
+"lines": 326,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE coupling: via ModAPI `ITownTravel` (see 2)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficBattles.cs",
+"lines": 274,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficCamps.cs",
+"lines": 159,
+"owner": "A4-Patrols",
+"primary": "POI",
+"secondary": [
+"NPCAI",
+"Patrols"
+],
+"action": "SPLIT",
+"detail": "SPLIT: camp load/clear state -> POI world-locations service (consumed by Quests too); Pat consumes",
+"decision": false,
+"inv": "patrols.md",
+"B": "B13"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficCodec.cs",
+"lines": 63,
+"owner": "A4-Patrols",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core.Json",
+"decision": false,
+"inv": "patrols.md",
+"B": "B01"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficCompass.cs",
+"lines": 133,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (already ModAPI)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficElevation.cs",
+"lines": 108,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `ElevationGrid` -> shared routing core; `TerrainWaypoints` foot long-route -> NPC (foot planning)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficFactions.cs",
+"lines": 129,
+"owner": "A4-Patrols",
+"primary": "NPCAI",
+"secondary": [
+"Patrols"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `TrafficActor` (sensor AllowedTags reflection, FootTarget) + `PlayerHostile` -> NPC/Core faction service; `DriveTarget/ForCar/Target` stay Pat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B07"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficFoot.cs",
+"lines": 564,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"NPCAI"
+],
+"action": "MOVE",
+"detail": "MOVE; `FootAlive` DELETE (dead); synchronous `RoadPlanner.Build` (l.319,401) -> worker",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficLocations.cs",
+"lines": 364,
+"owner": "A4-Patrols",
+"primary": "POI",
+"secondary": [
+"Patrols"
+],
+"action": "SPLIT",
+"detail": "SPLIT: discovery/`Known/Points/Blocks` -> POI world-locations service; `RoadRoute`,`LegSafe` DELETE (dead); `IsTown` (TownMarkers.Owns) via ModAPI",
+"decision": false,
+"inv": "patrols.md",
+"B": "B13"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficMap.cs",
+"lines": 293,
+"owner": "A4-Patrols",
+"primary": "HUD",
+"secondary": [
+"Patrols"
+],
+"action": "SPLIT",
+"detail": "SPLIT: route/marker data provider stays Pat; drawing (Gui, map camera lookup) -> HUD map layer",
+"decision": false,
+"inv": "patrols.md",
+"B": "B10"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficMapInk.cs",
+"lines": 51,
+"owner": "A4-Patrols",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B10"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficModel.cs",
+"lines": 147,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (DTO field names are save format)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficReinforcements.cs",
+"lines": 82,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficRoads.cs",
+"lines": 416,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (Towns + Vistas also feed it; terrain tile events -> Core dispatcher)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficRoaming.cs",
+"lines": 47,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficSpace.cs",
+"lines": 23,
+"owner": "A4-Patrols",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core.Origin (keep `OriginShift` in PatrolsModule)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B01"
+},
+{
+"path": "Modules/Patrols/Traffic/TrafficState.cs",
+"lines": 139,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/VehicleRoute.cs",
+"lines": 160,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Traffic/WorldTraffic.cs",
+"lines": 780,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT: journeys stay Pat; `TrafficAgent` sight/hearing (`_nextSense` block, `Sight`) -> NPC senses query",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Vehicles/CarTemplateFile.cs",
+"lines": 349,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `TemplateFile/TemplatePart` -> Veh (vehicle assembly format, also used by Tools/POI); `Json` -> Core.Json (dup)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Vehicles/CarTemplates.cs",
+"lines": 177,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (template park = patrol data model)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Vehicles/Cargo.cs",
+"lines": 209,
+"owner": "A4-Patrols",
+"primary": "Loot",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (cargo loot); `SeatSurface/FloorAt` RaycastAll -> NonAlloc",
+"decision": false,
+"inv": "patrols.md",
+"B": "B15"
+},
+{
+"path": "Modules/Patrols/Vehicles/Explode.cs",
+"lines": 407,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Vehicles"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Schedule/Routine/Eligible/Roll/DefaultChance/BattleWreck` stay Pat; `Darken/Deaden/SetCondition/StopTweens/QuietHinges/StopRpm/StopLoops/IsWreck/RestoreDead/BlastAt` -> Veh `IVehicleWreck`; `Preserved` DELETE (dead)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Vehicles/ModVehicles.cs",
+"lines": 72,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [
+"Compatibility"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Register/Template` -> Veh factory registry; assembly scan -> Compat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Vehicles/MotorcycleIntegration.cs",
+"lines": 77,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [
+"Compatibility"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `ResolvePrefab/TrimRearCollision/MotorcycleRearAccess/IsBody` -> Veh; MotorcycleMod assembly lookup + `Factory.Template` patch -> Compat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Vehicles/Motorcycles/Factory.cs",
+"lines": 166,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (ns `.Motorcycles`, prefab id fixed)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Vehicles/Motorcycles/MotorcycleBalance.cs",
+"lines": 60,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (public saved component type)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Vehicles/Paint.cs",
+"lines": 418,
+"owner": "A4-Patrols",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "DECISION (Denis 2026-10-22): faction car skins belong to Presentation (Presentation/VehicleSkins). Cargo container texture-by-loot-key: Loot supplies the key->texture data through ModAPI.",
+"decision": true,
+"inv": "patrols.md",
+"B": "B06"
+},
+{
+"path": "Modules/Patrols/Vehicles/Suspension.cs",
+"lines": 325,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [
+"Compatibility"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `SuspensionTune`, `AfterSetPosition` -> Veh; PartAdjustment `SuspensionApi` reflection -> Compat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Vehicles/Templates.cs",
+"lines": 177,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [
+"Vehicles"
+],
+"action": "MOVE",
+"detail": "MOVE; vehicle-structure part (`Body/Parts/Bumpers/Trailer`) consumed by Veh assembly",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/Vehicles/TrailerSupport.cs",
+"lines": 97,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Vehicles/VehicleAttachments.cs",
+"lines": 29,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/Vehicles/VehicleRules.cs",
+"lines": 19,
+"owner": "A4-Patrols",
+"primary": "Patrols",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; `CanTemplate` DELETE (dead, always true)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B11"
+},
+{
+"path": "Modules/Patrols/WarRig/DustStormBridge.cs",
+"lines": 61,
+"owner": "A4-Patrols",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (calls the Surv shelter query)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B17"
+},
+{
+"path": "Modules/Patrols/WarRig/Factory.cs",
+"lines": 361,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (ns `.WarRig`)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/WarRig/Glb.cs",
+"lines": 226,
+"owner": "A4-Patrols",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core Glb (dup of Towns/GasStation/Glb.cs, Survival/StewPot/Glb.cs)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B01"
+},
+{
+"path": "Modules/Patrols/WarRig/GroundRecovery.cs",
+"lines": 272,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/WarRig/Json.cs",
+"lines": 117,
+"owner": "A4-Patrols",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core.Json (dup x5)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B01"
+},
+{
+"path": "Modules/Patrols/WarRig/Layout.cs",
+"lines": 160,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/WarRig/NativeStormProtection.cs",
+"lines": 140,
+"owner": "A4-Patrols",
+"primary": "Survival",
+"secondary": [
+"Vehicles"
+],
+"action": "SPLIT",
+"detail": "SPLIT: storm patches -> Surv (weather owns storm damage; WeatherNative.cs already patches Explosion/storm FSMs); Veh registers War Rig as a shelter via ModAPI",
+"decision": false,
+"inv": "patrols.md",
+"B": "B14"
+},
+{
+"path": "Modules/Patrols/WarRig/PoiEncounter.cs",
+"lines": 145,
+"owner": "A4-Patrols",
+"primary": "POI",
+"secondary": [
+"Vehicles",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `Register/Spawn/Completion/Prepare/Wheels` -> POI (uses Pat/Veh spawn via ModAPI); `InstallRetention/BeforeCleanupDistance/Protected/DetachTankers` -> Core far-cleanup retention service (Performance PatrolsBridge already asks for it)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B13"
+},
+{
+"path": "Modules/Patrols/WarRig/Props.cs",
+"lines": 255,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/WarRig/Settings.cs",
+"lines": 75,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (parsers -> Core)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/WarRig/WarRigFeature.cs",
+"lines": 138,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [
+"Compatibility"
+],
+"action": "SPLIT",
+"detail": "SPLIT: install/prefab lookup/SpawnNearPlayer -> Veh; `SpawnerIntegration` -> Compat",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/WarRig/WarRigUnit.cs",
+"lines": 161,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (public saved component)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Patrols/WarRig/WorldSpawning.cs",
+"lines": 74,
+"owner": "A4-Patrols",
+"primary": "Vehicles",
+"secondary": [
+"POI"
+],
+"action": "SPLIT",
+"detail": "SPLIT: `CanSpawnAt/IsTemplate` -> Veh; `NaturalRigs/NaturalNoticeUntil` -> POI (map notice data)",
+"decision": false,
+"inv": "patrols.md",
+"B": "B12"
+},
+{
+"path": "Modules/Performance/Content/Coyotes.cs",
+"lines": 147,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"NPCAI"
+],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/Culler.cs",
+"lines": 329,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; replace `PatrolsBridge` with ModAPI culling-protection query",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/FsmEdits.cs",
+"lines": 324,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (FsmPause -> Core FSM service shared with FS1)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/HudFsms.cs",
+"lines": 141,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"HUD"
+],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/ItemFsmFixes.cs",
+"lines": 109,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT: DuplicateRigidbodyFeature -> Core/Fixes; DataFsmRestartFeature -> Core/Optimization/Content",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/LightFlicker.cs",
+"lines": 121,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/PatrolsBridge.cs",
+"lines": 64,
+"owner": "A1-Core",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "DELETE after adding `Services.Culling { bool Protected(GameObject); void BeforeFarDelete(GameObject) }` (requested in its own header) provided by Patrols",
+"decision": false,
+"inv": "core-performance.md",
+"B": "-"
+},
+{
+"path": "Modules/Performance/Content/PlayerCapsule.cs",
+"lines": 84,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/PollFeatures.cs",
+"lines": 62,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/PollSleep.cs",
+"lines": 289,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (replace `IsAlive` AllJobs scan, line 51/58)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/ProxyAction.cs",
+"lines": 64,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Content/VehicleReflection.cs",
+"lines": 146,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"Vehicles"
+],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Framework/Feature.cs",
+"lines": 151,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Framework/PerformancePage.cs",
+"lines": 81,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"Debug"
+],
+"action": "SPLIT",
+"detail": "SPLIT: preset UI -> Core settings page; `Telemetry.Draw`/`CorePages.Performance` calls + `DrawDeveloper` stats -> Debug",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Framework/Telemetry.cs",
+"lines": 188,
+"owner": "A1-Core",
+"primary": "Debug",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (merge with developer Measurements, see 1.4)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B03"
+},
+{
+"path": "Modules/Performance/PerformanceModule.cs",
+"lines": 209,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE as Core optimization registry (no module switch hop; explicit feature list instead of `Assembly.GetTypes()` discovery, line 62)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/ActionDataPort.cs",
+"lines": 383,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (pin to PlayMaker version; Debug.LogError at 358 = vanilla message)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/BatchCompiler.cs",
+"lines": 99,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO `Core/Access`",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/CompileQueue.cs",
+"lines": 84,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO `Core/Access` (fix `_job.Removed` reliance, line 36)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/EventDispatch.cs",
+"lines": 296,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/FastActionLoadFeature.cs",
+"lines": 237,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/FastCallMethodFeature.cs",
+"lines": 137,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/FastPropertyFeature.cs",
+"lines": 479,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/FastReflect.cs",
+"lines": 401,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO `Core/Access` (duplicates NativeAccess/OptionalAccess)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/FsmEventSkip.cs",
+"lines": 62,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/FsmRegistry.cs",
+"lines": 185,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Core as public `FsmIndex` (other modules scan `PlayMakerFSM.FsmList`: Towns x2, Weather, Quests x3, Patrols TownTraffic)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/FsmSleepFeature.cs",
+"lines": 309,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; use `FsmPause` ownership bits (today a second ManualUpdate owner, see 5.4)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/GuiLoopFeature.cs",
+"lines": 426,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (fix `_guard.Removed`, line 83)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/MousePickFeature.cs",
+"lines": 170,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (shares `ActionHelpers.DoMousePick` with PlayerBody PickAssist postfix)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/SigmaFsmStates.cs",
+"lines": 33,
+"owner": "A1-Core",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; cache `Chainloader.PluginInfos.ContainsKey` once (line 22 runs per getter call) and only patch when SigmaMod is loaded",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B17"
+},
+{
+"path": "Modules/Performance/PlayMaker/StringConvertFeature.cs",
+"lines": 125,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/PlayMaker/TriggerProxyFeature.cs",
+"lines": 141,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (note: skipped events no longer reach `Hooks.ProcessEvent` subscribers)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/AnimatorCulling.cs",
+"lines": 110,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"Presentation"
+],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/CameraCulling.cs",
+"lines": 182,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (no overlap with PlayerBody \"CameraCulling\" = occlusion cutaway; rename to avoid confusion)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/CullLods.cs",
+"lines": 187,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/GcSlice.cs",
+"lines": 51,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/GeneratedLodExport.cs",
+"lines": 124,
+"owner": "A1-Core",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "RC9 LOD authoring export -> Tools (developer authoring).",
+"decision": true,
+"inv": "core-performance.md",
+"B": "B16"
+},
+{
+"path": "Modules/Performance/Rendering/GeneratedLodPack.cs",
+"lines": 217,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/GeneratedLods.cs",
+"lines": 368,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/LightPolicy.cs",
+"lines": 267,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (remove 10 s `FindObjectsOfType<Light>`, line 190)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/ParticleTuning.cs",
+"lines": 130,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/PostFx.cs",
+"lines": 299,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/RenderShared.cs",
+"lines": 526,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (SaveGuard should use the Saves \"before serialize\" event)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/SmallCasters.cs",
+"lines": 110,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/SunShadows.cs",
+"lines": 113,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/TerrainDetail.cs",
+"lines": 119,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/Rendering/TextureQuality.cs",
+"lines": 48,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/World/CarLod.cs",
+"lines": 322,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [
+"Vehicles"
+],
+"action": "MOVE",
+"detail": "MOVE; replace namespace sniffing (193-194) with ModAPI \"vehicle controlled by a module\" query",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/Performance/World/WorldSettings.cs",
+"lines": 404,
+"owner": "A1-Core",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (6 features; consider one file per feature)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B02"
+},
+{
+"path": "Modules/PlayerBody/Animation/AimLift.cs",
+"lines": 249,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [
+"Developer"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Default/Builtin/Load/Save/SaveIfDirty/Get/Resolve/Key/Own/IsAimClip/scalar `Elbow` (l.196) \u2192 Pres. Set/ArmKeys/EndArmKeys/NudgeArm/ResetArm/Edit* \u2192 Developer. `Elbow(double[]...)` (l.227) \u2192 DELETE (only for tools/locotest, no in-game caller).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/AimTransition.cs",
+"lines": 83,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO a Pres FP-weapon-motion unit with FirstPersonSway.cs and Guns/Camera/WeaponTransition.cs.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/AnimationService.cs",
+"lines": 118,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE as the Pres ModAPI service: id-based character handles and queries instead of Animator references (\u00a77).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/Anims.cs",
+"lines": 69,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; load at Init (Sliced/async), not on first `Get` mid-play.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/Bindposes.cs",
+"lines": 36,
+"owner": "A2-PlayerBody",
+"primary": "Core",
+"secondary": [
+"Presentation"
+],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO one copy. It is byte-identical to NPC/Women/Bindposes.cs apart from the namespace.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B01"
+},
+{
+"path": "Modules/PlayerBody/Animation/BuiltinPoses.cs",
+"lines": 811,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "Built-in clip/pose table for the shared character driver.",
+"decision": true,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/CharPlan.cs",
+"lines": 495,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Becomes the **single** decision model, also used for the player.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/CrawlBody.cs",
+"lines": 65,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (generalise per character). Empty `partial void CaptureCrawlMotion()` (l.15, called l.48) \u2192 DELETE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/Crawling.cs",
+"lines": 92,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT: Clip/bundle load \u2192 Pres. Velocity/Button/HeldButton/WeaponEvent/Stance/Holster/Tick \u2192 player-movement owner (\u00a78). `DownedProbe` (l.11, never assigned) and `InstallMultiplayer` (l.38, no body) \u2192 DELETE (MP stubs).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/GunPose.cs",
+"lines": 514,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [
+"Developer"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Bind/Parse/Fmt/LoadUser/Own/Dirty/SetPoseList/Put/HasAny/HasPose/Effective(weapon,clip)/EffectiveFor/BlendFor/Blend/Abs/SetLive/Flush and the user-file part of Save \u2192 Pres. LoadLegacy/HasLegacy/ConvertLegacy/LegacyWeapons (0.5/0.6 grips) \u2192 retire after one more release. Editor: Step/StepClip/Pressed/Keys/Axis/Note/Status/AimLine/ClearHint/OnGUI/BindEditorKeys/EditorKey/EditorAxis/DrawEditorBindings/CopyShown/PasteCurrent/DeleteCurrent/SaveNow/ReloadFiles/Current*/RotateMode/EditorTarget, plus the BuiltinPoses.generated.cs export \u2192 Developer. `Poses` (l.27) and `Effective(string,int,float[])` (l.276) \u2192 DELETE (no caller; \"other mods by reflection\" shims).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/Loco.cs",
+"lines": 823,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE: duplicate of ModCharacter+CharPlan (see the duplication table above). Keep graph/rig building as the shared CharacterRig. `AimKeys` (l.309) \u2192 Developer.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/LocoPlan.cs",
+"lines": 341,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/ModAPI.cs",
+"lines": 203,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the Pres ModAPI service. `AimLiftOf` (l.81) \u2192 DELETE (not in IAnimationApi, no caller). `Find` (l.177) is an O(n) scan \u2192 dictionary by Animator instance id.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Animation/ModCharacter.cs",
+"lines": 564,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE as the shared character driver. Fix \u00a76 items: allocation at l.351, rig clone at l.208-260, no LOD.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/Arms.cs",
+"lines": 75,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Dead left-arm branch: `Model.ArmsLeft()` is always null, so `_matLeft` and `IsLeftArm` (l.57) are dead \u2192 DELETE. Share the renderer scan with Game.GameArmsShown.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/Body.cs",
+"lines": 1423,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT: Create/FlexaPrefab/Clip/BuildGraph(Mixamo)/meshes/SetVisible/SetMesh/CapMaterial/ShiftFirstPerson/FitFirstPerson/LateDead/Ragdoll/props (UpdateProp/ShowProp/PoseProp/AlignProp/TryWeaponMuzzle)/pose fade \u2192 shared CharacterBody. WatchAttack/StartMelee/UpdateMelee/WatchThrow/ThrowAim/PunchAim/BeginStrike and the Input reads in LateFootInner \u2192 PIA. LateCar/LateCarInner/CarBase/LearnCarYaw/LearnCarThrow/LateWheelArms \u2192 Pres SeatPose. Non-Mixamo fallback (BuildGraph l.358-395, Walk l.1310, MirrorBody/procedural walk branch in LateFootInner l.796-860, the `[Animation (fallback clips)]` entries) \u2192 DELETE candidate; it runs only when the shipped bundle is missing.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/CharacterModels.cs",
+"lines": 122,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. MERGE the glb-skin path with NPC/Women/Gungirl.cs model building. Today the player's Gungirl/Shoota come from NPC via `Services.CharacterAssets` (l.45); Pres should own those assets.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/CharacterPortraits.cs",
+"lines": 48,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [
+"HUD"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Names/Order/Canonical \u2192 Pres character catalog (ModAPI query). Prepare/Picture (UI textures) \u2192 HUD.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/Equipment.cs",
+"lines": 336,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. `Classify` (l.50) \u2192 MERGE-INTO the shared weapon catalog (\u00a75). Feed it from an inventory snapshot so NPC followers can use it too.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/EquipmentInventory.cs",
+"lines": 214,
+"owner": "A2-PlayerBody",
+"primary": "Compatibility",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Resolve/Bridge (Apocapocket/Apocainventory) \u2192 Compatibility, published as a Core ModAPI `PlayerInventorySlots` query. Vanilla Read/FirstItem \u2192 Core player-inventory query (CleanHUD reads the same slots).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B17"
+},
+{
+"path": "Modules/PlayerBody/Body/FemalePain.cs",
+"lines": 105,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (voice follows the character model); `PlayerShout` \u2192 character voice query. See \u00a78.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/Gltf.cs",
+"lines": 417,
+"owner": "A2-PlayerBody",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core.Assets.Gltf. It duplicates NPC/Women/Gltf.cs; the only difference is the log call at l.317.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B01"
+},
+{
+"path": "Modules/PlayerBody/Body/InventoryModel.cs",
+"lines": 72,
+"owner": "A2-PlayerBody",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B10"
+},
+{
+"path": "Modules/PlayerBody/Body/Json.cs",
+"lines": 117,
+"owner": "A2-PlayerBody",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core Json. Identical copies: NPC/Women, Towns/GasStation, Patrols/WarRig; Survival/StewPot differs by one blank line. CleanHUD/Json.cs is a different 122-line variant.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B01"
+},
+{
+"path": "Modules/PlayerBody/Body/Model.cs",
+"lines": 364,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. `ArmsLeft` (l.340, \"Max only\", always null) \u2192 DELETE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/PickAssist.cs",
+"lines": 176,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Route through a Core Hooks dispatcher: Performance/PlayMaker/MousePickFeature.cs:142 patches the same target.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Body/Projectiles.cs",
+"lines": 35,
+"owner": "A2-PlayerBody",
+"primary": "Gunplay",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B09"
+},
+{
+"path": "Modules/PlayerBody/Body/Props.cs",
+"lines": 304,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT: KindOf/KindOfName/Norm \u2192 shared weapon catalog (Core ModAPI, data owned by Gunplay). Build/Find/ItemModel/SceneItem/Instantiate/CopyForMount/TryMuzzle/Barrel/MirrorToRight/BindWorld/OnSceneLoaded \u2192 Pres.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Body/Ragdoll.cs",
+"lines": 90,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; pass the ignore-collider set in instead of reading `Game.Player` (l.137).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/BodyRunner.cs",
+"lines": 229,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT: Tick/LateTick/WheelTick/ModApiTick \u2192 Pres player driver. `Car.Tick` call (l.110) \u2192 Vehicles. Gui (l.212-213) \u2192 Developer + HUD. `EndOfFrameLoop` (l.216) \u2192 CamSvc. `Perf.*` calls \u2192 DELETE. `TryPlayerJumpHead`/`TryOcclusionPoints`/`DeathFocus` \u2192 Pres ModAPI queries.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Camera/Cave.cs",
+"lines": 41,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [
+"Core"
+],
+"action": "MOVE",
+"detail": "MOVE (or Core `PlayerState.InCave`; Weather/Survival can reuse it).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Camera/ChaseCameraCompat.cs",
+"lines": 74,
+"owner": "A2-PlayerBody",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Keep the type map (\u00a79). Stop the endless 1 s discovery job after the first post-chainload attempt.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B17"
+},
+{
+"path": "Modules/PlayerBody/Camera/FirstPersonJump.cs",
+"lines": 15,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO CharacterBody (it is misplaced in Camera/).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Camera/FirstPersonSway.cs",
+"lines": 111,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO FP weapon motion (with AimTransition and Guns WeaponTransition).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Camera/OcclusionCutaway.cs",
+"lines": 384,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Camera/Perf.cs",
+"lines": 134,
+"owner": "A2-PlayerBody",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "Superseded by Scheduler timing + Debug FrameStats; fold its census lines into Debug.",
+"decision": true,
+"inv": "playerbody.md",
+"B": "-"
+},
+{
+"path": "Modules/PlayerBody/Camera/ThirdPerson.cs",
+"lines": 563,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [
+"HUD"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Tick/Zoom/ComputeView/PreCull/EndOfFrame/HideViewModel/ShowViewModel/Off/CarShiftEye \u2192 CamSvc owner. BtnJump branch of `BeforeGetButtonDown` (l.118-121) \u2192 player traversal. MoveCrosshair/FindCursor/RestoreCrosshair (l.450-504) \u2192 HUD crosshair service (duplicates HUD/Crosshair/CrosshairController.cs:71-142 lookups). LateCrosshair eye/muzzle rays (l.390-430) \u2192 shared aim-ray query (Gunplay).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Climbing/ClimbGeometry.cs",
+"lines": 191,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; candidate to share with NPC/PoiNav/PoiNavBake climb-link detection.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Climbing/Climbing.cs",
+"lines": 235,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Climbing/Ladders.cs",
+"lines": 396,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Replace the raw Services statics with ModAPI query/events (\u00a77).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Climbing/NpcTraversal.cs",
+"lines": 110,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO one traversal lease with PlayerTraversal.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Climbing/PlayerTraversal.cs",
+"lines": 227,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the unified traversal lease (foot IK then works for NPCs as well).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Climbing/PoseClip.cs",
+"lines": 168,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; load at Init (Sliced). Today it builds an Avatar synchronously on first ladder use.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Game.cs",
+"lines": 498,
+"owner": "A2-PlayerBody",
+"primary": "Core",
+"secondary": [
+"Presentation"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Ready/Find/Dead/InCar/Velocity/MoveState/StandingHeight/CarRoot/JumpState \u2192 MERGE-INTO Core.GameRefs as a typed `PlayerState` (Guns, NPC, HUD and Quests read the same FSMs). DrawnWeapon, IsReloading, ArmsReloading, ArmsReloadPhase, ReloadsPerRound, Attack, KickState, GrenadeState, GameArmsShown, AimDownSights, Binoculars, BinocularInUse, ToolInHand \u2192 Pres PIA. `CarFsm` (l.440) and `DriveUse` (l.468) have no WW caller: keep only while ChaseCamera reflects `Apocaplayer.Game` (\u00a79), else DELETE. FindDeep/PathOf \u2192 Core util.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B01"
+},
+{
+"path": "Modules/PlayerBody/GameBindings.cs",
+"lines": 55,
+"owner": "A2-PlayerBody",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE \u2192 Core input service; cache the `KeyAction` per InputStorage instance (\u00a76).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B01"
+},
+{
+"path": "Modules/PlayerBody/KeyMap.cs",
+"lines": 76,
+"owner": "A2-PlayerBody",
+"primary": "Core",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE \u2192 Core.ModuleConfig/Hotkeys (AGENTS 5.7 already asks for this).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B01"
+},
+{
+"path": "Modules/PlayerBody/PlayerBodyModule.cs",
+"lines": 417,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [
+"Vehicles",
+"HUD",
+"Developer"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Character, Body/Arms/FemaleArms/ReplaceDriver/EquipmentOnBody/PainSounds, sway/ADS, Climbing*/Ladder*, Anim/Leg/Model entries \u2192 Pres. ThirdPerson*/Orbit/EnableMMB/DynamicCrosshair/PickAssist*/Occlusion*/ObserveKey \u2192 CamSvc owner. VehicleStatusHint/VehicleHotkeyHint \u2192 HUD. IgnitionControlOn, Cassette/Volume keys, `LegacyIgnitionKey`, `IgnitionKeyCode` \u2192 Vehicles. LanceIgnoresOwnCar \u2192 Gunplay. WeaponAdjust + `GunPose.BindEditorKeys` \u2192 Developer. VerboseModApi \u2192 DELETE (Debug level 2). `Info`/`Verbose` (identical, l.84-85) \u2192 Debug. `MigrateKey`/`KeyMap` \u2192 Core. `Mig*`/`ClimbEntry`/`Slider` migration chains: keep with the owner (first-run migrations).",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/PlayerBodyPages.cs",
+"lines": 186,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [
+"Developer"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Framework/BodyPage/ClimbingPage \u2192 Pres. CameraPage \u2192 CamSvc owner. PoseEditor/ArmButtons and the `WheelArms.Draw` page \u2192 Developer.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B05"
+},
+{
+"path": "Modules/PlayerBody/Vehicles/Car.cs",
+"lines": 379,
+"owner": "A2-PlayerBody",
+"primary": "Vehicles",
+"secondary": [
+"HUD"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Tick (cockpit reset, controls, cassette/volume), TickIgnition, BeforeMousePick, Patch, FindControls/Part, FindEngine/Member/EngineRunning, SetVolume/RadioVolume \u2192 Vehicles. UpdateHints/AddHint/AddActionHint/BindingSig/FindGameText/KeyName/OnGUI/GuiWanted \u2192 HUD, reading a `VehicleControlsState` query.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B12"
+},
+{
+"path": "Modules/PlayerBody/Vehicles/CarSeat.cs",
+"lines": 121,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (SeatPose; unify with Patrols/Crews/Pose.cs). `FindSource` (l.98) has no caller \u2192 DELETE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Vehicles/IgnitionControl.cs",
+"lines": 153,
+"owner": "A2-PlayerBody",
+"primary": "Vehicles",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Row injection goes through the Core input service.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B12"
+},
+{
+"path": "Modules/PlayerBody/Vehicles/VehicleHud.cs",
+"lines": 79,
+"owner": "A2-PlayerBody",
+"primary": "HUD",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B10"
+},
+{
+"path": "Modules/PlayerBody/Vehicles/WheelArms.cs",
+"lines": 453,
+"owner": "A2-PlayerBody",
+"primary": "Presentation",
+"secondary": [
+"Vehicles",
+"Developer"
+],
+"action": "SPLIT",
+"detail": "SPLIT: Bind/Solve/SolveHandlebars/RestPassengerArms/Reach/Load/LoadPath/FittedWheel \u2192 Pres SeatPose. `Patch`/`BeforeSteer` and `_steering.returnToCenter = true` (l.102), which are gameplay changes, plus `MissingWheel` \u2192 Vehicles. `Draw` page and `Save` \u2192 Developer.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B06"
+},
+{
+"path": "Modules/PlayerBody/Vehicles/WheelGripEditor.cs",
+"lines": 242,
+"owner": "A2-PlayerBody",
+"primary": "Developer",
+"secondary": [],
+"action": "MOVE",
+"detail": "DECISION: steering-wheel grip editor -> Developer module.",
+"decision": true,
+"inv": "playerbody.md",
+"B": "B16"
+},
+{
+"path": "Modules/PlayerBody/WeaponsPackShadows.cs",
+"lines": 48,
+"owner": "A2-PlayerBody",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Replace `FieldInfo Body._prop` reflection (l.24, l.40) with a Pres ModAPI query `TryGetHeldProp(characterId)`.",
+"decision": false,
+"inv": "playerbody.md",
+"B": "B17"
+},
+{
+"path": "Modules/Quests/CrewHistory.cs",
+"lines": 67,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Switch to the Core sidecar API. Keep the QuestsCompat fallback read for one release, then retire it.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/FactionDump.cs",
+"lines": 128,
+"owner": "A8-Quests",
+"primary": "Debug",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE to Debug (or DELETE). It writes into the plugin folder (`PluginRuntime.cs:77`, `DataDir` = `plugins/WildWasteland/Quests`).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B03"
+},
+{
+"path": "Modules/Quests/Factions.cs",
+"lines": 252,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. The file format and `Get/ByKey/Refresh/Load` stay in Quests. `OfObject/Friendly/Hostile/HumanFactions` become a Core faction query (NPCAI, Patrols and Towns also reason about Coyotes/Scrapyard). DELETE `Faction.HasNpc` (31, unused).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/Game.cs",
+"lines": 823,
+"owner": "A8-Quests",
+"primary": "Core",
+"secondary": [
+"NPCAI",
+"POI",
+"Loot",
+"Quests"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Core gets `Origin/Rel/Abs/Player/HDist/BaseName/FindInt/FindFloat/FindString/GameHours/MoneyVar/GetMoney/AddMoney/RegisterSpawned/SavedItemList/GroundAt` (shared game access). NPCAI ModAPI gets `FindNpcNames/FindEnemies/LiveNames/FindLive/FindPeople/FindBodies/SetPlayerEnemy/IsPlayerEnemy` (population queries). POI ModAPI gets `FindPois/SpawnFactionOf/VisitedIcons`. Loot or a Core item query gets `FindItems/TakeItems/CountStacks/ContainerCapacity/TooEmpty/ForSale/MatchUncached/Eq/AmmoFsm/AddReserveAmmo`. Quests keeps `WatchSpawns/SpawnItemsInFront/GroundNear/FindPrefab` (delivery goods), `ItemHit/Poi/EnemyInfo` DTOs and `ResetWorld`.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B01"
+},
+{
+"path": "Modules/Quests/Hire.cs",
+"lines": 1792,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [
+"NPCAI",
+"Patrols",
+"Vehicles",
+"Presentation",
+"Gunplay"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Quests keeps the contract: `Init, CostFor, Start, Attach, Dismiss, dismissHint, Clear, Reset, Died, Gone, Shutdown` and the expiry part of `Update` (351-387). NPCAI gets follower behaviour via a new ModAPI `INpcApi.Follow/Escort`: `WakeBrain, Calm, ReleaseNpc, RestoreBrain, Threats, Inform, Hostile, IsCritter, Alive, ExcludeFromIdle, Follow, CatchUp, FindExit, LiftAbove, RescueIfLost, TeleportNear, FootWatch, FootShoot, FootMagazine, EndFootShot, ClearShot, RealShotFired, WatchPlayerHealth, NearestUncached`. Vehicles/Patrols crew-seat service gets `TryMount, Dismount, SeatTaken, PlayerCar, AttachGuard, DetachGuard, SnapCombat, RestoreCombat, ResetFight, IgnoreNewColliders, RestoreCollisions, LateUpdate` (seat lock). Presentation gets `ScanParts, Recoil, PlayShotAnim, TurnToTarget, ArmTemplate, ShootAnimName`. Gunplay gets `FindReloadClips, ReadGunStats, BorrowShotSound, ScheduleReloadSounds, InsertClip, PlayDueSounds, CountShot, FireShots, GunSetup, HoldFire`. DELETE `EarlyTeach` (1553, empty), `LogGuard` (1003, empty), `FindApi` (688, unused), `NpcAiGuid/PatrolGuid` (19-20, unused) and the orphan comments at 1555-1560.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/KeyMap.cs",
+"lines": 74,
+"owner": "A8-Quests",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO a Core KeyMap. It is a byte-for-byte copy of `PlayerBody/KeyMap.cs` apart from comments. `Code/Build/Convert` are dead here.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B01"
+},
+{
+"path": "Modules/Quests/MapLink.cs",
+"lines": 63,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (already ModAPI-only).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/NativeConversation.cs",
+"lines": 168,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [
+"HUD",
+"Compatibility"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Quests keeps `TalkBridge.Begin/AddLine/NativeButtons/Choose/Close` and `Plugin.CanInteract/OpenInteraction/InteractionFrame/FindInteraction/Person/FilterCrewButtons`. HUD gets `Plugin.DrawConversation` (the fallback dialogue UI). Compatibility gets `TalkBridge.InstallOptional/Opened/Closed/Uninstall` (the Talk patches).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/Plugin.cs",
+"lines": 2501,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [
+"HUD",
+"Core",
+"Debug"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Quests keeps `Frame/Tick/CheckEmptyCamp/ScoutCamp` (140-245, 545-562), rewards/fail/cancel (567-665), delivery (672-770), reputation (770-845), kills (861-935), `Format`, talk menu (`OnTalkOpen..DealRep`, 1022-1265), offers/accept/turn-in (1265-1960), talk actions (1960-2032), `RefreshLines/Objective/ShortStatus/DirectionsLine/Aim/ComputeAim` as view-model text (279-545). HUD gets `EnsureStyles/DrawWindow/Shadowed/Draw`, toasts and `GamePaused` (2410-2499). Core is REWRITTEN as a SaveBus ES3-key/sidecar API replacing `ResolveEs3, StaticMember, InstMember, DefaultEs3Path, CachedSlotFiles, SaveToCache, LoadFromCache, DiskSettings, SaveToDisk, LoadFromDisk, SlotId, BackupPath` (2072-2290). Debug/Tools gets `RecordNpcName` (979-1020). DELETE `FindType` (125), `IsLoadingState` (2033) and the `PluginGuid/PluginName/PluginVersion` consts (19-21).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/PluginRuntime.cs",
+"lines": 156,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Replace the string-state machine (`StateChanged` \"LoadGame\"/\"isPlay\"/\"wait\"/\"SaveGame\") with `OnLoadBegin/OnWorldReady/OnSaveBegin` and a Core SaveBus key API.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/QueryCache.cs",
+"lines": 48,
+"owner": "A8-Quests",
+"primary": "Loot",
+"secondary": [
+"Core",
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Game.Matches` goes with the item query. `Hire.IsRangedNpc/NearestByName` go with the follower AI (NPCAI).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B15"
+},
+{
+"path": "Modules/Quests/QuestConfig.cs",
+"lines": 203,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [
+"NPCAI",
+"Presentation"
+],
+"action": "MOVE",
+"detail": "MOVE. Stop binding the unused `apocasetter` entry (:72, `[Quests / Legacy] Apocasetter`) but never purge the key.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/QuestConfigMigration.cs",
+"lines": 77,
+"owner": "A8-Quests",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core `ModuleConfig.MigrateMissing(entry, file, section, key)`. Survival, CleanHUD and NPC Women use the same \"each absent entry\" pattern.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B01"
+},
+{
+"path": "Modules/Quests/QuestContent.cs",
+"lines": 103,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. The legacy-folder discovery (`LegacyRoots`) could become a Core asset-migration helper.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/QuestFollower.cs",
+"lines": 121,
+"owner": "A8-Quests",
+"primary": "NPCAI",
+"secondary": [
+"Presentation"
+],
+"action": "MOVE",
+"detail": "MOVE to the NPCAI follower feature. It already uses only ModAPI (`IAnimationApi`, `INpcApi.SetFollowerDriven`, `IFollowerVehicles.Animated`).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B07"
+},
+{
+"path": "Modules/Quests/QuestLogger.cs",
+"lines": 9,
+"owner": "A8-Quests",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "DELETE. Replace with the Core leveled log (see 4).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "-"
+},
+{
+"path": "Modules/Quests/QuestWorld.cs",
+"lines": 130,
+"owner": "A8-Quests",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO a Core WorldIndex/SceneCache, shared with CleanHUD `SceneCache`, `EngineDiscovery`, Performance `FsmRegistry` and Patrols `Prefabs` (see 10d).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B01"
+},
+{
+"path": "Modules/Quests/Quests.cs",
+"lines": 1120,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Split into one file per class. `Util.Norm/Esc/Unesc/Compass` could become Core text utils.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/QuestsModule.cs",
+"lines": 86,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Fold the jobs that are double gated (see 6).",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/SavedWalk.cs",
+"lines": 13,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [
+"NPCAI"
+],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Takeover (or the NPCAI walker store). The format lives inside AQ1 `W",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/Takeover.cs",
+"lines": 748,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [
+"NPCAI",
+"POI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Quests keeps `PickCamp, CountDefenders, Fill, Begin, Stamps, DescribeWalkers` and `GiverTick` (quest-giver policy, but spawning through the NPCAI API). NPCAI gets `SpawnGroup, SpawnAround, PlaceNear, RandomSpotNear, Usable, Fighters, FindPrefab/ScanForPrefab, MoveFsm, SolidMask, Blocked, Steer, RoomAt, Update` (walker loop), `ResolvePending/ActiveWalks/RestoreWalks/ClearWalks`. Steering should be replaced by the existing `INpcApi.Travel`. POI (camp ownership) gets `NeutralizeTick, Suppress, TryGarrison`, with `Factions.Overrides` as an ownership store shared with Towns/Patrols.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/Quests/TalkHook.cs",
+"lines": 349,
+"owner": "A8-Quests",
+"primary": "Compatibility",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT. `TalkBtn` and the `IQuestConversation` members stay in Quests. `TalkBridge.Init/TalkingNow/Bind/Ui/PromptContent/NpcName/Npc/Say/You/WindowSkin/TrySkin*/TalkConfigString/ParseBorder/Signature/NeedsSync/SyncButtons/ClearButtons` and `TalkApiLink` go to Compatibility (Talk bridge), which talks to Quests through a Core dialogue service.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B17"
+},
+{
+"path": "Modules/Quests/Voice.cs",
+"lines": 198,
+"owner": "A8-Quests",
+"primary": "Quests",
+"secondary": [
+"Core"
+],
+"action": "REWRITE",
+"detail": "REWRITE. Use `Core.VoiceAudio.LoadWav` and delete `ReadWav` (125-183). While disabled, `Say` is dead code.",
+"decision": false,
+"inv": "quests-compat.md",
+"B": "B18"
+},
+{
+"path": "Modules/QuestsCompat/Binding.cs",
+"lines": 20,
+"owner": "A8-Quests",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "QuestsCompat retired 2026-10-18, never registered (Core/Plugin.cs:126-140). Quests/CrewHistory keeps reading the old QuestsCompat/Saves crew file for one release.",
+"decision": true,
+"inv": "quests-compat.md",
+"B": "-"
+},
+{
+"path": "Modules/QuestsCompat/PluginLifetime.cs",
+"lines": 39,
+"owner": "A8-Quests",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "QuestsCompat retired 2026-10-18, never registered (Core/Plugin.cs:126-140). Quests/CrewHistory keeps reading the old QuestsCompat/Saves crew file for one release.",
+"decision": true,
+"inv": "quests-compat.md",
+"B": "-"
+},
+{
+"path": "Modules/QuestsCompat/QuestsCompatModule.cs",
+"lines": 75,
+"owner": "A8-Quests",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "QuestsCompat retired 2026-10-18, never registered (Core/Plugin.cs:126-140). Quests/CrewHistory keeps reading the old QuestsCompat/Saves crew file for one release.",
+"decision": true,
+"inv": "quests-compat.md",
+"B": "-"
+},
+{
+"path": "Modules/Survival/StewPot/Factory.cs",
+"lines": 207,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Survival/StewPot/Glb.cs",
+"lines": 227,
+"owner": "A7-Survival",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the Core glTF loader",
+"decision": false,
+"inv": "world.md",
+"B": "B01"
+},
+{
+"path": "Modules/Survival/StewPot/Json.cs",
+"lines": 118,
+"owner": "A7-Survival",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core.Json",
+"decision": false,
+"inv": "world.md",
+"B": "B01"
+},
+{
+"path": "Modules/Survival/StewPot/NaturalLoot.cs",
+"lines": 35,
+"owner": "A7-Survival",
+"primary": "Loot",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE into a Loot substitution table (rule registered by Survival through ModAPI)",
+"decision": false,
+"inv": "world.md",
+"B": "B15"
+},
+{
+"path": "Modules/Survival/StewPot/Runtime.cs",
+"lines": 364,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Replace the own `live` FSM-state test (L153) with `GameRefs.InGame`.",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Survival/StewPot/SpawnerBridge.cs",
+"lines": 65,
+"owner": "A7-Survival",
+"primary": "Compatibility",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE into a Compatibility Apocaspawner bridge, merged with Patrols `SpawnerIntegration`. Survival registers its entry through ModAPI.",
+"decision": false,
+"inv": "world.md",
+"B": "B17"
+},
+{
+"path": "Modules/Survival/StewPot/Stew.cs",
+"lines": 289,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Survival/StewPot/WaterPour.cs",
+"lines": 136,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [
+"Presentation"
+],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Survival/SurvivalModule.cs",
+"lines": 131,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [
+"Core",
+"Debug"
+],
+"action": "MOVE",
+"detail": "MOVE. `InstallAssets` merges into a Core \"extract embedded file if missing\" helper. `Verbose` merges into the Debug VerboseLog level.",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Towns/GasStation/Glb.cs",
+"lines": 229,
+"owner": "A6-World",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the Core glTF loader (same as Survival/StewPot/Glb.cs, Patrols/WarRig/Glb.cs, NPC/Women/Gltf.cs, PlayerBody/Body/Gltf.cs)",
+"decision": false,
+"inv": "world.md",
+"B": "B01"
+},
+{
+"path": "Modules/Towns/GasStation/Json.cs",
+"lines": 117,
+"owner": "A6-World",
+"primary": "Core",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Core.Json. It is byte-identical to Survival/StewPot/Json.cs apart from the namespace.",
+"decision": false,
+"inv": "world.md",
+"B": "B01"
+},
+{
+"path": "Modules/Towns/InteriorPopulation.cs",
+"lines": 265,
+"owner": "A6-World",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE as NPCAI population rules. `OwnTown`/`OwnMarker` become ModAPI registrations from POI. `CaptureNames`/`RestoreNames` save data needs an NPCAI sidecar or stays in the POI record through ModAPI.",
+"decision": false,
+"inv": "world.md",
+"B": "B07"
+},
+{
+"path": "Modules/Towns/NativePoiPopulation.cs",
+"lines": 180,
+"owner": "A6-World",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE as population rules. `Catalog()` is fed from the shared population catalog.",
+"decision": false,
+"inv": "world.md",
+"B": "B07"
+},
+{
+"path": "Modules/Towns/PoiDressLayout.cs",
+"lines": 135,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (data and IO). Tools writes through the POI ModAPI. Uses `GasStation.Json`, which moves to Core.Json.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/PoiDressMarkers.cs",
+"lines": 141,
+"owner": "A6-World",
+"primary": "Tools",
+"secondary": [
+"Loot",
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Kinds`/`Categories`/`Category()` go to Tools (POI editor). `Build` for Items/CarParts and `Save`/`Load`/`Capture` go to Loot (marker spawn groups). Monsters spawn uses NPCAI pools. Hide/Exit semantics go to NPCAI.",
+"decision": false,
+"inv": "world.md",
+"B": "B16"
+},
+{
+"path": "Modules/Towns/PoiDresser.cs",
+"lines": 423,
+"owner": "A6-World",
+"primary": "Tools",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE as the POI editor. Reaches POI only through ModAPI.",
+"decision": false,
+"inv": "world.md",
+"B": "B16"
+},
+{
+"path": "Modules/Towns/PoiDressing.cs",
+"lines": 224,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Site`/`Attach`/`Step`/`Build`/`Save`/`Sweep`/`Clear` go to POI. `BeforeMap` (Nav.Make prefix) and `Exit()` go to NPCAI ModAPI (\"structure not ready\" gate, exit-hint provider). DELETE `PoiDressNavigation` (L199-222, reflection `Invoke` into Nav privates) and replace it with `INavApi.ForgetStructure(root)`.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/PoiPropCatalog.cs",
+"lines": 181,
+"owner": "A6-World",
+"primary": "Tools",
+"secondary": [
+"POI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Start`/`Step`/`Capture`/`Sources`/`All` and the marker gizmos go to Tools (editor only). `Resolve`/`Create`/`Pose` (runtime instantiation) go to POI.",
+"decision": false,
+"inv": "world.md",
+"B": "B16"
+},
+{
+"path": "Modules/Towns/PoiSpawnCatalog.cs",
+"lines": 115,
+"owner": "A6-World",
+"primary": "Loot",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE as the Loot spawn-profile catalog. Monster profiles are consumed by NPCAI.",
+"decision": false,
+"inv": "world.md",
+"B": "B15"
+},
+{
+"path": "Modules/Towns/TownApproach.cs",
+"lines": 79,
+"owner": "A6-World",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE as a generic outline detour.",
+"decision": false,
+"inv": "world.md",
+"B": "B08"
+},
+{
+"path": "Modules/Towns/TownAssets.cs",
+"lines": 356,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"NPCAI",
+"Loot",
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Load`/`Measure`/`Walls`/`HasMerchant`/`BossCamp`/`RoadInput`/`FindRoads` and car shells go to POI. `CatalogPopulation`/`IsBoss`/`Hounds`/`Population` go to an NPCAI population catalog. The spawner `Budgets` capture goes to Loot. `ColliderBox`/`Measure` collider-bounds code merges into a Core geometry helper (duplicated, see 5).",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownBakeBridge.cs",
+"lines": 76,
+"owner": "A6-World",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "DELETE the bridge and REWRITE it as an NPCAI ModAPI (`Discover(root)`, `ActorSpawned`, `FloorCells`, `StructureRootAt`, `Enabled`, `Tuning`, `RegisterWaypointProvider`). The `Before`/`After` redirect logic moves into NPCAI's `Nav.Next`.",
+"decision": false,
+"inv": "world.md",
+"B": "-"
+},
+{
+"path": "Modules/Towns/TownBakeData.cs",
+"lines": 156,
+"owner": "A6-World",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO the NPCAI Nav map reader. Expose a read-only numeric template through ModAPI (`INavApi.TryGetTemplate`). It currently duplicates NPC's reader and the NPC folder paths (L36-42).",
+"decision": false,
+"inv": "world.md",
+"B": "B08"
+},
+{
+"path": "Modules/Towns/TownBorderProps.cs",
+"lines": 76,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownData.cs",
+"lines": 164,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. The data model goes to POI. `TownsApi` (L154-163, `internal Provider` typed as `TownsModule`) is REWRITTEN as a Core ModAPI interface. `TownSite.Parking()` and `Building(int)` have no callers.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownDebris.cs",
+"lines": 25,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownDebug.cs",
+"lines": 60,
+"owner": "A6-World",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "DELETE (`Install` never called)",
+"decision": true,
+"inv": "world.md",
+"B": "-"
+},
+{
+"path": "Modules/Towns/TownFactory.cs",
+"lines": 149,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Loot"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `NeedsStage`/`Stage`/`Building`/`Streets`/`KeepGeometry`/`Destroy` go to POI. `Resume`/`Capture`/`Get`/`Set` (spawner progress) go to a Loot spawner-progress service. The dead parking-slab branch in `Destroy` (L146) is removed with TownPavement.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownFrontage.cs",
+"lines": 41,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownGasStation.cs",
+"lines": 617,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Loot",
+"Tools"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `LoadModel`/`Shell`/`Capture`/`Plan*`/`Applied`/`Remove`/`Moved`/markers `Tick`/`Save`/`Load` go to POI. `Populate`/`Add` (loot spawner cloning) go to Loot. `TestTick`/`PlaceCamp`/`Camp10` test pad go to Tools (Navigation editor test). DELETE `SpawnEnemies` (const false, L51) with `EnemyPoints` and the enemy loop (L52, L333). `LaneCenter`/`LaneSpread` (used by Patrols TownTraffic.cs:130) go to ModAPI data.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownGroundPad.cs",
+"lines": 54,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Compatibility"
+],
+"action": "MOVE",
+"detail": "MOVE. `VistasWorldGen.TerrainEdited` becomes a ModAPI event.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownLateTerrain.cs",
+"lines": 111,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. The Vistas branch (L15) should read a Compatibility flag from ModAPI.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownLoading.cs",
+"lines": 29,
+"owner": "A6-World",
+"primary": "Debug",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Debug timing (level 1 start/end, level 2 detail). DELETE `Report` and the string-building callers.",
+"decision": false,
+"inv": "world.md",
+"B": "B03"
+},
+{
+"path": "Modules/Towns/TownMarkers.cs",
+"lines": 171,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"HUD"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Add`/`Remove`/`Refresh`/discovery/`Owns`/`Building` go to POI (IMapMarkers/ICompassMarkers). The label hack (`Attach`/`Draw`, QuestMap.Tick postfix, `GlyphText`, reflection `_entries`/`Root`/`Image`) and `Observe`/`StartingCamp` (LocationMarkers patches) go to HUD as an `IMapMarkers` label/colour feature.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownNames.cs",
+"lines": 51,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownNavigation.cs",
+"lines": 224,
+"owner": "A6-World",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. This is NPC pathfinding: a generic multi-structure route graph fed with nodes and edges from the POI plan. The `Mask` constant goes to Core layer masks.",
+"decision": false,
+"inv": "world.md",
+"B": "B08"
+},
+{
+"path": "Modules/Towns/TownOutline.cs",
+"lines": 110,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. Exposed as geometry through ModAPI for NPCAI and Patrols.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownOverlap.cs",
+"lines": 358,
+"owner": "A6-World",
+"primary": "NPCAI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE and REWRITE as an NPCAI-internal instance-overlay API (no reflection).",
+"decision": false,
+"inv": "world.md",
+"B": "B08"
+},
+{
+"path": "Modules/Towns/TownOverlayPlan.cs",
+"lines": 243,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `TownDressingKit`/`TownDressingPlan` go to POI. `TownOverlayPlan` (`LotPatch`/`Build`/`Step`/`Inside`) goes to NPCAI, run from a POI plan through ModAPI.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownParking.cs",
+"lines": 68,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "SPLIT",
+"detail": "SPLIT. `Outside` and `Spec` go to POI. `Access` uses `Patrols.TownStop.Approach` (L30-31) and must be rewritten with a local geometry helper.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownPaths.cs",
+"lines": 552,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Core"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `TownWorldRoads.Nearest`/`Sites` and `TownGround.Blocked`/`Protected`/`Wall`/`DoorLine` go to POI. `TownPaths.Heap` (L221-243) merges into a Core binary heap. DELETE `TownPaths.Grid` (L244-400), `TownPaths.Build` plus helpers (L402-552), `TownWorldRoads.Connections` (L80-97), and `TownGround.Height`/`Blocker`/`DoorFailure` (L159-164, 184-215): only the dead `Build` reaches them.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownPavement.cs",
+"lines": 23,
+"owner": "A6-World",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "DELETE (no references; \"keep only the parking slab\" is also gone)",
+"decision": true,
+"inv": "world.md",
+"B": "-"
+},
+{
+"path": "Modules/Towns/TownPerimeter.cs",
+"lines": 194,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"NPCAI",
+"Patrols"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Static `TownPerimeter` geometry goes to POI. The walker instance of `TownVehicleGates` (`Walkers`) goes to NPCAI and the vehicle instance (`Vehicles`) goes to Patrols driving AI, both reading the outline through ModAPI.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownPlanner.cs",
+"lines": 152,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE, then REWRITE the hard-coded lot rules into template data (see 8b).",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownPoiSettings.cs",
+"lines": 70,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Core"
+],
+"action": "REWRITE",
+"detail": "REWRITE inside POI: the policy becomes a POI-internal check in `PoiLocations.Generate`, and the World section comes from a Core UI extension point instead of patches.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownPopulation.cs",
+"lines": 268,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Loot",
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Assign`/`Classify`/`Legacy`/`Percentage` go to POI. `NativeBudget`/`Capture`/`Allocate`/`Configure`/`Force`/`Read`/`Write` go to Loot (generic \"spawner control\"), with NPCAI supplying the actor pools. `Created` (faction member count) becomes a POI consumer of an NpcSpawned event.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownRoadBridge.cs",
+"lines": 58,
+"owner": "A6-World",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "DELETE. `Install`/`Add`/`Remove` are never called; only `Clear()` is (TownsModule.cs:728).",
+"decision": true,
+"inv": "world.md",
+"B": "-"
+},
+{
+"path": "Modules/Towns/TownSaveRecord.cs",
+"lines": 73,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Core"
+],
+"action": "MOVE",
+"detail": "MOVE. The ES3-cache + AfterSave re-save/verify pattern merges into a Core SaveBus helper (duplicated 3x, see 5).",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownSettings.cs",
+"lines": 95,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"Tools"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Generation settings stay in POI and become per-template data for the Towns editor. `PoiDresserKey`, `TestGasStation`, `TestCamp10` and `GasStationScale` go to Tools. The `Bind(ConfigFile)` standalone path stays only as the shared body (see `BindStandalone`).",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownSiting.cs",
+"lines": 82,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownStore.cs",
+"lines": 128,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (format frozen, see 9)",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownSurfacePaint.cs",
+"lines": 73,
+"owner": "A6-World",
+"primary": "DELETE",
+"secondary": [],
+"action": "DELETE",
+"detail": "DELETE (no references anywhere)",
+"decision": true,
+"inv": "world.md",
+"B": "-"
+},
+{
+"path": "Modules/Towns/TownTowerKit.cs",
+"lines": 101,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"NPCAI"
+],
+"action": "SPLIT",
+"detail": "SPLIT. `Load`/`Prefab` go to POI. `Step`/`ReleaseBake` (reflection `Invoke` into Nav L64-94) become an NPCAI ModAPI `BakeIsolated(prefab)`.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownWalkGraph.cs",
+"lines": 89,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"NPCAI"
+],
+"action": "MOVE",
+"detail": "MOVE to POI as plan data. NPCAI consumes `StreetNodes`/`StreetEdges` (see 5, duplicate pathfinding).",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownWalls.cs",
+"lines": 172,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Towns/TownsModule.cs",
+"lines": 782,
+"owner": "A6-World",
+"primary": "POI",
+"secondary": [
+"NPCAI",
+"Core",
+"Tools",
+"Debug"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Lifecycle (`Init`/`Shutdown`/`Prepare`/`Finalized`/`Applied`/`Moved`/`BuildStep`/`LoadBurst`/`Refresh`/`OnSaveBegin`/`OnLoadBegin`/`NewWorld`/`Remove`/`ClearSites`/`NeedsWalls`/`Finish`/`PopulationChanged`) go to POI. The Patrols-facing queries `TravelStops`/`MerchantSeeded`/`TravelRevision`/`PatrolBase`/`PatrolCount`/`PatrolBases`/`ParkingOutside`/`TravelBlocks`/`VehicleWaypoint` become a Core ModAPI `ITownsApi` with Core DTOs, implemented in POI. `Waypoint` becomes an NPCAI waypoint-provider registration. `BeforeHandoff` goes to a Core loading-hold API (`LoadingProgress`). `TraceStartingTerrain` goes to Debug (level 2) or is deleted. `DrawGasStation`/`DrawDresser` go to Tools.",
+"decision": false,
+"inv": "world.md",
+"B": "B13"
+},
+{
+"path": "Modules/Weather/WeatherAtmosphere.cs",
+"lines": 155,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherAudio.cs",
+"lines": 107,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherDebris.cs",
+"lines": 112,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherDiagnostics.cs",
+"lines": 183,
+"owner": "A7-Survival",
+"primary": "Debug",
+"secondary": [],
+"action": "MOVE",
+"detail": "Debug (weather capture/snapshot tooling); delete once Denis accepts the storm renderer (UI says temporary).",
+"decision": true,
+"inv": "world.md",
+"B": "B03"
+},
+{
+"path": "Modules/Weather/WeatherDust.cs",
+"lines": 152,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherHazards.cs",
+"lines": 102,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. War Rig shelter becomes `IShelterProvider` through ModAPI (see 5).",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherModule.cs",
+"lines": 352,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [
+"Debug",
+"Tools"
+],
+"action": "SPLIT",
+"detail": "SPLIT. Regions/`Tick`/`TickHazards`/`ReconcileNative`/`Spawn` go to Survival (Weather feature). `CaptureDiagnostic`/`RestoreDiagnostic` go to Debug. `DrawTools` (preview buttons) goes to Tools/Debug page.",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherNative.cs",
+"lines": 319,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE. The storm prefab id and root lookup become a shared Survival ModAPI query (`IsStormRoot`), used by Patrols and NPCAI.",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherPalette.cs",
+"lines": 45,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE (config keys, see 9)",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherPerimeter.cs",
+"lines": 42,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherSky.cs",
+"lines": 120,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherSmoke.cs",
+"lines": 144,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherThunder.cs",
+"lines": 98,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherVisuals.cs",
+"lines": 301,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "Modules/Weather/WeatherVortexSmoke.cs",
+"lines": 66,
+"owner": "A7-Survival",
+"primary": "Survival",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "world.md",
+"B": "B14"
+},
+{
+"path": "developer/Dashboard.cs",
+"lines": 218,
+"owner": "A1-Core",
+"primary": "Debug",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE as Debug ToolPages in Core shell",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B03"
+},
+{
+"path": "developer/Diagnosis.cs",
+"lines": 146,
+"owner": "A1-Core",
+"primary": "Debug",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; JSON writer -> Core Json util",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B03"
+},
+{
+"path": "developer/Instrumentation.cs",
+"lines": 218,
+"owner": "A1-Core",
+"primary": "Debug",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE; install through `Core.Patches` with owner Debug instead of `new Harmony` (line 64)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B03"
+},
+{
+"path": "developer/Measurements.cs",
+"lines": 116,
+"owner": "A1-Core",
+"primary": "Debug",
+"secondary": [],
+"action": "MERGE-INTO",
+"detail": "MERGE-INTO Debug FrameStats (with Telemetry)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B03"
+},
+{
+"path": "developer/Plugin.cs",
+"lines": 185,
+"owner": "A1-Core",
+"primary": "Debug",
+"secondary": [],
+"action": "REWRITE",
+"detail": "REWRITE inside Debug (Scheduler job + Core UI shell; no own MonoBehaviour, no reflection into `EditorSession.Acquire`, line 77)",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B03"
+},
+{
+"path": "developer/Reports.cs",
+"lines": 83,
+"owner": "A1-Core",
+"primary": "Debug",
+"secondary": [],
+"action": "MOVE",
+"detail": "MOVE",
+"decision": false,
+"inv": "core-performance.md",
+"B": "B03"
+}
+]

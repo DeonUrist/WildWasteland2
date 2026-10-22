@@ -1,0 +1,7 @@
+{
+  "name": "wild-wasteland-lod-generator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "meshoptimizer": "1.1.1" }
+}

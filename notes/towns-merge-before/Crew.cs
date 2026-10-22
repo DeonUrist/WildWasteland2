@@ -1,0 +1,645 @@
+using System;
+using System.Collections;
+using System.Linq;
+using HutongGames.PlayMaker;
+using UnityEngine;
+
+namespace WildWasteland.Modules.Patrols
+{
+    internal enum CrewPhase { Waiting, Driving, DeadStuck, DeadRolling, Released }
+
+    // Lives on the car. Owns the driver: keeps its AI off, drives while it is alive, and keeps the player out of the
+    // driver seat until it dies. On death the gas is either released (car rolls out by itself) or stays stuck.
+    internal partial class Crew : MonoBehaviour
+    {
+        private GameObject _car, _driver;
+        private PlayMakerFSM _health;         // driver [Health]
+        private PlayMakerFSM _drive;          // DriveTrigger [Drive]
+        private Collider _enterTrigger;       // DriveTrigger SphereCollider = the "press F to drive" trigger
+        private Rigidbody _rb;
+        private InputControl _ctl;
+        private Pilot _pilot;                 // the driving AI while the driver drives and [AI] Enabled
+        private static readonly string[] MutedFsms =
+            { "Movement", "Unstuck", "Rotate", "Detection", "Attack", "RangedAttackWait", "Damage Ranged", "Codex", "Sound", "Sound2", "Sound3" };
+
+        private float _seated;                // seconds since the driver sat down
+        private bool _driving, _dead, _stuck, _done;
+        private float _rolling;
+        private float _delayOverride = -1f;   // a promoted passenger drives off after TakeoverSeconds instead of DriveDelaySeconds
+        private float _deadFor;               // seconds since the driver died
+        private bool _paxDecided, _paxBails;  // the surviving passenger's decision (rolled once)
+        private bool _doorOpened; private float _doorWait;   // the door is opened before the passenger gets out / throws the driver out
+        private const float DoorSeconds = 0.6f;              // time for a car door to swing open before anyone goes through it
+        private float _nextIgnore;            // periodic re-apply of occupant-vs-car collision ignores
+        private Patrol.CorpseEject _eject;           // the dead driver being thrown out; the passenger climbs over once it is Done
+        private bool _promoting;
+        private bool _revived;                // the after-load start-up (handbrake off, ignition) has been run or requested
+        private float _nextHandbrakeCheck;
+        private float _dryFor;                // seconds the tank has been empty while the car stands
+        private bool _outOfFuel;
+        private float _nextGuard;             // the AI-mute guard runs a few times a second, not every frame
+        private float _nextEngineCheck;       // engine polling while waiting to drive off (a held convoy car asked NWH every frame)
+        private PlayMakerFSM _handbrake, _tank;   // cached: handbrake [Handbrake], Fuel [LiquidAmount]
+        private FsmFloat _healthVar;          // the driver's Health variable (looked up by name every frame before)
+        private PatrolMarker _marker;         // the car's marker (attached after the crew on a fresh build: resolved lazily)
+        private PlayMakerFSM[] _partDetach;   // the parts' de_Attach FSMs: off while the crew drives, so the wrench cannot take the wheels off
+        private bool _locked;                 // the seat lock is on (a live driver holds the car)
+        private readonly System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<FsmFloat, float>> _heat =
+            new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<FsmFloat, float>>();   // engine heat values + originals
+        private bool _vacated;                // the crew is gone (dead or bailed): the self-destruct has been scheduled
+
+        private PatrolMarker Marker { get { if (_marker == null && _car != null) _marker = _car.GetComponent<PatrolMarker>(); return _marker; } }
+
+        // A car built for a convoy waits for Convoy to release the whole group at once (so the group departs together and
+        // the builds do not pile up on one frame); the driver sits with the engine running until then.
+        internal bool Hold;
+        internal bool MerchantWaiting;
+        // CrewReturn: the dismounted crew's membership record (null = none) and its boarding phase, during which the crew logic is
+        // suspended (a live driver brakes, nobody bails / takes over) until everyone is seated again or the regroup ends.
+        internal CrewReturn.Group Regroup;
+        internal bool Regrouping;
+        private float _nextRegroup = -1f;
+        private float _lastDriverHealth = -1f, _lastPaxHealth = -1f;   // player-hit detection for the awareness handover
+        internal bool OutOfFuel { get { return _outOfFuel; } }
+        internal bool DriverSeatedAlive { get { return !_dead && !_done && DriverAlive(); } }
+        internal bool Driving { get { return _driving && !_dead; } }
+
+        // CrewReturn: a member is about to be seated as the new driver; Crew starts over like a promoted passenger (FinishPromote)
+        internal void PrepareReboard()
+        {
+            if (_pilot != null) { _pilot.Detach(); _pilot = null; }
+            if (_ctl != null && _ctl.Taken) _ctl.Release();
+            _dead = _stuck = _done = _driving = _promoting = _paxDecided = _paxBails = _doorOpened = _vacated = _outOfFuel = false;
+            _rolling = _deadFor = _doorWait = _dryFor = 0f; _eject = null; _revived = false;
+            _delayOverride = PatrolsModule.TakeoverSeconds;
+        }
+        // the new driver could not be seated: an empty car again
+        internal void MarkVacant() { _dead = true; _done = true; _driving = false; _driver = null; _health = null; _healthVar = null; SeatLocked(false); }
+        // every living member is aboard (or the regroup gave up on the rest): the car carries on
+        internal void FinishReboard(bool newDriver)
+        {
+            Regrouping = false; Release();
+            if (newDriver) { _seated = 0f; Revive(); }
+        }
+        private void HitCheck()
+        {
+            var mk = Marker; if (mk == null) return;
+            float d = _healthVar != null ? _healthVar.Value : -1f, p = mk.PassengerHealthVar != null ? mk.PassengerHealthVar.Value : -1f;
+            if (((d >= 0f && _lastDriverHealth >= 0f && d < _lastDriverHealth - 0.01f) || (p >= 0f && _lastPaxHealth >= 0f && p < _lastPaxHealth - 0.01f))
+                && PlayerRef.Player != null && ReferenceEquals(mk.FactionTarget, PlayerRef.Player.gameObject)) mk.PlayerContactAt = Time.time;
+            _lastDriverHealth = d; _lastPaxHealth = p;
+        }
+
+        internal void WaitForMerchant(bool waiting)
+        {
+            if (MerchantWaiting == waiting) return;
+            MerchantWaiting = waiting;
+            PatrolsModule.Verbose("Merchant: " + _car.name + (waiting ? " parked; ignition off, handbrake on" : " wait ended; resuming route"));
+            if (waiting) _revived = false;
+            else if (!_dead && !_done && !Hold) Revive();
+        }
+
+        internal static Crew Attach(GameObject car, GameObject driver)
+        {
+            var c = car.GetComponent<Crew>() ?? car.AddComponent<Crew>();
+            c.Init(car, driver);
+            return c;
+        }
+
+        private void Init(GameObject car, GameObject driver)
+        {
+            _car = car; _driver = driver;
+            _rb = car.GetComponent<Rigidbody>();
+            _health = driver != null ? driver.GetComponents<PlayMakerFSM>().FirstOrDefault(f => f.FsmName == "Health") : null;
+            _healthVar = null;
+            _nextCombat=Time.time+UnityEngine.Random.Range(0f,0.5f);
+            var fsms = car.GetComponentsInChildren<PlayMakerFSM>(true);
+            _drive = Patrol.FindFsm(car, "DriveTrigger", "Drive", fsms);
+            _handbrake = Patrol.FindFsm(car, "handbrake", "Handbrake", fsms);
+            var tank = Patrol.FindChild(car.transform, "Fuel");
+            _tank = tank != null ? tank.GetComponents<PlayMakerFSM>().FirstOrDefault(f => f.FsmName == "LiquidAmount") : null;
+            var dt = Patrol.FindChild(car.transform, "DriveTrigger");
+            if (dt != null) _enterTrigger = dt.GetComponents<Collider>().FirstOrDefault(c => c is SphereCollider);
+            _ctl = new InputControl(car);
+            _partDetach = fsms.Where(f => f.FsmName == "de_Attach").ToArray();
+
+            // nobody else drives while the driver lives: no enter trigger (no F prompt), no Drive FSM (Activate events are ignored).
+            // The car's DistanceKinematic FSM is left alone: re-enabling it restarts it in KinematicOn, which freezes a moving car.
+            SeatLocked(driver != null);
+            StartCoroutine(OverheatLater());   // once more when the parts' FSMs have started (a build attaches the engine first; a load re-inits them)
+            PatrolsModule.Verbose("Crew: driver " + (driver != null ? driver.name : "absent") + " seated, " + "drives off in " + (_delayOverride >= 0f ? _delayOverride : 0f) + " s"
+                + (_enterTrigger != null ? "" : " (no enter trigger found!)") + (_drive != null ? "" : " (no Drive FSM found!)"));
+        }
+
+        internal static Crew Restore(GameObject car, GameObject driver, CrewPhase phase, float seated)
+        {
+            var c = car.GetComponent<Crew>() ?? car.AddComponent<Crew>();
+            c.Init(car, driver);
+            c._seated = Mathf.Max(0f, seated);
+            // A restored "Driving" car is treated like a seated driver whose engine is not running yet: Revive() (called by the
+            // restore) releases the handbrake and runs the ignition, then Update's normal path drives off. Before 0.22.1 it went
+            // straight to StartDriving with the handbrake on and the START FSM off - the car just sat there.
+            if (phase == CrewPhase.Driving) { }
+            else if (phase == CrewPhase.DeadStuck)
+            {
+                c._dead = true; c._stuck = true; c._driving = true;
+                c.SeatLocked(false); c._ctl.Take();
+            }
+            else if (phase == CrewPhase.DeadRolling)
+            {
+                c._dead = true; c._driving = true;
+                c.SeatLocked(false); c._ctl.Take();
+            }
+            else if (phase == CrewPhase.Released)
+            {
+                c._dead = true; c._done = true; c._vacated = true;   // vacated before the save: no retroactive self-destruct
+                c.SeatLocked(false);
+            }
+            return c;
+        }
+
+        // After a save load: the car comes back with its handbrake FSM in its start state (on) and the START FSM off.
+        // Same start-up as a fresh build, once the car's FSMs are initialized. Safe to call more than once.
+        internal void Revive()
+        {
+            if (_revived || _done || MerchantWaiting || Marker?.SetupOnly==true || Explode.IsWreck(_car)) return;
+            _revived = true;
+            StartCoroutine(ReviveRoutine());
+        }
+
+        // The native load already restored all parts/fluids. Prepare ownership while its loading screen still holds time at zero.
+        internal IEnumerator PrepareLoaded()
+        {
+            if (_done || _dead || Hold || MerchantWaiting || Marker?.SetupOnly == true || Explode.IsWreck(_car)) yield break;
+            _revived = true;
+            float until = Time.realtimeSinceStartup + 5f;
+            var start = Patrol.FindFsm(_car, "START", "Start");
+            while (_car != null && Time.realtimeSinceStartup < until &&
+                ((_handbrake != null && !_handbrake.Fsm.Initialized) || (start != null && !start.Fsm.Initialized))) yield return null;
+            if (_car == null || _done || MerchantWaiting || !DriverAlive()) yield break;
+            // A stripped/dry chassis stays stripped/dry; never refill or repair it in order to make it drive.
+            var engine = Patrol.FindChild(_car.transform, "hinge_engine");
+            var liquid = _tank != null ? _tank.FsmVariables.GetFsmFloat("Liquid") : null;
+            if (engine == null || engine.childCount == 0 || (liquid != null && liquid.Value <= .01f)) yield break;
+            Patrol.Handbrake(_car, false, _handbrake);
+            if (!Nwh.EngineRunning(_car)) yield return Patrol.StartUp(_car, true);
+            if (_car == null || _done || MerchantWaiting) yield break;
+            if (!_driving) StartDriving();
+            PatrolsModule.Verbose("Load AI prepared: " + _car.name + "; pilot attached, native parts/fluids unchanged");
+        }
+
+        private IEnumerator ReviveRoutine()
+        {
+            float until = Time.realtimeSinceStartup + 5f;
+            PlayMakerFSM hb = null;
+            while (Time.realtimeSinceStartup < until)
+            {
+                if (_car == null) yield break;
+                hb = Patrol.FindFsm(_car, "handbrake", "Handbrake");
+                var start = Patrol.FindFsm(_car, "START", "Start");
+                if (hb != null && hb.Fsm.Initialized && start != null && start.Fsm.Initialized) break;
+                yield return null;
+            }
+            if (_car == null || _done || MerchantWaiting || Explode.IsWreck(_car)) yield break;
+            Patrol.Handbrake(_car, false);
+            if (!Nwh.EngineRunning(_car)) yield return Patrol.StartUp(_car);
+            if (_car == null) yield break;
+            PatrolsModule.Verbose("Crew: revived " + _car.name + " after load: engine running " + Nwh.EngineRunning(_car) + ", handbrake released, " + Nwh.Diag(_car));
+        }
+
+        internal GameObject Driver { get { return _driver; } }
+        internal float SeatedSeconds { get { return _seated; } }
+        // a live driver, or a live passenger still in the car
+        internal bool CrewAlive
+        {
+            get
+            {
+                if (!_dead) return true;
+                var mk = Marker;
+                return mk != null && mk.Passenger != null && PassengerAlive(mk, mk.Passenger);
+            }
+        }
+
+        internal CrewPhase Phase
+        {
+            get
+            {
+                if (_done) return CrewPhase.Released;
+                if (_dead) return _stuck ? CrewPhase.DeadStuck : CrewPhase.DeadRolling;
+                return _driving ? CrewPhase.Driving : CrewPhase.Waiting;
+            }
+        }
+
+        // Nobody enters and nothing comes off while the driver lives: the enter trigger, the Drive FSM and the parts' de_Attach FSMs
+        // (the wrench sends de_Attach to the part; a disabled FSM ignores it) are off together.
+        private void SeatLocked(bool locked)
+        {
+            _locked = locked;
+            ApplyOverheat();
+            if (_enterTrigger != null) _enterTrigger.enabled = !locked;
+            if (_drive != null) _drive.enabled = !locked;   // restart on re-enable lands in outCar, which has no actions
+            if (_partDetach != null)
+                foreach (var f in _partDetach)
+                    if (f != null && f.enabled == locked) f.enabled = !locked;   // de_Attach's start state is idle: a restart is harmless
+        }
+
+        // 2.6.2 [Balance] RaidersOverheat off: while the crew holds the car its engine's own heat value (the engine item's [heatValue] FSM,
+        // copied every frame by the engine's getHeatValue into engineOil_Temperature and by the radiator's into water_Temperature) is 0, so the
+        // oil only cools (-0.4/s) and never reaches the game's 120 (overheating: smoke, steam, engine Condition -0.5/s). The original value is
+        // put back when the seat lock lifts (driver dead, crew bailed, explosion) - a taken car or a looted engine heats like any other.
+        // No polling: applied on lock changes, once 2 s after Init and when the setting changes (Plugin).
+        internal void ApplyOverheat()
+        {
+            if (_car == null) return;
+            try
+            {
+                bool cool = _locked && !PatrolsModule.RaidersOverheat.Value;
+                foreach (var f in _car.GetComponentsInChildren<PlayMakerFSM>(true))
+                {
+                    if (f == null || f.FsmName != "heatValue") continue;
+                    var v = f.FsmVariables.GetFsmFloat("heatValue");
+                    if (v == null || _heat.Any(kv => kv.Key == v)) continue;
+                    _heat.Add(new System.Collections.Generic.KeyValuePair<FsmFloat, float>(v, v.Value));
+                }
+                foreach (var kv in _heat) if (kv.Key != null) kv.Key.Value = cool ? 0f : kv.Value;
+                if (_heat.Count > 0) PatrolsModule.Verbose("Crew: " + _car.name + " engine heat " + (cool ? "off (RaidersOverheat off)" : "normal") + " on " + _heat.Count + " engine(s)");
+            }
+            catch (Exception e) { PatrolsModule.Verbose("Crew: overheat setting: " + e.Message); }
+        }
+        private IEnumerator OverheatLater()
+        {
+            yield return new WaitForSeconds(2f);
+            ApplyOverheat();
+        }
+        internal static void ApplyOverheatAll() { foreach (var c in FindObjectsOfType<Crew>()) c.ApplyOverheat(); }
+
+        // The car is fully vacated: the crew is dead or got out. With SelfDestructingCars the car explodes shortly after.
+        private void Vacated(string why)
+        {
+            if (_vacated) return;
+            _vacated = true;
+            var mk = Marker;   // a blast-lance rider on the roof jumps off with the crew
+            if (mk != null) foreach (var r in mk.Riders.ToArray()) { var g = r != null ? r.GetComponent<RiderGuard>() : null; if (g != null) g.JumpOff(why); }
+            Explode.Schedule(this, _car, Marker, why);
+        }
+
+        // the car blew up: nothing drives it any more
+        internal void OnExploded()
+        {
+            if (_pilot != null) { _pilot.Detach(); _pilot = null; }
+            if (_ctl != null && _ctl.Taken) _ctl.Release();
+            SeatLocked(false);
+            _dead = true; _done = true; _driving = false; _stuck = false;
+        }
+
+        // Switch off the AI / body-mover FSMs; called right after Instantiate (before their Start) and every frame as a guard,
+        // because Detection/Damage carry EnableFSM actions that could switch them back on.
+        internal static void MuteAi(GameObject who, string[] allowedFsms = null)
+        {
+            if (who == null) return;
+            MuteAi(who.GetComponents<PlayMakerFSM>(), allowedFsms);
+        }
+
+        internal static void MuteAi(PlayMakerFSM[] fsms, string[] allowedFsms)
+        {
+            if (fsms == null) return;
+            foreach (var f in fsms)
+                if (f != null && f.enabled && Array.IndexOf(MutedFsms, f.FsmName) >= 0
+                    && (allowedFsms == null || Array.IndexOf(allowedFsms, f.FsmName) < 0)) f.enabled = false;
+        }
+
+        // a shooting driver keeps its combat FSMs (its guard gates the Attack FSM); everything else is muted
+        private PlayMakerFSM[] _driverFsms; private GameObject _driverFsmsOf;   // the driver's FSMs, fetched once (the guard runs twice a second)
+        internal void MuteAi()
+        {
+            if (_driver == null) return;
+            if (_driverFsms == null || _driverFsmsOf != _driver) { _driverFsms = _driver.GetComponents<PlayMakerFSM>(); _driverFsmsOf = _driver; }
+            MuteAi(_driverFsms, Marker?.SetupOnly!=true && _driver.GetComponent<PassengerGuard>() != null ? PassengerGuard.CombatFsms : null);
+        }
+
+        // healthVar: the FSM's Health variable, resolved once by the caller and kept (GetFsmFloat is a name search every call)
+        private static bool Alive(GameObject who, PlayMakerFSM health, ref FsmFloat healthVar)
+        {
+            if (who == null) return false;                           // Health FSM destroyed it (carcass spawned)
+            if (who.transform.parent == null) return false;          // out of the seat somehow
+            if (health != null && health.Fsm.Initialized)
+            {
+                if (healthVar == null) healthVar = health.FsmVariables.GetFsmFloat("Health");
+                if (healthVar != null && healthVar.Value <= 0f) return false;
+            }
+            return true;
+        }
+
+        private void Update()
+        { if (!PatrolsModule.Running) return;
+            if (_car == null) { Destroy(this); return; }
+            if (Time.timeScale <= 0f) return;
+            if(CombatTick())return;
+            if (Regroup != null && Time.time >= _nextRegroup)
+            {
+                // 2 Hz with a per-car random phase; next += interval (re-phased after a gap)
+                _nextRegroup = _nextRegroup < 0f || Time.time - _nextRegroup > 1f ? Time.time + UnityEngine.Random.Range(0.25f, 0.5f) : _nextRegroup + 0.5f;
+                CrewReturn.Tick(this);
+                if (_car == null) return;
+            }
+            if (Regrouping) { if (Time.time >= _nextGuard) { _nextGuard = Time.time + 0.5f; MuteAi(); } return; }
+            if(Marker?.SetupOnly==true){Hold=true;if(!_dead&&!_done&&!DriverAlive())OnDriverDied();if(Time.time>=_nextGuard){_nextGuard=Time.time+0.5f;MuteAi();Crew.MuteAi(Marker.Passenger);}return;}
+            if (Time.time >= _nextIgnore)
+            {
+                _nextIgnore = Time.time + 2f;
+                var marker = Marker;
+                var pax = marker != null ? marker.Passenger : null;
+                if ((!_dead && _driver != null) || pax != null)
+                {
+                    // seated occupants have no contacts at all (Rider.NoContacts); only colliders added since are made triggers
+                    if (!_dead && _driver != null) Rider.KeepNoContacts(_driver);
+                    if (pax != null) Rider.KeepNoContacts(pax);
+                }
+            }
+            if (_dead && PassengerReacts()) return;
+            if (_dead && !_vacated && !PlayerInside()) { var mk = Marker; if (mk == null || mk.Passenger == null || !PassengerAlive(mk, mk.Passenger)) Vacated("crew dead"); }
+            if (_done) return;
+
+            if (!_dead)
+            {
+                if (!DriverAlive()) { OnDriverDied(); return; }
+                if (Time.time >= _nextGuard) { _nextGuard = Time.time + 0.5f; MuteAi(); HitCheck(); }
+                _seated += Time.deltaTime;
+                if (MerchantWaiting) return;
+                float delay = _delayOverride >= 0f ? _delayOverride : 0f;
+                if (!Hold&&!_driving && !_outOfFuel && _seated >= delay && Time.time >= _nextEngineCheck)
+                {
+                    _nextEngineCheck = Time.time + 0.25f;
+                    bool running = Nwh.EngineRunning(_car);
+                    if (running && !Hold) StartDriving();
+                    else if (!running && _seated >= delay + 8f && !_revived) { PatrolsModule.Verbose("Crew: engine of " + _car.name + " never started; reviving"); Revive(); }
+                }
+                if (Time.time >= _nextHandbrakeCheck)
+                {
+                    _nextHandbrakeCheck = Time.time + 1f;
+                    if (!_outOfFuel && CheckDry()) return;
+                    // the player pulled the handbrake on a driven car (or it came back on after a load): the driver lets it go
+                    if (_driving && HandbrakeOn()) { Patrol.Handbrake(_car, false); PatrolsModule.Verbose("Crew: driver of " + _car.name + " released the handbrake"); }
+                }
+                return;
+            }
+
+            // Dead driver: preserve a stuck pedal until takeover, or hold zero while the car rolls out (inputs written in FixedUpdate).
+            if (PlayerInside()) { PatrolsModule.Verbose("Crew: player took the car after its driver died"); _ctl.Release(); _done = true; return; }
+            if (_stuck) return;
+            _rolling += Time.deltaTime;
+            if (_rb != null && _rb.velocity.magnitude > 0.3f && _rolling < 120f) return;
+            PatrolsModule.Verbose("Crew: car rolled to a stop after " + _rolling.ToString("0.0") + " s");
+            _ctl.Release();
+            _done = true;
+        }
+
+        // Once a second: a dry tank while the car stands (driving, or restored/waiting with a dead engine) = stuck for good.
+        // StuckBailChance decides whether the crew gets out; otherwise it sits in the dead car. Returns true when it fired.
+        private bool CheckDry()
+        {
+            if(EventBudget.IsConvoy(_car)){_dryFor=0f;return false;}
+            float fuel = -1f;
+            if (_tank != null && _tank.Fsm.Initialized) { var v = _tank.FsmVariables.GetFsmFloat("Liquid"); if (v != null) fuel = v.Value; }
+            bool standing = _rb == null || _rb.velocity.magnitude < 1f;
+            if (fuel >= 0f && fuel <= 0.05f && standing && _seated > 5f) _dryFor += 1f; else _dryFor = 0f;
+            if (_dryFor < 3f) return false;
+            _outOfFuel = true;
+            PatrolsModule.Verbose("Crew: " + _car.name + " ran out of fuel");
+            if (!OnStuck())
+            {
+                if (_pilot != null) { _pilot.Detach(); _pilot = null; }
+                if (_driving) Nwh.SetInput(_car, 0f, 0f, 0f);
+                PatrolsModule.Verbose("Crew: the crew stays in the dry car");
+            }
+            return true;
+        }
+
+        private bool HandbrakeOn()
+        {
+            if (_handbrake == null || !_handbrake.Fsm.Initialized) return false;
+            string cur = _handbrake.ActiveStateName;
+            return cur == "HandbrakeOn" || cur == "over" || cur == "Sound 2";
+        }
+
+        // convoy: every car of the group is released together
+        internal void Release() { Hold = false; }
+
+        // NWH samples its input on the physics step, so the inputs are written here, not in Update.
+        private void FixedUpdate()
+        { if (!PatrolsModule.Running) return;
+            if (_car == null || _done || Time.timeScale <= 0f || Marker?.SetupOnly==true) return;
+            if (Regrouping) { if (!_dead && _driving) Nwh.SetInput(_car, 0f, 0f, 1f); return; }   // waiting for the crew to get back in
+            if (!_dead)
+            {
+                if (MerchantWaiting) { Nwh.SetInput(_car, 0f, 0f, 1f); Nwh.SetHandbrake(_car, 1f); return; }
+                if (!_driving) return;
+                if (_pilot != null) _pilot.Step();
+                return;
+            }
+            // dead driver: a stuck pedal keeps the gas on; otherwise the car rolls out - braked hard when a live passenger is aboard,
+            // so it stops and the passenger takes the wheel or gets out instead of riding along in a coasting car
+            bool paxAboard = !_stuck && PaxAboard();
+            Nwh.SetInput(_car, _stuck ? PatrolsModule.AiThrottle.Value : 0f, 0f, paxAboard ? 1f : 0f);
+        }
+
+        private bool PaxAboard()
+        {
+            var mk = Marker;
+            return mk != null && mk.Passenger != null && PassengerAlive(mk, mk.Passenger);
+        }
+
+        private const float PassengerActAfter = 4f;   // a surviving passenger acts this long after the driver's death, whatever the car does
+
+        private bool DriverAlive() { return Alive(_driver, _health, ref _healthVar); }
+
+        private static bool PassengerAlive(PatrolMarker marker, GameObject pax) { return marker != null && Alive(pax, marker.PassengerHealthFsm, ref marker.PassengerHealthVar); }
+
+        // ------------------------------------------------------------ the surviving passenger
+
+        // After the driver's death a live passenger either takes the wheel or bails out (BailChance %), as soon as the car
+        // stands still. A stuck pedal is kicked off after StuckPedalTakeover seconds so the car can stop. If the player took
+        // the car first, the passenger always gets out. Returns true while it handled the frame.
+        private bool PassengerReacts()
+        {
+            var marker = Marker;
+            var pax = marker != null ? marker.Passenger : null;
+            if (pax == null || !PassengerAlive(marker, pax)) return false;
+            _deadFor += Time.deltaTime;
+            if (!_paxDecided)
+            {
+                _paxDecided = true;
+                _paxBails = !EventBudget.IsConvoy(_car)&&UnityEngine.Random.Range(0f, 100f) < PatrolsModule.BailChance.Value;
+                PatrolsModule.Verbose("Crew: passenger " + pax.name + " will " + (_paxBails ? "bail out" : "take the wheel") + " once the car stops ("
+                    + PatrolsModule.BailChance.Value + " % bail roll)");
+            }
+            if (_promoting)
+            {
+                if (_eject != null && !_eject.Done) return true;      // carcass still on its way out
+                _promoting = false; _eject = null;
+                FinishPromote(pax, marker);
+                return true;
+            }
+            bool playerIn = PlayerInside();
+            if (playerIn) _paxBails = true;
+            // one check: PassengerActAfter s after the driver's death the passenger acts - whatever the car does (gas stuck, rolling,
+            // pushed by another car). Until then the roll-out / stuck-pedal logic runs as usual.
+            if (_deadFor < PassengerActAfter && !playerIn) return false;
+            if (_stuck)
+            {
+                _stuck = false; _rolling = 0f;
+                Nwh.SetInput(_car, 0f, 0f, 0f);
+                PatrolsModule.Verbose("Crew: passenger kicked the dead driver's foot off the pedal");
+            }
+            // the door on that side opens first (passenger's own door to bail, the driver's door to throw the dead driver out)
+            if (!_doorOpened)
+            {
+                _doorOpened = true;
+                var seat = _paxBails ? pax.transform.position : Patrol.DriverSeatPos(_car);
+                var front=CrewReturn.FrontDoor(_car);if(_paxBails&&front!=null)seat=front.position;
+                if (Patrol.OpenDoorAt(_car, seat)) { _doorWait = Time.time + DoorSeconds; return true; }
+            }
+            if (Time.time < _doorWait) return true;
+            if (_paxBails)
+            {
+                Patrol.BailOut(_car, pax, marker);
+                if (!playerIn) Vacated("passenger bailed out");
+                return true;
+            }
+            Promote(pax, marker);
+            return true;
+        }
+
+        // Step 1: throw the dead driver out; the climb-over follows once the carcass is clear (or right away if there is none).
+        private void Promote(GameObject pax, PatrolMarker marker)
+        {
+            _eject = Patrol.EjectCorpses(_car, pax);
+            if (_eject == null) { FinishPromote(pax, marker); return; }
+            _promoting = true;
+            PatrolsModule.Verbose("Crew: " + pax.name + " waits for the dead driver to clear the seat");
+        }
+
+        // Called by the Pilot when it gives up (MaxRecovers reached). With [Driver] StuckBailChance the whole crew gets out
+        // instead of waiting: the car is left standing as an ordinary vehicle. Returns true if the crew left.
+        internal bool OnStuck()
+        {
+            if (_dead || _done) return false;
+            _fullyStuck=true;
+            if (UnityEngine.Random.Range(0f, 100f) >= PatrolsModule.StuckBailChance.Value) return false;
+            return ExitCrew(true);
+        }
+
+        private bool ExitCrew(bool stuck)
+        {
+            var marker = Marker;
+            CombatExit=!stuck;
+            _frontExitIndex=0;
+            if(stuck){PatrolsModule.Verbose("Crew: stuck for good, the crew bails out (" + PatrolsModule.StuckBailChance.Value + " % roll)");if(marker!=null)marker.StuckBails++;}
+            else PatrolsModule.Verbose("Crew: " + _car.name + " under unanswered attack; crew gets out to fight " + (_combatEnemy!=null?_combatEnemy.name:"enemy"));
+            CrewReturn.Expect(this, _car, marker);   // before the Released phase is visible to world traffic (the bail-out follows the doors)
+            if (_pilot != null) { _pilot.Detach(); _pilot = null; }
+            Nwh.SetInput(_car, 0f, 0f, 1f);
+            Patrol.Handbrake(_car,true,_handbrake);
+            if (_ctl != null && _ctl.Taken) _ctl.Release();
+            SeatLocked(false);
+            var pax = marker != null ? marker.Passenger : null;
+            bool paxGoes = pax != null && PassengerAlive(marker, pax), driverGoes = _driver != null && DriverAlive();
+            if(marker!=null&&driverGoes)marker.DriverBailed=true;
+            // both doors open first; the crew gets out once they have swung open
+            bool opened = false;
+            var front=CrewReturn.FrontDoor(_car);
+            if(front!=null)opened=Patrol.OpenDoorAt(_car,front.position);
+            else{if (paxGoes) opened |= Patrol.OpenDoorAt(_car, pax.transform.position);if (driverGoes) opened |= Patrol.OpenDoorAt(_car, Patrol.DriverSeatPos(_car));}
+            StartCoroutine(BailAfter(opened ? DoorSeconds : 0f, marker, paxGoes ? pax : null, driverGoes ? _driver : null,!stuck));
+            _driver = null; _health = null;
+            _dead = true; _done = true; _driving = false;    // Phase = Released: saved as an empty car
+            if(stuck)Vacated("crew bailed out");else _vacated=true;
+            return true;
+        }
+
+        private IEnumerator BailAfter(float wait, PatrolMarker marker, GameObject pax, GameObject driver,bool combat=false)
+        {
+            if (wait > 0f) yield return new WaitForSeconds(wait);
+            if (_car == null) yield break;
+            if (pax != null) Patrol.BailOut(_car, pax, marker);
+            if (driver != null)
+            {
+                if (marker != null) marker.DriverLeft();
+                Patrol.BailOut(_car, driver, marker != null ? marker.DriverPrefab : driver.name.Replace("(Driver)", ""), -1f);
+            }
+            if(combat&&marker!=null)for(int i=0;i<marker.Riders.Length;i++){var r=marker.Riders[i];var g=r!=null?r.GetComponent<RiderGuard>():null;if(g!=null)g.CombatDismount();}
+        }
+
+        // Step 2: the passenger climbs onto the driver seat and Crew starts over with it as the driver.
+        private void FinishPromote(GameObject pax, PatrolMarker marker)
+        {
+            if (_ctl != null && _ctl.Taken) _ctl.Release();
+            if (_pilot != null) { _pilot.Detach(); _pilot = null; }
+            Nwh.SetInput(_car, 0f, 0f, 0f);
+            var drv = Patrol.MoveToDriverSeat(_car, pax);
+            if (drv == null) { Core.Log.Warn("[Patrols] " + "Crew: could not seat the passenger as driver"); _paxBails = true; return; }
+            marker.Promote(drv);
+            marker.DriverDied=false;marker.DriverBailed=false;
+            _dead = false; _stuck = false; _done = false; _driving = false;
+            _rolling = 0f; _deadFor = 0f; _paxDecided = false; _paxBails = false; _doorOpened = false; _doorWait = 0f;
+            _delayOverride = PatrolsModule.TakeoverSeconds;
+            Init(_car, drv);
+            _seated = 0f;
+            MuteAi();
+            PatrolsModule.Verbose("Crew: " + drv.name + " took the wheel, " + "drives off in " + _delayOverride + " s" + "; car " + Speed() + " km/h, " + Nwh.Diag(_car));
+        }
+
+        private bool PlayerInside()
+        {
+            return _drive != null && _drive.Fsm.Initialized && _drive.ActiveStateName == "inCar";
+        }
+
+        private void StartDriving()
+        {
+            _driving = true;
+            _ctl.Take();
+            _pilot = Pilot.Attach(_car);
+            PatrolsModule.Verbose("Crew: driver drives off at " + Speed() + " km/h, " + Nwh.Diag(_car));
+        }
+
+        private void OnDriverDied()
+        {
+            var marker=Marker;
+            if(marker!=null&&PlayerRef.Player!=null&&ReferenceEquals(marker.FactionTarget,PlayerRef.Player.gameObject))marker.PlayerContactAt=Time.time;
+            if(marker!=null&&!marker.DriverBailed)marker.DriverDied=(_healthVar!=null&&_healthVar.Value<=0f)||(_driver!=null&&Patrol.GetHealth(_driver)==0f);
+            _dead = true;
+            SeatLocked(false);                 // the player may take the car from now on
+            if (_pilot != null) { _pilot.Detach(); _pilot = null; }
+            if (Nwh.GearIndex(_car) < 0) Nwh.ShiftInto(_car, 1);   // died while reversing: a stuck pedal pushes forward, not back
+            if (!_driving)
+            {
+                PatrolsModule.Verbose("Crew: driver died before driving off; seat free");
+                _done = true;
+                return;
+            }
+            // The INPUT FSMs are given back right away so the player can drive as soon as they get in; until then the
+            // INPUT object is inactive, so whatever we leave in the NWH input stays put.
+            _ctl.Release();
+            bool stuck = UnityEngine.Random.Range(0f, 100f) < PatrolsModule.StuckPedalChance.Value;
+            if (stuck)
+            {
+                _stuck = true;
+                _ctl.Take();
+                Nwh.SetInput(_car, PatrolsModule.AiThrottle.Value, 0f, 0f);
+                PatrolsModule.Verbose("Crew: driver died at " + Speed() + " km/h - gas pedal stuck (" + PatrolsModule.StuckPedalChance.Value + " % roll), seat free");
+                return;
+            }
+            _ctl.Take();
+            Nwh.SetInput(_car, 0f, 0f, 0f);
+            PatrolsModule.Verbose("Crew: driver died at " + Speed() + " km/h - gas released, rolling out, seat free");
+        }
+
+        private void OnDestroy()
+        {
+            if (Regroup != null) { var g = Regroup; Regroup = null; CrewReturn.CarLost(g); }
+            if (_pilot != null) { _pilot.Detach(); _pilot = null; }
+        }
+
+        private string Speed() { return _rb != null ? (_rb.velocity.magnitude * 3.6f).ToString("0.0") : "?"; }
+    }
+}

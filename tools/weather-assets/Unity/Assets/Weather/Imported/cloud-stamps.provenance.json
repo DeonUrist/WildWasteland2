@@ -1,0 +1,51 @@
+{
+  "source": "JangaFX Cloud Pack",
+  "license": "CC0-1.0",
+  "blender": "4.5.3 LTS",
+  "kind": "static variants, not animation frames",
+  "size": 512,
+  "samples": 128,
+  "views": [
+    {
+      "png": "cloud01-view00.png",
+      "vdb": "cloud_01_variant_0000.vdb",
+      "view": 0
+    },
+    {
+      "png": "cloud01-view01.png",
+      "vdb": "cloud_01_variant_0000.vdb",
+      "view": 1
+    },
+    {
+      "png": "cloud02-view00.png",
+      "vdb": "cloud_02_variant_0000.vdb",
+      "view": 0
+    },
+    {
+      "png": "cloud02-view01.png",
+      "vdb": "cloud_02_variant_0000.vdb",
+      "view": 1
+    },
+    {
+      "png": "cloud03-view00.png",
+      "vdb": "cloud_03_variant_0000.vdb",
+      "view": 0
+    },
+    {
+      "png": "cloud03-view01.png",
+      "vdb": "cloud_03_variant_0000.vdb",
+      "view": 1
+    },
+    {
+      "png": "cloud04-view00.png",
+      "vdb": "cloud_04_variant_0000.vdb",
+      "view": 0
+    },
+    {
+      "png": "cloud04-view01.png",
+      "vdb": "cloud_04_variant_0000.vdb",
+      "view": 1
+    }
+  ],
+  "lighting": "single neutral baked lighting setup; six-way lighting not baked yet"
+}

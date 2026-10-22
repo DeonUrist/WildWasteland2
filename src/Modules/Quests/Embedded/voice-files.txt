@@ -1,0 +1,76 @@
+Voice Actors/LostSilver666/field_medic/accept.wav
+Voice Actors/LostSilver666/field_medic/done.wav
+Voice Actors/LostSilver666/field_medic/offer.wav
+Voice Actors/LostSilver666/field_medic/remind.wav
+Voice Actors/LostSilver666/scout_the_ridge/accept.wav
+Voice Actors/LostSilver666/scout_the_ridge/done.wav
+Voice Actors/LostSilver666/scout_the_ridge/offer.wav
+Voice Actors/LostSilver666/scout_the_ridge/remind.wav
+Voice Actors/Soldier96/carry_word/accept.wav
+Voice Actors/Soldier96/carry_word/done.wav
+Voice Actors/Soldier96/carry_word/offer.wav
+Voice Actors/Soldier96/carry_word/remind.wav
+Voice Actors/Soldier96/cave_check/accept.wav
+Voice Actors/Soldier96/cave_check/done.wav
+Voice Actors/Soldier96/cave_check/offer.wav
+Voice Actors/Soldier96/cave_check/remind.wav
+Voice Actors/Soldier96/clear_the_camp/accept.wav
+Voice Actors/Soldier96/clear_the_camp/done.wav
+Voice Actors/Soldier96/clear_the_camp/offer.wav
+Voice Actors/Soldier96/clear_the_camp/Record (online-voice-recorder.com) (1).mp3
+Voice Actors/Soldier96/clear_the_camp/Record (online-voice-recorder.com) (2).mp3
+Voice Actors/Soldier96/clear_the_camp/Record (online-voice-recorder.com) (3).mp3
+Voice Actors/Soldier96/clear_the_camp/Record (online-voice-recorder.com).mp3
+Voice Actors/Soldier96/clear_the_camp/remind.wav
+Voice Actors/Soldier96/dry_throats/accept.wav
+Voice Actors/Soldier96/dry_throats/done.wav
+Voice Actors/Soldier96/dry_throats/offer.wav
+Voice Actors/Soldier96/dry_throats/remind.wav
+Voice Actors/Soldier96/field_medic/accept.wav
+Voice Actors/Soldier96/field_medic/done.wav
+Voice Actors/Soldier96/field_medic/offer.wav
+Voice Actors/Soldier96/field_medic/remind.wav
+Voice Actors/Soldier96/fuel_shortage/accept.wav
+Voice Actors/Soldier96/fuel_shortage/done.wav
+Voice Actors/Soldier96/fuel_shortage/offer.wav
+Voice Actors/Soldier96/fuel_shortage/remind.wav
+Voice Actors/Soldier96/hound_trouble/accept.wav
+Voice Actors/Soldier96/hound_trouble/done.wav
+Voice Actors/Soldier96/hound_trouble/offer.wav
+Voice Actors/Soldier96/hound_trouble/remind.wav
+Voice Actors/Soldier96/night_terror/accept.wav
+Voice Actors/Soldier96/night_terror/done.wav
+Voice Actors/Soldier96/night_terror/offer.wav
+Voice Actors/Soldier96/night_terror/remind.wav
+Voice Actors/Soldier96/rations_run/accept.wav
+Voice Actors/Soldier96/rations_run/done.wav
+Voice Actors/Soldier96/rations_run/offer.wav
+Voice Actors/Soldier96/rations_run/remind.wav
+Voice Actors/Soldier96/Repairs/accept.wav
+Voice Actors/Soldier96/Repairs/done.wav
+Voice Actors/Soldier96/Repairs/offer.wav
+Voice Actors/Soldier96/Repairs/remind.wav
+Voice Actors/Soldier96/scout_the_ridge/accept.wav
+Voice Actors/Soldier96/scout_the_ridge/done.wav
+Voice Actors/Soldier96/scout_the_ridge/offer.wav
+Voice Actors/Soldier96/scout_the_ridge/remind.wav
+Voice Actors/Soldier96/supply_run/accept.wav
+Voice Actors/Soldier96/supply_run/done.wav
+Voice Actors/Soldier96/supply_run/offer.wav
+Voice Actors/Soldier96/supply_run/remind.wav
+Voice Actors/Soldier96/take_their_camp/accept.wav
+Voice Actors/Soldier96/take_their_camp/done.wav
+Voice Actors/Soldier96/take_their_camp/offer.wav
+Voice Actors/Soldier96/take_their_camp/remind.wav
+Voice Actors/Soldier96/The Bad Batch 1/accept.wav
+Voice Actors/Soldier96/The Bad Batch 1/done.wav
+Voice Actors/Soldier96/The Bad Batch 1/offer.wav
+Voice Actors/Soldier96/The Bad Batch 1/remind.wav
+Voice Actors/Soldier96/The Bad Batch 2/accept.wav
+Voice Actors/Soldier96/The Bad Batch 2/done.wav
+Voice Actors/Soldier96/The Bad Batch 2/offer.wav
+Voice Actors/Soldier96/The Bad Batch 2/remind.wav
+Voice Actors/Soldier96/The Bad Batch 3/accept.wav
+Voice Actors/Soldier96/The Bad Batch 3/done.wav
+Voice Actors/Soldier96/The Bad Batch 3/offer.wav
+Voice Actors/Soldier96/The Bad Batch 3/remind.wav

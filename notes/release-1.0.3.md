@@ -1,0 +1,9 @@
+# Wild Wasteland 1.0.3 — Fog of war in WORLD
+
+Restores Fog of war on/off to F3 > WORLD in standard single-player Wild Wasteland, without enabling Debug. Radius, edge fade and opacity stay under Debug > CleanHUD > Map fog of war. The previous correction was applied only to WWMP0.1.43/RC7, leaving WW1.0.2 with the toggle under Debug; Denis's current game log confirms standard WW1.0.2 is running.
+
+CorePages.cs changes four presentation lines (two added/two removed). Existing config keys, values, defaults, full-opacity correction, exploration data and save formats are retained; no new jobs/hooks/dependencies or multiplayer code. Plugin version1.0.3 and README match the release. Pending gameplay-wiki work in AGENTS.md, docs/WIKI-FORMAT.md, tools/wiki-index.py, tools/wiki-gameplay.py and notes/wiki-1.0-gameplay.md is preserved and excluded from this fix.
+
+Manual check: update/restart WW, leave Debug disabled, open F3 > WORLD and toggle Fog of war. Unexplored map areas should hide/reappear with the switch. Enable Debug and verify radius, edge fade and opacity remain under CleanHUD, with on/off only in WORLD. Runtime/UI verification remains Testing; no game automation or launch.
+
+Windows Release/Deploy=false: zero warnings/errors. Unique stage `V:/Repos/Apocalypter/_releases/WildWasteland_1.0.3a.dll`, built/staged/packaged MD5 **DBB537EB66573DECF61DACE8D5FD4C13**. Full runtime-only ZIP199 files/218,487,119 bytes; SHA256 **2f627018b4c612e8f0d6a55c29e34b28f31eb2c1349d1831b740ba0707e1292d**. Package script verified CRC/unique entries/exact replacement bytes/177 retained asset entries/18 loading screens/required license/single DLL/no documentation or personal data. Game running and standard-WW staging policy retained; no deployment or live config/save edits. Installed WW1.0.2 remains MD5 BB85DA11D20CF1D7FC3A4DF9FB50B9B7.

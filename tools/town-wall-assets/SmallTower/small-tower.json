@@ -1,0 +1,96 @@
+{
+  "format": "WW-NATIVE-SMALL-TOWER-1",
+  "source": "Camp_9",
+  "rootName": "TownsTower",
+  "parts": [
+    "container_3",
+    "tent_1_support",
+    "tent_1",
+    "decor/fence_small_4",
+    "decor/fence_small_4 (1)",
+    "decor/fence_small_3",
+    "decor/ladder_L"
+  ],
+  "ladderSide": [
+    2.63,
+    0,
+    -0.71
+  ],
+  "scale": [
+    1,
+    1,
+    1
+  ],
+  "navigation": "Existing NPC sliced baker samples only this assembly on isolated flat ground. First load publishes NPC NavMaps/Custom/TownsTower-<geometry hash>.wwnav; later yaw-rotated instances reuse it. No camp or town-wide bake. Ground navigation only; native player ladder retained, no new NPC ladder traversal.",
+  "runtime": "Shared original meshes/materials; static-only template assembled from these seven native subtrees.",
+  "files": [
+    {
+      "file": "shipping_container__5048.obj",
+      "sha256": "d506bc558cfcad6c45a092534b3ec539568865e59f7809ce41dc1489e48e94da"
+    },
+    {
+      "file": "tent_support__3464.obj",
+      "sha256": "620ff572a28c9e017afc74f29a306a890309c299b2a59c669425339076000d82"
+    },
+    {
+      "file": "fabric_tent.001__2638.obj",
+      "sha256": "0336d7777d2673dc8c1467a44c43139b5ea434b250afa2ffe68bdcb28f202981"
+    },
+    {
+      "file": "fence.007__2512.obj",
+      "sha256": "058ce1c41999d69bde3f7926a9290350e6dde8928edddcc18f4f1ae46de89f25"
+    },
+    {
+      "file": "fence.003__5451.obj",
+      "sha256": "bf0b85c74aac7ed31218cde104e0c7b24473979751830a641fa4f5553d69d925"
+    },
+    {
+      "file": "ladder_M__3046.obj",
+      "sha256": "2021b479fd5da50f5dc66a2a0f2fc8d996d7a761241d762ef5e5891b6e7b622d"
+    },
+    {
+      "file": "metal_shanty_1__197.json",
+      "sha256": "f1dbc68106390542397cc95310c4f14c01be8a54d2e4346b8fcc1cf6bd61bdb8"
+    },
+    {
+      "file": "metal_shanty_1__1549.png",
+      "sha256": "37571bfe081f5c2ab61269d339506e20995052ecfb0785981a094b400f1f474f"
+    },
+    {
+      "file": "metal_rusted_1__611.json",
+      "sha256": "767d3e66ff241f155f78f88df49680220139d5d1d529a22d3c12ff0fbbbdc26d"
+    },
+    {
+      "file": "metal_rusted_11_normal__1387.png",
+      "sha256": "0ae6302aa2b4c696afbdd80769b75e1640b7c6f45e445ad054688af631b76e43"
+    },
+    {
+      "file": "metal_rusted_1__1086.png",
+      "sha256": "f47921f304ce4fa43d4f7567c4778452dc1446fff141974606ddce0aff6b4ee8"
+    },
+    {
+      "file": "fabric_torn_1__526.json",
+      "sha256": "cc52a4cc1a0c17c3ae19b4ecda638a303e15df70e686688d031c200f018b3409"
+    },
+    {
+      "file": "fabric_1_normal__1202.png",
+      "sha256": "5f6a0f9e47ec9e7afe3738adff3285ab70b001d94848d0d3790e67999020e105"
+    },
+    {
+      "file": "fabric_torn_1__1711.png",
+      "sha256": "47f487f8d0398f542f3d7a46ed42c974909eab1d7798bbfd81c2a9971f3a074c"
+    },
+    {
+      "file": "shipping_container_6m_3__717.json",
+      "sha256": "9f3d4f484541d814d0f4e27127b284e77f4d2039584a67eaab6249d7e2af521d"
+    },
+    {
+      "file": "metal_rusted_17_normal__1141.png",
+      "sha256": "23bbc0f754063c6925788e1341c1bc2b468db92b2322704c591e2c691f7d2c25"
+    },
+    {
+      "file": "shipping_container_6m_3__1993.png",
+      "sha256": "d3ad5ca6c6f785146a42978374bc95d6814e51b6cb0b7fc7492d79a341a67992"
+    }
+  ]
+}

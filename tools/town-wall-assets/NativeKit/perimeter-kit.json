@@ -1,0 +1,140 @@
+{
+  "format": "WW-NATIVE-PERIMETER-1",
+  "source": "Camp_14",
+  "sourceAssets": "sharedassets1.assets, game 2026-10-09",
+  "wallPaths": [
+    "decor_visible/fence_1",
+    "decor_visible/fence_2",
+    "decor_visible/fence_3",
+    "decor_visible/fence_4"
+  ],
+  "wallMeshes": [
+    "fence_1",
+    "fence_2",
+    "fence_1.001",
+    "fence_2.002"
+  ],
+  "wallCollision": {
+    "size": [
+      0.2794,
+      4.416,
+      9.3996
+    ],
+    "center": [
+      0.0173,
+      0.1028,
+      0.0007858
+    ]
+  },
+  "gate": {
+    "type": "open warehouse-camp entrance; no door mechanism",
+    "bannerPath": "decor/flag_pole",
+    "openingMetres": 15,
+    "supportMesh": "flag_pole",
+    "bannerMesh": "flag_1sided.002",
+    "nativeRootScale": [
+      4.1542,
+      4.1542,
+      4.1542
+    ],
+    "prototypeRootScale": [
+      7.695267410542517,
+      4.1542,
+      4.1542
+    ],
+    "bannerLocalPosition": [
+      -0.3312,
+      0.7567,
+      -0.3313
+    ],
+    "postLocalPositions": [
+      [
+        -1.2428,
+        -0.9942,
+        -0.3127
+      ],
+      [
+        0.5765,
+        -0.9942,
+        -0.3127
+      ]
+    ],
+    "postCollision": {
+      "size": [
+        0.0742,
+        3.6198,
+        0.0742
+      ],
+      "center": [
+        0,
+        0.5152,
+        0
+      ]
+    },
+    "signPolicy": "Original flag_scrapyard retained for both factions; faction replacement deferred."
+  },
+  "materials": [
+    "metal_shanty_1",
+    "metal_rusted_1",
+    "flag_scrapyard"
+  ],
+  "runtime": "Runtime shares meshes and native materials from the graph; these lossless source exports are reusable authoring assets, not a custom binary loader.",
+  "files": [
+    {
+      "file": "fence_1__4065.obj",
+      "sha256": "bea75a496b259bad6f3b1cb7c7463ae6ef8eba91fdd9f66097e1fa686901d169"
+    },
+    {
+      "file": "fence_2__3929.obj",
+      "sha256": "ca11b8022a7e495b114b35bbcd6415360cffacd9745181bd13e08541b75d7450"
+    },
+    {
+      "file": "fence_1.001__2072.obj",
+      "sha256": "bf4ff4a9d5215f7007fe5df1df7091ba7481c562053fb82cd34becd4e6bb48df"
+    },
+    {
+      "file": "fence_2.002__4681.obj",
+      "sha256": "1e4d750d113bc47c35b6fb93e5564bb8290c04a0400bb69c398e6af54bd3a052"
+    },
+    {
+      "file": "flag_pole__4088.obj",
+      "sha256": "7505e24cf9b9e6afbd305bc16651c4d65199747b271f8b97a2245dd88bd4584e"
+    },
+    {
+      "file": "flag_1sided.002__2862.obj",
+      "sha256": "f5684267748412e4501d9a40a39bca604e7463627722c46f302b36282e212c6c"
+    },
+    {
+      "file": "metal_shanty_1__197.json",
+      "sha256": "f1dbc68106390542397cc95310c4f14c01be8a54d2e4346b8fcc1cf6bd61bdb8"
+    },
+    {
+      "file": "metal_shanty_1__1549.png",
+      "sha256": "37571bfe081f5c2ab61269d339506e20995052ecfb0785981a094b400f1f474f"
+    },
+    {
+      "file": "metal_rusted_1__611.json",
+      "sha256": "767d3e66ff241f155f78f88df49680220139d5d1d529a22d3c12ff0fbbbdc26d"
+    },
+    {
+      "file": "metal_rusted_11_normal__1387.png",
+      "sha256": "0ae6302aa2b4c696afbdd80769b75e1640b7c6f45e445ad054688af631b76e43"
+    },
+    {
+      "file": "metal_rusted_1__1086.png",
+      "sha256": "f47921f304ce4fa43d4f7567c4778452dc1446fff141974606ddce0aff6b4ee8"
+    },
+    {
+      "file": "flag_scrapyard__531.json",
+      "sha256": "f85a13f632a6e632bec49448b6a6d459395d2b5cc72cda2fb91acb2b09d393d3"
+    },
+    {
+      "file": "fabric_1_normal__1202.png",
+      "sha256": "5f6a0f9e47ec9e7afe3738adff3285ab70b001d94848d0d3790e67999020e105"
+    },
+    {
+      "file": "flag_scrapyard__1653.png",
+      "sha256": "8de7f1a3518ec72f7fa24c4a2ecb204c920f4501ed3164a4b949ed9c607783e9"
+    }
+  ]
+}

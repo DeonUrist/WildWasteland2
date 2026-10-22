@@ -1,0 +1,69 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
+
+namespace WildWasteland.Modules.PlayerBody
+{
+    // Optional humanoid clips from an AssetBundle (Models/apocaplayer_anims.bundle) built with Unity 2020.3.49f1 from Mixamo FBX files
+    // (UnityAnims/ project in the repo). Clips are named after their FBX file: Idle, Walk, WalkBack, StrafeLeft, StrafeRight, Run,
+    // CrouchIdle, CrouchWalk, the same with a "Rifle" prefix, RifleAim, RifleFire, RifleReload, PistolAim, PistolFire, PistolReload,
+    // Melee, Throw. Humanoid clips retarget onto her (Flexa's avatar) through the Animator, whatever character they were made on.
+    internal static class Anims
+    {
+        private static readonly Dictionary<string, AnimationClip> _clips = new Dictionary<string, AnimationClip>(StringComparer.OrdinalIgnoreCase);
+        private static bool _tried;
+        private static AssetBundle _bundle;
+
+        public static bool Loaded { get { Load(); return _clips.Count > 0; } }
+        // (WW) F7 "Animation framework" page
+        internal static bool Tried { get { return _tried; } }
+        internal static int Count { get { return _clips.Count; } }
+        internal static bool BundleOpen { get { return _bundle != null; } }
+
+        public static AnimationClip Get(string name)
+        {
+            Load();
+            AnimationClip c;
+            return name != null && _clips.TryGetValue(name, out c) ? c : null;
+        }
+
+        // first of the names that the bundle has
+        public static AnimationClip First(params string[] names)
+        {
+            foreach (var n in names) { var c = Get(n); if (c != null) return c; }
+            return null;
+        }
+
+        private static void Load()
+        {
+            if (_tried) return;
+            _tried = true;
+            string path = PlayerBodyModule.ModPath(PlayerBodyModule.AnimBundleFile.Value);
+            if (!File.Exists(path)) { PlayerBodyModule.Info("No animation bundle (" + Path.GetFileName(path) + "): using the game's raider clips + procedural walk"); return; }
+            try
+            {
+                _bundle = AssetBundle.LoadFromFile(path);
+                if (_bundle == null) { PlayerBodyModule.Error("Animation bundle " + path + " could not be opened (built with a different Unity version / platform?)"); return; }
+                foreach (var c in _bundle.LoadAllAssets<AnimationClip>())
+                {
+                    if (c == null || c.name.StartsWith("__preview__")) continue;
+                    c.hideFlags = HideFlags.DontUnloadUnusedAsset;
+                    _clips[c.name.Replace("LeftStrafe", "StrafeLeft").Replace("RightStrafe", "StrafeRight")] = c;
+                }
+                // "...Shoot" files stand for "...Fire" (PistolShoot -> PistolFire) unless a Fire one exists
+                foreach (var k in new List<string>(_clips.Keys))
+                    if (k.IndexOf("Shoot", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        string f = System.Text.RegularExpressions.Regex.Replace(k, "Shoot", "Fire", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        if (!_clips.ContainsKey(f)) _clips[f] = _clips[k];
+                    }
+                var names = new List<string>(_clips.Keys); names.Sort();
+                int nonHuman = 0; foreach (var c in _clips.Values) if (!c.humanMotion) nonHuman++;
+                PlayerBodyModule.Info("Animation bundle: " + _clips.Count + " clips (" + string.Join(", ", names.ToArray()) + ")"
+                                   + (nonHuman > 0 ? "; " + nonHuman + " are NOT humanoid and won't fit her - set Animation Type = Humanoid in Unity" : ""));
+            }
+            catch (Exception e) { PlayerBodyModule.Error("Animation bundle: " + e.Message); }
+        }
+    }
+}

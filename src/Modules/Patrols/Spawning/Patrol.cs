@@ -1,0 +1,1890 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using ES3Internal;
+using HutongGames.PlayMaker;
+using UnityEngine;
+
+namespace WildWasteland.Modules.Patrols
+{
+    // Runner on the hidden plugin object: the car builder (template spawner + convoy), the in-game check, the persistence tick.
+    internal class Patrol : MonoBehaviour
+    {
+        internal static void ResetForScene() { BuildQueue.Reset(); VehicleBuildCache.Reset(); PatrolLoadPreparation.Reset(); Prefabs.Invalidate(); Register.Invalidate(); MeleeWheels.Reset(); DayLight.Reset(); _lightState = -1; SceneGen++; WorldTraffic.ResetForScene(); }
+
+        // bumped on every scene load: a build or a convoy that waited through a load does not continue in the new world
+        internal static int SceneGen;
+
+        // WW: was Update (registered as the module's first Update job)
+        internal void Tick()
+        {
+            PatrolPersistence.Tick();
+            if (!InGame()) return;
+            Ram.Tick();
+            ExitSpeed.Tick();
+            MeleeWheels.Tick();
+            if (Time.unscaledTime >= _nextLights) { _nextLights = Time.unscaledTime + 5f; LightsTick(); }
+            if (Time.unscaledTime >= _nextPrune) { _nextPrune = Time.unscaledTime + 30f; PruneIgnoreSignatures(); }
+        }
+
+        // Raider cars drive with their headlights on only while it is dark (DayLight): at dusk / dawn every car with a live crew that the
+        // player never took is switched over. New builds and restored cars pick the current state themselves.
+        private static float _nextLights;
+        private static int _lightState = -1;   // -1 = not read yet in this scene, 0 = day, 1 = dark
+        private static void LightsTick()
+        {
+            int state = DayLight.Dark ? 1 : 0;
+            if (state == _lightState) return;
+            bool first = _lightState < 0;
+            _lightState = state;
+            if (first) return;   // the baseline: cars already got the right lights when they were built / restored
+            int n = 0;
+            foreach (var m in PatrolMarker.All.ToArray())
+            {
+                if (m == null || m.Exploded || m.PlayerEntered || Register.Pending(m.gameObject)) continue;
+                var crew = m.GetComponent<Crew>();
+                if (crew == null || !crew.CrewAlive) continue;
+                Headlights(m.gameObject, state == 1);
+                n++;
+            }
+            PatrolsModule.Verbose("Lights: it is " + (state == 1 ? "dark" : "light") + " now, " + n + " raider car(s) switched");
+        }
+
+        // The game is saving or loading (SaveLoadGame anywhere but isPlay). Builds wait for it: nothing is created or added to the
+        // game's save lists while the save walks them.
+        internal bool SaveBusy()
+        {
+            var sl = Core.GameRefs.SaveLoadGame;
+            return Alive(sl) && sl.Fsm.Initialized && sl.ActiveStateName != "isPlay";
+        }
+
+        // Waits while a save runs. False = give the build up: a load ran (or the scene changed) meanwhile, or 60 s passed.
+        private IEnumerator WaitForSave(int gen, bool[] ok)
+        {
+            ok[0] = true;
+            if (!SaveBusy()) yield break;
+            float until = Time.realtimeSinceStartup + 60f;
+            PatrolsModule.Verbose("Build: waiting for the save to finish");
+            while (SaveBusy())
+            {
+                string st = Core.GameRefs.SaveLoadState ?? "";
+                if (SceneGen != gen || st.IndexOf("Load", StringComparison.OrdinalIgnoreCase) >= 0 || st.IndexOf("Seed", StringComparison.OrdinalIgnoreCase) >= 0
+                    || st.IndexOf("Terrain", StringComparison.OrdinalIgnoreCase) >= 0 || Time.realtimeSinceStartup > until) { ok[0] = false; yield break; }
+                yield return null;
+            }
+            if (SceneGen != gen) ok[0] = false;
+        }
+
+        // occupants of destroyed cars (the game deletes cars beyond 5 km, the cleanup removes more) leave their signature behind
+        private static float _nextPrune;
+        private static readonly List<GameObject> _deadKeys = new List<GameObject>();
+        private static void PruneIgnoreSignatures()
+        {
+            _deadKeys.Clear();
+            foreach (var k in _ignoreSignature.Keys) if (k == null) _deadKeys.Add(k);
+            foreach (var k in _deadKeys) _ignoreSignature.Remove(k);
+        }
+
+        // [Debug] AiOverlay: one OnGUI for every pilot (an OnGUI on each car would be dispatched per IMGUI event whether or not it draws)
+        // WW: was OnGUI (Gui job); GuiWanted = its gate (the Gui job's predicate)
+        internal static bool GuiWanted() { return PatrolsModule.AiOverlay.Value && Time.timeScale > 0f; }
+        internal void Gui()
+        {
+            if (!GuiWanted()) return;
+            var all = Pilot.All;
+            int shown = 0;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var p = all[i];
+                if (p == null) continue;
+                GUI.Label(new Rect(10, 10 + 18 * i, 1400, 22), p.OverlayLine());
+                shown++;
+            }
+            // no raider car on the road: the spawn clock instead (only read here - nothing is computed while the overlay is off)
+            if (shown == 0) GUI.Label(new Rect(10, 10, 1400, 22), Convoy.OverlayLine());
+        }
+
+        // builds a template (from the F8 menu); one at a time
+        internal void Spawn(CarTemplate t)
+        {
+            if (!InGame()) return;
+            BuildQueue.Add(this, t, null, Quaternion.identity, true, false, null);
+        }
+
+        // Builds a template at a given place (convoy spawner). hold = the crew waits for Crew.Release() before driving off;
+        // onDone receives the car (or null) when the build has finished.
+        internal void SpawnAt(CarTemplate t, Vector3 pos, Quaternion rot, bool hold, Action<GameObject> onDone)
+        {
+            if (!InGame()) { if (onDone != null) onDone(null); return; }
+            BuildQueue.Add(this, t, pos, rot, false, hold, onDone);
+        }
+        internal void CancelBuild(bool menu, Action<GameObject> done) { if (done != null) done(null); }
+
+        // WW: Core.GameRefs.InGame (Menu "play" && SaveLoadGame "isPlay" && timeScale > 0, evaluated once per frame, Fsm.Initialized checked)
+        internal bool InGame() { return Core.GameRefs.InGame; }
+
+        // =============================================================== build
+
+        // at == null: SpawnDistance in front of the player, facing the player's way; otherwise exactly there.
+        // The work is spread over several frames (one Instantiate group per frame) so a build never stalls a single frame for long.
+        internal IEnumerator Build(CarTemplate tpl, Vector3? at, Quaternion rot, bool menu, bool hold, Action<GameObject> onDone)
+        {
+            GameObject car = null;
+            GameObject trailer = null;
+            int gen = SceneGen;
+            var trafficSpawn = at.HasValue ? TrafficSpace.World(at.Value) : Vector3.zero;
+            var saveOk = new bool[1];
+            string eventId=string.IsNullOrEmpty(tpl.TrafficId)?(string.IsNullOrEmpty(tpl.SpawnEvent)?Guid.NewGuid().ToString("N"):tpl.SpawnEvent):tpl.TrafficId;
+            bool reserved=false;
+            try
+            {
+                yield return WaitForSave(gen, saveOk);   // the game is saving: spawn after it, never half-built into the save
+                if(!CrewFactions.Compatible(tpl,tpl.Faction)){Core.Log.Warn("[Patrols] " + "Template "+tpl.Name+" has crew from different factions; correct its driver, passenger or turret choices");yield break;}
+                if (!saveOk[0]) { PatrolsModule.Verbose("Build of " + tpl.Name + " dropped: the game loaded or changed scene meanwhile"); yield break; }
+                if(!menu&&tpl.Origin!="POI"&&!EventBudget.Reserve(eventId))yield break;
+                reserved=!menu&&tpl.Origin!="POI";
+                string missing = tpl.MissingPrefab;
+                if (missing.Length > 0) { Core.Log.Warn("[Patrols] " + "Template " + tpl.Name + " unavailable: prefab not loaded: " + missing); yield break; }
+                Vector3 pos;
+                if (at.HasValue) pos = string.IsNullOrEmpty(tpl.TrafficId) ? at.Value : TrafficSpace.Scene(trafficSpawn);
+                else
+                {
+                    Vector3 p, fwd;
+                    if (!PlayerPose(out p, out fwd)) { Core.Log.Warn("[Patrols] " + "No player found"); yield break; }
+                    pos = p + fwd * PatrolsModule.SpawnDistance + Vector3.up * 1.0f;
+                    rot = Quaternion.LookRotation(fwd);
+                }
+                if (Core.Log.Verbose) PatrolsModule.Verbose("Building template " + tpl.Name + ": " + tpl.Describe());
+
+                var body = Prefabs.Exact(tpl.Body);
+                if (body == null) { Core.Log.Warn("[Patrols] " + "Body prefab not found: " + tpl.Body); yield break; }
+                GameObject trailerBody = null;
+                if (tpl.Trailer != null)
+                {
+                    trailerBody = Prefabs.Exact(tpl.Trailer.Body);
+                    if (trailerBody == null || !TrailerSupport.IsTrailer(trailerBody) || FindChild(body.transform, "hitch") == null || FindChild(trailerBody.transform, "attacher") == null)
+                    { Core.Log.Warn("[Patrols] " + "Cannot build " + tpl.Name + ": trailer prefab or towing hitch is missing"); yield break; }
+                    if (WarRig.WorldSpawning.IsTemplate(trailerBody))
+                    {
+                        var hitchOffset = body.transform.InverseTransformPoint(FindChild(body.transform, "hitch").position);
+                        var attacherOffset = trailerBody.transform.InverseTransformPoint(FindChild(trailerBody.transform, "attacher").position);
+                        var trailerPos = pos + rot * (hitchOffset - attacherOffset);
+                        float trailerY = trailerPos.y;
+                        if (tpl.Origin != "POI" && !WarRig.WorldSpawning.CanSpawnAt(ref trailerPos, rot))
+                        { Core.Log.Info("[Patrols] War Rig patrol spawn rejected: blocked clearance or unsuitable ground."); yield break; }
+                        pos.y += trailerPos.y - trailerY;
+                    }
+                }
+
+                var packed = VehicleBuildCache.Require(tpl, tpl.RollBumper(), false);
+                var packedTrailer = tpl.Trailer != null ? VehicleBuildCache.Require(tpl.Trailer, "", true) : null;
+                while (!packed.Ready || (packedTrailer != null && !packedTrailer.Ready))
+                {
+                    if (gen != SceneGen || packed.Failed || (packedTrailer != null && packedTrailer.Failed)) yield break;
+                    yield return null;
+                }
+                yield return WaitForSave(gen, saveOk);
+                if (!saveOk[0]) yield break;
+                // An origin jump can occur while a custom build warms.
+                if (at.HasValue) pos = TrafficSpace.Scene(trafficSpawn);
+                car = VehicleBuildCache.Spawn(packed, pos, rot);
+                if(!menu&&tpl.Origin!="POI")EncounterCar.Attach(car,eventId,tpl.ConvoyMember,true);
+                car.SetActive(true);
+                Paint.Apply(car, body.name,tpl.Faction);
+                // The car, its parts and its cargo go into the game's save lists only once the car is complete (Register.Commit below):
+                // a save during the build (autosave, the player) does not store a half-built car
+                // Spawn has already named/deferred the packed frame and each fitted part before activation.
+                PatrolsModule.Verbose("Car frame " + car.name + " at " + pos);
+
+                yield return null;   // let the frame's FSMs start (hinges, getEngine, START ...)
+                if (car == null) yield break;
+
+                if (tpl.Trailer != null)
+                {
+                    var hitch = FindChild(car.transform, "hitch");
+                    var attacher = FindChild(trailerBody.transform, "attacher");
+                    var trailerPos = hitch.position - car.transform.rotation * trailerBody.transform.InverseTransformPoint(attacher.position);
+                    trailer = VehicleBuildCache.Spawn(packedTrailer, trailerPos, car.transform.rotation);
+                    TrailerSupport.Connect(car, trailer); // before the first frame: native TrailerLoad must not add a second joint
+                    yield return null;
+                    if (car == null || trailer == null) yield break;
+                }
+
+                if (tpl.FillFuel)
+                {
+                    if (tpl.FuelLitres >= 0)
+                    {
+                        var f = FindFsm(car, "Fuel", "LiquidAmount");
+                        var liquid = f != null ? f.FsmVariables.GetFsmFloat("Liquid") : null;
+                        if (liquid != null) liquid.Value = tpl.FuelLitres;
+                    }
+                    else Fuel(car, PatrolsModule.RollPartFill());
+                }
+                if (tpl.ReleaseHandbrake) Handbrake(car, false);
+                List<GameObject> cargo = null;
+                List<GameObject> trailerCargo = null;
+                string lootKey = null;
+                // a truck: its fixed cargo option (template "E" in the editor) when it has one, else a roll among the convoy's allowed cargo
+                var loot = tpl.IsTruck ? (tpl.SpawnLoot == null ? (EditorStore.Loot(true, tpl.LootPreset) ?? EditorStore.RollTruckLoot(() => UnityEngine.Random.value, tpl.SpawnCargoOptions)) : null) : EditorStore.Loot(false, tpl.LootPreset);
+                var rolled = tpl.SpawnLoot ?? (loot != null ? loot.Roll(() => UnityEngine.Random.value) : new Dictionary<string, int>());
+                lootKey = tpl.SpawnCargoKey ?? EditorStore.CargoTexture(rolled, loot != null ? loot.TextureKey : "");
+                if (rolled.Count > 0)
+                {
+                    cargo = new List<GameObject>();
+                    yield return Cargo.Load(car, rolled, tpl.IsTruck, cargo);
+                    if (car == null) yield break;
+                }
+                if (trailer != null && tpl.Trailer.SpawnLoot != null)
+                {
+                    trailerCargo = new List<GameObject>();
+                    yield return Cargo.Load(trailer, tpl.Trailer.SpawnLoot, true, trailerCargo);
+                    if (car == null || trailer == null) yield break;
+                }
+
+                yield return null;
+                if (car == null) yield break;
+                GameObject driver = null, passenger = null;
+                if (!string.IsNullOrEmpty(tpl.Driver))
+                {
+                    if (tpl.Driver.Trim().EndsWith("_Dead", StringComparison.OrdinalIgnoreCase)) driver = SeatDriver(car, tpl.Driver, !tpl.RestoreCrewAppearance);
+                    else driver = SeatLiveDriver(car, tpl.Driver, -1f, CrewPhase.Waiting, 0f, hold, !tpl.RestoreCrewAppearance);
+                }
+                yield return null;
+                if (car == null) yield break;
+                if (!string.IsNullOrEmpty(tpl.Passenger)) passenger = SeatPassenger(car, tpl.Passenger, -1f, !tpl.RestoreCrewAppearance);
+                var marker = PatrolMarker.Attach(car, body.name, tpl.Driver, driver, tpl.Passenger, passenger, tpl.Rams);
+                marker.CargoKey = lootKey ?? "";
+                marker.TemplateName = tpl.Name;
+                marker.SetupOnly=tpl.SetupOnly;if(tpl.SetupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Nwh.StopEngine(car);Handbrake(car,true);foreach(var person in new[]{driver,passenger})if(person!=null)Crew.MuteAi(person);}
+                MerchantRuntime.Attach(car,tpl);
+                marker.Faction=TrafficFactions.Normalize(tpl.Faction);marker.ExplodeChance=tpl.ExplodeChance;
+                TrafficFactions.Crew(car,marker);
+                WorldTraffic.AttachPending(car, tpl.TrafficId, tpl.TrafficSlot);
+                marker.Trailer = trailer;
+                // human turrets: up to 3 on a car's roof, 1 on a motorcycle, none on a truck
+                int turretSlots = Rider.Slots(tpl.Body, tpl.IsTruck, tpl.IsMotorcycle);
+                for (int ti = 0; ti < turretSlots; ti++)
+                {
+                    if (string.IsNullOrEmpty(tpl.Turrets[ti])) continue;
+                    yield return null;
+                    if (car == null) yield break;
+                    Rider.Seat(car, marker, ti, tpl.Turrets[ti], tpl.TurretPos[ti],standing:tpl.TurretStanding[ti],randomize:!tpl.RestoreCrewAppearance);
+                }
+                if (trailer != null)
+                    for (int ti = 0; ti < PatrolMarker.TrailerTurretSlots; ti++)
+                    {
+                        if (string.IsNullOrEmpty(tpl.Trailer.Turrets[ti])) continue;
+                        yield return null;
+                        if (car == null || trailer == null) yield break;
+                        Rider.Seat(car, marker, PatrolMarker.VehicleTurretSlots + ti, tpl.Trailer.Turrets[ti], tpl.Trailer.TurretPos[ti], trailer,tpl.Trailer.TurretStanding[ti],!tpl.RestoreCrewAppearance);
+                    }
+                Paint.ApplyCargo(car, lootKey);   // the container's texture by load (Textures/cargo_*.png)
+
+                yield return new WaitForSeconds(1f);
+                if (car == null) yield break;
+                if (cargo != null) Cargo.SettleFsms(cargo);
+                if (trailerCargo != null) Cargo.SettleFsms(trailerCargo);
+                if (Explode.IsWreck(car)) yield break;   // crew killed during the build: it already blew up
+                var carFsms = car.GetComponentsInChildren<PlayMakerFSM>(true);
+                SetPartConditions(car, carFsms);
+                FillParts(car);
+                if (trailer != null) { SetPartConditions(trailer); FillParts(trailer); }
+                // the lift kit's adjustment from the template (the kit's own FSM has set its lifted mounts by now)
+                if (tpl.SuspensionWidth != 1f || tpl.SuspensionHeight != 0f) Suspension.Apply(car, tpl.SuspensionWidth, tpl.SuspensionHeight, "template");
+                marker.SuspensionWidth = tpl.SuspensionWidth; marker.SuspensionHeight = tpl.SuspensionHeight;
+                if (Core.Log.Verbose) PatrolsModule.Verbose("Running gear of " + car.name + ": " + Suspension.Describe(car));
+                if (DayLight.Dark) Headlights(car, true, carFsms);   // raiders drive with their lights on at night
+                RaiderMusic(car, carFsms);                            // a cassette in the template's radio: on, full volume ([General] Raider music)
+                yield return WaitForSave(gen, saveOk);
+                if (car == null) yield break;
+                int committed = Register.Commit(car);
+                if (Core.Log.Verbose) PatrolsModule.Verbose("Registered " + car.name + " for saving: " + committed + " object(s)");
+                if (trailer != null) Register.Commit(trailer);
+
+                yield return BuildQueue.Assembled;
+                if(!tpl.SetupOnly&&(car.GetComponent<MerchantHost>()==null||car.GetComponent<MerchantHost>().Data?.travelling==true))yield return StartUp(car);
+            }
+            finally
+            {
+                if(reserved){EventBudget.Release(eventId);if(car!=null)EncounterCar.Attach(car,eventId,tpl.ConvoyMember);}
+                // stopped early (a wreck, an error): what exists is registered as before; a destroyed car's list is dropped
+                if (car != null) { if (Register.Pending(car)) Register.Commit(car); }
+                else Register.Discard(car);
+                if (trailer != null)
+                {
+                    if (car != null && TrailerSupport.Connected(car, trailer)) { if (Register.Pending(trailer)) Register.Commit(trailer); }
+                    else { Register.Discard(trailer); Register.RemoveTree(trailer); UnityEngine.Object.Destroy(trailer); }
+                }
+                else Register.Discard(trailer);
+                if (onDone != null) onDone(car);
+            }
+        }
+
+        // Build only dormant structure. No registration, rolled state, occupants or native Awake/Start in the cache.
+        internal static IEnumerator PackStructure(GameObject car, CarTemplate tpl, string bumper, bool trailer)
+        {
+            if (tpl.Parts != null)
+            {
+                var placed = new GameObject[tpl.Parts.Length];
+                for (int i = 0; i < placed.Length; i++)
+                { placed[i] = AttachTemplatePart(car, tpl, i, placed, true); yield return null; }
+            }
+            else
+            {
+                string rear = tpl.RearWheel.Length > 0 ? tpl.RearWheel : tpl.Wheel;
+                string[] hinges = { "hinge_wheel_FL", "hinge_wheel_FR", "hinge_wheel_RL", "hinge_wheel_RR", "hinge_engine", "hinge_radiator", "hinge_steeringwheel", "hinge_exhaust", "hinge_seat_driver", "hinge_seat_passenger" };
+                string[] parts = { tpl.Wheel, tpl.Wheel, rear, rear, tpl.Engine, tpl.Radiator, tpl.SteeringWheel, tpl.Exhaust, tpl.Seat, tpl.PassengerSeat };
+                string[] kinds = { "wheel", "wheel", "wheel", "wheel", "engine", "radiator", "steeringwheel", "exhaust", "seat", "seat" };
+                for (int i = 0; i < hinges.Length; i++)
+                { AttachAll(car, new[] { hinges[i] }, parts[i], kinds[i], true); yield return null; }
+            }
+            if (trailer) yield break;
+            var front = FindChild(car.transform, "hinge_bumper_front");
+            if (front != null && !HasPart(front) && bumper.Length > 0) AttachAll(car, new[] { "hinge_bumper_front" }, bumper, "bumper", true);
+            yield return null;
+            AttachMissingHeadlights(car, true);
+        }
+
+        // Every raider car has its headlights: each empty hinge_headlight on the frame (two same-named ones on the Junker, the one on the
+        // Halfbreed's fork) gets the game's basic "Headlight" unless the template already fitted one there.
+        private const string DefaultHeadlight = "Headlight";
+        private static int AttachMissingHeadlights(GameObject car, bool precache = false)
+        {
+            var empty = new List<Transform>();
+            foreach (var t in car.GetComponentsInChildren<Transform>(true))
+            {
+                if (t.name != "hinge_headlight") continue;
+                bool onPart = false, full = false;
+                for (var a = t.parent; a != null && a != car.transform; a = a.parent) if (a.CompareTag("vehPart")) { onPart = true; break; }
+                for (int i = 0; i < t.childCount; i++) if (t.GetChild(i).CompareTag("vehPart")) { full = true; break; }
+                if (!onPart && !full) empty.Add(t);
+            }
+            if (empty.Count == 0) return 0;
+            var prefab = Prefabs.Find(DefaultHeadlight, "headlight");
+            if (prefab == null) { Core.Log.Warn("[Patrols] " + "Headlight prefab not found: " + DefaultHeadlight); return 0; }
+            foreach (var h in empty) Attach(prefab, h, precache);
+            PatrolsModule.Verbose("Headlights: " + empty.Count + " fitted on " + car.name);
+            return empty.Count;
+        }
+
+        // Headlights: the car's light switch (switch_panel/switch_lights, LightOff FSM "useDoor" = the player's click: click sound,
+        // switch turned, HeadlightsON sent to the car) when it is off, and HeadlightsON / OFF straight to every Headlight FSM (the
+        // headlight items and the dashboard gauges' backlight: global events HeadlightsON / HeadlightsOFF) for cars without a switch.
+        internal static void Headlights(GameObject car, bool on, PlayMakerFSM[] snapshot = null)
+        {
+            if (car == null) return;
+            int n = 0;
+            foreach (var f in snapshot ?? car.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                if (f == null || f.Fsm == null || !f.Fsm.Initialized) continue;
+                if (f.FsmName == (on ? "LightOff" : "LightOn") && f.enabled && f.gameObject.name == "switch_lights" && f.ActiveStateName == "idle")
+                    f.SendEvent("useDoor");
+                else if (f.FsmName == "Headlight") { f.SendEvent(on ? "HeadlightsON" : "HeadlightsOFF"); n++; }
+            }
+            PatrolsModule.Verbose("Lights " + (on ? "on" : "off") + ": " + car.name + " (" + n + " light FSM(s))");
+        }
+
+        // A radio with a cassette in it (the cassette's CheckTag FSM has set the radio's Music.music clip and started it, the OnOff FSM
+        // holds the pitch at 0 = "off"): full volume, then switched on the way the player does it - "useDoor" on the PlayStop [Play]
+        // FSM (click sound, OnOff Activate = pitch 1, Play/Stop swap, so one click of the player stops it).
+        internal static void RaiderMusic(GameObject car, PlayMakerFSM[] snapshot = null)
+        {
+            if (car == null || PatrolsModule.RaiderMusic == null || !PatrolsModule.RaiderMusic.Value) return;
+            int n = 0;
+            foreach (var music in snapshot ?? car.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                if (music == null || music.FsmName != "Music" || music.Fsm == null || !music.Fsm.Initialized) continue;
+                var radio = music.gameObject;
+                var src = radio.GetComponent<AudioSource>();
+                if (src == null) continue;
+                var clipVar = music.FsmVariables.GetFsmObject("music");
+                var clip = (clipVar != null ? clipVar.Value as AudioClip : null) ?? src.clip;
+                if (clip == null) continue;   // no cassette in this radio
+                if (src.clip != clip) src.clip = clip;
+                src.loop = true; src.volume = 1f;
+                if (!src.isPlaying) src.Play();
+                var knob = FindChild(radio.transform, "Volume");
+                if (knob != null) foreach (var f in knob.GetComponents<PlayMakerFSM>()) if (f.FsmName == "Volume") { var v = f.FsmVariables.GetFsmFloat("audioVolume"); if (v != null) v.Value = 1f; }
+                PlayMakerFSM play = null, onOff = null;
+                var ps = FindChild(radio.transform, "PlayStop");
+                if (ps != null) foreach (var f in ps.GetComponents<PlayMakerFSM>()) if (f.FsmName == "Play") { play = f; break; }
+                foreach (var f in radio.GetComponents<PlayMakerFSM>()) if (f.FsmName == "OnOff") { onOff = f; break; }
+                if (play != null && play.enabled && play.Fsm.Initialized) play.SendEvent("useDoor");
+                else if (onOff != null) { onOff.enabled = true; onOff.SendEvent("Activate"); src.pitch = 1f; }
+                else src.pitch = 1f;
+                n++;
+            }
+            if (n > 0) PatrolsModule.Verbose("Raider music: " + car.name + " plays " + n + " cassette(s)");
+        }
+
+        internal static Vector3 DriverSeatPos(GameObject car)
+        {
+            var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
+            return sit != null ? sit.position : car.transform.position;
+        }
+
+        // Opens the fitted car door nearest to a seat (same side of the car, within 2.2 m): the door item's DoorOpen FSM, "useDoor"
+        // = the player's click (it swings the hinge open, then hands over to DoorClose). Only door items (vehPart) count - a truck's
+        // container doors are part of the frame. Returns true when a closed door started to open; false = no door there or already open.
+        internal static bool OpenDoorAt(GameObject car, Vector3 seat)
+        {
+            if (car == null) return false;
+            var ct = car.transform;
+            float seatX = ct.InverseTransformPoint(seat).x;
+            PlayMakerFSM best = null; float bd = 2.2f * 2.2f;
+            foreach (var f in car.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                if (f == null || f.FsmName != "DoorOpen" || !f.gameObject.CompareTag("vehPart")) continue;
+                float x = ct.InverseTransformPoint(f.transform.position).x;
+                if (Mathf.Abs(seatX) > 0.1f && Mathf.Abs(x) > 0.05f && Mathf.Sign(x) != Mathf.Sign(seatX)) continue;
+                float d = (f.transform.position - seat).sqrMagnitude;
+                if (d < bd) { bd = d; best = f; }
+            }
+            if (best == null || !best.enabled || best.Fsm == null || !best.Fsm.Initialized || best.ActiveStateName != "off") return false;
+            best.SendEvent("useDoor");
+            PatrolsModule.Verbose("Door: " + best.gameObject.name + " opened on " + car.name);
+            return true;
+        }
+
+        // The game's own ignition: START [Start] FSM Ignition -> Start (engine sound, RPM, IsRunning), NWH StartEngine() as a fallback.
+        // Used by the build and when a saved car is revived after a load.
+        internal static IEnumerator StartUp(GameObject car, bool loading = false)
+        {
+            if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;
+            if (Core.Services.VehicleIgnition != null && Core.Services.VehicleIgnition.TryStart(car)) { if (!loading) yield return new WaitForSeconds(1.5f); yield break; }
+            var start = FindFsm(car, "START", "Start");
+            if (start == null) { Core.Log.Warn("[Patrols] " + "No START/Start FSM on " + (car != null ? car.name : "?")); yield break; }
+            if (loading && !start.enabled) yield break; // an optional ignition provider may still be discovering this loaded car
+            PatrolsModule.Verbose("START state before: " + start.ActiveStateName);
+            start.Fsm.SetState("Ignition");
+            yield return null;
+            yield return null;
+            if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;   // blew up mid-start: no more ignition
+            start.Fsm.SetState("Start");
+            if (loading) { Nwh.StartEngine(car); yield break; } // native physics will spin it up at handoff; no scaled-time wait while loading
+            yield return new WaitForSeconds(1.5f);
+            if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;
+            bool running = Nwh.EngineRunning(car);
+            PatrolsModule.Verbose("START state: " + start.ActiveStateName + "  engine running: " + running);
+            if (!running)
+            {
+                Nwh.StartEngine(car);
+                yield return new WaitForSeconds(1f);
+                if (Explode.IsWreck(car)) yield break;
+                PatrolsModule.Verbose("After NWH StartEngine(): running=" + Nwh.EngineRunning(car) + "  START state: " + start.ActiveStateName);
+            }
+        }
+
+        private static int AttachAll(GameObject car, string[] hingeNames, string partQuery, string kind, bool precache = false)
+        {
+            if (string.IsNullOrEmpty(partQuery)) return 0;
+            // bumpers carry no ID FSM, so they are not in the item catalog: look them up as plain asset roots
+            var prefab = kind == "bumper" ? Prefabs.FindAny(partQuery) : Prefabs.Find(partQuery, kind);
+            if (prefab == null) { Core.Log.Warn("[Patrols] " + kind + " prefab not found: " + partQuery); return 0; }
+            int n = 0;
+            foreach (var hn in hingeNames)
+            {
+                var hinge = FindChild(car.transform, hn);
+                if (hinge == null) { Core.Log.Warn("[Patrols] " + "Hinge " + hn + " not found on " + car.name); continue; }
+                Attach(prefab, hinge, precache);
+                n++;
+            }
+            return n;
+        }
+
+        // The game's vehPart_Attach "Attach" state: destroy the item's Rigidbody, tag vehPart, layer 8,
+        // parent to the hinge with local position/rotation reset. Done before the item's own FSMs Start,
+        // so CheckTag/LockPhysics see an already-attached part (same as a part loaded from a save).
+        private static GameObject Attach(GameObject prefab, Transform hinge, bool precache = false)
+        {
+            var part = precache ? VehicleBuildCache.ClonePart(prefab, hinge) : UnityEngine.Object.Instantiate(prefab, hinge.position, hinge.rotation);
+            part.SetActive(true);
+            var rb = part.GetComponent<Rigidbody>();
+            if (rb != null) UnityEngine.Object.DestroyImmediate(rb);
+            if (!VehicleAttachments.Prepare(part))
+            {
+                try { part.tag = "vehPart"; } catch (Exception e) { Core.Log.Warn("[Patrols] " + "tag vehPart: " + e.Message); }
+                part.layer = 8;
+            }
+            part.transform.SetParent(hinge, true);
+            part.transform.localPosition = Vector3.zero;
+            part.transform.localRotation = Quaternion.identity;
+            HingeOffset(hinge, part.transform);
+            if (precache) { part.name = prefab.name; VehicleBuildCache.Record(part, prefab.name); }
+            else { Register.Name(part, prefab.name); Register.Add(part, false); }
+            PatrolsModule.Verbose("  " + part.name + " -> " + hinge.name);
+            return part;
+        }
+
+        // One part of a JSON template: the hinge is found by its path under the frame or under the part it sits on (by name
+        // anywhere below as a fallback); a hinge that already holds a part (the frame came with one) keeps it, and that part
+        // stands in as the parent for the parts listed on it.
+        internal static GameObject AttachTemplatePart(GameObject car, CarTemplate tpl, int index, GameObject[] placed, bool precache = false)
+        {
+            var p = tpl.Parts[index];
+            if (string.IsNullOrEmpty(p.prefab)) return null;
+            Transform root = car.transform;
+            if (p.parent >= 0)
+            {
+                var host = placed[p.parent];
+                if (host == null) { Core.Log.Warn("[Patrols] " + tpl.Name + ": part [" + index + "] " + p.prefab + " skipped, its parent part [" + p.parent + "] is missing"); return null; }
+                root = host.transform;
+            }
+            var hinge = FindPath(root, p.hinge);
+            if (hinge == null && p.hinge.Length > 0)
+            {
+                int slash = p.hinge.LastIndexOf('/');
+                string last = slash >= 0 ? p.hinge.Substring(slash + 1) : p.hinge;
+                int hash = last.LastIndexOf('#');
+                hinge = FindChild(root, hash > 0 ? last.Substring(0, hash) : last);
+            }
+            if (hinge == null) { Core.Log.Warn("[Patrols] " + tpl.Name + ": hinge " + p.hinge + " not found on " + root.name + " for " + p.prefab); return null; }
+            // only a real hinge holds one part; colliders and parts carry any number of attachables (plates, spikes)
+            var prefab = Prefabs.Exact(p.prefab);
+            if (prefab == null) { Core.Log.Warn("[Patrols] " + tpl.Name + ": part prefab not found: " + p.prefab); return null; }
+            bool realHinge = hinge.name.StartsWith("hinge", StringComparison.OrdinalIgnoreCase) && !VehicleAttachments.IsFreeAttachment(prefab);
+            var existing = realHinge ? PartOn(hinge) : null;
+            if (existing != null) { PatrolsModule.Verbose("  " + hinge.name + " already holds " + existing.name + ", " + p.prefab + " not added"); return existing; }
+            if (p.hingePos != null && p.hingePos.Length == 3) hinge.localPosition = new Vector3(p.hingePos[0], p.hingePos[1], p.hingePos[2]);
+            if (p.hingeRot != null && p.hingeRot.Length == 3) hinge.localEulerAngles = new Vector3(p.hingeRot[0], p.hingeRot[1], p.hingeRot[2]);
+            var part = Attach(prefab, hinge, precache);
+            if (p.pos != null && p.pos.Length == 3) part.transform.localPosition = new Vector3(p.pos[0], p.pos[1], p.pos[2]);
+            if (p.rot != null && p.rot.Length == 3) part.transform.localEulerAngles = new Vector3(p.rot[0], p.rot[1], p.rot[2]);
+            return part;
+        }
+
+        // The hinge's own attach (vehPart_Attach FSM, state "Attach") does more than parent + reset for some parts: a door, hood or trunk
+        // hinge follows its SetParent with a SetPosition on the item (Self space, e.g. z = -0.513 on the Poloska's hinge_door_R), and may
+        // set a rotation. Those actions are replayed on the part, in order, so it sits exactly where the player's click would put it.
+        // Only actions aimed at the item (not at the hinge itself) count.
+        private static void HingeOffset(Transform hinge, Transform part)
+        {
+            try
+            {
+                PlayMakerFSM fsm = null;
+                foreach (var f in hinge.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "vehPart_Attach") { fsm = f; break; }
+                if (fsm == null || fsm.Fsm == null) return;
+                FsmState state = null;
+                foreach (var st in fsm.Fsm.States) if (st.Name == "Attach") { state = st; break; }
+                if (state == null) return;
+                var actions = state.Actions;
+                if (actions == null || actions.Length == 0) { state.LoadActions(); actions = state.Actions; }
+                if (actions == null) return;
+                bool moved = false;
+                foreach (var a in actions)
+                {
+                    var sp = a as HutongGames.PlayMaker.Actions.SetPosition;
+                    if (sp != null && OnItem(sp.gameObject))
+                    {
+                        bool local = sp.space == Space.Self;
+                        Vector3 v = sp.vector != null && !sp.vector.IsNone ? sp.vector.Value : (local ? part.localPosition : part.position);
+                        if (sp.x != null && !sp.x.IsNone) v.x = sp.x.Value;
+                        if (sp.y != null && !sp.y.IsNone) v.y = sp.y.Value;
+                        if (sp.z != null && !sp.z.IsNone) v.z = sp.z.Value;
+                        if (local) part.localPosition = v; else part.position = v;
+                        moved = true;
+                        continue;
+                    }
+                    var sr = a as HutongGames.PlayMaker.Actions.SetRotation;
+                    if (sr != null && OnItem(sr.gameObject))
+                    {
+                        bool local = sr.space == Space.Self;
+                        Vector3 e;
+                        if (sr.quaternion != null && !sr.quaternion.IsNone) e = sr.quaternion.Value.eulerAngles;
+                        else if (sr.vector != null && !sr.vector.IsNone) e = sr.vector.Value;
+                        else e = local ? part.localEulerAngles : part.eulerAngles;
+                        if (sr.xAngle != null && !sr.xAngle.IsNone) e.x = sr.xAngle.Value;
+                        if (sr.yAngle != null && !sr.yAngle.IsNone) e.y = sr.yAngle.Value;
+                        if (sr.zAngle != null && !sr.zAngle.IsNone) e.z = sr.zAngle.Value;
+                        if (local) part.localEulerAngles = e; else part.eulerAngles = e;
+                        moved = true;
+                    }
+                }
+                if (moved) PatrolsModule.Verbose("  " + part.name + " placed like the game's attach on " + hinge.name + ": local " + part.localPosition.ToString("F3") + " / " + part.localEulerAngles.ToString("F1"));
+            }
+            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Hinge offset on " + hinge.name + ": " + e.Message); }
+        }
+
+        // the action targets the attached item (a GameObject variable such as {Item}), not the hinge that owns the FSM
+        private static bool OnItem(FsmOwnerDefault go)
+        {
+            return go != null && go.OwnerOption != OwnerDefaultOption.UseOwner;
+        }
+
+        private static bool HasPart(Transform hinge) { return PartOn(hinge) != null; }
+
+        private static GameObject PartOn(Transform hinge)
+        {
+            for (int i = 0; i < hinge.childCount; i++)
+            {
+                var c = hinge.GetChild(i);
+                bool tagged;
+                try { tagged = c.CompareTag("vehPart"); } catch (Exception) { tagged = false; }
+                if (tagged) return c.gameObject;
+            }
+            return null;
+        }
+
+        internal static Transform FindPath(Transform root, string path)
+        {
+            if (root == null) return null;
+            if (string.IsNullOrEmpty(path)) return root;
+            var t = root;
+            foreach (var raw in path.Split('/'))
+            {
+                string seg = raw; int want = 0;   // "name#k" = the k-th (0-based) of several same-named siblings (Apocatemplater writes it)
+                int hash = raw.LastIndexOf('#');
+                if (hash > 0 && int.TryParse(raw.Substring(hash + 1), out want)) seg = raw.Substring(0, hash); else want = 0;
+                Transform next = null; int seen = 0;
+                for (int i = 0; i < t.childCount; i++)
+                    if (t.GetChild(i).name == seg) { if (seen == want) { next = t.GetChild(i); break; } seen++; }
+                if (next == null) return null;
+                t = next;
+            }
+            return t;
+        }
+
+        // The tank: <car>/Fuel [LiquidAmount] Liquid / LiquidCapacity, filled to pct % of the capacity.
+        private static void Fuel(GameObject car, float pct)
+        {
+            var fuel = FindChild(car.transform, "Fuel");
+            if (fuel == null) { Core.Log.Warn("[Patrols] " + "No Fuel child"); return; }
+            if (!SetLiquid(fuel.gameObject, pct, "Fuel")) Core.Log.Warn("[Patrols] " + "Fuel/LiquidAmount FSM not found");
+        }
+
+        // Engine oil and radiator water live on the part's "cap" child ([LiquidAmount] Liquid / LiquidCapacity, 2 l oil, 3 l water);
+        // filled to a rolled % once the parts sit on their hinges.
+        private static void FillParts(GameObject car)
+        {
+            foreach (var hn in new[] { "hinge_engine", "hinge_radiator" })
+            {
+                var hinge = FindChild(car.transform, hn);
+                if (hinge == null) continue;
+                for (int i = 0; i < hinge.childCount; i++)
+                {
+                    var part = hinge.GetChild(i);
+                    var cap = FindChild(part, "cap");
+                    if (cap == null) continue;
+                    SetLiquid(cap.gameObject, PatrolsModule.RollPartFill(), part.name);
+                }
+            }
+        }
+
+        private static bool SetLiquid(GameObject holder, float pct, string label)
+        {
+            foreach (var f in holder.GetComponents<PlayMakerFSM>())
+            {
+                if (f.FsmName != "LiquidAmount") continue;
+                var liquid = f.FsmVariables.GetFsmFloat("Liquid");
+                var cap = f.FsmVariables.GetFsmFloat("LiquidCapacity");
+                if (liquid == null || cap == null) { Core.Log.Warn("[Patrols] " + label + "/LiquidAmount has no Liquid/LiquidCapacity"); return true; }
+                float capacity = cap.Value > 0f ? cap.Value : 20f;
+                liquid.Value = capacity * Mathf.Clamp01(pct / 100f);
+                PatrolsModule.Verbose(label + ": " + liquid.Value.ToString("0.0") + " / " + capacity + " (" + pct.ToString("0") + " %)");
+                return true;
+            }
+            return false;
+        }
+
+        // The handbrake lever FSM: HandbrakeOn -> (click) over -> Sound -> HandbrakeOff (SetProperty input.Handbrake + lever rotation).
+        // Entering "Sound" plays the click and flows into HandbrakeOff by itself; "Sound 2" goes back to HandbrakeOn.
+        internal static void Handbrake(GameObject car, bool on) { Handbrake(car, on, FindFsm(car, "handbrake", "Handbrake")); }
+        // f = the car's handbrake/Handbrake FSM, cached by the caller (null = none)
+        internal static void Handbrake(GameObject car, bool on, PlayMakerFSM f)
+        {
+            if (f == null) { Core.Log.Warn("[Patrols] " + "No handbrake/Handbrake FSM; setting NWH input.Handbrake only"); Nwh.SetHandbrake(car, on ? 1f : 0f); return; }
+            string cur = f.Fsm.Initialized ? f.ActiveStateName : "";
+            bool isOn = cur == "HandbrakeOn" || cur == "over" || cur == "Sound 2" || cur == "";
+            if (on == isOn) { if (Core.Log.Verbose) PatrolsModule.Verbose("Handbrake already " + (on ? "on" : "off") + " (" + cur + ")"); return; }
+            f.Fsm.SetState(on ? "Sound 2" : "Sound");
+            if (Core.Log.Verbose) PatrolsModule.Verbose("Handbrake " + (on ? "on" : "released") + " (was " + cur + ")");
+        }
+
+        // A ragdoll on the driver seat: the *_Dead prefab's root Rigidbody is made kinematic and parented to the car's sitPos
+        // (where the player sits), so it rides along exactly; the bones hang off it through their CharacterJoints and keep
+        // flopping. Collisions between the ragdoll and the car are ignored so it never gets thrown out by the car's colliders.
+        internal static GameObject SeatDriver(GameObject car, string prefabName, bool randomize = true)
+        {
+            var prefab = Prefabs.FindAny(prefabName);
+            if (prefab == null) { Core.Log.Warn("[Patrols] " + "Driver prefab not found: " + prefabName); return null; }
+            var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
+            if (sit == null) { Core.Log.Warn("[Patrols] " + "No sitPos on " + car.name); return null; }
+
+            var off = new Vector3(PatrolsModule.DriverOffsetX.Value, PatrolsModule.DriverOffsetY.Value, PatrolsModule.DriverOffsetZ.Value);
+            var pos = sit.position + car.transform.right * off.x + car.transform.up * off.y + car.transform.forward * off.z;
+            var rot = Quaternion.LookRotation(car.transform.forward, car.transform.up);
+            var drv = UnityEngine.Object.Instantiate(prefab, pos, rot);
+            drv.SetActive(true);
+            drv.name = prefab.name + "(Driver)";
+            CrewAppearance.Dress(drv, prefabName, randomize);
+
+            var drvCols = drv.GetComponentsInChildren<Collider>(true);
+
+            var root = drv.GetComponent<Rigidbody>();
+            if (root == null) root = drv.AddComponent<Rigidbody>();
+            root.isKinematic = true;
+            root.interpolation = RigidbodyInterpolation.None;
+            Rider.NoContacts(drv);   // no contacts while seated, only bullet hits (was: every collider pair vs the car ignored)
+            drv.transform.SetParent(sit, true);
+
+            int bones = 0;
+            foreach (var rb in drv.GetComponentsInChildren<Rigidbody>(true))
+                if (rb != root) { bones++; rb.velocity = Vector3.zero; rb.angularVelocity = Vector3.zero; }
+            PatrolsModule.Verbose("Driver " + drv.name + " on " + sit.name + " at " + pos + " (" + bones + " ragdoll bones, " + drvCols.Length + " colliders)");
+            return drv;
+        }
+
+        // A live enemy at the wheel with its AI off: instantiated at sitPos, the mover/AI FSMs disabled before they Start,
+        // root Rigidbody kinematic and parented to the seat, collisions with the car ignored. Health/Damage/Bodypart stay
+        // vanilla so it can be shot; the Crew component drives the car and reacts to its death.
+        internal static GameObject SeatLiveDriver(GameObject car, string prefabName, float health = -1f, CrewPhase phase = CrewPhase.Waiting, float seated = 0f, bool hold = false, bool randomize = true)
+        {
+            var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
+            if (sit == null) { Core.Log.Warn("[Patrols] " + "No sitPos on " + car.name); return null; }
+            var drv = SeatOccupant(car, prefabName, sit, "Driver", false, health, randomize);
+            if (drv == null) return null;
+            SimpleBanditBridge.Mark(drv);
+            if (PatrolsModule.RangedCombat.Value && PassengerGuard.IsRangedHuman(drv)) PassengerGuard.AttachDriver(drv, car, sit);
+            var crew = phase == CrewPhase.Waiting && seated <= 0f ? Crew.Attach(car, drv) : Crew.Restore(car, drv, phase, seated);
+            crew.Hold = hold;
+            crew.MuteAi();
+            return drv;
+        }
+
+        // The passenger sits where the driver would if the driver seat hinge were the passenger seat hinge: sitPos shifted
+        // by the offset between the two seat hinges (the game has no passenger sit point of its own).
+        internal static GameObject SeatPassenger(GameObject car, string prefabName, float health = -1f, bool randomize = true)
+        {
+            var sit = FindChild(car.transform, "sitPos");
+            var hd = FindChild(car.transform, "hinge_seat_driver");
+            var hp = FindChild(car.transform, "hinge_seat_passenger");
+            if (sit == null || hd == null || hp == null) { Core.Log.Warn("[Patrols] " + "No sitPos / seat hinges for a passenger on " + car.name); return null; }
+            var anchor = new GameObject("Apocapatrol.PassengerPos").transform;
+            anchor.SetParent(car.transform, false);
+            anchor.position = sit.position + (hp.position - hd.position);
+            anchor.rotation = sit.rotation;
+            // the Rustliner bus (2.3.6): no passenger seat part - he sits on the small broken chair behind the driver's side door, turned
+            // 90 degrees left (facing across the aisle): the anchor goes over the chair's seat collider, the hips end up just above it
+            var chair = FindChild(car.transform, "chair_2_broken");
+            if (chair != null)
+            {
+                var col = chair.GetComponentInChildren<Collider>(true);
+                var top = col != null ? new Vector3(col.bounds.center.x, col.bounds.max.y, col.bounds.center.z) : chair.position;
+                anchor.position = top + car.transform.up * (0.08f - PatrolsModule.DriverOffsetY.Value);   // Pose puts the hips at anchor + DriverOffset
+                anchor.rotation = car.transform.rotation * Quaternion.Euler(0f, -90f, 0f);
+                PatrolsModule.Verbose("Passenger on the bus chair at local " + car.transform.InverseTransformPoint(anchor.position).ToString("F2"));
+            }
+            var pax = SeatOccupant(car, prefabName, anchor, "Passenger", true, health, randomize);
+            if (pax == null) { UnityEngine.Object.Destroy(anchor.gameObject); return null; }
+            if(chair!=null||string.Equals(TemplateExporter.PrefabName(car.name),"Rustliner",System.StringComparison.OrdinalIgnoreCase))
+                pax.GetComponent<Pose>()?.ConfigureBusPassenger();
+            PassengerGuard.Attach(pax, car, anchor);
+            return pax;
+        }
+
+        // A live enemy in a seat with its AI off: instantiated at the anchor, the mover/AI FSMs disabled by the Crew before
+        // they Start, root Rigidbody kinematic and parented to the anchor, collisions with the car ignored, seated pose.
+        // Health/Damage/Bodypart stay vanilla so it can be shot.
+        private static GameObject SeatOccupant(GameObject car, string prefabName, Transform anchor, string role, bool passenger, float health = -1f, bool randomize = true)
+        {
+            var prefab = Prefabs.FindAny(prefabName);
+            if (prefab == null) { Core.Log.Warn("[Patrols] " + role + " prefab not found: " + prefabName); return null; }
+
+            // along the anchor's axes (= the car's for every seat but the bus chair, which faces sideways)
+            var off = new Vector3(PatrolsModule.DriverOffsetX.Value, PatrolsModule.DriverOffsetY.Value, PatrolsModule.DriverOffsetZ.Value);
+            var pos = anchor.position + anchor.right * off.x + anchor.up * off.y + anchor.forward * off.z;
+            var rot = Quaternion.LookRotation(anchor.forward, anchor.up);
+            var go = UnityEngine.Object.Instantiate(prefab, pos, rot);
+            SimpleBanditBridge.Mark(go);
+            go.SetActive(true);
+            if (passenger) PassengerGuard.Prepare(go, PatrolsModule.RangedCombat.Value);
+            else if (PatrolsModule.RangedCombat.Value) PassengerGuard.Prepare(go, true);   // ranged-only rewiring + mute, before the FSMs' Start
+            else Crew.MuteAi(go);
+            go.name = prefab.name + "(" + role + ")";
+            CrewAppearance.Dress(go, prefabName, randomize);
+
+            var root = go.GetComponent<Rigidbody>() ?? go.AddComponent<Rigidbody>();
+            root.isKinematic = true;
+            root.interpolation = RigidbodyInterpolation.None;
+            Rider.NoContacts(go);   // no contacts while seated, only bullet hits (was: every collider pair vs the car ignored)
+            go.transform.SetParent(anchor, true);
+            if (PatrolsModule.PoseEnabled.Value)
+            {
+                var pose = Pose.Apply(go, anchor, prefab.name);
+                if (!passenger) pose.SetShooting(false);   // a driver sits with its hands on the wheel; PassengerGuard raises the gun only while it fires
+            }
+            if (health >= 0f) { SetHealth(go, health); go.AddComponent<LateHealth>().Value = health; }
+            PatrolsModule.Verbose(role + " " + go.name + " on " + anchor.name + " at " + pos);
+            return go;
+        }
+
+        // Every collider of an occupant vs every collider of the car. Unity drops an ignore pair when either collider is
+        // disabled or its object deactivated (weapon props toggled by WeaponType/Attack, the FireDamage hitbox...), and an
+        // occupant's root is kinematic, so a single live pair shoves the car around unopposed. Cheap; re-applied periodically.
+        private static readonly Dictionary<GameObject, long> _ignoreSignature = new Dictionary<GameObject, long>();
+
+        // Cheap signature of the occupant's + car's enabled colliders; the pairs are re-applied only when it changes
+        // (a toggled prop, a part fallen off), not every second - each IgnoreCollision call makes PhysX rebuild pair filters.
+        internal static int IgnoreCollisionsIfChanged(GameObject who, GameObject car)
+        {
+            if (who == null || car == null) return 0;
+            return IgnoreCollisionsIfChanged(who, car, car.GetComponentsInChildren<Collider>(true));
+        }
+
+        // carCols = the car's colliders, fetched by the caller once for every occupant it checks
+        // Perf: the occupant's colliders go to a reused buffer (was a GetComponentsInChildren array per check, 1-2 Hz per occupant)
+        private static readonly List<Collider> _whoCols = new List<Collider>();
+        internal static int IgnoreCollisionsIfChanged(GameObject who, GameObject car, IList<Collider> carCols)
+        {
+            if (who == null || car == null) return 0;
+            _whoCols.Clear(); who.GetComponentsInChildren(true, _whoCols);
+            long sig = 17;
+            for (int i = 0; i < _whoCols.Count; i++)
+            { var a = _whoCols[i]; if (a != null && a.enabled && a.gameObject.activeInHierarchy) sig = sig * 31 + a.GetInstanceID(); }
+            for (int i = 0; i < carCols.Count; i++)
+            { var b = carCols[i]; if (b != null && b.enabled && b.gameObject.activeInHierarchy) sig = sig * 31 + b.GetInstanceID(); }
+            long old;
+            if (_ignoreSignature.TryGetValue(who, out old) && old == sig) { _whoCols.Clear(); return 0; }
+            _ignoreSignature[who] = sig;
+            int n = IgnoreCore(who, _whoCols, carCols); _whoCols.Clear();
+            if (Core.Log.Verbose) PatrolsModule.Verbose("Collision ignores re-applied for " + who.name + ": " + n + " pairs");
+            return n;
+        }
+
+        internal static int IgnoreCollisions(GameObject who, GameObject car)
+        {
+            if (who == null || car == null) return 0;
+            return IgnoreCollisions(who, car, car.GetComponentsInChildren<Collider>(true));
+        }
+
+        internal static int IgnoreCollisions(GameObject who, GameObject car, IList<Collider> carCols)
+        {
+            if (who == null || car == null) return 0;
+            return IgnoreCore(who, who.GetComponentsInChildren<Collider>(true), carCols);
+        }
+
+        private static int IgnoreCore(GameObject who, IList<Collider> whoCols, IList<Collider> carCols)
+        {
+            int n = 0;
+            for (int i = 0; i < whoCols.Count; i++)
+            {
+                var a = whoCols[i];
+                if (a == null || !a.enabled || !a.gameObject.activeInHierarchy) continue;
+                for (int k = 0; k < carCols.Count; k++)
+                { var b = carCols[k]; if (b != null && b.enabled && b.gameObject.activeInHierarchy && !b.transform.IsChildOf(who.transform)) { Physics.IgnoreCollision(a, b, true); n++; } }
+            }
+            return n;
+        }
+
+        // Before the passenger climbs over, the dead driver's carcass (the <X>_Dead ragdoll its Health FSM dropped on the seat)
+        // is thrown out of the car by physics: its colliders are told to ignore the car and the passenger first (so it cannot
+        // shove the car), joints to the car are cut, and every bone gets a sideways+up velocity. The returned CorpseEject is
+        // Done once the carcass is EjectDistance from the seat; if it has not got there after 3 s it is put down there once.
+        // Returns null when there is nothing to eject.
+        internal static CorpseEject EjectCorpses(GameObject car, GameObject pax)
+        {
+            var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
+            if (sit == null) return null;
+            var roots = new List<Transform>();
+            foreach (var c in Physics.OverlapSphere(sit.position, 3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
+            {
+                if (c == null) continue;
+                var root = c.transform.root;
+                if (root == car.transform || (pax != null && root == pax.transform.root)) continue;
+                if (root.name.IndexOf("_Dead", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                if (!roots.Contains(root)) roots.Add(root);
+            }
+            if (roots.Count == 0) { PatrolsModule.Verbose("Eject: no carcass near the driver seat"); return null; }
+            var carCols = car.GetComponentsInChildren<Collider>(true);
+            var left = -car.transform.right;
+            foreach (var root in roots)
+            {
+                int joints = 0, jointsToCar = 0;
+                foreach (var j in root.GetComponentsInChildren<Joint>(true))
+                {
+                    joints++;
+                    if (j.connectedBody != null && j.connectedBody.transform.IsChildOf(car.transform)) { jointsToCar++; j.connectedBody = null; }
+                }
+                foreach (var a in root.GetComponentsInChildren<Collider>(true))
+                {
+                    if (a == null) continue;
+                    foreach (var b in carCols) if (b != null) Physics.IgnoreCollision(a, b, true);   // the carcass is solid; the passenger is all triggers (no pairs needed)
+                }
+                var velocity = left * PatrolsModule.EjectSpeed + Vector3.up * (PatrolsModule.EjectSpeed * 0.5f) - car.transform.forward * 0.5f;
+                Launch(root, velocity);
+                PatrolsModule.Verbose("Eject: " + root.name + " thrown out of " + car.name + " at " + velocity.magnitude.ToString("0.0") + " m/s ("
+                    + joints + " joints, " + jointsToCar + " were attached to the car)");
+            }
+            var eject = car.AddComponent<CorpseEject>();
+            eject.Init(sit, roots, left);
+            return eject;
+        }
+
+        // Gives every bone of a ragdoll the same velocity (a shove), waking it up.
+        internal static void Launch(Transform root, Vector3 velocity)
+        {
+            foreach (var rb in root.GetComponentsInChildren<Rigidbody>(true))
+            {
+                if (rb.isKinematic) continue;
+                rb.WakeUp();
+                rb.velocity = velocity;
+                rb.angularVelocity = Vector3.zero;
+            }
+        }
+
+        // Moves a ragdoll as a whole (every rigidbody by the same offset) and gives all of it one velocity (zero = put down asleep).
+        internal static void Throw(Transform root, Vector3 to, Vector3 velocity)
+        {
+            var rbs = root.GetComponentsInChildren<Rigidbody>(true);
+            Vector3 from = root.position;
+            if (rbs.Length > 0)
+            {
+                from = Vector3.zero;
+                foreach (var rb in rbs) from += rb.position;
+                from /= rbs.Length;
+            }
+            var offset = to - from;
+            root.position += offset;
+            foreach (var rb in rbs)
+            {
+                if (rb.transform == root) continue;                  // already moved with the transform
+                rb.position = rb.transform.position;                 // sync the physics position to the moved transform
+            }
+            foreach (var rb in rbs)
+            {
+                if (rb.isKinematic) continue;
+                rb.velocity = velocity; rb.angularVelocity = Vector3.zero;
+                if (velocity == Vector3.zero) rb.Sleep();
+            }
+        }
+
+        // The surviving passenger climbs over to the driver seat: same placement as SeatOccupant, AI fully muted, pose re-anchored.
+        internal static GameObject MoveToDriverSeat(GameObject car, GameObject pax)
+        {
+            var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
+            if (sit == null || pax == null) return null;
+            var guard = pax.GetComponent<PassengerGuard>();
+            var oldAnchor = pax.transform.parent;
+            if (guard != null && PatrolsModule.RangedCombat.Value) Crew.MuteAi(pax, PassengerGuard.CombatFsms);
+            else { if (guard != null) UnityEngine.Object.Destroy(guard); guard = null; Crew.MuteAi(pax); }
+            var off = new Vector3(PatrolsModule.DriverOffsetX.Value, PatrolsModule.DriverOffsetY.Value, PatrolsModule.DriverOffsetZ.Value);
+            pax.transform.SetParent(sit, true);
+            pax.transform.position = sit.position + car.transform.right * off.x + car.transform.up * off.y + car.transform.forward * off.z;
+            pax.transform.rotation = Quaternion.LookRotation(car.transform.forward, car.transform.up);
+            var pose = pax.GetComponent<Pose>();
+            if (pose != null) pose.Reseat(sit);
+            pax.name = pax.name.Replace("(Passenger)", "(Driver)");
+            if (guard != null) guard.SetDriverMode(sit);
+            Rider.KeepNoContacts(pax);   // already contact-free from its seat; covers props it picked up since
+            if (Core.Log.Verbose) PatrolsModule.Verbose("Takeover: " + pax.name + " on " + sit.name);
+            if (oldAnchor != null && oldAnchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(oldAnchor.gameObject);
+            return pax;
+        }
+
+        // The passenger gets out: a fresh instance of its prefab (fully vanilla AI, registered like a spawned enemy so it is
+        // saved by the game) appears beside the car with the passenger's remaining health; the seated copy is destroyed.
+        // A fresh instance rather than the seated one because the seat setup rewires its FSM actions (ranged-only, melee off).
+        internal static void BailOut(GameObject car, GameObject pax, PatrolMarker marker)
+        {
+            marker.PassengerLeft();
+            BailOut(car, pax, marker.PassengerPrefab, 0f);
+        }
+
+        // Any occupant gets out on the given side (+1 right, -1 left, 0 = the side its seat is on relative to sitPos).
+        internal static GameObject BailOut(GameObject car, GameObject pax, string prefabName, float side,bool record=true)
+        {
+            float health = GetHealth(pax);
+            var prefab = Prefabs.FindAny(prefabName);
+            var anchor = pax.transform.parent;
+            var sit = FindChild(car.transform, "sitPos");
+            if (side == 0f)
+            {
+                side = 1f;
+                if (anchor != null && sit != null) side = Vector3.Dot(anchor.position - sit.position, car.transform.right) >= 0f ? 1f : -1f;
+            }
+            var from = (anchor != null ? anchor.position : car.transform.position) + car.transform.right * side * VehicleRules.ExitDistance(car.name) + Vector3.up * 1.5f;
+            var facing = Vector3.ProjectOnPlane(car.transform.right * side, Vector3.up);
+            // the Rustliner bus (2.3.8): everybody leaves through the door in the back (hinge_door_parent/hinge_door_L, the rear door), the
+            // truck's exit distance behind it - a sideways exit lands them inside the bus
+            var rearDoor = TemplateExporter.PrefabName(car.name).Equals("Rustliner", StringComparison.OrdinalIgnoreCase) ? FindChild(car.transform, "hinge_door_parent") : null;
+            var frontDoor=CrewReturn.FrontDoor(car);
+            if(frontDoor!=null){var crew=car.GetComponent<Crew>();from=CrewReturn.DoorOutside(car,frontDoor)+Vector3.up*1.5f+(crew!=null?crew.FrontExitOffset():Vector3.zero);facing=car.transform.right;}
+            else if (rearDoor != null)
+            {
+                from = rearDoor.position - car.transform.forward * VehicleRules.ExitDistance(car.name) + Vector3.up * 1.5f;
+                facing = Vector3.ProjectOnPlane(-car.transform.forward, Vector3.up);
+            }
+            var pos = from + Vector3.down * 1.2f;
+            var hits = Physics.RaycastAll(from, Vector3.down, 6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            float best = float.MaxValue;
+            foreach (var h in hits)
+                if (h.collider != null && !h.collider.transform.IsChildOf(car.transform) && !h.collider.transform.IsChildOf(pax.transform) && h.distance < best)
+                { best = h.distance; pos = h.point; }
+            float groundY = pos.y;
+            var rot = Quaternion.LookRotation(facing.sqrMagnitude > 1e-4f ? facing.normalized : car.transform.forward, Vector3.up);
+
+            if (prefab == null)
+            {
+                Core.Log.Warn("[Patrols] " + "Bail-out: prefab not found: " + prefabName + "; " + pax.name + " just disappears");
+                UnityEngine.Object.Destroy(pax);
+                if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
+                Core.Services.RaiseCrewBailedOut(car, pax, null);   // WW: ex a Harmony postfix other mods put on this method
+                return null;
+            }
+            var mob = UnityEngine.Object.Instantiate(prefab, pos + Vector3.up * 0.5f, rot);
+            SimpleBanditBridge.Fight(mob);
+            TrafficFactions.Dismount(mob,car);
+            mob.SetActive(true);
+            // stand it on the ground: the prefab pivot may sit mid-body, so lift it by its collider's lowest point
+            var rootCol = mob.GetComponent<Collider>();
+            if (rootCol != null)
+            {
+                float bottom = rootCol.bounds.min.y;
+                mob.transform.position += Vector3.up * (groundY + 0.15f - bottom);
+            }
+            pos = mob.transform.position;
+            Register.Name(mob, prefab.name); CrewAppearance.Transfer(pax, mob); Register.Add(mob, false);
+            if (health > 0f) { SetHealth(mob, health); mob.AddComponent<LateHealth>().Value = health; }
+            UnityEngine.Object.Destroy(pax);
+            if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
+            PatrolsModule.Verbose("Bail-out: " + mob.name + " got out of " + car.name + " with " + (health > 0f ? health.ToString("0") : "full") + " health at " + pos);
+            Core.Services.RaiseCrewBailedOut(car, pax, mob);   // WW: the NPC module subscribes (ex its Harmony postfix on Apocapatrol.Patrol.BailOut)
+            // awareness handover + return-to-car membership (pax is destroyed at the end of the frame; its name still tells the seat)
+            if(record)CrewReturn.Dismounted(car, mob, pax.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0 ? CrewReturn.RoleDriver : CrewReturn.RolePassenger, -1,
+                CrewAppearance.Identity(mob, prefabName), null, null, false);
+            return mob;
+        }
+
+        internal static float GetHealth(GameObject who)
+        {
+            if (who == null) return -1f;
+            var f = who.GetComponents<PlayMakerFSM>().FirstOrDefault(x => x.FsmName == "Health");
+            var h = f != null ? f.FsmVariables.GetFsmFloat("Health") : null;
+            return h != null ? h.Value : -1f;
+        }
+
+        internal static void SetHealth(GameObject who, float value)
+        {
+            var f = who.GetComponents<PlayMakerFSM>().FirstOrDefault(x => x.FsmName == "Health");
+            var h = f != null ? f.FsmVariables.GetFsmFloat("Health") : null;
+            if (h != null) h.Value = value;
+        }
+
+        // Parts with a Condition FSM (engine, radiator, wheels) get a rolled condition; the FSM's tiers react to the variable.
+        private static void SetPartConditions(GameObject car, PlayMakerFSM[] snapshot = null)
+        {
+            int n = 0;
+            foreach (var f in snapshot ?? car.GetComponentsInChildren<PlayMakerFSM>(true))
+            {
+                if (f.FsmName != "Condition" || !f.Fsm.Initialized) continue;
+                var v = f.FsmVariables.GetFsmFloat("Condition");
+                if (v == null) continue;
+                float c = PatrolsModule.RollPartHealth();
+                v.Value = c;
+                var repair = f.gameObject.GetComponents<PlayMakerFSM>();
+                foreach (var r in repair)
+                    if (r.FsmName == "Repair" && r.Fsm.Initialized) { var rv = r.FsmVariables.GetFsmFloat("Condition"); if (rv != null) rv.Value = c; }
+                if (Core.Log.Verbose) PatrolsModule.Verbose("  " + f.gameObject.name + " condition " + c.ToString("0"));
+                n++;
+            }
+            PatrolsModule.Verbose("Part conditions set on " + n + " part(s) (" + PatrolsModule.MinPartHealth.Value + ".." + PatrolsModule.MaxPartHealth.Value + " %)");
+        }
+
+    // Follows a thrown carcass: Done once it is EjectDistance from the driver seat (the passenger only climbs over then);
+    // if it has not got there after 3 s (caught on something) it is put down at that distance once. Removes itself when done.
+    internal class CorpseEject : MonoBehaviour
+    {
+        private Transform _sit;
+        private List<Transform> _roots;
+        private Vector3 _left;
+        private float _t, _nextCheck;
+        internal bool Done { get; private set; }
+
+        internal void Init(Transform sit, List<Transform> roots, Vector3 left) { _sit = sit; _roots = roots; _left = left; }
+
+        private float Distance(Transform root)
+        {
+            var rb = root.GetComponentInChildren<Rigidbody>();
+            var p = rb != null ? rb.position : root.position;
+            var d = p - _sit.position; d.y = 0f;
+            return d.magnitude;
+        }
+
+        private void FixedUpdate()
+        { if (!PatrolsModule.Running) return;
+            if (Done) { Destroy(this); return; }
+            if (_sit == null || _roots == null) { Done = true; return; }
+            _t += Time.fixedDeltaTime;
+            if (_t < _nextCheck) return;
+            _nextCheck = _t + 0.1f;
+            bool clear = true;
+            foreach (var root in _roots)
+                if (root != null && Distance(root) < PatrolsModule.EjectDistance) clear = false;
+            if (clear) { Done = true; PatrolsModule.Verbose("Eject: carcass clear of the seat after " + _t.ToString("0.0") + " s"); return; }
+            if (_t < 3f) return;
+            foreach (var root in _roots)
+            {
+                if (root == null || Distance(root) >= PatrolsModule.EjectDistance) continue;
+                var target = _sit.position + _left * PatrolsModule.EjectDistance + Vector3.up * 2f;
+                var ground = target + Vector3.down * 1.5f;
+                foreach (var h in Physics.RaycastAll(target, Vector3.down, 8f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                    if (h.collider != null && !h.collider.transform.IsChildOf(transform) && !h.collider.transform.IsChildOf(root) && h.point.y > ground.y) ground = h.point;
+                Patrol.Throw(root, ground + Vector3.up * 0.4f, Vector3.zero);
+                PatrolsModule.Verbose("Eject: " + root.name + " did not get clear in 3 s, put down " + PatrolsModule.EjectDistance + " m left of the seat");
+            }
+            Done = true;
+        }
+    }
+
+    // Re-applies a health value for a few frames after Instantiate, in case the Health FSM's start state resets it.
+    internal class LateHealth : MonoBehaviour
+    {
+        internal float Value;
+        private int _frames;
+        private void Update()
+        { if (!PatrolsModule.Running) return;
+            Patrol.SetHealth(gameObject, Value);
+            if (++_frames >= 3) Destroy(this);
+        }
+    }
+
+    // =============================================================== helpers
+
+        private static bool PlayerPose(out Vector3 p, out Vector3 fwd)
+        {
+            var pl = PlayerRef.Player;
+            var cam = Core.GameRefs.MainCamera;
+            if (pl == null && cam == null) { p = Vector3.zero; fwd = Vector3.forward; return false; }
+            p = pl != null ? pl.transform.position : cam.transform.position;
+            fwd = cam != null ? cam.transform.forward : pl.transform.forward;
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward;
+            fwd.Normalize();
+            return true;
+        }
+
+        internal static Transform FindChild(Transform root, string name)
+        {
+            for (int i = 0; i < root.childCount; i++) { var c = root.GetChild(i); if (c.name == name) return c; }
+            for (int i = 0; i < root.childCount; i++) { var r = FindChild(root.GetChild(i), name); if (r != null) return r; }
+            return null;
+        }
+
+        internal static PlayMakerFSM FindFsm(GameObject car, string objectName, string fsmName, PlayMakerFSM[] snapshot = null)
+        {
+            foreach (var f in snapshot ?? car.GetComponentsInChildren<PlayMakerFSM>(true))
+                if (f.gameObject.name == objectName && f.FsmName == fsmName) return f;
+            return null;
+        }
+
+        private static bool Alive(PlayMakerFSM f) { return f != null && f.gameObject != null; }
+    }
+
+    // =============================================================== prefab lookup
+    // Asset prefabs = GameObjects without a scene. Matched by prefab name first, then by the in-game name
+    // (ItemName FSM: variable ItemName, or the text of its UiTextSetText actions), exact then contains.
+    internal static class Prefabs
+    {
+        private class Entry { public GameObject Go; public string Name; public string Display; public string Kind; }
+        private static List<Entry> _all;
+        private static List<GameObject> _roots;                                   // every asset root with a PlayMaker FSM (crew, carcasses, loot...)
+        private static Dictionary<string, GameObject> _byName;
+        private static Dictionary<string, GameObject> _exact;
+        private static Dictionary<string, GameObject> _folded;
+        private static ES3ReferenceMgrBase[] _managers;
+        private static int[] _managerCounts;
+        internal static int Generation;
+
+        internal static void Invalidate() { _all = null; _roots = null; _byName = null; _exact = null; _folded = null; _managers = null; _managerCounts = null; Generation++; }
+        internal static void Install(Core.IModule owner)
+        {
+            if (!Core.Patches.Patch(owner, Core.Patches.Method(typeof(ES3ReferenceMgrBase), "AddPrefab", new[] { typeof(ES3Prefab) }),
+                postfix: Core.Patches.Method(typeof(Prefabs), "AfterAddPrefab"))) throw new InvalidOperationException("Prefab registration hook failed");
+            if (!Core.Patches.Patch(owner, Core.Patches.Method(typeof(ES3ReferenceMgrBase), "Awake"),
+                postfix: Core.Patches.Method(typeof(Prefabs), "AfterManagerAwake"))) throw new InvalidOperationException("Prefab manager hook failed");
+        }
+        private static void AfterAddPrefab(bool __result) { if (PatrolsModule.Running && __result) Invalidate(); }
+        private static void AfterManagerAwake() { if (PatrolsModule.Running) Invalidate(); }
+
+        // Warm after scene loading, never in Plugin.Awake. Counts also catch mods that append directly to ES3's public list.
+        internal static void Refresh()
+        {
+            if (!PatrolsModule.Running) return;
+            ModVehicles.Refresh();
+            if (_managers != null)
+                for (int i = 0; i < _managers.Length; i++)
+                    if ((_managers[i] != null && _managers[i].prefabs != null ? _managers[i].prefabs.Count : -1) != _managerCounts[i])
+                    { Invalidate(); break; }
+            if (_exact == null) ScanExact();
+            if (_all == null) Scan();
+        }
+
+        private static void ScanExact()
+        {
+            _exact = new Dictionary<string, GameObject>(StringComparer.Ordinal);
+            foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
+                if (go != null && !go.scene.IsValid() && go.transform.parent == null && !_exact.ContainsKey(go.name)) _exact[go.name] = go;
+            _managers = Resources.FindObjectsOfTypeAll<ES3ReferenceMgrBase>();
+            _managerCounts = new int[_managers.Length];
+            for (int i = 0; i < _managers.Length; i++)
+            {
+                var manager = _managers[i];
+                _managerCounts[i] = manager != null && manager.prefabs != null ? manager.prefabs.Count : -1;
+                if (_managerCounts[i] < 0) continue;
+                foreach (var prefab in manager.prefabs) if (prefab != null) _exact[prefab.name] = prefab.gameObject;
+            }
+            // Keep the old stable preference for ES3-backed roots when asset names differ only by case.
+            _folded = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in _exact)
+            {
+                GameObject previous;
+                if (!_folded.TryGetValue(pair.Key, out previous) || previous == null
+                    || (pair.Value.GetComponent<ES3Prefab>() != null && previous.GetComponent<ES3Prefab>() == null)) _folded[pair.Key] = pair.Value;
+            }
+            if (Core.Log.Verbose) PatrolsModule.Verbose("Prefab name index: " + _exact.Count + " names (generation " + Generation + ")");
+        }
+
+        // Exported names must resolve exactly: a missing mod must never spawn a similarly named vanilla frame.
+        // Runtime factories are shared with the exporter, availability checks and the builder.
+        internal static GameObject Exact(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query)) return null;
+            string name = query.Trim();
+            GameObject hit;
+            if (_exact != null && _exact.TryGetValue(name, out hit) && hit != null) return hit;
+            if (MotorcycleIntegration.IsBody(name)) return MotorcycleIntegration.Template();
+            var mod = ModVehicles.Template(name);
+            if (mod != null) return mod;
+            if (_exact == null) ScanExact();
+            if (_exact.TryGetValue(name, out hit)) return hit;
+            return _folded.TryGetValue(name, out hit) ? hit : null;
+        }
+
+        internal static GameObject Find(string query, string kind)
+        {
+            if (string.IsNullOrEmpty(query)) return null;
+            if (MotorcycleIntegration.IsBody(query)) return MotorcycleIntegration.Template();
+            { var mod = ModVehicles.Template(query); if (mod != null) return mod; }
+            if (_all == null) Scan();
+            string q = query.Trim();
+            Entry e = _all.FirstOrDefault(x => x.Kind == kind && string.Equals(x.Name, q, StringComparison.OrdinalIgnoreCase))
+                   ?? _all.FirstOrDefault(x => string.Equals(x.Name, q, StringComparison.OrdinalIgnoreCase))
+                   ?? _all.FirstOrDefault(x => x.Kind == kind && string.Equals(x.Display, q, StringComparison.OrdinalIgnoreCase))
+                   ?? _all.FirstOrDefault(x => string.Equals(x.Display, q, StringComparison.OrdinalIgnoreCase))
+                   ?? _all.FirstOrDefault(x => x.Kind == kind && x.Display != null && x.Display.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0)
+                   ?? _all.FirstOrDefault(x => x.Kind == kind && x.Name.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0);
+            if (e == null)
+            {
+                var near = _all.Where(x => x.Kind == kind).Select(x => x.Name + (x.Display != null ? " \"" + x.Display + "\"" : "")).Take(40);
+                Core.Log.Warn("[Patrols] " + "No " + kind + " prefab matches \"" + q + "\". Known: " + string.Join(", ", near.ToArray()));
+                return null;
+            }
+            PatrolsModule.Verbose("Prefab \"" + q + "\" -> " + e.Name + (e.Display != null ? " (\"" + e.Display + "\")" : "") + " [" + e.Kind + "]");
+            return e.Go;
+        }
+
+        // Any asset root prefab by name (carcasses, enemies ... anything with a PlayMaker FSM), exact then contains — from the
+        // cached scan. Only scene / prefab registration changes invalidate it; misses never trigger another scan.
+        internal static GameObject FindAny(string query)
+        {
+            if (string.IsNullOrEmpty(query)) return null;
+            if (MotorcycleIntegration.IsBody(query)) return MotorcycleIntegration.Template();
+            { var mod = ModVehicles.Template(query); if (mod != null) return mod; }
+            string q = CrewAppearance.BasePrefab(query.Trim());
+            if (_all == null) Scan();
+            return Lookup(q);
+        }
+
+        private static GameObject Lookup(string q)
+        {
+            GameObject go;
+            if (_byName.TryGetValue(q, out go)) return go;
+            foreach (var r in _roots)
+                if (r != null && r.name.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    PatrolsModule.Verbose("Prefab \"" + q + "\" -> " + r.name + " (partial match)");
+                    return r;
+                }
+            return null;
+        }
+
+        private static void Scan()
+        {
+            _all = new List<Entry>();
+            _roots = new List<GameObject>();
+            _byName = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
+            var byGo = new Dictionary<GameObject, List<PlayMakerFSM>>();
+            foreach (var f in Resources.FindObjectsOfTypeAll<PlayMakerFSM>())
+            {
+                if (f == null || f.gameObject == null) continue;
+                var go = f.gameObject;
+                if (go.scene.IsValid() || go.transform.parent != null) continue;   // assets only, roots only
+                List<PlayMakerFSM> l;
+                if (!byGo.TryGetValue(go, out l))
+                {
+                    byGo[go] = l = new List<PlayMakerFSM>();
+                    _roots.Add(go);
+                    if (!_byName.ContainsKey(go.name)) _byName[go.name] = go;
+                }
+                l.Add(f);
+            }
+            foreach (var kv in byGo)
+            {
+                var names = new HashSet<string>(kv.Value.Select(f => f.FsmName));
+                string kind;
+                if (names.Contains("RpmGear") || names.Contains("getFuel") || names.Contains("CrashDamage")) kind = "vehicle";
+                else if (names.Contains("ID")) kind = IdOf(kv.Value) ?? "item";
+                else continue;
+                _all.Add(new Entry { Go = kv.Key, Name = kv.Key.name, Display = DisplayOf(kv.Value), Kind = kind });
+            }
+            if (Core.Log.Verbose) PatrolsModule.Verbose("Prefab scan: " + _all.Count + " vehicles/items, " + _roots.Count + " prefabs with FSMs");
+        }
+
+        private static string IdOf(List<PlayMakerFSM> fsms)
+        {
+            var id = fsms.FirstOrDefault(f => f.FsmName == "ID");
+            var v = id != null ? id.FsmVariables.GetFsmString("ID") : null;
+            return v != null && !string.IsNullOrEmpty(v.Value) ? v.Value : null;
+        }
+
+        private static string DisplayOf(List<PlayMakerFSM> fsms)
+        {
+            var f = fsms.FirstOrDefault(x => x.FsmName == "ItemName");
+            if (f == null) return null;
+            var v = f.FsmVariables.GetFsmString("ItemName");
+            if (v != null && !string.IsNullOrEmpty(v.Value)) return v.Value;
+            try
+            {
+                // wheels etc. carry the name only as the text of a UiTextSetText action
+                foreach (var st in f.FsmStates)
+                    foreach (var a in st.Actions)
+                    {
+                        if (a == null || a.GetType().Name != "UiTextSetText") continue;
+                        var fld = a.GetType().GetField("text", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        var fs = fld != null ? fld.GetValue(a) as FsmString : null;
+                        if (fs != null && !fs.UseVariable && !string.IsNullOrEmpty(fs.Value)) return fs.Value;
+                    }
+            }
+            catch (Exception) { }
+            return null;
+        }
+    }
+
+    // =============================================================== who writes VehicleController.input
+    // The car's DriveTrigger/INPUT FSMs (INPUT_AxisInput, INPUT_AxisSteering, ...) copy the legacy axes into input.Throttle/Brakes/
+    // Clutch/Steering every frame, player inside or not. While the mod drives, they are disabled; Release() restores them
+    // (single-state FSMs, so PlayMaker's restart-on-enable is harmless).
+    internal class InputControl
+    {
+        private static readonly string[] Names = { "INPUT_AxisInput", "INPUT_AxisSteering", "INPUT_NormalizedAxisInput", "INPUT_MouseSteering",
+            "Bool_AutomaticGearbox", "Bool_AutoClutch", "Bool_HShifter", "INPUT_HShifter", "INPUT_ShiftUpDown", "INPUT_GearChange" };
+        private readonly List<PlayMakerFSM> _taken = new List<PlayMakerFSM>();
+        private readonly GameObject _car;
+        private bool _autoWas;
+        private bool _owns, _swapWas, _holdGearWas;
+        private NWH.VehiclePhysics2.VehicleController _vc;
+        private NWH.VehiclePhysics2.Powertrain.TransmissionComponent.TransmissionShiftType _shiftWas;
+        private NWH.VehiclePhysics2.Powertrain.TransmissionComponent.AutomaticTransmissionDNRShiftType _dnrWas;
+        private NWH.VehiclePhysics2.Powertrain.ClutchComponent.ClutchControlType _clutchWas;
+
+        internal InputControl(GameObject car) { _car = car; }
+
+        internal bool Taken { get { return _owns; } }
+
+        internal void Take()
+        {
+            if (_owns) return;
+            _owns = true;
+            _taken.Clear();
+            Nwh.ForgetInput(_car);
+            foreach (var f in _car.GetComponentsInChildren<PlayMakerFSM>(true))
+                if (f.gameObject.name == "INPUT" && f.enabled && Array.IndexOf(Names, f.FsmName) >= 0) { f.enabled = false; _taken.Add(f); }
+            _autoWas = Nwh.AutoInput(_car, false);
+            _vc = _car.GetComponent<NWH.VehiclePhysics2.VehicleController>();
+            if (_vc != null)
+            {
+                var transmission = _vc.powertrain.transmission; var clutch = _vc.powertrain.clutch;
+                _shiftWas = transmission.transmissionType; _dnrWas = transmission.automaticTransmissionDNRShiftType;
+                _holdGearWas = transmission.holdToKeepInGear; _clutchWas = clutch.controlType; _swapWas = _vc.input.swapInputInReverse;
+                if (transmission.transmissionType == NWH.VehiclePhysics2.Powertrain.TransmissionComponent.TransmissionShiftType.Manual)
+                    transmission.transmissionType = NWH.VehiclePhysics2.Powertrain.TransmissionComponent.TransmissionShiftType.Automatic;
+                transmission.automaticTransmissionDNRShiftType = NWH.VehiclePhysics2.Powertrain.TransmissionComponent.AutomaticTransmissionDNRShiftType.RequireShiftInput;
+                transmission.holdToKeepInGear = false;
+                clutch.controlType = NWH.VehiclePhysics2.Powertrain.ClutchComponent.ClutchControlType.Automatic;
+                _vc.input.swapInputInReverse = false; // Pilot explicitly selects R, then supplies throttle.
+                PatrolsModule.Verbose("AI gearbox: " + _car.name + " " + _shiftWas + " -> " + transmission.transmissionType + "; native RPM shifting, automatic clutch");
+            }
+            PatrolsModule.Verbose("Input control taken: " + _taken.Count + " INPUT FSMs paused, autoSetInput was " + _autoWas);
+        }
+
+        internal void Release()
+        {
+            if (!_owns) return;
+            _owns = false;
+            if (_vc != null)
+            {
+                var transmission = _vc.powertrain.transmission;
+                transmission.transmissionType = _shiftWas; transmission.automaticTransmissionDNRShiftType = _dnrWas;
+                transmission.holdToKeepInGear = _holdGearWas; _vc.powertrain.clutch.controlType = _clutchWas; _vc.input.swapInputInReverse = _swapWas;
+                _vc = null;
+            }
+            foreach (var f in _taken) if (f != null) f.enabled = true;
+            _taken.Clear();
+            if (_car != null) Nwh.AutoInput(_car, _autoWas);
+            PatrolsModule.Verbose("Input control released");
+        }
+    }
+
+    // =============================================================== daylight
+    // Is it dark outside? The game's sky is Azure[Sky] Dynamic Skybox (AzureTimeController; __GameManager__ [DayTime] reads its timeline
+    // from there): dark while the sun is below the horizon (GetSunElevation < 0), light again once it is clearly up (> 0.05) - a small
+    // hysteresis so the lights do not flicker at dawn. Without Azure: __GameManager__ [DayTime].Time, dark before 6:00 and from 19:30.
+    internal static class DayLight
+    {
+        private static UnityEngine.AzureSky.AzureTimeController _azure;
+        private static PlayMakerFSM _dayTime;
+        private static float _nextFind, _nextEval;
+        private static bool _dark, _known;
+
+        internal static void Reset() { _azure = null; _dayTime = null; _nextFind = 0f; _nextEval = 0f; _known = false; }
+
+        internal static bool Dark
+        {
+            get
+            {
+                if (_known && Time.unscaledTime < _nextEval) return _dark;
+                _nextEval = Time.unscaledTime + 2f;
+                try { Evaluate(); }
+                catch (Exception e) { Core.Log.Warn("[Patrols] " + "DayLight: " + e.Message); _azure = null; _nextFind = Time.unscaledTime + 30f; }
+                return _dark;
+            }
+        }
+
+        private static void Evaluate()
+        {
+            if (_azure == null && Time.unscaledTime >= _nextFind)
+            {
+                _nextFind = Time.unscaledTime + 10f;
+                var go = GameObject.Find("Azure[Sky] Dynamic Skybox");
+                _azure = go != null ? go.GetComponent<UnityEngine.AzureSky.AzureTimeController>() : null;
+                if (_azure == null) _azure = UnityEngine.Object.FindObjectOfType<UnityEngine.AzureSky.AzureTimeController>();
+                if (_azure == null && (_dayTime == null || _dayTime.gameObject == null))
+                {
+                    _dayTime = null;
+                    var gm = Core.GameRefs.GameManager;
+                    if (gm != null) foreach (var f in gm.GetComponents<PlayMakerFSM>()) if (f.FsmName == "DayTime") { _dayTime = f; break; }
+                }
+            }
+            bool was = _dark;
+            if (_azure != null)
+            {
+                float elevation = _azure.GetSunElevation();
+                _dark = _known && _dark ? elevation < 0.05f : elevation < 0f;
+                _known = true;
+            }
+            else if (_dayTime != null && _dayTime.Fsm.Initialized)
+            {
+                var t = _dayTime.FsmVariables.GetFsmFloat("Time");
+                if (t == null) return;
+                _dark = t.Value < 6f || t.Value >= 19.5f;
+                _known = true;
+            }
+            if (_known && was != _dark) PatrolsModule.Verbose("DayLight: " + (_dark ? "dark" : "light") + (_azure != null ? " (sun elevation " + _azure.GetSunElevation().ToString("0.00") + ")" : " (DayTime fallback)"));
+        }
+    }
+
+    // =============================================================== exit speed
+    // The game lets the player leave a car only below 6 m/s: PlayerCamera [DriveUse] compares the car's speed against a literal 6 in
+    // its inCar / over 2 / TooFast states (FloatCompare float2). A truck shoving the player's car keeps it above that for good, so the
+    // literal is replaced by [Debug] ExitSpeedKmh (converted to m/s); re-checked every few seconds (live config edits, new Player object).
+    internal static class ExitSpeed
+    {
+        private static PlayMakerFSM _fsm;
+        private static float _next, _applied = -1f;
+        private static readonly List<FsmFloat> _limits = new List<FsmFloat>();
+
+        // WW: module shutdown puts the game's own 6 m/s literal back
+        internal static void Restore()
+        {
+            try { foreach (var v in _limits) if (v != null) v.Value = 6f; } catch (Exception) { }
+            _limits.Clear(); _fsm = null; _applied = -1f; _next = 0f;
+        }
+
+        internal static void Tick()
+        {
+            if (Time.unscaledTime < _next) return;
+            _next = Time.unscaledTime + 5f;
+            float want = Mathf.Max(1f, PatrolsModule.ExitSpeedKmh.Value) / 3.6f;
+            if (_fsm == null || _fsm.gameObject == null)
+            {
+                _fsm = null; _limits.Clear(); _applied = -1f;
+                // PlayerCameraHolder/PlayerCamera (a scene root, fsm_dump 2026-10-01); under the Player in older builds
+                var holder = Core.GameRefs.PlayerCameraHolder;
+                var cam = holder != null ? holder.transform.Find("PlayerCamera") : null;
+                var player = PlayerRef.Player;
+                if (cam == null && player != null) cam = Patrol.FindChild(player, "PlayerCamera");
+                if (cam == null) return;
+                foreach (var f in cam.GetComponents<PlayMakerFSM>()) if (f.FsmName == "DriveUse") { _fsm = f; break; }
+                if (_fsm == null) return;
+                try
+                {
+                    foreach (var st in _fsm.FsmStates)
+                        foreach (var a in st.Actions)
+                        {
+                            if (a == null || a.GetType().Name != "FloatCompare") continue;
+                            var fld = a.GetType().GetField("float2", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                            var v = fld != null ? fld.GetValue(a) as FsmFloat : null;
+                            if (v != null && !v.UseVariable && Mathf.Abs(v.Value - 6f) < 0.01f) _limits.Add(v);   // the vanilla literal
+                        }
+                }
+                catch (Exception e) { Core.Log.Warn("[Patrols] " + "ExitSpeed: " + e.Message); }
+                if (_limits.Count == 0) { Core.Log.Warn("[Patrols] " + "ExitSpeed: no 6 m/s compare found in PlayerCamera [DriveUse]"); return; }
+            }
+            if (Mathf.Abs(_applied - want) < 0.001f) return;
+            foreach (var v in _limits) v.Value = want;
+            _applied = want;
+            PatrolsModule.Verbose("Exit speed limit set to " + PatrolsModule.ExitSpeedKmh.Value.ToString("0") + " km/h (" + _limits.Count + " compare(s) in PlayerCamera [DriveUse])");
+        }
+    }
+
+    // =============================================================== vanilla spawn recipe
+    // The counter FSM and the registry lists are looked up once and kept (GameObject.Find is a scene-wide name search; a loot
+    // truck used to run it twice per item, sixty-odd times in one frame). Re-found when the objects are gone (scene change).
+    internal static class Register
+    {
+        private static PlayMakerFSM _counterFsm;
+        private static FsmInt _counter;
+        private static GameObject _reg;
+        private static PlayMakerArrayListProxy _cars, _items;
+
+        internal static void Invalidate() { _counterFsm = null; _counter = null; _reg = null; _cars = null; _items = null; _pending.Clear(); }
+
+        // cars being built: what Add() would register for them (the car, its parts, its cargo) waits here until Commit
+        private static readonly Dictionary<GameObject, List<KeyValuePair<GameObject, bool>>> _pending = new Dictionary<GameObject, List<KeyValuePair<GameObject, bool>>>();
+
+        internal static void Defer(GameObject car) { if (car != null && !_pending.ContainsKey(car)) _pending[car] = new List<KeyValuePair<GameObject, bool>>(); }
+        internal static bool Pending(GameObject car) { return !ReferenceEquals(car, null) && _pending.Count > 0 && _pending.ContainsKey(car); }
+        internal static void Discard(GameObject car) { if (!ReferenceEquals(car, null)) _pending.Remove(car); }
+
+        // registers everything deferred for this car (objects destroyed meanwhile are skipped); returns the count
+        internal static int Commit(GameObject car)
+        {
+            List<KeyValuePair<GameObject, bool>> list;
+            if (ReferenceEquals(car, null) || !_pending.TryGetValue(car, out list)) return 0;
+            _pending.Remove(car);
+            int n = 0;
+            foreach (var kv in list) if (kv.Key != null) { AddNow(kv.Key, kv.Value); n++; }
+            return n;
+        }
+
+        private static GameObject PendingOwner(GameObject go)
+        {
+            if (_pending.Count == 0 || go == null) return null;
+            for (var t = go.transform; t != null; t = t.parent) if (_pending.ContainsKey(t.gameObject)) return t.gameObject;
+            return null;
+        }
+
+        private static FsmInt Counter()
+        {
+            if (_counterFsm != null && _counterFsm.gameObject != null && _counter != null) return _counter;
+            _counterFsm = null; _counter = null;
+            var counterGo = Core.GameRefs.ItemNameId;
+            if (counterGo == null) return null;
+            foreach (var f in counterGo.GetComponents<PlayMakerFSM>())
+                if (f.FsmName == "itemNameID") { _counterFsm = f; _counter = f.FsmVariables.GetFsmInt("intName"); break; }
+            return _counter;
+        }
+
+        private static GameObject Registry()
+        {
+            if (_reg != null) return _reg;
+            _cars = _items = null;
+            _reg = Core.GameRefs.NewGOArrayList;
+            if (_reg == null) return null;
+            foreach (var p in _reg.GetComponents<PlayMakerArrayListProxy>())
+            {
+                string n = (p.referenceName ?? "").ToLowerInvariant();
+                if (_cars == null && n.Contains("car")) _cars = p;
+                if (_items == null && n.Contains("item")) _items = p;
+            }
+            return _reg;
+        }
+
+        internal static void Name(GameObject go, string prefab)
+        {
+            int id = -1;
+            var v = Counter();
+            if (v != null) { v.Value += 1; id = v.Value; }
+            go.name = prefab + "(Clone)" + (id >= 0 ? id.ToString() : "");
+        }
+
+        // Takes a car and everything under it (parts, cargo) out of the game's NewGO lists before it is destroyed, so the
+        // save does not keep references to it.
+        // Perf: reused buffers, a reference-identity set and one compaction pass per list (was RemoveAt per hit, new set/arrays per call)
+        private sealed class RefEq : IEqualityComparer<GameObject>
+        {
+            public bool Equals(GameObject a, GameObject b) { return ReferenceEquals(a, b); }
+            public int GetHashCode(GameObject o) { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(o); }
+        }
+        private static readonly HashSet<GameObject> _treeSet = new HashSet<GameObject>(new RefEq());
+        private static readonly List<Transform> _treeNodes = new List<Transform>();
+        private static readonly List<PlayMakerArrayListProxy> _proxies = new List<PlayMakerArrayListProxy>();
+        internal static void RemoveTree(GameObject root)
+        {
+            var reg = Registry();
+            if (reg == null || root == null) return;
+            _treeSet.Clear(); _treeNodes.Clear();
+            root.GetComponentsInChildren(true, _treeNodes);
+            foreach (var t in _treeNodes) _treeSet.Add(t.gameObject);
+            _treeNodes.Clear();
+            _proxies.Clear(); reg.GetComponents(_proxies);
+            foreach (var p in _proxies)
+            {
+                var list = p.arrayList;
+                if (list == null) continue;
+                int w = 0, n = list.Count;
+                for (int i = 0; i < n; i++)
+                {
+                    var item = list[i]; var go = item as GameObject;
+                    // the set holds live objects only, so a destroyed entry never matches (as with the old != null test)
+                    if (!ReferenceEquals(go, null) && _treeSet.Contains(go)) continue;
+                    if (w != i) list[w] = item; w++;
+                }
+                if (w < n) list.RemoveRange(w, n - w);
+            }
+            _proxies.Clear(); _treeSet.Clear();
+        }
+
+        // owner = the car the object belongs to when it is not parented under it yet (cargo before it is locked in)
+        internal static void Add(GameObject go, bool isVehicle, GameObject owner = null)
+        {
+            var key = owner != null && _pending.ContainsKey(owner) ? owner : PendingOwner(go);
+            if (key != null) { _pending[key].Add(new KeyValuePair<GameObject, bool>(go, isVehicle)); return; }
+            AddNow(go, isVehicle);
+        }
+
+        private static void AddNow(GameObject go, bool isVehicle)
+        {
+            if (Registry() == null) return;
+            var list = isVehicle ? _cars : _items;
+            if (list != null && list.arrayList != null) list.arrayList.Add(go);
+            else Core.Log.Warn("[Patrols] " + "NewGO_ArrayList has no '" + (isVehicle ? "car" : "item") + "' list");
+        }
+    }
+
+    // =============================================================== NWH Vehicle Physics 2 by reflection
+    // Everything is reached by reflection (no compile dependency on the NWH assembly). The VehicleController and its input /
+    // powertrain / engine / transmission objects are stable for the life of the car and the member lookups never change, so
+    // both are cached: a Handle per car and a MemberInfo table per (type, name). The pilots ask several times per physics step.
+    internal static class Nwh
+    {
+        private class Handle
+        {
+            public Component Vc;
+            public object Input, Engine, Transmission;
+            // Perf: typed NWH.VehiclePhysics2 access (same members as the reflection path; null = fall back to reflection)
+            public NWH.VehiclePhysics2.Input.VehicleInputHandler TInput; public NWH.VehiclePhysics2.Powertrain.EngineComponent TEngine;
+            public float Throttle = float.NaN, Steering = float.NaN, Brakes = float.NaN, WrittenAt = -1f;   // last SetInput, to skip identical writes
+        }
+
+        private const float InputRefresh = 0.5f;   // identical inputs are still re-written this often (a stopped or idle car writes 3 boxed floats per step otherwise)
+
+        private static readonly Dictionary<int, Handle> _handles = new Dictionary<int, Handle>();
+        private static readonly Dictionary<Type, Dictionary<string, MemberInfo>> _members = new Dictionary<Type, Dictionary<string, MemberInfo>>();
+        private static float _nextSweep;
+
+        private static Handle Of(GameObject car)
+        {
+            if (car == null) return null;
+            if (Time.unscaledTime >= _nextSweep) { _nextSweep = Time.unscaledTime + 30f; Sweep(); }
+            Handle h;
+            int id = car.GetInstanceID();
+            if (_handles.TryGetValue(id, out h) && h.Vc != null) return h;
+            h = new Handle();
+            foreach (var c in car.GetComponents<Component>())
+                if (c != null && c.GetType().Name == "VehicleController") { h.Vc = c; break; }
+            if (h.Vc == null) return null;
+            h.Input = Get(h.Vc, "input");
+            var pt = Get(h.Vc, "powertrain");
+            h.Engine = Get(pt, "engine");
+            h.Transmission = Get(pt, "transmission");
+            h.TInput = h.Input as NWH.VehiclePhysics2.Input.VehicleInputHandler; h.TEngine = h.Engine as NWH.VehiclePhysics2.Powertrain.EngineComponent;
+            _handles[id] = h;
+            return h;
+        }
+
+        // drop the handles of destroyed cars
+        private static void Sweep()
+        {
+            var dead = new List<int>();
+            foreach (var kv in _handles) if (kv.Value.Vc == null) dead.Add(kv.Key);
+            foreach (var k in dead) _handles.Remove(k);
+        }
+
+        private static MemberInfo Member(Type t, string name)
+        {
+            Dictionary<string, MemberInfo> d;
+            if (!_members.TryGetValue(t, out d)) _members[t] = d = new Dictionary<string, MemberInfo>();
+            MemberInfo m;
+            if (d.TryGetValue(name, out m)) return m;
+            m = (MemberInfo)t.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                ?? t.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            d[name] = m;
+            return m;
+        }
+
+        private static object Get(object o, string name)
+        {
+            if (o == null) return null;
+            var m = Member(o.GetType(), name);
+            var f = m as FieldInfo;
+            if (f != null) return f.GetValue(o);
+            var p = m as PropertyInfo;
+            return p != null ? p.GetValue(o, null) : null;
+        }
+
+        private static bool Set(object o, string name, object value)
+        {
+            if (o == null) return false;
+            var m = Member(o.GetType(), name);
+            var f = m as FieldInfo;
+            if (f != null) { f.SetValue(o, value); return true; }
+            var p = m as PropertyInfo;
+            if (p != null && p.CanWrite) { p.SetValue(o, value, null); return true; }
+            return false;
+        }
+
+        internal static bool EngineRunning(GameObject car)
+        {
+            bool running; if (Core.Services.VehicleIgnition != null && Core.Services.VehicleIgnition.TryRunning(car, out running)) return running;
+            try { var h = Of(car); if (h != null && h.TEngine != null) return h.TEngine.IsRunning; var r = h != null ? Get(h.Engine, "IsRunning") : null; return r is bool && (bool)r; }
+            catch (Exception e) { Core.Log.Warn("[Patrols] " + "EngineRunning: " + e.Message); return false; }
+        }
+
+        internal static void StartEngine(GameObject car)
+        {
+            if (Core.Services.VehicleIgnition != null && Core.Services.VehicleIgnition.TryStart(car)) return;
+            try
+            {
+                var h = Of(car);
+                var eng = h != null ? h.Engine : null;
+                if (eng == null) { Core.Log.Warn("[Patrols] " + "No powertrain.engine"); return; }
+                if (h.TEngine != null) { h.TEngine.StartEngine(); return; }
+                var m = eng.GetType().GetMethod("StartEngine", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+                if (m == null) { Core.Log.Warn("[Patrols] " + "No StartEngine()"); return; }
+                m.Invoke(eng, null);
+            }
+            catch (Exception e) { Core.Log.Warn("[Patrols] " + "StartEngine: " + e.Message); }
+        }
+
+        internal static void StopEngine(GameObject car)
+        {
+            if (Core.Services.VehicleIgnition != null && Core.Services.VehicleIgnition.TryStop(car)) return;
+            try
+            {
+                var h = Of(car);
+                var eng = h != null ? h.Engine : null;
+                if (eng == null) return;
+                if (h.TEngine != null) { h.TEngine.StopEngine(); return; }
+                var m = eng.GetType().GetMethod("StopEngine", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
+                if (m == null) { PatrolsModule.Verbose("No StopEngine()"); return; }
+                m.Invoke(eng, null);
+            }
+            catch (Exception e) { Core.Log.Warn("[Patrols] " + "StopEngine: " + e.Message); }
+        }
+
+        // returns the previous value
+        internal static bool AutoInput(GameObject car, bool on)
+        {
+            try
+            {
+                var h = Of(car);
+                var input = h != null ? h.Input : null;
+                if (h != null && h.TInput != null) { bool old = h.TInput.autoSetInput; h.TInput.autoSetInput = on; return old; }
+                var was = Get(input, "autoSetInput");
+                if (!Set(input, "autoSetInput", on)) PatrolsModule.Verbose("no autoSetInput");
+                return was is bool ? (bool)was : false;
+            }
+            catch (Exception e) { Core.Log.Warn("[Patrols] " + "AutoInput: " + e.Message); return false; }
+        }
+
+        internal static int GearIndex(GameObject car)
+        {
+            try { var h = Of(car); var g = h != null ? Get(h.Transmission, "Gear") : null; return g is int ? (int)g : 0; }
+            catch (Exception) { return 0; }
+        }
+
+        // input.ShiftInto = gear index (-1 R, 0 N, 1 = 1st/D); the vehicle consumes it on its next update
+        internal static void ShiftInto(GameObject car, int gear)
+        {
+            try
+            {
+                var h = Of(car);
+                if (h == null) return;
+                if (h.TInput != null) { h.TInput.ShiftInto = gear; return; }
+                if (!Set(h.Input, "ShiftInto", gear)) Set(h.Input, "shiftInto", gear);
+            }
+            catch (Exception e) { Core.Log.Warn("[Patrols] " + "ShiftInto: " + e.Message); }
+        }
+
+        // one-line NWH state readback for the log
+        internal static string Diag(GameObject car)
+        {
+            try
+            {
+                var h = Of(car);
+                if (h == null) return "diag: no VehicleController";
+                return "thr=" + Get(h.Input, "Throttle") + " clutch=" + Get(h.Input, "Clutch") + " hb=" + Get(h.Input, "Handbrake")
+                     + " rpm=" + F(Get(h.Engine, "RPM") ?? Get(h.Engine, "OutputRPM")) + " trType=" + Get(h.Transmission, "transmissionType")
+                     + " active=" + (Get(h.Vc, "IsActive") ?? Get(h.Vc, "Active")) + " enabled=" + ((Behaviour)h.Vc).enabled;
+            }
+            catch (Exception e) { return "diag: " + e.Message; }
+        }
+
+        private static string F(object o) { return o is float ? ((float)o).ToString("0") : (o == null ? "?" : o.ToString()); }
+
+        internal static string Gear(GameObject car)
+        {
+            try { var h = Of(car); var g = h != null ? Get(h.Transmission, "Gear") : null; return g != null ? g.ToString() : "?"; }
+            catch (Exception) { return "?"; }
+        }
+
+        // NWH steering.maximumSteerAngle (degrees), 0 when unknown
+        internal static float MaxSteerAngle(GameObject car)
+        {
+            try { var h = Of(car); var s = h != null ? Get(h.Vc, "steering") : null; var a = s != null ? Get(s, "maximumSteerAngle") : null; return a is float ? (float)a : 0f; }
+            catch (Exception) { return 0f; }
+        }
+
+        internal static void SetHandbrake(GameObject car, float value)
+        {
+            try { var h = Of(car); if (h != null && h.TInput != null) { h.TInput.Handbrake = value; return; } if (h == null || !Set(h.Input, "Handbrake", value)) PatrolsModule.Verbose("no input.Handbrake"); }
+            catch (Exception e) { Core.Log.Warn("[Patrols] " + "SetHandbrake: " + e.Message); }
+        }
+
+        internal static void SetInput(GameObject car, float throttle, float steering, float brakes)
+        {
+            try
+            {
+                var h = Of(car);
+                if (h == null || h.Input == null) { Core.Log.Warn("[Patrols] " + "No VehicleController.input"); return; }
+                if (h.Throttle == throttle && h.Steering == steering && h.Brakes == brakes && Time.fixedTime - h.WrittenAt < InputRefresh) return;
+                h.Throttle = throttle; h.Steering = steering; h.Brakes = brakes; h.WrittenAt = Time.fixedTime;
+                if (h.TInput != null) { h.TInput.Throttle = throttle; h.TInput.Steering = steering; h.TInput.Brakes = brakes; return; }
+                Set(h.Input, "Throttle", throttle);
+                Set(h.Input, "Steering", steering);
+                Set(h.Input, "Brakes", brakes);
+            }
+            catch (Exception e) { Core.Log.Warn("[Patrols] " + "SetInput: " + e.Message); }
+        }
+
+        // the next SetInput writes whatever it is given (after the game's INPUT FSMs had the input for a while)
+        internal static void ForgetInput(GameObject car)
+        {
+            var h = Of(car);
+            if (h != null) { h.Throttle = h.Steering = h.Brakes = float.NaN; h.WrittenAt = -1f; }
+        }
+    }
+}

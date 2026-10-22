@@ -1,0 +1,33 @@
+# Apocalypter Quests: factions
+#
+# YOU DO NOT NEED TO EDIT THIS FILE. The mod reads the game's own faction data:
+#   - An NPC's faction is its Unity tag (Scrapyard, Coyotes). The list of human factions is in the config
+#     ([Factions] HumanFactions). Animals and mutants (tag Wild etc.) have no faction and are never protected.
+#   - A camp belongs to the faction named in its EnemySpawn_<Faction> child object (EnemySpawn_Coyotes_V1 ->
+#     Coyotes, EnemySpawn_Scrapyard_V1 -> Scrapyard). Caves, wrecks and buildings with only wild spawners belong to nobody.
+#   - A person with no faction tag takes the faction of the camp it lives at (within [Factions] HomeRadius).
+#
+# What a giver's faction does:
+#   - it never sends you to kill people of its own faction or its allies (kill / clear quests, offered or counted);
+#   - people are only targets when their faction is hostile to you or at war with the giver's faction (a person with no
+#     faction only when the game marks them hostile to you), so nobody sends you after friendly traders, wanderers or a
+#     neutral faction; animals and mutants are always fair game;
+#   - it never sends you to a point of interest owned by another, non-allied faction
+#     (go-to quests and the needpoi key in quests.txt);
+#   - a carry-word (talk) quest only completes with an NPC of its own faction, an ally, or an NPC with no faction.
+#
+# This file is only for overrides. It is re-read whenever you save it (no restart needed):
+#   [Name]   a faction, spelled like the tag (Scrapyard, Coyotes)
+#   allies   other factions it is friendly with (works both ways)
+#   npcs     NPC names that always belong to it, whatever their tag
+#   enemies  extra enemy names that belong to it (same as npcs)
+#   pois     camps it owns, overriding the game's marker: exact names such as Camp_11, or a prefix with * such as Cave_1*
+#
+# Example (remove the # to use it):
+#
+# [Coyotes]
+# allies = Scrapyard
+
+# Built in: Scrapyard is hostile to the player (gives no quests) and at war with Coyotes.
+# Per faction you can set:  war = Coyotes   (who it is at war with; takeover quests only target these)
+#                           hostile = yes   (no quests from its people)

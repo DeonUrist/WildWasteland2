@@ -1,0 +1,102 @@
+using System.Collections.Generic;
+using UnityEngine;
+using WildWasteland.Core;
+
+namespace WildWasteland.Modules.Towns
+{
+    internal sealed class TownBorderProps
+    {
+        internal readonly List<Bounds> Blockers = new List<Bounds>(); // Relative to town center, for cached vehicle/walker graphs.
+        private readonly TownSite _site;
+        private readonly TownAssets _assets;
+        private readonly Transform _root;
+        private readonly System.Random _random;
+        private readonly Bounds _frame;
+        private readonly int[] _corners = { 0, 1, 2, 3 };
+        private readonly int _towerCount;
+        private int _tower, _builtTowers, _attempt, _placed;
+        internal bool Ready { get; private set; }
+        internal float Progress { get { return Ready ? 1 : .5f * (_towerCount == 0 ? 1 : (_tower + (_tower < _towerCount ? _assets.WallKit.Tower.Progress : 0)) / _towerCount)
+            + .5f * Mathf.Clamp01(Mathf.Max(_attempt / 128f, _placed / 24f)); } }
+        internal string Stage { get { return _tower < _towerCount ? _assets.WallKit.Tower.Ready ? "Placing town towers" : "Preparing tower navigation" : "Placing town trees and wrecks"; } }
+        internal TownBorderProps(TownSite site, TownAssets assets, Transform root)
+        {
+            _site = site; _assets = assets; _root = root; _frame = TownPerimeter.Frame(site.Plan);
+            _random = new System.Random(TownPlanner.Hash(site.Plan.Key + "/border-props-v1"));
+            for (int i = 3; i > 0; i--) { int j = _random.Next(i + 1), t = _corners[i]; _corners[i] = _corners[j]; _corners[j] = t; }
+            int buildings = 0; foreach (var lot in site.Plan.Lots) if (!lot.IsParking && !lot.Skipped) buildings++;
+            _towerCount = assets.WallKit.Tower.Available ? buildings >= 8 || _frame.size.x * _frame.size.z >= 10000 ? _random.Next(3, 5) : _random.Next(1, 4) : 0;
+        }
+        private Vector3 Scene(Vector3 p) { return _site.Anchor.TransformPoint(_site.Plan.WorldCenter + p); }
+        internal bool Step()
+        {
+            if (Ready) return false;
+            var kit = _assets.WallKit;
+            if (_tower < _towerCount)
+            {
+                if (!kit.Tower.Ready) return kit.Tower.Step();
+                int corner = _corners[_tower++];
+                Vector3 point;
+                if (!TownPerimeter.Outline(_site.Plan).Tower(_site.Plan, corner, Blockers, out point))
+                { Log.Warn("[Towns] no clear tower position " + _site.Plan.Key + "/" + corner + "; building and gate clearance retained."); return true; }
+                var inward = _frame.center - point; inward.y = 0;
+                // The native ladder is on +X / -Z. Rotate that side toward the center, not the canopy's forward axis.
+                float yaw = Mathf.Atan2(inward.x, inward.z) * Mathf.Rad2Deg - Mathf.Atan2(2.63f, -.71f) * Mathf.Rad2Deg;
+                var tower = UnityEngine.Object.Instantiate(kit.Tower.Prefab, _root, false); tower.name = kit.Tower.Prefab.name;
+                tower.transform.SetPositionAndRotation(Scene(point), _site.Anchor.rotation * Quaternion.Euler(0, yaw, 0)); tower.SetActive(true);
+                Physics.SyncTransforms(); Add(tower, false); TownBakeBridge.Discover(tower); _builtTowers++;
+                return true;
+            }
+            if (_attempt++ >= 128 || _placed >= 24)
+            { Ready = true; Physics.SyncTransforms(); Log.Always("[Towns] border " + _site.Plan.Key + ": " + _builtTowers + " small towers with inward ladders, " + _placed + " static wrecks/trees; independent tower map reused."); return true; }
+            bool tree = _random.Next(3) != 0;
+            if (tree ? kit.Trees.Count == 0 : _assets.CarShells.Count == 0) return true;
+            var point2 = _frame.center + new Vector3(((float)_random.NextDouble() * 2 - 1) * (_frame.extents.x - 1), 0,
+                ((float)_random.NextDouble() * 2 - 1) * (_frame.extents.z - 1));
+            float radius = tree ? 1.5f : 2.5f;
+            if (!TownPerimeter.Outline(_site.Plan).Contains(point2, radius + 1)) return true;
+            // Furnish only the border strip. Leave building clearance, the full gate cross and measured streets open.
+            var buildings = TownPerimeter.Buildings(_site.Plan); buildings.Expand(new Vector3(5, 0, 5));
+            if (Mathf.Abs(point2.x - buildings.center.x) < buildings.extents.x && Mathf.Abs(point2.z - buildings.center.z) < buildings.extents.z) return true;
+            if (Mathf.Abs(point2.x - _frame.center.x) < 12 + radius || Mathf.Abs(point2.z - _frame.center.z) < 12 + radius) return true;
+            if (TownPerimeter.BuildingLine(_site.Plan, point2, point2, radius + 2)) return true;
+            foreach (var b in Blockers) if (Mathf.Abs(point2.x - b.center.x) < b.extents.x + radius + 2 && Mathf.Abs(point2.z - b.center.z) < b.extents.z + radius + 2) return true;
+            var nodes = _site.Plan.StreetNodes; var edges = _site.Plan.StreetEdges;
+            for (int e = 0; e < edges.Length; e += 2)
+            {
+                var a = _site.Plan.World(nodes[edges[e]]) - _site.Plan.WorldCenter;
+                var b = _site.Plan.World(nodes[edges[e + 1]]) - _site.Plan.WorldCenter;
+                if (TownOutline.Distance(point2, a, b) < (radius + 3) * (radius + 3)) return true;
+            }
+            GameObject go;
+            if (tree)
+            {
+                var source = kit.Trees[_random.Next(kit.Trees.Count)]; go = UnityEngine.Object.Instantiate(source, _root, false);
+                go.name = "Towns border tree " + _placed;
+                go.transform.SetPositionAndRotation(Scene(point2), _site.Anchor.rotation * Quaternion.Euler(0, _random.Next(360), 0)); go.SetActive(true);
+            }
+            else
+            {
+                var shell = _assets.CarShells[_random.Next(_assets.CarShells.Count)]; var bounds = shell.Mesh.bounds;
+                float scale = Mathf.Min(1, 2f / Mathf.Max(.1f, Mathf.Max(bounds.extents.x, bounds.extents.z)));
+                var rotation = _site.Anchor.rotation * Quaternion.Euler(0, _random.Next(360), 0);
+                go = new GameObject("Towns border car remains " + _placed); go.transform.SetParent(_root, false);
+                go.transform.localScale = Vector3.one * scale; go.transform.rotation = rotation;
+                go.transform.position = Scene(point2) - rotation * (new Vector3(bounds.center.x, bounds.min.y, bounds.center.z) * scale);
+                go.AddComponent<MeshFilter>().sharedMesh = shell.Mesh; go.AddComponent<MeshRenderer>().sharedMaterials = shell.Materials;
+                var box = go.AddComponent<BoxCollider>(); box.center = bounds.center; box.size = bounds.size;
+            }
+            Physics.SyncTransforms(); Add(go, tree); _placed++; return true;
+        }
+        private void Add(GameObject go, bool tree)
+        {
+            Bounds bounds = new Bounds(); bool any = false;
+            foreach (var collider in go.GetComponentsInChildren<Collider>()) if (!collider.isTrigger)
+            { if (!any) { bounds = collider.bounds; any = true; } else bounds.Encapsulate(collider.bounds); }
+            if (!any) return;
+            if (tree) { var size = bounds.size; size.x = Mathf.Max(size.x, .8f); size.z = Mathf.Max(size.z, .8f); bounds.size = size; }
+            var local = bounds; local.center = _site.Anchor.InverseTransformPoint(bounds.center) - _site.Plan.WorldCenter; Blockers.Add(local);
+            bounds.center -= _site.Anchor.position; bounds.Expand(.3f); _site.DebrisBlockers.Add(bounds);
+        }
+    }
+}
