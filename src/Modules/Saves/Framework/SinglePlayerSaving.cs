@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Freezes, serializes and publishes a native singleplayer world with unconditional rollback and thaw.</summary>
         static IEnumerator Save()
         {
-            float scale = Time.timeScale; int generation = SaveBus.Generation; bool completed = false, blocked = false, began = false, serialized = false;
+            float scale = Time.timeScale; int generation = SaveBus.Generation; bool completed = false, blocked = false, began = false, afterSent = false;
             try
             {
                 // Let an originating native multi-root save action finish being suppressed before starting ours.
@@ -101,7 +101,8 @@ namespace WildWasteland.Modules.Saves
                 }
                 if (!observed || SaveBus.Generation != generation || SaveBus.State != "isPlay" || registry.ActiveStateName != "off" || SaveBus.PendingAfterSave)
                     throw new IOException("Offline serialization did not finish; previous files retained");
-                serialized = true;
+                // Serialization finished: listeners re-apply visual edits now, before verification/publication.
+                afterSent = true; AfterSerialize(generation, true);
                 Presentation(Core.Events.SavePresentationPhase.Progress, .75f, "Verifying and publishing save");
                 completed = SaveSystem.Complete();
             }
@@ -111,17 +112,20 @@ namespace WildWasteland.Modules.Saves
                 finally
                 {
                     SaveTerrain.Release(); Serializing = _requested = false;
-                    if (began && SaveBus.Generation == generation)
-                    {
-                        var after = new Core.Events.AfterSerialize { Slot = SaveSystem.ActiveFile, Generation = generation, Kind = SaveSystem.Exiting ? SaveKind.Exit : SaveSystem.AutomaticSaving ? SaveKind.Auto : SaveKind.Manual, Ok = serialized };
-                        ModEvents.Publish(ref after);
-                    }
+                    // A save that began but never finished serializing still pairs BeforeSerialize with a failed AfterSerialize.
+                    if (began && !afterSent && SaveBus.Generation == generation) AfterSerialize(generation, false);
                     Presentation(Core.Events.SavePresentationPhase.End, 0, null);
                     if (SaveBus.Generation == generation) Time.timeScale = scale;
                     if (blocked) ApocasetterBridge.SetInputBlock(false);
                 }
                 if (completed) SaveSystem.Notify(SaveSystem.Status);
             }
+        }
+        /// <summary>Publishes the typed AfterSerialize event for the running save (Ok = native serialization finished).</summary>
+        static void AfterSerialize(int generation, bool ok)
+        {
+            var after = new Core.Events.AfterSerialize { Slot = SaveSystem.ActiveFile, Generation = generation, Kind = SaveSystem.Exiting ? SaveKind.Exit : SaveSystem.AutomaticSaving ? SaveKind.Auto : SaveKind.Manual, Ok = ok };
+            ModEvents.Publish(ref after);
         }
         /// <summary>Publishes coarse serializer milestones; no native percentage is inferred.</summary>
         static void Presentation(Core.Events.SavePresentationPhase phase, float fraction, string text)
