@@ -3,9 +3,8 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
-    /// Compatibility module entry (W0 skeleton, README 3.1): one bridge per third-party mod, implementing Core contracts (README 6.12).
-    /// Registered after the existing modules; Init is empty until its Wave B owner moves the features in. Its [Compatibility] Enabled entry is
-    /// new and nothing reads it yet. Assets: plugins/WildWasteland/Compatibility/, data: config/WildWasteland/Compatibility/ (D13).
+    /// Owns third-party bridges and their patch lifetime. The SigmaMod early FSM guard is installed here before
+    /// Core optimization starts; B17 supplies the remaining bridge integrations (README 6.12).
     /// </summary>
     public sealed class CompatibilityModule : ModuleBase
     {
@@ -18,7 +17,18 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>No entries yet (Core binds [Compatibility] Enabled).</summary>
         public override void BindConfig(ModuleConfig cfg) { }
 
-        /// <summary>Nothing to start yet.</summary>
-        public override void Init() { }
+        /// <summary>Installs the early FSM guard only when SigmaMod is present.</summary>
+        public override void Init() { SigmaFsmStates.Install(this); }
+
+        /// <summary>Registers the detected third-party vehicle owner before Core optimization starts.</summary>
+        public override void ProvideApis()
+        {
+            var query = EngineSimVehicleOwnership.Create();
+            var ownership = ModApi.Get<IVehicleOwnership>();
+            if (query != null && ownership != null) ownership.Register(this, query);
+        }
+
+        /// <summary>Releases the guard's runtime state; Core removes its owner-scoped patch immediately afterward.</summary>
+        public override void Shutdown() { SigmaFsmStates.Clear(); }
     }
 }

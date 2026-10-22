@@ -121,7 +121,7 @@ namespace WildWasteland.Modules.Towns
 
             TownPoiSettings.Install(this, _settings);
             SaveBus.StateChanged += StateChanged;
-            Hooks.WaitUpdate.Prefix(this, BeforeHandoff);
+            LoadingProgress.RegisterHold(this, "Towns", ReadyForHandoff);
             LoadingProgress.Register(this, LoadProgress);
 
             _settings.PopulationMinPercent.SettingChanged += PopulationChanged; _settings.PopulationMaxPercent.SettingChanged += PopulationChanged;
@@ -521,9 +521,10 @@ namespace WildWasteland.Modules.Towns
             int remaining = Mathf.CeilToInt((.3f - .28f * fraction) * 100);
             return new LoadingProgress.Work(fraction, stage + " | " + ready + "/" + count + " towns ready | " + remaining + "% of load remaining");
         }
-        private bool BeforeHandoff(HutongGames.PlayMaker.Actions.Wait action)
+        /// <summary>Defers native load handoff until restored town structures and their population are ready.</summary>
+        private bool ReadyForHandoff()
         {
-            if (!_running || action.Fsm.Name != "SaveLoadGame" || action.State.Name != "Wait for Terrain Gen") return true;
+            if (!_running) return true;
             bool pending = false;
             foreach (var live in _sites) if (live.Tile != null && live.Site.Anchor != null && (!live.Finished || NeedsWalls(live) || !InteriorPopulation.TownReady(live.Site))) { pending = true; break; }
             if (pending && !_waitingForTowns) Log.Always("[Towns] Load handoff waiting: restoring town buildings and population before play.");
