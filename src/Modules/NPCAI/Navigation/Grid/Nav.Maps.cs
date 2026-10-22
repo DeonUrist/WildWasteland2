@@ -31,7 +31,6 @@ namespace WildWasteland.Modules.NPC
         }
         private static readonly Dictionary<ulong, MapTemplate> _templates = new Dictionary<ulong, MapTemplate>();
         private const int TemplateLimit = 96;
-        internal static int TemplateCount { get { return _templates.Count; } }
         private static void RememberTemplate(Structure s)
         {
             if (s.Overlaid || !(s.LoadedMap || s.MapSaved) || s.MapKey == 0 || s.MapFile == null || s.Root == null || s.FloorY == null || s.Comp == null || s.CompSize == null || s.Near == null) return;

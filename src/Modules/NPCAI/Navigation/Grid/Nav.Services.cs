@@ -61,13 +61,6 @@ namespace WildWasteland.Modules.NPC
             for (int i = _waypoints.Count - 1; i >= 0; i--) if (_waypoints[i].Id == id) { _waypoints.RemoveAt(i); Revision++; }
         }
 
-        /// <summary>Removes every waypoint provider and overlay of an owner (its module stopped).</summary>
-        internal static void RemoveOwned(IModule owner)
-        {
-            for (int i = _waypoints.Count - 1; i >= 0; i--) if (_waypoints[i].Owner == owner) { _waypoints.RemoveAt(i); Revision++; }
-            for (int i = _overlays.Count - 1; i >= 0; i--) if (_overlays[i].Owner == owner) RemoveOverlay(_overlays[i].Id);
-        }
-
         /// <summary>
         /// A waypoint toward goal for an NPC at pos, or false when no structure is involved / the way is straight. pathLeft = path length to
         /// the goal (inside) or to the exit plus the straight rest (outside), for the brain's progress check. The first waypoint provider

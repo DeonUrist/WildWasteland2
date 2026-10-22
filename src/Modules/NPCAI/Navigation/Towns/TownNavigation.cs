@@ -30,7 +30,6 @@ namespace WildWasteland.Modules.Towns
         internal int Casts, Accepted;   // street edges rechecked with physics / accepted from the plan's numeric validation
         internal bool Ready { get; private set; }
         internal bool Failed { get { return false; } }
-        internal string FailureReason { get; private set; }
         internal float Progress { get { return Ready ? 1 : !_streetsChecked ? _edgeCheck / (float)Mathf.Max(1, _site.Plan.StreetEdges.Length) * .3f
             : _floyd < 0 ? .3f + .3f * _lot / _site.Plan.LotCount : .6f + .4f * _floyd / _nodes.Length; } }
         internal TownNavigation(TownSite site)   // refs-ok: REFACTOR-REQUEST B08-6
