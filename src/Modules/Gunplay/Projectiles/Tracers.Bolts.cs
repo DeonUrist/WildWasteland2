@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly List<LandedBolt> _landedBolts = new List<LandedBolt>();
 
         // Native crossbow arrow: a plain mesh pointing along +Z, also present in NPC props.
+        /// <summary>Remembers the native crossbow arrow mesh, materials and scale.</summary>
         private static void CacheBoltModel(Transform weapon)
         {
             if (_boltMesh != null || weapon == null) return;
@@ -29,6 +30,7 @@ namespace WildWasteland.Modules.Guns
             GunplayLog.Warn("Crossbow bolt: native arrow mesh missing on " + weapon.name);
         }
 
+        /// <summary>A crossbow shot gets its visible arrow.</summary>
         private static void LaunchBolt(ref Shot s)
         {
             if (!s.Bolt) return;
@@ -41,12 +43,15 @@ namespace WildWasteland.Modules.Guns
             MoveBolt(ref s);
         }
 
+        /// <summary>Places the arrow at the bolt's simulated position.</summary>
         private static void MoveBolt(ref Shot s) { MoveBoltAt(ref s, s.Pos); }
+        /// <summary>Places the arrow so its tip is at <paramref name="pos"/>, pointing along the flight.</summary>
         private static void MoveBoltAt(ref Shot s, Vector3 pos)
         {
             if (s.Visual != null) s.Visual.SetPositionAndRotation(pos - s.Dir * (_boltMesh.bounds.max.z * _boltScale.z), Quaternion.LookRotation(s.Dir));
         }
 
+        /// <summary>The bolt hit: stuck halfway in soft targets (bone-anchored), ricochets off hard ones; BoltLanded event; removed after 15 s.</summary>
         private static void LandBolt(ref Shot s, Vector3 point, Vector3 normal, Transform target, bool soft)
         {
             if (s.Visual == null) return;
@@ -79,6 +84,7 @@ namespace WildWasteland.Modules.Guns
             if (Log.L2) GunplayLog.Deep("Crossbow bolt: " + (soft ? "embedded halfway in " : "ricochet from ") + (target != null ? target.name : "world") + " (15 s)");
         }
 
+        /// <summary>Removes landed bolts whose time is up.</summary>
         private static void TickBolts()
         {
             for (int i = _landedBolts.Count - 1; i >= 0; i--)
@@ -90,6 +96,7 @@ namespace WildWasteland.Modules.Guns
             }
         }
 
+        /// <summary>Destroys every bolt and skin-intersection cache.</summary>
         private static void ClearBolts()
         {
             foreach (var s in _shots) if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject);

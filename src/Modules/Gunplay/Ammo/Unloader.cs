@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Guns
     /// Drives the unload sequence by replaying the weapon's own Reload FSM events.
     internal class Unloader
     {
+        /// <summary>Unload sequence phases (2-phase: AnimFinished; 3-phase: AnimStart then AnimEnd).</summary>
         private enum Phase { Idle, WaitAnimFinished, WaitAnimStart, WaitAnimEnd }
         private Phase _phase = Phase.Idle;
         private PlayMakerFSM _reload;
@@ -23,9 +24,11 @@ namespace WildWasteland.Modules.Guns
         private string _item;
 
         public bool Busy { get { return _phase != Phase.Idle; } }
+        /// <summary>F7: current phase.</summary>
         public string PhaseName { get { return _phase.ToString(); } }
         public string WeaponName { get { return _weapon != null ? _weapon.name : "-"; } }
 
+        /// <summary>Starts unloading the drawn gun by replaying its own Reload FSM start events (needs rounds, a known caliber and an idle Reload FSM).</summary>
         public void TryStart()
         {
             if (PerGunAmmo.Suspended) return;
@@ -79,6 +82,7 @@ namespace WildWasteland.Modules.Guns
             }
         }
 
+        /// <summary>Per frame: aborts when the weapon vanished, continues a phase that timed out.</summary>
         public void Tick()
         {
             if (_phase == Phase.Idle) return;
@@ -88,6 +92,7 @@ namespace WildWasteland.Modules.Guns
             if (_phase == Phase.WaitAnimStart) AfterAnimStart(); else Finish();
         }
 
+        /// <summary>Open animation started: rounds move to the backpack, the shell sound plays, the close animation is requested.</summary>
         private void AfterAnimStart()
         {
             MoveAmmo();
@@ -115,6 +120,7 @@ namespace WildWasteland.Modules.Guns
             _deadline = Time.unscaledTime + AmmoSettings.PhaseTimeout.Value;
         }
 
+        /// <summary>Moves the gun's rounds into the backpack up to its capacity; the rest drops as a box (once per unload).</summary>
         private void MoveAmmo()
         {
             if (_moved) return;
@@ -147,6 +153,7 @@ namespace WildWasteland.Modules.Guns
             if (Log.L2) GunplayLog.Deep("Returned " + toStore + " x " + _caliber + " to backpack (now " + store.Value + "/" + cap + ")" + (leftover > 0 ? ", " + leftover + " dropped as a box" : ""));
         }
 
+        /// <summary>Ends the sequence: rounds moved, the idle state's events replayed (firing enabled again), UnloadFinished published.</summary>
         private void Finish()
         {
             MoveAmmo();
@@ -158,9 +165,12 @@ namespace WildWasteland.Modules.Guns
             _reload = null; _weapon = null; _ammoFsm = null;
         }
 
+        /// <summary>Weapon switch/holster/save: finishes a running unload at once.</summary>
         internal void CompleteForSwitch() { if (Busy) Finish(); }
+        /// <summary>Load: forgets a running unload without touching the gun.</summary>
         internal void CancelForLoad() { _phase = Phase.Idle; _reload = null; _weapon = null; _ammoFsm = null; }
 
+        /// <summary>Sends every enabled SendEvent of a Reload state through the weapon's FSM.</summary>
         private void ReplaySendEvents(FsmState st)
         {
             foreach (var a in st.Actions)
@@ -173,6 +183,7 @@ namespace WildWasteland.Modules.Guns
             }
         }
 
+        /// <summary>State of an FSM by name.</summary>
         private static FsmState FindState(PlayMakerFSM f, string name)
         {
             foreach (var s in f.FsmStates) if (s.Name == name) return s;
@@ -182,6 +193,7 @@ namespace WildWasteland.Modules.Guns
         // (WW) Searches the player's WeaponsArm subtree (active objects only, as FindObjectsOfType did); the whole-scene scan is the
         // fallback when the rig is not found. Every model accepted below must sit under a WeaponsArm anyway.
         private static readonly List<PlayMakerFSM> _armFsms = new List<PlayMakerFSM>(64);
+        /// <summary>The idle Reload FSM of the drawn gun under WeaponsArm (null while the rig is missing).</summary>
         private static PlayMakerFSM FindActiveReloadFsm()
         {
             var arm = PlayerState.WeaponsArm;
@@ -194,6 +206,7 @@ namespace WildWasteland.Modules.Guns
             return null;                        // (WW perf) no whole-scene scan: every accepted model sits under WeaponsArm anyway
         }
 
+        /// <summary>First enabled, initialised, idle Reload FSM with ammo_in_gun under a WeaponsArm.</summary>
         private static PlayMakerFSM PickReload(IList<PlayMakerFSM> fsms)
         {
             for (int i = 0; i < fsms.Count; i++)

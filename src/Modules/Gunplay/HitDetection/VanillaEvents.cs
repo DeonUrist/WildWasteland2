@@ -16,9 +16,11 @@ namespace WildWasteland.Modules.NPC
     {
         // (WW) Core.Hooks.SensorRayHitEnter has no __state: the lengthened burst sensor is kept here (prefix) and restored by the
         // finalizer of the same OnEnter (a small stack: an OnEnter inside an OnEnter stays paired).
+        /// <summary>A lengthened burst sensor and its original length (restored by the finalizer).</summary>
         internal sealed class RayState { public SensorGetDetectionRayHit Action; public Micosmo.SensorToolkit.RaySensor Sensor; public float Length; }
         private static readonly List<RayState> _rays = new List<RayState>(4);
         private static readonly List<RayState> _rayPool = new List<RayState>(4);
+        /// <summary>Core.Hooks.SensorRayHitEnter prefix (every SensorGetDetectionRayHit.OnEnter): one NPC "Damage Ranged" ray = one magazine shot; with projectiles off the burst sensor reaches the gun's range and the shot is heard (WeaponFired). Never skips.</summary>
         public static bool BeforeNpcShot(SensorGetDetectionRayHit __instance)
         {
             if (!NpcModule.Running) return true;
@@ -59,8 +61,10 @@ namespace WildWasteland.Modules.NPC
 
         // per NPC gunman: its burst sensor and the muzzle (fire_effect) of the gun in its hand. Looked up once instead of a full
         // GetComponentsInChildren + a name string per bone on every burst ray; the muzzle is looked up again when that gun is put away.
+        /// <summary>Per NPC gunman: burst sensor and muzzle.</summary>
         private sealed class ShooterRefs { public GameObject Owner; public Micosmo.SensorToolkit.RaySensor Sensor; public Transform Muzzle; public float NextScan; }
         private static readonly System.Collections.Generic.Dictionary<int, ShooterRefs> _refs = new System.Collections.Generic.Dictionary<int, ShooterRefs>();
+        /// <summary>Burst sensor and muzzle of a gunman (muzzle looked up again once a second while missing).</summary>
         private static ShooterRefs RefsOf(GameObject owner)
         {
             int id = owner.GetInstanceID();
@@ -82,6 +86,7 @@ namespace WildWasteland.Modules.NPC
             return r;
         }
 
+        /// <summary>Core.Hooks.SensorRayHitEnter finalizer: restores the lengthened sensor of this OnEnter.</summary>
         public static Exception AfterNpcShot(SensorGetDetectionRayHit __instance, Exception __exception)
         {
             for (int i = _rays.Count - 1; i >= 0; i--)
@@ -96,12 +101,14 @@ namespace WildWasteland.Modules.NPC
         }
 
         // Shutdown: a sensor still lengthened (an exception between prefix and finalizer cannot leave one, but be safe) gets its length back
+        /// <summary>Restores any lengthened sensor and clears the caches.</summary>
         internal static void Shutdown()
         {
             foreach (var st in _rays) if (st.Sensor != null) st.Sensor.Length = st.Length;
             _rays.Clear(); _refs.Clear(); _shotInfo.Clear();
         }
 
+        /// <summary>The weapon sits under the player's camera rig.</summary>
         internal static bool PlayerWeapon(GameObject weapon)
         {
             for (var t = weapon != null ? weapon.transform : null; t != null; t = t.parent)
@@ -109,10 +116,13 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
+        /// <summary>Per Attack FSM: gun or not, kind and muzzle transforms.</summary>
         private sealed class ShotInfo { public bool Gun; public WeaponRanges.Kind Kind; public Transform[] Muzzles; }
         private static readonly Dictionary<Fsm, ShotInfo> _shotInfo = new Dictionary<Fsm, ShotInfo>();
         private static readonly List<Transform> _muzzleBuf = new List<Transform>();
+        /// <summary>Scene change: the per-FSM shot info is dropped.</summary>
         internal static void OnSceneLoaded() { _shotInfo.Clear(); }
+        /// <summary>Gun, kind (pellet loop = shotgun) and muzzles of an Attack FSM.</summary>
         private static ShotInfo MakeShotInfo(Fsm fsm)
         {
             var si = new ShotInfo { Muzzles = new Transform[0] };
@@ -134,6 +144,7 @@ namespace WildWasteland.Modules.NPC
             return si;
         }
 
+        /// <summary>Core.Hooks.RaycastEnter prefix (every Raycast.OnEnter): with projectiles off, the player's vanilla gun shot is heard by NPCs and published as WeaponFired. Never skips.</summary>
         public static bool BeforePlayerShot(Raycast __instance)
         {
             try
@@ -173,6 +184,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
+        /// <summary>Core.Hooks.SetFsmFloatEnter postfix (every SetFsmFloat.OnEnter): a vanilla Bodypart.Damage write (player melee/guns without projectiles, NPC ranged/melee) becomes Hurt and NPC knowledge.</summary>
         public static void AfterDamage(SetFsmFloat __instance)
         {
             try

@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.Quests
 
         static int magLeft = -1; internal static int magSize; internal static float reloadUntil; static float reloadSecs = 3f;
 
+        /// <summary>Value of the first "name=value" entry whose name occurs in <paramref name="name"/> (config override lists), else the fallback.</summary>
         static float NamedValue(string list, string name, float fallback)
         {
             foreach (string part in (list ?? "").Split(','))
@@ -30,6 +31,7 @@ namespace WildWasteland.Modules.Quests
             return fallback;
         }
 
+        /// <summary>The follower is reloading.</summary>
         static bool Reloading { get { return Time.time < reloadUntil; } }
 
         static readonly List<AudioClip> reloadClips = new List<AudioClip>();
@@ -38,6 +40,7 @@ namespace WildWasteland.Modules.Quests
 
         // The player's own copy of each gun (under the camera's WeaponsArm) has an AnimSound FSM with its reload sounds
         // (mag out, mag in, slide...). Find the one that matches the gun in his hand and borrow its clips.
+        /// <summary>Finds the player's copy of the follower's gun on the weapon rack: its stats, shot sound (when needed) and reload sound clips.</summary>
         static void FindReloadClips()
         {
             try
@@ -107,6 +110,7 @@ namespace WildWasteland.Modules.Quests
         //    4 for a 5-shot revolver; a crossbow compares the other way round, 1 against the bolts it has)
         //  - a Reload FSM with "checkAmmoInStore" loads one round at a time (revolver, shotguns); otherwise one magazine
         //  - the time is the length of the reload clips in the gun's Animator
+        /// <summary>Magazine size (checkAmmo IntCompare) and reload time (reload clip lengths) from the player's copy of the gun.</summary>
         static void ReadGunStats(Transform gun, Transform rack)
         {
             try
@@ -180,6 +184,7 @@ namespace WildWasteland.Modules.Quests
         // plays the sounds before the "insert" sound once, the insert sound for every round, then the rest once.
         // his gun is not one the game gave him a sound for (Bolter's crossbow plays a gunshot): take the shot sound of the
         // player's version, which sits on the effect its Attack FSM spawns when it fires (GunShot_crossbow_Effect)
+        /// <summary>Gives the follower the shot sound of the player's copy of his gun (its fire effect's AudioSource clip).</summary>
         static void BorrowShotSound(Transform gun)
         {
             try
@@ -237,6 +242,7 @@ namespace WildWasteland.Modules.Quests
 
         // the player's own guns: Camera/WeaponsArm/Parent. Found from the camera first (the player's root can be the car or a big
         // scene object, too large to search), then from the player, and kept once found.
+        /// <summary>The player's Camera/WeaponsArm/Parent (cached once found).</summary>
         static Transform WeaponRack()
         {
             if (rackCache != null) return rackCache;
@@ -250,6 +256,7 @@ namespace WildWasteland.Modules.Quests
             return rack;
         }
 
+        /// <summary>Spreads the reload sounds over the reload (one-round-at-a-time guns repeat the insert sound per round).</summary>
         static void ScheduleReloadSounds()
         {
             soundQueue.Clear();
@@ -272,6 +279,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // which of the gun's sounds is the round going in: by name if one says so, else the middle one
+        /// <summary>Index of the "round goes in" sound by name, else the middle one.</summary>
         static int InsertClip()
         {
             string[] keys = { "insert", "ammo_in", "bullet", "round", "load", "mag_in", "_in", "shell" };
@@ -284,6 +292,7 @@ namespace WildWasteland.Modules.Quests
             return reloadClips.Count >= 3 ? reloadClips.Count / 2 : reloadClips.Count - 1;
         }
 
+        /// <summary>Plays the queued reload sounds whose time has come (on his Sound2 source).</summary>
         static void PlayDueSounds()
         {
             if (soundQueue.Count == 0 || npc == null) return;
@@ -305,6 +314,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // one shot gone, real or backup; an empty magazine means a pause to reload
+        /// <summary>One shot fired: magazine count, reload start with sounds, NPC shot pacing.</summary>
         static void CountShot()
         {
             if (magSize > 0)
@@ -320,10 +330,12 @@ namespace WildWasteland.Modules.Quests
         }
 
         // while reloading, Apocapatrol's gunner is told it cannot fire, so his own Attack FSM stays off and the arms come down
+        /// <summary>While reloading in a car the gunner gets no target, so the arms come down.</summary>
         static void HoldFire() { if (mounted) FeedTarget(); }
 
         // The follower's own sensors only look for the player, so the Attack/Damage Ranged FSMs never get a hit on one of your enemies.
         // While the gunner says it can fire, the mod lowers the target's Health the way the game's own Damage Ranged does (Bodypart -> Health).
+        /// <summary>Backup shots while his own FSM cannot hit (seated): lowers the target's Health like Damage Ranged, at the configured pace.</summary>
         static void FireShots()
         {
             if (npc == null || guardComp == null || target == null || !Alive(target) || shotDamage.Value <= 0f || Reloading) return;
@@ -359,6 +371,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.LogOnce("HireShoot", e); }
         }
 
+        /// <summary>Watches his own Attack FSM: real shots count toward the magazine and show the shot animation/flash.</summary>
         static void WatchShots()
         {
             if (npc == null) return;
@@ -377,6 +390,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // his gun: flash parts, gun hand, damage, magazine, reload time and sounds (car and foot alike)
+        /// <summary>Reads his gun (parts, damage, magazine, reload time, sounds) with config overrides.</summary>
         static void GunSetup()
         {
             int prevMag = magSize; float prevReload = reloadSecs;

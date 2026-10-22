@@ -8,12 +8,14 @@ namespace WildWasteland.Modules.Guns
 {
     internal static class EmptyGunSound
     {
+        /// <summary>Patches PlaySound.DoPlaySound with <see cref="Before"/>.</summary>
         internal static void Init(IModule owner)
         {
             Core.Patches.Patch(owner, AccessTools.Method(typeof(PlaySound), "DoPlaySound"),
                 prefix: AccessTools.Method(typeof(EmptyGunSound), nameof(Before)));
         }
 
+        /// <summary>Harmony prefix on PlaySound.DoPlaySound (every PlaySound): first-person empty click / reload sounds of the drawn gun play at the camera instead of the offset weapon root; false = played here. First filter: FSM name length.</summary>
         internal static bool Before(PlaySound __instance)
         {
             var fsm = __instance.Fsm;

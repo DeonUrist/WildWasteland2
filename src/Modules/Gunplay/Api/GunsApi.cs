@@ -11,11 +11,17 @@ namespace WildWasteland.Modules.Guns
     /// </summary>
     internal sealed class GunsApi : IGunsApi
     {
+        /// <summary>Contract version 1.</summary>
         public int ContractVersion { get { return 1; } }
+        /// <summary>Projectiles replace the vanilla hitscan.</summary>
         public bool ProjectilesEnabled { get { return GunplaySettings.ProjectilesEnabled; } }
+        /// <summary>The player's shots are projectiles too.</summary>
         public bool PlayerProjectilesEnabled { get { return GunplaySettings.ProjectilesEnabled && GunplaySettings.PlayerTracers.Value; } }
+        /// <summary>The collider stops bullets (solid, or a trigger with a Bodypart FSM).</summary>
         public bool BlocksProjectile(Collider collider) { return collider != null && Tracers.Counts(collider); }
+        /// <summary>Falloff range of a kind 0..5.</summary>
         public float EffectiveRange(int kind) { return Tracers.RangeOf((Tracers.Kind)kind); }
+        /// <summary>Kind 0..5 of the gun an NPC/turret holds (rifle when unknown).</summary>
         public bool TryGetWeaponKind(GameObject owner, out int kind)
         {
             Tracers.Kind found = Tracers.Kind.Rifle;
@@ -23,6 +29,7 @@ namespace WildWasteland.Modules.Guns
             kind = result ? (int)found : 2;
             return result;
         }
+        /// <summary>Gunplay handles melee on fitted wheels (Patrols fallback stands down).</summary>
         public bool HandlesFittedWheelMelee { get { return GunplaySettings.FittedWheelMeleeActive; } }
     }
 }

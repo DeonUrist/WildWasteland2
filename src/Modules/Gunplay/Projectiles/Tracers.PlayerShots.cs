@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.Guns
         private static int _statsRevision;
 
         // Unit disk: 50% is uniform by area; 0% weights the rim, 100% weights the centre.
+        /// <summary>A point in the unit disk: 50 % uniform, 0 % favours the rim, 100 % the centre.</summary>
         internal static Vector2 SpreadOffset(float accuracy)
         {
             float exponent = 0.5f * Mathf.Pow(2f, (Mathf.Clamp(accuracy, 0f, 100f) - 50f) / 50f);
@@ -31,6 +32,7 @@ namespace WildWasteland.Modules.Guns
 
         // Harmony prefix on HutongGames.PlayMaker.Actions.Raycast.OnEnter. Only the "fire" Raycast of a first-person gun's Attack FSM
         // (an FSM named Attack whose GameObject also has a Reload FSM; melee weapons have none). false = vanilla skipped.
+        /// <summary>Core.Hooks.RaycastEnter prefix (every Raycast.OnEnter): the "fire" Raycast of the player's gun fires projectiles (camera aim, muzzle origin, pellets) and finishes; false = vanilla skipped.</summary>
         public static bool BeforeRaycast(Raycast __instance)
         {
             try
@@ -120,6 +122,7 @@ namespace WildWasteland.Modules.Guns
             }
         }
 
+        /// <summary>Player gun data from its Attack FSM: hit states, damage value, muzzle, layers, pellets and catalog multipliers; null = not a gun.</summary>
         private static PlayerGun MakeGun(Fsm fsm, Raycast ray)
         {
             var go = fsm.GameObject;
@@ -178,6 +181,7 @@ namespace WildWasteland.Modules.Guns
 
         // the nearest thing the camera ray meets, as the vanilla Raycast sees it (QueriesHitTriggers is on in this game: head
         // triggers with a Bodypart FSM count, other triggers don't), skipping the player and their car
+        /// <summary>The nearest collider the camera ray meets as the vanilla Raycast sees it, skipping the player and the car.</summary>
         private static bool FirstHit(Vector3 origin, Vector3 dir, float range, int mask, Transform shooterRoot, out RaycastHit hit)
         {
             int n = Physics.RaycastNonAlloc(origin, dir, _hits, range, mask, QueryTriggerInteraction.Collide);

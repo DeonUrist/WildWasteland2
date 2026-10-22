@@ -8,12 +8,16 @@ namespace WildWasteland.Modules.Guns
     /// One magazine per save-stable item name. A vanilla type pool can be inherited only once.
     internal sealed class MagazineLedger
     {
+        /// <summary>One item's weapon type and magazine.</summary>
         private sealed class Entry { internal string Type; internal Magazine Magazine; }
         private readonly Dictionary<string, Entry> _items = new Dictionary<string, Entry>(StringComparer.Ordinal);
         private readonly HashSet<string> _claimed = new HashSet<string>(StringComparer.Ordinal);
+        /// <summary>Items with a magazine.</summary>
         internal int Count { get { return _items.Count; } }
+        /// <summary>Weapon types whose vanilla pool was inherited.</summary>
         internal int ClaimedCount { get { return _claimed.Count; } }
 
+        /// <summary>Magazine of an item; a new item inherits the vanilla type pool once, later items of that type start empty.</summary>
         internal Magazine Draw(string item, string type, Magazine vanilla)
         {
             Entry entry;
@@ -27,6 +31,7 @@ namespace WildWasteland.Modules.Guns
             return magazine;
         }
 
+        /// <summary>Stores the current magazine of an item already in the ledger.</summary>
         internal void Capture(string item, string type, Magazine magazine)
         {
             Entry entry;
@@ -35,6 +40,7 @@ namespace WildWasteland.Modules.Guns
             entry.Magazine = magazine;
         }
 
+        /// <summary>"Apocaunloader.Magazines|1" text (frozen format): claimed types and items, sorted ordinally.</summary>
         internal string Encode()
         {
             var lines = new List<string> { "Apocaunloader.Magazines|1" };
@@ -45,6 +51,7 @@ namespace WildWasteland.Modules.Guns
             return string.Join("\n", lines.ToArray());
         }
 
+        /// <summary>Parses the |1 text strictly; any malformed line throws (PerGunAmmo then suspends to protect the save).</summary>
         internal static MagazineLedger Decode(string text)
         {
             var lines = (text ?? "").Split('\n');

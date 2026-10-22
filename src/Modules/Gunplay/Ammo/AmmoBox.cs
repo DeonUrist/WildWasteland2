@@ -23,12 +23,14 @@ namespace WildWasteland.Modules.Guns
         };
         private static readonly Dictionary<string, GameObject> _prefabs = new Dictionary<string, GameObject>();
 
+        /// <summary>Item name of the box/item that carries a caliber (ammo_762 -> ammo_box_762mm, armorplate -> armorplate); null when unknown.</summary>
         private static string BoxName(string caliber)
         {
             string d;
             return DefaultBoxes.TryGetValue(caliber, out d) ? d : null;
         }
 
+        /// <summary>Template object for a caliber's box: the asset prefab, else a scene copy "(Clone)" with the right FSM; cached per caliber (one asset scan at the first drop).</summary>
         private static GameObject FindPrefab(string caliber)
         {
             GameObject cached;
@@ -51,6 +53,7 @@ namespace WildWasteland.Modules.Guns
             return found;
         }
 
+        /// <summary>Spawns save-registered box items holding <paramref name="rounds"/> of a caliber (grenades/plates one item each) in front of the camera; false keeps the ammo (no registry, no prefab, spawn failure).</summary>
         internal static bool Drop(string caliber, int rounds, Transform at)
         {
             if (rounds <= 0 || at == null) return false;

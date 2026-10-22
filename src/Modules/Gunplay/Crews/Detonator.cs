@@ -8,6 +8,7 @@ namespace WildWasteland.Modules.Patrols
     internal sealed class Detonator : MonoBehaviour
     {
         private int _frames;
+        /// <summary>Two frames after spawn, sets the lance off through its Explosion FSM; removes itself after 10 frames.</summary>
         private void Update()
         { if (!PatrolsModule.Running) return;
             if (++_frames < 2) return;

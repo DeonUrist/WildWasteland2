@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Guns
     /// (WW) Handler of Core.Hooks.ActivateGameObjectEnter (prefix, never skips).
     internal static class MagazineDrawHook
     {
+        /// <summary>Core.Hooks.ActivateGameObjectEnter prefix (every ActivateGameObject.OnEnter): a WeaponInHand activation binds the drawn model to its item's magazine. Never skips.</summary>
         internal static bool Prefix(ActivateGameObject __instance)
         {
             var fsm = __instance.Fsm;

@@ -15,17 +15,20 @@ namespace WildWasteland.Modules.Guns
         private static bool _buttonValue, _resetAim;
         private static readonly System.Collections.Generic.Dictionary<Transform, PlayMakerFSM> _weaponSights = new System.Collections.Generic.Dictionary<Transform, PlayMakerFSM>();
 
+        /// <summary>Subscribes the ADS toggle (GetButton prefix), the per-frame job and the projection writer (Core CameraArbiter).</summary>
         internal static void Init(IModule owner)
         {
             Hooks.GetButtonDo.Prefix(owner, BeforeGetButton);
             Scheduler.EveryFrame(owner, "Gunplay.Ironsights", Tick, Phase.EarlyUpdate);
             _projectionOwner = owner; CameraArbiter.AddProjection(owner, "Gunplay.Ironsights", 100, WriteProjection);
         }
+        /// <summary>Removes the projection writer and resets the state.</summary>
         internal static void Shutdown()
         {
             CameraArbiter.Remove(_projectionOwner, "Gunplay.Ironsights");
             Reset();
         }
+        /// <summary>Drops rig references, zoom and toggle state (scene change).</summary>
         internal static void Reset()
         {
             Restore(); _camera = null; _ads = null; _adsFsm = null; _nextFind = 0f;
@@ -33,6 +36,7 @@ namespace WildWasteland.Modules.Guns
             _buttonValue = _resetAim = false;
             _weaponSights.Clear();
         }
+        /// <summary>World ready: toggle off, zoom 1, the native ADS FSM is reset once it runs.</summary>
         internal static void StartWorld()
         { _buttonValue = false; _buttonFrame = -1; _target = _zoom = 1f; _resetAim = true; }
         private static bool ThirdPerson { get { return Services.Animation != null && Services.Animation.PlayerThirdPerson; } }
@@ -114,6 +118,7 @@ namespace WildWasteland.Modules.Guns
             _zoom = Mathf.Lerp(_zoom, _target, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 16f));
             if (Mathf.Abs(_zoom - _target) < .0001f) _zoom = _target;
         }
+        /// <summary>Core.Hooks.GetButtonDo prefix (every GetButton each frame): with ToggleIronsights, the AimDownSights_Hold FSM's "Aim Down Sights" button becomes a toggle. First filter: reference compare with the cached ADS FSM.</summary>
         private static bool BeforeGetButton(GetButton action)
         {
             if (!ReferenceEquals(action.Fsm, _adsFsm) || _adsFsm == null) return true;

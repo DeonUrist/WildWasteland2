@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.CleanHUD
     internal sealed class WeaponInfo
     {
         internal string Key, Caliber, Kind; // Kind: gun, melee, thrown
+        /// <summary>Row of the HUD weapon table.</summary>
         internal WeaponInfo(string key, string cal, string kind) { Key = key; Caliber = cal; Kind = kind; }
     }
 
@@ -39,6 +40,7 @@ namespace WildWasteland.Modules.CleanHUD
 
         private static readonly Regex Paren = new Regex(@"\(([^)]+)\)\s*$", RegexOptions.Compiled);
         // Unknown (modded) weapon: caliber from the item name "Name (cal)", kind from the Reload FSM.
+        /// <summary>HUD row of an item: the catalog table, else caliber from the item name "(cal)" and gun/melee from its Reload FSM (remembered).</summary>
         internal static WeaponInfo Describe(GameObject item, string itemName)
         {
             var key = KeyOf(item);

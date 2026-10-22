@@ -13,10 +13,12 @@ namespace WildWasteland.Modules.PlayerBody
     /// </summary>
     internal static partial class Props
     {
+        /// <summary>How a weapon is held/animated.</summary>
         public enum Kind { None, Rifle, Pistol, Melee, Throw }
 
         // (WW perf) memo per weapon name (asked per frame; ToLowerInvariant made a string per call). Pure function of the name.
         private static readonly Dictionary<string, Kind> _kinds = new Dictionary<string, Kind>();
+        /// <summary>Hold style of a weapon name (Gunplay catalog rule), memoised per name.</summary>
         public static Kind KindOf(string weapon)
         {
             if (string.IsNullOrEmpty(weapon) || weapon == "hands") return Kind.None;

@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Guns
     {
         // ---------- the hook ----------
         // Harmony prefix on Micosmo.SensorToolkit.PlayMaker.SensorGetDetectionRayHit.OnEnter. false = vanilla skipped.
+        /// <summary>Core.Hooks.SensorRayHitEnter prefix (every SensorGetDetectionRayHit.OnEnter): an NPC gunman's "Damage Ranged" ray fires projectiles from the muzzle (body aim, lead, pellets) and the FSM takes its miss branch; false = vanilla skipped.</summary>
         public static bool BeforeRayHit(SensorGetDetectionRayHit __instance)
         {
             try
@@ -135,6 +136,7 @@ namespace WildWasteland.Modules.Guns
         private static bool _playerTracked;
         private static float _nextFind;
 
+        /// <summary>Per frame: the player's smoothed velocity (for NPC lead).</summary>
         private static void TrackPlayer(float dt)
         {
             if (_player == null)
@@ -153,6 +155,7 @@ namespace WildWasteland.Modules.Guns
             _playerVel = Vector3.Lerp(_playerVel, v, k);
         }
 
+        /// <summary>Velocity of a target: the tracked player velocity, else its rigidbody.</summary>
         private static Vector3 VelocityOf(GameObject target, GameObject root)
         {
             if (_player != null && (target == _player || (root != null && root == _player))) return _playerTracked ? _playerVel : Vector3.zero;
@@ -163,6 +166,7 @@ namespace WildWasteland.Modules.Guns
 
         // ---------- shooter info (once per FSM owner) ----------
         private static readonly List<Transform> _walk = new List<Transform>(256);
+        /// <summary>Shooter info of an NPC (held gun, muzzle, impact, damage, event, layers); retried while the gun model is missing.</summary>
         private static ShooterInfo Info(Fsm fsm, GameObject owner)
         {
             ShooterInfo info;
@@ -240,6 +244,7 @@ namespace WildWasteland.Modules.Guns
             return info;
         }
 
+        /// <summary>Muzzle of the shooter (fire_effect or arrow tip), else the weapon.</summary>
         private static Transform MuzzleOf(ShooterInfo info, GameObject owner)
         {
             if (info.Muzzle != null) return info.Muzzle;
@@ -261,6 +266,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // The gun an NPC holds, for the Aim pacing (cached like Info; finds the Damage Ranged FSM itself).
+        /// <summary>Kind of the gun an NPC holds (shooter cache; finds its Damage Ranged FSM).</summary>
         internal static bool GunKindOf(GameObject owner, out Kind kind)
         {
             kind = Kind.Rifle;

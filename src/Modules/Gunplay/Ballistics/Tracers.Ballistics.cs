@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.Guns
         // (the NPC head capsules, the player's head sphere) - vanilla raycasts hit those (QueriesHitTriggers), FireDamageCollider
         // and other triggers are not bodies. Cached per collider.
         private static readonly Dictionary<int, bool> _counts = new Dictionary<int, bool>();
+        /// <summary>Does the collider stop a bullet: solid colliders always, triggers only with a Bodypart FSM (head hitboxes). Cached per collider.</summary>
         internal static bool Counts(Collider c)
         {
             if (!c.isTrigger) return true;
@@ -32,6 +33,7 @@ namespace WildWasteland.Modules.Guns
 
         // Verbose, once per creature type: where its head trigger and body capsule reach, against the visible model
         private static readonly HashSet<string> _reported = new HashSet<string>();
+        /// <summary>Level-2 trace, once per creature type: where its head trigger and body capsule reach against the model.</summary>
         private static void ReportHitbox(Collider head)
         {
             if (!Log.L2) return;
@@ -52,6 +54,7 @@ namespace WildWasteland.Modules.Guns
             catch (Exception e) { if (Log.L1) GunplayLog.Main("Hitbox report failed: " + e.Message); }
         }
 
+        /// <summary>The collider belongs to the shooter or to the player (and the player's car).</summary>
         private static bool Ignored(Transform t, Transform shooterRoot, GameObject player)
         {
             if (shooterRoot != null && t.IsChildOf(shooterRoot)) return true;
@@ -61,6 +64,7 @@ namespace WildWasteland.Modules.Guns
 
         // the gun's vanilla hit path, for the collider the bullet met: set its hitObj/hitPoint/hitNormal, then getLayer or
         // actorHitSound (which impact sound), then the hit state's CreateObject / SetFsmFloat (damage x falloff) / SendEvent actions
+        /// <summary>The player's bullet met a collider: replays the gun's vanilla hit states with the falloff, then hit feedback, Hurt and ProjectileHit.</summary>
         private static void PlayerHit(ref Shot s, RaycastHit h, float falloff)
         {
             var gun = s.Gun;
@@ -102,6 +106,7 @@ namespace WildWasteland.Modules.Guns
         // An NPC's head carries its own Bodypart FSM whose damage state multiplies the damage (FloatMultiply, x2 on every NPC) before taking it
         // off Health. A hit there is pre-scaled so the result is [Gunplay] HeadshotMultiplier x the damage. Cached per head object.
         private static readonly Dictionary<int, float> _headMul = new Dictionary<int, float>();
+        /// <summary>Pre-scale for a head hit so the result is [Gunplay] HeadshotMultiplier x damage (the head's own FloatMultiply divided out). Cached per head.</summary>
         private static float HeadFactor(GameObject head)
         {
             float m;
@@ -124,6 +129,7 @@ namespace WildWasteland.Modules.Guns
         }
 
 
+        /// <summary>Replays vanilla hit-state actions (CreateObject, SetFsmFloat x falloff, SetFsmGameObject, SendEvent); optional skips for vehicle-part damage and dust on creatures.</summary>
         private static void Replay(Fsm fsm, FsmStateAction[] actions, float falloff, bool skipBodypartDamage = false, bool skipDust = false)
         {
             if (actions == null) return;
@@ -193,6 +199,7 @@ namespace WildWasteland.Modules.Guns
 
 
         // Damage multiplier by distance flown: full damage until [Tracers] FullDamageUntil % of the range, then linear to 0 at the range.
+        /// <summary>Damage factor by distance: 1 until FullDamageUntil of the range, then linear to 0 at the range.</summary>
         private static float Falloff(ref Shot s, float dist)
         {
             float x = dist / s.Range;
@@ -209,6 +216,7 @@ namespace WildWasteland.Modules.Guns
         private const float SimHz = 60f;
         // where the bullet is drawn this frame: between Prev and Pos by the share of the last step already elapsed (Pos itself before the first
         // step), and how far it has travelled there
+        /// <summary>Where the bullet is drawn this frame (between the last two simulated points) and how far it has flown there.</summary>
         private static void RenderOf(ref Shot s, out Vector3 pos, out float travelled)
         {
             pos = s.Pos; travelled = s.Travelled;
@@ -219,6 +227,7 @@ namespace WildWasteland.Modules.Guns
         }
 
 
+        /// <summary>One simulated step: virtual player hitbox, swept cast, penetration, hit resolution for player and NPC bullets.</summary>
         private static void Step(ref Shot s, float dt)
         {
             float move = Mathf.Min(s.Speed * dt, s.Range - s.Travelled);
@@ -307,6 +316,7 @@ namespace WildWasteland.Modules.Guns
         // crouch is followed: a body capsule (feet to neck, [Tracers] PlayerBodyRadius) and a head sphere ([Tracers] PlayerHeadRadius)
         // at the top. A bullet hits whichever it reaches first, once.
         // the object that carries the body capsule: the target itself or its nearest ancestor (the player's "head" child -> Player)
+        /// <summary>The player object carrying the body capsule (the target or its ancestor); null for NPCs/animals.</summary>
         private static GameObject BodyRootOf(GameObject target)
         {
             for (var tr = target.transform; tr != null; tr = tr.parent)
@@ -315,6 +325,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         private static readonly Dictionary<int, GameObject> _heads = new Dictionary<int, GameObject>();
+        /// <summary>The "head" child with a Bodypart FSM of a body root (cached).</summary>
         private static GameObject HeadOf(GameObject root)
         {
             GameObject h;
@@ -329,6 +340,7 @@ namespace WildWasteland.Modules.Guns
             return h;
         }
 
+        /// <summary>The tallest enabled solid capsule of the object (follows crouching).</summary>
         private static CapsuleCollider PlayerCapsule(GameObject target)
         {
             CapsuleCollider best = null;
@@ -338,6 +350,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // segment p0 + d*t (0..len) vs the virtual shapes; returns the nearest hit distance along the bullet
+        /// <summary>Segment vs the virtual player shapes (head sphere, body capsule); the nearest hit distance and whether it is the head.</summary>
         private static bool PlayerHit(Vector3 p0, Vector3 d, float len, float thick, GameObject target, CapsuleCollider cap, out float t, out bool head)
         {
             t = 0f; head = false;
@@ -363,6 +376,7 @@ namespace WildWasteland.Modules.Guns
             return true;
         }
 
+        /// <summary>Segment vs sphere: entry distance along the segment (0 when starting inside).</summary>
         private static bool RaySphere(Vector3 p0, Vector3 d, float len, Vector3 c, float r, out float t)
         {
             t = 0f;
@@ -377,6 +391,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // closest approach between the bullet segment and the capsule axis a..b (Ericson, Real-Time Collision Detection 5.1.9)
+        /// <summary>Segment vs capsule (closest approach of two segments): entry distance along the bullet.</summary>
         private static bool SegCapsule(Vector3 p0, Vector3 d, float len, Vector3 a, Vector3 b, float r, out float t)
         {
             Vector3 p1 = p0 + d * len;
@@ -410,10 +425,12 @@ namespace WildWasteland.Modules.Guns
         private sealed class HitDistance : IComparer<RaycastHit>
         {
             public static readonly HitDistance Instance = new HitDistance();
+            /// <summary>Orders raycast hits by distance.</summary>
             public int Compare(RaycastHit a, RaycastHit b) { return a.distance.CompareTo(b.distance); }
         }
 
         // exactly the vanilla attack state: impact effect at the point, <target>/Bodypart.Damage = damage, SendEvent Damage to the target
+        /// <summary>An NPC bullet reached its target: impact effect, Bodypart.Damage, the vanilla damage event, Hurt/ProjectileHit events.</summary>
         private static void HitTarget(ref Shot s, Vector3 point, float damage, GameObject target, float dist)
         {
             if (s.Impact != null) UnityEngine.Object.Instantiate(s.Impact, point, Quaternion.identity);
@@ -450,6 +467,7 @@ namespace WildWasteland.Modules.Guns
         }
 
 
+        /// <summary>A bullet hit a vehicle part: VehiclePartHit, condition damage (wheels x WheelDamageMultiplier), wheel pop-off at 0.</summary>
         private static void HitWorld(ref Shot s, Collider col, Vector3 point, float damage)
         {
             Transform part = null;
@@ -492,6 +510,7 @@ namespace WildWasteland.Modules.Guns
         // gaps), doors / hoods / trunks (sheet metal) and bolted-on metal plates (armour). Through: sparks, the part takes its condition
         // damage, the bullet flies on with less damage (glass/grid x0.8, sheet x0.6, armour x0.4) and can hit whoever is behind; at most 2
         // parts. Engines, radiators, bumpers, wheels, frames stop every bullet. Replaces knocking plates off (wheels still pop off at 0).
+        /// <summary>Car-part material classes for penetration.</summary>
         private enum Mat { None, Glass, Grid, Sheet, Armour }
         //                                   Pistol Smg Rifle Sniper Shotgun Crossbow  (% to pass)
         private static readonly float[] PassGlass  = { 80f, 85f, 95f, 100f, 60f, 70f };
@@ -499,6 +518,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly float[] PassSheet  = { 30f, 35f, 70f, 90f, 10f, 20f };
         private static readonly float[] PassArmour = { 0f, 5f, 20f, 50f, 0f, 0f };
         private static readonly Dictionary<string, Mat> _partMat = new Dictionary<string, Mat>();
+        /// <summary>Material class of a car part by name (cached).</summary>
         private static Mat MatOf(string partName)
         {
             Mat m;
@@ -514,6 +534,7 @@ namespace WildWasteland.Modules.Guns
             return m;
         }
 
+        /// <summary>The collider belongs to a part this bullet already passed through.</summary>
         private static bool WentThrough(ref Shot s, Transform t)
         {
             var part = OwningPart(t);
@@ -522,6 +543,7 @@ namespace WildWasteland.Modules.Guns
             return id == s.Passed0 || id == s.Passed1;
         }
 
+        /// <summary>Rolls whether the bullet passes a glass/grid/sheet/armour part (by gun kind); through: sparks, part damage, damage cut, at most 2 parts.</summary>
         private static bool Penetrates(ref Shot s, Collider col, RaycastHit h, float damage)
         {
             if (s.Passed >= 2) return false;
@@ -544,6 +566,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // a rigidbody that belongs to a car (an attached part: door, hood, trunk on its hinge; the car body itself) - bullets don't push it
+        /// <summary>The rigidbody belongs to a car (attached part or the car body): bullets do not push it.</summary>
         private static bool OnCar(Collider col, Rigidbody rb)
         {
             if (OwningPart(col.transform) != null) return true;
@@ -555,7 +578,9 @@ namespace WildWasteland.Modules.Guns
             return car;
         }
 
+        /// <summary>Pops a wheel shot to 0 off its car.</summary>
         private static void PopOff(Transform part, Vector3 dir) { PopOff(part, dir, "shot off its car (condition 0)"); }
+        /// <summary>Wheel off its car: de_Attach recipe (layer Item, tag vehPartRemoved), kick next frames, freed by hand if CheckTag does not; WheelPoppedOff event.</summary>
         private static void PopOff(Transform part, Vector3 dir, string why)
         {
             part.gameObject.layer = 9;
@@ -569,6 +594,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // a wheel / tyre part: the hit collider or any object up to (and including) its part is named like one
+        /// <summary>The collider or an object up to its part is named like a wheel/tyre (not a steering wheel).</summary>
         private static bool IsWheel(Transform t, Transform part)
         {
             for (; t != null; t = t.parent)

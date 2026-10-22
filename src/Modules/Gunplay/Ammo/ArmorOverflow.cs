@@ -12,11 +12,14 @@ namespace WildWasteland.Modules.Guns
     {
         // (WW) per FloatClamp action: is it __GameManager__'s ArmorBackpack armor <= armor_capacity clamp (decided once; GameObject.name
         // allocates) + its transfer state
+        /// <summary>Per FloatClamp action: whether it is the ArmorBackpack armor clamp, and its transfer state.</summary>
         private sealed class Clamp { public bool Ours; public OverflowTransfer State; }
         private static readonly Dictionary<FloatClamp, Clamp> _clamps = new Dictionary<FloatClamp, Clamp>();
+        /// <summary>Forgets every classified clamp (scene change, load, shutdown).</summary>
         internal static void Reset() { _clamps.Clear(); }
         internal static int Tracked { get { int n = 0; foreach (var c in _clamps.Values) if (c.Ours && c.State != null) n++; return n; } }
 
+        /// <summary>True for __GameManager__'s ArmorBackpack "armor &lt;= armor_capacity" clamp (decided once per action).</summary>
         private static bool Classify(FloatClamp action, Fsm fsm)
         {
             if (fsm.GameObject.name != "__GameManager__") return false;
@@ -25,6 +28,7 @@ namespace WildWasteland.Modules.Guns
             return armor != null && max != null && armor.Name == "armor" && max.Name == "armor_capacity";
         }
 
+        /// <summary>Armor clamp prefix body: on a capacity drop the excess armor becomes plates on the ground; false while a drop is pending (vanilla clamp suppressed).</summary>
         internal static bool BeforeClamp(FloatClamp action)
         {
             var fsm = action.Fsm;
@@ -58,6 +62,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // (WW) closure outside BeforeClamp (see BackpackOverflow.Transfer)
+        /// <summary>Runs the transfer with a plate-dropping callback (kept out of BeforeClamp so its closure is only built on this path).</summary>
         private static bool Transfer(OverflowTransfer t, float armor, float capacity, UnityEngine.Transform at, out float retained)
         {
             return t.BeforeClamp(armor, capacity, UnityEngine.Time.unscaledTime, plates => AmmoBox.Drop("armorplate", plates, at), out retained);

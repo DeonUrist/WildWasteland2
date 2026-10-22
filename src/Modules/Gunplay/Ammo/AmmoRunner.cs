@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Guns
         private static bool _consumed;
         internal static Unloader Unloader = new Unloader();
 
+        /// <summary>Hold/tap state, unloader and reload-tap memory back to their initial values.</summary>
         internal static void ResetAll()
         {
             _held = false; _pressStart = 0f; _consumed = false;
@@ -24,6 +25,7 @@ namespace WildWasteland.Modules.Guns
             ReloadTapHook.Reset();
         }
 
+        /// <summary>Job "Gunplay.Ammo" (every frame): per-gun magazine upkeep, backpack removal restore, then the Reload hold/tap state machine and the unloader.</summary>
         internal static void Tick()
         {
             try { PerGunAmmo.Tick(); } catch (Exception e) { PerGunAmmo.Fail(e); }

@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.Guns
         private static GameObject _rangedHit, _metalImpact;
         private static bool _effectsLooked;
 
+        /// <summary>Finds RangedHit_Effect and MetalImpact among the loaded prefabs (once per scene).</summary>
         private static void FindEffects()
         {
             if (_effectsLooked) return;
@@ -46,6 +47,7 @@ namespace WildWasteland.Modules.Guns
             if (_rangedHit == null || _metalImpact == null) _effectsLooked = false;
         }
 
+        /// <summary>An NPC bullet hit the world: the vanilla impact twice, a push on loose things, metal sparks on cars.</summary>
         private static void WorldImpact(Collider col, Vector3 point, Vector3 normal, Vector3 dir)
         {
             if (!GunplaySettings.ImpactEffects.Value) return;
@@ -61,6 +63,7 @@ namespace WildWasteland.Modules.Guns
             MetalSparks(col, point, normal);
         }
 
+        /// <summary>Sparks/smoke/decal on car metal (not wheels) using the scaled template; destroyed after 4 s.</summary>
         private static void MetalSparks(Collider col, Vector3 point, Vector3 normal)
         {
             if (!GunplaySettings.MetalSparks.Value) return;
@@ -109,6 +112,7 @@ namespace WildWasteland.Modules.Guns
         // Any part of a car (attached parts, the frame/body itself, loose parts) except wheels. A car = a root carrying NWH's VehicleController
         // (looked up by name, no reference to the NWH assembly); cached per root.
         private static readonly Dictionary<int, bool> _carRoots = new Dictionary<int, bool>();
+        /// <summary>The collider belongs to a car (part or body) and is not a wheel or a creature riding in it.</summary>
         private static bool IsCarMetal(Transform t)
         {
             if (Creature(t) != null) return false;          // (1.0.1) a creature riding in a car (Apocapatrol crews): flesh, not metal

@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Patrols
     {
         // Intercept with gravity: the launch velocity (relative to the thrower's own velocity baseVel) of the given speed that meets a target
         // moving at targetVel. The flattest (earliest) solution. False when the speed cannot reach it - launch is then the best try.
+        /// <summary>Launch velocity of a given speed (relative to the thrower's velocity) that meets a moving target under gravity; flattest solution, false = best try.</summary>
         internal static bool Solve(Vector3 from, Vector3 baseVel, Vector3 target, Vector3 targetVel, float speed, out Vector3 launch, out float time)
         {
             var g = Physics.gravity;
@@ -37,6 +38,7 @@ namespace WildWasteland.Modules.Patrols
             launch = u.normalized * speed; time = bestT;
             return false;
         }
+        /// <summary>Launch velocity that meets the target after time t.</summary>
         private static Vector3 U(Vector3 from, Vector3 baseVel, Vector3 target, Vector3 targetVel, Vector3 g, float t)
         {
             return (target + targetVel * t - from - baseVel * t - 0.5f * g * t * t) / t;
@@ -44,6 +46,7 @@ namespace WildWasteland.Modules.Patrols
         // The blast lance's own explosion: what the projectile's [Explosion] FSM creates in its "explode" state (CreateObject), read once from the
         // prefab's FSM. Spawned directly, it always goes off - no trigger contact or FSM event needed.
         private static GameObject _explosion; private static bool _explosionLooked;
+        /// <summary>The blast lance explosion object its Explosion FSM creates (read once from the prefab).</summary>
         internal static GameObject ExplosionPrefab()
         {
             if (_explosionLooked) return _explosion;
@@ -67,6 +70,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // a blast-lance explosion at the point, every time: the explosion object itself, or (not found) a lance set off by its FSM
+        /// <summary>A blast-lance explosion at the point (the explosion object, else a lance set off).</summary>
         internal static void Boom(Vector3 at)
         {
             var ex = ExplosionPrefab();
@@ -83,6 +87,7 @@ namespace WildWasteland.Modules.Patrols
         // when that ground track meets the target's predicted ground track, and the vertical part just has to land on it (a low arc: no lob).
         // false when the target runs away faster than that, the jump would take over 1.6 s, or it would need more than 35 degrees up.
         internal const float MaxLeapTime = 1.2f;   // 2.2.3: the longest "Witness me!" jump (was 1.6 s at 16 m/s - Denis: shorter)
+        /// <summary>The "Witness me!" leap: flat jump of fixed ground speed meeting the target track; false when too long or too steep.</summary>
         internal static bool FlatLeap(Vector3 from, Vector3 baseVel, Vector3 target, Vector3 targetVel, float hSpeed, out Vector3 launch, out float time)
         {
             var r = target - from; r.y = 0f;
@@ -109,6 +114,7 @@ namespace WildWasteland.Modules.Patrols
         // 2.1.4: the rider's own blast - no lance, no FSM event, nothing that can fail to go off: the exploder zombie's blast effect (sound,
         // fire, physics shove of loose things) at the spot, our damage to the player within RiderBlastRadius (full at the centre, a third at
         // the edge; in the car too) and a shove of the player's car away from it
+        /// <summary>A rider's own blast: effect, damage to the player within the radius, shove of the player's car.</summary>
         internal static void Kaboom(Vector3 at, string who)
         {
             try { Explode.BlastAt(at); } catch (Exception e) { GunplayLog.Warn("Rider: blast effect: " + e.Message); }
@@ -128,6 +134,7 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { GunplayLog.Warn("Rider: blast damage: " + e.Message); }
         }
 
+        /// <summary>Elevation angle of a vector, degrees.</summary>
         internal static float Elevation(Vector3 v) { return Mathf.Asin(Mathf.Clamp(v.normalized.y, -1f, 1f)) * Mathf.Rad2Deg; }
     }
 }

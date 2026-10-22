@@ -44,6 +44,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly RaycastHit[] _orbHits = new RaycastHit[32];
 
         // CreateObject.OnEnter postfix (via GunplayModule.AfterCreateObject)
+        /// <summary>CreateObject postfix part: a projectile created by a gunless shooter's Damage Ranged is tracked as an orb.</summary>
         internal static void OrbSpawned(CreateObject action, GameObject obj)
         {
             try
@@ -78,6 +79,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // TranslatePosition.OnFixedUpdate prefix: false = we moved it (or stopped it)
+        /// <summary>Harmony prefix on TranslatePosition.OnFixedUpdate: tracked orbs move here with a sweep (walls stop them); false = moved here.</summary>
         public static bool BeforeTranslatePosition(TranslatePosition __instance)
         {
             if (_orbs.Count == 0) return true;
@@ -115,6 +117,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // true = keep flying (v may have been shortened), false = stopped and removed
+        /// <summary>Sweeps an orb's step: bodies let the game's trigger hit, car parts may be penetrated, anything else stops it.</summary>
         private static bool OrbStep(Orb o, ref Vector3 v)
         {
             float len = v.magnitude;
@@ -166,6 +169,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // the projectile's own damage (absolute), for car-part condition and the penetration cut
+        /// <summary>The orb's own damage value (absolute), looked up once.</summary>
         private static float OrbDamage(Orb o)
         {
             if (!o.DamageLooked)
@@ -192,6 +196,7 @@ namespace WildWasteland.Modules.Guns
             return o.DamageVar != null ? Mathf.Abs(o.DamageVar.Value) : 10f;
         }
 
+        /// <summary>Stops an orb at a point (colliders off, deactivated, destroyed).</summary>
         private static void Kill(Orb o, Vector3 at)
         {
             var go = o.Go;
@@ -202,6 +207,7 @@ namespace WildWasteland.Modules.Guns
             UnityEngine.Object.Destroy(go);
         }
 
+        /// <summary>Drops tracked orbs that no longer exist.</summary>
         private static void SweepOrbs()
         {
             if (_orbs.Count == 0) return;

@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Guns
     [HarmonyPatch(typeof(IntClamp), "DoClamp")]
     internal static class AmmoCapacityPatch
     {
+        /// <summary>Harmony prefix on IntClamp.DoClamp (every IntClamp of every FSM each frame): the backpack ammo clamps go through BackpackOverflow; false skips the vanilla clamp.</summary>
         static bool Prefix(IntClamp __instance) { return BackpackOverflow.BeforeClamp(__instance); }
     }
 }

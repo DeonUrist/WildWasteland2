@@ -28,6 +28,7 @@ namespace WildWasteland.Modules.HUD
         private static readonly List<Hit> Pending = new List<Hit>();
         private static readonly List<PlayMakerFSM> _fsms = new List<PlayMakerFSM>(8);
 
+        /// <summary>Core.Hooks.SetFsmFloatEnter prefix (every SetFsmFloat.OnEnter): notes the player's vanilla gun hits (Bodypart.Damage) for hit feedback while projectiles are off. Observe only, never skips.</summary>
         public static bool BeforeSetFsmFloat(SetFsmFloat __instance)
         {
             if (!Observing || GunplaySettings.ProjectilesEnabled) return true;     // projectiles report their own hits (ex HitFeedbackService.External && Guns running)
@@ -66,6 +67,7 @@ namespace WildWasteland.Modules.HUD
             return true;
         }
 
+        /// <summary>The object has an FSM of that name (no allocation).</summary>
         private static bool HasFsm(GameObject go, string name)
         {
             go.GetComponents(_fsms);
@@ -75,6 +77,7 @@ namespace WildWasteland.Modules.HUD
             return found;
         }
 
+        /// <summary>A float variable of a named FSM on the object (no allocation).</summary>
         private static FsmFloat FindFloat(GameObject go, string fsmName, string variable)
         {
             go.GetComponents(_fsms);
@@ -88,6 +91,7 @@ namespace WildWasteland.Modules.HUD
             return result;
         }
 
+        /// <summary>The nearest vehicle-part Condition up from the hit object.</summary>
         private static FsmFloat Condition(Transform target, out GameObject owner)
         {
             for (var t = target; t != null; t = t.parent)
@@ -99,6 +103,7 @@ namespace WildWasteland.Modules.HUD
         }
         // the nearest Health FSM on the way up from the hit object, never past a vehicle part or a car root (Apocapatrol seats its crews
         // under the car, so transform.root of a driver is the car)
+        /// <summary>The nearest creature Health up from the hit object, never past a vehicle part or car root.</summary>
         private static FsmFloat CreatureHealth(Transform target, out GameObject owner)
         {
             for (var t = target; t != null; t = t.parent)
@@ -109,6 +114,7 @@ namespace WildWasteland.Modules.HUD
             }
             owner = null; return null;
         }
+        /// <summary>Last resort: any Health FSM below the root.</summary>
         private static FsmFloat Health(GameObject root)
         {
             // last resort, once per hit on an object without creature Health/Condition (reused list instead of the array overload)
@@ -119,6 +125,7 @@ namespace WildWasteland.Modules.HUD
             _fsms.Clear();
             return result;
         }
+        /// <summary>Late in the frame (HUD job): measured damage of the noted hits goes to the hit feedback (IHitFeedback).</summary>
         public static void Flush()
         {
             if (Pending.Count == 0) return;
@@ -136,7 +143,9 @@ namespace WildWasteland.Modules.HUD
             }
             Pending.Clear();
         }
+        /// <summary>Origin shift of the noted hit points.</summary>
         public static void Shift(Vector3 delta) { foreach (var hit in Pending) hit.Point += delta; }
+        /// <summary>Drops the noted hits.</summary>
         public static void Clear() { Pending.Clear(); }
     }
 }

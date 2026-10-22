@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.Guns
 {
     internal static partial class Tracers
     {
+        /// <summary>A bolt stuck in something: its visual, owner creature, bone path and lifetime.</summary>
         private struct LandedBolt { public Transform Visual, Owner; public string Bone; public float Until; }
         private static Mesh _boltSkin;
         private static readonly List<SkinnedMeshRenderer> _boltSkins = new List<SkinnedMeshRenderer>();
@@ -17,6 +18,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly Dictionary<Mesh, BoneWeight[]> _boltWeights = new Dictionary<Mesh, BoneWeight[]>();
 
         // Collision capsules sit outside the skin. Anchor to the visible surface and the bone that deforms it.
+        /// <summary>Anchor of a bolt in a creature: the visible skin surface along the shot and the bone that deforms it.</summary>
         private static Transform BoltSurface(Transform target, ref Vector3 point, Vector3 dir, out Transform owner, out int layer)
         {
             owner = Creature(target); layer = target.gameObject.layer;
@@ -89,6 +91,7 @@ namespace WildWasteland.Modules.Guns
             return anchor;
         }
 
+        /// <summary>CreateObject postfix part: bolts stuck in a creature move to the same bone of its spawned corpse.</summary>
         internal static void BoltCorpseSpawned(CreateObject action, GameObject made)
         {
             if (_landedBolts.Count == 0 || action.Fsm == null || action.Fsm.Name != "Health" || made == null) return;
@@ -107,6 +110,7 @@ namespace WildWasteland.Modules.Guns
             }
         }
 
+        /// <summary>Path of a bone below its creature ("" for the creature itself, null when not below it).</summary>
         private static string BoltBonePath(Transform bone, Transform owner)
         {
             if (bone == owner) return "";

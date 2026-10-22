@@ -24,13 +24,18 @@ namespace WildWasteland.Modules.Guns
         private static float _scanAt;
         private static readonly List<PlayMakerFSM> _buf = new List<PlayMakerFSM>(64);
 
+        /// <summary>Loading, saving or faulted: no ledger changes.</summary>
         internal static bool Suspended { get { return _loading || _saving || _faulted; } }
+        /// <summary>[Gunplay] PerGunMagazines.</summary>
         private static bool On { get { return GunplaySettings.PerGunMagazines.Value; } }
 
         // ---- F7 live info ----
+        /// <summary>F7: items in the ledger.</summary>
         internal static int TrackedItems { get { return _ledger.Count; } }
+        /// <summary>F7: claimed weapon types.</summary>
         internal static int ClaimedTypes { get { return _ledger.ClaimedCount; } }
         internal static string Current { get { return _identity == null ? "-" : _identity + " (" + _type + ")"; } }
+        /// <summary>F7: ledger state text.</summary>
         internal static string State { get { return _faulted ? "FAULTED (suspended to protect save data)" : _loading ? "loading" : _saving ? "saving" : "active"; } }
 
         /// <summary>Save-stable item name of the drawn gun (null when none is bound).</summary>
@@ -40,6 +45,7 @@ namespace WildWasteland.Modules.Guns
         /// <summary>Item id of <paramref name="model"/> when it is the bound drawn gun, else null (stat modifiers per item).</summary>
         internal static string ItemOfModel(GameObject model) { return _reload != null && model != null && ReferenceEquals(_reload.gameObject, model) ? _identity : null; }
 
+        /// <summary>Fresh ledger and state (module init).</summary>
         internal static void ResetAll()
         {
             _ledger = new MagazineLedger();
@@ -57,12 +63,15 @@ namespace WildWasteland.Modules.Guns
             _scanAt = 0f;
         }
 
+        /// <summary>FSM by name on an object (Core FsmUtil).</summary>
         internal static PlayMakerFSM Find(GameObject go, string name) { return FsmUtil.Find(go, name); }
 
         // Vanilla's Folk 17 weaponType is "folk17", but its arm model is "folk_17".
+        /// <summary>The native weaponType names this arm model (catalog alias: folk17 -> folk_17).</summary>
         private static bool MatchesModel(string type, string model)
         { return type == model || WeaponCatalog.Instance.ModelNameOf(type) == model; }
 
+        /// <summary>The object sits under the first-person WeaponsArm.</summary>
         internal static bool ArmModel(GameObject go)
         {
             for (var p = go == null ? null : go.transform.parent; p != null; p = p.parent)
@@ -70,6 +79,7 @@ namespace WildWasteland.Modules.Guns
             return false;
         }
 
+        /// <summary>Scene change: rig references dropped; the ledger of the current load is kept.</summary>
         internal static void SceneChanged()
         {
             _handler = null; _saveFsm = null; _scanAt = 0;
@@ -77,6 +87,7 @@ namespace WildWasteland.Modules.Guns
             Release();
         }
 
+        /// <summary>The gun's current rounds and hammer.</summary>
         private static Magazine Read(PlayMakerFSM reload)
         {
             var rounds = reload.FsmVariables.GetFsmInt("ammo_in_gun");
@@ -85,6 +96,7 @@ namespace WildWasteland.Modules.Guns
             return new Magazine(rounds == null ? 0 : rounds.Value, hammer != null && hammer.Value);
         }
 
+        /// <summary>Writes a magazine into the gun (rounds and hammer).</summary>
         private static void Apply(PlayMakerFSM reload, Magazine magazine)
         {
             reload.FsmVariables.GetFsmInt("ammo_in_gun").Value = magazine.Rounds;
@@ -93,15 +105,18 @@ namespace WildWasteland.Modules.Guns
             if (hammer != null) hammer.Value = magazine.Hammer;
         }
 
+        /// <summary>Stores the bound gun's current magazine.</summary>
         internal static void Capture()
         {
             if (_reload == null || _identity == null || _faulted || _loading) return;
             _ledger.Capture(_identity, _type, Read(_reload));
         }
 
+        /// <summary>Unbinds the drawn gun.</summary>
         private static void Release()
         { _reload = null; _item = null; _identity = null; _type = null; }
 
+        /// <summary>WeaponInHand entered Deactivate: completes an unload and stores the magazine.</summary>
         internal static void Holster(Fsm fsm)
         {
             if (fsm.Name != "WeaponInHand" || Suspended) return;
@@ -110,6 +125,7 @@ namespace WildWasteland.Modules.Guns
             Capture(); Release();
         }
 
+        /// <summary>A gun model was activated by WeaponInHand: binds it to the selected item and applies that item's magazine.</summary>
         internal static void Draw(Fsm handler, GameObject model)
         {
             if (Suspended || !On || handler == null || handler.Name != "WeaponInHand" || !ArmModel(model)) return;
@@ -133,6 +149,7 @@ namespace WildWasteland.Modules.Guns
 
         // Fsm.EnterState prefix: every state entry of every FSM. Both FSM names we watch are 12 characters long, so one int compare
         // rejects almost every call before any string compare.
+        /// <summary>Fsm.EnterState prefix body: holster on WeaponInHand Deactivate; SaveLoadGame Start/setSeed/LoadGame resets, wait/SaveGame begins a save (first filter: name length 12).</summary>
         internal static void BeforeState(Fsm fsm, FsmState st)
         {
             string n = fsm.Name;
@@ -151,6 +168,7 @@ namespace WildWasteland.Modules.Guns
             else if (state == "wait" || state == "SaveGame") BeginSave();
         }
 
+        /// <summary>Fsm.EnterState postfix body: SaveLoadGame isPlay ends loading/saving and adopts the drawn gun.</summary>
         internal static void AfterState(Fsm fsm, FsmState st)
         {
             string n = fsm.Name;
@@ -162,6 +180,7 @@ namespace WildWasteland.Modules.Guns
             AdoptDrawn();
         }
 
+        /// <summary>Binds the gun the player already holds (after a load, or while none is bound) from the WeaponsArm subtree.</summary>
         private static void AdoptDrawn()
         {
             if (Suspended || !On) return;
@@ -191,6 +210,7 @@ namespace WildWasteland.Modules.Guns
 
         // the "Weapons" object's WeaponInHand FSM: looked for under the player and the camera rig first, then (as before) in the whole
         // scene; cached until the next scene load
+        /// <summary>The "Weapons" WeaponInHand FSM under the player or the camera rig (null while the rig is missing).</summary>
         private static PlayMakerFSM FindHandler()
         {
             var r = HandlerIn(GameRefs.Player);
@@ -199,6 +219,7 @@ namespace WildWasteland.Modules.Guns
 
         }
 
+        /// <summary>The "Weapons" WeaponInHand FSM below <paramref name="root"/> (active objects only).</summary>
         private static PlayMakerFSM HandlerIn(GameObject root)
         {
             if (root == null) return null;
@@ -215,6 +236,7 @@ namespace WildWasteland.Modules.Guns
             finally { _buf.Clear(); }
         }
 
+        /// <summary>Per frame (Ammo job): SaveLoadGame lookup, unbinds a vanished gun, adopts the drawn one once a second while none is bound.</summary>
         internal static void Tick()
         {
             if (_saveFsm == null && Time.unscaledTime >= _scanAt)
@@ -229,6 +251,7 @@ namespace WildWasteland.Modules.Guns
             if (_reload == null && Time.unscaledTime >= _scanAt) { _scanAt = Time.unscaledTime + 1f; AdoptDrawn(); }
         }
 
+        /// <summary>A save starts: unload completes, the ledger snapshot is taken for the ES3 key.</summary>
         internal static void BeginSave()
         {
             if (_loading || _faulted || _saving) return;
@@ -238,6 +261,7 @@ namespace WildWasteland.Modules.Guns
         }
 
 
+        /// <summary>Any ledger error: suspends per-gun magazines (save data protected) and logs it.</summary>
         internal static void Fail(Exception error)
         {
             AmmoRunner.Unloader.CancelForLoad();

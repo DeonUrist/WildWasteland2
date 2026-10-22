@@ -14,8 +14,10 @@ namespace WildWasteland.Modules.Guns
     internal static class ReloadTapHook
     {
         private static readonly Dictionary<GetButtonDown, int> _lastTap = new Dictionary<GetButtonDown, int>();
+        /// <summary>Forgets the per-action tap memory (scene change).</summary>
         internal static void Reset() { _lastTap.Clear(); }
 
+        /// <summary>Core.Hooks.GetButtonDownUpdate prefix (every GetButtonDown each frame): the native "Reload" polls only fire on a short tap; always skips the original for Reload.</summary>
         internal static bool Prefix(GetButtonDown __instance)
         {
             if (!AmmoSettings.Enabled.Value) return true;

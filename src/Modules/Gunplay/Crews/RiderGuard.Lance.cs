@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Patrols
     internal sealed partial class RiderGuard
     {
         // the blast lance item as a prop in the throwing hand: no FSMs, no physics, no colliders
+        /// <summary>The lance prop in the throwing hand (no FSMs, physics or colliders).</summary>
         private void BuildLance()
         {
             if (_hand == null) return;
@@ -35,6 +36,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // the lance leaves the hand: the player's projectile prefab on the intercept course (predicted target, gravity, the car's speed)
+        /// <summary>Throws the projectile prefab on the intercept course with a LanceFuse.</summary>
         private void Release(Vector3 tpos, Vector3 tvel)
         {
             try

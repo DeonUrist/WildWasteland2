@@ -18,8 +18,10 @@ namespace WildWasteland.Modules.Guns
         internal static ConfigEntry<float> HoldSeconds, PhaseTimeout;
         internal static ConfigEntry<Key> FallbackKey;
         internal static int TapFrame = -100;
+        /// <summary>Level-2 ammo trace (constant messages; callers guard concatenations with Log.L2).</summary>
         internal static void V(string message) { if (Log.L2) GunplayLog.Deep(message); }
 
+        /// <summary>Reload input held this frame: the game's "Reload" axis, else the fallback key (Input System, then legacy KeyCode).</summary>
         internal static bool ReloadHeld()
         {
             // (WW perf) a game without a "Reload" input axis throws (and allocates an exception) on every call: remembered after the first
@@ -37,6 +39,7 @@ namespace WildWasteland.Modules.Guns
         private static bool _noReloadButton, _fallbackParsed, _fallbackOk;
         private static KeyCode _fallbackCode;
         private static Key _fallbackFor;
+        /// <summary>A short Reload tap happened this frame or the previous one (the native Reload FSM gets its GetButtonDown then).</summary>
         internal static bool TapPending() { int frame = Time.frameCount; return frame == TapFrame || frame == TapFrame + 1; }
     }
 }

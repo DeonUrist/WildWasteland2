@@ -14,15 +14,19 @@ namespace WildWasteland.Modules.Guns
     {
         // (WW) Per IntClamp action: is it one of the __GameManager__ Ammo FSM's ammo_X <= ammo_X_capacity clamps (decided once: the
         // variable names and the owner never change; GameObject.name and the "_capacity" concatenation allocate) + its transfer state.
+        /// <summary>Per IntClamp action: whether it is an Ammo "ammo_X &lt;= ammo_X_capacity" clamp, and its transfer state.</summary>
         private sealed class Clamp { public bool Ours; public OverflowTransfer State; }
         private static readonly Dictionary<IntClamp, Clamp> _clamps = new Dictionary<IntClamp, Clamp>();
         private static Fsm _emptySlot;
         private static int _removalFrame;
+        /// <summary>[Gunplay] BackpackOverflow.</summary>
         internal static bool Enabled { get { return AmmoSettings.DropBackpackOverflow.Value; } }
         internal static int Tracked { get { int n = 0; foreach (var c in _clamps.Values) if (c.Ours && c.State != null) n++; return n; } }
 
+        /// <summary>Forgets the classified clamps and a pending slot removal.</summary>
         internal static void Reset() { _clamps.Clear(); _emptySlot = null; }
 
+        /// <summary>True for __GameManager__'s Ammo FSM clamps of ammo_X to ammo_X_capacity (decided once per action).</summary>
         private static bool Classify(IntClamp action, Fsm fsm)
         {
             if (fsm.GameObject.name != "__GameManager__") return false;
@@ -31,6 +35,7 @@ namespace WildWasteland.Modules.Guns
             return count != null && max != null && count.Name.StartsWith("ammo_", StringComparison.Ordinal) && max.Name == count.Name + "_capacity";
         }
 
+        /// <summary>Ammo clamp prefix body: on a capacity drop the excess rounds become an ammo box; false while a drop is pending (vanilla clamp suppressed).</summary>
         internal static bool BeforeClamp(IntClamp action)
         {
             var fsm = action.Fsm;
@@ -67,11 +72,13 @@ namespace WildWasteland.Modules.Guns
 
         // (WW) the drop closure lives here, not in BeforeClamp: a lambda capturing BeforeClamp's locals made the compiler allocate
         // its closure on every IntClamp call game-wide, before the first filter
+        /// <summary>Runs the transfer with a box-dropping callback (closure built only on this path).</summary>
         private static bool Transfer(OverflowTransfer state, int count, int capacity, string caliber, Transform at, out int retained)
         {
             return state.BeforeClamp(count, capacity, Time.unscaledTime, excess => AmmoBox.Drop(caliber, excess, at), out retained);
         }
 
+        /// <summary>FsmState.OnEnter postfix body: notes the Backpack_Item slot going empty with an item (first filter: FSM name length 13).</summary>
         internal static void OnSlotEnter(FsmState state)
         {
             var fsm = state.Fsm;
@@ -85,6 +92,7 @@ namespace WildWasteland.Modules.Guns
             _removalFrame = Time.frameCount;
         }
 
+        /// <summary>Per frame (Ammo job): once a removed backpack's slot stays empty, restores the base ammo capacities the Backpack FSM's "set" state defines.</summary>
         internal static void Tick()
         {
             // (old: Reset() every frame while off; BeforeClamp already drops each clamp's state while off)

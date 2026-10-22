@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.Guns
         // instead of knife_hit: postfix on SetAudioClip.OnEnter in "actorHitSound" of the player's melee FSM.
         private static AudioClip _stab; private static bool _stabTried;
 
+        /// <summary>The weapon is one of the player's melee weapons (under WeaponsArm, no Reload FSM). Cached.</summary>
         internal static bool IsPlayerMelee(GameObject weapon)
         {
             if (weapon == null) return false;
@@ -34,6 +35,7 @@ namespace WildWasteland.Modules.Guns
             return melee;
         }
 
+        /// <summary>Harmony postfix on GetLayer.OnEnter: in the player's melee "getLayer" state a corpse counts as an actor, so it bleeds.</summary>
         public static void AfterGetLayer(GetLayer __instance)
         {
             try
@@ -51,6 +53,7 @@ namespace WildWasteland.Modules.Guns
             catch (Exception e) { GunplayLog.Error("Tracers melee corpse", e); }
         }
 
+        /// <summary>Harmony postfix on SetAudioClip.OnEnter: blades play the stab sound in "actorHitSound". First filter: FSM name length.</summary>
         public static void AfterSetAudioClip(SetAudioClip __instance)
         {
             if (!GunplaySettings.TracersEnabled.Value) return;
@@ -72,6 +75,7 @@ namespace WildWasteland.Modules.Guns
             catch (Exception e) { GunplayLog.Error("Tracers stab sound", e); }
         }
 
+        /// <summary>Core.Hooks.CreateObjectEnter prefix: the player's melee hit on car metal shows metal sparks instead of dust; false = replaced.</summary>
         public static bool BeforeMeleeEffect(CreateObject __instance)
         {
             if (!GunplaySettings.TracersEnabled.Value || !GunplaySettings.MetalSparks.Value) return true;
@@ -110,6 +114,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // Sounds/knifestab.wav next to the DLL (hidden [Tracers] StabSound), loaded once
+        /// <summary>Sounds/knifestab.wav from the Gunplay asset folder, amplified for AudioPlay's 0.5 volume; loaded once.</summary>
         internal static AudioClip StabClip()
         {
             if (_stab != null || _stabTried) return _stab;
@@ -138,9 +143,11 @@ namespace WildWasteland.Modules.Guns
         // SendEvent Damage; a vehicle part's Bodypart FSM takes that straight off its Condition. Postfix on SetFsmFloat.OnEnter (DoSetFsmFloat could be inlined): when the
         // target is a wheel, its Bodypart.Damage is multiplied by [Tracers] WheelDamageMultiplier (and shown in blue); a wheel brought to 0
         // jumps off next frame (WheelPopOff).
+        /// <summary>A wheel hit by melee, checked for pop-off the next frame.</summary>
         private struct MeleeWheel { public Transform Part; public float Before; public Vector3 Dir; public int Frame; }
         private static readonly List<MeleeWheel> _meleeWheels = new List<MeleeWheel>();
         private static readonly Dictionary<int, bool> _isMelee = new Dictionary<int, bool>();
+        /// <summary>Core.Hooks.SetFsmFloatEnter postfix: the player's melee damage on a wheel x WheelDamageMultiplier, part hit feedback and pop-off check. First filter: FSM name length.</summary>
         public static void AfterSetFsmFloat(SetFsmFloat __instance)
         {
             if (!GunplaySettings.MeleeOnWheels.Value) return;                 // (WW) [Guns] MeleeOnWheels
@@ -190,6 +197,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly Dictionary<int, PlayMakerFSM[]> _wAttack = new Dictionary<int, PlayMakerFSM[]>();
         private static readonly List<PlayMakerFSM> _wBuf = new List<PlayMakerFSM>(4);
         private static readonly PlayMakerFSM[] NoFsm = new PlayMakerFSM[0];
+        /// <summary>Attack FSMs of a weapon child (cached per child).</summary>
         private static PlayMakerFSM[] AttackFsms(Transform w)
         {
             PlayMakerFSM[] a;
@@ -211,6 +219,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly RaycastHit[] _wHits = new RaycastHit[24];
         private const int WheelSwingMask = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 14) | (1 << 16);
 
+        /// <summary>Per frame: a melee swing repeats the game's cast with triggers, so fitted wheels take the hit once per swing.</summary>
         private static void SwingAtFittedWheels()
         {
             // (WW) the rig comes from Core PlayerState (retried by Core while missing)
@@ -284,6 +293,7 @@ namespace WildWasteland.Modules.Guns
         // hinge - the solid sphere collider of hinge_wheel*/wheel_hub (the game's AddSphereCollider, about the tyre's size, part of the
         // FRAME) wraps the fitted wheel, so a swing meets it before the tyre's own trigger and 1.5.1 stopped there as "solid first".
         // That hub now counts as the wheel on its hinge. Another part on the way up (a fender, a plate) = not a wheel.
+        /// <summary>The fitted wheel a collider belongs to (wheel item or anything under its hinge), else null.</summary>
         private static Transform FittedWheelAt(Transform t)
         {
             for (var a = t; a != null; a = a.parent)
@@ -300,6 +310,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // the weapon's "hit" state value (SetFsmFloat Bodypart.Damage, old_knife -12); a weapon with a Reload FSM is a gun
+        /// <summary>The weapon's "hit" state damage value (NaN = a gun). Cached.</summary>
         private static float SwingDamage(PlayMakerFSM attack)
         {
             float d;
@@ -325,6 +336,7 @@ namespace WildWasteland.Modules.Guns
             return d;
         }
 
+        /// <summary>Condition of a vehicle part (its own Condition/Repair FSM), -1 when none.</summary>
         private static float PartCondition(Transform part)
         {
             var fsms = FsmBuffers.Rent();
@@ -343,6 +355,7 @@ namespace WildWasteland.Modules.Guns
             finally { FsmBuffers.Return(fsms); }
         }
 
+        /// <summary>The frame after a melee wheel hit: a wheel at 0 pops off.</summary>
         private static void CheckMeleeWheels()
         {
             for (int i = _meleeWheels.Count - 1; i >= 0; i--)

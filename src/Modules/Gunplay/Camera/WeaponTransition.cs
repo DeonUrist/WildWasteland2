@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.Guns
         private static bool _replaying, _lowering, _holster;
         private const float Duration = .14f;
 
+        /// <summary>Subscribes the switch event prefix, the activation postfix, the timing job and the (Presentation-part) lowering pose job.</summary>
         internal static void Init(IModule owner)
         {
             Hooks.ProcessEvent.Prefix(owner, BeforeEvent);
@@ -43,18 +44,22 @@ namespace WildWasteland.Modules.Guns
         /// <summary>Current lowering weight 0..1 of the switch.</summary>
         internal static float Weight { get { return _weight; } }
 
+        /// <summary>Drops rig references and the switch state; the pose is restored.</summary>
         internal static void Reset()
         {
             Restore(); _handler = _switcher = null; _handlerFsm = _switcherFsm = null; _pending = null; _data = null;
             _weight = _nextFind = 0f; _lowering = _replaying = _holster = false;
         }
+        /// <summary>World ready: weapons get holstered once the Weapons FSM runs.</summary>
         internal static void StartWorld() { _holster = true; }
+        /// <summary>Restores the pose and replays a held-back switch event.</summary>
         internal static void Shutdown()
         {
             Restore();
             if (_pending != null && _handler != null && GameRefs.InPlay) Replay();
             Reset();
         }
+        /// <summary>Sends the held-back slot event to the Weapons FSM (the switch continues).</summary>
         private static void Replay()
         {
             var ev = _pending; var data = _data; _pending = null; _data = null;
@@ -62,6 +67,7 @@ namespace WildWasteland.Modules.Guns
             try { _switcher.Fsm.ProcessEvent(ev, data); }
             finally { _replaying = false; }
         }
+        /// <summary>Core.Hooks.ProcessEvent prefix (every FSM event): holds a slot/back event of the Weapons FSM while the drawn weapon lowers; false = held. First filter: reference compare with the cached Weapons FSM.</summary>
         private static bool BeforeEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             if (!ReferenceEquals(fsm, _switcherFsm) || _switcherFsm == null) return true;
@@ -76,6 +82,7 @@ namespace WildWasteland.Modules.Guns
             if (Log.L2) GunplayLog.Deep("Weapon transition: lower " + weapon.Value + " for " + ev.Name);
             return false;
         }
+        /// <summary>Core.Hooks.ActivateGameObjectEnter postfix: WeaponInHand activated a new weapon model, it raises. First filter: reference compare.</summary>
         private static void AfterActivate(ActivateGameObject action)
         {
             if (!ReferenceEquals(action.Fsm, _handlerFsm) || _handlerFsm == null) return;

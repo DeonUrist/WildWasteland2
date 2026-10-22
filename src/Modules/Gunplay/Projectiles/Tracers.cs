@@ -27,6 +27,7 @@ namespace WildWasteland.Modules.Guns
     // Above [Tracers] MaxTracers live projectiles a shot is resolved at once (hitscan) instead, so no damage is ever lost.
     internal static partial class Tracers
     {
+        /// <summary>Gun kinds (values match WeaponKind 0..5).</summary>
         internal enum Kind { Pistol, Smg, Rifle, Sniper, Shotgun, Crossbow }
         /// <summary>Crossbow damage multiplier (read by the Apocaspawner tooltip bridge); the value lives in the weapon catalog now.</summary>
         [Obsolete("refactor: use ModApi IWeaponStats.Get(handle, WeaponStat.DamageMultiplier)")]
@@ -102,6 +103,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly HashSet<GameObject> _forceFree = new HashSet<GameObject>();   // popped wheels: freed by hand if CheckTag doesn't
         private static int _playerMuzzleLogs;
 
+        /// <summary>Scene change: bullets, bolts, caches and impact prefabs dropped.</summary>
         public static void OnSceneLoaded()
         {
             ClearBolts();
@@ -126,6 +128,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // (WW) Init: every static back to its initial value, so the module starts again cleanly after Shutdown
+        /// <summary>Every static back to its initial value (module init).</summary>
         internal static void ResetAll()
         {
             OnSceneLoaded();
@@ -136,6 +139,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // (WW) module off: bullets in flight vanish, created objects are destroyed (the vanilla TranslatePosition moves orbs again)
+        /// <summary>Module off: bullets vanish, created objects are destroyed.</summary>
         internal static void Shutdown()
         {
             OnSceneLoaded();
@@ -148,6 +152,7 @@ namespace WildWasteland.Modules.Guns
         }
 
         // (WW) FloatingOrigin jumped: bullets in flight move with the world (Gunplay did not handle this; they jumped 1000 m)
+        /// <summary>Floating origin jumped: bullets and landed bolts move with the world.</summary>
         internal static void OriginShift(Vector3 delta)
         {
             for (int i = 0; i < _shots.Count; i++) { var s = _shots[i]; s.Pos += delta; s.Start += delta; s.Prev += delta; _shots[i] = s; }
@@ -156,9 +161,13 @@ namespace WildWasteland.Modules.Guns
         }
 
         // F7 live info
+        /// <summary>F7: bullets in flight.</summary>
         internal static int InFlight { get { return _shots.Count; } }
+        /// <summary>F7: tracked monster projectiles.</summary>
         internal static int OrbCount { get { return _orbs.Count; } }
+        /// <summary>F7: known NPC shooters.</summary>
         internal static int ShooterCount { get { return _shooters.Count; } }
+        /// <summary>F7: known player guns.</summary>
         internal static int PlayerGunCount { get { return _guns.Count; } }
 
         // ---------- simulation ----------
@@ -166,6 +175,7 @@ namespace WildWasteland.Modules.Guns
         private static float _npcRadius, _fullUntil, _headMult, _bodyR, _headR;
         private static float _nextSweep;
 
+        /// <summary>Reads the per-bullet settings once per frame.</summary>
         private static void Snapshot()
         {
             _npcRadius = Mathf.Max(0f, GunplaySettings.NpcHitRadius.Value);
@@ -175,6 +185,7 @@ namespace WildWasteland.Modules.Guns
             _headR = Mathf.Max(0.03f, GunplaySettings.PlayerHeadRadius.Value);
         }
 
+        /// <summary>Per frame (Gunplay.Tracers job): bolts, melee on wheels, player velocity, fixed-rate bullet steps, sweeps, pushes, popped wheels, drawing.</summary>
         public static void Tick()
         {
             float dt = Time.deltaTime;
@@ -238,6 +249,7 @@ namespace WildWasteland.Modules.Guns
 
         // caches keyed by dead NPCs would otherwise hold their objects until the next scene load
         private static readonly List<int> _dead = new List<int>();
+        /// <summary>Every 30 s: drops cache entries of destroyed objects.</summary>
         private static void Sweep()
         {
             _dead.Clear();
@@ -269,6 +281,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly List<int> _t = new List<int>();
 
         private static bool _drawnEmpty, _drawnPaused;
+        /// <summary>Rebuilds the one tracer mesh (camera-facing quads) when there is something to draw.</summary>
         private static void Draw()
         {
             if (_shots.Count == 0 && _drawnEmpty) return;      // nothing to draw and the mesh is already empty

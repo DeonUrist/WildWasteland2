@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Guns
     [HarmonyPatch(typeof(FloatClamp), "DoClamp")]
     internal static class ArmorCapacityPatch
     {
+        /// <summary>Harmony prefix on FloatClamp.DoClamp (every FloatClamp each frame): the armor clamp goes through ArmorOverflow; false skips the vanilla clamp.</summary>
         static bool Prefix(FloatClamp __instance) { return ArmorOverflow.BeforeClamp(__instance); }
     }
 }
