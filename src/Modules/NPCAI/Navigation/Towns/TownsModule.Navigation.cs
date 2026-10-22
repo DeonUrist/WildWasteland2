@@ -12,9 +12,9 @@ namespace WildWasteland.Modules.Towns
 {
     /// <summary>
     /// NPC town routing hook answered for the Nav.Next bridge: outside-wall detours, gate entrances, street graph, walker gates.
-    /// Wave A (A6): entry split of Towns/TownsModule.cs (NPCAI/Navigation part, B08: becomes an IWaypointProvider registration).
+    /// Wave A (A6): entry split of Towns/TownRuntime.cs (NPCAI/Navigation part, B08: becomes an IWaypointProvider registration).
     /// </summary>
-    public sealed partial class TownsModule
+    internal sealed partial class TownRuntime
     {
         /// <summary>Town waypoint for an NPC: outside a walled town a detour round the wall or a gate entrance (approach = true), inside the street route or the walker gates.</summary>
         internal bool Waypoint(GameObject owner, Vector3 position, Vector3 goal, out Vector3 waypoint, out bool approach)
