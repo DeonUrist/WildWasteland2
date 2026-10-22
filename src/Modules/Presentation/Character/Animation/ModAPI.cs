@@ -4,7 +4,6 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
-using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {

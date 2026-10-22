@@ -16,10 +16,8 @@ namespace WildWasteland.Modules.Weather
         private Vector3 _previous;
         private float _next, _rate, _opacity;
         private bool _hasPosition, _waiting;
-        private ParticleSystem.MinMaxGradient _nativeColor;
-        private int _diagnosticState = -1, _nativeLimit;
-        private bool _nativeAutoSeed, _restoredSeed, _tintPending;
         private Color _lastTint;
+        private ParticleSystem.Particle[] _particles = new ParticleSystem.Particle[100];
         private float _reportAt;
         private bool _reported;
 
@@ -44,8 +42,6 @@ namespace WildWasteland.Modules.Weather
             var main = _system.main; main.playOnAwake = false;
             // This camera-gated renderer may be disabled at Unity's simulation/culling step.
             main.cullingMode = ParticleSystemCullingMode.AlwaysSimulate;
-            _nativeColor = main.startColor; _nativeLimit = main.maxParticles;
-            _nativeAutoSeed = _system.useAutoRandomSeed;
             _rate = _system.emission.rateOverTimeMultiplier;
             _material = new Material(_renderer.sharedMaterial); _renderer.sharedMaterial = _material;
             _opacity = _material.HasProperty("_Opacity") ? _material.GetFloat("_Opacity") : 1;
@@ -65,34 +61,25 @@ namespace WildWasteland.Modules.Weather
             Vector3 position = GameRefs.Player != null ? GameRefs.Player.transform.position : camera.transform.position;
             if (_hasPosition && (position-_previous).sqrMagnitude > 10000) _system.Clear();
             _previous = position; _hasPosition = true; _root.transform.position = position;
-            if (WeatherDiagnosticState.Frozen && _system.isPlaying) _system.Pause();
-            int diagnosticState = WeatherDiagnosticState.Enabled ? WeatherDiagnosticState.Preset+1 : 0;
-            if (Time.unscaledTime < _next && diagnosticState == _diagnosticState) return;
-            if (_tintPending || tint != _lastTint || (diagnosticState != _diagnosticState && (WeatherDiagnosticState.CloudPair || _diagnosticState == 9 || _diagnosticState == 10)))
-            {
-                // One-shot tint comparison of the same frozen particles; startColor alone affects only new emissions.
-                var particles = new ParticleSystem.Particle[_system.particleCount]; int count = _system.GetParticles(particles);
-                for (int i = 0; i < count; i++)
-                    particles[i].startColor = WeatherDiagnosticState.Enabled && WeatherDiagnosticState.Preset == 8 ?
-                        _nativeColor.Evaluate(0,(particles[i].randomSeed%10000)/9999f) : tint;
-                _system.SetParticles(particles,count);
-                _tintPending = false;
-                _lastTint = tint;
-            }
-            if (!WeatherDiagnosticState.Enabled && _restoredSeed) { _system.useAutoRandomSeed = _nativeAutoSeed; _restoredSeed = false; }
-            _diagnosticState = diagnosticState;
+            if (Time.unscaledTime < _next) return;
             _next = Time.unscaledTime+.1f;
-            if (WeatherDiagnosticState.CloudPair) strength = 1;
+            if (tint != _lastTint)
+            {
+                if (_particles.Length < _system.particleCount) _particles = new ParticleSystem.Particle[_system.particleCount];
+                int count = _system.GetParticles(_particles);
+                for (int i = 0; i < count; i++) _particles[i].startColor = tint;
+                _system.SetParticles(_particles, count); _lastTint = tint;
+            }
             if (wind.sqrMagnitude > .01f) _root.transform.rotation = Quaternion.LookRotation(wind);
             bool running = GameRefs.InGame && strength > .005f;
             var emission = _system.emission; emission.enabled = running;
-            emission.rateOverTimeMultiplier = _rate*strength*(!WeatherDiagnosticState.CloudPair && detail == WeatherVisualDetail.Low ? .6f : 1);
-            var main = _system.main; main.maxParticles = WeatherDiagnosticState.CloudPair ? _nativeLimit : detail == WeatherVisualDetail.Low ? 60 : 100;
-            main.startColor = WeatherDiagnosticState.Enabled && WeatherDiagnosticState.Preset == 8 ? _nativeColor : new ParticleSystem.MinMaxGradient(tint);
+            emission.rateOverTimeMultiplier = _rate*strength*(detail == WeatherVisualDetail.Low ? .6f : 1);
+            var main = _system.main; main.maxParticles = detail == WeatherVisualDetail.Low ? 60 : 100;
+            main.startColor = new ParticleSystem.MinMaxGradient(tint);
             if (_material.HasProperty("_Opacity")) _material.SetFloat("_Opacity",_opacity*strength);
-            if (!GameRefs.InGame || WeatherDiagnosticState.Frozen) { if (_system.isPlaying) _system.Pause(); }
+            if (!GameRefs.InGame) { if (_system.isPlaying) _system.Pause(); }
             else if (!_system.isPlaying) _system.Play();
-            if (!_reported && running && !WeatherDiagnosticState.Frozen)
+            if (!_reported && running)
             {
                 if (_reportAt == 0) _reportAt = Time.unscaledTime+2;
                 if (_system.particleCount > 0 || Time.unscaledTime >= _reportAt)
@@ -102,39 +89,7 @@ namespace WildWasteland.Modules.Weather
                 }
             }
         }
-        private void Before(Camera camera) { if (_renderer != null) _renderer.enabled = camera == _camera && WeatherDiagnosticState.Clouds; }
-        internal void CaptureDiagnostic(WeatherDiagnosticState.Snapshot data)
-        {
-            if (_system == null) return;
-            _system.Pause();
-            data.ParticleSeed = _system.randomSeed; data.ParticleRoot = Origin.World(_root.transform.position); data.ParticleRotation = _root.transform.rotation;
-            var particles = new ParticleSystem.Particle[_system.particleCount]; int count = _system.GetParticles(particles);
-            data.Particles = new WeatherDiagnosticState.Particle[count];
-            for (int i = 0; i < count; i++)
-            {
-                var p = particles[i];
-                data.Particles[i] = new WeatherDiagnosticState.Particle { World = Origin.World(p.position), Velocity = p.velocity,
-                    Size = p.startSize3D, Rotation = p.rotation3D, Color = p.startColor, Life = p.remainingLifetime, StartLife = p.startLifetime, Seed = p.randomSeed };
-            }
-            Log.Always("[WeatherDiag] Local-cloud snapshot: count="+count+"; seed="+data.ParticleSeed+"; scale="+_system.transform.lossyScale.ToString("F3")+"; simulation="+_system.main.simulationSpace+"; shader="+_material.shader.name+"; native shader UV time remains live.");
-            Log.Always("[WeatherDiag] Local-cloud emitter: time="+_system.time+"; culling="+_system.main.cullingMode+"; speed="+_system.main.simulationSpeed+"; loop="+_system.main.loop+"; emission="+_system.emission.enabled+"; rate="+_system.emission.rateOverTimeMultiplier+"; sourceRate="+_rate+"; renderer="+_renderer.enabled+"; visible="+_renderer.isVisible+"; active="+_system.gameObject.activeInHierarchy+"; paused="+_system.isPaused);
-        }
-        internal void RestoreDiagnostic(WeatherDiagnosticState.Snapshot data)
-        {
-            if (data.Particles == null || data.Particles.Length > 1000) return;
-            if (_system == null && !Create()) return;
-            _system.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear); _system.randomSeed = data.ParticleSeed;
-            _restoredSeed = true; _diagnosticState = -1; _tintPending = true;
-            _root.transform.SetPositionAndRotation(Origin.Scene(data.ParticleRoot),data.ParticleRotation);
-            var particles = new ParticleSystem.Particle[data.Particles.Length];
-            for (int i = 0; i < particles.Length; i++)
-            {
-                var p = data.Particles[i];
-                particles[i] = new ParticleSystem.Particle { position = Origin.Scene(p.World), velocity = p.Velocity, startSize3D = p.Size,
-                    rotation3D = p.Rotation, startColor = p.Color, remainingLifetime = p.Life, startLifetime = p.StartLife, randomSeed = p.Seed };
-            }
-            _system.Play(); _system.Pause(); _system.SetParticles(particles,particles.Length); _next = 0;
-        }
+        private void Before(Camera camera) { if (_renderer != null) _renderer.enabled = camera == _camera; }
         internal void Clear() { _hasPosition = false; if (_system != null) _system.Clear(); }
         internal void Suspend()
         {

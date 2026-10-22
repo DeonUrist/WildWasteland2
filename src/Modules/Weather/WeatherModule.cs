@@ -51,7 +51,6 @@ namespace WildWasteland.Modules.Weather
 
         public override void Init()
         {
-            WeatherDiagnosticState.Reset();
             _running = true; _count = 0; _clock = 0; _nativeAssetsReady=false;
             if (!Core.Patches.Patch(this,Core.Patches.Method(typeof(UnityEngine.AzureSky.AzureFogScattering),"OnRenderImage"),
                 prefix: Core.Patches.Method(typeof(WeatherSky),"NativeFogBefore"), finalizer: Core.Patches.Method(typeof(WeatherSky),"NativeFogAfter")))

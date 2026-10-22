@@ -26,8 +26,6 @@ namespace WildWasteland.Modules.Weather
             if (l.Button("Critical dust storm preview ahead", available)) ToolWindow.CloseThen(SpawnHurricane);
             if (l.Button("Dust storm around player", available)) ToolWindow.CloseThen(SpawnHere);
             if (l.Button("Clear weather previews", _running && _count > 0)) Clear();
-            var diagnostics = ModApi.Get<IWeatherDiagnosticControls>();
-            if (diagnostics != null) diagnostics.Draw(l);
         }
         /// <summary>Preview button: ordinary dust storm ahead of the player.</summary>
         private void SpawnDust() { Spawn(false, false); }

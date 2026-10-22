@@ -77,7 +77,7 @@ namespace WildWasteland.Modules.Weather
         internal static void NativeFogBefore(AzureFogScattering __instance, out Material __state)
         {
             __state = null;
-            if (!WeatherDiagnosticState.FogScope) return;
+            
             var camera = GameRefs.MainCamera;
             if (camera == null || camera.gameObject != __instance.gameObject) return;
             // Use Azure's native unfiltered blit branch instead of its distance-scattering shader.
