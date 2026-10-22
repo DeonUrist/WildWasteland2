@@ -370,6 +370,12 @@
    "src/Modules/Saves/_fromCore/SaveRuntime.cs",
    "src/Modules/Survival/SurvivalModule.Settings.cs",
    "src/Modules/Towns/TownPaths.Heap.cs"
+  ],
+  "B17": [
+   "src/Core/Boot/ModuleRegistry.cs",
+   "src/Core/Compatibility/ICaveAmbient.cs",
+   "src/Modules/HUD/ApocaLanguageMenu.cs",
+   "src/Modules/NPCAI/Behaviour/_fromNPC/Detection/Senses.Spiders.cs"
   ]
  }
 }
