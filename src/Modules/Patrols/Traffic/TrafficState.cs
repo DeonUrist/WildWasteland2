@@ -88,7 +88,7 @@ namespace WildWasteland.Modules.Patrols
         {
             foreach (var fsm in car.GetComponentsInChildren<PlayMakerFSM>(true))
             {
-                if (fsm.FsmName != "LockPhysics" || fsm.CompareTag("vehPart") || VehicleAttachments.IsFreeAttachment(fsm.gameObject)) continue;
+                if (fsm.FsmName != "LockPhysics" || fsm.CompareTag("vehPart") || Core.ModApi.Get<Core.IVehicleAttachments>()?.IsFreeAttachment(fsm.gameObject)==true) continue;
                 if (fsm.GetComponent<ES3Internal.ES3Prefab>() == null) continue;
                 string name = TemplateExporter.PrefabName(fsm.name); int count;
                 counts.TryGetValue(name, out count); counts[name] = count + 1;

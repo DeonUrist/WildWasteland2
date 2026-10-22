@@ -37,7 +37,6 @@ namespace WildWasteland.Modules.Patrols
         // BepInEx\plugins\WildWasteland\Patrols (templates, layouts, poses, textures, sounds, War Rig models)
         internal static string DataDir = ".";
 
-        static bool _paintPreloaded;
         GameObject _host;
         Patrol _patrol;   // editor components: PatrolsModule.Tools.cs (Tools) and PatrolsModule.Developer.cs (Developer)
         Convoy _convoy; WorldTraffic _traffic; Cleanup _cleanup;
@@ -106,10 +105,8 @@ namespace WildWasteland.Modules.Patrols
             Core.Hooks.SendEventEnter.Prefix(this, Ram.BeforeSendEvent);
             Try("Motorcycle save hook (saved motorcycles may not load)", () => MotorcycleIntegration.Install(this));
 
-            Paint.Init(DataDir);
             EditorStore.Load(DataDir);
             CarTemplates.Init(DataDir);
-            if (!_paintPreloaded) { _paintPreloaded = true; Paint.Preload(); }     // all Textures decoded now, not in the middle of a spawn
             CarTemplates.Load();
             Try("War Rig", () => WarRig.WarRigFeature.Install(this, Path.Combine(DataDir, "WarRig")));
 
