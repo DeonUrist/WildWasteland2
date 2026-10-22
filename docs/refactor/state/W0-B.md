@@ -23,15 +23,15 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 17. Names
 - [x] 18. Layers
 - [x] 19. Factions
-- [ ] 20. CameraArbiter
+- [x] 20. CameraArbiter
 - [ ] 21. PlayerState
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-8442471 (COMPILE OK; state line updated in next commit)
+9de795b (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 20 CameraArbiter: read the 3 camera projection writers (PlayerBody, Performance RenderShared GameCameras, ...).
+Item 21 PlayerState: read PlayerBody Game.cs, Patrols PlayerRef, Quests Game.cs player bits.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -56,3 +56,4 @@ Item 20 CameraArbiter: read the 3 camera projection writers (PlayerBody, Perform
 - Names: Base (Quests), StripClone (SaveCleanup), RenderBase (RenderShared k>0+TrimEnd), RemoveClone (Nav), CloneNumber (LastIndexOf+TryParse), BaseEquals/BaseStartsWith non-allocating.
 - Layers: named layer numbers + shared masks (bit-identical to the literals they replace); 12/13 unnamed.
 - Factions: Stance enum, symmetric owned relations Set/SetPlayer/Relation/ToPlayer/Hostile, IFactionSource membership chain Of(go), RemoveAll(owner); no data until Quests/Patrols feed it (Wave B).
+- CameraArbiter: Projection/View/Fov channels, priority order, first claim wins, restore in onPostRender (Ironsights/Binoculars semantics), persistent view option (ThirdPerson); hooks Unity callbacks only while writers exist.
