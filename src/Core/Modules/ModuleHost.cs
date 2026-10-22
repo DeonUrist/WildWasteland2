@@ -137,6 +137,8 @@ namespace WildWasteland.Core
             Hooks.RemoveAll(m);
             Hotkeys.RemoveAll(m);
             Patches.Unpatch(m);
+            ModApi.RemoveAll(m);
+            ModEvents.RemoveAll(m);
         }
 
         static void SetActive(IModule m, bool on) { var mb = m as ModuleBase; if (mb != null) mb.Active = on; }

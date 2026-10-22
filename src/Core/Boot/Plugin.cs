@@ -51,6 +51,8 @@ namespace WildWasteland
         public static ConfigEntry<Key> ToolWindowKey;
         public static ConfigEntry<bool> EnableDebug, DeveloperMode;
         public static ConfigEntry<bool> VerboseLog;
+        /// <summary>[Debug] VerboseLevel 0/1/2 (README 5.1). Bound by Core until the Debug module takes it over in Wave B.</summary>
+        public static ConfigEntry<int> VerboseLevel;
         public static ConfigEntry<float> FrameBudgetMs;
 
         void Awake()
@@ -89,8 +91,10 @@ namespace WildWasteland
                 VerboseLog = Core.TunedSettings.Bind(Settings, "Debug", "VerboseLog", false, "Detailed info logging for every module (off for normal play).");
                 DeveloperMode = Core.TunedSettings.Bind(Settings, "Debug", "Developer mode", false, "Show Developer while Enable Debug is on. Contains advanced settings, editors and diagnostics.");
                 FrameBudgetMs = Core.TunedSettings.Bind(Tools, "Core", "Frame budget (ms)", 2f, new ConfigDescription("Sliced background work (bakes, scans) stops for the frame once Wild Wasteland used this much time.", new AcceptableValueRange<float>(0.5f, 8f)));
-                Core.Log.Verbose = VerboseLog.Value;
-                VerboseLog.SettingChanged += (s, a) => Core.Log.Verbose = VerboseLog.Value;
+                VerboseLevel = Core.TunedSettings.Bind(Settings, "Debug", "VerboseLevel", 0, new ConfigDescription("Log detail for every module: 0 = warnings and errors only, 1 = main actions, 2 = deep traces. VerboseLog on counts as at least 1.", new AcceptableValueList<int>(0, 1, 2)));
+                ApplyLogLevel();
+                VerboseLog.SettingChanged += OnLogSettingChanged;
+                VerboseLevel.SettingChanged += OnLogSettingChanged;
                 Core.Scheduler.FrameBudgetMs = FrameBudgetMs.Value;
                 FrameBudgetMs.SettingChanged += (s, a) => Core.Scheduler.FrameBudgetMs = FrameBudgetMs.Value;
 
@@ -121,6 +125,17 @@ namespace WildWasteland
                 Core.Log.Error("Wild Wasteland failed to start", e);
             }
         }
+
+        /// <summary>Log.Level = the higher of [Debug] VerboseLevel and the old [Debug] VerboseLog switch (true = 1).</summary>
+        static void ApplyLogLevel()
+        {
+            int level = VerboseLevel != null ? VerboseLevel.Value : 0;
+            if (VerboseLog != null && VerboseLog.Value && level < 1) level = 1;
+            Core.Log.Level = Math.Max(0, Math.Min(2, level));
+        }
+
+        /// <summary>SettingChanged handler of both log entries: re-applies the level live.</summary>
+        static void OnLogSettingChanged(object sender, EventArgs args) { ApplyLogLevel(); }
 
         /// <summary>Module order = init order = config display order. Providers before consumers.</summary>
         static void RegisterModules()
@@ -173,6 +188,7 @@ namespace WildWasteland
             Core.ReplacementGuard.SceneLoaded(s);
             Core.Runner.Ensure();
             Core.GameRefs.OnSceneLoaded(s, m);
+            Core.Entities.OnSceneLoaded();
             Core.Origin.Reset();
             Core.SaveBus.OnSceneLoaded();
             Core.UI.EditorSession.CancelAll();

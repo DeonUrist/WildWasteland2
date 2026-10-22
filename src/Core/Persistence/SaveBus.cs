@@ -20,8 +20,23 @@ namespace WildWasteland.Core
         public delegate void StateChange(string previous, string current);
         /// <summary>Raised on every SaveLoadGame state change (also when the FSM is first found: previous = null).</summary>
         public static event StateChange StateChanged;
-        // Save participants report swallowed IO/serialization failures so the host cannot publish a partial snapshot.
-        public static void ReportFailure(string message) { SaveSystem.Fail(message); }
+        /// <summary>Raised for every reported save failure (owner, message); the Saves module subscribes in Wave B.</summary>
+        public static event Action<IModule, string> FailureReported;
+
+        /// <summary>Explicit save-failure channel (replaces the old Log.Error side effect): a save participant reports a swallowed
+        /// IO/serialization failure so the running save transaction is failed instead of publishing a partial snapshot. The caller
+        /// logs the cause itself; this only forwards it to the save framework.</summary>
+        public static void ReportFailure(IModule owner, string message)
+        {
+            // REFACTOR-REQUEST W0-A: B04 (Saves) subscribes to FailureReported and this direct call into the Core save framework goes away.
+            SaveSystem.Fail(message);
+            var h = FailureReported;
+            if (h != null) try { h(owner, message); } catch (Exception e) { Log.Error(null, "SaveBus.FailureReported handler", e); }
+        }
+
+        /// <summary>Old owner-less form of <see cref="ReportFailure(IModule,string)"/>.</summary>
+        [Obsolete("refactor: use SaveBus.ReportFailure(owner, message)")]
+        public static void ReportFailure(string message) { ReportFailure(null, message); }
         internal static event Action<UI.ToolLayout> CleanupSettings;
         internal static void DrawCleanupSettings(UI.ToolLayout layout) { var draw = CleanupSettings; if (draw != null) draw(layout); }
         internal static event Action SaveCancelled;
@@ -96,7 +111,7 @@ namespace WildWasteland.Core
 
         static void Changed(string prev, string now)
         {
-            if (Log.Verbose) Log.Info("SaveLoadGame: " + (prev ?? "-") + " -> " + now);
+            if (Log.L1) Log.Main(null, "SaveLoadGame: " + (prev ?? "-") + " -> " + now);
             var h = StateChanged;
             if (h != null) foreach (StateChange d in h.GetInvocationList()) { try { d(prev, now); } catch (Exception e) { Log.Error("SaveBus.StateChanged handler " + d.Method.DeclaringType + "." + d.Method.Name, e); } }
 
