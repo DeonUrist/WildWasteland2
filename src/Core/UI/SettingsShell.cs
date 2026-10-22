@@ -40,10 +40,48 @@ namespace WildWasteland.Core.UI
         public static readonly SettingsShell Shared = new SettingsShell();
 
         readonly List<Contribution> _rows = new List<Contribution>();
+        readonly List<Preparation> _preparations = new List<Preparation>();
         readonly List<KeyValuePair<Page, ConfigEntryBase>> _resettable = new List<KeyValuePair<Page, ConfigEntryBase>>();
         readonly Dictionary<IModule, List<KeyValuePair<Page, ConfigEntryBase>>> _resettableOwners = new Dictionary<IModule, List<KeyValuePair<Page, ConfigEntryBase>>>();
         int _sequence;
         int _revision;
+
+        /// <summary>Module-owned preparation run when a contributed page is opened.</summary>
+        sealed class Preparation
+        {
+            internal IModule Owner;
+            internal Page Page;
+            internal Action Prepare;
+        }
+
+        /// <summary>Adds page-open preparation, such as loading portraits or constructing crosshair preview sprites.</summary>
+        public void OnShow(IModule owner, Page page, Action prepare)
+        {
+            if (prepare == null) return;
+            _preparations.Add(new Preparation { Owner = owner, Page = page, Prepare = prepare });
+            _revision++;
+        }
+
+        /// <summary>Runs each preparation callback for the page in registration order.</summary>
+        public void Prepare(Page page)
+        {
+            var callbacks = _preparations.ToArray();
+            for (int i = 0; i < callbacks.Length; i++)
+            {
+                var callback = callbacks[i];
+                if (callback.Page != page) continue;
+                try { callback.Prepare(); }
+                catch (Exception e) { ModuleHost.ReportHookException(callback.Owner, "settings page preparation", e); }
+            }
+        }
+
+        /// <summary>Draws the shared Off/On choices row while leaving the value owned by its contributing module.</summary>
+        public static void Switch(ToolLayout layout, string label, ConfigEntry<bool> entry)
+        {
+            if (entry == null) return;
+            bool value = layout.Choices(label, entry.Value ? 1 : 0, "Off", "On") == 1;
+            if (value != entry.Value) entry.Value = value;
+        }
 
         /// <summary>Increments on every change (pages rebuild cached layouts).</summary>
         public int Revision { get { return _revision; } }
@@ -132,6 +170,7 @@ namespace WildWasteland.Core.UI
         {
             int before = _rows.Count;
             _rows.RemoveAll(c => c.Owner == owner);
+            int prepared = _preparations.RemoveAll(p => p.Owner == owner);
             List<KeyValuePair<Page, ConfigEntryBase>> list;
             var key = owner ?? NoOwner.Instance;
             if (_resettableOwners.TryGetValue(key, out list))
@@ -139,7 +178,7 @@ namespace WildWasteland.Core.UI
                 for (int i = 0; i < list.Count; i++) _resettable.Remove(list[i]);
                 _resettableOwners.Remove(key);
             }
-            if (before != _rows.Count || list != null) _revision++;
+            if (before != _rows.Count || prepared > 0 || list != null) _revision++;
         }
 
         /// <summary>Dictionary key standing in for Core (null owner).</summary>

@@ -7,11 +7,13 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Core.UI
 {
     /// <summary>Theme textures of the CleanHUD look used by Core's F3 window and notices too (Wave A split, B01 -> Core/UI theme): embedded PNG cache, white/gradient/compass/caret textures, preload and dispose.</summary>
-    internal static partial class Assets
+    internal static class ThemeAssets
     {
+        /// <summary>Shared title/pause/settings background from the Core theme payload.</summary>
+        internal static Texture2D MenuBackground() { return Textures.LoadResource(null, "Core.Theme.BG_MAIN.png", TextureSettings.Ui, "Core.BG_MAIN"); }
         private static readonly Dictionary<string, Texture2D> Embedded = new Dictionary<string, Texture2D>();
 
         private static readonly HashSet<string> Missing = new HashSet<string>();
@@ -23,12 +25,12 @@ namespace WildWasteland.Modules.CleanHUD
             if (Embedded.TryGetValue(name, out t) && t != null) return t;
             if (Missing.Contains(name)) return null;
             var asm = Assembly.GetExecutingAssembly();
-            using (var s = WildWasteland.Core.DiskResources.Open("CleanHUD." + name + ".png"))
+            using (var s = WildWasteland.Core.DiskResources.Open("Core.Theme." + name + ".png"))
             {
                 if (s == null) { Missing.Add(name); return null; }
                 var buf = new byte[s.Length];
                 int read = 0; while (read < buf.Length) { int r = s.Read(buf, read, buf.Length - read); if (r <= 0) break; read += r; }
-                t = new Texture2D(2, 2, TextureFormat.RGBA32, true) { name = "CleanHUD." + name, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 4 };
+                t = new Texture2D(2, 2, TextureFormat.RGBA32, true) { name = "Core.Theme." + name, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 4 };
                 t.LoadImage(buf, false);
                 t.hideFlags = HideFlags.DontUnloadUnusedAsset;
             }
@@ -115,26 +117,19 @@ namespace WildWasteland.Modules.CleanHUD
 
         internal static void Dispose()
         {
-            MapIcons.Dispose();
-            SceneLoaded();
-            foreach (var t in Rendered.Values) if (t != null) UnityEngine.Object.Destroy(t);
-            Rendered.Clear(); RenderFailed.Clear();
             foreach (var t in Embedded.Values) if (t != null) UnityEngine.Object.Destroy(t);
             Embedded.Clear(); Missing.Clear();
             if (_white != null) UnityEngine.Object.Destroy(_white); _white = null;
-            IconRenderer.Clear();
         }
 
         internal static void Preload()
         {
-            MapIcons.Preload();
-            const string prefix = "CleanHUD.";
+            const string prefix = "Core.Theme.";
             foreach (string name in WildWasteland.Core.DiskResources.Names)
                 if (name.StartsWith(prefix, StringComparison.Ordinal) && name.EndsWith(".png", StringComparison.Ordinal))
                     Tex(name.Substring(prefix.Length, name.Length - prefix.Length - 4));
             var white = White; VGradient(.75f); VGradient(.72f); CompassLine(); CompassShadow(); Caret();
             GlyphFont.Get();
-            IconRenderer.Preload();
         }
     }
 }

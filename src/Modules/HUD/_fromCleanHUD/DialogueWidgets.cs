@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,6 +7,7 @@ namespace WildWasteland.Modules.CleanHUD
 {
     internal static partial class DialogueWidgets
     {
+        internal static readonly Color Gold = ThemePalette.Gold, SpeakerGray = ThemePalette.SpeakerGray;
         internal static void Speaker(GlyphText label, string npc)
         {
             bool player = label.Text.StartsWith("You:", StringComparison.OrdinalIgnoreCase);

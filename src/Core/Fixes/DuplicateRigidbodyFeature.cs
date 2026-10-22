@@ -4,7 +4,7 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core
 {
     /// <summary>
     /// CT9a (plan §7, research B §3.8): CheckTag "vehPartRemoved" (Sources fsm/prefabs/bumper_10.md:L27-L34) and LockPhysics
@@ -16,31 +16,21 @@ namespace WildWasteland.Modules.Performance
     /// following SetProperty mass=50 / CCD=Continuous act on that null variable (no-ops), returning the body would change mass and CCD.
     /// No WW module patches AddComponent (grep src/, 2026-10-15).
     /// </summary>
-    public sealed class DuplicateRigidbodyFeature : Feature
+    internal static class DuplicateRigidbodyFix
     {
-        /// <summary>Plan id CT9 (shared with DataFsmRestartFeature).</summary>
-        public override string PlanId { get { return "CT9"; } }
-        /// <summary>tools.cfg key under [Performance / Game logic].</summary>
-        public override string Key { get { return "Duplicate Rigidbody"; } }
-        /// <summary>Developer page title.</summary>
-        public override string Title { get { return "No duplicate Rigidbody adds"; } }
-        /// <summary>Game logic category.</summary>
-        public override string Category { get { return Categories.Content; } }
-        /// <summary>Order inside the category.</summary>
-        public override int Order { get { return 9; } }
-        /// <summary>Developer page help text.</summary>
-        public override string Help { get { return "Car parts no longer try to add a second Rigidbody on every spawn (same result, no error spam)."; } }
-
         internal static bool On;
         internal static long Skipped;
         static readonly System.Reflection.FieldInfo _added = AccessTools.Field(typeof(AddComponent), "addedComponent");   // SetValue: only on a skipped add
 
-        /// <summary>Patches AddComponent.OnEnter (once) and turns the skip on.</summary>
-        protected override void OnEnable(FeatureMode mode) { if (!EnsurePatched(typeof(Patch))) throw new Exception("AddComponent.OnEnter patch failed"); On = true; }
-        /// <summary>Turns the skip off (the patch stays until the module stops).</summary>
-        protected override void OnDisable() { On = false; }
-        /// <summary>Skipped duplicate adds.</summary>
-        public override void DrawStats(ToolLayout l) { l.Value("Duplicate adds skipped", Skipped.ToString()); }
+        /// <summary>Installs the exact duplicate-add guard under the optimization owner once.</summary>
+        internal static bool Install(Optimization.OptimizationRuntime owner)
+        {
+            return owner.EnsurePatched(Patches.Method(typeof(AddComponent), "OnEnter"), Patches.Method(typeof(Patch), "Pre"), null, null, null);
+        }
+        /// <summary>Enables the guard after installation succeeds.</summary>
+        internal static void Enable() { On = true; }
+        /// <summary>Restores the original AddComponent behavior while leaving the shared patch inert.</summary>
+        internal static void Remove() { On = false; }
 
         [HarmonyPatch]
         static class Patch
@@ -64,5 +54,35 @@ namespace WildWasteland.Modules.Performance
                 return false;
             }
         }
+    }
+}
+
+namespace WildWasteland.Core.Optimization
+{
+    /// <summary>Optimization setting adapter for Core's exact duplicate-Rigidbody fix.</summary>
+    public sealed class DuplicateRigidbodyFeature : Feature
+    {
+        /// <summary>Existing plan identifier.</summary>
+        public override string PlanId { get { return "CT9"; } }
+        /// <summary>Existing setting key.</summary>
+        public override string Key { get { return "Duplicate Rigidbody"; } }
+        /// <summary>Feature display title.</summary>
+        public override string Title { get { return "No duplicate Rigidbody adds"; } }
+        /// <summary>Original content category.</summary>
+        public override string Category { get { return Categories.Content; } }
+        /// <summary>Original feature order.</summary>
+        public override int Order { get { return 9; } }
+        /// <summary>Explains the exact failure-path preservation.</summary>
+        public override string Help { get { return "Car parts no longer try to add a second Rigidbody on every spawn (same result, no error spam)."; } }
+        /// <summary>Installs the Core fix once and activates its guard.</summary>
+        protected override void OnEnable(FeatureMode mode)
+        {
+            if (!DuplicateRigidbodyFix.Install(Module)) throw new Exception("AddComponent.OnEnter patch failed");
+            DuplicateRigidbodyFix.Enable();
+        }
+        /// <summary>Returns the fix to its inert original-behavior path.</summary>
+        protected override void OnDisable() { DuplicateRigidbodyFix.Remove(); }
+        /// <summary>Shows skipped duplicate adds from the Core fix counter.</summary>
+        public override void DrawStats(ToolLayout layout) { layout.Value("Duplicate adds skipped", DuplicateRigidbodyFix.Skipped.ToString()); }
     }
 }

@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.CleanHUD
         private Coroutine _updateCheck;
 
         /// <summary>Subscribes the accent theme to its setting.</summary>
-        partial void InitCoreTheme() { AccentTheme.Init(); }
+        partial void InitCoreTheme() { }
 
         /// <summary>Preloads the embedded theme textures, map icons and glyph font, then resets the scene cache.</summary>
         partial void InitCoreAssets()
@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.CleanHUD
         partial void InitCoreSceneJob() { Scheduler.Sliced(this, "Scene key discovery", 500, SceneCache.Step); }
 
         /// <summary>Registers the sliced "Accent panels" job (500 us).</summary>
-        partial void InitCoreAccentJob() { Scheduler.Sliced(this, "Accent panels", 500, AccentTheme.Step); }
+        partial void InitCoreAccentJob() { }
 
         /// <summary>Forgets cached scene paths after a scene load.</summary>
         partial void SceneResetCore() { SceneCache.Reset(); }
@@ -48,8 +48,7 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Resets the glyph font and unsubscribes the accent theme.</summary>
         partial void ShutdownCoreTheme()
         {
-            GlyphFont.Reset();
-            AccentTheme.Clear();
+            // Shared Core theme remains alive while HUD is disabled.
         }
     }
 }

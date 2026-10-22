@@ -2,13 +2,27 @@ using System.Collections.Generic;
 using System.Globalization;
 using BepInEx.Configuration;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Core.UI;
 using Player = WildWasteland.Modules.PlayerBody.PlayerBodyModule;
 
-namespace WildWasteland.Core.UI
+namespace WildWasteland.Modules.PlayerBody
 {
     /// <summary>Presentation rows of the settings window (Wave A split): PLAYER page (character portraits, body/arms/climbing/camera switches).</summary>
-    internal static partial class CorePages
+    public sealed partial class PlayerBodyModule
     {
+        /// <summary>Contributes the player page and vehicle hints from the character module.</summary>
+        public override void Settings(SettingsShell shell)
+        {
+            shell.Custom(this, SettingsShell.Page.Player, "", DrawPlayer, 0);
+            shell.Custom(this, SettingsShell.Page.Hud, "", DrawVehicleHints, 220);
+            shell.Custom(this, SettingsShell.Page.Hud, "", DrawVehicleIcons, 240);
+        }
+        /// <summary>Player-owned vehicle hint switch at its original HUD position.</summary>
+        private static void DrawVehicleHints(ToolLayout l) { SettingsShell.Switch(l, "Vehicle Hints", VehicleHotkeyHint); }
+        /// <summary>Player-owned vehicle icon switch at its original HUD position.</summary>
+        private static void DrawVehicleIcons(ToolLayout l) { SettingsShell.Switch(l, "Vehicle Icons", VehicleStatusHint); }
+
         /// <summary>PLAYER page: character choice, full body, first-person arms, climbing, third person, occlusion.</summary>
         static void DrawPlayer(ToolLayout l)
         {
@@ -20,9 +34,9 @@ namespace WildWasteland.Core.UI
             int arms = !Player.EmptyHandArms.Value ? 0 : Player.FirstPersonArmsOnlyOnFoot.Value ? 1 : 2;
             next = l.Choices("First Person Arms", arms, "Off", "On foot", "On");
             if (next != arms) { Player.FirstPersonArmsOnlyOnFoot.Value = next == 1; Player.EmptyHandArms.Value = next != 0; }
-            Switch(l, "Climbing", Player.ClimbingOn);
-            Switch(l, "Third Person Camera", Player.ThirdPersonOnFoot);
-            Switch(l, "Occlusion", Player.OcclusionPrototype);   // third person on foot only; in cars it stays off
+            SettingsShell.Switch(l, "Climbing", Player.ClimbingOn);
+            SettingsShell.Switch(l, "Third Person Camera", Player.ThirdPersonOnFoot);
+            SettingsShell.Switch(l, "Occlusion", Player.OcclusionPrototype);   // third person on foot only; in cars it stays off
             l.Text("Full Body shows your body in first person. Use the game's Change Camera key for third person.");
             if (!ModuleHost.IsRunning(Player.Instance)) l.Text("Enable Player body & animation in Modules to use these player settings.");
         }

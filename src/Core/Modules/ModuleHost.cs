@@ -172,6 +172,7 @@ namespace WildWasteland.Core
             FsmPause.ReleaseAll(m);
             Factions.RemoveAll(m);
             CameraArbiter.RemoveAll(m);
+            VehicleOwnership.RemoveAll(m);
             LoadingProgress.Remove(m);
         }
 
@@ -239,11 +240,20 @@ namespace WildWasteland.Core
         internal static void SceneLoaded(Scene s, LoadSceneMode mode)
         {
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "OnSceneLoaded", () => en.Module.OnSceneLoaded(s, mode)); }
+            Optimization.OptimizationRuntime.Instance.OnSceneLoaded(s, mode);
         }
 
         /// <summary>Forwards a save/world lifecycle hook to running modules.</summary>
         internal static void Broadcast(Event ev, string slot)
         {
+            var optimization = Optimization.OptimizationRuntime.Instance;
+            switch (ev)
+            {
+                case Event.WorldReady: optimization.OnWorldReady(); break;
+                case Event.SaveBegin: optimization.OnSaveBegin(slot); break;
+                case Event.SaveEnd: optimization.OnSaveEnd(slot); break;
+                case Event.LoadBegin: optimization.OnLoadBegin(slot); break;
+            }
             foreach (var e in _entries)
             {
                 if (e.State != ModuleState.Running) continue;
@@ -261,6 +271,7 @@ namespace WildWasteland.Core
         /// <summary>Forwards a floating-origin jump to running modules.</summary>
         internal static void OriginShift(Vector3 delta)
         {
+            Optimization.OptimizationRuntime.Instance.OnOriginShift(delta);
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "OnOriginShift", () => en.Module.OnOriginShift(delta)); }
         }
 
@@ -270,6 +281,8 @@ namespace WildWasteland.Core
             if (_quitting) return;
             _quitting = true;
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "Shutdown", () => en.Module.Shutdown()); }
+            Optimization.OptimizationRuntime.Instance.Shutdown();
+            UI.UiTheme.Shutdown();
             WorldTiles.Uninstall();
             Textures.ReleaseAll();
         }

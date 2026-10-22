@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using System;
 using System.Runtime.CompilerServices;
 using HarmonyLib;

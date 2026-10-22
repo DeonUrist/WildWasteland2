@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -53,12 +54,12 @@ namespace WildWasteland.Modules.CleanHUD
         { int slot; LatestSave(out slot); if (_latestSaveFile != null) Core.SinglePlayerSaving.Load(_latestSaveFile); }
 
         private void OpenSave()
-        { if (Core.SaveSystem.Installed) Core.UI.ToolWindow.OpenSaves(true); else Confirm(Core.SaveSystem.RecoveryError ?? "The save manager is unavailable. Check the log.", null); }
+        { if (Core.SaveSystem.Installed) WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); else Confirm(Core.SaveSystem.RecoveryError ?? "The save manager is unavailable. Check the log.", null); }
 
         // ---------------------------------------------------------------- load / save slots
         private void ShowSlots(bool load)
         {
-            if (Core.SaveSystem.Installed) { Core.UI.ToolWindow.OpenSaves(!load); return; }
+            if (Core.SaveSystem.Installed) { WildWasteland.Modules.Saves.SaveLibraryPage.Open(!load); return; }
             ResetToMain();
             _screen = load ? "load" : "save";
             _main.gameObject.SetActive(false);

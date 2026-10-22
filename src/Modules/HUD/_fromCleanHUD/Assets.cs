@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -11,6 +12,33 @@ namespace WildWasteland.Modules.CleanHUD
 {
     internal static partial class Assets
     {
+        /// <summary>Shared theme texture or HUD-owned artwork loaded through the common cache.</summary>
+        internal static Texture2D Tex(string name)
+        {
+            if (name.StartsWith("panel_", StringComparison.Ordinal) || name.EndsWith("_atlas", StringComparison.Ordinal)) return ThemeAssets.Tex(name);
+            return Core.Textures.LoadResource(CleanHudModule.Instance, "CleanHUD." + name + ".png", new Core.TextureSettings { Mipmaps = true, Readable = true, Wrap = TextureWrapMode.Clamp, Filter = FilterMode.Trilinear, Aniso = 4, Flags = HideFlags.DontUnloadUnusedAsset }, "HUD." + name);
+        }
+        /// <summary>Shared white fill texture.</summary>
+        internal static Texture2D White { get { return ThemeAssets.White; } }
+        /// <summary>Shared vertical fill gradient.</summary>
+        internal static Texture2D VGradient(float bottom) { return ThemeAssets.VGradient(bottom); }
+        /// <summary>Shared compass strip texture.</summary>
+        internal static Texture2D CompassLine() { return ThemeAssets.CompassLine(); }
+        /// <summary>Shared compass shadow texture.</summary>
+        internal static Texture2D CompassShadow() { return ThemeAssets.CompassShadow(); }
+        /// <summary>Shared caret texture.</summary>
+        internal static Texture2D Caret() { return ThemeAssets.Caret(); }
+        /// <summary>Shared horizontal fade curve.</summary>
+        internal static float Fade(float t) { return ThemeAssets.Fade(t); }
+        /// <summary>Preloads HUD-owned map/icon resources.</summary>
+        internal static void Preload() { MapIcons.Preload(); IconRenderer.Preload(); }
+        /// <summary>Destroys HUD-only rendered artwork and scene references.</summary>
+        internal static void Dispose()
+        {
+            MapIcons.Dispose(); SceneLoaded();
+            foreach (var texture in Rendered.Values) if (texture != null) UnityEngine.Object.Destroy(texture);
+            Rendered.Clear(); RenderFailed.Clear(); IconRenderer.Clear();
+        }
         private static readonly Dictionary<string, Texture2D> Rendered = new Dictionary<string, Texture2D>();
         private static readonly HashSet<string> RenderFailed = new HashSet<string>();
         private static readonly Queue<GameObject> IconQueue = new Queue<GameObject>();
