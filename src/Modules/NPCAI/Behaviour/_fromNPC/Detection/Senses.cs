@@ -1121,221 +1121,6 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcModule.Log.LogError("Senses: " + e); }
         }
 
-        // the human Sound FSM's combat shout (Harmony prefix on AudioPlay.OnEnter, FSM "Sound", state "attack")
-        public static bool BeforeAudioPlay(AudioPlay __instance)
-        {
-            try
-            {
-                if (!On) return true;
-                var fsm = __instance.Fsm;
-                if (fsm == null) return true;
-                if (fsm.Name == "INPUT_Horn") { _hornFsm = fsm; _hornAt = Time.time; return true; }    // the player's car horn starts (Engine() picks it up)
-                if (fsm.Name != "Sound" || fsm.ActiveStateName != "attack") return true;
-                var a = Get(fsm.GameObject);
-                if (a == null) return true;
-                // The game's Sound FSM shouts every 0.1-4 s for as long as the NPC has any target, a ghost included. Here a shout only
-                // when it sees its target right now, the first time at once, then every TauntMin..TauntMax s; a suppressed shout
-                // ends the state at once (the FSM keeps cycling, silent).
-                float now = Time.time;
-                if (!SeesNow(a) || now < a.NextShout)
-                {
-                    if (__instance.finishedEvent != null) fsm.Event(__instance.finishedEvent);
-                    __instance.Finish();
-                    return false;
-                }
-                a.NextShout = now + UnityEngine.Random.Range(Mathf.Max(1f, NpcModule.TauntMin.Value), Mathf.Max(NpcModule.TauntMin.Value, NpcModule.TauntMax.Value));
-                if (a.Human && NpcModule.TauntRange.Value > 0f) Taunt(a);
-            }
-            catch (Exception e) { NpcModule.Log.LogError("Senses: " + e); }
-            return true;
-        }
-
-        private static void Taunt(Agent t)
-        {
-            float now = Time.time, range = NpcModule.TauntRange.Value;
-            // friends: where the shouter's target is (or the ghost the shouter is going to)
-            Vector3 where; bool known = false; Ghost tg = null;
-            if ((t.State == State.Combat || t.State == State.Hide) && t.Target != null) { where = Fuzz(t.Target.transform.position, t.T.position, 0.2f); known = true; }   // "over there!": roughly
-            else if (t.Ghost != null && t.State == State.Investigate && !t.Ghost.Retired) { where = t.Ghost.Pos; tg = t.Ghost; known = true; }   // a searcher found nothing: nothing to pass on
-            else where = t.T.position;
-            if (known)
-            {
-                string tag = t.Tag;
-                Ghost shared = tg;
-                // a shout passes on roughly what the shouter sees (a SHOUT-rank ghost near the target: friends go and look, they do not get a
-                // live position) or the very ghost it is going to, at that ghost's rank
-                if (shared == null) { shared = GetOrMake(Src.Shout, where, t.Target, Name(t.Owner) + " shouted about " + Name(t.Target), 6f, 15f, now); shared.Subject = t.Target; }   // one ghost per sighting: shouts refresh it instead of minting new ones
-                Src relay = tg == null ? Src.Shout : t.GhostPrio;
-                int told = 0;
-                foreach (var kv in _agents)
-                {
-                    var f = kv.Value;
-                    if (f == t || f.Owner == null || !f.Human || f.Tag != tag || f.T.parent != null) continue;
-                    if ((f.T.position - t.T.position).sqrMagnitude > range * range) continue;
-                    // a ghost acquired once (from a shout or any other way) is never re-sent by a shout: it would wake a searching NPC
-                    // back to investigating the same spot again and again while its friends keep shouting
-                    if (f.Ghost == shared || f.Heard.Contains(shared.Id)) continue;
-                    if (f.Ghost != null && f.Ghost.Subject != null && f.Ghost.Subject == shared.Subject && (f.Ghost.Pos - shared.Pos).sqrMagnitude < 16f) continue;   // already knows the same thing
-                    if (Assign(f, shared, relay, now)) { told++; f.Heard.Add(shared.Id); }
-                }
-                if (shared != tg && shared.Holders.Count == 0) { int i = _ghosts.IndexOf(shared); if (i >= 0) KillGhost(i); }
-                if (NpcModule.SensesLog.Value && told > 0) NpcModule.Log.LogInfo("Senses: " + Name(t.Owner) + "'s shout sends " + told + " " + tag + " to " + (tg != null ? "ghost #" + tg.Id : "its target"));
-            }
-            // enemies: the shouter gave itself away
-            string ttag = t.Tag;
-            int key = -t.Owner.GetInstanceID();
-            Noise(t.Owner, t.T.position, range, Src.Shout, Name(t.Owner) + " shouting", a => a.Hostile.Contains(ttag) && !a.Heard.Contains(key), null, t.Owner,
-                a => a.Heard.Add(key));
-        }
-
-        // ---------- the player's shout ([Senses] ShoutKey) ----------
-        // A human raider's voice (the enemy_human_single clips of a Scraffa/Flexa's Sound FSM) from the player, and a SHOUT ghost at the player
-        // for every NPC hostile to the player within PlayerShoutRange. Only in play (not paused, not in a menu that stops time), once per
-        // ShoutCooldown.
-        private static float _nextShout;
-        private static AudioClip[] _voice;
-        // (WW) Core.Hotkeys: [Keys] "Shout" pressed (not while Apocasetter blocks input / time is stopped) and ShoutAllowed()
-        internal static bool ShoutAllowed() { return On && ModifierHeld(); }
-        internal static void ShoutPressed()
-        {
-            if (!On || !ModifierHeld()) return;
-            if (Time.timeScale <= 0f || Time.unscaledTime < _nextShout) return;
-            FindPlayer();
-            if (_player == null) return;
-            _nextShout = Time.unscaledTime + Mathf.Max(0f, NpcModule.ShoutCooldown.Value);
-            var clip = Voice();
-            if (clip != null)
-            {
-                // your own voice: a 2D source on the camera, so it stays with you (PlayClipAtPoint left it hanging in the air where you shouted)
-                var src = VoiceSource();
-                if (src != null) src.PlayOneShot(clip, Mathf.Clamp01(NpcModule.ShoutVolume.Value));
-            }
-            Noise(_player, _player.transform.position, NpcModule.PlayerShoutRange.Value, Src.Shout, "the player shouting", a => a.Hostile.Contains("Player"), null, _player);
-            if (NpcModule.SensesLog.Value) NpcModule.Log.LogInfo("Senses: the player shouts (" + NpcModule.PlayerShoutRange.Value.ToString("0") + " m)" + (clip == null ? ", no voice clip found" : ""));
-        }
-
-        private static AudioSource _voiceSrc;
-        private static AudioSource VoiceSource()
-        {
-            var cam = Core.GameRefs.MainCamera;
-            if (cam == null) return null;
-            if (_voiceSrc != null && _voiceSrc.transform.parent == cam.transform) return _voiceSrc;
-            var go = new GameObject("NPCAI.Voice");
-            go.transform.SetParent(cam.transform, false);
-            _voiceSrc = go.AddComponent<AudioSource>();
-            _voiceSrc.spatialBlend = 0f; _voiceSrc.playOnAwake = false; _voiceSrc.loop = false;
-            return _voiceSrc;
-        }
-
-        // ShoutModifier held (an Alt key stands for either Alt). (WW) read once per frame: the button prefixes ask for every GetButton action.
-        private static int _modFrame = -1; private static bool _modHeld;
-        private static bool ModifierHeld()
-        {
-            int f = Time.frameCount;
-            if (f != _modFrame) { _modFrame = f; _modHeld = ReadModifier(); }
-            return _modHeld;
-        }
-        private static bool ReadModifier()
-        {
-            var m = NpcModule.ShoutModifier.Value;
-            if (m == UnityEngine.InputSystem.Key.None) return true;
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb == null) return false;
-            if (m == UnityEngine.InputSystem.Key.LeftAlt || m == UnityEngine.InputSystem.Key.RightAlt) return kb.altKey.isPressed;
-            if (m == UnityEngine.InputSystem.Key.LeftCtrl || m == UnityEngine.InputSystem.Key.RightCtrl) return kb.ctrlKey.isPressed;
-            if (m == UnityEngine.InputSystem.Key.LeftShift || m == UnityEngine.InputSystem.Key.RightShift) return kb.shiftKey.isPressed;
-            return kb[m].isPressed;
-        }
-
-        // the game's own buttons on the shout key do nothing while the modifier is held (Alt+Q must not kick)
-        private static HashSet<string> _blocked; private static string _blockedSrc;
-        private static bool Blocked(FsmString name)
-        {
-            // (WW) cheapest first: the module runs and the modifier is held this frame (one keyboard read per frame); then the key checks and the set
-            if (!NpcModule.Running || NpcModule.ShoutModifier.Value == UnityEngine.InputSystem.Key.None || !ModifierHeld()) return false;
-            if (name == null || NpcModule.ShoutKey.Value == UnityEngine.InputSystem.Key.None) return false;
-            string cfg = NpcModule.ShoutBlocksButtons.Value ?? "";
-            if (_blocked == null || _blockedSrc != cfg)
-            {
-                _blockedSrc = cfg; _blocked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                foreach (var part in cfg.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)) _blocked.Add(part.Trim());
-            }
-            return _blocked.Contains(name.Value ?? "");
-        }
-        public static bool BeforeGetButton(GetButton __instance)
-        {
-            try { if (Blocked(__instance.buttonName)) { if (__instance.storeResult != null) __instance.storeResult.Value = false; return false; } }
-            catch (Exception) { }
-            return true;
-        }
-        public static bool BeforeGetButtonDown(GetButtonDown __instance)
-        {
-            try { if (Blocked(__instance.buttonName)) { if (__instance.storeResult != null) __instance.storeResult.Value = false; return false; } }
-            catch (Exception) { }
-            return true;
-        }
-        public static bool BeforeGetButtonUp(GetButtonUp __instance)
-        {
-            try { if (Blocked(__instance.buttonName)) { if (__instance.storeResult != null) __instance.storeResult.Value = false; return false; } }
-            catch (Exception) { }
-            return true;
-        }
-
-        private static AudioClip Voice()
-        {
-            var animation = Core.Services.Animation;
-            if (animation != null && animation.PlayerShout != null) return animation.PlayerShout;
-            if (_voice == null || _voice.Length == 0 || _voice[0] == null)
-            {
-                // Flexa's own shouts, read from the Flexa prefab asset (Gungirl's voice swap only ever edits spawned instances, so the
-                // prefab always carries the game's original clips); else from a live vanilla Flexa. Gungirls are skipped, and nothing is
-                // collected by clip name: the mod's Gungirl voice files carry the same names (enemy_human_single_N).
-                _voice = null;
-                GameObject prefab = null;
-                if (Time.unscaledTime >= _nextFlexaScan)
-                {
-                    _nextFlexaScan = Time.unscaledTime + 30f;       // Gungirl keeps the Flexa prefab once found; looked up at most every 30 s until then
-                    prefab = FlexaPrefab();
-                }
-                if (prefab != null) _voice = FlexaClips(prefab);
-                if (_voice == null)
-                    foreach (var kv in _agents)
-                    {
-                        var o = kv.Value.Owner;
-                        if (o == null || !(o.name == "Flexa" || o.name.StartsWith("Flexa(", StringComparison.Ordinal))) continue;
-                        _voice = FlexaClips(o);
-                        if (_voice != null) break;
-                    }
-                if (_voice == null) return null;      // no Flexa anywhere yet: a silent shout, tried again next time
-            }
-            return _voice[UnityEngine.Random.Range(0, _voice.Length)];
-        }
-
-        private static GameObject _flexaPrefab;
-        private static GameObject FlexaPrefab()
-        {
-            if (_flexaPrefab != null) return _flexaPrefab;
-            foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
-                if (go != null && go.name == "Flexa" && !go.scene.IsValid() && go.transform.parent == null && go.GetComponent<Rigidbody>() != null)
-                { _flexaPrefab = go; break; }
-            return _flexaPrefab;
-        }
-
-        private static float _nextFlexaScan;
-        private static AudioClip[] FlexaClips(GameObject flexa)
-        {
-            foreach (var f in flexa.GetComponents<PlayMakerFSM>())
-            {
-                if (f == null || f.FsmName != "Sound") continue;
-                var arr = f.FsmVariables.FindFsmArray("soundArray");
-                if (arr == null || arr.Values == null) continue;
-                var list = new List<AudioClip>();
-                foreach (var v in arr.Values) { var c = v as AudioClip; if (c != null) list.Add(c); }
-                if (list.Count > 0) return list.ToArray();
-            }
-            return null;
-        }
-
         // Tracers: a bullet hit a creature - it knows where that came from
         internal static void Hurt(GameObject victim, GameObject attacker)
         {
@@ -1873,12 +1658,6 @@ namespace WildWasteland.Modules.NPC
             return n;
         }
 
-        private static void Log(Agent a, string s)
-        {
-            if (NpcModule.SensesLog.Value) NpcModule.Log.LogInfo("Senses: " + a.Owner.name + " " + s);
-        }
-
-        internal static string Status() { return _agents.Count + " NPCs, " + _ghosts.Count + " ghosts"; }
         internal static int AgentCount { get { return _agents.Count; } }
         internal static int GhostCount { get { return _ghosts.Count; } }
         internal static int AlertCount { get { int n = 0; foreach (var kv in _agents) if (kv.Value.Owner != null && kv.Value.State != State.Idle) n++; return n; } }
@@ -1920,72 +1699,6 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // ---------- debug overlay ([Debug] ShowGhosts) ----------
-        private static readonly Color[] SrcColor = { Color.gray, new Color(0.4f, 0.6f, 1f), new Color(0.4f, 0.9f, 0.4f), new Color(1f, 0.9f, 0.2f), new Color(1f, 0.55f, 0.15f), new Color(1f, 0.3f, 0.9f), new Color(1f, 0.25f, 0.2f) };
-        internal static void DrawDebug()
-        {
-            if (!On || !NpcModule.ShowGhosts.Value) return;
-            var cam = Core.GameRefs.MainCamera; if (cam == null) return;
-            float now = Time.time, r2 = DebugOverlay.Range * DebugOverlay.Range; Vector3 cp = cam.transform.position;   // (WW perf) no label strings for what is not drawn
-            foreach (var g in _ghosts)
-            {
-                if ((g.Pos - cp).sqrMagnitude > r2) continue;
-                var c = g.Retired ? Color.gray : SrcColor[(int)g.Src];
-                DebugOverlay.Mark(g.Pos + Vector3.up * 1.2f, c, 14f);
-                DebugOverlay.Label(g.Pos + Vector3.up * 1.6f, "#" + g.Id + " " + g.Src.ToString().ToUpperInvariant() + (g.Retired ? " (searched)" : "") + " " + g.About + "  (" + g.Holders.Count + ", " + (now - g.Born).ToString("0") + " s)", c);
-            }
-            foreach (var kv in _agents)
-            {
-                var a = kv.Value;
-                if (a.Owner == null || a.State == State.Idle || (a.T.position - cp).sqrMagnitude > r2) continue;
-                string s; Color c;
-                switch (a.State)
-                {
-                    case State.Combat: s = "COMBAT " + Name(a.Target); c = SrcColor[(int)Src.Vision]; break;
-                    case State.Hide: s = "HIDING from " + Name(a.Target); c = new Color(0.4f, 0.8f, 1f); break;
-                    case State.Investigate: s = (a.Flanking ? "flanks " : "-> ") + "ghost #" + (a.Ghost != null ? a.Ghost.Id.ToString() : "?") + " (" + (Rank(a.GhostPrio) == 2 ? "seen" : "heard") + ", " + a.GhostPrio.ToString().ToLowerInvariant() + ")"; c = a.Ghost != null ? SrcColor[(int)a.Ghost.Src] : Color.white; break;
-                    default: s = "SEARCH " + Mathf.Max(0f, a.SearchUntil - now).ToString("0") + " s"; c = new Color(0.75f, 0.6f, 1f); break;
-                }
-                Vector3 top = a.Col != null ? new Vector3(a.Col.bounds.center.x, a.Col.bounds.max.y, a.Col.bounds.center.z) : a.T.position + Vector3.up * 2f;
-                DebugOverlay.Label(top + Vector3.up * 0.35f, Prefab(a.Owner.name) + ": " + s, c);
-            }
-        }
-
-        // ---------- NWH (reflection, like Apocapatrol's) ----------
-        private static class Nwh
-        {
-            private static readonly Dictionary<int, object[]> _h = new Dictionary<int, object[]>();   // car id -> { engine, input }
-            internal static void Clear() { _h.Clear(); }
-            private static object[] Of(GameObject car)
-            {
-                object[] h;
-                if (_h.TryGetValue(car.GetInstanceID(), out h)) return h;
-                object vc = null;
-                foreach (var c in car.GetComponents<Component>()) if (c != null && c.GetType().Name == "VehicleController") { vc = c; break; }
-                if (vc == null) return null;
-                object pt = Read(vc, "powertrain");
-                h = new object[] { Read(pt, "engine"), Read(vc, "input") };
-                _h[car.GetInstanceID()] = h;
-                return h;
-            }
-            private static object Read(object o, string name)
-            {
-                if (o == null) return null;
-                var t = o.GetType();
-                var f = Field(t, name); if (f != null) return f.GetValue(o);
-                for (var c = t; c != null; c = c.BaseType) { var p = c.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance); if (p != null) return p.GetValue(o, null); }
-                return null;
-            }
-            internal static bool EngineRunning(GameObject car)
-            {
-                try { var h = Of(car); var r = h != null ? Read(h[0], "IsRunning") : null; return r is bool && (bool)r; } catch (Exception) { return false; }
-            }
-            internal static float Throttle(GameObject car)
-            {
-                try { var h = Of(car); var r = h != null ? Read(h[1], "Throttle") : null; return r is float ? (float)r : 0f; } catch (Exception) { return 0f; }
-            }
-        }
-
         // (WW) Core.SaveBus.StateChanged: the SaveLoadGame state changes the old Persist.Tick polled for itself (same reactions, same order)
         internal static void OnSaveLoadState(string previous, string current)
         {
@@ -1994,7 +1707,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- persistence ----------
-        // A sidecar per save slot (BepInEx/config/WildWasteland/NPC/Saves/<SaveGameN.es3>.senses.txt; NPCAI wrote config/NPCAI/Saves, still read)
+        // A sidecar per save slot (BepInEx/config/WildWasteland/NPC/Saves/<SaveGameN.es3>.senses.txt)
         // written when the game saves, read after a load once the NPCs (found by their saved names) are back. NPC names are unique per world
         // (the Health FSM numbers them). File format unchanged (v1).
         internal static class Persist
@@ -2076,8 +1789,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
                 File.WriteAllText(path + ".tmp", sb.ToString());
-                if (File.Exists(path)) File.Delete(path);
-                File.Move(path + ".tmp", path);
+                Core.AtomicFile.Replace(path + ".tmp", path);   // (D17) same-directory replace, no Delete + Move window
                 NpcModule.Verbose("Senses: saved " + _ghosts.Count + " ghost(s), " + n + " alert NPC(s) for " + Path.GetFileName(slot));
             }
 
@@ -2086,8 +1798,6 @@ namespace WildWasteland.Modules.NPC
                 _restoring = true;
                 string path;
                 if (!TryPath(slot, out path)) { _restoring = false; yield break; }
-                if (!File.Exists(path)) path = Path.Combine(Path.Combine(NpcModule.LegacyDataDir, "Saves"), Path.GetFileName(slot) + ".senses.txt");      // (WW) NPCAI's own folder
-                if (!File.Exists(path)) path = Path.Combine(Path.Combine(Path.Combine(Paths.ConfigPath, "Apocaraider"), "Saves"), Path.GetFileName(slot) + ".senses.txt");
                 if (!File.Exists(path)) { _restoring = false; yield break; }
                 string[] lines;
                 try { lines = File.ReadAllLines(path); } catch (Exception e) { NpcModule.Log.LogWarning("Senses: cannot read " + path + ": " + e.Message); _restoring = false; yield break; }

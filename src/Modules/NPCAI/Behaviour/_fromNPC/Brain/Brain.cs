@@ -1212,8 +1212,6 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
         }
 
-        // ---------- crouch ----------
-
         // a map waypoint is taken only when the first metre toward it is free for the body (walls, rock, baked props - not loose items or cars,
         // the feelers steer round those); otherwise this look runs without the map, as before maps existed
         private static readonly int NavGateMask = PathMask & ~((1 << 8) | (1 << 9));
