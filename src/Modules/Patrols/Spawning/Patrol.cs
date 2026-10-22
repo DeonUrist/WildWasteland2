@@ -427,7 +427,7 @@ namespace WildWasteland.Modules.Patrols
             var pax = SeatOccupant(car, prefabName, anchor, "Passenger", true, health, randomize);
             if (pax == null) { UnityEngine.Object.Destroy(anchor.gameObject); return null; }
             if(chair!=null||string.Equals(TemplateExporter.PrefabName(car.name),"Rustliner",System.StringComparison.OrdinalIgnoreCase))
-                pax.GetComponent<Pose>()?.ConfigureBusPassenger();
+                Core.ModApi.Get<Core.ICrewSeats>()?.Find(pax)?.ConfigureBusPassenger();
             PassengerGuard.Attach(pax, car, anchor);
             return pax;
         }
@@ -460,8 +460,8 @@ namespace WildWasteland.Modules.Patrols
             go.transform.SetParent(anchor, true);
             if (PatrolsModule.PoseEnabled.Value)
             {
-                var pose = Pose.Apply(go, anchor, prefab.name);
-                if (!passenger) pose.SetShooting(false);   // a driver sits with its hands on the wheel; PassengerGuard raises the gun only while it fires
+                var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Apply(go, anchor, prefab.name);
+                if (!passenger) pose?.SetShooting(false);   // a driver sits with its hands on the wheel; PassengerGuard raises the gun only while it fires
             }
             if (health >= 0f) { SetHealth(go, health); go.AddComponent<LateHealth>().Value = health; }
             PatrolsModule.Verbose(role + " " + go.name + " on " + anchor.name + " at " + pos);
@@ -583,7 +583,7 @@ namespace WildWasteland.Modules.Patrols
             pax.transform.SetParent(sit, true);
             pax.transform.position = sit.position + car.transform.right * off.x + car.transform.up * off.y + car.transform.forward * off.z;
             pax.transform.rotation = Quaternion.LookRotation(car.transform.forward, car.transform.up);
-            var pose = pax.GetComponent<Pose>();
+            var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Find(pax);
             if (pose != null) pose.Reseat(sit);
             pax.name = pax.name.Replace("(Passenger)", "(Driver)");
             if (guard != null) guard.SetDriverMode(sit);

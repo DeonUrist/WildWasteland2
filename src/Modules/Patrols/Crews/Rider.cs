@@ -69,10 +69,10 @@ namespace WildWasteland.Modules.Patrols
             marker.Riders[slot] = go; marker.RiderAnchors[slot] = anchor;
             var riderGuard = go.AddComponent<RiderGuard>();
             riderGuard.Init(car, marker, anchor, prefab.name, slot, gunner, bike,standing);
-            var pose = Pose.Apply(go, anchor, prefab.name);
+            var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Apply(go, anchor, prefab.name);
             if(gunner)PassengerGuard.AttachTurret(go, car, anchor, bike ? BikeArc : 0f);
-            pose.ConfigureTurret(standing,bike,IsWarboy(who));
-            RiderAnchorGuard.Attach(go, riderGuard, anchor, true);
+            pose?.ConfigureTurret(standing,bike,IsWarboy(who));
+            Core.ModApi.Get<Core.ICrewSeats>()?.Anchor(go,anchor,true,()=>riderGuard!=null&&riderGuard.Mounted);
             MerchantGuards.Attach(car,go,slot);
             PatrolsModule.Verbose("Human turret " + (slot + 1) + ": " + go.name + (gunner ? " (gunner)" : " (Warboy)") + " on " + car.name + " at local " + anchor.localPosition.ToString("F2"));
             return go;
@@ -330,7 +330,7 @@ namespace WildWasteland.Modules.Patrols
             _mode = Mode.Done;
             if (_graphOk) { _graph.Destroy(); _graphOk = false; }   // the ragdoll / death takes over
             ReleaseBody();
-            var pose = GetComponent<Pose>(); if (pose != null) pose.ReleaseBody();   // a gunner: its gun back in its own hand
+            var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Find(gameObject); if (pose != null) pose.ReleaseBody();   // a gunner: its gun back in its own hand
             if (Lance != null) Destroy(Lance.gameObject);
             if (_marker != null) _marker.DropRider(gameObject);
         }

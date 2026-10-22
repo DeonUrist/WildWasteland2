@@ -229,7 +229,7 @@ namespace WildWasteland.Modules.Patrols
         // per-object coroutines (overheat, revive, bail-out timers, merchant setup) end with the module; the objects themselves stay
         static void StopObjectCoroutines()
         {
-            var types = new[] { typeof(Crew), typeof(Pilot), typeof(PassengerGuard), typeof(RiderGuard), typeof(Pose), typeof(MerchantHost), typeof(MerchantGuardHealth), typeof(TrafficActor) };
+            var types = new[] { typeof(Crew), typeof(Pilot), typeof(PassengerGuard), typeof(RiderGuard), typeof(MerchantHost), typeof(MerchantGuardHealth), typeof(TrafficActor) };
             foreach (var t in types)
                 foreach (var o in UnityEngine.Object.FindObjectsOfType(t))
                 {
