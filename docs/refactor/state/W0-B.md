@@ -15,7 +15,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 9. GameBindings
 - [x] 10. WorldIndex
 - [x] 11. WorldTiles
-- [ ] 12. FsmIndex
+- [x] 12. FsmIndex
 - [ ] 13. FsmPause
 - [ ] 14. PrefabCatalog
 - [ ] 15. ItemSpawner.RegisterSaved
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-4f739f5 (COMPILE OK; state line updated in next commit)
+f385a97 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 12 FsmIndex: read Performance FsmRegistry (PM1).
+Item 13 FsmPause: read Performance FsmEdits FsmPause + FsmSleepFeature ManualUpdate.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -48,3 +48,4 @@ Item 12 FsmIndex: read Performance FsmRegistry (PM1).
 - KeyMap: identical copies ported. GameBindings: PlayerBody API + Held(); name->KeyAction cache per InputStorage instance/list/count (old Find was a linear scan per call). CleanHUD KeyCatalog is UI-specific and not merged.
 - WorldTiles: OnPrepare/OnFinalized(worker)/OnApplied/OnMoved/OnEdited with owner, copy-on-write handler arrays, per-handler try/catch, worker errors logged on main thread; Edited source = VistasWorldGen.TerrainEdited += WorldTiles.EditedSource (Wave A wiring).
 - WorldIndex: WatchName/WatchPrefix/WatchComponent<T>/Watch(filter) + PruneBelow; Found lists with sliced destroyed-sweep (Removed(id)); roots from scene load, WorldTiles Applied, QueueRoot, Rescan; Core sliced job 'Core.WorldIndex' 300us; self-subscribes SceneManager.sceneLoaded. NOTE: compile.sh prints COMPILE OK from a stale outdir on failure - always use a fresh outdir / grep 'Compilation succeeded'.
+- FsmIndex: IFsmIndexProvider (PM1 registers in Wave A); ByOwner fallback = GetComponents filtered isActiveAndEnabled; ByName/All via Track(owner,name) and one sliced FsmList pass (256/step, 0.5 s) publishing atomically; Int/Float/String/Bool/Go var helpers.
