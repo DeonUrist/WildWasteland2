@@ -13,9 +13,8 @@ using UnityEngine.SceneManagement;
 namespace WildWasteland.Modules.Saves
 {
     // Standalone native-menu adapters. No multiplayer assembly, player identity or redirected save root.
-    // The temporary HUD partial is owner-bound until B10 moves its presentation to the Saves events.
     // Canonical player/placement queries belong to Core; native save menu interception belongs to Saves.
-    internal static partial class SaveRuntime
+    internal static class SaveRuntime
     {
         static readonly Regex FileName = new Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", RegexOptions.IgnoreCase);
         internal static string ActiveFile, SelectedFile;
@@ -27,6 +26,10 @@ namespace WildWasteland.Modules.Saves
         internal static bool InMainMenu { get { return SceneManager.GetActiveScene().name == "MainMenu"; } }
         /// <summary>True for WW save identities (SaveGame1..10.es3, WW_live/save/auto-<32 hex>.es3).</summary>
         internal static bool IsSaveFile(string file) { return file != null && FileName.IsMatch(file); }
+        /// <summary>Native player in-vehicle transition state (canonical Core PlayerState).</summary>
+        internal static bool InCar { get { return PlayerState.InVehicleTransition; } }
+        /// <summary>Current player health from the shared cached native state (canonical Core PlayerState).</summary>
+        internal static float Health() { return PlayerState.Health; }
         /// <summary>Distance from position to the player (infinity without a player).</summary>
         internal static float PlayerDistance(Vector3 position, Transform player) { return player != null ? Vector3.Distance(position, player.position) : float.PositiveInfinity; }
         /// <summary>Sets the active save file (validated identity).</summary>

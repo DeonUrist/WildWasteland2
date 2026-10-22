@@ -12,7 +12,7 @@ using UnityEngine.UI;
 
 namespace WildWasteland.Modules.CleanHUD
 {
-    /// <summary>Save/load pieces of the title and pause menus (Wave A split; B04 provides an ISaveMenu, B10 calls it): load start, latest save, Continue, the save library and the legacy 10-slot screens used only without the WW save manager.</summary>
+    /// <summary>HANDOVER to HUD (B10; REFACTOR-REQUEST B04-1). Save/load pieces of the title and pause menus: load start, latest save, Continue, the save library and the legacy 10-slot screens used only without the WW save manager.</summary>
     internal sealed partial class Menu
     {
         /// <summary>Starts the native loading screen and respects recovery admission only while Saves owns the framework.</summary>
@@ -24,7 +24,9 @@ namespace WildWasteland.Modules.CleanHUD
             _loadingScreen.End(); return false;
         }
 
+        /// <summary>Path of native ten-slot save file n (SaveGame1..10.es3).</summary>
         private static string SaveFile(int n) { return Path.Combine(Application.persistentDataPath, "SaveGame" + n + ".es3"); }
+        /// <summary>True when native slot n holds a real (larger than 1 KB) save.</summary>
         private static bool SlotUsed(int n) { var f = new FileInfo(SaveFile(n)); return f.Exists && f.Length > 1024; }
 
         private string _latestSaveFile;
@@ -49,14 +51,15 @@ namespace WildWasteland.Modules.CleanHUD
         }
 
         private static readonly Regex SeedPart = new Regex(@"\s*\(Seed:[^)]*\)", RegexOptions.Compiled);
+        /// <summary>Native slot caption (menu time text, saveTime pref or file date) without the seed part, upper case.</summary>
         private string SlotLabel(int n, bool shortForm)
         {
             string s = null;
             var path = _ctx == Ctx.Title ? "LoadGame_Canvas/LoadGame/load slot " + n + "/load " + n + " time" : "SaveGame_Canvas/SaveGame/save slot " + n + "/save " + n + " time";
-            var t = SettingsModel.FindPath(path);
+            var t = SettingsModel.FindPath(path); // refs-ok: handover file owned by HUD (B10), REFACTOR-REQUEST B04-1
             var tx = t != null ? t.GetComponent<Text>() : null;
             if (tx != null && !string.IsNullOrEmpty(tx.text)) s = tx.text;
-            if (string.IsNullOrEmpty(s)) s = SettingsModel.ReadString("saveTime" + n);
+            if (string.IsNullOrEmpty(s)) s = SettingsModel.ReadString("saveTime" + n); // refs-ok: handover file owned by HUD (B10), REFACTOR-REQUEST B04-1
             if (string.IsNullOrEmpty(s)) s = SlotUsed(n) ? File.GetLastWriteTime(SaveFile(n)).ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture) : "";
             s = SeedPart.Replace(s ?? "", "").Trim().ToUpperInvariant();
             if (shortForm && s.Length > 26) s = s.Substring(0, 25) + "…";
@@ -76,6 +79,7 @@ namespace WildWasteland.Modules.CleanHUD
         { if (Core.SaveSystem.Installed) WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); else ShowSlots(false); }
 
         // ---------------------------------------------------------------- load / save slots
+        /// <summary>Opens the WW save library while Saves runs, otherwise the native ten-slot load/save screen.</summary>
         private void ShowSlots(bool load)
         {
             if (Core.SaveSystem.Installed) { WildWasteland.Modules.Saves.SaveLibraryPage.Open(!load); return; }
@@ -111,6 +115,7 @@ namespace WildWasteland.Modules.CleanHUD
             _nextFrame.Add(() => SelectFirst(_sub));
         }
 
+        /// <summary>Clicks the native save button of a slot and returns to the previous menu.</summary>
         private void SaveTo(int slot)
         {
             if (Click("SaveGame_Canvas/SaveGame/save slot " + slot + "/save_game_" + slot)) Back();

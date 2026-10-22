@@ -120,6 +120,7 @@ namespace WildWasteland.Modules.Saves
             var manifest = new StringBuilder(); for (int i = 0; i < Entries.Count; i++) manifest.Append(i).Append('\t').Append(Entries[i].Existed ? "previous file" : "previously absent").Append('\t').Append(Token(Entries[i].Path)).Append('\n');
             WriteDurable(Path.Combine(DirectoryPath, "files.txt"), Encoding.UTF8.GetBytes(manifest.ToString()));
             // The journal becomes recoverable last. A failed preparation never rolls back a later successful save.
+            // D17: plain move is safe here - the journal directory is new and unique, so undo.bin never exists yet.
             File.Move(Path.Combine(DirectoryPath, "undo.bin.tmp"), Path.Combine(DirectoryPath, "undo.bin"));
         }
         // D17: replace through AtomicFile (Mono File.Delete+File.Move over an existing marker can fail with Win32 1175).
