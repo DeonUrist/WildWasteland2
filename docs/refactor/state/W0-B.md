@@ -28,7 +28,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-90e430d (COMPILE OK; state line updated in next commit)
+26a0b7d (COMPILE OK; state line updated in next commit)
 
 ## Next action
 Done. Coordinator: merge after W0-A; see reports/W0-B.md and requests/W0-B.md.
