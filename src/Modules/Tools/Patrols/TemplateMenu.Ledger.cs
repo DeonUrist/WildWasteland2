@@ -226,7 +226,7 @@ namespace WildWasteland.Modules.Tools
         /// <summary>Draws scrollable detached vehicle templates and their assignment actions.</summary>
         private void DrawTemplateLedger(bool truck, Rect r, ref Vector2 scroll)
         {
-            Ledger.Panel(r); var templates = VisibleTemplates(truck,ListFaction);
+            Ledger.Panel(r); var templates = _tab == 4 ? Ordered(truck) : VisibleTemplates(truck,ListFaction);
             scroll = Ledger.Scroll(new Rect(r.x + 1, r.y + 1, r.width - 2, r.height - 2), scroll, templates.Length * 39, width =>
             {
                 for (int i = 0; i < templates.Length; i++)

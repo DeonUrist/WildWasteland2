@@ -57,6 +57,7 @@ namespace WildWasteland.Modules.Tools
             layout.Value("Status", api.Status); layout.Value("Loaded", api.LoadedCount.ToString());
             api.Settings(_gasSettings); foreach (var entry in _gasSettings) layout.Entry(entry);
         }
+        /// <summary>Contributes independent POI, town, navigation, patrol and recorder authoring pages.</summary>
         public override IEnumerable<ToolPage> ToolPages()
         {
             yield return new ActionPage(this, ToolGroups.Debug, "Generated LOD export", DrawLodExport) { IsTool = true };

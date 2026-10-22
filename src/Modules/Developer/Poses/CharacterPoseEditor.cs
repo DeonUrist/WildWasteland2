@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.Developer
         private string _hint = "", _aimHint = "", _status = "";
         private int _hintFrame = -10;
         private GUIStyle _style;
+        /// <summary>Binds editable pose keys and the developer authoring toggle.</summary>
         internal CharacterPoseEditor(IModule owner, ModuleConfig cfg)
         {
             _owner=owner;
@@ -28,6 +29,7 @@ namespace WildWasteland.Modules.Developer
             string[] defaults={"Keypad0","Keypad5","Keypad8","Keypad2","Keypad6","Keypad4","Keypad7","Keypad1"};
             for(int i=0;i<_keys.Length;i++)_keys[i]=cfg.Tool("Weapon poses","Pose key: "+Labels[i],defaults[i],"Developer weapon pose key; None disables it.");
         }
+        /// <summary>Releases the previous owner callbacks before binding the current pose store.</summary>
         internal void BindProvider()
         {
             var next=ModApi.Get<ICharacterPoseAuthoring>();if(ReferenceEquals(next,_api))return;
@@ -35,12 +37,19 @@ namespace WildWasteland.Modules.Developer
             _api=next;_moving=_aimDirty=false;_hint=_aimHint="";
             if(_api!=null)_api.Register(_owner,WeaponInput,AimInput);
         }
+        /// <summary>Releases callbacks and clears local motion state even if persistence fails.</summary>
         internal void Stop(){try{if(_api!=null)_api.Remove(_owner);}finally{_api=null;_moving=_aimDirty=false;_hint=_aimHint="";}}
+        /// <summary>Releases the previous owner callbacks before binding the current pose store.</summary>
         internal void Tick(){BindProvider();if(_api!=null)_api.Editing=_enabled.Value && Plugin.EnableDebug.Value && Plugin.DeveloperMode.Value;}
+        /// <summary>Requires focused, unpaused gameplay without an active modal input owner.</summary>
         private bool InputAllowed { get { return _api!=null&&_api.Editing&&Application.isFocused&&!ApocasetterBridge.InputBlocked&&!ToolWindow.IsOpen&&Time.timeScale>.01f; } }
+        /// <summary>Parses the configured key, treating unsupported values as unbound.</summary>
         private KeyCode Key(int index){KeyCode key;return Enum.TryParse(_keys[index].Value,true,out key)?key:KeyCode.None;}
+        /// <summary>Parses the configured key, treating unsupported values as unbound.</summary>
         private bool Down(int index){return GameBindings.KeyDown(Key(index));}
+        /// <summary>Parses the configured key, treating unsupported values as unbound.</summary>
         private float Axis(int plus,int minus){return (GameBindings.KeyHeld(Key(plus))?1f:0f)-(GameBindings.KeyHeld(Key(minus))?1f:0f);}
+        /// <summary>Produces weapon deltas or applies arm deltas at the original runtime pose callback.</summary>
         private PoseEditMotion WeaponInput()
         {
             var draft=_api.Capture();
@@ -64,8 +73,11 @@ namespace WildWasteland.Modules.Developer
             if(_api.Target!=0){_api.ArmMotion(_api.Target==1,move,rotation,Time.unscaledDeltaTime);return default(PoseEditMotion);}
             return new PoseEditMotion{Apply=any,Move=move,Rotation=rotation};
         }
+        /// <summary>Names the current weapon or arm selection for the editor display.</summary>
         private string Target { get { return _api==null?"WEAPON":_api.Target==1?"LEFT ARM":_api.Target==2?"RIGHT ARM":"WEAPON"; } }
+        /// <summary>Flushes the active weapon or arm edit when movement stops or selection changes.</summary>
         private void FinishMotion(){if(_moving&&_api!=null){_api.EndMotion();_moving=false;}}
+        /// <summary>Edits the three aim offsets and saves when their keys are released.</summary>
         private void AimInput(string weapon,string clip,bool crouched,float dt,float gap)
         {
             if(!InputAllowed||string.IsNullOrEmpty(weapon)||string.IsNullOrEmpty(clip)){if(_aimDirty){_api.Save();_aimDirty=false;}_aimHint="";return;}
@@ -77,10 +89,15 @@ namespace WildWasteland.Modules.Developer
             else if(_aimDirty){_api.Save();_aimDirty=false;}
             _aimHint="AIM LIFT "+weapon+" | "+clip+(crouched?" CROUCHED":" STANDING")+": lift "+values[0].ToString("0.0")+" cm, head "+values[1].ToString("0")+" degrees, forward "+values[2].ToString("0.0")+" cm | gun top "+gap.ToString("0")+" cm below shot origin\nPage Up/Down lift | Home/End head | Insert/Delete forward";
         }
+        /// <summary>Captures the complete detached weapon and thirteen-value arm/head pose.</summary>
         private bool Copy(){if(_api==null)return false;var d=_api.Capture();if(d.Shown==null||!d.CanEditArms)return false;_weaponCopy=(float[])d.Shown.Clone();_aimCopy=_api.GetAim(d.AimWeapon,d.AimClip,d.Crouched);return true;}
+        /// <summary>Flushes the active weapon or arm edit when movement stops or selection changes.</summary>
         private bool Paste(){if(_api==null||_weaponCopy==null||_aimCopy==null)return false;var d=_api.Capture();if(!d.CanEditArms)return false;FinishMotion();_api.SetWeapon(_weaponCopy);_api.SetAim(d.Weapon,d.Clip,d.Crouched,_aimCopy);_api.Save();return true;}
+        /// <summary>Shows hints only while the runtime has recently evaluated the active editor.</summary>
         internal bool WantsGui(){return _api!=null&&_api.Editing&&Time.frameCount-_hintFrame<=1&&!ToolWindow.IsOpen;}
+        /// <summary>Shows hints only while the runtime has recently evaluated the active editor.</summary>
         internal void DrawHint(){if(!WantsGui())return;if(_style==null)_style=new GUIStyle(GUI.skin.label){fontSize=16,wordWrap=true};var r=new Rect(20,Screen.height-150,Screen.width-40,130);var old=GUI.color;GUI.color=Color.black;GUI.Label(new Rect(r.x+1,r.y+1,r.width,r.height),_hint+"\n"+_aimHint,_style);GUI.color=Color.yellow;GUI.Label(r,_hint+"\n"+_aimHint,_style);GUI.color=old;}
+        /// <summary>Draws pose selection, key binding, clipboard and persistence controls.</summary>
         internal void DrawPage(ToolLayout l)
         {
             l.Toggle(_enabled,"Weapon pose editor on");
@@ -96,6 +113,7 @@ namespace WildWasteland.Modules.Developer
             action=l.Buttons("Save now","Reload files");if(action==0)_api.Save();else if(action==1)_api.Reload();
             l.Value("Clipboard",_weaponCopy!=null?"Weapon, arms and head":"Empty");l.Value("File",d.FilePath??"");if(_status.Length>0)l.Text(_status);
         }
+        /// <summary>Draws independent arm offsets and validated nudge/reset commands.</summary>
         private void ArmPage(ToolLayout l,bool left,CharacterPoseDraft draft)
         {
             l.Heading(left?"Left arm":"Right arm");bool old=GUI.enabled;GUI.enabled=old&&draft.CanEditArms;

@@ -17,10 +17,15 @@ namespace WildWasteland.Modules.Developer
         private string _copyName="",_hint="";
         private GUIStyle _style;
         private static readonly string[] Targets={"LEFT HAND","RIGHT HAND","LEFT SHOULDER","RIGHT SHOULDER","LEFT ELBOW","RIGHT ELBOW","SITTING OFFSET","TORSO ROTATION / BEND"};
+        /// <summary>Remembers the callback owner for the wheel authoring session.</summary>
         internal WheelGripEditorUI(IModule owner){_owner=owner;}
+        /// <summary>Releases old callbacks before registering input with the current wheel backend.</summary>
         internal void BindProvider(){var next=ModApi.Get<IWheelGripAuthoring>();if(ReferenceEquals(next,_api))return;Stop();_api=next;if(_api!=null)_api.Register(_owner,Input);}
+        /// <summary>Releases runtime preview ownership and clears local editing state despite save failures.</summary>
         internal void Stop(){try{if(_api!=null)_api.Remove(_owner);}finally{_api=null;_editing=_dirty=false;_wasAvailable=false;_key=null;_hint="";}}
+        /// <summary>Releases old callbacks before registering input with the current wheel backend.</summary>
         internal void Tick(){BindProvider();if(_editing&&(!Plugin.EnableDebug.Value||!Plugin.DeveloperMode.Value))End();}
+        /// <summary>Normalizes wheel-specific targets and cancels stale sessions after a wheel or runtime change.</summary>
         private void Context(WheelGripDraft draft)
         {
             bool changed = _key != draft.Key || _handlebars != draft.Handlebars || _wasAvailable != draft.Available;
@@ -29,13 +34,21 @@ namespace WildWasteland.Modules.Developer
             _key=draft.Key;_handlebars=draft.Handlebars;_wasAvailable=draft.Available;
             _target=Mathf.Clamp(_target,0,draft.Handlebars?7:5);_pose=Mathf.Clamp(_pose,0,draft.Handlebars?2:1);
         }
+        /// <summary>Persists pending movement and returns grip animation to live steering.</summary>
         private void End(){if(_api!=null){if(_dirty)_api.Save();var d=_api.Capture();_api.Preview(false,_pose,d.Handlebars?3:2);}_editing=_dirty=false;_hint="";}
+        /// <summary>Combines a pair of native numpad direction keys.</summary>
         private static float Axis(KeyCode plus,KeyCode minus){return (GameBindings.KeyHeld(plus)?1f:0f)-(GameBindings.KeyHeld(minus)?1f:0f);}
+        /// <summary>Locates the selected full-buffer hand, shoulder, elbow or torso vector.</summary>
         private int Offset(WheelGripDraft d){if(_target==6)return 84;if(_target==7)return 87+_pose*3;return 12+_pose*24+(_target&1)*12+(_target/2==1?6:_target/2==2?9:_rotate?3:0);}
+        /// <summary>Selects angular edits for hands, shoulders and torso targets.</summary>
         private bool Rotation {get{return _target==7||_target/2==1||_target/2==0&&_rotate;}}
+        /// <summary>Submits the detached full buffer using the backend mirror policy.</summary>
         private void Publish(WheelGripDraft d){_api.SetValues(d.Key,d.Values,_pose,_target&1);_dirty=true;}
+        /// <summary>Persists the current setup and copies its complete wheel or handlebar buffer.</summary>
         private void Copy(WheelGripDraft d){_api.Save();_copy=(float[])d.Values.Clone();_copyName=d.Name;}
+        /// <summary>Submits the detached full buffer using the backend mirror policy.</summary>
         private void Paste(WheelGripDraft d){if(_copy==null)return;Array.Copy(_copy,d.Values,Math.Min(_copy.Length,d.Values.Length));if(d.Handlebars&&_copy.Length<84)for(int pose=1;pose<3;pose++)Array.Copy(d.Values,12,d.Values,12+pose*24,24);if(d.Handlebars&&_copy.Length<=84)Array.Clear(d.Values,84,12);Publish(d);_api.ResetMotion();_api.Save();_dirty=false;}
+        /// <summary>Applies bounded numpad edits while preserving preview, fine adjustment and save-on-release.</summary>
         private void Input()
         {
             if(_api==null)return;var d=_api.Capture();Context(d);if(!d.Available){if(_editing)End();return;}
@@ -61,9 +74,13 @@ namespace WildWasteland.Modules.Developer
             else if(_dirty){_api.Save();_dirty=false;}
             _api.Preview(true,_pose,_preview);UpdateHint(d);
         }
+        /// <summary>Locates the selected full-buffer hand, shoulder, elbow or torso vector.</summary>
         private void UpdateHint(WheelGripDraft d){int o=Offset(d);_hint="WHEEL "+d.Name+" | "+Targets[_target]+" | "+(Rotation?"ROTATE":"MOVE")+" | pose "+_pose+" / "+(_preview==(d.Handlebars?3:2)?"LIVE":"PREVIEW")+"\n"+d.Values[o].ToString("F1")+" / "+d.Values[o+1].ToString("F1")+" / "+d.Values[o+2].ToString("F1")+(Rotation?" degrees":" cm")+" | owner "+d.Owner+((d.LeftLimited||d.RightLimited)?" | REACH LIMIT":"")+"\nNum0 target | Num5 mode | Num9 pose | Num3 live/preview | Num8/2 up | Num6/4 right | Num7/1 forward | Shift fine | NumEnter save | Num/ copy | Num* paste | Num decimal stop";}
+        /// <summary>Limits the live wheel hint to focused, unpaused gameplay outside the tools window.</summary>
         internal bool WantsGui(){return _editing&&!ToolWindow.IsOpen&&Application.isFocused&&Time.timeScale>.01f;}
+        /// <summary>Limits the live wheel hint to focused, unpaused gameplay outside the tools window.</summary>
         internal void DrawHint(){if(!WantsGui())return;if(_style==null)_style=new GUIStyle(GUI.skin.label){fontSize=16,wordWrap=true,alignment=TextAnchor.MiddleCenter};var r=new Rect(20,Screen.height-132,Screen.width-40,116);var old=GUI.color;GUI.color=Color.black;GUI.Label(new Rect(r.x+1,r.y+1,r.width,r.height),_hint,_style);GUI.color=Color.white;GUI.Label(r,_hint,_style);GUI.color=old;}
+        /// <summary>Draws full grip, shoulder, elbow, torso and fit controls with copy/reset/persistence actions.</summary>
         internal void DrawPage(ToolLayout l)
         {
             if(_api==null){l.Text("Enable Presentation to edit steering-wheel and handlebar grips.");return;}var d=_api.Capture();Context(d);l.Value("Wheel model / setup",d.Name+" / "+d.Key);l.Value("Arm owner",d.Owner??"");if(!d.Available)return;
