@@ -105,6 +105,7 @@ namespace WildWasteland.Core.Optimization
                 OptimizationRuntime.TileAppliedEvent -= OnTile;
                 if (_job != null) { _job.Remove(); _job = null; }
                 _fullWanted = _fullRunning = false; _arr = null; _subtrees.Clear(); _queued.Clear(); _roots.Clear(); _rootIds.Clear(); _info.Clear();
+                _requestFrame = -1;
             }
         }
 
@@ -344,27 +345,63 @@ namespace WildWasteland.Core.Optimization
         {
             if (_clients.Contains(c)) return;
             _clients.Add(c);
-            if (_clients.Count == 1) { SaveBus.StateChanged -= Changed; SaveBus.StateChanged += Changed; }
+            if (_clients.Count == 1)
+            {
+                ModEvents.Subscribe<Events.BeforeSerialize>(OptimizationRuntime.Instance, BeforeSerialization);
+                ModEvents.Subscribe<Events.AfterSerialize>(OptimizationRuntime.Instance, AfterSerialization);
+                ModEvents.Subscribe<Events.SaveEnd>(OptimizationRuntime.Instance, SaveFinished);
+                SaveBus.StateChanged -= Changed; SaveBus.StateChanged += Changed;
+            }
+            if (Reverted) c.RevertSaved();
         }
 
         internal static void Unregister(IClient c)
         {
             _clients.Remove(c);
-            if (_clients.Count == 0) { SaveBus.StateChanged -= Changed; Reverted = false; }
+            if (_clients.Count == 0)
+            {
+                SaveBus.StateChanged -= Changed;
+                ModEvents.Unsubscribe<Events.BeforeSerialize>(OptimizationRuntime.Instance, BeforeSerialization);
+                ModEvents.Unsubscribe<Events.AfterSerialize>(OptimizationRuntime.Instance, AfterSerialization);
+                ModEvents.Unsubscribe<Events.SaveEnd>(OptimizationRuntime.Instance, SaveFinished);
+                Reverted = false;
+            }
+        }
+
+        /// <summary>Typed save barrier restores original component values immediately before ES3 serialization.</summary>
+        static void BeforeSerialization(ref Events.BeforeSerialize evt) { BeginSerialization(); }
+
+        /// <summary>Typed serialization completion keeps visuals restored until native saving has returned to play.</summary>
+        static void AfterSerialization(ref Events.AfterSerialize evt) { if (!SaveBus.Busy) EndSerialization(); }
+
+        /// <summary>Completes restoration even when a save exits through a failure or cancellation path.</summary>
+        static void SaveFinished(ref Events.SaveEnd evt) { EndSerialization(); }
+
+        /// <summary>Restores saved render fields once per save transaction.</summary>
+        static void BeginSerialization()
+        {
+            if (Reverted) return;
+            Reverted = true; Saves++;
+            for (int i = 0; i < _clients.Count; i++) { try { _clients[i].RevertSaved(); } catch (Exception ex) { Log.Error(OptimizationRuntime.Instance, "revert before save", ex); } }
+        }
+
+        /// <summary>Reapplies active clients after their original values are no longer being serialized.</summary>
+        static void EndSerialization()
+        {
+            if (!Reverted) return;
+            Reverted = false;
+            for (int i = 0; i < _clients.Count; i++) { try { _clients[i].ReapplySaved(); } catch (Exception ex) { Log.Error(OptimizationRuntime.Instance, "re-apply after save", ex); } }
         }
 
         static void Changed(string prev, string now)
         {
             if (now == "wait" || now == "SaveGame")
             {
-                if (Reverted) return;
-                Reverted = true; Saves++;
-                for (int i = 0; i < _clients.Count; i++) { try { _clients[i].RevertSaved(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "revert before save", e); } }
+                BeginSerialization();
             }
             else if (now == "isPlay" && Reverted)
             {
-                Reverted = false;
-                for (int i = 0; i < _clients.Count; i++) { try { _clients[i].ReapplySaved(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "re-apply after save", e); } }
+                EndSerialization();
             }
         }
     }

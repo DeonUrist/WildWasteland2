@@ -24,16 +24,24 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class LightPolicy : Feature, IScanClient, SaveGuard.IClient
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "EN1"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Light shadows"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Point-light shadows, budget and distance culling"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 1; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Point lights lose their cube shadows except the nearest few; far point lights are switched off; headlights reach less far; fewer per-pixel lights."; } }
 
         Knob _count, _radius, _res, _cullFactor, _cullMin, _pixel, _headRange, _headShadow;
 
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _count = NewKnob(cfg, "Shadowed point lights", "Point lights that keep their shadow (nearest first).", 0, 2, 4, 99);
@@ -69,6 +77,7 @@ namespace WildWasteland.Core.Optimization
 
         public ScanTypes Types { get { return ScanTypes.Lights; } }
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             _inst = this; On = true;
@@ -78,6 +87,7 @@ namespace WildWasteland.Core.Optimization
             _job = Scheduler.Interval(Module, "Core.Optimization.LightBudget", 0.25f, Tick);
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             On = false;
@@ -92,13 +102,16 @@ namespace WildWasteland.Core.Optimization
             if (_inst == this) _inst = null;
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged()
         {
             QualityGuard.Set(QualityGuard.Q.PixelLights, _pixel.Value);
             if (_job != null) _job.RunNow();
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { GameCameras.Clear(); RenderScan.RequestFull(); }
+        /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { RenderScan.RequestFull(); }
 
         /// <summary>For CT6 (LightFlicker manager): true while EN1 has switched this light off for distance.</summary>
@@ -144,9 +157,13 @@ namespace WildWasteland.Core.Optimization
             if (!(r.Saved && SaveGuard.Reverted) && l.shadows != LightShadows.None) { l.shadows = LightShadows.None; r.Touched = true; }
         }
 
+        /// <summary>This scan client does not modify mesh renderers.</summary>
         public void OnRenderer(MeshRenderer r, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify particle systems.</summary>
         public void OnParticles(ParticleSystem p, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify animators.</summary>
         public void OnAnimator(Animator a, ref ScanCtx c) { }
+        /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
         public void OnPassDone() { Prune(); }
 
@@ -170,7 +187,9 @@ namespace WildWasteland.Core.Optimization
             if (r.Culled) { l.enabled = true; r.Culled = false; }
         }
 
+        /// <summary>Restores the original fields of saved objects before serialization.</summary>
         public void RevertSaved() { for (int i = 0; i < _list.Count; i++) if (_list[i].Saved) Restore(_list[i]); }
+        /// <summary>Reapplies active optimization settings after serialization releases saved objects.</summary>
         public void ReapplySaved() { if (_job != null) _job.RunNow(); }
 
         /// <summary>0.25 s: distance culling, shadow budget, headlight range/shadow. Writes a Light property only when it changes.</summary>
@@ -241,6 +260,7 @@ namespace WildWasteland.Core.Optimization
             if (l.shadowCustomResolution != wr) l.shadowCustomResolution = wr;
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Lights", Live + " tracked, " + Shadowed + " shadowed, " + CulledCount + " switched off, " + _assets.Count + " prefab lights edited");

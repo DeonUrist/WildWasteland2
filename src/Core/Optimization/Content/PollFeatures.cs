@@ -12,12 +12,18 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class HingePollFeature : PollSleepFeature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT3"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Hinge polls"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Event-driven vehicle hinges"; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 3; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Vehicle hinge FSMs that check every frame whether a part is attached sleep until the part count actually changes (exact)."; } }
         static readonly string[] _names = { "vehPart_Attach", "checkWheel", "Shake", "getEngine", "getRadiator", "GetChild", "BumperCheck", "WindshieldType", "checkSuspension", "HingeAdjustVisible" };
+        /// <summary>Native FSM names eligible for this polling optimization.</summary>
         protected override string[] FsmNames { get { return _names; } }
     }
 
@@ -31,12 +37,18 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class WaitPollFeature : PollSleepFeature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT5"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Wait-until polls"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Sleeping wait-until polls"; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 5; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Item, vehicle and NPC FSMs that only wait for a value to change sleep until it does (exact)."; } }
         static readonly string[] _names = { "CheckTag", "Condition", "LiquidAmount", "DistanceKinematic", "TireWear", "FuelConsumption", "Speed", "CrashDamage", "AirCooling", "ExhaustSmoke", "Health", "ItemList" };
+        /// <summary>Native FSM names eligible for this polling optimization.</summary>
         protected override string[] FsmNames { get { return _names; } }
     }
 
@@ -49,14 +61,21 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class OptionTogglePollFeature : PollSleepFeature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT11"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Option toggles"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Sleeping option toggles"; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 11; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Settings-menu toggles stop checking their value every frame while it does not change (exact)."; } }
         static readonly string[] _names = { "toggleFootstepSounds", "disableFatigue", "disableInsanity", "disableSandstorm", "disableThirstHunger", "mapCheat", "peacefulMode", "permaBase",
             "ambient occlusion", "bloom", "color grading", "screen space shadows", "sharpen", "show fps", "toggleADS", "AutoClutch", "automaticGearbox", "toggleHeadbob", "HShifter", "NormalizeInput", "SmoothInput" };
+        /// <summary>Native FSM names eligible for this polling optimization.</summary>
         protected override string[] FsmNames { get { return _names; } }
+        /// <summary>Optional native owner-name filter for selecting polling FSMs.</summary>
         protected override string RootPattern { get { return "Graphics_Canvas|Gameplay_Canvas|PlayerCar_Canvas|Audio_Canvas"; } }
     }
 }

@@ -121,11 +121,11 @@ namespace WildWasteland.Core.Optimization
             WorldTiles.OnApplied(this, TileApplied);
             Hooks.CreateObjectEnter.Postfix(this, RenderScan.AfterCreateObject);
             // Wakes and GUI cleanup precede replacement bodies that may clear the native FSM reference.
-            foreach (var f in _features) if (f is FsmSleepFeature || f is GuiLoopFeature) f.SubscribeHooks();
+            foreach (var f in _features) if (f is FsmSleepFeature || f is GuiLoopFeature) SubscribeFeature(f);
             foreach (var f in _features)
             {
                 if (f is FsmSleepFeature || f is GuiLoopFeature) continue;
-                try { f.SubscribeHooks(); } catch (Exception e) { f.LastError = e.Message; Log.Error(OptimizationRuntime.Instance, f.PlanId + " hooks", e); }
+                SubscribeFeature(f);
             }
             // Features touch scene objects and render settings (RenderSettings.sun crashed natively when called from the
             // BepInEx chainloader, before any scene exists): start them on the first loaded scene, or now when switched on in game.
@@ -133,6 +133,13 @@ namespace WildWasteland.Core.Optimization
             if (_deferred) { if (Log.L1) Log.Main(OptimizationRuntime.Instance, "waiting for the first scene to start " + _features.Count + " optimizations"); }
             else StartFeatures();
             Hooks.ApplyUsed();
+        }
+
+        /// <summary>Contains one feature's optional hook registration failure so unrelated features still initialize.</summary>
+        void SubscribeFeature(Feature feature)
+        {
+            try { feature.SubscribeHooks(); }
+            catch (Exception ex) { feature.LastError = ex.Message; Log.Error(this, feature.PlanId + " hooks", ex); }
         }
 
         bool _deferred;
@@ -227,6 +234,7 @@ namespace WildWasteland.Core.Optimization
 
         void Each(Action<Feature> a, string what)
         {
+            if (!_running) return;
             foreach (var f in _features)
             {
                 if (f.Running == FeatureMode.Off) continue;
@@ -234,15 +242,20 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (!_running) return;
             if (_deferred) { StartFeatures(); return; }   // features start against this scene: no separate OnSceneLoaded
             Each(f => f.OnSceneLoaded(), "OnSceneLoaded");
         }
+        /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { Each(f => f.OnWorldReady(), "OnWorldReady"); }
+        /// <summary>Adjusts cached positions after the floating origin moves.</summary>
         public override void OnOriginShift(Vector3 delta) { Each(f => f.OnOriginShift(delta), "OnOriginShift"); }
+        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin(string slot) { Each(f => f.OnSaveBegin(), "OnSaveBegin"); }
+        /// <summary>Resumes feature work after the native save transaction has completed.</summary>
         public override void OnSaveEnd(string slot) { Each(f => f.OnSaveEnd(), "OnSaveEnd"); }
         public override void OnLoadBegin(string slot) { }
 

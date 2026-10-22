@@ -12,7 +12,9 @@ namespace WildWasteland.Core.Optimization
     internal sealed class RefComparer<T> : IEqualityComparer<T> where T : class
     {
         public static readonly RefComparer<T> Instance = new RefComparer<T>();
+        /// <summary>Compares managed reference identity without invoking Unity native equality.</summary>
         public bool Equals(T a, T b) { return ReferenceEquals(a, b); }
+        /// <summary>Hashes managed reference identity for the optimization lookup table.</summary>
         public int GetHashCode(T o) { return RuntimeHelpers.GetHashCode(o); }
     }
 
@@ -184,15 +186,25 @@ namespace WildWasteland.Core.Optimization
     /// <summary>PM3 feature switch (the registry is shared).</summary>
     public sealed class FastFsmRemovalFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "PM3"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Fast FSM list removal"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Fast FSM disable/destroy"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 3; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Disabling or destroying an FSM searched the whole list of enabled FSMs (slow Unity comparisons). Same result, found by reference."; } }
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { FsmRegistry.Acquire(Module); FsmRegistry.FastRemove = true; }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { FsmRegistry.FastRemove = false; FsmRegistry.Release(); }
+        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { FsmRegistry.Subscribe(Module); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { FsmRegistry.Rebuild(); }
     }
 }

@@ -12,12 +12,19 @@ namespace WildWasteland.Core.Optimization
     // Only sharedMesh is exchanged. Native renderer state, transforms, materials, colliders and rig components remain owned by the game.
     public sealed class GeneratedLods : Feature, IScanClient, ISkinnedScanClient, SaveGuard.IClient
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "RC9"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Generated mesh LODs"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Offline-generated object, vehicle and NPC mesh LODs"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 9; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Uses the optional Performance/LOD pack made by tools/lod-generator/Generate.cmd. Zoom restores original meshes. Missing/unsupported meshes stay original. Restores originals for saves and when disabled."; } }
         public ScanTypes Types { get { return ScanTypes.Renderers | ScanTypes.Skinned; } }
 
@@ -60,6 +67,7 @@ namespace WildWasteland.Core.Optimization
         }
         sealed class Completion { internal int Epoch; internal Entry Entry; internal GeneratedLodPack.Level[] Data; internal string Error; }
 
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _near = NewKnob(cfg, "Full detail screen height", "Projected size above which the original mesh is used.", .08f, .12f, .18f, .18f);
@@ -69,6 +77,7 @@ namespace WildWasteland.Core.Optimization
             _memory = NewKnob(cfg, "Cache MB", "Maximum generated payload bytes reserved for the current scene; two worker reads at most. GPU overhead is additional.", 128, 256, 384, 256);
         }
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             string root = Path.Combine(Assets.Root, "Core", "Optimization", "LOD");
@@ -89,6 +98,7 @@ namespace WildWasteland.Core.Optimization
             if (Log.L1) Log.Main(OptimizationRuntime.Instance, "RC9 " + _status);
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             Camera.onPreRender -= RenderView;
@@ -102,11 +112,17 @@ namespace WildWasteland.Core.Optimization
         }
 
         void Discover() { if (_pack != null && !RenderScan.Busy) RenderScan.RequestFull(); }
+        /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { Discover(); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { Clear(); Discover(); }
+        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin() { _saving = true; Restore(); }
+        /// <summary>Resumes feature work after the native save transaction has completed.</summary>
         public override void OnSaveEnd() { _saving = false; }
+        /// <summary>Restores the original fields of saved objects before serialization.</summary>
         public void RevertSaved() { _guard = true; Restore(); }
+        /// <summary>Reapplies active optimization settings after serialization releases saved objects.</summary>
         public void ReapplySaved() { _guard = false; }
 
         void Clear()
@@ -349,10 +365,15 @@ namespace WildWasteland.Core.Optimization
             _bindings.Clear();
             foreach (var b in _objects) _bindings[b.Renderer.GetInstanceID()] = b;
         }
+        /// <summary>This scan client does not modify lights.</summary>
         public void OnLight(Light l, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify particle systems.</summary>
         public void OnParticles(ParticleSystem p, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify animators.</summary>
         public void OnAnimator(Animator a, ref ScanCtx c) { }
+        /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("LOD pack", _status ?? "not loaded");

@@ -25,12 +25,19 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class MousePickFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "PM7"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Shared camera pick"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "One camera pick raycast per frame"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 7; } }
+        /// <summary>Whether this feature can compare optimized answers while leaving the native path active.</summary>
         public override bool SupportsShadow { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "The ~40 cursor raycasts the game's FSMs make every frame (one per layer mask) share one raycast. Same hits."; } }
 
         internal static bool On, Shadow;
@@ -52,15 +59,19 @@ namespace WildWasteland.Core.Optimization
         static int _unionMask;
         static float _maxDist;
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("ActionHelpers.DoMousePick patch failed");
             _inst = this; _valid = false; _unionMask = 0; _maxDist = 0;
             Shadow = mode == FeatureMode.Shadow; On = mode == FeatureMode.On;
         }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = Shadow = false; _valid = false; _cam = null; Array.Clear(_hits, 0, _hits.Length); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _valid = false; _cam = null; _unionMask = 0; _maxDist = 0; Array.Clear(_hits, 0, _hits.Length); }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Union mask / distance", "0x" + _unionMask.ToString("X8") + " / " + _maxDist.ToString("0.#"));
