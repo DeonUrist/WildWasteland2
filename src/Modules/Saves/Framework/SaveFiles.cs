@@ -1,3 +1,6 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,7 +9,7 @@ using System.Text;
 using BepInEx;
 using UnityEngine;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // Durable undo journal. No world/sidecar mutation is permitted until every old byte is backed up.
     internal sealed class SaveFiles
@@ -18,7 +21,7 @@ namespace WildWasteland.Core
         internal static string WorldRoot { get { return Path.GetDirectoryName(Path.GetFullPath(new ES3Settings("WW_save-path-probe.es3") { location = ES3.Location.File }.FullPath)); } }
         internal static string Root { get { return Path.Combine(WorldRoot, "WildWasteland-Saves"); } }
         internal static string BackupRoot { get { return Path.Combine(Root, "Backups"); } }
-        internal static string WorldPath(string file) { if (!SaveRuntime.IsSaveFile(file)) throw new IOException("Invalid save identity"); return Path.Combine(WorldRoot, file); }
+        internal static string WorldPath(string file) { if (!SavesRuntime.IsSaveFile(file)) throw new IOException("Invalid save identity"); return Path.Combine(WorldRoot, file); }
         internal static string MetaPath(string file) { return WorldPath(file) + ".wwsave"; }
         internal static string ImagePath(string file) { return MetaPath(file) + ".png"; }
         internal SaveFiles(string slot, string operation)
@@ -180,12 +183,8 @@ namespace WildWasteland.Core
             WorldPath(file); var result = new List<string> { WorldPath(file), MetaPath(file), ImagePath(file) };
             Discover(WorldRoot, file, false, result);
             Discover(Assets.ConfigDir, file, true, result);
-            // D12 (fresh start): the WW1/standalone sidecar folders (plugins/WildWasteland/NPC/Saves, config/Apocapatrol, NPCAI,
-            // Apocaraider, Apocaunloader, Apocapocket, ApocalypterQuests_saves, ImmersiveMap/slots) are no longer save participants.
-            string stem = Path.GetFileNameWithoutExtension(file);
             for (int i = 1; i <= 10; i++) result.Add(WorldPath(file) + ".bak" + i);
-            foreach (string part in new[] { "NPC/Saves/" + file + ".senses.txt", "Patrols/Saves/" + file + ".bin", "Patrols/Saves/" + file + ".bin.bak", "POI/Saves/" + file + ".poi.txt", "CleanHUD/Saves/" + file + ".fog.bin", "CleanHUD/Saves/" + file + ".locations.txt", "Quests/Saves/" + file + ".crew.txt" })
-                result.Add(Path.Combine(Assets.ConfigDir, part.Replace('/', Path.DirectorySeparatorChar)));
+            Sidecars.PathsFor(file, result);
             return result;
         }
         internal static string Remap(string path, string from, string to)

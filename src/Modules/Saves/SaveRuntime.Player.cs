@@ -1,9 +1,12 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using UnityEngine;
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     /// <summary>Existing Saves entry points forwarding to canonical Core player/standing services until B04 converts callers.</summary>
-    internal static partial class SaveRuntime
+    internal static partial class SavesRuntime
     {
         /// <summary>Native player in-vehicle transition state.</summary>
         internal static bool InCar { get { return PlayerState.InVehicleTransition; } }

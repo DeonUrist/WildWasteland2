@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.Saves
     internal sealed class SaveLibraryPage : ToolPage
     {
         internal static readonly SaveLibraryPage Instance = new SaveLibraryPage();
-        readonly List<SaveSystem.SaveInfo> _saves = new List<SaveSystem.SaveInfo>();
+        readonly List<SavesSystem.SaveInfo> _saves = new List<SavesSystem.SaveInfo>();
         readonly List<int> _visible = new List<int>();
         readonly List<string> _backups = new List<string>();
         readonly Dictionary<string, Texture2D> _pictures = new Dictionary<string, Texture2D>();
@@ -35,18 +35,18 @@ namespace WildWasteland.Modules.Saves
         {
             _confirmFile = _confirmKind = null;
             if (_editorGeneration != SaveBus.Generation) { _name = ""; _editorGeneration = SaveBus.Generation; }
-            if (SaveSystem.LocalWorld) { _world = SaveSystem.CurrentWorldName; }
+            if (SavesSystem.LocalWorld) { _world = SavesSystem.CurrentWorldName; }
             Refresh();
         }
         internal void ReleasePictures()
         { foreach (var image in _pictures.Values) if (image != null) UnityEngine.Object.Destroy(image); _pictures.Clear(); }
         void Refresh()
         {
-            SaveSystem.CatalogueVersion++; _saves.Clear(); _selected = -1; ReleasePictures();
-            try { foreach (var save in SaveRuntime.Saves()) _saves.Add(SaveSystem.Info(save.File, save.Name)); _saves.Sort(Newest); _message = null; Filter(); }
+            SavesSystem.CatalogueVersion++; _saves.Clear(); _selected = -1; ReleasePictures();
+            try { foreach (var save in SavesRuntime.Saves()) _saves.Add(SavesSystem.Info(save.File, save.Name)); _saves.Sort(Newest); _message = null; Filter(); }
             catch (Exception error) { _message = error.Message; }
         }
-        static int Newest(SaveSystem.SaveInfo a, SaveSystem.SaveInfo b)
+        static int Newest(SavesSystem.SaveInfo a, SavesSystem.SaveInfo b)
         { return File.GetLastWriteTimeUtc(SaveFiles.WorldPath(b.File)).CompareTo(File.GetLastWriteTimeUtc(SaveFiles.WorldPath(a.File))); }
         void Filter()
         {
@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.Saves
             catch (Exception error) { if (picture != null) UnityEngine.Object.Destroy(picture); picture = null; _message = "Preview unavailable: " + error.Message; }
             _pictures[file] = picture; return picture;
         }
-        void Select(int index) { _selected = index; _name = _saves[index].Name; if (!SaveSystem.LocalWorld) _world = _saves[index].World; }
+        void Select(int index) { _selected = index; _name = _saves[index].Name; if (!SavesSystem.LocalWorld) _world = _saves[index].World; }
         static void Text(Rect r, string text, bool muted = false, bool heading = false)
         { Ledger.Label(r, text, heading ? Ledger.Heading : Ledger.Small, muted ? Ledger.Muted : Ledger.Text); }
         static bool Button(Rect r, string text, bool enabled = true, bool primary = false, bool danger = false)
@@ -89,10 +89,10 @@ namespace WildWasteland.Modules.Saves
                 Text(new Rect(100, 68, 900, 54), _saving ? "SAVE GAME" : "LOAD GAME", false, true);
                 if (Button(new Rect(1660, 78, 160, 54), "BACK")) { ToolWindow.Close(); return; }
                 Tab(new Rect(100, 188, 280, 54), "MANUAL SAVES", 0); Tab(new Rect(396, 188, 240, 54), "AUTOSAVES", 1); Tab(new Rect(652, 188, 220, 54), "BACKUPS", 2);
-                if (Button(new Rect(940, 188, 220, 54), SaveSystem.RecoveryError != null ? "RETRY RECOVERY" : "REFRESH")) { if (SaveSystem.RecoveryError != null) SaveSystem.RecoverFiles(); Refresh(); }
+                if (Button(new Rect(940, 188, 220, 54), SavesSystem.RecoveryError != null ? "RETRY RECOVERY" : "REFRESH")) { if (SavesSystem.RecoveryError != null) SavesSystem.RecoverFiles(); Refresh(); }
                 if (_kind == 2) DrawBackups(); else DrawSaves();
                 DrawDetails();
-                string status = SaveSystem.RecoveryError ?? (SaveSystem.ReloadRequired ? "The last save failed. Reload before saving again; previous files are retained." : _message);
+                string status = SavesSystem.RecoveryError ?? (SavesSystem.ReloadRequired ? "The last save failed. Reload before saving again; previous files are retained." : _message);
                 Text(new Rect(100, 1004, 1720, 50), status ?? "Autosaves stay separate. Deleting a save keeps a recoverable backup.", true);
             }
             finally { GUI.enabled = enabled; }
@@ -104,7 +104,7 @@ namespace WildWasteland.Modules.Saves
             float s = r.width / 1060;
             Text(new Rect(r.x + 170 * s, r.y, 320 * s, 32), "SAVE NAME", true); Text(new Rect(r.x + 510 * s, r.y, 260 * s, 32), "WORLD", true); Text(new Rect(r.x + 780 * s, r.y, 135 * s, 32), "TRAVELLED", true);
         }
-        internal bool SaveRow(Rect r, SaveSystem.SaveInfo save, bool selected)
+        internal bool SaveRow(Rect r, SavesSystem.SaveInfo save, bool selected)
         {
             float s = r.width / 1060;
             Ledger.Panel(r, selected ? Ledger.Raised : Ledger.Surface, selected ? Ledger.Accent : r.Contains(Event.current.mousePosition) ? Ledger.Muted : Ledger.Line);
@@ -130,7 +130,7 @@ namespace WildWasteland.Modules.Saves
             if (Button(new Rect(100, 920, 170, 48), "PREVIOUS", _page > 0)) _page--; Text(new Rect(305, 920, 650, 48), (_page + 1) + " / " + pages + "    ·    " + _visible.Count + " saves", true);
             if (Button(new Rect(990, 920, 170, 48), "NEXT", _page + 1 < pages)) _page++;
         }
-        bool CanSave { get { return SaveSystem.LocalReady && !SaveSystem.Busy && !SaveSystem.Requested && SaveSystem.Ready && SaveSystem.RecoveryError == null && !SaveSystem.ReloadRequired; } }
+        bool CanSave { get { return SavesSystem.LocalReady && !SavesSystem.Busy && !SavesSystem.Requested && SavesSystem.Ready && SavesSystem.RecoveryError == null && !SavesSystem.ReloadRequired; } }
         void DrawDetails()
         {
             var save = _selected >= 0 && _selected < _saves.Count ? _saves[_selected] : null; Ledger.Panel(new Rect(1200, 188, 620, 780), Ledger.Surface, Ledger.Line);
@@ -147,22 +147,22 @@ namespace WildWasteland.Modules.Saves
             {
                 Text(new Rect(1224, 520, 572, 44), save != null ? save.Name : _kind == 2 ? "Backup recovery" : "Choose a save", false, true);
                 if (save != null) { Text(new Rect(1224, 575, 572, 36), save.World); Text(new Rect(1224, 620, 572, 36), save.Distance, true); Text(new Rect(1224, 662, 572, 36), save.Date, true); }
-                bool canLoad = save != null && (SaveRuntime.InMainMenu || SaveSystem.LocalReady) && SaveSystem.Ready && SaveSystem.RecoveryError == null && !SaveSystem.Busy && !SaveSystem.Requested;
+                bool canLoad = save != null && (SavesRuntime.InMainMenu || SavesSystem.LocalReady) && SavesSystem.Ready && SavesSystem.RecoveryError == null && !SavesSystem.Busy && !SavesSystem.Requested;
                 if (Button(new Rect(1224, 712, 572, 54), "LOAD SAVE", canLoad, true))
-                { if (!SaveRuntime.InMainMenu) Confirm("load", save.File); else { string file = save.File; ToolWindow.CloseThen(() => SinglePlayerSaving.Load(file)); } return; }
+                { if (!SavesRuntime.InMainMenu) Confirm("load", save.File); else { string file = save.File; ToolWindow.CloseThen(() => SinglePlayerSaving.Load(file)); } return; }
                 if (CanSave && Button(new Rect(1224, 778, 572, 50), "MAKE A NEW SAVE")) { _saving = true; return; }
             }
-            bool deletable = save != null && !(SaveSystem.LocalWorld && save.File == SaveSystem.ActiveFile) && !SaveSystem.Busy && !SaveSystem.Requested;
+            bool deletable = save != null && !(SavesSystem.LocalWorld && save.File == SavesSystem.ActiveFile) && !SavesSystem.Busy && !SavesSystem.Requested;
             if (Button(new Rect(1224, 900, 276, 44), "DELETE SAVE", deletable, false, true)) Confirm("delete", save.File);
             if (Button(new Rect(1516, 900, 280, 44), "SAVE HISTORY", save != null))
-            { try { _backups.Clear(); _backupLabels.Clear(); _backups.AddRange(SaveSystem.Backups(save.File)); _kind = 2; _page = 0; } catch (Exception error) { _message = error.Message; } }
+            { try { _backups.Clear(); _backupLabels.Clear(); _backups.AddRange(SavesSystem.Backups(save.File)); _kind = 2; _page = 0; } catch (Exception error) { _message = error.Message; } }
         }
         void DeletedBackups()
         {
             try
             {
                 _backups.Clear(); _backupLabels.Clear();
-                foreach (string path in SaveSystem.DeletedBackups())
+                foreach (string path in SavesSystem.DeletedBackups())
                 { string file = Path.GetFileName(Path.GetDirectoryName(path)); if (BackupLabel(path, file)[2] == "sp") _backups.Add(path); }
             }
             catch (Exception error) { _message = error.Message; }
@@ -170,7 +170,7 @@ namespace WildWasteland.Modules.Saves
         string[] BackupLabel(string path, string file)
         {
             string[] label; if (_backupLabels.TryGetValue(path, out label)) return label;
-            var info = SaveSystem.Info(file); string name = File.Exists(SaveFiles.WorldPath(file)) ? info.Name : "Deleted save", mode = "sp";
+            var info = SavesSystem.Info(file); string name = File.Exists(SaveFiles.WorldPath(file)) ? info.Name : "Deleted save", mode = "sp";
             var backup = SaveFiles.Read(path);
             for (int i = 0; i < backup.Entries.Count; i++) if (backup.Entries[i].Path == SaveFiles.MetaPath(file) && backup.Entries[i].Existed)
             { var lines = File.ReadAllLines(Path.Combine(path, "old-" + i + ".bin")); if (lines.Length >= 2 && lines[0] == "WW-SAVE-1") { name = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(lines[1])); if (lines.Length >= 9) mode = lines[7]; } break; }
@@ -184,14 +184,14 @@ namespace WildWasteland.Modules.Saves
                 string path = _backups[_page * 5 + row], file = Path.GetFileName(Path.GetDirectoryName(path)); var r = new Rect(100, 366 + row * 106, 1060, 96); Ledger.Panel(r, Ledger.Surface, Ledger.Line);
                 string[] label; try { label = BackupLabel(path, file); } catch (Exception error) { _message = error.Message; label = new[] { "Backup needs attention", "Open the backup folder to inspect it." }; _backupLabels[path] = label; }
                 Text(new Rect(124, r.y + 8, 700, 38), label[0], false, true); Text(new Rect(124, r.y + 50, 700, 32), label[1], true);
-                if (Button(new Rect(856, r.y + 22, 280, 52), "RESTORE", SaveRuntime.InMainMenu)) Confirm("restore", path);
+                if (Button(new Rect(856, r.y + 22, 280, 52), "RESTORE", SavesRuntime.InMainMenu)) Confirm("restore", path);
             }
             if (_backups.Count == 0) Text(new Rect(150, 495, 940, 100), "No previous versions here yet. Backups appear after an overwrite or deletion.", true);
             if (Button(new Rect(100, 920, 220, 48), "OPEN FOLDER")) OpenBackups(); if (Button(new Rect(340, 920, 220, 48), "DELETED SAVES")) { DeletedBackups(); _page = 0; }
             if (Button(new Rect(710, 920, 210, 48), "PREVIOUS", _page > 0)) _page--; if (Button(new Rect(940, 920, 220, 48), "NEXT", (_page + 1) * 5 < _backups.Count)) _page++;
         }
         void Confirm(string kind, string file)
-        { _confirmKind = kind; _confirmFile = file; var info = kind == "restore" ? null : SaveSystem.Info(file); _confirmLabel = info != null ? info.Name + "  ·  " + info.World : "Restore the world and all matching companion files."; GUI.FocusControl(null); }
+        { _confirmKind = kind; _confirmFile = file; var info = kind == "restore" ? null : SavesSystem.Info(file); _confirmLabel = info != null ? info.Name + "  ·  " + info.World : "Restore the world and all matching companion files."; GUI.FocusControl(null); }
         void DrawConfirmation()
         {
             Ledger.Fill(new Rect(0, 0, 1920, 1080), new Color(0, 0, 0, .82f)); Ledger.Panel(new Rect(500, 340, 920, 360), Ledger.Surface, _confirmKind == "delete" ? Ledger.Danger : Ledger.Accent);
@@ -203,28 +203,28 @@ namespace WildWasteland.Modules.Saves
             string kind = _confirmKind, file = _confirmFile; _confirmFile = _confirmKind = null;
             if (kind == "overwrite") { Save(file); return; }
             if (kind == "load") { ToolWindow.CloseThen(() => SinglePlayerSaving.Load(file)); return; }
-            try { if (kind == "restore") SaveSystem.RestoreBackup(file); else SaveSystem.Delete(file); Refresh(); _message = kind == "restore" ? "Backup restored." : "Save deleted. Its backup is available in BACKUPS."; }
+            try { if (kind == "restore") SavesSystem.RestoreBackup(file); else SavesSystem.Delete(file); Refresh(); _message = kind == "restore" ? "Backup restored." : "Save deleted. Its backup is available in BACKUPS."; }
             catch (Exception error) { _message = error.Message; }
         }
-        void Save(string overwrite) { string name = _name, world = _world; ToolWindow.CloseThen(() => SaveSystem.Request(name, overwrite, worldName: world)); }
+        void Save(string overwrite) { string name = _name, world = _world; ToolWindow.CloseThen(() => SavesSystem.Request(name, overwrite, worldName: world)); }
         internal static void OpenBackups()
-        { try { Directory.CreateDirectory(SaveFiles.BackupRoot); Process.Start(new ProcessStartInfo { FileName = SaveFiles.BackupRoot, UseShellExecute = true }); } catch (Exception error) { SaveSystem.Status = "Cannot open backups folder: " + error.Message; } }
+        { try { Directory.CreateDirectory(SaveFiles.BackupRoot); Process.Start(new ProcessStartInfo { FileName = SaveFiles.BackupRoot, UseShellExecute = true }); } catch (Exception error) { SavesSystem.Status = "Cannot open backups folder: " + error.Message; } }
         internal static void DrawSystem(ToolLayout l)
         {
             l.Heading("System"); l.Toggle(Plugin.EnableDebug, "Enable Debug");
-            if (SaveSystem.Autosave == null) { l.Text("The save manager is unavailable."); return; }
+            if (SavesSystem.Autosave == null) { l.Text("The save manager is unavailable."); return; }
             l.Heading("Autosave");
-            l.Toggle(SaveSystem.Autosave, "Autosave"); l.Entry(SaveSystem.Interval); l.Entry(SaveSystem.Warning); l.Toggle(SaveSystem.WhileDriving, "Autosave while driving");
-            l.Toggle(SaveSystem.ExitSave, "Exit save");
-            l.Entry(SaveSystem.AutoKeep); l.Entry(SaveSystem.BackupKeep); l.Toggle(SaveSystem.Screenshots, "Save screenshots");
-            if (l.Button("MANAGE SAVES")) SaveLibraryPage.Open(SaveSystem.LocalWorld);
+            l.Toggle(SavesSystem.Autosave, "Autosave"); l.Entry(SavesSystem.Interval); l.Entry(SavesSystem.Warning); l.Toggle(SavesSystem.WhileDriving, "Autosave while driving");
+            l.Toggle(SavesSystem.ExitSave, "Exit save");
+            l.Entry(SavesSystem.AutoKeep); l.Entry(SavesSystem.BackupKeep); l.Toggle(SavesSystem.Screenshots, "Save screenshots");
+            if (l.Button("MANAGE SAVES")) SaveLibraryPage.Open(SavesSystem.LocalWorld);
             if (l.Button("OPEN BACKUPS FOLDER")) OpenBackups();
             l.Heading("Cleanup on successful save");
             l.Text("Off by default. Requires continuous distance from the player. Attached cargo, player custody and uncertain references are protected. Unknown save records are preserved.");
             l.Toggle(SaveCleanup.Enabled, "Cleanup on save"); l.Toggle(SaveCleanup.Corpses, "Non-resource zombie remains"); l.Toggle(SaveCleanup.Packs, "Exhausted disposable packs");
             l.Entry(SaveCleanup.Distance); l.Entry(SaveCleanup.Minutes);
-            if (SaveSystem.RecoveryError != null && SaveRuntime.InMainMenu && l.Button("RETRY SAVE RECOVERY")) SaveSystem.RecoverFiles();
-            if (SaveSystem.LocalWorld && (SaveSystem.ReloadRequired || SaveSystem.RecoveryError != null) && l.Button("RETURN TO TITLE WITHOUT SAVING")) ToolWindow.CloseThen(SaveSystem.LeaveWithoutSaving);
+            if (SavesSystem.RecoveryError != null && SavesRuntime.InMainMenu && l.Button("RETRY SAVE RECOVERY")) SavesSystem.RecoverFiles();
+            if (SavesSystem.LocalWorld && (SavesSystem.ReloadRequired || SavesSystem.RecoveryError != null) && l.Button("RETURN TO TITLE WITHOUT SAVING")) ToolWindow.CloseThen(SavesSystem.LeaveWithoutSaving);
             SaveBus.DrawCleanupSettings(l);
         }
     }

@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Binds save and cleanup policy even when the module is disabled.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
-            SaveSystem.Bind(cfg);
+            SavesSystem.Bind(cfg);
             // ModuleHost attaches its toggle handler after BindConfig: restore the switch before it can stop a live transaction.
             cfg.Enabled.SettingChanged += EnabledChanged;
         }
@@ -25,18 +25,21 @@ namespace WildWasteland.Modules.Saves
             if (!Config.Enabled.Value && _running && Busy)
             {
                 Config.Enabled.Value = true;
-                SaveSystem.Notify("Finish saving or loading before disabling Saves.");
+                SavesSystem.Notify("Finish saving or loading before disabling Saves.");
             }
         }
         /// <summary>Starts native adapters and owner-scoped save protection, then recovers interrupted files.</summary>
         public override void Init()
         {
-            SaveRuntime.Install(this);
-            SaveSystem.Install(this);
+            SavesRuntime.Install(this);
+            RegisterMenuActions();
+            SavesSystem.Install(this);
             SaveBus.FailureReported += FailureReported;
             ModEvents.Subscribe<Core.Events.CombatActivity>(this, CombatActivity);
+            ModEvents.Subscribe<Core.Events.WeaponFired>(this, WeaponFired);
+            ModEvents.Subscribe<Core.Events.NpcStateChanged>(this, NpcStateChanged);
             _recovering = true;
-            try { SaveSystem.RecoverFiles(); }
+            try { SavesSystem.RecoverFiles(); }
             finally { _recovering = false; }
             _running = true;
         }
@@ -48,11 +51,17 @@ namespace WildWasteland.Modules.Saves
             _running = false;
             SaveBus.FailureReported -= FailureReported;
             ModEvents.Unsubscribe<Core.Events.CombatActivity>(this, CombatActivity);
+            ModEvents.Unsubscribe<Core.Events.WeaponFired>(this, WeaponFired);
+            ModEvents.Unsubscribe<Core.Events.NpcStateChanged>(this, NpcStateChanged);
             try { SaveRoutines.StopAll(); }
-            finally { try { SaveSystem.Shutdown(); } finally { SaveRuntime.Shutdown(); _recovering = false; } }
+            finally { try { SavesSystem.Shutdown(); } finally { SavesRuntime.Shutdown(); _recovering = false; } }
         }
+        /// <summary>Defers autosaving after typed weapon activity, including while custom NPC AI is disabled.</summary>
+        static void WeaponFired(ref Core.Events.WeaponFired shot) { SaveCombat.Activity(); }
+        /// <summary>Defers autosaving when a typed NPC transition enters combat.</summary>
+        static void NpcStateChanged(ref Core.Events.NpcStateChanged change) { if (change.New == NpcMode.Combat) SaveCombat.Activity(); }
         /// <summary>Transfers sidecar failure into the current transaction's failure latch.</summary>
-        static void FailureReported(IModule owner, string message) { SaveSystem.Fail(message); }
+        static void FailureReported(IModule owner, string message) { SavesSystem.Fail(message); }
         /// <summary>Extends autosave combat deferral for activity from other modules.</summary>
         static void CombatActivity(ref Core.Events.CombatActivity activity) { SaveCombat.Activity(); }
     }

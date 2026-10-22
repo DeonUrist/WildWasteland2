@@ -1,3 +1,6 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,17 +10,16 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // Standalone native-menu adapters. No multiplayer assembly, player identity or redirected save root.
     // The temporary HUD partial is owner-bound until B10 moves its presentation to the Saves events.
     // Canonical player/placement queries belong to Core; native save menu interception belongs to Saves.
-    internal static partial class SaveRuntime
+    internal static partial class SavesRuntime
     {
-        /// <summary>HUD part: registers the SAVING overlay GUI job.</summary>
-        static partial void InstallHud(IModule owner);
         static readonly Regex FileName = new Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", RegexOptions.IgnoreCase);
         internal static string ActiveFile, SelectedFile;
+        static readonly FsmEvent Clicked = FsmEvent.GetFsmEvent("Clicked");
         static bool _leaving;
         static int _latestVersion = -1;
         static string _latestFile;
@@ -36,13 +38,12 @@ namespace WildWasteland.Core
             Hooks.ProcessEvent.Prefix(owner, NativeMenuEvent);
             SaveBus.StateChanged += StateChanged;
             SceneManager.sceneLoaded += SceneLoaded;
-            InstallHud(owner);
         }
         /// <summary>Detaches scene/native state observation; current-world identity survives a runtime toggle.</summary>
         internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; SceneManager.sceneLoaded -= SceneLoaded; SelectedFile = null; _leaving = false; _latestVersion = -1; }
         /// <summary>Clears cached player FSMs; the main menu clears the active file and bumps the save catalogue.</summary>
         static void SceneLoaded(Scene scene, LoadSceneMode mode)
-        { if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }
+        { if (scene.name == "MainMenu") { ActiveFile = null; SavesSystem.CatalogueVersion++; } }
         /// <summary>LoadGame makes the selected (or native slot) file active; isPlay clears the selection.</summary>
         static void StateChanged(string previous, string current)
         {
@@ -54,21 +55,21 @@ namespace WildWasteland.Core
             if (current == "isPlay") SelectedFile = null;
         }
         /// <summary>Published save snapshots in the ES3 folder (no live files, no near-empty files).</summary>
-        internal static IEnumerable<SaveSystem.SaveInfo> Saves()
+        internal static IEnumerable<SavesSystem.SaveInfo> Saves()
         {
             if (!Directory.Exists(SaveFiles.WorldRoot)) yield break;
             foreach (string path in Directory.GetFiles(SaveFiles.WorldRoot, "*.es3"))
             {
                 string file = Path.GetFileName(path);
                 if (!IsSaveFile(file) || file.StartsWith("WW_live-", StringComparison.OrdinalIgnoreCase) || new FileInfo(path).Length <= 1024) continue;
-                yield return SaveSystem.Info(file);
+                yield return SavesSystem.Info(file);
             }
         }
         /// <summary>Newest published save (cached per catalogue version).</summary>
         internal static string Latest()
         {
-            if (_latestVersion == SaveSystem.CatalogueVersion) return _latestFile;
-            _latestVersion = SaveSystem.CatalogueVersion;
+            if (_latestVersion == SavesSystem.CatalogueVersion) return _latestFile;
+            _latestVersion = SavesSystem.CatalogueVersion;
             string file = null; DateTime best = DateTime.MinValue;
             foreach (var save in Saves()) { var stamp = File.GetLastWriteTimeUtc(SaveFiles.WorldPath(save.File)); if (stamp > best) { best = stamp; file = save.File; } }
             _latestFile = file; return file;
@@ -89,17 +90,17 @@ namespace WildWasteland.Core
         /// <summary>ProcessEvent prefix: redirects native save/load/quit menu clicks to the WW save library, exit save and newest-snapshot load.</summary>
         static bool NativeMenuEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
-            if (!SaveSystem.Installed || fsm == null || ev == null || ev.Name != "Clicked" || fsm.GameObject == null || SinglePlayerSaving.Serializing) return true;
+            if (!SavesSystem.Installed || fsm == null || ev == null || !ReferenceEquals(ev, Clicked) || fsm.GameObject == null || SinglePlayerSaving.Serializing) return true;
             string name = fsm.GameObject.name;
-            if (SaveSystem.LocalReady && fsm.Name == "Continue" && (name.StartsWith("save_game_", StringComparison.Ordinal) || name == "savegame" || name == "Yes_Save" || name == "Save_Game_slots" || name == "Save_Game"))
+            if (SavesSystem.LocalReady && fsm.Name == "Continue" && (name.StartsWith("save_game_", StringComparison.Ordinal) || name == "savegame" || name == "Yes_Save" || name == "Save_Game_slots" || name == "Save_Game"))
             { WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); return false; }
-            if (SaveSystem.LocalReady && !_leaving && name == "Yes_Quit")
+            if (SavesSystem.LocalReady && !_leaving && name == "Yes_Quit")
             {
-                SaveSystem.SaveBeforeExit(() => { _leaving = true; try { fsm.Event("Clicked"); } finally { _leaving = false; } }); return false;
+                SavesSystem.SaveBeforeExit(() => { _leaving = true; try { fsm.Event("Clicked"); } finally { _leaving = false; } }); return false;
             }
             if (InMainMenu && fsm.Name == "NewGame" && name == "loadgame")
             {
-                if (!SaveSystem.Ready) { WildWasteland.Modules.Saves.SaveLibraryPage.Open(false); return false; }
+                if (!SavesSystem.Ready) { WildWasteland.Modules.Saves.SaveLibraryPage.Open(false); return false; }
                 var selected = fsm.Variables.FindFsmString("SaveFile");
                 if (selected != null && IsSaveFile(selected.Value)) { SelectedFile = selected.Value; SetActive(selected.Value); }
             }

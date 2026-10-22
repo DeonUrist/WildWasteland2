@@ -52,6 +52,7 @@ namespace WildWasteland.Modules.Patrols
             Services.FollowerVehicles = new QuestFollowers();
             Services.Camps = new TrafficCamps.Status();
             Services.VehicleCombatActive = VehicleCombatActive;
+            Scheduler.Interval(this, "Patrols.CombatActivity", .25f, PublishVehicleCombat);
             Services.NpcHurt-=Crew.Attacked;Services.NpcHurt+=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;Services.VehiclePartHit+=Crew.PartHit;
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings; SaveBus.CleanupSettings += DrawSaveCleanupSettings;
@@ -64,6 +65,14 @@ namespace WildWasteland.Modules.Patrols
             l.Heading("Existing abandoned-patrol cleanup");
             l.Text("Runs during gameplay. Player-entered cars are protected. Traffic unloads separately and retains its virtual state.");
             l.Toggle(CleanupEnabled, "Abandoned patrol vehicles"); l.Entry(CleanupDistance); l.Entry(CleanupMinutes); l.Entry(CleanupMaxCars);
+        }
+
+        /// <summary>Publishes ongoing vehicle combat at the original autosave combat-query cadence.</summary>
+        static void PublishVehicleCombat()
+        {
+            if (!VehicleCombatActive()) return;
+            var activity = new Core.Events.CombatActivity { Kind = Core.Events.CombatActivityKind.VehicleCombat };
+            ModEvents.Publish(ref activity);
         }
 
         static bool VehicleCombatActive()

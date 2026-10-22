@@ -1,3 +1,6 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -5,7 +8,7 @@ using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     // Only positively identified disposable roots; unknown ownership or references always retain the object.
     internal static class SaveCleanup
@@ -72,7 +75,7 @@ namespace WildWasteland.Core
         }
         static void Tick()
         {
-            if (!SaveSystem.LocalReady) return;
+            if (!SavesSystem.LocalReady) return;
             if (_generation != SaveBus.Generation) _offlineItems = null;
             if (_offlineItems == null && GameRefs.NewGOArrayList != null)
                 foreach (var list in GameRefs.NewGOArrayList.GetComponents<PlayMakerArrayListProxy>())
@@ -83,14 +86,14 @@ namespace WildWasteland.Core
                 Array.Clear(_observations, 0, _observations.Length); _observationCount = 0; _tracking = false;
                 try
                 {
-                    var settings = SaveFiles.Disk(SaveSystem.ActiveFile);
-                    if (System.IO.File.Exists(SaveFiles.WorldPath(SaveSystem.ActiveFile)) && ES3.KeyExists(ProtectionKey, settings)) foreach (string name in ES3.Load<string[]>(ProtectionKey, settings)) Touched.Add(name);
+                    var settings = SaveFiles.Disk(SavesSystem.ActiveFile);
+                    if (System.IO.File.Exists(SaveFiles.WorldPath(SavesSystem.ActiveFile)) && ES3.KeyExists(ProtectionKey, settings)) foreach (string name in ES3.Load<string[]>(ProtectionKey, settings)) Touched.Add(name);
                     else { SnapshotObjects(); for (int i = 0; i < _observationCount; i++) { var existing = ObservationRoot(_observations[i]); if (existing != null) Touched.Add(existing.name); } }
                 }
                 catch (Exception error) { Log.Error("[System] Cleanup ownership data unreadable; cleanup disabled for this session", error); Enabled.Value = false; }
             }
             if (!Enabled.Value) { Far.Clear(); _last = 0; _tracking = false; if (_observationCount != 0) Array.Clear(_observations, 0, _observations.Length); _observationCount = 0; return; }
-            if (!GameRefs.InGame || SaveSystem.Busy) { _last = 0; return; }
+            if (!GameRefs.InGame || SavesSystem.Busy) { _last = 0; return; }
             float now = Time.unscaledTime; _elapsed = _last > 0 ? Mathf.Min(5.5f, now - _last) : 0; _last = now;
             var gone = new List<GameObject>(); foreach (var pair in Far) if (pair.Key == null) gone.Add(pair.Key); foreach (var go in gone) Far.Remove(go);
             SnapshotObjects();
@@ -107,13 +110,13 @@ namespace WildWasteland.Core
         }
         static bool ObservationStep()
         {
-            if (!Enabled.Value || !SaveSystem.LocalWorld || !GameRefs.InGame || SaveSystem.Busy || _observation >= _observationCount) return false;
+            if (!Enabled.Value || !SavesSystem.LocalWorld || !GameRefs.InGame || SavesSystem.Busy || _observation >= _observationCount) return false;
             object state = _observations[_observation]; _observations[_observation++] = null;
             var go = ObservationRoot(state); if (go == null) return _observation < _observationCount;
             if (go.transform.parent != null) Touched.Add(go.name);
             if (Protected(go) || !Category(go)) { Far.Remove(go); return _observation < _observationCount; }
             float age; Far.TryGetValue(go, out age);
-            Far[go] = SaveRuntime.PlayerDistance(go.transform.position, GameRefs.Player != null ? GameRefs.Player.transform : null) > Distance.Value ? age + _elapsed : 0;
+            Far[go] = SavesRuntime.PlayerDistance(go.transform.position, GameRefs.Player != null ? GameRefs.Player.transform : null) > Distance.Value ? age + _elapsed : 0;
             return _observation < _observationCount;
         }
         static bool Referenced(GameObject candidate)
@@ -143,7 +146,7 @@ namespace WildWasteland.Core
             foreach (var pair in Far)
             {
                 var go = pair.Key;
-                if (pair.Value < Minutes.Value * 60f || Protected(go) || !Category(go) || SaveRuntime.PlayerDistance(go.transform.position, GameRefs.Player != null ? GameRefs.Player.transform : null) <= Distance.Value) continue;
+                if (pair.Value < Minutes.Value * 60f || Protected(go) || !Category(go) || SavesRuntime.PlayerDistance(go.transform.position, GameRefs.Player != null ? GameRefs.Player.transform : null) <= Distance.Value) continue;
                 // Render children are harmless; a nested saved prefab may be cargo and must be retained.
                 bool nested = false;
                 foreach (var prefab in go.GetComponentsInChildren<ES3Internal.ES3Prefab>(true)) if (prefab.gameObject != go) { nested = true; break; }
@@ -157,14 +160,14 @@ namespace WildWasteland.Core
             {
                 int at = go.name.LastIndexOf("(Clone)", StringComparison.Ordinal), number;
                 if (at >= 0 && int.TryParse(go.name.Substring(at + 7), out number))
-                { RemovedKeys.Add(go.name); ES3.DeleteKey(go.name, new ES3Settings(SaveSystem.ActiveFile) { location = ES3.Location.Cache }); }
+                { RemovedKeys.Add(go.name); ES3.DeleteKey(go.name, new ES3Settings(SavesSystem.ActiveFile) { location = ES3.Location.Cache }); }
             }
         }
         internal static bool RemovesKey(string key) { return RemovedKeys.Contains(key); }
         internal static void SaveProtection()
         {
             var names = new string[Touched.Count]; Touched.CopyTo(names);
-            ES3.Save<string[]>(ProtectionKey, names, new ES3Settings(SaveSystem.ActiveFile) { location = ES3.Location.Cache });
+            ES3.Save<string[]>(ProtectionKey, names, new ES3Settings(SavesSystem.ActiveFile) { location = ES3.Location.Cache });
         }
         internal static void Rollback()
         { foreach (var pair in Registrations) if (pair.Value != null && !pair.Key.Contains(pair.Value)) pair.Key.Add(pair.Value); Registrations.Clear(); Candidates.Clear(); }

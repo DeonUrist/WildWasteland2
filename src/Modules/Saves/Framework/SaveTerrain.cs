@@ -1,3 +1,6 @@
+using WildWasteland.Core;
+using UI = WildWasteland.Core.UI;
+using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.IO;
@@ -5,7 +8,7 @@ using Den.Tools.Tasks;
 using MapMagic.Core;
 using UnityEngine;
 
-namespace WildWasteland.Core
+namespace WildWasteland.Modules.Saves
 {
     internal static class SaveTerrain
     {

@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.CleanHUD
         private static LoadingScreen _screen;
         private static bool _ready;
         private static Func<bool> _saveActive;
-        internal static bool SaveActive { get { return Core.SinglePlayerSaving.Serializing || _saveActive != null && _saveActive(); } }
+        internal static bool SaveActive { get { var saves = Core.ModApi.Get<Core.ISaves>(); return saves != null && saves.Phase == Core.SavePhase.Saving && saves.Progress >= .1f || _saveActive != null && _saveActive(); } }
         private static Action _confirmName, _cancelName;
         private static GUIStyle _namePlate, _nameField;
 
