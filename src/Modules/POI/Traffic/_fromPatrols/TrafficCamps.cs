@@ -17,7 +17,8 @@ namespace WildWasteland.Modules.Patrols
         private void Start(){if(Health!=null&&Health.Value>0f)WasAlive=true;}
         private void OnDestroy(){Dead=WasAlive&&Health!=null&&Health.Value<=0f;Lost=!Dead;TrafficCamps.Check(Camp);}
     }
-    internal static class TrafficCamps
+    /// <summary>Camp state (sites, residents, loaded/ready/cleared, ICampStatus provider, EnemySpawn CreateObject hook); POI world-locations part (Wave A split of Patrols Traffic/TrafficCamps.cs).</summary>
+    internal static partial class TrafficCamps
     {
         internal sealed class Status : Core.ICampStatus
         {
@@ -98,19 +99,7 @@ namespace WildWasteland.Modules.Patrols
                 if(Mathf.Abs(p.x-camp.center.x)>camp.size.x*0.5f+35f||Mathf.Abs(p.z-camp.center.z)>camp.size.z*0.5f+35f)continue;
                 Bind(id,pair.Key,pair.Value);
             }
-            if(PatrolsModule.ConvoyEnabled.Value)
-                foreach(var resident in Sites[id].Residents)
-                {
-                    if(resident==null||resident.CallRolled||resident.Health==null||resident.Health.Value<=0f||resident.tag!=camp.faction)continue;
-                    var target=resident.Target!=null?resident.Target.Value:null;var player=PlayerRef.Player;var car=PlayerRef.PlayerCar;
-                    if(target==null)continue;
-                    bool playerTarget=player!=null&&(target.transform.IsChildOf(player)||(car!=null&&target.transform.IsChildOf(car.transform)));
-                    var attacker=target.GetComponentInParent<TrafficActor>();
-                    if(playerTarget?PlayerRef.GodMode||!TrafficFactions.PlayerHostile(camp.faction):attacker==null||!TrafficFactions.Opposed(camp.faction,attacker.Faction))continue;
-                    resident.CallRolled=true;bool success=UnityEngine.Random.value<.1f;
-                    if(Core.Log.Verbose)PatrolsModule.Verbose("Patrol call roll: "+resident.name+" at "+id+" "+(success?"passed":"failed"));
-                    if(success)WorldTraffic.CallPatrol(camp);
-                }
+            RollPatrolCalls(id,camp);   // Patrols part: TrafficCamps.Calls.cs (reinforcement call roll)
             Check(id);
         }
         internal static void Bind(string id,GameObject npc,FsmFloat health=null)
@@ -137,6 +126,9 @@ namespace WildWasteland.Modules.Patrols
             }
             camp.cleared=true;camp.patrolCallAt=-1f;TrafficLocations.Changed();PatrolsModule.Verbose("Camp cleared: "+camp.name+" "+camp.id);return true;
         }
+        /// <summary>Rolls the 10 % reinforcement call of each living camp resident that targets the player or an opposed faction. Implemented in Patrols (TrafficCamps.Calls.cs).</summary>
+        static partial void RollPatrolCalls(string id, TrafficBase camp);
+
         private static class SpawnHook
         {
             internal static void Postfix(CreateObject __instance)
