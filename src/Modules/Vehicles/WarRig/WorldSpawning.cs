@@ -2,19 +2,22 @@ using System;
 using System.Collections.Generic;
 using ES3Internal;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols.WarRig
 {
+    /// <summary>War Rig placement (Vehicles part; the natural-rig map notice is POI's WorldSpawning.Notice.cs): full-footprint clearance test and template identity.</summary>
     internal static partial class WorldSpawning
     {
         private static Bounds clearance;
         private static Vector3 modelOffset;
         private static bool clearanceReady;
 
+        /// <summary>Scene change: natural-rig notices and the clearance cache are dropped.</summary>
         internal static void ResetForScene() { NaturalRigs.Clear(); NaturalNoticeUntil = 0f; clearanceReady = false; }
 
-        // Sample the entire tanker from above: an upward ray alone can miss a roof
-        // when its origin is already inside rock. Use current world coordinates.
+        /// <summary>Samples the whole tanker footprint from above on exposed terrain (max 1.5 m relief), grounds the envelope and checks it is free; adjusts the height.</summary>
         internal static bool CanSpawnAt(ref Vector3 position, Quaternion rotation)
         {
             if (!clearanceReady)
@@ -59,9 +62,11 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return true;
         }
 
+        /// <summary>Logs a rejected placement (level 1) and returns false.</summary>
         private static bool Reject(string reason)
-        { if (Core.Log.Verbose) Core.Log.Info("[Patrols] War Rig placement rejected: " + reason); return false; }
+        { if (Log.L1) Log.Main(VehiclesModule.Instance, "War Rig placement rejected: " + reason); return false; }
 
+        /// <summary>True for an object carrying the War Rig prefab id.</summary>
         internal static bool IsTemplate(GameObject go)
         {
             var prefab = go != null ? go.GetComponent<ES3Prefab>() : null;

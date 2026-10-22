@@ -5,15 +5,18 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols.WarRig
 {
-    // Applies the config to one War Rig (the template, or a live one when a setting changes in Apocasetter).
+    /// <summary>Applies the fixed layout to one War Rig (the template, or a live one from the F3 page): model pose, colliders, wheels, hitch, legs, lock zone, props, mass.</summary>
     internal static class Layout
     {
+        /// <summary>Model rotation in trailer space.</summary>
         public static Quaternion Rot { get { return Quaternion.Euler(0f, S.Yaw, 0f); } }
+        /// <summary>Model offset in trailer space.</summary>
         public static Vector3 Off { get { return S.V3(S.Offset, Vector3.zero); } }
 
-        // model units -> trailer local space
+        /// <summary>Model units -> trailer local space.</summary>
         public static Vector3 M(Vector3 p) { return Rot * (p * S.Scale) + Off; }
 
+        /// <summary>Trailer-local position of wheel hinge i (axle i/2, left for even i).</summary>
         public static Vector3 HingePos(int i)
         {
             var z = S.Floats(S.Axles);
@@ -23,6 +26,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return c + new Vector3(side * S.AxleTrack * S.Scale, 0f, 0f);
         }
 
+        /// <summary>Applies the layout; <paramref name="live"/> also re-anchors a hitched joint and wakes the body.</summary>
         public static void Apply(GameObject root, bool live)
         {
             float k = S.Scale;
@@ -126,8 +130,10 @@ namespace WildWasteland.Modules.Patrols.WarRig
             }
         }
 
+        /// <summary>Leg length of the last Apply (shown on the F3 page).</summary>
         public static float LastLegLength;
 
+        /// <summary>Places a parking leg and scales it to the length.</summary>
         private static void Place(Transform leg, Vector3 pos, float len)
         {
             if (leg == null) return;
@@ -137,7 +143,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             leg.localScale = new Vector3(sc.x, sc.y, len / 1.13f);
         }
 
-        // Leg length so that, parked on the legs and the middle axle, the hitch point sits HitchHeight above the ground.
+        /// <summary>Leg length so that, parked on the legs and the middle axle, the hitch sits HitchHeight above the ground.</summary>
         private static float AutoLeg(GameObject root, Vector3 legTop)
         {
             var mid = HingePos(2);
@@ -155,6 +161,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return LastLegLength;
         }
 
+        /// <summary>Component-wise absolute value.</summary>
         private static Vector3 Abs(Vector3 v) { return new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z)); }
     }
 }

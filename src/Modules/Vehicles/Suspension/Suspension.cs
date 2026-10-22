@@ -7,6 +7,8 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using NWH.WheelController3D;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -16,11 +18,14 @@ namespace WildWasteland.Modules.Patrols
     // model is stretched on X and moved up, the lift-kit hinge moves with it, and each hinge_wheel_* mount (what NWH casts its suspension
     // from) follows the end of its axle (width) and the height. Only a car with a lift kit on hinge_suspension takes an adjustment: the
     // game's checkSuspension decides stock / lifted by that child, and the tool itself needs the kit (Denis: "no kit, no adjustment").
+    /// <summary>Template suspension adjustment (Vehicles part of Suspension; the Part Adjustment API lookup is the Compatibility part).</summary>
     internal static partial class Suspension
     {
 
+        /// <summary>The lift-kit hinge (hinge_suspension_parent/hinge_suspension) of a car, or null.</summary>
         internal static Transform KitHinge(GameObject car) { return car != null ? car.transform.Find("hinge_suspension_parent/hinge_suspension") : null; }
 
+        /// <summary>True when a lift kit (vehPart) sits on the car's hinge_suspension.</summary>
         internal static bool KitFitted(GameObject car)
         {
             var h = KitHinge(car);
@@ -29,7 +34,7 @@ namespace WildWasteland.Modules.Patrols
             return false;
         }
 
-        // applies width / height to a car (standard 1 / 0 = nothing to do unless it was adjusted before). False: no kit / unsupported.
+        /// <summary>Applies width / height to a car (standard 1 / 0 = nothing to do unless it was adjusted before); false without a kit / unsupported.</summary>
         internal static bool Apply(GameObject car, float width, float height, string why)
         {
             if (car == null) return false;
@@ -37,7 +42,7 @@ namespace WildWasteland.Modules.Patrols
             bool standard = width == 1f && height == 0f;
             if (!KitFitted(car))
             {
-                if (!standard) PatrolsModule.Verbose("Suspension: " + car.name + " has no lift kit - its template's suspension " + width.ToString("0.00") + " / " + height.ToString("0.00") + " is ignored");
+                if (!standard) if (Log.L2) Deep("Suspension: " + car.name + " has no lift kit - its template's suspension " + width.ToString("0.00") + " / " + height.ToString("0.00") + " is ignored");
                 return false;
             }
             LookForApi();
@@ -46,19 +51,19 @@ namespace WildWasteland.Modules.Patrols
                 try
                 {
                     bool ok = (bool)_apiSet.Invoke(null, new object[] { car, width, height });
-                    PatrolsModule.Verbose("Suspension: " + car.name + " width x" + width.ToString("0.00") + ", height " + height.ToString("+0.00;-0.00") + " m via Part Adjustment (" + why + ")" + (ok ? "" : " - refused"));
+                    if (Log.L2) Deep("Suspension: " + car.name + " width x" + width.ToString("0.00") + ", height " + height.ToString("+0.00;-0.00") + " m via Part Adjustment (" + why + ")" + (ok ? "" : " - refused"));
                     return ok;
                 }
-                catch (Exception e) { Core.Log.Warn("[Patrols] " + "Suspension: Part Adjustment API: " + e.Message); }
+                catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Suspension: Part Adjustment API: " + e.Message); }
             }
             var tune = SuspensionTune.Ensure(car);
-            if (tune == null) { if (!standard) PatrolsModule.Verbose("Suspension: " + car.name + " is not an adjustable chassis"); return false; }
+            if (tune == null) { if (!standard) if (Log.L2) Deep("Suspension: " + car.name + " is not an adjustable chassis"); return false; }
             tune.Set(width, height);
-            PatrolsModule.Verbose("Suspension: " + car.name + " width x" + width.ToString("0.00") + ", height " + height.ToString("+0.00;-0.00") + " m (" + why + ")");
+            if (Log.L2) Deep("Suspension: " + car.name + " width x" + width.ToString("0.00") + ", height " + height.ToString("+0.00;-0.00") + " m (" + why + ")");
             return true;
         }
 
-        // the car's current adjustment (1 / 0 when standard or without a kit) - what the template exporter writes
+        /// <summary>The car's current adjustment (1 / 0 when standard or without a kit) - what the template exporter writes.</summary>
         internal static void Read(GameObject car, out float width, out float height)
         {
             width = 1f; height = 0f;
@@ -72,13 +77,13 @@ namespace WildWasteland.Modules.Patrols
                     if ((bool)_apiGet.Invoke(null, args)) { width = (float)args[1]; height = (float)args[2]; }
                     return;
                 }
-                catch (Exception e) { Core.Log.Warn("[Patrols] " + "Suspension: Part Adjustment API: " + e.Message); }
+                catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Suspension: Part Adjustment API: " + e.Message); }
             }
             var tune = car.GetComponent<SuspensionTune>();
             if (tune != null) { width = tune.Width; height = tune.Height; }
         }
 
-        // a one-line picture of the running gear for the log (VerboseLog): what NWH really uses after the template's wheels went on
+        /// <summary>A one-line picture of the running gear for the log: what NWH really uses after the template's wheels went on.</summary>
         internal static string Describe(GameObject car)
         {
             var sb = new System.Text.StringBuilder();
@@ -95,10 +100,20 @@ namespace WildWasteland.Modules.Patrols
         // load - our own tune (no Part Adjustment) re-applies on top of the new vanilla baseline, like Part Adjustment does for itself
         // WW: Core.Hooks.SetPositionDo postfix. First line: a static counter of live SuspensionTune components (0 = no raider car
         // carries our own lift kit -> nothing to do, no string compare on the game's SetPosition actions).
-        internal static void Install(Core.IModule owner)
+        /// <summary>Old Patrols entry point; the Vehicles module installs the hook itself (<see cref="Hook"/>).</summary>
+        [System.Obsolete("refactor: the Vehicles module installs the suspension hook (Suspension.Hook)")]
+        internal static void Install(IModule owner) { }
+
+        /// <summary>Subscribes the SetPosition.DoSetPosition postfix (shared Core dispatcher) for the Vehicles module.</summary>
+        internal static void Hook(IModule owner)
         {
-            Core.Hooks.SetPositionDo.Postfix(owner, AfterSetPosition);
+            Hooks.SetPositionDo.Postfix(owner, AfterSetPosition);
         }
+
+        /// <summary>
+        /// Postfix of SetPosition.DoSetPosition (every SetPosition action in the game): when the vanilla Suspension FSM moved a wheel mount of a car
+        /// carrying our SuspensionTune, the tune re-applies on the new baseline. Early-out: no live SuspensionTune (static counter), then FSM name.
+        /// </summary>
 
         private static void AfterSetPosition(SetPosition __instance)
         {
@@ -112,195 +127,10 @@ namespace WildWasteland.Modules.Patrols
                 var tune = owner.transform.parent.GetComponent<SuspensionTune>();
                 if (tune != null) tune.VanillaMountMoved(owner.transform, __instance.State != null ? __instance.State.Name : "");
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Suspension: after SetPosition: " + e.Message); }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Suspension: after SetPosition: " + e.Message); }
         }
-    }
-
-    // The geometry of a suspension adjustment without the Part Adjustment mod (its own SuspensionAdjustment is the reference; this follows
-    // the same rules: model scale X / position Y, hinge Y, mounts = vanilla baseline + axle-end width offset + height). Never saved by the
-    // game (Apocapatrol's own save data carries width / height per raider car).
-    internal sealed class SuspensionTune : MonoBehaviour
-    {
-        internal float Width = 1f, Height;
-        private Transform _model, _hinge;
-        private Vector3 _modelPos, _modelScale, _hingePos;
-        private readonly List<Mount> _mounts = new List<Mount>();
-        private readonly List<Axle> _axles = new List<Axle>();
-        private Rigidbody _body;
-        private long _comSig; private float _nextCom; private bool _comShifted;
-        private static readonly List<Collider> _cols = new List<Collider>();
-
-        // WW: live count, the first-line filter of the shared SetPosition.DoSetPosition postfix (Suspension.AfterSetPosition)
-        internal static int Live;
-        private void Awake() { Live++; }
-        private void OnDestroy() { Live--; }
-        private sealed class Mount { internal Transform T; internal Vector3 Baseline; internal float Center; internal bool Lifted; }
-        private sealed class Axle { internal Transform Branch; internal bool Lifted; internal float Left, Right; internal Vector3 Center; }
-
-        internal static SuspensionTune Ensure(GameObject car)
-        {
-            var t = car.GetComponent<SuspensionTune>();
-            if (t != null) return t;
-            var model = car.transform.Find("suspension_model");
-            var hinge = Suspension.KitHinge(car);
-            if (model == null || hinge == null) return null;
-            var wheels = car.GetComponentsInChildren<WheelController>(true).Where(w => w.transform.parent == car.transform && w.name.StartsWith("hinge_wheel_", StringComparison.Ordinal)).ToArray();
-            if (wheels.Length < 4) return null;
-            foreach (var w in wheels) if (w.GetComponents<PlayMakerFSM>().All(f => f.FsmName != "Suspension")) return null;   // Rustliner / Rustcargo / Rustchief: dormant assemblies
-            t = car.AddComponent<SuspensionTune>();
-            t.Init(model, hinge, wheels);
-            return t;
-        }
-
-        private void Init(Transform model, Transform hinge, WheelController[] wheels)
-        {
-            _model = model; _hinge = hinge; _body = GetComponent<Rigidbody>();
-            _modelPos = model.localPosition; _modelScale = model.localScale; _hingePos = hinge.localPosition;
-            foreach (var w in wheels)
-            {
-                var fsm = w.GetComponents<PlayMakerFSM>().FirstOrDefault(f => f.FsmName == "Suspension" && f.enabled);
-                _mounts.Add(new Mount { T = w.transform, Baseline = VanillaPosition(w.transform, fsm), Lifted = fsm != null && fsm.Fsm.Initialized && fsm.ActiveStateName == "lifted" });
-            }
-            RefreshCenters();
-            // the axle meshes' ends in the model's own coordinates (bounds work on the game's non-readable meshes)
-            foreach (var mf in model.GetComponentsInChildren<MeshFilter>(true))
-            {
-                string n = mf.name.ToLowerInvariant();
-                if (mf.sharedMesh == null || !n.Contains("suspension") || (!n.Contains("front") && !n.Contains("rear"))) continue;
-                var branch = mf.transform;
-                while (branch.parent != null && branch.parent != model) branch = branch.parent;
-                bool lifted = branch.name == "lifted" || branch.name == "buggy";
-                if (branch.parent != model || (!lifted && branch.name != "stock")) continue;
-                var b = mf.sharedMesh.bounds; float left = float.PositiveInfinity, right = float.NegativeInfinity;
-                for (int x = -1; x <= 1; x += 2) for (int y = -1; y <= 1; y += 2) for (int z = -1; z <= 1; z += 2)
-                {
-                    float v = model.InverseTransformPoint(mf.transform.TransformPoint(b.center + Vector3.Scale(b.extents, new Vector3(x, y, z)))).x;
-                    left = Mathf.Min(left, v); right = Mathf.Max(right, v);
-                }
-                _axles.Add(new Axle { Branch = branch, Lifted = lifted, Left = left, Right = right, Center = model.InverseTransformPoint(mf.transform.TransformPoint(b.center)) });
-            }
-        }
-
-        // the mount position the vanilla FSM's active state writes (stock / lifted SetPosition) - authoritative even after a load
-        private static Vector3 VanillaPosition(Transform wheel, PlayMakerFSM fsm)
-        {
-            if (fsm == null) return wheel.localPosition;
-            try
-            {
-                string want = fsm.Fsm.Initialized ? fsm.ActiveStateName : "stock";
-                var state = fsm.FsmStates.FirstOrDefault(s => s.Name == want) ?? fsm.FsmStates.FirstOrDefault(s => s.Name == "stock");
-                if (state == null) return wheel.localPosition;
-                var acts = state.Actions; if ((acts == null || acts.Length == 0)) { state.LoadActions(); acts = state.Actions; }
-                var sp = acts != null ? acts.OfType<SetPosition>().FirstOrDefault(a => a.Enabled && a.space == Space.Self) : null;
-                if (sp == null) return wheel.localPosition;
-                var p = sp.vector != null && !sp.vector.IsNone ? sp.vector.Value : wheel.localPosition;
-                if (sp.x != null && !sp.x.IsNone) p.x = sp.x.Value;
-                if (sp.y != null && !sp.y.IsNone) p.y = sp.y.Value;
-                if (sp.z != null && !sp.z.IsNone) p.z = sp.z.Value;
-                return p;
-            }
-            catch (Exception) { return wheel.localPosition; }
-        }
-
-        private void RefreshCenters()
-        {
-            foreach (var m in _mounts)
-            {
-                Mount opp = null; float nearest = float.PositiveInfinity;
-                foreach (var c in _mounts)
-                {
-                    if (c == m || Mathf.Sign(c.Baseline.x) == Mathf.Sign(m.Baseline.x)) continue;
-                    float d = Mathf.Abs(c.Baseline.z - m.Baseline.z);
-                    if (d < nearest) { opp = c; nearest = d; }
-                }
-                m.Center = opp == null ? 0f : (m.Baseline.x + opp.Baseline.x) * 0.5f;
-            }
-        }
-
-        internal void Set(float width, float height) { Width = Mathf.Clamp(width, 1f, 1.5f); Height = Mathf.Clamp(height, -1f, 1f); Apply(); }
-
-        private void Apply()
-        {
-            if (_model == null || _hinge == null) return;
-            if (!Suspension.KitFitted(gameObject) && (Width != 1f || Height != 0f)) { Width = 1f; Height = 0f; }
-            _model.localScale = new Vector3(_modelScale.x * Width, _modelScale.y, _modelScale.z);
-            _model.localPosition = _modelPos + Vector3.up * Height;
-            _hinge.localPosition = _hingePos + _hinge.parent.InverseTransformVector(transform.TransformVector(Vector3.up * Height));
-            foreach (var m in _mounts) ApplyMount(m);
-            ApplyCenterOfMass(true);
-            if (_body != null) _body.WakeUp();
-        }
-
-        // 2.5.0: a car with a lift kit carries its weight lower. The Rigidbody's automatic centre of mass (nothing in the game or NWH sets one)
-        // is lowered by KitDrop as soon as a kit sits on hinge_suspension, plus LiftFactor x any extra lift of the body (Height < 0), so a
-        // tall car on big wheels does not flip in turns. The automatic value is re-read first (parts going on or off still move it) and
-        // re-checked once a second. Same constants and rule as Part Adjustment 1.4.0; without a kit the centre is the automatic one.
-        internal const float KitDrop = 0.3f, LiftFactor = 1.5f;
-
-        private void ApplyCenterOfMass(bool force)
-        {
-            if (_body == null) return;
-            bool kit = Suspension.KitFitted(gameObject);
-            long sig = kit ? 19 : 17;
-            sig = sig * 31 + (long)(Height * 1000f);
-            _cols.Clear(); GetComponentsInChildren(false, _cols);   // Perf: reused buffer (1 Hz per tuned car, from FixedUpdate)
-            foreach (var c in _cols) if (c != null && c.enabled && !c.isTrigger) sig = sig * 31 + c.GetInstanceID();
-            _cols.Clear();
-            if (!force && sig == _comSig) return;
-            _comSig = sig;
-            float drop = PatrolsModule.SuspensionLiftCenterOfMass.Value && kit ? KitDrop + LiftFactor * Mathf.Max(0f, -Height) : 0f;
-            if (drop <= 0f) { if (_comShifted) { _body.ResetCenterOfMass(); _comShifted = false; } return; }
-            _body.ResetCenterOfMass();
-            _body.centerOfMass = _body.centerOfMass - Vector3.up * drop;
-            _comShifted = true;
-        }
-
-        private void FixedUpdate()
-        { if (!PatrolsModule.Running) return;
-            if (Time.time < _nextCom) return;
-            _nextCom = Time.time + 1f;
-            ApplyCenterOfMass(false);
-        }
-
-        private void ApplyMount(Mount m)
-        {
-            if (m.T == null) return;
-            var p = m.Baseline;
-            Vector3 off;
-            if (AxleOffset(m, out off)) p += off;
-            else p.x = m.Center + (p.x - m.Center) * Width;
-            p.y += Height;
-            if (!m.T.localPosition.Equals(p)) m.T.localPosition = p;
-        }
-
-        // the mount follows the end of the matching (stock / lifted) axle mesh as the model stretches: factory hub clearance kept
-        private bool AxleOffset(Mount m, out Vector3 offset)
-        {
-            offset = Vector3.zero;
-            Axle best = null; float dist = float.PositiveInfinity;
-            foreach (var a in _axles)
-            {
-                if (a.Branch == null || a.Lifted != m.Lifted) continue;
-                float d = Mathf.Abs(m.T.parent.InverseTransformPoint(_model.TransformPoint(a.Center)).z - m.Baseline.z);
-                if (d < dist) { dist = d; best = a; }
-            }
-            if (best == null) return false;
-            bool left = m.Baseline.x < m.T.parent.InverseTransformPoint(_model.position).x;
-            float end = (left ? best.Left : best.Right) * _modelScale.x;
-            var local = new Vector3(end * (Width - 1f), 0f, 0f);
-            offset = m.T.parent.InverseTransformVector(_model.parent.TransformVector(_model.localRotation * local));
-            return true;
-        }
-
-        // the vanilla FSM just wrote this mount (kit on / off, a load): new baseline, our offsets on top
-        internal void VanillaMountMoved(Transform wheel, string state)
-        {
-            var m = _mounts.FirstOrDefault(x => x.T == wheel);
-            if (m == null) return;
-            m.Baseline = wheel.localPosition; m.Lifted = state == "lifted";
-            RefreshCenters();
-            if (!Suspension.KitFitted(gameObject) && (Width != 1f || Height != 0f)) { Apply(); return; }
-            foreach (var x in _mounts) ApplyMount(x);
-        }
+    
+        /// <summary>Level-2 log line of the suspension rules.</summary>
+        private static void Deep(string msg) { Log.Deep(VehiclesModule.Instance, msg); }
     }
 }

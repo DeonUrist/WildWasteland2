@@ -6,15 +6,19 @@ using System.Reflection;
 using ES3Internal;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols
 {
-    // =============================================================== NWH Vehicle Physics 2 by reflection
-    // Everything is reached by reflection (no compile dependency on the NWH assembly). The VehicleController and its input /
-    // powertrain / engine / transmission objects are stable for the life of the car and the member lookups never change, so
-    // both are cached: a Handle per car and a MemberInfo table per (type, name). The pilots ask several times per physics step.
+    /// <summary>
+    /// NWH Vehicle Physics 2 access for driven cars: typed where the NWH types are known, reflection as the fallback. The VehicleController
+    /// and its input / powertrain / engine / transmission objects are stable for the life of the car, so a Handle per car and a MemberInfo
+    /// table per (type, name) are cached. The pilots ask several times per physics step.
+    /// </summary>
     internal static class Nwh
     {
+        /// <summary>Cached controller objects of one car and its last written input.</summary>
         private class Handle
         {
             public Component Vc;
@@ -30,6 +34,7 @@ namespace WildWasteland.Modules.Patrols
         private static readonly Dictionary<Type, Dictionary<string, MemberInfo>> _members = new Dictionary<Type, Dictionary<string, MemberInfo>>();
         private static float _nextSweep;
 
+        /// <summary>The cached handle of a car (created on first use; destroyed cars are swept every 30 s); null without a VehicleController.</summary>
         private static Handle Of(GameObject car)
         {
             if (car == null) return null;
@@ -51,6 +56,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // drop the handles of destroyed cars
+        /// <summary>Drops the handles of destroyed cars.</summary>
         private static void Sweep()
         {
             var dead = new List<int>();
@@ -58,6 +64,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var k in dead) _handles.Remove(k);
         }
 
+        /// <summary>Cached field-or-property lookup per (type, name).</summary>
         private static MemberInfo Member(Type t, string name)
         {
             Dictionary<string, MemberInfo> d;
@@ -70,6 +77,7 @@ namespace WildWasteland.Modules.Patrols
             return m;
         }
 
+        /// <summary>Reads a field or property by name (null when missing).</summary>
         private static object Get(object o, string name)
         {
             if (o == null) return null;
@@ -80,6 +88,7 @@ namespace WildWasteland.Modules.Patrols
             return p != null ? p.GetValue(o, null) : null;
         }
 
+        /// <summary>Writes a field or writable property by name; false when missing.</summary>
         private static bool Set(object o, string name, object value)
         {
             if (o == null) return false;
@@ -91,32 +100,35 @@ namespace WildWasteland.Modules.Patrols
             return false;
         }
 
+        /// <summary>Engine running: the ignition provider first, then the NWH engine.</summary>
         internal static bool EngineRunning(GameObject car)
         {
-            bool running; if (Core.Services.VehicleIgnition != null && Core.Services.VehicleIgnition.TryRunning(car, out running)) return running;
+            bool running; var ignition = ModApi.Get<IVehicleIgnition>(); if (ignition != null && ignition.TryRunning(car, out running)) return running;
             try { var h = Of(car); if (h != null && h.TEngine != null) return h.TEngine.IsRunning; var r = h != null ? Get(h.Engine, "IsRunning") : null; return r is bool && (bool)r; }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "EngineRunning: " + e.Message); return false; }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "EngineRunning: " + e.Message); return false; }
         }
 
+        /// <summary>Starts the engine: the ignition provider first, then NWH StartEngine().</summary>
         internal static void StartEngine(GameObject car)
         {
-            if (Core.Services.VehicleIgnition != null && Core.Services.VehicleIgnition.TryStart(car)) return;
+            var ignition = ModApi.Get<IVehicleIgnition>(); if (ignition != null && ignition.TryStart(car)) return;
             try
             {
                 var h = Of(car);
                 var eng = h != null ? h.Engine : null;
-                if (eng == null) { Core.Log.Warn("[Patrols] " + "No powertrain.engine"); return; }
+                if (eng == null) { Log.Warn(VehiclesModule.Instance, "No powertrain.engine"); return; }
                 if (h.TEngine != null) { h.TEngine.StartEngine(); return; }
                 var m = eng.GetType().GetMethod("StartEngine", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
-                if (m == null) { Core.Log.Warn("[Patrols] " + "No StartEngine()"); return; }
+                if (m == null) { Log.Warn(VehiclesModule.Instance, "No StartEngine()"); return; }
                 m.Invoke(eng, null);
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "StartEngine: " + e.Message); }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "StartEngine: " + e.Message); }
         }
 
+        /// <summary>Stops the engine: the ignition provider first, then NWH StopEngine().</summary>
         internal static void StopEngine(GameObject car)
         {
-            if (Core.Services.VehicleIgnition != null && Core.Services.VehicleIgnition.TryStop(car)) return;
+            var ignition = ModApi.Get<IVehicleIgnition>(); if (ignition != null && ignition.TryStop(car)) return;
             try
             {
                 var h = Of(car);
@@ -124,13 +136,14 @@ namespace WildWasteland.Modules.Patrols
                 if (eng == null) return;
                 if (h.TEngine != null) { h.TEngine.StopEngine(); return; }
                 var m = eng.GetType().GetMethod("StopEngine", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, Type.EmptyTypes, null);
-                if (m == null) { PatrolsModule.Verbose("No StopEngine()"); return; }
+                if (m == null) { Log.Deep(VehiclesModule.Instance, "No StopEngine()"); return; }
                 m.Invoke(eng, null);
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "StopEngine: " + e.Message); }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "StopEngine: " + e.Message); }
         }
 
         // returns the previous value
+        /// <summary>Sets input.autoSetInput; returns the previous value.</summary>
         internal static bool AutoInput(GameObject car, bool on)
         {
             try
@@ -139,12 +152,13 @@ namespace WildWasteland.Modules.Patrols
                 var input = h != null ? h.Input : null;
                 if (h != null && h.TInput != null) { bool old = h.TInput.autoSetInput; h.TInput.autoSetInput = on; return old; }
                 var was = Get(input, "autoSetInput");
-                if (!Set(input, "autoSetInput", on)) PatrolsModule.Verbose("no autoSetInput");
+                if (!Set(input, "autoSetInput", on)) Log.Deep(VehiclesModule.Instance, "no autoSetInput");
                 return was is bool ? (bool)was : false;
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "AutoInput: " + e.Message); return false; }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "AutoInput: " + e.Message); return false; }
         }
 
+        /// <summary>Current transmission gear index (0 when unknown).</summary>
         internal static int GearIndex(GameObject car)
         {
             try { var h = Of(car); var g = h != null ? Get(h.Transmission, "Gear") : null; return g is int ? (int)g : 0; }
@@ -152,6 +166,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // input.ShiftInto = gear index (-1 R, 0 N, 1 = 1st/D); the vehicle consumes it on its next update
+        /// <summary>Requests a gear (input.ShiftInto: -1 R, 0 N, 1 = 1st/D), consumed on the vehicle's next update.</summary>
         internal static void ShiftInto(GameObject car, int gear)
         {
             try
@@ -161,10 +176,11 @@ namespace WildWasteland.Modules.Patrols
                 if (h.TInput != null) { h.TInput.ShiftInto = gear; return; }
                 if (!Set(h.Input, "ShiftInto", gear)) Set(h.Input, "shiftInto", gear);
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "ShiftInto: " + e.Message); }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "ShiftInto: " + e.Message); }
         }
 
         // one-line NWH state readback for the log
+        /// <summary>One-line NWH state readback for the log.</summary>
         internal static string Diag(GameObject car)
         {
             try
@@ -178,8 +194,10 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { return "diag: " + e.Message; }
         }
 
+        /// <summary>Formats an rpm value for the log.</summary>
         private static string F(object o) { return o is float ? ((float)o).ToString("0") : (o == null ? "?" : o.ToString()); }
 
+        /// <summary>Gear label for the log.</summary>
         internal static string Gear(GameObject car)
         {
             try { var h = Of(car); var g = h != null ? Get(h.Transmission, "Gear") : null; return g != null ? g.ToString() : "?"; }
@@ -187,24 +205,27 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // NWH steering.maximumSteerAngle (degrees), 0 when unknown
+        /// <summary>NWH steering.maximumSteerAngle in degrees (0 when unknown).</summary>
         internal static float MaxSteerAngle(GameObject car)
         {
             try { var h = Of(car); var s = h != null ? Get(h.Vc, "steering") : null; var a = s != null ? Get(s, "maximumSteerAngle") : null; return a is float ? (float)a : 0f; }
             catch (Exception) { return 0f; }
         }
 
+        /// <summary>Writes input.Handbrake.</summary>
         internal static void SetHandbrake(GameObject car, float value)
         {
-            try { var h = Of(car); if (h != null && h.TInput != null) { h.TInput.Handbrake = value; return; } if (h == null || !Set(h.Input, "Handbrake", value)) PatrolsModule.Verbose("no input.Handbrake"); }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "SetHandbrake: " + e.Message); }
+            try { var h = Of(car); if (h != null && h.TInput != null) { h.TInput.Handbrake = value; return; } if (h == null || !Set(h.Input, "Handbrake", value)) Log.Deep(VehiclesModule.Instance, "no input.Handbrake"); }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "SetHandbrake: " + e.Message); }
         }
 
+        /// <summary>Writes throttle / steering / brakes, skipping identical writes for up to 0.5 s.</summary>
         internal static void SetInput(GameObject car, float throttle, float steering, float brakes)
         {
             try
             {
                 var h = Of(car);
-                if (h == null || h.Input == null) { Core.Log.Warn("[Patrols] " + "No VehicleController.input"); return; }
+                if (h == null || h.Input == null) { Log.Warn(VehiclesModule.Instance, "No VehicleController.input"); return; }
                 if (h.Throttle == throttle && h.Steering == steering && h.Brakes == brakes && Time.fixedTime - h.WrittenAt < InputRefresh) return;
                 h.Throttle = throttle; h.Steering = steering; h.Brakes = brakes; h.WrittenAt = Time.fixedTime;
                 if (h.TInput != null) { h.TInput.Throttle = throttle; h.TInput.Steering = steering; h.TInput.Brakes = brakes; return; }
@@ -212,10 +233,11 @@ namespace WildWasteland.Modules.Patrols
                 Set(h.Input, "Steering", steering);
                 Set(h.Input, "Brakes", brakes);
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "SetInput: " + e.Message); }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "SetInput: " + e.Message); }
         }
 
         // the next SetInput writes whatever it is given (after the game's INPUT FSMs had the input for a while)
+        /// <summary>Makes the next SetInput write whatever it gets (after the game's INPUT FSMs had the input).</summary>
         internal static void ForgetInput(GameObject car)
         {
             var h = Of(car);

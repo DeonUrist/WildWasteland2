@@ -6,9 +6,11 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Patrols
 {
-    // The car template file (JSON), extended from Apocatemplater's format. Optional trailer data keeps older files compatible.
-    // Read/written by the small JSON code below, NOT Unity's JsonUtility: in a BepInEx plugin JsonUtility silently drops the
-    // nested TemplatePart[] array (Apocatemplater 1.0.1 wrote files without "parts").
+    /// <summary>
+    /// The car template file (JSON): frame, fitted parts, bumpers, trailer, suspension adjustment (assembly structure) plus the crew,
+    /// turret, cargo and faction fields Patrols reads. Read/written with Core Json, NOT Unity's JsonUtility (it drops the nested
+    /// TemplatePart[] array in a BepInEx plugin). Optional trailer data keeps files without a trailer valid.
+    /// </summary>
     public class TemplateFile
     {
         public int schema = 2;
@@ -33,12 +35,19 @@ namespace WildWasteland.Modules.Patrols
         public float[] riderPos4 = new float[0];
         public bool riderStanding, riderStanding2, riderStanding3, riderStanding4; // false = sitting
         public TemplateFile trailer; // its own frame, fitted parts and frame-local turret positions
+        /// <summary>Crew prefab of turret slot i (0..3).</summary>
         public string Turret(int i) { CheckSlot(i); return i == 0 ? rider : i == 1 ? rider2 : i == 2 ? rider3 : rider4; }
+        /// <summary>Frame-local spot of turret slot i (empty = computed at build).</summary>
         public float[] TurretPos(int i) { CheckSlot(i); return i == 0 ? riderPos : i == 1 ? riderPos2 : i == 2 ? riderPos3 : riderPos4; }
+        /// <summary>True when turret slot i stands (false = sits).</summary>
         public bool TurretStanding(int i) { CheckSlot(i); return i == 0 ? riderStanding : i == 1 ? riderStanding2 : i == 2 ? riderStanding3 : riderStanding4; }
+        /// <summary>Sets standing/sitting of turret slot i.</summary>
         public void SetTurretStanding(int i, bool value) { CheckSlot(i); if(i==0)riderStanding=value;else if(i==1)riderStanding2=value;else if(i==2)riderStanding3=value;else riderStanding4=value; }
+        /// <summary>Sets the crew prefab of turret slot i.</summary>
         public void SetTurret(int i, string v) { CheckSlot(i); v = v ?? ""; if (i == 0) rider = v; else if (i == 1) rider2 = v; else if (i == 2) rider3 = v; else rider4 = v; }
+        /// <summary>Sets the frame-local spot of turret slot i.</summary>
         public void SetTurretPos(int i, float[] p) { CheckSlot(i); p = p ?? new float[0]; if (i == 0) riderPos = p; else if (i == 1) riderPos2 = p; else if (i == 2) riderPos3 = p; else riderPos4 = p; }
+        /// <summary>Throws for a turret slot outside 0..3.</summary>
         private static void CheckSlot(int i) { if (i < 0 || i >= 4) throw new ArgumentOutOfRangeException(nameof(i)); }
         public string lootPreset = "";
         public string cargo = "";           // "" none | "Random" (rolled by the [Loot] chances) | a loot key (Food ...) | an item spec "a:2;b:1-3"
@@ -50,15 +59,18 @@ namespace WildWasteland.Modules.Patrols
         public float suspensionWidth = 1f, suspensionHeight = 0f;
         public TemplatePart[] parts = new TemplatePart[0];
         public string source = "";          // who wrote it (Apocatemplater version, date, the car it came from) - information only
+        /// <summary>True for a cargo truck (Rustcargo body or a "truck" kind): its lootPreset is a fixed cargo option.</summary>
         private bool CargoTruck { get { return string.Equals(body, "Rustcargo", StringComparison.OrdinalIgnoreCase) || Array.Exists((kind ?? "").Split(';', ','), k => k.Trim().Equals("truck", StringComparison.OrdinalIgnoreCase)); } }
 
         // ------------------------------------------------------------ write
+        /// <summary>Writes a 3-float array entry (nothing when it is not 3 long).</summary>
         private static void V3(StringBuilder sb, string key, float[] v)
         {
             if (v == null || v.Length != 3) return;
             sb.Append("    \"").Append(key).Append("\": [").Append(v[0].ToString("0.####", CultureInfo.InvariantCulture)).Append(", ").Append(v[1].ToString("0.####", CultureInfo.InvariantCulture)).Append(", ").Append(v[2].ToString("0.####", CultureInfo.InvariantCulture)).Append("],\n");
         }
 
+        /// <summary>Serialises the template in the stable field order of the existing files.</summary>
         public string ToJson()
         {
             var sb = new StringBuilder();
@@ -103,6 +115,7 @@ namespace WildWasteland.Modules.Patrols
             return sb.ToString();
         }
 
+        /// <summary>Writes one scalar entry (string, bool, float with InvariantCulture, other).</summary>
         private static void P(StringBuilder sb, string k, object v)
         {
             sb.Append("    \"").Append(k).Append("\": ");
@@ -113,6 +126,7 @@ namespace WildWasteland.Modules.Patrols
             sb.Append(",\n");
         }
 
+        /// <summary>Writes an inline float array of a part (left out when empty).</summary>
         private static void Arr(StringBuilder sb, string k, float[] a)
         {
             if (a == null || a.Length == 0) return;   // empty = untouched: left out of the file
@@ -122,6 +136,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // ------------------------------------------------------------ read
+        /// <summary>Parses a template file; throws FormatException for invalid content.</summary>
         public static TemplateFile FromJson(string text)
         {
             var root = Json.Parse(text) as Dictionary<string, object>;
@@ -129,12 +144,13 @@ namespace WildWasteland.Modules.Patrols
             return FromObject(root, false);
         }
 
+        /// <summary>Reads a template (or its single nested trailer) from a parsed JSON object.</summary>
         private static TemplateFile FromObject(Dictionary<string, object> root, bool isTrailer)
         {
             var f = new TemplateFile();
             f.schema = (int)Json.Num(root, "schema", f.schema);
             f.name = Json.Text(root, "name", f.name); f.body = Json.Text(root, "body", f.body);
-            f.explodeChance=Json.Num(root,"explodeChance",Explode.DefaultChance(f.name));
+            f.explodeChance=Json.Num(root,"explodeChance",Explode.DefaultChance(f.name));   // refs-ok: REFACTOR-REQUEST B12-1 (Patrols wreck chance default)
             if(float.IsNaN(f.explodeChance)||float.IsInfinity(f.explodeChance))throw new FormatException("Invalid explodeChance");
             f.explodeChance=Math.Max(0f,Math.Min(100f,f.explodeChance));
             f.kind = Json.Text(root, "kind", f.kind);
@@ -182,19 +198,9 @@ namespace WildWasteland.Modules.Patrols
                 }
                 f.parts = l.ToArray();
             }
-            f.faction=TrafficFactions.Normalize(Json.Text(root,"faction",CrewFactions.Infer(f)));
+            f.faction=TrafficFactions.Normalize(Json.Text(root,"faction",CrewFactions.Infer(f)));   // refs-ok: REFACTOR-REQUEST B12-1 (Patrols faction inference)
             return f;
         }
     }
 
-    public class TemplatePart
-    {
-        public int parent = -1;             // index of the part this one is attached to; -1 = the frame
-        public string hinge = "";           // path from the frame (or the parent part) to the hinge / collider it sits on, e.g. "parts/hinge_wheel_FL"
-        public string prefab = "";          // part prefab (asset root name)
-        public float[] hingePos = new float[0];   // hinge local position / euler angles when moved off the prefab's (adjust tool); empty = untouched
-        public float[] hingeRot = new float[0];
-        public float[] pos = new float[0];        // the part's own local pose under its hinge (plates / spikes placed freely); empty = zero
-        public float[] rot = new float[0];
-    }
 }

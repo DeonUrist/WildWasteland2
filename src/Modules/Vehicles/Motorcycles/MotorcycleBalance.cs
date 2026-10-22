@@ -1,8 +1,10 @@
 using NWH.VehiclePhysics2;
 using UnityEngine;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols.Motorcycles
 {
+    /// <summary>Saved component on motorcycle chassis: lean controller that keeps the two-wheeler upright and leans it into turns.</summary>
     [DefaultExecutionOrder(-100)]
     public sealed class MotorcycleBalance : MonoBehaviour
     {
@@ -10,14 +12,17 @@ namespace WildWasteland.Modules.Patrols.Motorcycles
         private Rigidbody body;
         private float targetLean;
 
+        /// <summary>Caches the vehicle controller and rigidbody.</summary>
         private void Awake()
         {
             vehicle = GetComponent<VehicleController>();
             body = GetComponent<Rigidbody>();
         }
 
+        /// <summary>Per physics step (module running, controller ready, not kinematic): tyre force height, then a critically damped roll PD toward the steering lean.</summary>
         private void FixedUpdate()
-        { if (!PatrolsModule.Running) return;
+        {
+            if (!VehiclesModule.Running) return;
             if (!vehicle.IsInitialized || !vehicle.isActiveAndEnabled || body.isKinematic) return;
             foreach (var wheel in vehicle.powertrain.wheels)
             {

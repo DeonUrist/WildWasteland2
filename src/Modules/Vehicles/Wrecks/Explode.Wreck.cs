@@ -3,12 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols
 {
     /// <summary>Vehicle wreck rules (part condition, tweens/rpm/hinge shake stopped, darkened frame, harmless blast effect, dead chassis, wreck test and restore after load); Vehicles IVehicleWreck part of Explode (Wave A split of Patrols Vehicles/Explode.cs).</summary>
     internal static partial class Explode
     {
+        private static MaterialPropertyBlock _wreckBlock;
+        /// <summary>Sets the Condition (and Repair) value of every initialised Condition/Repair FSM under a part.</summary>
         internal static void SetCondition(Transform part, float value)
         {
             foreach (var f in part.GetComponentsInChildren<PlayMakerFSM>(true))
@@ -29,16 +33,17 @@ namespace WildWasteland.Modules.Patrols
         // by hand (the tween overwrites its rotation every frame), also after being fitted to another car and taken out again. The game's
         // own exhaust CheckTag does an iTweenStop when removed; the engine's does not, and the player only removes engines from parked
         // cars. Every iTween on the part and its children is removed (what iTween.Stop does), found by type name (no compile reference).
+        /// <summary>Removes every iTween on a part and its children (a popped engine kept wobbling/rotating otherwise).</summary>
         private static void StopTweens(Transform part)
         {
             if (part == null) return;
             int n = 0;
             foreach (var b in part.GetComponentsInChildren<MonoBehaviour>(true))
                 if (b != null && b.GetType().Name == "iTween") { b.enabled = false; UnityEngine.Object.Destroy(b); n++; }
-            if (n > 0) PatrolsModule.Verbose("Explode: " + n + " iTween(s) stopped on " + part.name);
+            if (n > 0 && Log.L2) Log.Deep(VehiclesModule.Instance, "Explode: " + n + " iTween(s) stopped on " + part.name);
         }
 
-        // the Shake FSMs on the car's hinges (engine, exhaust, radiator ... wobble): off for good before the parts pop
+        /// <summary>Switches the frame's hinge Shake FSMs (engine, exhaust, radiator wobble) off for good before the parts pop.</summary>
         private static void QuietHinges(GameObject car)
         {
             foreach (var f in car.GetComponentsInChildren<PlayMakerFSM>(true))
@@ -52,6 +57,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Sets every "rpm" float of a part's FSMs to 0 (a loose engine kept its running rpm).</summary>
         private static void StopRpm(Transform part)
         {
             if (part == null) return;
@@ -63,7 +69,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
-        // The frame's renderers (not the parts', not an occupant's) go almost black: instanced materials, _Color and emission
+        /// <summary>Chars the frame's renderers (not parts or occupants) through a property block: _Color almost black, no emission (never saved).</summary>
         internal static void Darken(GameObject car)
         {
             int n = 0;
@@ -81,7 +87,7 @@ namespace WildWasteland.Modules.Patrols
                     // a property block, not r.materials: instanced materials went into the save as references Easy Save can't resolve
                     // on load (a pink wreck); the block is not saved and keeps the paint's _MainTex
                     var mats = r.sharedMaterials;
-                    var b = Paint.Block;
+                    var b = _wreckBlock ?? (_wreckBlock = new MaterialPropertyBlock());
                     for (int i = 0; i < mats.Length; i++)
                     {
                         var m = mats[i];
@@ -95,17 +101,17 @@ namespace WildWasteland.Modules.Patrols
                 }
                 catch (Exception) { }
             }
-            PatrolsModule.Verbose("Explode: " + n + " material(s) charred");
+            if (Log.L2) Log.Deep(VehiclesModule.Instance, "Explode: " + n + " material(s) charred");
         }
 
-        // the harmless blast effect at a point (also the "Witness me!" rider's explosion, 2.1.4; its damage is Rider.Kaboom's own)
+        /// <summary>The harmless blast effect at a point (harmful FSMs, sensors and colliders off); also the "Witness me!" rider's explosion.</summary>
         internal static void BlastAt(Vector3 at)
         {
             if (!_blastLooked)
             {
                 _blastLooked = true;
-                _blast = Prefabs.FindAny(BlastPrefab);
-                if (_blast == null) Core.Log.Warn("[Patrols] " + "Explode: " + BlastPrefab + " prefab not found; no blast effect");
+                _blast = Prefabs.FindAny(BlastPrefab);   // refs-ok: REFACTOR-REQUEST B12-3 (Patrols prefab index)
+                if (_blast == null) Log.Warn(VehiclesModule.Instance, "Explode: " + BlastPrefab + " prefab not found; no blast effect");
             }
             if (_blast == null) return;
             var fx = UnityEngine.Object.Instantiate(_blast, at, Quaternion.identity);
@@ -120,11 +126,10 @@ namespace WildWasteland.Modules.Patrols
             foreach (var c in fx.GetComponentsInChildren<Collider>(true)) c.enabled = false;
             fx.SetActive(true);
             UnityEngine.Object.Destroy(fx, 8f);   // its own FSM destroys it after 2 s; this is only the safety net
-            PatrolsModule.Verbose("Explode: blast effect at " + at + " (" + off + " harmful component(s) off)");
+            if (Log.L2) Log.Deep(VehiclesModule.Instance, "Explode: blast effect at " + at + " (" + off + " harmful component(s) off)");
         }
 
-        // A dead chassis: every FSM on it off (no F prompt, no attach/adjust/fuel/handbrake, no CarAttack), the vehicle controller off.
-        // Also used after a load for a chassis that exploded before the save (its FSMs restarted with the scene).
+        /// <summary>A dead chassis: every FSM off (except DistanceKinematic), engine and controllers off (a truck keeps its wheels, braked), loops silenced, triggers off; also after a load.</summary>
         internal static void Deaden(GameObject car, bool truck)
         {
             if (car == null) return;
@@ -157,36 +162,45 @@ namespace WildWasteland.Modules.Patrols
             foreach (var b in car.GetComponentsInChildren<Behaviour>(true))
                 if (b != null && b.GetType().Namespace == "SkrilStudio") b.enabled = false;
             StopLoops(car);
-            var dt = Patrol.FindChild(car.transform, "DriveTrigger");
+            var dt = FindChild(car.transform, "DriveTrigger");
             if (dt != null) foreach (var col in dt.GetComponents<Collider>()) col.enabled = false;
-            var start = Patrol.FindChild(car.transform, "START");     // the ignition's click collider (its FSM is already off)
+            var start = FindChild(car.transform, "START");     // the ignition's click collider (its FSM is already off)
             if (start != null) foreach (var col in start.GetComponents<Collider>()) col.enabled = false;
-            var pilot = car.GetComponent<Pilot>();
+            var pilot = car.GetComponent<Pilot>();   // refs-ok: REFACTOR-REQUEST B12-2 (driving AI detach: Patrols wreck part)
             if (pilot != null) pilot.Detach();
-            var crew = car.GetComponent<Crew>();
+            var crew = car.GetComponent<Crew>();   // refs-ok: REFACTOR-REQUEST B12-2
             if (crew != null) crew.enabled = false;
         }
 
+        /// <summary>Stops every looping audio source on the frame.</summary>
         private static void StopLoops(GameObject car)
         {
             foreach (var a in car.GetComponentsInChildren<AudioSource>(true))
                 if (a != null && a.loop && a.isPlaying) a.Stop();
         }
 
-        // true once the car blew up: every start-up / revive path checks it after each wait
+        /// <summary>True once the car blew up (Patrols marker): every start-up / revive path checks it after each wait.</summary>
         internal static bool IsWreck(GameObject car)
         {
             if (car == null) return true;
-            var m = car.GetComponent<PatrolMarker>();
+            var m = car.GetComponent<PatrolMarker>();   // refs-ok: REFACTOR-REQUEST B12-2 (wreck flag lives on the Patrols marker)
             return m != null && m.Exploded;
         }
 
-        // after a load: a chassis that exploded before the save is dead again
+        /// <summary>After a load: a chassis that exploded before the save is charred (not trucks) and dead again.</summary>
         internal static void RestoreDead(GameObject car, string body)
         {
             bool truck = IsTruck(body);
             if (!truck) Darken(car);
             Deaden(car, truck);
+        }
+
+        /// <summary>Finds a named descendant, direct children first (same order as Patrols' helper).</summary>
+        private static Transform FindChild(Transform root, string name)
+        {
+            for (int i = 0; i < root.childCount; i++) { var c = root.GetChild(i); if (c.name == name) return c; }
+            for (int i = 0; i < root.childCount; i++) { var r = FindChild(root.GetChild(i), name); if (r != null) return r; }
+            return null;
         }
     }
 }

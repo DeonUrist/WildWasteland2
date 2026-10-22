@@ -8,14 +8,17 @@ using NWH.VehiclePhysics2;
 using NWH.VehiclePhysics2.Powertrain;
 using NWH.VehiclePhysics2.Powertrain.Wheel;
 using UnityEngine;
+using WildWasteland.Modules.Vehicles;
 using WildWasteland.Core;
 using Object = UnityEngine.Object;
 
 namespace WildWasteland.Modules.Patrols.WarRig
 {
-    // War Rig = inactive clone of the vanilla Trailer_Big (attacher, leg, TrailerAttached/TireWear/DistanceKinematic FSMs,
-    // NWH VehicleController, ES3Prefab) with the body hidden, the .glb mesh added, four extra wheel hinges, a stable prefab id
-    // and deterministic ES3 local reference ids for everything added, so saves map back onto the same objects.
+    /// <summary>
+    /// War Rig = inactive clone of the vanilla Trailer_Big (attacher, leg, TrailerAttached/TireWear/DistanceKinematic FSMs, NWH
+    /// VehicleController, ES3Prefab) with the body hidden, the .glb mesh added, four extra wheel hinges, a stable prefab id and
+    /// deterministic ES3 local reference ids for everything added, so saves map back onto the same objects.
+    /// </summary>
     public static class Factory
     {
         public const long PrefabId = 735710202610090001L;
@@ -28,9 +31,10 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static List<Mesh> hulls;
         private static Material[] materials;
 
-        // WW: the template if it was built already (no build): the first-line reference filter of the shared CreateObject hook
+        /// <summary>The template if it was built already (no build): a cheap reference filter for hooks and pages.</summary>
         internal static GameObject Cached { get { return template; } }
 
+        /// <summary>The loaded asset prefab (not a scene object) with an ES3Prefab of that name; throws when it is not loaded.</summary>
         public static GameObject Source(string name)
         {
             var p = Resources.FindObjectsOfTypeAll<ES3Prefab>().FirstOrDefault(x => x != null && !x.gameObject.scene.IsValid() && x.name == name);
@@ -38,6 +42,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return p.gameObject;
         }
 
+        /// <summary>The inactive War Rig template (built once from Trailer_Big; the model files must exist).</summary>
         public static GameObject Template()
         {
             if (template != null) return template;
@@ -58,13 +63,14 @@ namespace WildWasteland.Modules.Patrols.WarRig
                 Convert(copy);
                 copy.GetComponent<ES3Prefab>().prefabId = PrefabId;
                 template = copy;
-                Core.Log.Info("[Patrols] " + "War Rig template created from Trailer_Big: " + model.Mesh.vertexCount + " vertices, " + model.Mesh.subMeshCount + " materials, " + Hulls().Count + " collider hulls, 6 wheel hinges.");
+                if (Log.L1) Log.Main(VehiclesModule.Instance, "War Rig template created from Trailer_Big: " + model.Mesh.vertexCount + " vertices, " + model.Mesh.subMeshCount + " materials, " + Hulls().Count + " collider hulls, 6 wheel hinges.");
                 return template;
             }
             catch { Object.Destroy(copy); throw; }
         }
 
         // ---------- model ----------
+        /// <summary>The War Rig mesh and collider hulls from WarRig.glb (reloaded when Easy Save replaced the shared mesh in place).</summary>
         internal static GlbModel Model()
         {
             // ES3 may update an existing shared Mesh in place. Reference equality alone cannot detect that.
@@ -81,13 +87,14 @@ namespace WildWasteland.Modules.Patrols.WarRig
         }
 
         // Material.mainTexture logs an error for shaders without a _MainTex *texture* (e.g. Hidden/TerrainEngine/...), so ask the shader first.
+        /// <summary>True when the material's shader has a _MainTex texture property (asking mainTexture otherwise logs an error).</summary>
         private static bool HasMainTex(Material m)
         {
             if (m == null || m.shader == null || m.shader.name.StartsWith("Hidden/")) return false;
             return System.Array.IndexOf(m.GetTexturePropertyNames(), "_MainTex") >= 0;
         }
 
-        // Convex hulls: COL* objects in the model file + every mesh in [Colliders] File.
+        /// <summary>Convex hulls: COL* objects of the model file plus every mesh (one hull per submesh) of WarRig_colliders.glb.</summary>
         internal static List<Mesh> Hulls()
         {
             if (hulls != null && hulls.All(x => x != null)) return hulls;
@@ -110,12 +117,13 @@ namespace WildWasteland.Modules.Patrols.WarRig
                             m.SetTriangles(idx, 0); hulls.Add(m);
                         }
                 }
-                else Core.Log.Warn("[Patrols] " + "Collider file not found: " + path + " (using the boxes)");
+                else Log.Warn(VehiclesModule.Instance, "Collider file not found: " + path + " (using the boxes)");
             }
             foreach (var h in hulls) Object.DontDestroyOnLoad(h);
             return hulls;
         }
 
+        /// <summary>The model's materials: a game material using the same texture, else a copy of the trailer's with the game or embedded texture (cached, DontDestroyOnLoad).</summary>
         public static Material[] Materials(Material fallback)
         {
             if (materials != null && materials.All(x => x != null && x.shader != null && x.shader.name != "Hidden/InternalErrorShader")) return materials;
@@ -148,7 +156,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
                     }
                     mat.mainTexture = tex;
                     if (mat.HasProperty("_BumpMap")) mat.SetTexture("_BumpMap", null);
-                    Core.Log.Info("[Patrols] " + "Material " + m.MaterialNames[i] + ": no game material uses '" + img + "', " + (tex != null ? "built one" : "untextured"));
+                    if (Log.L1) Log.Main(VehiclesModule.Instance, "Material " + m.MaterialNames[i] + ": no game material uses '" + img + "', " + (tex != null ? "built one" : "untextured"));
                 }
                 else mat = new Material(mat) { name = "WarRig_" + img };
                 // Own the cached materials. A death/load must not leave us holding a scene-owned material.
@@ -159,6 +167,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         }
 
         // ---------- conversion of the inactive clone ----------
+        /// <summary>Converts the inactive Trailer_Big clone: body hidden, model and hulls, second leg, two extra axles, mass, props, WarRigUnit, layout.</summary>
         private static void Convert(GameObject copy)
         {
             var vc = copy.GetComponent<VehicleController>();
@@ -244,6 +253,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             Layout.Apply(copy, false);
         }
 
+        /// <summary>An unsteered copy of an axle's wheel group.</summary>
         private static WheelGroup CopyGroup(WheelGroup g, string name)
         {
             return new WheelGroup
@@ -254,6 +264,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         }
 
         // ---------- ES3 local references ----------
+        /// <summary>Assigns deterministic ES3 local reference ids to an object and its components.</summary>
         private static void Ref(ES3Prefab es3, GameObject go, string path)
         {
             Put(es3, go, Id(path + "#go"));
@@ -261,6 +272,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             for (int i = 0; i < comps.Length; i++) Put(es3, comps[i], Id(path + "#" + comps[i].GetType().Name + "#" + i));
         }
 
+        /// <summary>Assigns deterministic ES3 local reference ids to a whole hierarchy (same-named siblings numbered).</summary>
         internal static void RefTree(ES3Prefab es3, Transform t, string path)
         {
             Ref(es3, t.gameObject, path);
@@ -272,6 +284,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             }
         }
 
+        /// <summary>Gives a cloned hinge hierarchy ids derived from the original's (per axle).</summary>
         private static void MirrorRefs(ES3Prefab es3, Transform orig, Transform clone, int axle)
         {
             var a = orig.GetComponentsInChildren<Transform>(true); var b = clone.GetComponentsInChildren<Transform>(true);
@@ -283,6 +296,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             }
         }
 
+        /// <summary>Id of one cloned object: mixed from the original's id, else from its path.</summary>
         private static void MirrorOne(ES3Prefab es3, Object a, Object b, int axle)
         {
             long id;
@@ -290,6 +304,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             else if (b != null) Put(es3, b, Id(clonePath(b) + "#" + axle));
         }
 
+        /// <summary>Hierarchy path + type name of an object (id source).</summary>
         private static string clonePath(Object o)
         {
             var c = o as Component; var t = c != null ? c.transform : ((GameObject)o).transform; var s = o.GetType().Name;
@@ -297,8 +312,10 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return s;
         }
 
+        /// <summary>Stores one local reference id.</summary>
         private static void Put(ES3Prefab es3, Object o, long id) { if (o != null) es3.localRefs[o] = id; }
 
+        /// <summary>FNV-1a id of a "WarRig/" path, in the positive ES3 reference range.</summary>
         private static long Id(string s)
         {
             ulong h = 1469598103934665603UL;
@@ -306,6 +323,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return (long)(h & 0x3FFFFFFFFFFFFFFFUL) | 0x1000000000000000L;
         }
 
+        /// <summary>Mixes an id with an axle number (splitmix), in the positive ES3 reference range.</summary>
         private static long Mix(long id, int k)
         {
             ulong h = (ulong)id ^ (0x9E3779B97F4A7C15UL * (ulong)(k + 7));
@@ -313,6 +331,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return (long)(h & 0x3FFFFFFFFFFFFFFFUL) | 0x1000000000000000L;
         }
 
+        /// <summary>A required child of the trailer; throws when the Trailer_Big layout changed.</summary>
         internal static Transform Required(GameObject root, string path)
         {
             var t = root.transform.Find(path);
@@ -320,6 +339,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return t;
         }
 
+        /// <summary>Hides and switches off a node while keeping it (ES3 references and FSM targets stay valid).</summary>
         private static void Disable(Transform node)
         {
             foreach (var r in node.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
@@ -329,6 +349,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         }
 
         // ---------- spawning ----------
+        /// <summary>Spawns a War Rig from the template at a scene pose (props pruned first; optional wheels on the six hinges).</summary>
         public static GameObject Create(Vector3 position, Quaternion rotation, bool equip, Func<int> nextId)
         {
             var prefab = Template();

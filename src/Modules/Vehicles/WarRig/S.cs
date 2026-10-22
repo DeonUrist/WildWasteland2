@@ -5,10 +5,12 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols.WarRig
 {
-    // Release tuning and layout are fixed. Player options control new spawns.
+    /// <summary>War Rig release tuning and layout (fixed constants) plus the two player switches, bound by Vehicles in [Vehicles / War Rig].</summary>
     internal static class S
     {
+        /// <summary>[Vehicles / War Rig] Spawns (set by VehiclesSettings.Bind).</summary>
         public static ConfigEntry<bool> SpawnEnabled;
+        /// <summary>[Vehicles / War Rig] Ground recovery (set by VehiclesSettings.Bind).</summary>
         public static ConfigEntry<bool> GroundRecoveryEnabled;
         public const float Distance = 14f;
         public const bool EquipWheels = false; // Same bare-frame discovery as native trailers.
@@ -39,8 +41,9 @@ namespace WildWasteland.Modules.Patrols.WarRig
         public const string RearBox = "0, 3.59, 6.9 ; 2.06, 1.48, 1.7";
         public const string LockBox = "0, 0.95, -1.25 ; 4.4, 2.0, 17.7";
 
-        // Patrols binds the spawn/recovery toggles; POI owns the world-generation chance.
+        // Vehicles binds the spawn/recovery toggles; POI owns the world-generation chance.
 
+        /// <summary>Parses "x, y, z" (InvariantCulture); <paramref name="def"/> when malformed.</summary>
         public static Vector3 V3(string s, Vector3 def)
         {
             if (string.IsNullOrEmpty(s)) return def;
@@ -51,6 +54,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return new Vector3(x, y, z);
         }
 
+        /// <summary>Parses "cx, cy, cz ; sx, sy, sz" into a centre and a positive size; false when malformed.</summary>
         public static bool Box(string s, out Vector3 center, out Vector3 size)
         {
             center = size = Vector3.zero;
@@ -60,6 +64,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return !float.IsNaN(center.x) && !float.IsNaN(size.x) && size.x > 0 && size.y > 0 && size.z > 0;
         }
 
+        /// <summary>Parses a comma-separated float list, skipping malformed values.</summary>
         public static float[] Floats(string s)
         {
             var p = (s ?? "").Split(',');
@@ -68,6 +73,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return r.ToArray();
         }
 
+        /// <summary>Parses one float (InvariantCulture).</summary>
         private static bool F(string s, out float f) { return float.TryParse(s.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out f); }
     }
 }

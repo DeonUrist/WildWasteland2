@@ -1,23 +1,31 @@
 using System.Collections.Generic;
 using NWH.WheelController3D;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols.WarRig
 {
-    // On every War Rig (spawned or loaded from a save). Re-applies the mesh/materials and the config, follows live
-    // config changes, and draws the debug gizmos.
+    /// <summary>
+    /// Saved component on every War Rig (spawned or loaded): keeps the model, materials and hulls bound after Easy Save writes, gates the
+    /// attacher to allowed trucks, mirrors the second leg, runs ground recovery and drives the storm-dust tick of the storm protection.
+    /// </summary>
     public sealed class WarRigUnit : MonoBehaviour
     {
+        /// <summary>Every enabled War Rig.</summary>
         public static readonly List<WarRigUnit> All = new List<WarRigUnit>();
         // Captured before player attachments are added. Unity remaps these refs when cloning the prefab.
         [SerializeField] private Renderer[] hiddenRenderers = new Renderer[0];
+        /// <summary>Stores the vanilla renderers to keep hidden (captured at template build).</summary>
         internal void SetHiddenRenderers(Renderer[] renderers) { hiddenRenderers = renderers; }
         private float nextVisualCheck, fastVisualUntil;
         private static readonly string[] CollisionNodes = { "warrig_colliders", "warrig_hulls" };
 
+        /// <summary>Visual check at 4 Hz for 15 s after enable / a load, else every 5 s (module running): rebinds the model when Easy Save broke it.</summary>
         private void LateUpdate()
-        { if (!PatrolsModule.Running) return;
-            if (Core.SaveBus.Loading) fastVisualUntil = Time.unscaledTime + 15f;
+        {
+            if (!VehiclesModule.Running) return;
+            if (SaveBus.Loading) fastVisualUntil = Time.unscaledTime + 15f;
             if (Time.unscaledTime < nextVisualCheck) return;
             // Perf: 4 Hz for 15 s after enable / a load (when Easy Save writes), 5 s otherwise (was 4 Hz always)
             nextVisualCheck = Time.unscaledTime + (Time.unscaledTime < fastVisualUntil ? .25f : 5f);
@@ -41,9 +49,10 @@ namespace WildWasteland.Modules.Patrols.WarRig
                 }
                 if (broken) Rebind();
             }
-            catch (System.Exception e) { Core.Log.Warn("[Patrols] " + "War Rig visual check: " + e.Message); }
+            catch (System.Exception e) { Log.Warn(VehiclesModule.Instance, "War Rig visual check: " + e.Message); }
         }
 
+        /// <summary>Keeps the vanilla body and collision-only renderers hidden (attachments stay visible).</summary>
         private void HideCollisionRenderers(Transform node)
         {
             if (hiddenRenderers != null) foreach (var r in hiddenRenderers) if (r != null && r.enabled) r.enabled = false;
@@ -55,7 +64,9 @@ namespace WildWasteland.Modules.Patrols.WarRig
             }
         }
 
+        /// <summary>Registers the rig and schedules the fast visual checks.</summary>
         private void OnEnable() { if (!All.Contains(this)) All.Add(this); fastVisualUntil = Time.unscaledTime + 15f; nextVisualCheck = 0f; }
+        /// <summary>Unregisters the rig; the last one gone restores the storm dust (storm protection).</summary>
         private void OnDisable() { groundRecovery.Reset(); All.Remove(this); if (All.Count == 0) NativeStormProtection.Restore(); }
 
         private Transform leg, leg2;
@@ -66,10 +77,12 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static float scanAt;
         private static Transform[] casters = new Transform[0];
 
+        /// <summary>Per frame (module running, scene rig): storm-dust tick, second leg follows the first, attacher gate.</summary>
         private void Update()
-        { if (!PatrolsModule.Running) return;
+        {
+            if (!VehiclesModule.Running) return;
             if (!gameObject.scene.IsValid()) return;
-            NativeStormProtection.Tick();
+            NativeStormProtection.Tick();   // Survival part: REFACTOR-REQUEST B12-4 (Survival should drive its own dust tick)
             if (leg == null) { leg = transform.Find("leg"); leg2 = transform.Find("leg2"); att = transform.Find("attacher"); rb = GetComponent<Rigidbody>(); }
             if (leg != null && leg2 != null && leg2.gameObject.activeSelf != leg.gameObject.activeSelf) leg2.gameObject.SetActive(leg.gameObject.activeSelf);
             GateAttacher();
@@ -82,6 +95,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static readonly List<Transform> casterList = new List<Transform>();
         private static string[] casterTrucks = new string[0];
         private static bool[] casterAllowed = new bool[0];
+        /// <summary>4 Hz: enables the attacher colliders only while the nearest truck hitch (within 8 m, list refreshed 1 Hz) is an allowed truck.</summary>
         private void GateAttacher()
         {
             if (att == null) return;
@@ -104,9 +118,11 @@ namespace WildWasteland.Modules.Patrols.WarRig
             NearestTruck = best >= 0 ? casterTrucks[best] : null;
         }
 
+        /// <summary>Name of the nearest truck in hitch reach (F3 page), or null.</summary>
         public string NearestTruck;
         private Collider[] attCols;
 
+        /// <summary>True when the truck name matches the allowed list (Rustchief).</summary>
         public static bool Allowed(string truck)
         {
             var list = (S.AllowedTrucks ?? "").Split(',');
@@ -114,13 +130,16 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return false;
         }
 
+        /// <summary>Per physics step (module running, scene rig): ground recovery.</summary>
         private void FixedUpdate()
-        { if (!PatrolsModule.Running) return;
+        {
+            if (!VehiclesModule.Running) return;
             if (!gameObject.scene.IsValid()) return;
             if (rb == null) rb = GetComponent<Rigidbody>();
             groundRecovery.Tick(rb, Time.fixedDeltaTime);
         }
 
+        /// <summary>Scene rigs: rebinds visuals and applies the layout once.</summary>
         private void Start()
         {
             if (!gameObject.scene.IsValid()) return;   // the template
@@ -128,7 +147,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             Layout.Apply(gameObject, true);
         }
 
-        // A save may hand back the MeshFilter/MeshRenderer without our shared mesh; put ours back, drop strays.
+        /// <summary>Puts the shared mesh, materials, hulls and props back (a save may hand them back unresolved) and drops stray model nodes.</summary>
         public void Rebind()
         {
             try
@@ -154,7 +173,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
                     if (ch != node && ch.name == Factory.ModelNode) Destroy(ch.gameObject);
                 }
             }
-            catch (System.Exception e) { Core.Log.Warn("[Patrols] " + "War Rig rebind: " + e.Message); }
+            catch (System.Exception e) { Log.Warn(VehiclesModule.Instance, "War Rig rebind: " + e.Message); }
         }
 
     }

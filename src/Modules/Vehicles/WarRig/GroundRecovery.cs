@@ -1,10 +1,15 @@
 using System.Collections.Generic;
 using NWH.VehiclePhysics2;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols.WarRig
 {
-    // Runtime-only evidence. Never rescue merely because a terrain-height sample is overhead.
+    /// <summary>
+    /// War Rig ground recovery ([Vehicles / War Rig] Ground recovery): rescues the rig, its hitched trucks, attached bodies and the player in
+    /// the tank after a confirmed fall through the solid terrain surface. Runtime-only evidence; never rescues merely because a terrain sample is overhead.
+    /// </summary>
     internal sealed class GroundRecovery
     {
         private Terrain previousTerrain, safeTerrain;
@@ -13,6 +18,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private float safeAge, aboveTime, belowTime, holdTime, cooldown, observeTime;
         private readonly List<Rigidbody> held = new List<Rigidbody>();
 
+        /// <summary>Forgets all evidence (rig disabled).</summary>
         internal void Reset()
         {
             previousTerrain = safeTerrain = null;
@@ -21,6 +27,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             held.Clear(); colliders.Clear(); collidersOf = null; collidersAt = 0;
         }
 
+        /// <summary>Per physics step of the rig: post-rescue hold, otherwise 10 Hz (5 Hz disabled) crossing / safe-spot / below-ground evidence and the rescue.</summary>
         internal void Tick(Rigidbody body, float dt)
         {
             bool enabled = S.GroundRecoveryEnabled.Value;
@@ -100,6 +107,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static Terrain[] terrains = new Terrain[0];
         private static TerrainCollider[] terrainCols = new TerrainCollider[0];
         private static int terrainFrame = -1;
+        /// <summary>Caches the active terrains and their colliders once per frame.</summary>
         private static void CacheTerrains()
         {
             if (terrainFrame == Time.frameCount) return;
@@ -107,6 +115,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             if (terrainCols.Length != terrains.Length) terrainCols = new TerrainCollider[terrains.Length];
             for (int i = 0; i < terrains.Length; i++) terrainCols[i] = terrains[i] != null ? terrains[i].GetComponent<TerrainCollider>() : null;
         }
+        /// <summary>The cached collider of a terrain.</summary>
         private static TerrainCollider ColliderOf(Terrain t)
         {
             CacheTerrains();
@@ -114,6 +123,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return t.GetComponent<TerrainCollider>();
         }
 
+        /// <summary>Highest solid terrain surface under a point (raycast on the terrain collider: holes stay holes).</summary>
         internal static bool Surface(Vector3 point, out Terrain terrain, out float height)
         {
             terrain = null; height = 0;
@@ -135,6 +145,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return terrain != null;
         }
 
+        /// <summary>Lowest and highest solid terrain under the centre and four corners of a footprint; false when any is missing.</summary>
         private static bool Heights(Bounds bounds, out float low, out float high)
         {
             low = float.PositiveInfinity; high = float.NegativeInfinity;
@@ -153,8 +164,10 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static readonly List<Collider> scratch = new List<Collider>();
         private readonly List<Collider> colliders = new List<Collider>();   // the rig's colliders, refreshed every 2 s
         private float collidersAt; private Rigidbody collidersOf;
+        /// <summary>World bounds of a body's own solid colliders.</summary>
         private static bool BodyBounds(Rigidbody body, out Bounds bounds)
         { body.GetComponentsInChildren(scratch); bool found = BodyBounds(body, scratch, out bounds); scratch.Clear(); return found; }
+        /// <summary>World bounds of the listed solid colliders attached to the body.</summary>
         private static bool BodyBounds(Rigidbody body, List<Collider> list, out Bounds bounds)
         {
             bounds = new Bounds(); bool found = false;
@@ -167,6 +180,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return found;
         }
 
+        /// <summary>The rig plus every vehicle hitched to it through joints (either direction, chained trailers).</summary>
         private static List<Rigidbody> Vehicles(Rigidbody rig)
         {
             var result = new List<Rigidbody> { rig };
@@ -189,6 +203,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return result;
         }
 
+        /// <summary>Moves the whole hitched group (and the player in the tank, joint-attached bodies) back above the last safe spot; false when unsafe.</summary>
         private bool Recover(Rigidbody rig, List<Rigidbody> vehicles)
         {
             if (safeTerrain == null || !safeTerrain.gameObject.activeInHierarchy) return false;
@@ -256,16 +271,18 @@ namespace WildWasteland.Modules.Patrols.WarRig
             foreach (var rb in held)
             { var p = positions[rb] + delta; rb.transform.position = p; rb.position = p; }
             Physics.SyncTransforms(); Stop(held); holdTime = .2f;
-            Core.Log.Warn("[Patrols] " + "War Rig ground recovery: confirmed solid-terrain crossing; rescued " + vehicles.Count + " vehicle bodies together.");
+            Log.Warn(VehiclesModule.Instance, "War Rig ground recovery: confirmed solid-terrain crossing; rescued " + vehicles.Count + " vehicle bodies together.");
             return true;
         }
 
+        /// <summary>Zeroes the velocities of the bodies.</summary>
         private static void Stop(List<Rigidbody> bodies)
         {
             foreach (var body in bodies)
                 if (body != null && !body.isKinematic) { body.velocity = Vector3.zero; body.angularVelocity = Vector3.zero; }
         }
 
+        /// <summary>Hierarchy depth of a transform.</summary>
         private static int Depth(Transform t)
         { int depth = 0; while (t.parent != null) { depth++; t = t.parent; } return depth; }
     }

@@ -4,15 +4,23 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols
 {
-    // Packed, uninitialised prefabs. Native components initialise only on the independently owned spawned copy.
+    /// <summary>
+    /// Vehicle build cache: packed, uninitialised template structures (frame + fitted parts) and preprocessed reserve copies, so a template
+    /// spawn consumes a prepared instance (never clones it: native components initialise only on the independently owned spawned copy).
+    /// Arbitrated by Core WorldWork (Vehicles owner); while loading a save it spends its own bounded 12 ms slice per frame. Exactly one driver
+    /// steps it per frame: the Vehicles jobs while the Vehicles module runs, else the old Patrols jobs.
+    /// </summary>
     internal static class VehicleBuildCache
     {
+        /// <summary>One structural variant (template body/parts, bumper, trailer flag) with its packed root and ready reserves.</summary>
         internal sealed class Entry
         {
-            internal CarTemplate Template;
+            internal CarTemplate Template;   // refs-ok: REFACTOR-REQUEST B12-1 (template data model stays Patrols')
             internal string Bumper;
             internal bool Trailer, Ready, Failed, Queued;
             internal GameObject Root;
@@ -23,6 +31,7 @@ namespace WildWasteland.Modules.Patrols
             internal IEnumerator Build;
             internal readonly List<Item> Items = new List<Item>();
         }
+        /// <summary>A fitted part of a packed structure: child-index path and prefab name (saved-name registration on spawn).</summary>
         internal sealed class Item { internal int[] Path; internal string Prefab; }
         private static readonly Dictionary<string, Entry> Entries = new Dictionary<string, Entry>(StringComparer.Ordinal);
         private static readonly Queue<Entry> Pending = new Queue<Entry>();
@@ -31,11 +40,22 @@ namespace WildWasteland.Modules.Patrols
         private static bool _warmRequested = true, _reported;
         private const int ReserveCount = 2;
         private const double LoadingBudgetMs = 12;
-        private static readonly System.Diagnostics.Stopwatch LoadTime = new System.Diagnostics.Stopwatch(), LoadSlice = new System.Diagnostics.Stopwatch();
+        private static readonly System.Diagnostics.Stopwatch LoadTime = new System.Diagnostics.Stopwatch(), LoadSliceTime = new System.Diagnostics.Stopwatch();
         private static double _loadWorkMs;
-        private static bool Loading { get { return Core.SaveBus.Busy && !Core.SaveBus.Saving && !Core.SaveSystem.Busy; } }
+        /// <summary>True while a save is loading (not saving): the cache then runs its own load slice.</summary>
+        private static bool Loading
+        {
+            get
+            {
+                if (!SaveBus.Busy || SaveBus.Saving) return false;
+                var saves = ModApi.Get<ISaves>();
+                return saves == null || saves.Phase != SavePhase.Saving;
+            }
+        }
+        /// <summary>True while warming is requested or variants are queued / being prepared.</summary>
         internal static bool Warming { get { return _warmRequested || _active != null || Pending.Count > 0; } }
 
+        /// <summary>Prepared fraction 0..1 of all reserves (failed variants count as done).</summary>
         internal static float LoadFraction
         {
             get
@@ -52,17 +72,38 @@ namespace WildWasteland.Modules.Patrols
                 return Mathf.Clamp01(done / (Entries.Count * ReserveCount));
             }
         }
-        internal static Core.LoadingProgress.Work? LoadWork()
+        /// <summary>
+        /// Old Patrols loading-progress source (registered by PatrolsModule): while the Vehicles module runs it reports only the Patrols restore
+        /// part (the cache reports itself through <see cref="PreparationWork"/>), otherwise the old combined line.
+        /// </summary>
+        [Obsolete("refactor: Vehicles reports VehicleBuildCache.PreparationWork; Patrols should report its own restore progress")]
+        internal static LoadingProgress.Work? LoadWork()
         {
-            if (!Warming && !PatrolPersistence.Restoring) return null;
-            string detail = Warming
-                ? (_active != null ? "preparing vehicles - " + _active.Template.Name + " (" + Mathf.RoundToInt(LoadFraction * 100f) + "%)" : "preparing vehicle templates")
-                : "restoring saved patrols, crew and AI";
-            return new Core.LoadingProgress.Work(.85f * LoadFraction + .15f * PatrolPersistence.LoadFraction, detail);
+            bool restoring = PatrolPersistence.Restoring;   // refs-ok: REFACTOR-REQUEST B12-1 (Patrols restore progress)
+            if (VehiclesModule.Running)
+                return restoring ? new LoadingProgress.Work(PatrolPersistence.LoadFraction, "restoring saved patrols, crew and AI") : (LoadingProgress.Work?)null;   // refs-ok: REFACTOR-REQUEST B12-1
+            if (!Warming && !restoring) return null;
+            string detail = Warming ? Detail() : "restoring saved patrols, crew and AI";
+            return new LoadingProgress.Work(.85f * LoadFraction + .15f * PatrolPersistence.LoadFraction, detail);   // refs-ok: REFACTOR-REQUEST B12-1
         }
 
+        /// <summary>Loading-progress source of the Vehicles module: vehicle preparation while the cache warms (null otherwise).</summary>
+        internal static LoadingProgress.Work? PreparationWork()
+        {
+            if (!Warming) return null;
+            return new LoadingProgress.Work(LoadFraction, Detail());
+        }
+
+        /// <summary>Loading-screen line of the cache.</summary>
+        private static string Detail()
+        {
+            return _active != null ? "preparing vehicles - " + _active.Template.Name + " (" + Mathf.RoundToInt(LoadFraction * 100f) + "%)" : "preparing vehicle templates";
+        }
+
+        /// <summary>Requests warming of every template of the park (Patrols load/refresh).</summary>
         internal static void WarmPark() { _warmRequested = true; _reported = false; }
-        internal static void Warm(CarTemplate t, bool trailer = false)
+        /// <summary>Requires the variants of one template (each bumper, its trailer).</summary>
+        internal static void Warm(CarTemplate t, bool trailer = false)   // refs-ok: REFACTOR-REQUEST B12-1
         {
             if (t == null || !t.Available) return;
             if (trailer || t.Bumpers == null || t.Bumpers.Length == 0) Require(t, "", trailer);
@@ -70,8 +111,8 @@ namespace WildWasteland.Modules.Patrols
             if (t.Trailer != null) Warm(t.Trailer, true);
         }
 
-        // Exact binary definition, independent of template name, crew/cargo rolls and traffic-instance metadata.
-        private static string Key(CarTemplate t, string bumper, bool trailer)
+        /// <summary>Exact binary definition of a variant, independent of template name, crew/cargo rolls and traffic-instance metadata.</summary>
+        private static string Key(CarTemplate t, string bumper, bool trailer)   // refs-ok: REFACTOR-REQUEST B12-1
         {
             using (var stream = new MemoryStream()) using (var writer = new BinaryWriter(stream))
             {
@@ -90,10 +131,12 @@ namespace WildWasteland.Modules.Patrols
                 writer.Flush(); return Convert.ToBase64String(stream.ToArray());
             }
         }
+        /// <summary>Writes a float array (length + values) into the variant key.</summary>
         private static void Floats(BinaryWriter writer, float[] values)
         { writer.Write(values != null ? values.Length : 0); if (values != null) foreach (float v in values) writer.Write(v); }
 
-        internal static Entry Require(CarTemplate t, string bumper, bool trailer)
+        /// <summary>The variant entry for a template/bumper/trailer, created and queued when new.</summary>
+        internal static Entry Require(CarTemplate t, string bumper, bool trailer)   // refs-ok: REFACTOR-REQUEST B12-1
         {
             string key = Key(t, bumper, trailer); Entry entry;
             if (Entries.TryGetValue(key, out entry)) return entry;
@@ -101,50 +144,74 @@ namespace WildWasteland.Modules.Patrols
             Entries.Add(key, entry); Enqueue(entry);
             return entry;
         }
+        /// <summary>Queues a variant for preparation (once).</summary>
         private static void Enqueue(Entry entry)
         { if (entry.Queued || ReferenceEquals(_active, entry)) return; entry.Queued = true; Pending.Enqueue(entry); _reported = false; }
 
-        internal static bool Step()
+        /// <summary>Old Patrols sliced job ("Patrols.Vehicle build cache"): steps only while the Vehicles module is off (one driver per frame).</summary>
+        [Obsolete("refactor: the Vehicles module drives the build cache (VehicleBuildCache.DriveFromVehicles)")]
+        internal static bool Step() { return !VehiclesModule.Running && Step(true); }
+
+        /// <summary>Sliced job "Vehicles.Build cache" (0.5 ms): steps while the Vehicles module runs.</summary>
+        internal static bool DriveFromVehicles() { return VehiclesModule.Running && Step(true); }
+
+        /// <summary>One gameplay step: not while loading (the load slice runs then) and within the shared frame budget.</summary>
+        private static bool Step(bool gameplay)
         {
-            if (Loading || Core.Scheduler.FrameMs >= Core.Scheduler.FrameBudgetMs) return false;
+            if (Loading || Scheduler.FrameMs >= Scheduler.FrameBudgetMs) return false;
             return StepCore();
         }
 
-        internal static void LoadBurst()
+        /// <summary>Old Patrols every-frame job ("Patrols.Vehicle load preparation"): runs only while the Vehicles module is off.</summary>
+        [Obsolete("refactor: the Vehicles module runs the load slice (VehicleBuildCache.LoadBurstFromVehicles)")]
+        internal static void LoadBurst() { if (!VehiclesModule.Running) LoadSlice(); }
+
+        /// <summary>Every-frame job "Vehicles.Build cache loading": the bounded load slice while the Vehicles module runs.</summary>
+        internal static void LoadBurstFromVehicles() { if (VehiclesModule.Running) LoadSlice(); }
+
+        /// <summary>
+        /// While a save loads and the cache warms: steps the cache for up to 12 ms this frame (its own bounded slice; normal reserve refills keep
+        /// the shared gameplay budget). Early-out: Patrols off (the park is Patrols' data), not loading, nothing to warm.
+        /// </summary>
+        private static void LoadSlice()
         {
-            if (!PatrolsModule.Running || !Loading || !Warming) return;
+            if (!PatrolsModule.Running || !Loading || !Warming) return;   // refs-ok: REFACTOR-REQUEST B12-1 (cache serves the Patrols park)
             // Loading spends its own bounded slice; normal reserve refills retain the shared gameplay budget.
             if (!LoadTime.IsRunning)
             {
                 LoadTime.Start();
-                Core.Log.Always("[Patrols] Vehicle load preparation started: " + LoadingBudgetMs + " ms/frame budget; " + ReserveCount + " reserves per variant.");
+                Log.Main(VehiclesModule.Instance, "Vehicle load preparation started: " + LoadingBudgetMs + " ms/frame budget; " + ReserveCount + " reserves per variant.");
             }
-            LoadSlice.Restart();
-            while (LoadSlice.Elapsed.TotalMilliseconds < LoadingBudgetMs && StepCore()) { }
-            _loadWorkMs += LoadSlice.Elapsed.TotalMilliseconds;
+            LoadSliceTime.Restart();
+            while (LoadSliceTime.Elapsed.TotalMilliseconds < LoadingBudgetMs && StepCore()) { }
+            _loadWorkMs += LoadSliceTime.Elapsed.TotalMilliseconds;
             if (!Warming)
             {
-                Core.Log.Always("[Patrols] Vehicle load preparation finished: " + Entries.Count + " structural variant(s); " + LoadTime.ElapsedMilliseconds + " ms elapsed, " + (long)_loadWorkMs + " ms work.");
+                Log.Main(VehiclesModule.Instance, "Vehicle load preparation finished: " + Entries.Count + " structural variant(s); " + LoadTime.ElapsedMilliseconds + " ms elapsed, " + (long)_loadWorkMs + " ms work.");
                 LoadTime.Reset(); _loadWorkMs = 0;
             }
         }
 
+        /// <summary>
+        /// One preparation step under WorldWork's Vehicles owner: warm the park on request, pack the next variant's structure (parts on hinges),
+        /// then clone a reserve and preprocess its FSMs one per step; a failing variant is marked failed and dropped.
+        /// </summary>
         private static bool StepCore()
         {
-            if (!PatrolsModule.Running) return false;
-            if (!Warming || !Core.WorldWork.Try(Core.WorldWork.Vehicles)) return false;
+            if (!PatrolsModule.Running) return false;   // refs-ok: REFACTOR-REQUEST B12-1 (cache serves the Patrols park)
+            if (!Warming || !WorldWork.Try(WorldWork.Vehicles)) return false;
             if (_warmRequested)
             {
-                if (Core.GameRefs.NewGOArrayList == null) return false;
+                if (GameRefs.NewGOArrayList == null) return false;
                 _warmRequested = false;
-                foreach (var t in CarTemplate.Park) Warm(t);
+                foreach (var t in CarTemplate.Park) Warm(t);   // refs-ok: REFACTOR-REQUEST B12-1
                 return true;
             }
             if (_active == null)
             {
                 if (Pending.Count == 0)
                 {
-                    if (!_reported) { _reported = true; PatrolsModule.Verbose("Vehicle build cache ready: " + Entries.Count + " structural variant(s)."); }
+                    if (!_reported) { _reported = true; if (Log.L1) Log.Main(VehiclesModule.Instance, "Vehicle build cache ready: " + Entries.Count + " structural variant(s)."); }
                     return false;
                 }
                 _active = Pending.Dequeue();
@@ -155,7 +222,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 if (entry.Root == null)
                 {
-                    var source = Prefabs.Exact(entry.Template.Body);
+                    var source = Prefabs.Exact(entry.Template.Body);   // refs-ok: REFACTOR-REQUEST B12-3 (Patrols prefab index)
                     if (source == null) throw new InvalidOperationException("Missing frame " + entry.Template.Body);
                     if (_holder == null)
                     {
@@ -172,7 +239,7 @@ namespace WildWasteland.Modules.Patrols
                 {
                     if (entry.Build.MoveNext()) return true;
                     ((IDisposable)entry.Build).Dispose(); entry.Build = null;
-                    PatrolsModule.Verbose("Vehicle build cached: " + entry.Template.Name + " / " + entry.Items.Count + " fitted parts / bumper " + entry.Bumper);
+                    if (Log.L2) Log.Deep(VehiclesModule.Instance, "Vehicle build cached: " + entry.Template.Name + " / " + entry.Items.Count + " fitted parts / bumper " + entry.Bumper);
                     return true;
                 }
                 if (entry.Preparing == null)
@@ -198,11 +265,12 @@ namespace WildWasteland.Modules.Patrols
                 entry.Failed = true; _active = null;
                 if (entry.Build != null) ((IDisposable)entry.Build).Dispose();
                 if (entry.Root != null) UnityEngine.Object.Destroy(entry.Root);
-                Core.Log.Warn("[Patrols] Vehicle build cache failed for " + entry.Template.Name + ": " + e);
+                Log.Warn(VehiclesModule.Instance, "Vehicle build cache failed for " + entry.Template.Name + ": " + e);
                 return false;
             }
         }
 
+        /// <summary>Records a part fitted on the variant being packed (path from the root + prefab name).</summary>
         internal static void Record(GameObject part, string prefab)
         {
             var path = new List<int>();
@@ -210,6 +278,7 @@ namespace WildWasteland.Modules.Patrols
             path.Reverse(); _active.Items.Add(new Item { Path = path.ToArray(), Prefab = prefab });
         }
 
+        /// <summary>Clones a part prefab under the dormant cache holder at the hinge pose (no Awake, no save registration).</summary>
         internal static GameObject ClonePart(GameObject prefab, Transform hinge)
         {
             var part = UnityEngine.Object.Instantiate(prefab, _holder.transform, false);
@@ -217,6 +286,7 @@ namespace WildWasteland.Modules.Patrols
             return part;
         }
 
+        /// <summary>Consumes a ready reserve: saved names for the car and its parts, moved into the active scene at the pose, then activated; refills the reserve.</summary>
         internal static GameObject Spawn(Entry entry, Vector3 position, Quaternion rotation)
         {
             // Clone while dormant, assign unique native save names, then activate the entire independent hierarchy.
@@ -224,25 +294,26 @@ namespace WildWasteland.Modules.Patrols
             try
             {
                 car.SetActive(false);
-                Register.Defer(car); Register.Name(car, entry.Template.Body); Register.Add(car, true);
+                ItemSpawner.Defer(car); ItemSpawner.Name(car, entry.Template.Body); ItemSpawner.AddExisting(car, true);
                 foreach (var item in entry.Items)
                 {
                     var node = car.transform; foreach (int index in item.Path) node = node.GetChild(index);
-                    Register.Name(node.gameObject, item.Prefab); Register.Add(node.gameObject, false);
+                    ItemSpawner.Name(node.gameObject, item.Prefab); ItemSpawner.AddExisting(node.gameObject, false);
                 }
                 car.transform.SetParent(null, false);
                 SceneManager.MoveGameObjectToScene(car, SceneManager.GetActiveScene());
                 car.transform.SetPositionAndRotation(position, rotation);
                 car.SetActive(true);
-                PatrolsModule.Verbose("Vehicle build cache hit: " + entry.Template.Name + " -> " + car.name);
+                if (Log.L2) Log.Deep(VehiclesModule.Instance, "Vehicle build cache hit: " + entry.Template.Name + " -> " + car.name);
                 return car;
             }
-            catch { Register.Discard(car); UnityEngine.Object.Destroy(car); throw; }
+            catch { ItemSpawner.Discard(car); UnityEngine.Object.Destroy(car); throw; }
         }
 
+        /// <summary>Drops every variant and the holder (scene change, Patrols shutdown); the park is warmed again on the next step.</summary>
         internal static void Reset()
         {
-            LoadTime.Reset(); LoadSlice.Reset(); _loadWorkMs = 0;
+            LoadTime.Reset(); LoadSliceTime.Reset(); _loadWorkMs = 0;
             if (_active != null && _active.Build != null) ((IDisposable)_active.Build).Dispose();
             _active = null; Pending.Clear(); Entries.Clear();
             if (_holder != null) UnityEngine.Object.Destroy(_holder);

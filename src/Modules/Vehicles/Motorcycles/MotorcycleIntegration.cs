@@ -1,36 +1,46 @@
 using System;
-using System.Linq;
 using System.Reflection;
 using ES3Internal;
-using HarmonyLib;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Patrols
 {
-    /// <summary>Motorcycle chassis: ES3 prefab resolver, template, rear collider trim, body name; Vehicles part (Wave A split of Patrols Vehicles/MotorcycleIntegration.cs).</summary>
+    /// <summary>Motorcycle chassis integration (Vehicles part; the MotorcycleMod bridge is the Compatibility part): ES3 prefab resolver, template, rear collider trim, body name.</summary>
     internal static partial class MotorcycleIntegration
     {
         internal const string Body = "Motorcycle";
-        // WW: the ES3 prefab lookup is the shared Core.Hooks.GetPrefab dispatcher (keyed by id); MotorcycleMod.Factory.Template is a
-        // module patch (third-party, optional)
-        internal static void Install(Core.IModule owner)
+        private static bool _modLooked;
+        private static MethodInfo _modTemplate;
+
+        /// <summary>Old Patrols entry point; the Vehicles module installs the resolver itself (<see cref="Hook"/>).</summary>
+        [Obsolete("refactor: the Vehicles module installs the motorcycle resolver (MotorcycleIntegration.Hook)")]
+        internal static void Install(IModule owner) { }
+
+        /// <summary>Installs the ES3 prefab-id resolver (shared Core.Hooks.GetPrefab dispatcher) and the optional MotorcycleMod template patch.</summary>
+        internal static void Hook(IModule owner)
         {
-            Core.Hooks.GetPrefab.Resolver(owner, ResolvePrefab);
+            Hooks.GetPrefab.Resolver(owner, ResolvePrefab);
             PatchMotorcycleMod(owner);   // Compatibility part (MotorcycleIntegration.MotorcycleMod.cs)
         }
+
+        /// <summary>
+        /// The motorcycle chassis template: the standalone MotorcycleMod's when it is loaded (shared prefab and save identity), else ours.
+        /// README 8 #5: the MotorcycleMod lookup (an assembly scan) runs once per session instead of on every call.
+        /// </summary>
         internal static GameObject Template()
         {
-            // If the original mod is present, share its prefab/settings and existing save identity.
-            var method = MotorcycleModTemplate();   // Compatibility part (MotorcycleIntegration.MotorcycleMod.cs)
-            if (method != null) return (GameObject)method.Invoke(null, null);
+            if (!_modLooked) { _modLooked = true; _modTemplate = MotorcycleModTemplate(); }   // Compatibility part (MotorcycleIntegration.MotorcycleMod.cs)
+            if (_modTemplate != null) return (GameObject)_modTemplate.Invoke(null, null);
             return Motorcycles.Factory.Template();
         }
+
+        /// <summary>Disables the inherited Crossbreed fender boxes that reach behind the 28 cm motorcycle tyre (chassis coordinates, inactive prefab).</summary>
         internal static void TrimRearCollision(GameObject root)
         {
             var rear = root.transform.Find("hinge_wheel_M");
             var body = root.transform.Find("parts/model/colliders_bike");
             if (rear == null || body == null) return;
-            // The inherited Crossbreed fender boxes extend behind its 28 cm motorcycle tyre.
             // Work in chassis coordinates, including each box's rotation, while the prefab is inactive.
             float edge = root.transform.InverseTransformPoint(rear.position).z - .28f;
             foreach (var box in body.GetComponentsInChildren<BoxCollider>(true))
@@ -46,21 +56,23 @@ namespace WildWasteland.Modules.Patrols
                 if (minZ < edge) box.enabled = false;
             }
         }
+
+        /// <summary>GetPrefab resolver: the motorcycle template's ES3Prefab for prefab id 735710202610050001, otherwise null.</summary>
         private static ES3Prefab ResolvePrefab(long id)
         {
             if (id != Motorcycles.Factory.PrefabId) return null;
             return Template().GetComponent<ES3Prefab>();
         }
+
+        /// <summary>First PlayMaker FSM of that name on the object (case-insensitive), or null.</summary>
         internal static PlayMakerFSM FindFsm(GameObject go, string name)
         {
-            return go == null ? null : go.GetComponents<PlayMakerFSM>().FirstOrDefault(f => f.FsmName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (go == null) return null;
+            foreach (var f in go.GetComponents<PlayMakerFSM>()) if (f.FsmName.Equals(name, StringComparison.OrdinalIgnoreCase)) return f;
+            return null;
         }
+
+        /// <summary>True for the motorcycle body name of templates ("Motorcycle", any case).</summary>
         internal static bool IsBody(string name) { return string.Equals(name, Body, StringComparison.OrdinalIgnoreCase); }
-    }
-    // Easy Save can restore old collider-enabled values after instantiating the corrected prefab.
-    internal sealed class MotorcycleRearAccess : MonoBehaviour
-    {
-        private void OnEnable() { MotorcycleIntegration.TrimRearCollision(gameObject); }
-        private void Start() { MotorcycleIntegration.TrimRearCollision(gameObject); }
     }
 }

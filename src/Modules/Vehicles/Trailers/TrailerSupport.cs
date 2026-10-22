@@ -1,13 +1,18 @@
 using System;
 using System.Linq;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Core.Events;
 
 namespace WildWasteland.Modules.Patrols
 {
-    // The native trailer is a separate saved vehicle. Its ConfigurableJoint lives on the trailer,
-    // with the trailer's attacher and the towing frame's hitch as its two anchors.
+    /// <summary>
+    /// Native trailers: a trailer is a separate saved vehicle whose ConfigurableJoint lives on the trailer, with the trailer's attacher and the
+    /// towing frame's hitch as its two anchors. Detection, connection test, the attached-trailer query and the hitching itself.
+    /// </summary>
     internal static class TrailerSupport
     {
+        /// <summary>True for a native trailer (it carries a TrailerAttached FSM).</summary>
         internal static bool IsTrailer(GameObject go)
         {
             if (go == null) return false;
@@ -19,6 +24,7 @@ namespace WildWasteland.Modules.Patrols
         private static readonly System.Collections.Generic.List<ConfigurableJoint> Joints = new System.Collections.Generic.List<ConfigurableJoint>();
         private static readonly System.Collections.Generic.List<PlayMakerFSM> Fs = new System.Collections.Generic.List<PlayMakerFSM>();
         private static ConfigurableJoint[] _joints = new ConfigurableJoint[0]; private static int _jointsFrame = -1;
+        /// <summary>True when the trailer's joint is connected to the car's rigidbody.</summary>
         internal static bool Connected(GameObject car, GameObject trailer)
         {
             if (car == null || trailer == null) return false;
@@ -29,10 +35,11 @@ namespace WildWasteland.Modules.Patrols
             Joints.Clear(); return found;
         }
 
+        /// <summary>The trailer hitched to the car: the Patrols marker's trailer, the car's trailer FSM variable, then one shared joint scan per frame.</summary>
         internal static GameObject Attached(GameObject car)
         {
             if (car == null) return null;
-            var marker = car.GetComponent<PatrolMarker>();
+            var marker = car.GetComponent<PatrolMarker>();   // refs-ok: REFACTOR-REQUEST B12-2 (IPatrols has no trailer-of-journey query)
             if (marker != null && Connected(car, marker.Trailer)) return marker.Trailer;
             foreach (var f in car.GetComponents<PlayMakerFSM>())
             {
@@ -49,10 +56,11 @@ namespace WildWasteland.Modules.Patrols
             return null;
         }
 
+        /// <summary>Hitches the trailer to the car like the native attach (joint anchors, FSM variables, rear bumper/leg hidden, TrailerLoad off) and publishes TrailerAttached.</summary>
         internal static void Connect(GameObject car, GameObject trailer, bool preservePose = false)
         {
-            var hitch = Patrol.FindChild(car.transform, "hitch");
-            var attacher = Patrol.FindChild(trailer.transform, "attacher");
+            var hitch = FindChild(car.transform, "hitch");
+            var attacher = FindChild(trailer.transform, "attacher");
             var towRb = car.GetComponent<Rigidbody>();
             if (hitch == null || attacher == null || towRb == null || trailer.GetComponent<Rigidbody>() == null || !IsTrailer(trailer))
                 throw new InvalidOperationException("The vehicle or trailer has no native hitch/attacher");
@@ -86,12 +94,25 @@ namespace WildWasteland.Modules.Patrols
                 if (f.FsmName != "TrailerAttach" && f.FsmName != "TrailerLoad") continue;
                 var v = f.FsmVariables.GetFsmGameObject("Trailer"); if (v != null) v.Value = trailer;
             }
-            var rearBumper = Patrol.FindChild(car.transform, "hinge_bumper_rear");
+            var rearBumper = FindChild(car.transform, "hinge_bumper_rear");
             if (rearBumper != null) rearBumper.gameObject.SetActive(false);
-            var leg = Patrol.FindChild(trailer.transform, "leg"); if (leg != null) leg.gameObject.SetActive(false);
+            var leg = FindChild(trailer.transform, "leg"); if (leg != null) leg.gameObject.SetActive(false);
             // TrailerLoad would run its raycast recipe and add a second joint. Leave the interactive
             // TrailerAttach FSM enabled only by the player's native driving controls, as on any car.
             foreach (var f in car.GetComponents<PlayMakerFSM>()) if (f.FsmName == "TrailerLoad") f.enabled = false;
+            if (ModEvents.HasListeners<TrailerAttached>())
+            {
+                var ev = new TrailerAttached { Truck = Entities.Of(car), Trailer = Entities.Of(trailer) };
+                ModEvents.Publish(ref ev);
+            }
+        }
+
+        /// <summary>Finds a named descendant, direct children first (same order as Patrols' helper).</summary>
+        private static Transform FindChild(Transform root, string name)
+        {
+            for (int i = 0; i < root.childCount; i++) { var c = root.GetChild(i); if (c.name == name) return c; }
+            for (int i = 0; i < root.childCount; i++) { var r = FindChild(root.GetChild(i), name); if (r != null) return r; }
+            return null;
         }
     }
 }

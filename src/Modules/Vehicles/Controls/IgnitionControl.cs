@@ -1,69 +1,77 @@
 using System;
 using System.IO;
 using System.Reflection;
-using BepInEx;
 using InsaneSystems.InputManager;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.PlayerBody
 {
-    // (2.3.2) The ignition hotkey is a row in the game's own Controls screen ("Ignition", after Handbrake), not a config entry.
-    // The game's rebinding asset (InsaneSystems InputManager) drops actions that are not in its built-in list whenever it loads its
-    // saved bindings, so the row is added again on every start and its keys are kept in config/Apocaplayer/ignition-key.txt
-    // ("Key,AlternativeKey"). A rebind in the Controls screen is written there at once. Car.cs reads the action through GameBindings
-    // (IgnitionAction = "Ignition"); PlayerBodyModule.IgnitionKey (hidden, never saved) mirrors the key for the moment before the row exists.
-    // First start: the old [VEHICLE] / [General] IgnitionKey values from the .cfg are carried over once, then removed from the .cfg.
+    /// <summary>
+    /// The ignition hotkey is a row in the game's own Controls screen ("Ignition", after Handbrake), not a config entry (2.3.2).
+    /// The game's rebinding asset (InsaneSystems InputManager) drops actions that are not in its built-in list whenever it loads its
+    /// saved bindings, so the row is added again on every start and its keys are kept in config/WildWasteland/Vehicles/ignition-key.txt
+    /// ("Key,AlternativeKey"; D12/D13: no copy from older folders). A rebind in the Controls screen is written there at once. Car reads
+    /// the action through GameBindings (IgnitionAction = "Ignition"); <see cref="KeyCode"/> mirrors the key for the moment before the row exists.
+    /// </summary>
     internal static class IgnitionControl
     {
         internal const string Name = "Ignition";
         private static KeyCode _key = KeyCode.I, _alt = KeyCode.None, _lastKey, _lastAlt;
         private static bool _loaded, _lastEnabled;
+        private static string _path = "ignition-key.txt";
 
-        // (WW) config/WildWasteland/PlayerBody/ignition-key.txt (WW2, D12: no copy from config/Apocaplayer any more)
-        private static string FilePath { get { return Path.Combine(PlayerBodyModule.DataDir, "ignition-key.txt"); } }
+        /// <summary>The primary ignition key (mirror of the Controls row; I until the row exists).</summary>
+        internal static KeyCode KeyCode { get { return _key; } }
 
-        // called from PlayerBodyModule Init with the default key written when the file does not exist yet (WW2: always I; was the old cfg entry)
-        internal static void Load(KeyCode legacy)
+        /// <summary>Reads the key file at <paramref name="path"/> (Vehicles Init), writing <paramref name="fallback"/> when it does not exist yet.</summary>
+        internal static void Load(string path, KeyCode fallback)
         {
-            _loaded = true;
+            _loaded = true; _path = path;
             try
             {
-                if (File.Exists(FilePath))
+                if (File.Exists(_path))
                 {
-                    var parts = File.ReadAllText(FilePath).Trim().Split(',');
+                    var parts = File.ReadAllText(_path).Trim().Split(',');
                     _key = Parse(parts.Length > 0 ? parts[0] : "", KeyCode.I);
                     _alt = parts.Length > 1 ? Parse(parts[1], KeyCode.None) : KeyCode.None;
                 }
                 else
                 {
-                    if (legacy != KeyCode.None) _key = legacy;
+                    if (fallback != KeyCode.None) _key = fallback;
                     Save();
-                    PlayerBodyModule.Info("Ignition key " + _key + " moved to the game's Controls screen (" + FilePath + ")");
+                    Log.Main(VehiclesModule.Instance, "Ignition key " + _key + " is on the game's Controls screen (" + _path + ")");
                 }
             }
-            catch (Exception e) { PlayerBodyModule.Warn("Ignition key file: " + e.Message); }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Ignition key file: " + e.Message); }
             _lastKey = _key; _lastAlt = _alt;
-            Mirror();
         }
 
+        /// <summary>Parses a KeyCode name (case-insensitive); <paramref name="fallback"/> for anything unknown.</summary>
         private static KeyCode Parse(string s, KeyCode fallback)
         {
             try { return (KeyCode)Enum.Parse(typeof(KeyCode), s.Trim(), true); } catch { return fallback; }
         }
 
+        /// <summary>Writes "Key,AlternativeKey" through a same-folder temp file and AtomicFile.Replace (D17: no Win32 1175 on replace).</summary>
         private static void Save()
         {
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
-                File.WriteAllText(FilePath, _key + "," + _alt);
+                Directory.CreateDirectory(Path.GetDirectoryName(_path));
+                string temp = _path + ".tmp";
+                File.WriteAllText(temp, _key + "," + _alt);
+                if (File.Exists(_path)) AtomicFile.Replace(temp, _path);
+                else File.Move(temp, _path);
             }
-            catch (Exception e) { PlayerBodyModule.Warn("Ignition key file: " + e.Message); }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Ignition key file: " + e.Message); }
         }
 
-        private static void Mirror() { PlayerBodyModule.IgnitionKeyCode = _key; }
-
-        // (WW) an Interval job (0.5 s); the row only while the module runs and [PlayerBody / Vehicles] IgnitionKey is on
+        /// <summary>
+        /// Interval job "Vehicles.Ignition control" (0.5 s): keeps the "Ignition" row in the game's Controls list while the module runs and
+        /// [Vehicles / Controls] IgnitionKey is on, removes it otherwise, and records rebinds made in the Controls screen.
+        /// </summary>
         internal static void Tick()
         {
             if (!_loaded) return;
@@ -71,19 +79,19 @@ namespace WildWasteland.Modules.PlayerBody
             try { st = InputStorage.Singleton; } catch { return; }
             if (st == null || st.Keys == null) return;
             var keys = st.Keys;
-            bool enabled = PlayerBodyModule.Running && PlayerBodyModule.IgnitionControlOn.Value, changed = false;
-            int idx = keys.FindIndex(k => k != null && k.Name == Name);
+            bool enabled = VehiclesModule.Running && VehiclesSettings.IgnitionKey.Value, changed = false;
+            int idx = IndexOf(keys, Name);
             if (enabled)
             {
                 if (idx < 0)
                 {
                     var ka = Make();
                     if (ka == null) return;
-                    int after = keys.FindIndex(k => k != null && k.Name == "Handbrake");
+                    int after = IndexOf(keys, "Handbrake");
                     keys.Insert(after >= 0 ? Mathf.Min(after + 1, keys.Count) : keys.Count, ka);
                     _lastKey = _key; _lastAlt = _alt;
                     changed = true;
-                    PlayerBodyModule.Verbose("Controls: added \"" + Name + "\" (" + _key + ")");
+                    if (Log.L2) Log.Deep(VehiclesModule.Instance, "Controls: added \"" + Name + "\" (" + _key + ")");
                 }
                 else
                 {
@@ -91,8 +99,8 @@ namespace WildWasteland.Modules.PlayerBody
                     if (ka.Key != _lastKey || ka.AlternativeKey != _lastAlt)
                     {   // rebound in the Controls screen
                         _key = _lastKey = ka.Key; _alt = _lastAlt = ka.AlternativeKey;
-                        Save(); Mirror();
-                        PlayerBodyModule.Verbose("Controls: Ignition rebound to " + _key + (_alt != KeyCode.None ? " / " + _alt : ""));
+                        Save();
+                        Log.Main(VehiclesModule.Instance, "Controls: Ignition rebound to " + _key + (_alt != KeyCode.None ? " / " + _alt : ""));
                     }
                 }
             }
@@ -100,7 +108,14 @@ namespace WildWasteland.Modules.PlayerBody
             if (changed || enabled != _lastEnabled) { _lastEnabled = enabled; RefreshMenu(); }
         }
 
-        // module Shutdown: the row leaves the game's Controls list (the old "Enabled off" path of Tick)
+        /// <summary>Index of the named key action in the game's list (-1 when absent); a loop, no predicate closure.</summary>
+        private static int IndexOf(System.Collections.Generic.List<KeyAction> keys, string name)
+        {
+            for (int i = 0; i < keys.Count; i++) if (keys[i] != null && keys[i].Name == name) return i;
+            return -1;
+        }
+
+        /// <summary>Module shutdown: the row leaves the game's Controls list.</summary>
         internal static void Remove()
         {
             if (!_loaded) return;
@@ -109,14 +124,15 @@ namespace WildWasteland.Modules.PlayerBody
                 var st = InputStorage.Singleton;
                 if (st != null && st.Keys != null)
                 {
-                    int idx = st.Keys.FindIndex(k => k != null && k.Name == Name);
+                    int idx = IndexOf(st.Keys, Name);
                     if (idx >= 0) { st.Keys.RemoveAt(idx); RefreshMenu(); }
                 }
             }
-            catch (Exception e) { PlayerBodyModule.Verbose("Controls: " + e.Message); }
+            catch (Exception e) { Log.Deep(VehiclesModule.Instance, "Controls: " + e.Message); }
             _lastEnabled = false;
         }
 
+        /// <summary>Builds the "Ignition" KeyAction (private fields set by reflection, once per insertion); null when the asset changed.</summary>
         private static KeyAction Make()
         {
             try
@@ -127,9 +143,10 @@ namespace WildWasteland.Modules.PlayerBody
                 SetField(typeof(KeyAction), ka, "alternativeKey", _alt);
                 return ka;
             }
-            catch (Exception e) { PlayerBodyModule.Warn("Could not add the Ignition control: " + e.Message); _loaded = false; return null; }
+            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Could not add the Ignition control: " + e.Message); _loaded = false; return null; }
         }
 
+        /// <summary>Sets a private instance field of the InputManager types (throws when it is missing).</summary>
         private static void SetField(Type t, object o, string name, object v)
         {
             var f = t.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -137,7 +154,7 @@ namespace WildWasteland.Modules.PlayerBody
             f.SetValue(o, v);
         }
 
-        // rebuild the Controls screen if it is open (its rows are generated from InputStorage.keys)
+        /// <summary>Rebuilds the Controls screen if it is open (its rows are generated from InputStorage.keys).</summary>
         private static void RefreshMenu()
         {
             try
@@ -147,7 +164,7 @@ namespace WildWasteland.Modules.PlayerBody
                 var m = typeof(InsaneSystems.InputManager.UI.Settings).GetMethod("RefreshUI", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (m != null) m.Invoke(s, null);
             }
-            catch (Exception e) { PlayerBodyModule.Verbose("Controls refresh: " + e.Message); }
+            catch (Exception e) { Log.Deep(VehiclesModule.Instance, "Controls refresh: " + e.Message); }
         }
     }
 }

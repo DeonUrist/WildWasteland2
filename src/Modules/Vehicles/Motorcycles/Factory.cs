@@ -7,10 +7,13 @@ using NWH.VehiclePhysics2;
 using NWH.VehiclePhysics2.Powertrain;
 using NWH.VehiclePhysics2.Powertrain.Wheel;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 using Object = UnityEngine.Object;
 
 namespace WildWasteland.Modules.Patrols.Motorcycles
 {
+    /// <summary>Motorcycle chassis factory: an inactive Crossbreed clone converted to two wheels (stable prefab id 735710202610050001), and fully equipped spawns.</summary>
     public static class Factory
     {
         // Stable, distinct from the shipped Crossbreed prefab ID.
@@ -18,15 +21,28 @@ namespace WildWasteland.Modules.Patrols.Motorcycles
         public const string Name = "Motorcycle";
         private static GameObject template, holder;
 
+        private static readonly Dictionary<string, GameObject> _sources = new Dictionary<string, GameObject>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// The loaded asset prefab (not a scene object: never clone a player's modified vehicle) with an ES3Prefab of that name; throws when it
+        /// is not loaded. README 8 #5: one Resources scan per name and scene instead of one per lookup.
+        /// </summary>
         public static GameObject Source(string name)
         {
-            // Never clone a player's modified scene vehicle as the factory chassis.
-            var source = Resources.FindObjectsOfTypeAll<ES3Prefab>()
-                .FirstOrDefault(p => p != null && !p.gameObject.scene.IsValid() && p.name == name);
+            GameObject cached;
+            if (_sources.TryGetValue(name, out cached) && cached != null) return cached;
+            ES3Prefab source = null;
+            foreach (var p in Resources.FindObjectsOfTypeAll<ES3Prefab>())
+                if (p != null && !p.gameObject.scene.IsValid() && p.name == name) { source = p; break; }
             if (source == null) throw new InvalidOperationException("Prefab '" + name + "' is not loaded. Load a game first.");
+            _sources[name] = source.gameObject;
             return source.gameObject;
         }
 
+        /// <summary>Scene change: forgets the cached source prefabs (the built template stays, it is DontDestroyOnLoad).</summary>
+        internal static void ResetForScene() { _sources.Clear(); }
+
+        /// <summary>The inactive motorcycle chassis template (built once from the Crossbreed prefab).</summary>
         public static GameObject Template()
         {
             if (template != null) return template;
@@ -47,12 +63,13 @@ namespace WildWasteland.Modules.Patrols.Motorcycles
                 Convert(copy, 220f);
                 copy.GetComponent<ES3Prefab>().prefabId = PrefabId;
                 template = copy;
-                Core.Log.Info("[Patrols] " + "Motorcycle chassis created from Crossbreed: two wheels, rear car geometry and mounts disabled.");
+                Log.Main(VehiclesModule.Instance, "Motorcycle chassis created from Crossbreed: two wheels, rear car geometry and mounts disabled.");
                 return template;
             }
             catch { Object.Destroy(copy); throw; }
         }
 
+        /// <summary>Converts an inactive, uninitialised Crossbreed clone into the motorcycle chassis (wheels, powertrain, mass, colliders, balance).</summary>
         public static void Convert(GameObject copy, float mass)
         {
             if (copy.activeInHierarchy) throw new InvalidOperationException("Chassis conversion requires an inactive clone.");
@@ -116,9 +133,11 @@ namespace WildWasteland.Modules.Patrols.Motorcycles
             copy.AddComponent<MotorcycleBalance>();
         }
 
+        /// <summary>A required child of the chassis; throws when the Crossbreed layout changed.</summary>
         private static Transform Required(GameObject root, string path) => root.transform.Find(path)
             ?? throw new InvalidOperationException("Crossbreed layout changed: missing " + path);
 
+        /// <summary>Hides and switches off a chassis part while keeping its object (Easy Save local references and FSM targets stay valid).</summary>
         private static void Disable(Transform node)
         {
             // Retain native Easy Save local reference IDs and FSM targets. Disabled objects have no model/physics presence.
@@ -128,6 +147,7 @@ namespace WildWasteland.Modules.Patrols.Motorcycles
             node.gameObject.SetActive(false);
         }
 
+        /// <summary>Spawns a motorcycle at a scene pose, optionally with the full kit (wheels, engine, radiator, exhaust, seat) and 10 l fuel.</summary>
         public static GameObject Create(Vector3 position, Quaternion rotation, bool equip, Func<int> nextId)
         {
             var prefab = Template();

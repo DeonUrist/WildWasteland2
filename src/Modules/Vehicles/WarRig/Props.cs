@@ -1,15 +1,20 @@
 using System.Collections.Generic;
 using ES3Internal;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols.WarRig
 {
+    /// <summary>The furniture inside the War Rig tank (copies of vehicle / camp decor) and its ladder: built into the template, placed and pruned per rig, rebound after loads.</summary>
     internal static class Props
     {
+        /// <summary>One placed prop: node name, source prop name, source path hint, model-space pose.</summary>
         internal sealed class Placement
         {
             public readonly string Node, Name, Hint;
             public readonly Vector3 Position, Rotation;
+            /// <summary>Creates a placement.</summary>
             public Placement(string node, string name, string hint, Vector3 position, Vector3 rotation)
             { Node = node; Name = name; Hint = hint; Position = position; Rotation = rotation; }
         }
@@ -42,12 +47,16 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static readonly Vector3 LadderPosition = new Vector3(-0.57f, -0.05f, 1.66f);
         private const float LadderYaw = -90f, LadderLength = 2.8f, LadderGrab = 0.5f;
 
+        /// <summary>Makes every mesh collider of a prop convex (it rides on a rigidbody).</summary>
         private static void PreparePhysics(GameObject go)
         { foreach (var mc in go.GetComponentsInChildren<MeshCollider>(true)) if (!mc.convex) mc.convex = true; }
         // ---------- template ----------
+        /// <summary>Hierarchy path of a transform.</summary>
         private static string Path(Transform t) { var s = t.name; for (t = t.parent; t != null; t = t.parent) s = t.name + "/" + s; return s; }
+        /// <summary>Name without a " (n)" suffix.</summary>
         private static string Base(string n) { int p = n.IndexOf(" ("); return p > 0 ? n.Substring(0, p) : n; }
 
+        /// <summary>Best loaded source object per prop name (path hint, asset over scene object, collider, exact name). One Resources scan at template build.</summary>
         private static Dictionary<string, Transform> FindSources()
         {
             var want = new Dictionary<string, Placement>();
@@ -73,7 +82,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return best;
         }
 
-        // Height of the pivot above the lowest point of the prop (renderers + colliders), in the prop's own upright frame, world units.
+        /// <summary>Height of the pivot above the lowest point of the prop, in its own upright frame (world units).</summary>
         private static float Bottom(Transform src)
         {
             float min = float.MaxValue; var inv = Quaternion.Inverse(src.rotation);
@@ -91,6 +100,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return min == float.MaxValue ? 0f : -min;
         }
 
+        /// <summary>Builds the props and the ladder into the template (deterministic ES3 ids).</summary>
         public static void Build(GameObject copy, ES3Prefab es3)
         {
             var root = new GameObject(Root);
@@ -108,14 +118,15 @@ namespace WildWasteland.Modules.Patrols.WarRig
                 go.name = item.Node; go.transform.localScale = source.lossyScale;
                 PreparePhysics(go); go.SetActive(true);
                 Factory.RefTree(es3, go.transform, "props/" + go.name);
-                Core.Log.Info("[Patrols] " + "War Rig prop " + item.Node + " from " + Path(source));
+                if (Log.L2) Log.Deep(VehiclesModule.Instance, "War Rig prop " + item.Node + " from " + Path(source));
                 made++;
             }
             BuildLadder(root.transform, es3);
-            if (missing.Count > 0) Core.Log.Warn("[Patrols] " + "War Rig props not found (not loaded in this game?): " + string.Join(", ", missing.ToArray()));
-            Core.Log.Info("[Patrols] " + "War Rig props: " + made + " objects.");
+            if (missing.Count > 0) Log.Warn(VehiclesModule.Instance, "War Rig props not found (not loaded in this game?): " + string.Join(", ", missing.ToArray()));
+            if (Log.L1) Log.Main(VehiclesModule.Instance, "War Rig props: " + made + " objects.");
         }
 
+        /// <summary>Copies the best loaded ladder_M into the props with an active climb trigger.</summary>
         private static void BuildLadder(Transform root, ES3Prefab es3)
         {
             Transform src = null; int best = -1;
@@ -126,7 +137,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
                 int sc = (t.Find("ladder_trigger") != null ? 4 : 0) + (!t.gameObject.scene.IsValid() ? 2 : 0) + (t.name == LadderSource ? 1 : 0);
                 if (sc > best) { best = sc; src = t; }
             }
-            if (src == null) { Core.Log.Warn("[Patrols] " + "War Rig ladder: no '" + LadderSource + "' object loaded."); return; }
+            if (src == null) { Log.Warn(VehiclesModule.Instance, "War Rig ladder: no '" + LadderSource + "' object loaded."); return; }
             var go = Object.Instantiate(src.gameObject, root, false);
             go.name = LadderNode;
             go.SetActive(true);
@@ -134,10 +145,10 @@ namespace WildWasteland.Modules.Patrols.WarRig
             ladderBounds = mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.zero, new Vector3(0.73f, 3.7f, 0.08f));
             var trigger = EnableLadderTrigger(go.transform, null);
             Factory.RefTree(es3, go.transform, "props/" + LadderNode);
-            Core.Log.Info("[Patrols] " + "War Rig ladder from " + Path(src) + ", mesh height " + ladderBounds.size.y.ToString("0.00") + " m, climb trigger active=" + trigger.gameObject.activeSelf);
+            if (Log.L2) Log.Deep(VehiclesModule.Instance, "War Rig ladder from " + Path(src) + ", mesh height " + ladderBounds.size.y.ToString("0.00") + " m, climb trigger active=" + trigger.gameObject.activeSelf);
         }
 
-        // Some camp prefabs keep this child disabled. The mesh alone cannot activate UseLadder.
+        /// <summary>Ensures an active ladder_trigger (tag Ladder, layer 2, trigger box); some camp prefabs keep it disabled.</summary>
         private static BoxCollider EnableLadderTrigger(Transform ladder, ES3Prefab es3)
         {
             var trig = ladder.Find("ladder_trigger");
@@ -153,6 +164,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return bc;
         }
 
+        /// <summary>Places and scales the ladder and sizes its climb trigger.</summary>
         private static void ApplyLadder(Transform root)
         {
             var t = root.Find(LadderNode);
@@ -171,6 +183,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         }
 
         // ---------- live placement ----------
+        /// <summary>Removes a stray prop copy and its ES3 references.</summary>
         private static void RemoveCopy(GameObject rig, Transform t)
         {
             t.gameObject.SetActive(false);
@@ -184,6 +197,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             Object.DestroyImmediate(t.gameObject);
         }
 
+        /// <summary>Adds a missing prop from the template (inactive until its refs and pose are set).</summary>
         private static Transform AddCopy(GameObject rig, Transform root, string name)
         {
             var source = templateRoot != null ? templateRoot.Find(name) : null;
@@ -200,6 +214,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             return go.transform;
         }
 
+        /// <summary>Places every prop and the ladder, adds missing ones and removes strays.</summary>
         public static void Apply(GameObject rig)
         {
             var root = rig.transform.Find(Root);
@@ -227,6 +242,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
 
         // After a save load the props' meshes/materials may come back unresolved (camp meshes are not in the save's reference list):
         // copy them from the template's identical hierarchy.
+        /// <summary>After a load: copies meshes, materials and colliders from the template's identical prop hierarchy.</summary>
         public static void Rebind(GameObject rig)
         {
             var root = rig.transform.Find(Root); var troot = Factory.Template().transform.Find(Root);
