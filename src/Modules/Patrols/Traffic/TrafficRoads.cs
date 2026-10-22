@@ -374,7 +374,7 @@ namespace WildWasteland.Modules.Patrols
                 {writer.Write(grid.Area.x);writer.Write(grid.Area.y);writer.Write(grid.Area.width);writer.Write(grid.Area.height);writer.Write(grid.Size);foreach(float height in grid.Heights)writer.Write(height);}
                 writer.Write(tile.FinalGround);
             }
-            if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);
+            Core.AtomicFile.Replace(temporary, path);   // D17: no Mono File.Replace (Win32 error 1175); same-directory temp
         }
         internal static RoadTile ReadCache(string path, string world)
         {
