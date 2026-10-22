@@ -41,12 +41,12 @@ namespace WildWasteland.Core
             Scheduler.Interval(owner, "Conservative save cleanup observations", 5f, Tick);
             Scheduler.Sliced(owner, "Save cleanup observation slice", 500, ObservationStep);
         }
-        /// <summary>Restores uncommitted registry removals and forgets observations when Saves stops.</summary>
+        /// <summary>Restores uncommitted removals and clears scene observations, retaining same-world custody protection.</summary>
         internal static void Shutdown()
         {
-            Rollback(); Far.Clear(); Touched.Clear(); Removed.Clear(); RemovedKeys.Clear();
+            Rollback(); Far.Clear(); Removed.Clear(); RemovedKeys.Clear();
             Array.Clear(_observations, 0, _observations.Length); _observation = _observationCount = 0;
-            _offlineItems = null; _referenceFsms = null; _generation = -1; _tracking = false; _last = 0;
+            _offlineItems = null; _referenceFsms = null; _tracking = false; _last = 0;
         }
         static bool Category(GameObject go)
         {
@@ -73,11 +73,13 @@ namespace WildWasteland.Core
         static void Tick()
         {
             if (!SaveSystem.LocalReady) return;
+            if (_generation != SaveBus.Generation) _offlineItems = null;
+            if (_offlineItems == null && GameRefs.NewGOArrayList != null)
+                foreach (var list in GameRefs.NewGOArrayList.GetComponents<PlayMakerArrayListProxy>())
+                    if (list.referenceName == "ArrayList_Items") _offlineItems = list.arrayList;
             if (_generation != SaveBus.Generation)
             {
                 _generation = SaveBus.Generation; Far.Clear(); Touched.Clear(); _last = 0;
-                _offlineItems = null;
-                if (GameRefs.NewGOArrayList != null) foreach (var list in GameRefs.NewGOArrayList.GetComponents<PlayMakerArrayListProxy>()) if (list.referenceName == "ArrayList_Items") _offlineItems = list.arrayList;
                 Array.Clear(_observations, 0, _observations.Length); _observationCount = 0; _tracking = false;
                 try
                 {

@@ -24,7 +24,7 @@ namespace WildWasteland.Core
             try
             {
                 running.Handle = Scheduler.StartCoroutine(Run(running));
-                if (running.Handle == null) throw new InvalidOperationException("Saves coroutine runner is unavailable");
+                if (running.Handle == null && running.Routine != null) throw new InvalidOperationException("Saves coroutine runner is unavailable");
             }
             catch { Dispose(running); throw; }
         }
