@@ -17,11 +17,12 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Adds or refreshes the Stew Pot entry of a catalog list (skips a list it already filled).</summary>
         internal static void AddTo(IList entries)
         {
-            if (!CompatibilityHost.Survival.Running) { Shutdown(); return; }
+            var survival = ModApi.Get<ISurvivalCatalog>();
+            if (survival == null) { Shutdown(); return; }
             if (ReferenceEquals(entries, lastEntries) && addedEntry != null) return;
             try
             {
-                var template = Factory.Template(); // refs-ok: REFACTOR-REQUEST B17-4
+                var template = survival.StewPot;
                 object entry = null;
                 for (int i = entries.Count - 1; i >= 0; i--)
                     if (string.Equals(ApocaspawnerBridge.KeyOf(entries[i]), "StewPot", StringComparison.OrdinalIgnoreCase))

@@ -10,6 +10,8 @@ namespace WildWasteland.Modules.Survival
         private readonly Dictionary<Collider,Rigidbody> _bodies=new Dictionary<Collider,Rigidbody>(4096);
         private int _forces, _players, _npcs;
         private float _report;
+        private readonly float[,] _groundAt = new float[4, 3];
+        private readonly Vector3[,] _groundWorld = new Vector3[4, 3];
         private bool _announced, _overflow;
         private const int Mask=(1<<6)|(1<<8)|(1<<9)|(1<<10);
 
@@ -19,18 +21,31 @@ namespace WildWasteland.Modules.Survival
             var rotation=Quaternion.Euler(0,region.Heading,0);
             var inverse=Quaternion.Inverse(rotation);
             Vector3 center=Origin.Scene(region.WorldCenter);
+            var player = GameRefs.Player;
+            if (player == null) { storm.Contacts(); return; }
+            var shelters = ModApi.Get<IShelterRegistry>();
             for (int column=0;column<count && column<3;column++)
             {
                 var source=storm.Explosions[column]; var force=storm.Force[column]; var damage=storm.Damage[column];
                 if (source==null || force==null || damage==null || storm.Collided[column]==null) continue;
                 Vector3 origin=center+rotation*columns[column];
+                float width = WeatherVortexSmoke.Width(regionIndex*80+column);
+                var distance = player.transform.position - origin; distance.y = 0;
+                float range = 750 * width + 2500;
+                if (distance.sqrMagnitude > range * range) { storm.Previous[column].Clear(); storm.Current[column].Clear(); continue; }
                 float ground;
-                RaycastHit terrain;
-                if (Physics.Raycast(origin+Vector3.up*2500,Vector3.down,out terrain,5000,1<<14,QueryTriggerInteraction.Ignore))
-                    visuals.SetGround(regionIndex,column,terrain.point.y-center.y-2);
+                var world = Origin.World(origin);
+                if (Time.unscaledTime >= _groundAt[regionIndex,column] || (_groundWorld[regionIndex,column]-world).sqrMagnitude > 400)
+                {
+                    _groundAt[regionIndex,column] = Time.unscaledTime + .25f;
+                    _groundWorld[regionIndex,column] = world;
+                    RaycastHit terrain;
+                    if (Physics.Raycast(origin+Vector3.up*2500,Vector3.down,out terrain,5000,1<<14,QueryTriggerInteraction.Ignore))
+                        visuals.SetGround(regionIndex,column,terrain.point.y-center.y-2);
+                }
                 if (!visuals.TryGround(regionIndex,column,out ground)) continue;
                 origin.y+=ground;
-                float width=WeatherVortexSmoke.Width(regionIndex*80+column);
+
                 // Same 0-1150 m body, bend, eye and lobed radius as HurricaneSand. Wisps are harmless.
                 int found=Physics.OverlapBoxNonAlloc(origin+Vector3.up*550,new Vector3(750*width,555,750*width),_hits,rotation,Mask,QueryTriggerInteraction.Collide);
                 if (found==_hits.Length && !_overflow) { _overflow=true; Log.Warn("[Weather] Hurricane overlap buffer full (2048); excess contacts may be omitted."); }
@@ -45,6 +60,7 @@ namespace WildWasteland.Modules.Survival
                     if (!Wall(local,regionIndex*80+column,width,out axis,out outer)) continue;
                     if (!_announced) { _announced=true; Log.Always("[Weather] Hurricane hazards active: sand wall only, safe eye; native 50 VelocityChange pulses and Bodypart damage -5 player / -5000 NPC."); }
                     var target=hit.gameObject;
+                    if (shelters != null && shelters.IsSheltered(target)) continue;
                     if (target.layer==6 || target.layer==10)
                     {
                         current.Add(hit);
@@ -95,7 +111,7 @@ namespace WildWasteland.Modules.Survival
         }
         internal void Reset()
         {
-            System.Array.Clear(_hits,0,_hits.Length); _bodies.Clear();
+            System.Array.Clear(_hits,0,_hits.Length); System.Array.Clear(_groundAt,0,_groundAt.Length); _bodies.Clear();
             _forces=_players=_npcs=0; _report=0; _announced=_overflow=false;
         }
     }

@@ -156,6 +156,7 @@ namespace WildWasteland.Modules.Survival
     {
         internal static float Clock;
         internal static AudioClip BoilingClip;
+        private static Core.Audio.Load _soundLoad;
         internal static Runtime.Pot Target;
         internal static string AddHint;
         static readonly Collider[] fireHits = new Collider[64];
@@ -264,22 +265,24 @@ namespace WildWasteland.Modules.Survival
             return current <= (int)Contents.Water || current == added ? added : (int)Contents.Mixed;
         }
 
-        internal static IEnumerator LoadSound()
+        /// <summary>Requests the retained boiling clip through Core's cancellable audio loader.</summary>
+        internal static void LoadSound()
         {
-            if (BoilingClip != null) yield break;
+            if (BoilingClip != null || _soundLoad != null && !_soundLoad.Done) return;
             string folder = Path.Combine(Path.GetDirectoryName(SurvivalModule.Assets), "Sounds");
             string path = Path.Combine(folder, "boiling_water.mp3");
             if (!File.Exists(path)) path = Path.Combine(folder, "boilng_water.mp3");
-            if (!File.Exists(path)) { WildWasteland.Core.Log.Warn("[Survival] StewPot boiling sound missing: " + path); yield break; }
-            using (var request = UnityWebRequestMultimedia.GetAudioClip(new Uri(path).AbsoluteUri, AudioType.MPEG))
+            _soundLoad = Core.Audio.LoadAsync(path, AudioType.MPEG, (clip, error) =>
             {
-                yield return request.SendWebRequest();
-                if (request.result != UnityWebRequest.Result.Success)
-                { WildWasteland.Core.Log.Warn("[Survival] StewPot boiling sound: " + request.error); yield break; }
-                BoilingClip = DownloadHandlerAudioClip.GetContent(request);
+                _soundLoad = null;
+                if (clip == null) { Core.Log.Warn("[Survival] StewPot boiling sound: " + error); return; }
+                BoilingClip = clip;
                 if (BoilingClip != null) { Object.DontDestroyOnLoad(BoilingClip); WildWasteland.Core.Log.Always("[Survival] StewPot boiling sound loaded: " + Path.GetFileName(path)); }
-            }
+            });
         }
+
+        /// <summary>Aborts an unfinished load when the Survival scope shuts down.</summary>
+        internal static void StopSoundLoad() { if (_soundLoad != null) _soundLoad.Cancel(); _soundLoad = null; }
 
         internal static void Trace(Runtime.Pot pot, string text)
         {

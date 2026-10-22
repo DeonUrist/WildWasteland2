@@ -173,8 +173,8 @@ namespace WildWasteland.Modules.Survival
 
         static Material Material(string file, float smoothness)
         {
-            var texture = new Texture2D(2, 2) { name = "StewPot." + file };
-            if (!ImageConversion.LoadImage(texture, File.ReadAllBytes(Path.Combine(SurvivalModule.Assets, file)))) throw new InvalidDataException(file);
+            var texture = Core.Textures.FromFile(Path.Combine(SurvivalModule.Assets, file),
+                new Core.TextureSettings { Mipmaps = true, Readable = true, Wrap = TextureWrapMode.Repeat }, "StewPot." + file);
             Object.DontDestroyOnLoad(texture);
             var material = new Material(Shader.Find("Standard")) { name = "StewPot." + file, mainTexture = texture };
             material.SetFloat("_Glossiness", smoothness); material.SetInt("_Cull", 0);

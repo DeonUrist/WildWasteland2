@@ -102,13 +102,20 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        internal static bool In(Vector3 p)
+        /// <summary>Queries only the optional third-party dust provider, without reintroducing the native circle fallback.</summary>
+        internal static bool InDust(Vector3 p)
         {
             if (_dust)
             {
                 try { if (_dustIntensity(p.x, p.z) >= DustHazard) return true; }
                 catch (Exception e) { DustOff(e); }
             }
+            return false;
+        }
+
+        internal static bool In(Vector3 p)
+        {
+            if (InDust(p)) return true;
             if (_storms.Count == 0) return false;
             float r = NpcModule.StormRadius.Value, r2 = r * r;
             for (int i = 0; i < _storms.Count; i++)

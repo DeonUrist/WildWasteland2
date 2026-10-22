@@ -20,14 +20,14 @@ namespace WildWasteland.Modules.NPC
         internal static float HearingFactor { get { return Mathf.Clamp01(NpcaiSettings.StormHearing.Value / 100f); } }
 
         /// <summary>Any storm can affect the senses now (Survival query: active storms; else the native reader's list).</summary>
-        internal static bool AnyForSenses { get { var q = ModApi.Get<IStormQueries>(); return q != null ? q.ActiveStorms > 0 || Any : Any; } }
+        internal static bool AnyForSenses { get { var q = ModApi.Get<IStormQueries>(); return q != null ? q.ActiveStorms > 0 || Dust : Any; } }
 
         /// <summary>The scene point is inside a sandstorm for the senses (Survival exposure, else the native reader's circle).</summary>
         internal static bool InForSenses(Vector3 scene)
         {
             var q = ModApi.Get<IStormQueries>();
-            if (q != null && q.ActiveStorms > 0 && q.StormExposure(Origin.World(scene)) >= ExposureInside) return true;
-            return In(scene);
+            if (q == null) return In(scene);
+            return q.StormExposure(Origin.World(scene)) >= ExposureInside || InDust(scene);
         }
     }
 }

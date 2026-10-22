@@ -13,7 +13,7 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Spawns a manual storm preview ahead of or around the player (not saved); up to four regions.</summary>
         private void Spawn(bool hurricane, bool here)
         {
-            if (!_running || !GameRefs.InPlay || GameRefs.Player == null || GameRefs.MainCamera == null) return;
+            if (!_running || !_prepared || !GameRefs.InPlay || GameRefs.Player == null || GameRefs.MainCamera == null) return;
             if (_count == _regions.Length) { Log.Warn("[Weather] Four previews are already active; clear them before spawning more."); return; }
             if (_visuals == null) _visuals = new WeatherVisuals(_audio);
             if (!_visuals.Ready) { Log.Warn("[Weather] Preview assets unavailable. See the earlier Weather asset error."); return; }
@@ -164,7 +164,7 @@ namespace WildWasteland.Modules.Survival
             if (!GameRefs.InPlay) { _visuals.Suspend(); return; }
             var camera = GameRefs.MainCamera;
             if (camera == null || !camera.isActiveAndEnabled) { _visuals.Suspend(); return; }
-            var policy = Services.WeatherVisualPolicy;
+            var policy = ModApi.Get<IWeatherVisualPolicy>();
             var detail = policy != null ? policy.WeatherDetail : WeatherVisualDetail.Balanced;
             _visuals.Begin(_clock, camera);
             for (int i = 0; i < _count; i++)
@@ -175,7 +175,7 @@ namespace WildWasteland.Modules.Survival
             }
             _visuals.End(camera, detail);
         }
-        /// <summary>Removes every region and anchor, resets hazards/diagnostics/audio/visuals and disables the draw job.</summary>
+        /// <summary>Removes every region and anchor, resets hazards/audio/visuals and disables the draw job.</summary>
         private void Clear()
         {
             bool hadPreviews = _count > 0;
@@ -192,7 +192,7 @@ namespace WildWasteland.Modules.Survival
         {
             if (_visuals==null) _visuals=new WeatherVisuals(_audio);
             _audio.Load(); UpdateLayout();
-            var policy=Services.WeatherVisualPolicy;
+            var policy=ModApi.Get<IWeatherVisualPolicy>();
             _visuals.Prepare(new Vector2(_width.Value*500,_depth.Value*500),_columnCount,policy!=null ? policy.WeatherDetail : WeatherVisualDetail.Balanced);
             PrepareNativeAssets();
         }

@@ -15,8 +15,7 @@ namespace WildWasteland.Modules.Survival
         private readonly string _path;
         private AudioClip _clip;
         private GameObject _host;
-        private Coroutine _load;
-        private UnityWebRequest _request;
+        private Core.Audio.Load _load;
         private bool _attempted, _paused;
         private float _lastClock;
         private int _nextVoice;
@@ -25,17 +24,14 @@ namespace WildWasteland.Modules.Survival
         {
             if (_attempted) return; _attempted=true;
             if (!File.Exists(_path)) { Log.Warn("[Weather] Thunder sound missing: "+_path); return; }
-            _load=Scheduler.StartCoroutine(LoadClip());
+            _load=Core.Audio.LoadAsync(_path, AudioType.MPEG, Loaded, decompress: true);
         }
-        private IEnumerator LoadClip()
+        /// <summary>Creates the bounded thunder voice pool after Core decodes its file.</summary>
+        private void Loaded(AudioClip clip, string error)
         {
-            using (var request=UnityWebRequestMultimedia.GetAudioClip(new Uri(_path).AbsoluteUri,AudioType.MPEG))
-            {
-                var handler=(DownloadHandlerAudioClip)request.downloadHandler; handler.compressed=false; handler.streamAudio=false;
-                _request=request; yield return request.SendWebRequest(); _request=null;
-                if (request.result!=UnityWebRequest.Result.Success) { Log.Warn("[Weather] Thunder load failed: "+request.error); yield break; }
-                _clip=DownloadHandlerAudioClip.GetContent(request);
-                if (_clip==null) { Log.Warn("[Weather] Thunder could not be decoded."); yield break; }
+                _load=null;
+                if (clip==null) { Log.Warn("[Weather] Thunder load failed: "+error); return; }
+                _clip=clip;
                 _clip.hideFlags=HideFlags.HideAndDontSave;
                 _host=new GameObject("WW.Weather.Thunder") { hideFlags=HideFlags.HideAndDontSave };
                 _host.transform.SetParent(Runner.Host.transform,false);
@@ -45,8 +41,6 @@ namespace WildWasteland.Modules.Survival
                     source.spatialBlend=0; source.dopplerLevel=0; _voices[i]=source;
                 }
                 Log.Always("[Weather] Thunder loaded: sound/thunder.mp3; distance / 343 m/s delay, 16 bounded voices.");
-            }
-            _load=null;
         }
         internal void Strike(float clock, Vector3 position, Vector3 eye, float strength)
         {
@@ -89,8 +83,7 @@ namespace WildWasteland.Modules.Survival
         }
         public void Dispose()
         {
-            Stop(); if (_load!=null) Scheduler.StopCoroutine(_load); _load=null;
-            if (_request!=null) { try { _request.Dispose(); } catch { } _request=null; }
+            Stop(); if (_load!=null) _load.Cancel(); _load=null;
             if (_host!=null) UnityEngine.Object.Destroy(_host); _host=null;
             if (_clip!=null) UnityEngine.Object.Destroy(_clip); _clip=null;
         }

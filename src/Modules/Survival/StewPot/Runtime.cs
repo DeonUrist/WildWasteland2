@@ -150,7 +150,7 @@ namespace WildWasteland.Modules.Survival
         internal static void LateTick()
         {
             if (pots.Count == 0) return;
-            bool live = menu != null && menu.ActiveStateName == "play" && save != null && save.ActiveStateName == "isPlay" && Time.timeScale > 0;
+            bool live = GameRefs.InGame;
             bool input = live && Application.isFocused && !ApocasetterBridge.InputBlocked && !WildWasteland.Core.UI.EditorSession.Busy;
             bool use = input && InputController.GetKeyActionIsActive("Use");
             float dt = live ? Time.deltaTime : 0;
@@ -209,7 +209,7 @@ namespace WildWasteland.Modules.Survival
             if (menu == null) menu = GameRefs.Menu;
             if (save == null) save = GameRefs.SaveLoadGame;
             if (cameraObject == null || cameraObject.Value == null) cameraObject = globals.GetFsmGameObject("PlayerCamera");
-            if (cameraObject.Value != null && cameraTransform == null)
+            if (cameraObject != null && cameraObject.Value != null && cameraTransform == null)
             {
                 cameraTransform = cameraObject.Value.transform;
                 grab = Factory.Fsm(cameraObject.Value, "GrabItem");
