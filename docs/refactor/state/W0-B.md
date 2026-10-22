@@ -9,7 +9,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 3. Gltf (skinned)
 - [x] 4. Bindposes
 - [x] 5. Audio (WAV decode + Level + LoadAsync)
-- [ ] 6. Textures (Load + cache + Destroy on shutdown)
+- [x] 6. Textures (Load + cache + Destroy on shutdown)
 - [ ] 7. Access (one accessor facade)
 - [ ] 8. KeyMap
 - [ ] 9. GameBindings
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-02b292c (COMPILE OK; state line updated in next commit)
+1392196 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 6 Textures: read the 18 LoadImage sites.
+Item 7 Access: read NativeAccess, OptionalAccess, Performance FastReflect/BatchCompiler/CompileQueue.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -43,3 +43,4 @@ Item 6 Textures: read the 18 LoadImage sites.
 - Glb: verbatim gas-station copy (vertices/mesh names identical; colliderGeometry=false = StewPot/WarRig behaviour); added Load(byte[], name, dir) overload. GlbModel is public in Core.
 - Gltf: verbatim PlayerBody copy; Load(path, owner) prefixes the sparse warning with the caller's module (PlayerBody/NPC). Bindposes: identical copies; added TryGet(bone, out Matrix4x4).
 - Audio: DecodeWav = Guns/NPC Wav verbatim (broadest); LoadWav = VoiceAudio API (now accepts all formats); TryLoadWav = Rider (null on failure); NormalizePeak = Quests; Level/Process = NPC Women Level; LoadAsync(path, type, cb, decompress) returns cancellable Audio.Load.
+- Textures: TextureSettings expresses each old site exactly (defaults = Unity defaults); cache per (source,settings), negative cache, reloadIfChanged by write time, Release(owner) needs ModuleHost wiring (request W0B-1).
