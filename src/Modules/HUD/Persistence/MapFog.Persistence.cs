@@ -4,7 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>HUD-owned exploration record embedded in the ES3 world save; the gzip payload retains its seed and current format.</summary>
     internal static partial class MapFog
@@ -38,27 +38,27 @@ namespace WildWasteland.Modules.CleanHUD
                     }
                 }
             }
-            catch (Exception e) { Chunks.Clear(); _fogReadError = "Fog of war could not be read: " + e.Message; CleanHudModule.Warn(_fogReadError); }
-            CleanHudModule.Log("Fog of war loaded from " + from + " (" + Chunks.Count + " chunks, seed " + _seed + ")");
+            catch (Exception e) { Chunks.Clear(); _fogReadError = "Fog of war could not be read: " + e.Message; HudModule.Warn(_fogReadError); }
+            HudModule.Log("Fog of war loaded from " + from + " (" + Chunks.Count + " chunks, seed " + _seed + ")");
         }
 
         /// <summary>Writes the embedded exploration record through the verified save transaction.</summary>
         internal static void SaveEnded(string slot)
         {
-            if (_fogReadError != null) { SaveBus.ReportFailure(CleanHudModule.Instance, _fogReadError); return; }
+            if (_fogReadError != null) { SaveBus.ReportFailure(HudModule.Instance, _fogReadError); return; }
             if (!_loaded || _standDown || string.IsNullOrEmpty(slot)) return;
             int seed = Seed();
             if (seed == int.MinValue || seed != _seed)
             {
-                SaveBus.ReportFailure(CleanHudModule.Instance, "Fog of war save rejected: world seed differs from loaded exploration");
+                SaveBus.ReportFailure(HudModule.Instance, "Fog of war save rejected: world seed differs from loaded exploration");
                 return;
             }
             try
             {
                 var data = Write(seed);
-                FogSave.Write(CleanHudModule.Instance, slot, Convert.ToBase64String(data));
+                FogSave.Write(HudModule.Instance, slot, Convert.ToBase64String(data));
             }
-            catch (Exception e) { SaveBus.ReportFailure(CleanHudModule.Instance, "Fog of war save failed: " + e.Message); CleanHudModule.Warn("Fog of war could not be saved: " + e.Message); }
+            catch (Exception e) { SaveBus.ReportFailure(HudModule.Instance, "Fog of war save failed: " + e.Message); HudModule.Warn("Fog of war could not be saved: " + e.Message); }
         }
 
         /// <summary>Captures exploration once when native serialization starts.</summary>

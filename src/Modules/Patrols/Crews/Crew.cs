@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.Patrols
         private PlayMakerFSM _drive;          // DriveTrigger [Drive]
         private Collider _enterTrigger;       // DriveTrigger SphereCollider = the "press F to drive" trigger
         private Rigidbody _rb;
-        private InputControl _ctl;
+        private Core.IVehicleInputLease _ctl;
         private Pilot _pilot;                 // the driving AI while the driver drives and [AI] Enabled
         private static readonly string[] MutedFsms =
             { "Movement", "Unstuck", "Rotate", "Detection", "Attack", "RangedAttackWait", "Damage Ranged", "Codex", "Sound", "Sound2", "Sound3" };
@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.Patrols
                 TownParking = true; TownParkedAt = Time.time; Hold = true;
                 if (_pilot != null) { _pilot.Detach(); _pilot = null; }
                 if (_ctl != null && _ctl.Taken) _ctl.Release();
-                Nwh.StopEngine(_car); Patrol.Handbrake(_car, true, _handbrake);
+                Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(_car); Patrol.Handbrake(_car, true, _handbrake);
             }
             var marker = Marker; if (marker == null || marker.PlayerEntered) return;
             if (_rb != null && _rb.velocity.sqrMagnitude > 1f) return;
@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.Patrols
             for (int i = 0; i < marker.Riders.Length; i++)
             {
                 var rider = marker.Riders[i]; if (rider == null || Patrol.GetHealth(rider) <= 0f) continue;
-                string identity = CrewAppearance.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", "")));
+                string identity = CrewLooks.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", "")));
                 marker.DropRider(rider);
                 var mob = Patrol.BailOut(_car, rider, identity, i % 2 == 0 ? -1f : 1f, false);
                 if (mob != null) WorldTraffic.TownDismounted(_car, mob);
@@ -167,7 +167,7 @@ namespace WildWasteland.Modules.Patrols
             var dt = Patrol.FindChild(car.transform, "DriveTrigger");
             if (dt != null) _enterTrigger = dt.GetComponents<Collider>().FirstOrDefault(c => c is SphereCollider);
             if (_ctl != null && _ctl.Taken) _ctl.Release();
-            _ctl = new InputControl(car);
+            _ctl = Core.ModApi.Get<Core.IVehicleDrive>()?.InputLease(car);
             _partDetach = fsms.Where(f => f.FsmName == "de_Attach").ToArray();
 
             // nobody else drives while the driver lives: no enter trigger (no F prompt), no Drive FSM (Activate events are ignored).
@@ -229,7 +229,7 @@ namespace WildWasteland.Modules.Patrols
             var liquid = _tank != null ? _tank.FsmVariables.GetFsmFloat("Liquid") : null;
             if (engine == null || engine.childCount == 0 || (liquid != null && liquid.Value <= .01f)) yield break;
             Patrol.Handbrake(_car, false, _handbrake);
-            if (!Nwh.EngineRunning(_car)) yield return Patrol.StartUp(_car, true);
+            if (!Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(_car)) yield return Patrol.StartUp(_car, true);
             if (_car == null || _done || MerchantWaiting) yield break;
             if (!_driving) StartDriving();
             PatrolsModule.Verbose("Load AI prepared: " + _car.name + "; pilot attached, native parts/fluids unchanged");
@@ -249,9 +249,9 @@ namespace WildWasteland.Modules.Patrols
             }
             if (_car == null || _done || MerchantWaiting || Explode.IsWreck(_car)) yield break;
             Patrol.Handbrake(_car, false);
-            if (!Nwh.EngineRunning(_car)) yield return Patrol.StartUp(_car);
+            if (!Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(_car)) yield return Patrol.StartUp(_car);
             if (_car == null) yield break;
-            PatrolsModule.Verbose("Crew: revived " + _car.name + " after load: engine running " + Nwh.EngineRunning(_car) + ", handbrake released, " + Nwh.Diag(_car));
+            PatrolsModule.Verbose("Crew: revived " + _car.name + " after load: engine running " + Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(_car) + ", handbrake released, " + Core.ModApi.Get<Core.IVehicleDrive>().Diag(_car));
         }
 
         internal GameObject Driver { get { return _driver; } }
@@ -323,11 +323,11 @@ namespace WildWasteland.Modules.Patrols
         }
 
         private void Update()
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null || Core.ModApi.Get<Core.IVehicleAttachments>()==null) return;
             if (_car == null) { Destroy(this); return; }
             if (Time.timeScale <= 0f) return;
             if(CombatTick())return;
-            if (TownParking && Marker?.PlayerEntered != true && PlayerRef.PlayerCar != _car) { Nwh.SetInput(_car, 0f, 0f, 1f); Nwh.SetHandbrake(_car, 1f); return; }
+            if (TownParking && Marker?.PlayerEntered != true && PlayerRef.PlayerCar != _car) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
             TownParking = false;
             if (Regroup != null && Time.time >= _nextRegroup)
             {
@@ -364,7 +364,7 @@ namespace WildWasteland.Modules.Patrols
                 if (!Hold&&!_driving && !_outOfFuel && _seated >= delay && Time.time >= _nextEngineCheck)
                 {
                     _nextEngineCheck = Time.time + 0.25f;
-                    bool running = Nwh.EngineRunning(_car);
+                    bool running = Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(_car);
                     if (running && !Hold) StartDriving();
                     else if (!running && _seated >= delay + 8f && !_revived) { PatrolsModule.Verbose("Crew: engine of " + _car.name + " never started; reviving"); Revive(); }
                 }
@@ -403,7 +403,7 @@ namespace WildWasteland.Modules.Patrols
             if (!OnStuck())
             {
                 if (_pilot != null) { _pilot.Detach(); _pilot = null; }
-                if (_driving) Nwh.SetInput(_car, 0f, 0f, 0f);
+                if (_driving) Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 0f);
                 PatrolsModule.Verbose("Crew: the crew stays in the dry car");
             }
             return true;
@@ -421,13 +421,13 @@ namespace WildWasteland.Modules.Patrols
 
         // NWH samples its input on the physics step, so the inputs are written here, not in Update.
         private void FixedUpdate()
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null || Core.ModApi.Get<Core.IVehicleAttachments>()==null) return;
             if (_car == null || _done || Time.timeScale <= 0f || Marker?.SetupOnly==true) return;
-            if (TownParking && Marker?.PlayerEntered != true && PlayerRef.PlayerCar != _car) { Nwh.SetInput(_car, 0f, 0f, 1f); Nwh.SetHandbrake(_car, 1f); return; }
-            if (Regrouping) { if (!_dead && _driving) Nwh.SetInput(_car, 0f, 0f, 1f); return; }   // waiting for the crew to get back in
+            if (TownParking && Marker?.PlayerEntered != true && PlayerRef.PlayerCar != _car) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
+            if (Regrouping) { if (!_dead && _driving) Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); return; }   // waiting for the crew to get back in
             if (!_dead)
             {
-                if (MerchantWaiting) { Nwh.SetInput(_car, 0f, 0f, 1f); Nwh.SetHandbrake(_car, 1f); return; }
+                if (MerchantWaiting) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
                 if (!_driving) return;
                 if (_pilot != null) _pilot.Step();
                 return;
@@ -435,7 +435,7 @@ namespace WildWasteland.Modules.Patrols
             // dead driver: a stuck pedal keeps the gas on; otherwise the car rolls out - braked hard when a live passenger is aboard,
             // so it stops and the passenger takes the wheel or gets out instead of riding along in a coasting car
             bool paxAboard = !_stuck && PaxAboard();
-            Nwh.SetInput(_car, _stuck ? PatrolsModule.AiThrottle.Value : 0f, 0f, paxAboard ? 1f : 0f);
+            Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, _stuck ? PatrolsModule.AiThrottle.Value : 0f, 0f, paxAboard ? 1f : 0f);
         }
 
         private bool PaxAboard()
@@ -483,7 +483,7 @@ namespace WildWasteland.Modules.Patrols
             if (_stuck)
             {
                 _stuck = false; _rolling = 0f;
-                Nwh.SetInput(_car, 0f, 0f, 0f);
+                Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 0f);
                 PatrolsModule.Verbose("Crew: passenger kicked the dead driver's foot off the pedal");
             }
             // the door on that side opens first (passenger's own door to bail, the driver's door to throw the dead driver out)
@@ -534,7 +534,7 @@ namespace WildWasteland.Modules.Patrols
             else PatrolsModule.Verbose("Crew: " + _car.name + " under unanswered attack; crew gets out to fight " + (_combatEnemy!=null?_combatEnemy.name:"enemy"));
             CrewReturn.Expect(this, _car, marker);   // before the Released phase is visible to world traffic (the bail-out follows the doors)
             if (_pilot != null) { _pilot.Detach(); _pilot = null; }
-            Nwh.SetInput(_car, 0f, 0f, 1f);
+            Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f);
             Patrol.Handbrake(_car,true,_handbrake);
             if (_ctl != null && _ctl.Taken) _ctl.Release();
             SeatLocked(false);
@@ -571,7 +571,7 @@ namespace WildWasteland.Modules.Patrols
         {
             if (_ctl != null && _ctl.Taken) _ctl.Release();
             if (_pilot != null) { _pilot.Detach(); _pilot = null; }
-            Nwh.SetInput(_car, 0f, 0f, 0f);
+            Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 0f);
             var drv = Patrol.MoveToDriverSeat(_car, pax);
             if (drv == null) { Core.Log.Warn("[Patrols] " + "Crew: could not seat the passenger as driver"); _paxBails = true; return; }
             marker.Promote(drv);
@@ -582,7 +582,7 @@ namespace WildWasteland.Modules.Patrols
             Init(_car, drv);
             _seated = 0f;
             MuteAi();
-            PatrolsModule.Verbose("Crew: " + drv.name + " took the wheel, " + "drives off in " + _delayOverride + " s" + "; car " + Speed() + " km/h, " + Nwh.Diag(_car));
+            PatrolsModule.Verbose("Crew: " + drv.name + " took the wheel, " + "drives off in " + _delayOverride + " s" + "; car " + Speed() + " km/h, " + Core.ModApi.Get<Core.IVehicleDrive>().Diag(_car));
         }
 
         private bool PlayerInside()
@@ -595,7 +595,7 @@ namespace WildWasteland.Modules.Patrols
             _driving = true;
             _ctl.Take();
             _pilot = Pilot.Attach(_car);
-            PatrolsModule.Verbose("Crew: driver drives off at " + Speed() + " km/h, " + Nwh.Diag(_car));
+            PatrolsModule.Verbose("Crew: driver drives off at " + Speed() + " km/h, " + Core.ModApi.Get<Core.IVehicleDrive>().Diag(_car));
         }
 
         private void OnDriverDied()
@@ -606,7 +606,7 @@ namespace WildWasteland.Modules.Patrols
             _dead = true;
             SeatLocked(false);                 // the player may take the car from now on
             if (_pilot != null) { _pilot.Detach(); _pilot = null; }
-            if (Nwh.GearIndex(_car) < 0) Nwh.ShiftInto(_car, 1);   // died while reversing: a stuck pedal pushes forward, not back
+            if (Core.ModApi.Get<Core.IVehicleDrive>().GearIndex(_car) < 0) Core.ModApi.Get<Core.IVehicleDrive>().ShiftInto(_car, 1);   // died while reversing: a stuck pedal pushes forward, not back
             if (!_driving)
             {
                 PatrolsModule.Verbose("Crew: driver died before driving off; seat free");
@@ -621,12 +621,12 @@ namespace WildWasteland.Modules.Patrols
             {
                 _stuck = true;
                 _ctl.Take();
-                Nwh.SetInput(_car, PatrolsModule.AiThrottle.Value, 0f, 0f);
+                Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, PatrolsModule.AiThrottle.Value, 0f, 0f);
                 PatrolsModule.Verbose("Crew: driver died at " + Speed() + " km/h - gas pedal stuck (" + PatrolsModule.StuckPedalChance.Value + " % roll), seat free");
                 return;
             }
             _ctl.Take();
-            Nwh.SetInput(_car, 0f, 0f, 0f);
+            Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 0f);
             PatrolsModule.Verbose("Crew: driver died at " + Speed() + " km/h - gas released, rolling out, seat free");
         }
 

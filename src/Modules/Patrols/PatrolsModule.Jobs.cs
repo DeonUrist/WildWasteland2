@@ -22,10 +22,6 @@ namespace WildWasteland.Modules.Patrols
         private bool TrafficReady() { return _traffic != null && _patrol != null && _patrol.InGame() && ConvoyEnabled.Value && !SaveBus.Busy && !PatrolPersistence.Restoring; }
         /// <summary>Checks abandoned-car eligibility through the existing internally paced cleanup.</summary>
         private void TickCleanup() { if (_cleanup != null) _cleanup.Tick(); }
-        /// <summary>Draws the traffic overlay when its normal visibility predicate admits it.</summary>
-        private void DrawTraffic() { if (_traffic != null) _traffic.Gui(); }
-        /// <summary>Stops IMGUI dispatch while traffic has no requested overlay.</summary>
-        private bool TrafficGuiWanted() { return _traffic != null && _traffic.GuiWanted(); }
         /// <summary>Notifies Saves of active vehicle combat at four hertz without a cross-module polling delegate.</summary>
         private void PublishCombatActivity()
         {

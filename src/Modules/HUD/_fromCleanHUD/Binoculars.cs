@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal static partial class Binoculars
     {
@@ -24,7 +24,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static Vector3 Forward { get { return _camera != null ? _camera.transform.forward : Vector3.zero; } }
         internal static float HalfAngle { get { return _camera != null ? Mathf.Atan(Slope * _camera.aspect) : 0f; } }
 
-        internal static void Init(CleanHudModule owner)
+        internal static void Init(HudModule owner)
         {
             Reset();
             _projectionOwner = owner; CameraArbiter.AddProjection(owner, "HUD.Binoculars", 300, WriteProjection);
@@ -36,7 +36,7 @@ namespace WildWasteland.Modules.CleanHUD
             _caption = null; _subject = null; _name = null; _roundUntil = _seenUntil = 0f;
             Restore(); _camera = null; _overlay = _scope = null; _nextFind = 0f;
             _scopeSlope = Mathf.Tan(12.5f * Mathf.Deg2Rad);
-            _zoom = CleanHudModule.BinocularZoom.Value;
+            _zoom = HudModule.BinocularZoom.Value;
             System.Array.Clear(Hits, 0, Hits.Length);
         }
         internal static void Shutdown()
@@ -54,21 +54,21 @@ namespace WildWasteland.Modules.CleanHUD
                 _scope = SceneCache.FindPath("Canvas/redmark_m11_ScopeUI");
             }
             Caption();
-            if (!Raised) { _zoom = CleanHudModule.BinocularZoom.Value; return; }
+            if (!Raised) { _zoom = HudModule.BinocularZoom.Value; return; }
             if (!GameRefs.InGame || ApocasetterBridge.InputBlocked || !Application.isFocused) return;
             float wheel = Services.Map != null && Services.Map.Open ? 0f : Input.mouseScrollDelta.y;
             if (wheel != 0f)
             {
-                CleanHudModule.BinocularZoom.Value = Mathf.Clamp(CleanHudModule.BinocularZoom.Value * Mathf.Pow(1f / .82f, wheel), 1f, 2f);
-                if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Binocular zoom target: " + CleanHudModule.BinocularZoom.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "x");
+                HudModule.BinocularZoom.Value = Mathf.Clamp(HudModule.BinocularZoom.Value * Mathf.Pow(1f / .82f, wheel), 1f, 2f);
+                if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Binocular zoom target: " + HudModule.BinocularZoom.Value.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "x");
             }
-            _zoom = Mathf.Lerp(_zoom, CleanHudModule.BinocularZoom.Value, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 16f));
-            if (Mathf.Abs(_zoom - CleanHudModule.BinocularZoom.Value) < .0001f) _zoom = CleanHudModule.BinocularZoom.Value;
+            _zoom = Mathf.Lerp(_zoom, HudModule.BinocularZoom.Value, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 16f));
+            if (Mathf.Abs(_zoom - HudModule.BinocularZoom.Value) < .0001f) _zoom = HudModule.BinocularZoom.Value;
         }
         internal static bool Observe(Transform target, string name, Color color)
         {
             if (!GameRefs.InGame || Services.Map != null && Services.Map.Open || target == null || !Sees(target)) return false;
-            if (!CleanHudModule.Enabled.Value) return true;
+            if (!HudModule.CleanHudEnabled.Value) return true;
             float now = Time.unscaledTime;
             if (now >= _roundUntil) { _roundUntil = now + .25f; _score = float.MaxValue; }
             var local = _camera.transform.InverseTransformPoint(target.position + Vector3.up * 2f);
@@ -81,7 +81,7 @@ namespace WildWasteland.Modules.CleanHUD
         }
         private static void Caption()
         {
-            bool shown = Raised && CleanHudModule.Enabled.Value && GameRefs.InGame && _subject != null
+            bool shown = Raised && HudModule.CleanHudEnabled.Value && GameRefs.InGame && _subject != null
                 && Time.unscaledTime < _seenUntil && (Services.Map == null || !Services.Map.Open);
             if (shown)
             {

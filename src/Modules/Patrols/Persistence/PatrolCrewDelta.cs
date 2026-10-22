@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Patrols
                 var guard = rider != null ? rider.GetComponent<RiderGuard>() : null;
                 if (rider == null || anchor == null || guard == null || !guard.Mounted || Patrol.GetHealth(rider) == 0f) continue;
                 var p = anchor.localPosition;
-                result[i] = new PatrolRiderData { prefab = CrewAppearance.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", ""))),
+                result[i] = new PatrolRiderData { prefab = CrewLooks.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", ""))),
                     health = Patrol.GetHealth(rider), position = new[] { p.x, p.y, p.z }, standing = guard.StandingPose };
             }
             return result;
@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.Patrols
         internal static void Restore(GameObject car, PatrolMarker marker, PatrolRiderData[] riders)
         {
             if (riders == null || marker.Exploded) return;
-            marker.Trailer = TrailerSupport.Attached(car);
+            marker.Trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             for (int i = 0; i < riders.Length && i < marker.Riders.Length; i++)
             {
                 var saved = riders[i];
@@ -55,8 +55,8 @@ namespace WildWasteland.Modules.Patrols
             if (data.trailerName.Length == 0) return;
             foreach (var trailer in roots)
             {
-                if (trailer == null || trailer.name != data.trailerName || !TrailerSupport.IsTrailer(trailer)) continue;
-                try { TrailerSupport.Connect(car, trailer, true); PatrolsModule.Verbose("Load hitch restored: " + car.name + " -> " + trailer.name + "; native poses retained"); }
+                if (trailer == null || trailer.name != data.trailerName || !Core.ModApi.Get<Core.IVehicleAttachments>().IsTrailer(trailer)) continue;
+                try { Core.ModApi.Get<Core.IVehicleAttachments>().Connect(car, trailer, true); PatrolsModule.Verbose("Load hitch restored: " + car.name + " -> " + trailer.name + "; native poses retained"); }
                 catch (Exception e) { Core.Log.Warn("[Patrols] Saved hitch skipped for " + car.name + ": " + e.Message); }
                 return;
             }

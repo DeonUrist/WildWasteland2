@@ -1,6 +1,6 @@
 using UnityEngine;
 using WildWasteland.Core;
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>Module zoom policy; Core owns native camera matrix publication and restoration.</summary>
     internal static partial class Binoculars

@@ -7,19 +7,19 @@ namespace WildWasteland.Modules.Patrols
 {
     internal sealed partial class QuestFollowers : IFollowerVehicles
     {
-        public bool IsSeated(GameObject npc) { return npc != null && npc.transform.parent != null && npc.GetComponent<Pose>() != null; }
+        public bool IsSeated(GameObject npc) { return npc != null && npc.transform.parent != null && Core.ModApi.Get<Core.ICrewSeats>()?.Find(npc) != null; }
         public Type ResolveType(string name)
         {
             switch (name)
             {
                 case "Apocapatrol.Plugin": return typeof(PatrolsModule);
                 case "Apocapatrol.PassengerGuard": return typeof(PassengerGuard);
-                case "Apocapatrol.Pose": return typeof(Pose);
+                case "Apocapatrol.Pose": return Core.ModApi.Get<Core.ICrewSeats>()?.LegacyPoseType;
                 default: return null;
             }
         }
         public bool IsCrew(GameObject npc)
-        { return npc != null && (npc.GetComponent<SimpleBanditTag>() != null || npc.GetComponent<Pose>() != null || (Settled.Count > 0 && Settled.Contains(npc.GetInstanceID()))); }
+        { return npc != null && (npc.GetComponent<SimpleBanditTag>() != null || Core.ModApi.Get<Core.ICrewSeats>()?.Find(npc) != null || (Settled.Count > 0 && Settled.Contains(npc.GetInstanceID()))); }
         // foot patrol walkers that became camp residents (their crew tags dropped): still former crew for the quest restrictions
         private static readonly HashSet<int> Settled = new HashSet<int>();
         internal static void FormerCrew(GameObject npc) { if (npc != null) Settled.Add(npc.GetInstanceID()); }

@@ -29,8 +29,6 @@ namespace WildWasteland.Core
         /// <summary>Vistas edited a tile's terrain (Towns/Patrols subscribe; also forwarded to WorldTiles and the Core TerrainEdited event).</summary>
         [Obsolete("refactor: use WorldTiles.OnEdited or the Core TerrainEdited event")]
         internal static event Action<TerrainTile> TerrainEdited;
-        /// <summary>HUD query: true when WW draws the place banners (the mod's own banner is skipped).</summary>
-        internal static Func<bool> CleanBanners;
         /// <summary>True while the bridge is installed.</summary>
         [Obsolete("refactor: use ModApi.Get<IWorldGenFacts>()")]
         internal static bool Present;
@@ -172,7 +170,7 @@ namespace WildWasteland.Core
                 throw new InvalidOperationException("Cannot patch " + original.DeclaringType.FullName + "." + original.Name);
         }
         /// <summary>Prefix of the mod's banner draw: skipped while the WW HUD draws banners.</summary>
-        private static bool OriginalBanner() { return CleanBanners == null || !CleanBanners(); }
+        private static bool OriginalBanner() { var display = ModApi.Get<IPlaceBannerDisplay>(); return display == null || !display.Enabled; }
         /// <summary>Prefix of the mod's scouting: always skipped (WW scouting).</summary>
         private static bool NoScouting() { return false; }
         /// <summary>Prefix of the landmark check: skips the mod's "near" notice path.</summary>

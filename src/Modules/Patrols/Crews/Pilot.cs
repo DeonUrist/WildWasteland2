@@ -131,11 +131,11 @@ namespace WildWasteland.Modules.Patrols
         // the transmission's gear index, refreshed 5x a second (a reflection read + boxing per step per car otherwise)
         private int Gear()
         {
-            if (Time.fixedTime >= _gearNext) { _gearNext = Time.fixedTime + 0.2f; _gear = Nwh.GearIndex(_car); }
+            if (Time.fixedTime >= _gearNext) { _gearNext = Time.fixedTime + 0.2f; _gear = Core.ModApi.Get<Core.IVehicleDrive>().GearIndex(_car); }
             return _gear;
         }
 
-        private void Shift(int gear) { Nwh.ShiftInto(_car, gear); _gear = gear; _gearNext = Time.fixedTime + 0.2f; }   // assume it lands; re-read shortly
+        private void Shift(int gear) { Core.ModApi.Get<Core.IVehicleDrive>().ShiftInto(_car, gear); _gear = gear; _gearNext = Time.fixedTime + 0.2f; }   // assume it lands; re-read shortly
 
         // ------------------------------------------------------------ main step (called by Crew from FixedUpdate)
 
@@ -200,7 +200,7 @@ namespace WildWasteland.Modules.Patrols
             if (Time.time >= _nextEngine)
             {
                 _nextEngine = Time.time + 1f;
-                if (!Nwh.EngineRunning(_car)) { _nextEngine = Time.time + 5f; Nwh.StartEngine(_car); PatrolsModule.Verbose("Pilot: engine off, StartEngine()"); }
+                if (!Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(_car)) { _nextEngine = Time.time + 5f; Core.ModApi.Get<Core.IVehicleDrive>().StartEngine(_car); PatrolsModule.Verbose("Pilot: engine off, StartEngine()"); }
             }
 
             // pushing slowly against something for a while counts as stuck (a car being shoved, a fence...)
@@ -264,7 +264,7 @@ namespace WildWasteland.Modules.Patrols
             if (Core.Log.Verbose && Time.time >= _nextLog)
             {
                 _nextLog = Time.time + 5f;
-                PatrolsModule.Verbose("Pilot: " + _state + " " + (speed * 3.6f).ToString("0") + " km/h (fwd " + (forwardSpeed * 3.6f).ToString("0") + ") gear " + Nwh.Gear(_car)
+                PatrolsModule.Verbose("Pilot: " + _state + " " + (speed * 3.6f).ToString("0") + " km/h (fwd " + (forwardSpeed * 3.6f).ToString("0") + ") gear " + Core.ModApi.Get<Core.IVehicleDrive>().Gear(_car)
                     + " target " + _dist.ToString("0") + " m at " + _angle.ToString("0") + "° steer " + _steer.ToString("0.00")
                     + " thr " + _throttle.ToString("0.00") + " brk " + _brakes.ToString("0.00") + Feelers()
                     + " w=" + (_rb != null ? _rb.angularVelocity.magnitude.ToString("0.0") : "?") + " up.y=" + _tf.up.y.ToString("0.00"));
@@ -551,7 +551,7 @@ namespace WildWasteland.Modules.Patrols
                 for (int i = 0; i < n; i++) { var c = _hits[i].collider; if (c == null || c.transform.IsChildOf(_tf)) continue; if (best < 0f || _hits[i].distance < best) best = _hits[i].distance; }
                 if (best >= 0f) h = Mathf.Clamp(best - 0.2f, 0.3f, 2.5f);
                 _rollLimit = Mathf.Clamp(9.81f * (Mathf.Max(0.8f, track) * 0.5f) / h * 0.8f, 2.5f, 30f);
-                float maxAngle = Nwh.MaxSteerAngle(_car);
+                float maxAngle = Core.ModApi.Get<Core.IVehicleDrive>().MaxSteerAngle(_car);
                 _tanSteer = Mathf.Tan(Mathf.Clamp(maxAngle > 1f ? maxAngle : 35f, 10f, 60f) * Mathf.Deg2Rad);
                 if (Core.Log.Verbose) PatrolsModule.Verbose("Pilot: " + _car.name + " track " + track.ToString("0.00") + " m, wheelbase " + _wheelbase.ToString("0.00") + " m, COM " + h.ToString("0.00") + " m up -> roll limit " + _rollLimit.ToString("0.0") + " m/s^2");
             }
@@ -591,7 +591,7 @@ namespace WildWasteland.Modules.Patrols
         private void Apply(float throttle, float steer, float brakes)
         {
             _throttle = throttle; _brakes = brakes;
-            Nwh.SetInput(_car, throttle, PatrolsModule.AiInvertSteering.Value ? -steer : steer, brakes);
+            Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, throttle, PatrolsModule.AiInvertSteering.Value ? -steer : steer, brakes);
         }
 
         private static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
@@ -770,7 +770,7 @@ namespace WildWasteland.Modules.Patrols
         // ------------------------------------------------------------ collisions (the car's Rigidbody is on the root, so they arrive here)
 
         private void OnCollisionEnter(Collision col)
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null) return;
             if (col.collider == null || col.contactCount == 0) return;
             float rel = col.relativeVelocity.magnitude;
             if (rel < 3f) return;
@@ -799,7 +799,7 @@ namespace WildWasteland.Modules.Patrols
         // A slow, sustained frontal contact with an obstacle (shoving a parked car, leaning on a wall) is tracked here and
         // turned into a recovery by Step() once it lasts a second; a single Enter at speed is handled above.
         private void OnCollisionStay(Collision col)
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null) return;
             if (col.collider == null || col.contactCount == 0) return;
             if (_state != PilotState.Charge && _state != PilotState.Overshoot && _state != PilotState.Turnaround && _state != PilotState.Travel) return;
             if (_throttle < 0.3f) return;
@@ -821,7 +821,7 @@ namespace WildWasteland.Modules.Patrols
         internal string OverlayLine()
         {
             var vel = _rb != null ? _rb.velocity : Vector3.zero;
-            return _car.name + ": " + _state + " (" + _why + ")  " + (vel.magnitude * 3.6f).ToString("0") + " km/h  gear " + Nwh.Gear(_car)
+            return _car.name + ": " + _state + " (" + _why + ")  " + (vel.magnitude * 3.6f).ToString("0") + " km/h  gear " + Core.ModApi.Get<Core.IVehicleDrive>().Gear(_car)
                 + "  target " + _dist.ToString("0") + " m @ " + _angle.ToString("0") + "°  steer " + _steer.ToString("0.00")
                 + "  thr " + _throttle.ToString("0.00") + "  brk " + _brakes.ToString("0.00") + Feelers()
                 + "  roll " + _roll.ToString("0") + "°/" + _rollLimit.ToString("0")

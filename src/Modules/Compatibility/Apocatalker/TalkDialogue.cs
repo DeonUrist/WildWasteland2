@@ -12,7 +12,7 @@ using UnityEngine.UI;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// Apocatalker (com.example.apocalypter.talk) dialogue mirror serving the HUD: while a Talk conversation is open and the HUD
@@ -88,7 +88,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static void Tick()
         {
             if (_plugin == null) return;
-            if (!CompatibilityHost.CleanHud.Running || !CleanHudModule.Enabled.Value || !_talking(_plugin)) { if (_root != null && _root.activeSelf || _hidden != null) Hide(); return; } // refs-ok: REFACTOR-REQUEST B17-11
+            if (!CompatibilityHost.CleanHud.Running || !HudModule.CleanHudEnabled.Value || !_talking(_plugin)) { if (_root != null && _root.activeSelf || _hidden != null) Hide(); return; } // refs-ok: REFACTOR-REQUEST B17-11
             var ui = _getUi(_plugin); if (ui == null || _panel(ui) == null) { Hide(); return; }
             if (!ReferenceEquals(ui, _ui)) { RestoreSource(); _ui = ui; _shownRevision = -1; _choiceHash = 0; }
             if (_root == null) Build();

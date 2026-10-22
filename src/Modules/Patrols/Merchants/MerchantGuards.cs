@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.Patrols
             foreach(var saved in host.Data.turrets)
             {
                 if(saved==null||saved.slot<0||saved.slot>=marker.Riders.Length||saved.health<=0f||string.IsNullOrEmpty(saved.prefab)||marker.Riders[saved.slot]!=null)continue;
-                var platform=saved.slot<3?null:TrailerSupport.Attached(host.gameObject);if(saved.slot>=3&&platform==null)continue;
+                var platform=saved.slot<3?null:Core.ModApi.Get<Core.IVehicleAttachments>().Attached(host.gameObject);if(saved.slot>=3&&platform==null)continue;
                 Rider.Seat(host.gameObject,marker,saved.slot,saved.prefab,new[]{saved.position.x,saved.position.y,saved.position.z},platform,saved.standing);
             }
         }

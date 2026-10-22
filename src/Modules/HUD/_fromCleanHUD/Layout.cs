@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // One HUD group placed in the 1920x1080 design frame (top-left origin), as exported by the mockup's "Copy layout".
     internal sealed class Placement
@@ -135,11 +135,11 @@ namespace WildWasteland.Modules.CleanHUD
                 _stamp = stamp;
                 Current = Layout.Parse(File.ReadAllText(_path));
                 Revision++;
-                CleanHudModule.Log("Layout loaded from " + _path);
+                HudModule.Log("Layout loaded from " + _path);
             }
             catch (Exception e)
             {
-                CleanHudModule.Warn("layout.json not usable (" + e.Message + "); keeping the previous layout.");
+                HudModule.Warn("layout.json not usable (" + e.Message + "); keeping the previous layout.");
             }
         }
     }

@@ -1,10 +1,11 @@
 using System;
+using WildWasteland.Core;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // Reads the game's own HUD/FSM state and hides the vanilla HUD graphics this mod replaces (alpha only; no object or FSM is touched).
     internal sealed class Bindings
@@ -23,7 +24,11 @@ namespace WildWasteland.Modules.CleanHUD
         private readonly Dictionary<Graphic, bool> _cull = new Dictionary<Graphic, bool>();   // original cullTransparentMesh
         private int _pocketUiRevision = -1;
         internal Transform HudRoot;
-        internal readonly ApocapocketInventory Pocket = new ApocapocketInventory();
+        internal readonly PocketHudState Pocket = new PocketHudState();
+        /// <summary>Current optional source revision, including disappearance.</summary>
+        static int PocketRevision { get { var api = ModApi.Get<IPocketHud>(); return api != null ? api.UiRevision : -1; } }
+        /// <summary>Reads optional slots; provider removal immediately restores native slot behavior.</summary>
+        internal void ReadPocket() { var api = ModApi.Get<IPocketHud>(); if (api == null) Pocket.Active = false; else api.Read(Pocket); }
         internal int SlotCount { get { return Pocket.Active ? Pocket.Count : 3; } }
         internal bool Ordinary(int slot) { return Pocket.Active && slot >= 0 && slot < 6 && Pocket.Ordinary[slot]; }
         private readonly List<Graphic> _graphics = new List<Graphic>();
@@ -91,9 +96,9 @@ namespace WildWasteland.Modules.CleanHUD
                 _slotFsms[i] = Fsm(SlotHolders[i].gameObject, "SlotEmptyFull");
                 if (_slotFsms[i] != null) _slotVars[i] = _slotFsms[i].FsmVariables.FindFsmGameObject("item");
             }
-            if (_hiddenCaptured && _pocketUiRevision == ApocapocketInventory.UiRevision) return;
+            if (_hiddenCaptured && _pocketUiRevision == PocketRevision) return;
             _hiddenCaptured = true;
-            _pocketUiRevision = ApocapocketInventory.UiRevision;
+            _pocketUiRevision = PocketRevision;
             foreach (var path in HiddenRoots)
             {
                 var t = Canvas.transform.Find(path); if (t == null) continue;
@@ -104,7 +109,7 @@ namespace WildWasteland.Modules.CleanHUD
                     if (!_hidden.ContainsKey(g)) _hidden.Add(g, g.canvasRenderer.GetAlpha());
                 }
             }
-            ApocapocketInventory.CaptureUi(this, HudRoot);
+            _graphics.Clear(); var pocket = ModApi.Get<IPocketHud>(); if (pocket != null) pocket.CollectGraphics(Canvas, HudRoot, _graphics); foreach (var graphic in _graphics) CaptureExtra(graphic); _graphics.Clear();
             _culled = false;
         }
 
@@ -123,7 +128,7 @@ namespace WildWasteland.Modules.CleanHUD
             }
             foreach (var pair in _hidden) if (pair.Key != null && pair.Key.canvasRenderer.GetAlpha() != 0f) pair.Key.canvasRenderer.SetAlpha(0f);
         }
-        internal void RefreshHiddenIfNeeded() { if (!_hiddenCaptured || _pocketUiRevision != ApocapocketInventory.UiRevision) Refresh(); }
+        internal void RefreshHiddenIfNeeded() { if (!_hiddenCaptured || _pocketUiRevision != PocketRevision) Refresh(); }
         internal void Restore()
         {
             foreach (var pair in _hidden) if (pair.Key != null) pair.Key.canvasRenderer.SetAlpha(pair.Value);

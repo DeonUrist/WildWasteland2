@@ -5,6 +5,7 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Route/marker data for the map layer (journey map names, route colours, map detail switches) and off-map entry/exit points of traffic; Patrols part (Wave A split of Traffic/TrafficMap.cs).</summary>
     internal sealed partial class WorldTraffic
     {
+        private Camera _gameMap;
         private Vector3 OffscreenTrafficPoint(Vector3 center,Vector3 direction)
         {
             // Route creation only; include the inactive native camera when M is closed.

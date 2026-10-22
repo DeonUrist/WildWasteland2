@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.Patrols
         internal const float BikeArc = 55f;   // 2.2.1: on a motorcycle a turret sits straight and turns only its upper body this far left / right
         // what the editors offer: a Warboy (blast lances, "Witness me!") or a ranged crew human (a gunner); "None" first, the rest A-Z
         internal static readonly string[] TurretChoices = { "None", "Boltjaw", "Flexa", "Gungirl", "Lugnut", "Scrud", "Shoota", "Sprokka", Warboy, "Bodyguard", "Bolter", "Gunnar", "Lugger", "Mechanic", "Merchant", "Organic_Mechanic", "Pistoleer", "Pup" };
-        internal static bool IsGunner(string who) { return !string.IsNullOrEmpty(who) && Array.Exists(PassengerGuard.RangedHumans, n => string.Equals(n, CrewAppearance.BasePrefab(who.Trim()), StringComparison.OrdinalIgnoreCase)); }
+        internal static bool IsGunner(string who) { return !string.IsNullOrEmpty(who) && Array.Exists(PassengerGuard.RangedHumans, n => string.Equals(n, CrewLooks.BasePrefab(who.Trim()), StringComparison.OrdinalIgnoreCase)); }
         // a stored value as the editors show it: "" = None, a ranged human as is, anything else (Warboy, the 2.1.x "Scraffa") = Warboy
         internal static bool IsWarboy(string who)=>string.Equals(who,Warboy,StringComparison.OrdinalIgnoreCase)||string.Equals(who,"Scraffa",StringComparison.OrdinalIgnoreCase);
         internal static string Display(string stored) { return string.IsNullOrEmpty(stored) ? "None" : IsWarboy(stored)?Warboy:stored.Trim(); }
@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.Patrols
             else Crew.MuteAi(go);                  // no mover / detection / attack FSMs: the guard does the throwing
             PassengerGuard.NeutralizeContact(go);  // melee / fire-contact damage FSMs and hitbox off (a passive body that can be shot)
             go.name = prefab.name + "(Rider)";
-            CrewAppearance.Dress(go, prefabName, randomize);
+            CrewLooks.Dress(go, prefabName, randomize);
             // no per-pair IgnoreCollision with the car (thousands of PhysX pair rebuilds per seat): the body is all triggers (NoContacts)
             var root = go.GetComponent<Rigidbody>() ?? go.AddComponent<Rigidbody>();
             root.isKinematic = true;
@@ -69,10 +69,10 @@ namespace WildWasteland.Modules.Patrols
             marker.Riders[slot] = go; marker.RiderAnchors[slot] = anchor;
             var riderGuard = go.AddComponent<RiderGuard>();
             riderGuard.Init(car, marker, anchor, prefab.name, slot, gunner, bike,standing);
-            var pose = Pose.Apply(go, anchor, prefab.name);
+            var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Apply(go, anchor, prefab.name);
             if(gunner)PassengerGuard.AttachTurret(go, car, anchor, bike ? BikeArc : 0f);
-            pose.ConfigureTurret(standing,bike,IsWarboy(who));
-            RiderAnchorGuard.Attach(go, riderGuard, anchor, true);
+            pose?.ConfigureTurret(standing,bike,IsWarboy(who));
+            Core.ModApi.Get<Core.ICrewSeats>()?.Anchor(go,anchor,true,()=>riderGuard!=null&&riderGuard.Mounted);
             MerchantGuards.Attach(car,go,slot);
             PatrolsModule.Verbose("Human turret " + (slot + 1) + ": " + go.name + (gunner ? " (gunner)" : " (Warboy)") + " on " + car.name + " at local " + anchor.localPosition.ToString("F2"));
             return go;
@@ -144,7 +144,7 @@ namespace WildWasteland.Modules.Patrols
                 }
             }
             if (!any) return new Vector3(slot == 1 ? -0.4f : slot == 2 ? 0.4f : 0f, 1.2f, slot > 0 ? -0.6f : 0f);
-            if (TrailerSupport.IsTrailer(car))
+            if (Core.ModApi.Get<Core.IVehicleAttachments>().IsTrailer(car))
             {
                 // Use the bed's footprint, excluding the long tow tongue from the four positions.
                 var bed = car.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name.StartsWith("PhysicsLock", StringComparison.Ordinal));
@@ -330,7 +330,7 @@ namespace WildWasteland.Modules.Patrols
             _mode = Mode.Done;
             if (_graphOk) { _graph.Destroy(); _graphOk = false; }   // the ragdoll / death takes over
             ReleaseBody();
-            var pose = GetComponent<Pose>(); if (pose != null) pose.ReleaseBody();   // a gunner: its gun back in its own hand
+            var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Find(gameObject); if (pose != null) pose.ReleaseBody();   // a gunner: its gun back in its own hand
             if (Lance != null) Destroy(Lance.gameObject);
             if (_marker != null) _marker.DropRider(gameObject);
         }

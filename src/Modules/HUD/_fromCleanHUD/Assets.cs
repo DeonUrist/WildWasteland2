@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal static partial class Assets
     {
@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static Texture2D Tex(string name)
         {
             if (name.StartsWith("panel_", StringComparison.Ordinal) || name.EndsWith("_atlas", StringComparison.Ordinal)) return ThemeAssets.Tex(name);
-            return Core.Textures.LoadResource(CleanHudModule.Instance, "CleanHUD." + name + ".png", new Core.TextureSettings { Mipmaps = true, Readable = true, Wrap = TextureWrapMode.Clamp, Filter = FilterMode.Trilinear, Aniso = 4, Flags = HideFlags.DontUnloadUnusedAsset }, "HUD." + name);
+            return Core.Textures.LoadResource(HudModule.Instance, "HUD." + name + ".png", new Core.TextureSettings { Mipmaps = true, Readable = true, Wrap = TextureWrapMode.Clamp, Filter = FilterMode.Trilinear, Aniso = 4, Flags = HideFlags.DontUnloadUnusedAsset }, "HUD." + name);
         }
         /// <summary>Shared white fill texture.</summary>
         internal static Texture2D White { get { return ThemeAssets.White; } }
@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static string KeyOf(GameObject go)
         {
             if (go == null) return null;
-            string packKey; WeaponsPackIcons.Model(go, out packKey);
+            string packKey = null; var models = Core.ModApi.Get<Core.IWeaponIconModels>(); if (models != null) models.Model(go, out packKey);
             if (packKey != null) return packKey;
             var n = go.name;
             for (int i = 0; i < 3; i++) n = CloneSuffix.Replace(n, "");
@@ -81,7 +81,7 @@ namespace WildWasteland.Modules.CleanHUD
                 BeginRender(item, KeyOf(item));
             }
             try { if (_render.MoveNext()) return true; }
-            catch (Exception e) { RenderFailed.Add(_renderKey); Queued.Remove(_renderKey); CleanHudModule.Warn("Icon render failed: " + e.Message); }
+            catch (Exception e) { RenderFailed.Add(_renderKey); Queued.Remove(_renderKey); HudModule.Warn("Icon render failed: " + e.Message); }
             var disposable = _render as IDisposable; if (disposable != null) disposable.Dispose();
             _render = null; _renderKey = null;
             return IconQueue.Count > 0;
@@ -126,7 +126,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static IEnumerator Render(GameObject item, string key, Action<Texture2D> complete)
         {
             string packKey;
-            var packModel = WeaponsPackIcons.Model(item, out packKey);
+            var models = Core.ModApi.Get<Core.IWeaponIconModels>(); var packModel = models != null ? models.Model(item, out packKey) : null;
             var src = packModel ?? Prefab(key) ?? item;
             bool fromPrefab = packModel == null && src != item;
             var shader = Shader.Find("Hidden/Internal-Colored");
@@ -230,7 +230,7 @@ namespace WildWasteland.Modules.CleanHUD
                     yield return null;
                 }
                 outT.SetPixels32(opx); outT.Apply(true, false);
-                CleanHudModule.Log("Rendered a flat icon for " + key + " (" + cw + "x" + ch + ")");
+                HudModule.Log("Rendered a flat icon for " + key + " (" + cw + "x" + ch + ")");
                 complete(outT); outT = null;
             }
             finally

@@ -10,7 +10,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// Apocapocket (com.denis.apocalypter.apocapocket) slot reader serving the HUD and the <see cref="IInventorySlots"/> provider: the
@@ -138,13 +138,13 @@ namespace WildWasteland.Modules.CleanHUD
 
         /// <summary>HUD widget capture (once on attachment and after native widget creation, never per frame): hands the mod's extra
         /// card graphics to the HUD bindings and undoes the mod's shifts of HUD widgets.</summary>
-        internal static void CaptureUi(Bindings src, Transform hud) // refs-ok: REFACTOR-REQUEST B17-9
+        internal static void CaptureUi(Canvas canvas, Transform hud, List<Graphic> into) // refs-ok: REFACTOR-REQUEST B17-9
         {
-            if (_instance == null || src.Canvas == null) return;
-            Graphics.Clear(); src.Canvas.GetComponentsInChildren<Graphic>(true, Graphics);
+            if (_instance == null || canvas == null) return;
+            Graphics.Clear(); canvas.GetComponentsInChildren<Graphic>(true, Graphics);
             foreach (var g in Graphics)
-                for (var t = g.transform; t != null && t != src.Canvas.transform; t = t.parent)
-                    if (t.name.EndsWith("_apocapocket", StringComparison.Ordinal) || t.name == "Apocapocket.CardExtension") { src.CaptureExtra(g); break; }
+                for (var t = g.transform; t != null && t != canvas.transform; t = t.parent)
+                    if (t.name.EndsWith("_apocapocket", StringComparison.Ordinal) || t.name == "Apocapocket.CardExtension") { into.Add(g); break; }
             Graphics.Clear();
             var shifts = _shifts(null) as IList;
             if (shifts != null && hud != null) for (int i = shifts.Count - 1; i >= 0; i--)

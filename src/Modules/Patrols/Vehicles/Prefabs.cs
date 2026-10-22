@@ -83,7 +83,7 @@ namespace WildWasteland.Modules.Patrols
             if (string.IsNullOrEmpty(query)) return null;
             if (MotorcycleIntegration.IsBody(query)) return MotorcycleIntegration.Template();
             { var mod = ModVehicles.Template(query); if (mod != null) return mod; }
-            string q = CrewAppearance.BasePrefab(query.Trim());
+            string q = CrewLooks.BasePrefab(query.Trim());
             EnsureClassification();
             return Lookup(q);
         }

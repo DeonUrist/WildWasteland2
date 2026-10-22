@@ -47,7 +47,8 @@ namespace WildWasteland.Modules.Saves
         }
         /// <summary>Provides the real save state only while the framework is enabled.</summary>
         bool ISaveTransactionState.Active { get { return SaveSystem.Busy; } }
-        public override void ProvideApis() { ModApi.Provide<ISaves>(this, this); ModApi.Provide<ISaveTransactionState>(this,this); }
+        public override void ProvideApis() { ModApi.Provide<ISaves>(this,this); ModApi.Provide<ISaveTransactionState>(this,this); ModApi.Provide<Core.UI.ISaveMenu>(this,new SaveMenu()); }
+
         /// <summary>Unsubscribes and disposes all work, restoring native barriers even after partial initialization.</summary>
         public override void Shutdown()
         {

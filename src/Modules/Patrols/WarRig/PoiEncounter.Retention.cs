@@ -20,7 +20,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         internal static bool Protected(GameObject go)
         {
             if (go == null) return false;
-            if (go.GetComponentInParent<WarRigUnit>() != null) return true;
+            if (Core.ModApi.Get<Core.IVehicleAttachments>()?.IsWarRig(go)==true) return true;
             var marker = go.GetComponentInParent<PatrolMarker>();
             return marker != null && marker.TemplateName == "Abandoned War Rig" && marker.SetupOnly;
         }
@@ -39,14 +39,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         /// <summary>Unhitches tankers connected to a truck that is about to be removed.</summary>
         internal static void DetachTankers(GameObject truck)
         {
-            var body = truck.GetComponent<Rigidbody>(); if (body == null) return;
-            foreach (var rig in WarRigUnit.All)
-                if (rig != null) foreach (var joint in rig.GetComponents<ConfigurableJoint>())
-                    if (joint.connectedBody == body)
-                    {
-                        UnityEngine.Object.Destroy(joint);
-                        var leg = rig.transform.Find("leg"); if (leg != null) leg.gameObject.SetActive(true);
-                    }
+            Core.ModApi.Get<Core.IVehicleAttachments>()?.DetachTankers(truck);
         }
     }
 }

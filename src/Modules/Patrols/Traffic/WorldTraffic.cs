@@ -162,8 +162,7 @@ namespace WildWasteland.Modules.Patrols
             _instance._nearDepartures.Clear();_instance._nextMerchant=0f;_instance._hornFsm=null;_instance._hornCar=null;
             _instance._battles.Clear();_instance._battleLive.Clear();_instance._nextBattleScan=0f;
             _instance._elapsed = _instance._nextPopulation = 0f; _instance._generation = Patrol.SceneGen;
-            _instance._gameInkAt = 0f;
-            _instance._gameMap=null;_instance._gameMapImage=null;_instance._mapCheat=null;_instance._nextMapScan=0f;_instance._mapWasOpen=false;
+            _instance._gameMap=null;
             _instance._nextRoadRefresh = 0f;
             _instance._routeTowns = int.MinValue;
             _instance.ResetFoot();
@@ -464,9 +463,10 @@ namespace WildWasteland.Modules.Patrols
             var loot = t.SpawnLoot;
             if (loot == null)
             {
-                var profile = EditorStore.Loot(t.IsTruck, t.LootPreset) ?? (t.IsTruck ? EditorStore.RollTruckLoot(() => UnityEngine.Random.value, t.SpawnCargoOptions) : null);
-                loot = profile != null ? profile.Roll(() => UnityEngine.Random.value) : new Dictionary<string, int>();
-                record.cargoKey = EditorStore.CargoTexture(loot, profile != null ? profile.TextureKey : "");
+                var api=Core.ModApi.Get<Core.ICargoLoot>();
+                string table=api!=null?api.Select(t.IsTruck,t.LootPreset,t.SpawnCargoOptions,()=>UnityEngine.Random.value):null;
+                loot=api!=null?api.Roll(table,()=>UnityEngine.Random.value):new Dictionary<string,int>();
+                record.cargoKey=api!=null?api.Texture(table):"none";
             }
             record.lootNames = loot.Keys.ToArray(); record.lootCounts = record.lootNames.Select(k => loot[k]).ToArray();
             return record;
@@ -563,7 +563,7 @@ namespace WildWasteland.Modules.Patrols
             a.Journey = journey.id; a.Slot = slot; a.Truck = journey.vehicles[slot].truck;
             EncounterCar.Attach(car,journey.id,journey.convoy||journey.merchant,car.GetComponent<EncounterCar>()?.Building==true);
             var marker = car.GetComponent<PatrolMarker>(); marker.TrafficId = journey.id; marker.TrafficSlot = slot;
-            var trailer = TrailerSupport.Attached(car);
+            var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null)
             {
                 var platform = trailer.GetComponent<TrafficPlatform>() ?? trailer.AddComponent<TrafficPlatform>();
@@ -584,7 +584,7 @@ namespace WildWasteland.Modules.Patrols
         {
             var marker = car.GetComponent<PatrolMarker>();
             if (marker != null) { marker.TrafficId = ""; marker.TrafficSlot = -1; }
-            var trailer = TrailerSupport.Attached(car);
+            var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null) Destroy(trailer.GetComponent<TrafficPlatform>());
             Destroy(car.GetComponent<TrafficAgent>());
         }
@@ -606,7 +606,7 @@ namespace WildWasteland.Modules.Patrols
                     var vehicleTemplate = i < 3 ? template : template.Trailer;
                     if (vehicleTemplate == null) continue;
                     Rider.Seat(marker.gameObject, marker, i, record.turrets[i], vehicleTemplate.TurretPos[i < 3 ? i : i - 3],
-                        i < 3 ? null : TrailerSupport.Attached(marker.gameObject),vehicleTemplate.TurretStanding[i<3?i:i-3], false);
+                        i < 3 ? null : Core.ModApi.Get<Core.IVehicleAttachments>().Attached(marker.gameObject),vehicleTemplate.TurretStanding[i<3?i:i-3], false);
                 }
                 ApplyState(marker.gameObject, record);
             }

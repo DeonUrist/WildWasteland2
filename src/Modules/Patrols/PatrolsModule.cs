@@ -98,7 +98,6 @@ namespace WildWasteland.Modules.Patrols
             Try("Traffic roads", TrafficRoads.Install);
             Scheduler.Sliced(this, "Traffic final terrain", 500, TrafficRoads.GroundStep);
             Try("Camp status", () => TrafficCamps.Install(this));
-            Try("Seated LOS guard", () => SeatedLosGuard.Install(this));
             Try("Suspension", () => Suspension.Install(this));
             Prefabs.Install(this);
             PatrolLoadPreparation.Install(this);
@@ -115,7 +114,7 @@ namespace WildWasteland.Modules.Patrols
             Try("War Rig", () => WarRig.WarRigFeature.Install(this, Path.Combine(DataDir, "WarRig")));
 
             // per-scene state (fresh start, or a restart after Shutdown)
-            Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); PickupCatalog.Invalidate(); ExitSpeed.Restore();
+            Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); PickupCatalog.Invalidate();
             _onSaveState = PatrolPersistence.OnStateChanged;
             SaveBus.StateChanged += _onSaveState;
 
@@ -145,7 +144,6 @@ namespace WildWasteland.Modules.Patrols
             Try("persistence reset", PatrolPersistence.Uninstall);
             Try("road cache flush", () => { TrafficRoads.Flush(); TrafficRoads.Uninstall(); });
             Try("War Rig", WarRig.WarRigFeature.Uninstall);
-            Try("exit speed", ExitSpeed.Restore);
             Try("coroutines", StopObjectCoroutines);
             PatrolPersistence.Runner = null;
             // destroying the runner object closes the editors (their OnDestroy releases the pause), the spot / merchant markers and the
@@ -218,7 +216,7 @@ namespace WildWasteland.Modules.Patrols
             // (WW perf) each with a predicate (built once here): IMGUI stops when none of them (and no other module) has anything to draw
             RegisterToolsGui();
             RegisterDeveloperSeatGui();
-            Scheduler.Gui(this, "Patrols.TrafficMap", DrawTraffic, TrafficGuiWanted);
+            Core.ModApi.Provide<Core.ITrafficMapSource>(this, this);
             RegisterDeveloperMerchantGui();
         }
 
@@ -231,7 +229,7 @@ namespace WildWasteland.Modules.Patrols
         // per-object coroutines (overheat, revive, bail-out timers, merchant setup) end with the module; the objects themselves stay
         static void StopObjectCoroutines()
         {
-            var types = new[] { typeof(Crew), typeof(Pilot), typeof(PassengerGuard), typeof(RiderGuard), typeof(Pose), typeof(MerchantHost), typeof(MerchantGuardHealth), typeof(TrafficActor) };
+            var types = new[] { typeof(Crew), typeof(Pilot), typeof(PassengerGuard), typeof(RiderGuard), typeof(MerchantHost), typeof(MerchantGuardHealth), typeof(TrafficActor) };
             foreach (var t in types)
                 foreach (var o in UnityEngine.Object.FindObjectsOfType(t))
                 {

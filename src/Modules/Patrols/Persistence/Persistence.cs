@@ -99,8 +99,8 @@ namespace WildWasteland.Modules.Patrols
             if (car.GetComponent<Ram.Sensor>() == null) car.AddComponent<Ram.Sensor>();
             marker._rams = rams;
             marker._bodyPrefab = bodyPrefab ?? "";
-            marker._driverPrefab = CrewAppearance.Identity(driver, driverPrefab) ?? "";
-            marker._passengerPrefab = CrewAppearance.Identity(passenger, passengerPrefab) ?? "";
+            marker._driverPrefab = CrewLooks.Identity(driver, driverPrefab) ?? "";
+            marker._passengerPrefab = CrewLooks.Identity(passenger, passengerPrefab) ?? "";
             marker._driver = driver;
             marker._passenger = passenger;
             return marker;
@@ -170,15 +170,15 @@ namespace WildWasteland.Modules.Patrols
                 faction=Faction,explodeChance=ExplodeChance,driverDied=DriverDied,driverBailed=DriverBailed,explodeRolled=ExplodeRolled,explodeSelected=ExplodeSelected,
                 battleId=GetComponent<BattleCar>()?.Battle??"",battleSide=GetComponent<BattleCar>()?.Side??0,battleSlot=GetComponent<BattleCar>()?.Slot??-1,
                 merchantJson=GetComponent<MerchantHost>()?.Snapshot()??"",
-                setupOnly=SetupOnly, riders=PatrolCrewDelta.Capture(this), trailerName=TrailerSupport.Attached(gameObject)?.name??"",
+                setupOnly=SetupOnly, riders=PatrolCrewDelta.Capture(this), trailerName=Core.ModApi.Get<Core.IVehicleAttachments>().Attached(gameObject)?.name??"",
                 ramTargets = _rams.ToString(),
                 positionX = p.x, positionY = p.y, positionZ = p.z,
-                driverPrefab = CrewAppearance.Identity(_driver, _driverPrefab),
+                driverPrefab = CrewLooks.Identity(_driver, _driverPrefab),
                 driverPresent = driverPresent,
                 driverHealth = driverHealth,
                 driverPhase = phase.ToString(),
                 seatedSeconds = crew != null ? crew.SeatedSeconds : 0f,
-                passengerPrefab = CrewAppearance.Identity(_passenger, _passengerPrefab),
+                passengerPrefab = CrewLooks.Identity(_passenger, _passengerPrefab),
                 passengerPresent = passengerPresent,
                 passengerHealth = passengerHealth,
                 playerEntered = PlayerEntered,
@@ -433,7 +433,7 @@ namespace WildWasteland.Modules.Patrols
             var factionMarker=car.GetComponent<PatrolMarker>();
             if(factionMarker!=null){factionMarker.Faction=TrafficFactions.Normalize(data.faction);factionMarker.ExplodeChance=data.explodeChance;factionMarker.DriverDied=data.driverDied;factionMarker.DriverBailed=data.driverBailed;factionMarker.ExplodeRolled=data.explodeRolled;factionMarker.ExplodeSelected=data.explodeSelected;TrafficFactions.Crew(car,factionMarker);}
             mk.PlayerEntered = data.playerEntered;
-            mk.SetupOnly=data.setupOnly;if(data.setupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Nwh.StopEngine(car);Patrol.Handbrake(car,true);}
+            mk.SetupOnly=data.setupOnly;if(data.setupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(car);Patrol.Handbrake(car,true);}
             MerchantRuntime.Restore(car,data.merchantJson);
             WorldTraffic.BindRestored(mk, data.riders == null);
             WorldTraffic.BindBattle(mk,data);

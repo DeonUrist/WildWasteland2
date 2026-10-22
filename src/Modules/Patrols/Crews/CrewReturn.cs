@@ -315,7 +315,7 @@ namespace WildWasteland.Modules.Patrols
                 }
                 else
                 {
-                    var host = m.Slot >= PatrolMarker.VehicleTurretSlots ? TrailerSupport.Attached(g.Car) : g.Car;
+                    var host = m.Slot >= PatrolMarker.VehicleTurretSlots ? Core.ModApi.Get<Core.IVehicleAttachments>().Attached(g.Car) : g.Car;
                     seat = host != null && m.LocalPos != null && m.LocalPos.Length == 3 ? host.transform.TransformPoint(new Vector3(m.LocalPos[0], m.LocalPos[1], m.LocalPos[2])) : ct.position;
                 }
                 if (rear != null) world = rear.position - ct.forward * exit;
@@ -356,7 +356,7 @@ namespace WildWasteland.Modules.Patrols
             else
             {
                 GameObject platform = null;
-                if (m.Slot >= PatrolMarker.VehicleTurretSlots) { platform = TrailerSupport.Attached(car); if (platform == null) { Leave(g, m, "trailer gone"); return; } }
+                if (m.Slot >= PatrolMarker.VehicleTurretSlots) { platform = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car); if (platform == null) { Leave(g, m, "trailer gone"); return; } }
                 if (m.Slot < 0 || m.Slot >= marker.Riders.Length || marker.Riders[m.Slot] != null) { Leave(g, m, "turret spot taken"); return; }
                 var oldAnchor = marker.RiderAnchors[m.Slot];
                 if (oldAnchor != null) Object.Destroy(oldAnchor.gameObject);

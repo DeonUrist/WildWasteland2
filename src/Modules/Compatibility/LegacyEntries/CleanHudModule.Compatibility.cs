@@ -1,12 +1,12 @@
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// Compatibility part of the old CleanHUD entry (Wave A split). Since B17 the bridges belong to the Compatibility module and these
     /// methods are empty, except the Apocasaver presentation install that needs the HUD's own loading screen. Wave C deletes them.
     /// </summary>
-    public sealed partial class CleanHudModule
+    public sealed partial class HudModule
     {
         /// <summary>Empty (B17): the Apocapocket reader and the ChaseCamera observer are installed by their Compatibility bridges.</summary>
         partial void InitCompatibilityEarly() { }

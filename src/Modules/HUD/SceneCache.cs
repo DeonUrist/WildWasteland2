@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using WildWasteland.Core;
 using UnityEngine;
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>HUD-specific controls/map observations over the shared Core world and FSM indexes.</summary>
     internal static class SceneCache
@@ -21,7 +21,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static void Reset()
         {
             Clear(); SceneLookup.Ensure(); KeyCatalog.SceneReset();
-            _icons = WorldIndex.WatchName(CleanHudModule.Instance, "mapIcon", ObserveIcon);
+            _icons = WorldIndex.WatchName(HudModule.Instance, "mapIcon", ObserveIcon);
         }
         /// <summary>Observes map icons from the common world walker.</summary>
         private static void ObserveIcon(Transform transform, string name, Component component) { LocationMarkers.Observe(transform); }
@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static void BeginKeys()
         {
             var disposable = _keys as IDisposable; if (disposable != null) disposable.Dispose();
-            FsmIndex.Track(CleanHudModule.Instance, null); KeyCatalog.BeginFsms(); KeysReady = false; _keys = DiscoverKeys();
+            FsmIndex.Track(HudModule.Instance, null); KeyCatalog.BeginFsms(); KeysReady = false; _keys = DiscoverKeys();
         }
         /// <summary>Visits one control-state inspection at a time under the existing sliced HUD job.</summary>
         internal static bool Step()

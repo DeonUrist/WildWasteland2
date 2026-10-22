@@ -49,6 +49,7 @@ namespace WildWasteland.Modules.Patrols
         /// </summary>
         private static bool StepCore()
         {
+            if (ModApi.Get<IVehicleAssembly>()==null || ModApi.Get<IVehicleDrive>()==null || ModApi.Get<IVehicleAttachments>()==null) return false;
             if (Scheduler.FrameMs >= Scheduler.FrameBudgetMs) return false;
             if (_active == null)
             {

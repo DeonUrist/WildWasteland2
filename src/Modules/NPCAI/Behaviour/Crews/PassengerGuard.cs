@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.Patrols
         private GameObject[] _meleeWeapons;
         private Renderer[] _meleeRenderers = new Renderer[0];
         private Collider[] _meleeColliders = new Collider[0];
-        private Pose _pose;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+        private WildWasteland.Core.ICrewSeatPose _pose;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         private bool _rangedPrefab, _ranged, _targetDiagnosticLogged, _targetAcquired;
         // target sources, resolved once by reflection (was: every frame): FsmGameObject variables and action fields whose
         // name suggests a target, with their score
@@ -181,7 +181,7 @@ namespace WildWasteland.Modules.Patrols
             if (passenger == null) return false;
             string name = passenger.name;
             int suffix = name.IndexOf('('); if (suffix >= 0) name = name.Substring(0, suffix);
-            name = CrewAppearance.BasePrefab(name);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+            name = CrewLooks.BasePrefab(name);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
             if (Array.FindIndex(RangedHumans, n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase)) < 0) return false;
             bool wait = Array.Exists(passenger.GetComponents<PlayMakerFSM>(), f => f.FsmName == "RangedAttackWait");
             return wait && Patrol.FindChild(passenger.transform, "AttackRaycast_Ranged") != null;

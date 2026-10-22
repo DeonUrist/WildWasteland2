@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.Patrols
                 if (m != null && m.TemplateName == "Abandoned War Rig" && m.SetupOnly)
                 {
                     var body = pc.GetComponent<Rigidbody>();
-                    if (body != null && Vector3.ProjectOnPlane(body.velocity, Vector3.up).sqrMagnitude > 1f && Nwh.EngineRunning(pc))
+                    if (body != null && Vector3.ProjectOnPlane(body.velocity, Vector3.up).sqrMagnitude > 1f && Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(pc))
                     { m.SetupOnly = false; Core.Log.Always("[Patrols] War Rig truck driven by player: normal native car cleanup now applies; tanker remains protected."); }
                 }
             }
@@ -97,7 +97,7 @@ namespace WildWasteland.Modules.Patrols
             var car = m.gameObject;
             if (WarRig.PoiEncounter.Protected(car)) return;
             PatrolsModule.Verbose("Cleanup: removed " + car.name + " (" + why + ")");
-            var trailer = TrailerSupport.Attached(car);
+            var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null)
             {
                 if (trailer.GetComponent<WarRig.WarRigUnit>() != null) WarRig.PoiEncounter.DetachTankers(car);

@@ -10,13 +10,12 @@ using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
-    public sealed partial class CleanHudModule : ModuleBase, IVehicleStatusDisplay, ICompassMarkers
+    public sealed partial class HudModule : IVehicleStatusDisplay, ICompassMarkers
     {
-        internal static CleanHudModule Instance;
         internal const string GUID = "com.denis.apocalypter.cleanhud";
-        internal static ConfigEntry<bool> Enabled, ShowNeeds, ShowHealthNumbers, ShowInsanity, MenuEnabled, CleanFont, EnableCheats;
+        internal static ConfigEntry<bool> CleanHudEnabled, ShowNeeds, ShowHealthNumbers, ShowInsanity, MenuEnabled, CleanFont, EnableCheats;
         internal static ConfigEntry<float> Scale;
         internal static ConfigEntry<bool> ShowConvoys, ShowLocations;
         internal static ConfigEntry<bool> SimpleMapIcons;
@@ -27,23 +26,20 @@ namespace WildWasteland.Modules.CleanHUD
         internal static ConfigEntry<bool> FogOfWar;
         internal static ConfigEntry<float> FogRadius, FogEdge, FogOpacity, BinocularZoom;
         internal static LayoutFile Layout;
-        private Hud _hud;
+        private HudView _hud;
         private Menu _menu;
         private LoadingScreen _loadingScreen;
-        private QuestMap _questMap;
+        private MapMarkers _questMap;
         private float _retry;
         private Job _attach;
         internal static bool Running;
         private static readonly Dictionary<string, float> _throttle = new Dictionary<string, float>();
 
-        public override string Id { get { return "CleanHUD"; } }
-        public override string DisplayName { get { return "Clean HUD & menus"; } }
-        public override string[] ConflictsWith { get { return new[] { GUID }; } }
 
-        public override void BindConfig(ModuleConfig cfg)
+        private void BindCleanConfig(ModuleConfig cfg)
         {
             Instance = this;
-            Enabled = cfg.Player("HUD", "HUD", true, "Replace the native HUD. Off restores it immediately.");
+            CleanHudEnabled = cfg.Player("", "Clean HUD", true, "Replace the native HUD. Off restores it immediately.");
             ShowNeeds = cfg.Player("HUD", "ShowNeeds", true, "Show water, food and sleep beneath HP and armor.");
             ShowHealthNumbers = cfg.Player("HUD", "ShowHealthNumbers", true, "Show HP and armor values inside their bars.");
             ShowInsanity = cfg.Player("HUD", "ShowInsanity", true, "Show insanity in the top right while above zero.");
@@ -70,19 +66,19 @@ namespace WildWasteland.Modules.CleanHUD
             // Shared accent/font entries are bound once by Core UI before module binding.
             EnableCheats = cfg.Player("Menu", "EnableCheats", false, "Add the game's cheat controls to the menu settings.");
             Scale = cfg.Player("HUD", "Scale", 1f, "HUD scale; each panel grows away from its screen edge.", new AcceptableValueRange<float>(0.5f, 1.5f));
-            Enabled.SettingChanged += HudChanged;
+            CleanHudEnabled.SettingChanged += HudChanged;
             MenuEnabled.SettingChanged += MenuChanged;
             MapEnabled.SettingChanged += MapChanged;
         }
 
-        public override void Init()
+        private void InitClean()
         {
             Running = true; _retry = 0; _throttle.Clear();
             InitCoreTheme();
             InitCompatibilityEarly();
             MessageHook.Clear(); Bindings.Clear(); Menu.BlockCancelFrame = -1;
-            var dir = Core.Assets.ModuleConfigDir(Id);
-            Core.TunedSettings.InstallProfiles("CleanHUD");
+            var dir = Core.Assets.ModuleConfigDir("HUD");
+            Core.TunedSettings.InstallProfiles("HUD");
             Layout = new LayoutFile(Path.Combine(dir, "layout.json"));
             Layout.Poll(true);
             InitCoreAssets();
@@ -93,13 +89,14 @@ namespace WildWasteland.Modules.CleanHUD
             LocationMarkers.Init();
             MapFog.Init();
             _loadingScreen = new LoadingScreen();
+            ModEvents.Subscribe<Core.Events.SavePresentation>(this, SavePresented);
             InitCompatibilityApocasaver();
             _menu = new Menu(_loadingScreen);
             InitCoreUpdateCheck();
             SaveBus.StateChanged += _loadingScreen.StateChanged;
             Services.VehicleStatus = this;
             Services.Compass = this;
-            _questMap = new QuestMap(); Services.Map = _questMap;
+            _questMap = new MapMarkers(); Services.Map = _questMap;
             InitCompatibilityTalk();
             QuestNotifications.Install(this);
             QuestTracker.Install(this);
@@ -131,6 +128,8 @@ namespace WildWasteland.Modules.CleanHUD
             Core.Log.Always("[CleanHUD] CleanHUD 1.5.1 integrated; layout: " + Layout.Path);
         }
 
+        /// <summary>Forwards save phase changes to HUD-owned loading presentation.</summary>
+        private void SavePresented(ref Core.Events.SavePresentation presentation) { if (_loadingScreen != null) _loadingScreen.Present(ref presentation); }
         private readonly WeatherMap _weatherMap = new WeatherMap();
         private void TickWeatherMap() { _weatherMap.Tick(_questMap); }
         private void PollLayout() { Layout.Poll(false); }
@@ -140,13 +139,13 @@ namespace WildWasteland.Modules.CleanHUD
         {
             AttachCompatibility();
             if (!KeyCatalog.ScanStarted) KeyCatalog.StartScan();
-            if (!Enabled.Value || Time.unscaledTime < _retry) return;
+            if (!CleanHudEnabled.Value || Time.unscaledTime < _retry) return;
             if (_hud != null && !_hud.Valid) Release();
-            if (_hud == null) _hud = Hud.TryCreate(Layout);
+            if (_hud == null) _hud = HudView.TryCreate(Layout);
         }
         private void TickHud()
         {
-            if (!Enabled.Value) return;
+            if (!CleanHudEnabled.Value) return;
             if (_hud != null && !_hud.Valid) Release();
             if (_hud == null) return;
             try { _hud.Tick(); }
@@ -155,11 +154,11 @@ namespace WildWasteland.Modules.CleanHUD
         private void Release() { if (_hud != null) { _hud.Dispose(); _hud = null; } }
         public bool TryShow(bool ignitionOff, bool handbrakeOn, bool playing, string volume)
         {
-            if (!Running || !Enabled.Value || _hud == null || !_hud.Valid) return false;
+            if (!Running || !CleanHudEnabled.Value || _hud == null || !_hud.Valid) return false;
             _hud.SetVehicleStatus(ignitionOff, handbrakeOn, playing, volume);
             return true;
         }
-        bool ICompassMarkers.VehiclesEnabled { get { return Running && Enabled.Value && ShowCompass.Value && ShowConvoys.Value; } }
+        bool ICompassMarkers.VehiclesEnabled { get { return Running && CleanHudEnabled.Value && ShowCompass.Value && ShowConvoys.Value; } }
         int ICompassMarkers.Add(string owner, Func<Vector3> position, string icon, Color color)
         { return Api.Compass.Add(owner, position, new Api.Marker { Icon = icon, Color = color, ShowDistance = true, MaxDistance = owner == "WildWasteland.VehicleGroups" ? 1000f : 0f }); }
         bool ICompassMarkers.Exists(int id) { return Api.Compass.Exists(id); }
@@ -169,7 +168,7 @@ namespace WildWasteland.Modules.CleanHUD
         private void HudChanged(object sender, EventArgs args)
         {
             if (!Running) return;
-            if (!Enabled.Value) Release(); else if (_attach != null) _attach.RunNow();
+            if (!CleanHudEnabled.Value) Release(); else if (_attach != null) _attach.RunNow();
             if (_questMap != null) _questMap.FindMap();
         }
         private void MenuChanged(object sender, EventArgs args)
@@ -178,7 +177,7 @@ namespace WildWasteland.Modules.CleanHUD
             if (_menu != null) _menu.Teardown();
             if (_loadingScreen != null) _loadingScreen.End();
         }
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        private void SceneLoadedClean(Scene scene, LoadSceneMode mode)
         {
             _weatherMap.Clear();
             Binoculars.Reset();
@@ -190,10 +189,10 @@ namespace WildWasteland.Modules.CleanHUD
             _loadingScreen.SceneLoaded();
             _retry = 0; _attach.RunNow();
         }
-        public override void OnLoadBegin(string slot) { VantageDiscovery.Reset(); VistasBanners.Reset(); InventoryStyle.Restore(); LocationMarkers.Begin(false); MapFog.Reset(); QuestJournal.Hide(); _loadingScreen.Begin(); Release(); Bindings.Clear(); MessageHook.Clear(); Assets.SceneLoaded(); }
-        public override void OnOriginShift(Vector3 delta) { MapFog.OriginShifted(); VantageDiscovery.OriginShifted(delta); }
-        public override void OnWorldReady() { LocationMarkers.WorldReady(SaveBus.Slot); WorldReadySaves(); WorldReadyCore(); _attach.RunNow(); }
-        public override void Shutdown()
+        private void LoadBeginClean(string slot) { VantageDiscovery.Reset(); VistasBanners.Reset(); InventoryStyle.Restore(); LocationMarkers.Begin(false); MapFog.Reset(); QuestJournal.Hide(); _loadingScreen.Begin(); Release(); Bindings.Clear(); MessageHook.Clear(); Assets.SceneLoaded(); }
+        private void OriginShiftClean(Vector3 delta) { MapFog.OriginShifted(); VantageDiscovery.OriginShifted(delta); }
+        private void WorldReadyClean() { LocationMarkers.WorldReady(SaveBus.Slot); WorldReadySaves(); WorldReadyCore(); _attach.RunNow(); }
+        private void ShutdownClean()
         {
             ShutdownCompatibilityEarly();
             _weatherMap.Clear();
@@ -267,9 +266,9 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Saves: fog-of-war sidecar read at world ready.</summary>
         partial void WorldReadySaves();
 
-        public override IEnumerable<ToolPage> ToolPages()
+        private IEnumerable<ToolPage> CleanToolPages()
         {
-            yield return new ConfigPage(this, ToolGroups.Weapons, "Clean HUD & menus", Config.Main, "CleanHUD / HUD", "CleanHUD / Menu");
+            yield return new ConfigPage(this, ToolGroups.Weapons, "Clean HUD & menus", Config.Main, "HUD / HUD", "HUD / Menu");
         }
         internal static void Log(string s) { Core.Log.Always("[CleanHUD] " + s); }
         internal static void Warn(string s) { Core.Log.Warn("[CleanHUD] " + s); }

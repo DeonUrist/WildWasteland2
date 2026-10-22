@@ -1,5 +1,5 @@
 using WildWasteland.Core;
-using WildWasteland.Modules.CleanHUD;
+using WildWasteland.Modules.HUD;
 using WildWasteland.Modules.PlayerBody;
 
 namespace WildWasteland.Modules.Compatibility
@@ -23,6 +23,7 @@ namespace WildWasteland.Modules.Compatibility
             ChaseCameraHud.Install(scope);
             _hudInstall = Scheduler.Interval(scope, "Compatibility.ChaseCamera.HudInstall", 1f, InstallHud);
             ModApi.Provide<IDrivingTelemetry>(scope, new ChaseCameraTelemetry());
+            ModApi.Provide<IDrivingHud>(scope, new DrivingHudAdapter());
         }
 
         /// <summary>Retries the HUD observer until the mod's plugin instance exists (the HUD attach job used to retry it), then stops.</summary>
@@ -35,7 +36,7 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Withdraws the telemetry, unbinds the mod from the player body and clears the HUD observer.</summary>
         internal static void Shutdown()
         {
-            if (_scope != null) ModApi.Withdraw<IDrivingTelemetry>(_scope);
+            if (_scope != null) { ModApi.Withdraw<IDrivingTelemetry>(_scope); ModApi.Withdraw<IDrivingHud>(_scope); }
             ChaseCameraHud.Clear(); ChaseCameraCompat.Clear();
             _hudInstall = null; _scope = null;
         }

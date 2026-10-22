@@ -11,7 +11,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// ChaseCamera (local.apocalypter.chasecamera) part serving the HUD: observes the mod's own driving snapshot (transpiler on
@@ -148,14 +148,14 @@ namespace WildWasteland.Modules.CleanHUD
             Speed = speed; Rpm = rpm; Fraction = fraction; _selected = selected; _vehicle = vehicle; _frame = Time.frameCount;
         }
         /// <summary>HUD driving-panel update (every frame while the HUD runs): applies the visibility gates and captures this frame's snapshot.</summary>
-        internal static bool Refresh()
+        internal static bool Refresh(bool thirdPersonOnly = false)
         {
             if (!_ready) return Unavailable("bridge unavailable");
             if (!((ConfigEntry<bool>)_enabled).Value || !((ConfigEntry<bool>)_hudEnabled).Value) return Unavailable("disabled");
             if (!Core.GameRefs.InGame) return Unavailable("game gate");
             if (Core.ApocasetterBridge.InputBlocked || !Application.isFocused) return Unavailable("input/focus gate");
             if (!_resolve()) { _owner = null; _drivingVehicle = null; return Unavailable("driving binding"); }
-            if (CleanHudModule.DrivingHudOnlyThirdPerson.Value && !_thirdPerson()) return Unavailable("first person view"); // refs-ok: REFACTOR-REQUEST B17-7
+            if (thirdPersonOnly && !_thirdPerson()) return Unavailable("first person view"); // refs-ok: REFACTOR-REQUEST B17-7
             // Camera scope/binocular state can remain latched until ESC; it does not own vehicle instrument visibility.
             var car = _car();
             if (_owner != car) { _owner = car; _drivingVehicle = null; _nextVehicleSearch = 0; }

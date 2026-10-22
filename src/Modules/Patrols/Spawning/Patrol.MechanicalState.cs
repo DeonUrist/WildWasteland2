@@ -80,6 +80,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Coroutine: the game's own ignition (START FSM Ignition -> Start), the ignition provider first, NWH StartEngine as a fallback; stops when the car became a wreck.</summary>
         internal static IEnumerator StartUp(GameObject car, bool loading = false)
         {
+            if (Core.ModApi.Get<Core.IVehicleDrive>()==null) yield break;
             if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;
             var ignition = ModApi.Get<IVehicleIgnition>();
             if (ignition != null && ignition.TryStart(car)) { if (!loading) yield return new WaitForSeconds(1.5f); yield break; }
@@ -92,17 +93,17 @@ namespace WildWasteland.Modules.Patrols
             yield return null;
             if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;   // blew up mid-start: no more ignition
             start.Fsm.SetState("Start");
-            if (loading) { Nwh.StartEngine(car); yield break; } // native physics will spin it up at handoff; no scaled-time wait while loading
+            if (loading) { Core.ModApi.Get<Core.IVehicleDrive>().StartEngine(car); yield break; } // native physics will spin it up at handoff; no scaled-time wait while loading
             yield return new WaitForSeconds(1.5f);
             if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;
-            bool running = Nwh.EngineRunning(car);
+            bool running = Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(car);
             if (Log.L2) Deep("START state: " + start.ActiveStateName + "  engine running: " + running);
             if (!running)
             {
-                Nwh.StartEngine(car);
+                Core.ModApi.Get<Core.IVehicleDrive>().StartEngine(car);
                 yield return new WaitForSeconds(1f);
                 if (Explode.IsWreck(car)) yield break;
-                if (Log.L2) Deep("After NWH StartEngine(): running=" + Nwh.EngineRunning(car) + "  START state: " + start.ActiveStateName);
+                if (Log.L2) Deep("After NWH StartEngine(): running=" + Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(car) + "  START state: " + start.ActiveStateName);
             }
         }
 
@@ -193,7 +194,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Moves the given handbrake lever FSM through its click states (or NWH input.Handbrake without a lever).</summary>
         internal static void Handbrake(GameObject car, bool on, PlayMakerFSM f)
         {
-            if (f == null) { Log.Warn(PatrolsModule.Instance, "No handbrake/Handbrake FSM; setting NWH input.Handbrake only"); Nwh.SetHandbrake(car, on ? 1f : 0f); return; }
+            if (f == null) { Log.Warn(PatrolsModule.Instance, "No handbrake/Handbrake FSM; setting NWH input.Handbrake only"); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(car, on ? 1f : 0f); return; }
             string cur = f.Fsm.Initialized ? f.ActiveStateName : "";
             bool isOn = cur == "HandbrakeOn" || cur == "over" || cur == "Sound 2" || cur == "";
             if (on == isOn) { if (Log.L2) Deep("Handbrake already " + (on ? "on" : "off") + " (" + cur + ")"); return; }

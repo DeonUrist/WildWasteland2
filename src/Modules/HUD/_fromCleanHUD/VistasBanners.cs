@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal static class VistasBanners
     {
@@ -13,12 +13,14 @@ namespace WildWasteland.Modules.CleanHUD
         private static RectTransform _panel;
         private static string _pendingName, _pendingDetail;
         private static float _until;
-        internal static void Init(CleanHudModule owner)
+        static IPlaceBanners _source;
+        internal static void Init(HudModule owner)
         {
-            VistasWorldGen.PlaceEntered += Entered; VistasWorldGen.CleanBanners = Enabled;
+            ModApi.Changed += ProviderChanged;
+            BindSource();
             Scheduler.EveryFrame(owner, "Vistas place banners", Tick, Phase.LateUpdateLast);
         }
-        private static bool Enabled() { return CleanHudModule.Running && CleanHudModule.Enabled.Value; }
+        private static bool Enabled() { return HudModule.Running && HudModule.CleanHudEnabled.Value; }
         private static void Entered(string name, string detail)
         {
             if (!Enabled()) return;
@@ -31,7 +33,7 @@ namespace WildWasteland.Modules.CleanHUD
             var scaler = _root.GetComponent<CanvasScaler>(); scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080); scaler.matchWidthOrHeight = .5f;
             _group = _root.GetComponent<CanvasGroup>(); _group.interactable = _group.blocksRaycasts = false;
-            var panel = DialogueWidgets.Rect(_root.transform, "place", 0, VistasWorldGen.BannerHeight * 1080f, 960, 110); _panel = panel;
+            var panel = DialogueWidgets.Rect(_root.transform, "place", 0, (_source != null ? _source.Height : .15f) * 1080f, 960, 110); _panel = panel;
             panel.anchorMin = panel.anchorMax = new Vector2(.5f, 1); panel.pivot = new Vector2(.5f, 1);
             var line = DialogueWidgets.Rect(panel, "accent", 180, 94, 600, 3).gameObject.AddAccent<Image>(); line.color = DialogueWidgets.Gold;
             _name = DialogueWidgets.Text(panel, "name", 0, 0, 960, 58, 42, DialogueWidgets.Gold, ""); _name.Align = TextAnchor.MiddleCenter;
@@ -45,11 +47,16 @@ namespace WildWasteland.Modules.CleanHUD
             if (_root == null) return;
             if (_root.activeSelf != shown) _root.SetActive(shown);
             if (!shown) return;
-            _panel.anchoredPosition = new Vector2(0, -VistasWorldGen.BannerHeight * 1080f);
+            _panel.anchoredPosition = new Vector2(0, -(_source != null ? _source.Height : .15f) * 1080f);
             _name.Set(_pendingName); _detail.Set(_pendingDetail);
             _group.alpha = Mathf.Min(Mathf.Clamp01((_until - Time.unscaledTime) / .75f), Mathf.Clamp01((Time.unscaledTime - _until + 5f) / .3f));
         }
         internal static void Reset() { _until = 0; if (_root != null) UnityEngine.Object.Destroy(_root); _root = null; }
-        internal static void Shutdown() { VistasWorldGen.PlaceEntered -= Entered; VistasWorldGen.CleanBanners = null; Reset(); }
+        /// <summary>Unsubscribes event sources before the HUD releases its display.</summary>
+        internal static void Shutdown() { ModApi.Changed -= ProviderChanged; if (_source != null) _source.Entered -= Entered; _source = null; Reset(); }
+        /// <summary>Rebinds when the optional generator bridge changes.</summary>
+        static void ProviderChanged(System.Type type) { if (type == typeof(IPlaceBanners)) BindSource(); }
+        /// <summary>Uses the currently enabled banner source and releases the previous one.</summary>
+        static void BindSource() { if (_source != null) _source.Entered -= Entered; _source = ModApi.Get<IPlaceBanners>(); if (_source != null) _source.Entered += Entered; }
     }
 }

@@ -12,11 +12,19 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Quests
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>Quests engine, HUD part (Wave A, from Quests/Plugin.cs; B10 IQuestPresentation fallback): the IMGUI tracker, quest log window (Talk window skin) and toasts drawn when CleanHUD does not style them, and the pause check they use.</summary>
-    internal sealed partial class Plugin : EngineSettings
+    internal sealed partial class QuestFallbackView
     {
+        private IQuestApi Api { get { return ModApi.Get<IQuestApi>(); } }
+        private IQuestFallbackData Data { get { return ModApi.Get<IQuestFallbackData>(); } }
+        private IQuestPresentation Styled { get { return ModApi.Get<IQuestPresentation>(); } }
+        private bool TrackerStyled { get { return Styled != null && Styled.Tracker; } }
+        private bool JournalStyled { get { return Styled != null && Styled.Journal; } }
+        private bool DialogueStyled { get { return Styled != null && Styled.Conversation; } }
+        internal bool Wanted() { var api = Api; var data = Data; return api != null && api.Ready && (api.JournalOpen || api.TrackerEnabled || api.Conversation.Open || !string.IsNullOrEmpty(api.Conversation.Prompt) || (data != null && data.NoticeCount > 0)); }
+        internal void Render() { if (!Wanted()) return; Draw(); DrawConversation(); }
         static bool GamePaused() { return Time.timeScale < 0.01f || (Cursor.visible && Cursor.lockState != CursorLockMode.Locked); }
 
         GUIStyle trackStyle, toastStyle, panelStyle, titleStyle;
@@ -46,7 +54,7 @@ namespace WildWasteland.Modules.Quests
             if (windowStyle == null && Time.unscaledTime >= nextSkinTry)
             {
                 nextSkinTry = Time.unscaledTime + 2f;
-                if (bridge.WindowSkin(out tex, out border))
+                if (Data != null && Data.WindowSkin(out tex, out border))
                 {
                     windowStyle = new GUIStyle();
                     windowStyle.normal.background = tex;
@@ -61,7 +69,7 @@ namespace WildWasteland.Modules.Quests
             }
             else
             {
-                GUI.color = TalkBridge.TalkFallbackColor;
+                GUI.color = new Color(.26f, .19f, .14f, .96f);
                 GUI.DrawTexture(box, Texture2D.whiteTexture);
             }
             GUI.color = old;
@@ -78,7 +86,7 @@ namespace WildWasteland.Modules.Quests
 
         internal void Draw()
         {
-            if (!ready) return;
+            var api = Api; if (api == null || !api.Ready) return;
             EnsureStyles();
             Matrix4x4 oldMatrix = GUI.matrix;
             try
@@ -88,30 +96,30 @@ namespace WildWasteland.Modules.Quests
                 float vw = Screen.width / s;
 
                 bool paused = GamePaused();              // the pause menu (and the talk window) stop the clock
-                if (!TrackerStyled && showTracker.Value && trackerLines.Count > 0 && !showLog && !paused)
+                if (!TrackerStyled && api.TrackerEnabled && api.Rows.Count > 0 && !api.JournalOpen && !paused)
                 {
                     float y = 24f;
-                    for (int i = 0; i < trackerLines.Count && i < 5; i++, y += 26f)
-                        Shadowed(new Rect(vw - 760f, y, 740f, 26f), trackerLines[i], trackStyle);
+                    for (int i = 0; i < api.Rows.Count && i < 5; i++, y += 26f)
+                        Shadowed(new Rect(vw - 760f, y, 740f, 26f), api.Rows[i].Text, trackStyle);
                 }
 
-                if (showLog && !JournalStyled && !paused)
+                if (api.JournalOpen && !JournalStyled && !paused)
                 {
                     var box = new Rect(vw / 2f - 400f, 150f, 800f, 620f);
                     DrawWindow(box);
                     panelStyle.normal.textColor = Color.white;
                     titleStyle.normal.textColor = Color.white;
-                    GUI.Label(new Rect(box.x + 36f, box.y + 28f, 730f, 40f), "Quests   (" + book.TotalDone + " completed)", titleStyle);
-                    GUI.Label(new Rect(box.x + 36f, box.y + 78f, 730f, 510f), logText, panelStyle);
+                    GUI.Label(new Rect(box.x + 36f, box.y + 28f, 730f, 40f), "Quests   (" + api.Completed + " completed)", titleStyle);
+                    GUI.Label(new Rect(box.x + 36f, box.y + 78f, 730f, 510f), api.JournalText, panelStyle);
                 }
 
                 float ty = 120f;
-                for (int i = toasts.Count - 1; i >= 0; i--)
+                var data = Data;
+                if (data != null) for (int i = 0; i < data.NoticeCount; i++)
                 {
-                    if (Time.unscaledTime > toasts[i].Until) { toasts.RemoveAt(i); continue; }
+                    if (Time.unscaledTime > data.NoticeUntil(i)) continue;
+                    Shadowed(new Rect(vw / 2f - 500f, ty, 1000f, 34f), data.NoticeText(i), toastStyle); ty += 34f;
                 }
-                for (int i = 0; i < toasts.Count; i++, ty += 34f)
-                    Shadowed(new Rect(vw / 2f - 500f, ty, 1000f, 34f), toasts[i].Text, toastStyle);
             }
             finally { GUI.matrix = oldMatrix; }
         }

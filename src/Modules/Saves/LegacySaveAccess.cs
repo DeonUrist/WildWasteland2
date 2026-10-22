@@ -29,10 +29,6 @@ namespace WildWasteland.Core
     [Obsolete("refactor: use ISaves / SavePresentation events and Core PlayerState")]
     internal static partial class SaveRuntime
     {
-        /// <summary>HUD part: registers the full-screen saving overlay GUI job (implemented in HUD/_fromCore/SaveRuntime.HUD.cs).</summary>
-        static partial void InstallHud(IModule owner);
-        /// <summary>Registers the HUD saving overlay under the Saves owner, exactly as the old SaveRuntime.Install did.</summary>
-        internal static void InstallPresentation(IModule owner) { InstallHud(owner); }
         /// <summary>Validates the existing WW2 native/named slot file identity without changing accepted formats.</summary>
         internal static bool IsSaveFile(string file) { return Modules.Saves.SaveRuntime.IsSaveFile(file); }
         /// <summary>Computes player distance, returning infinity when the player is absent.</summary>
@@ -51,22 +47,4 @@ namespace WildWasteland.Core
         internal static void Load(string file) { Modules.Saves.SinglePlayerSaving.Load(file); }
     }
 
-    /// <summary>Deprecated autosave countdown state mirrored for the HUD drawing partial (SaveWarning.HUD.cs, B10).</summary>
-    [Obsolete("refactor: subscribe to the SavePresentation event (Operation = Idle carries the countdown text)")]
-    internal static partial class SaveWarning
-    {
-        static byte _phase;
-        static int _seconds;
-        static string _text;
-        /// <summary>HUD part: registers the countdown GUI job (implemented in HUD/_fromCore/SaveWarning.HUD.cs).</summary>
-        static partial void InstallHud(IModule owner);
-        /// <summary>Registers the countdown drawing under the Saves owner, as the old SaveWarning.Install did.</summary>
-        internal static void Install(IModule owner) { InstallHud(owner); }
-        /// <summary>Copies the current countdown phase, seconds and text from the Saves warning state.</summary>
-        internal static void Mirror(byte phase, int seconds, string text) { _phase = phase; _seconds = seconds; _text = text; }
-        /// <summary>Hides the countdown (no local world).</summary>
-        static void Clear() { _phase = 0; _text = null; }
-        /// <summary>GUI predicate: true while a phase is shown.</summary>
-        static bool Wants() { return _phase != 0; }
-    }
 }

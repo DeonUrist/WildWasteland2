@@ -37,6 +37,7 @@ namespace WildWasteland.Modules.Quests
         {
             ModApi.Provide<IQuestDiagnosticSource>(owner, new QuestDiagnosticSource());
             _saveOwner = owner;
+            ModApi.Provide<IQuestFallbackData>(owner, this);
             I = this; logStarted = true; logged.Clear(); DataDir = owner.Dir; _generation++;
             foreach (var file in QuestContent.Import(DataDir)) Core.Log.Always("[Quests] imported missing content: " + file);
             ApplyTakeoverSettings(); ApplyFactionSettings(); ParseGenTypes();
