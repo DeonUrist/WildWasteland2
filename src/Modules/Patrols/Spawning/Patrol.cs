@@ -251,7 +251,7 @@ namespace WildWasteland.Modules.Patrols
                 var marker = PatrolMarker.Attach(car, body.name, tpl.Driver, driver, tpl.Passenger, passenger, tpl.Rams);
                 marker.CargoKey = lootKey ?? "";
                 marker.TemplateName = tpl.Name;
-                marker.SetupOnly=tpl.SetupOnly;if(tpl.SetupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Nwh.StopEngine(car);Handbrake(car,true);foreach(var person in new[]{driver,passenger})if(person!=null)Crew.MuteAi(person);}
+                marker.SetupOnly=tpl.SetupOnly;if(tpl.SetupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(car);Handbrake(car,true);foreach(var person in new[]{driver,passenger})if(person!=null)Crew.MuteAi(person);}
                 MerchantRuntime.Attach(car,tpl);
                 marker.Faction=TrafficFactions.Normalize(tpl.Faction);marker.ExplodeChance=tpl.ExplodeChance;
                 TrafficFactions.Crew(car,marker);

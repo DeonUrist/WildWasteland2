@@ -229,7 +229,7 @@ namespace WildWasteland.Modules.Patrols
                     if(generation!=Patrol.SceneGen||!PatrolsModule.ConvoyEnabled.Value||!_battles.Contains(battle)){Cleanup.Remove(car.GetComponent<PatrolMarker>(),"cancelled battle build");return;}
                     live.Cars[side+":"+index]=car;BattleAttach(car,battle,side,index);
                     var record=(side==0?battle.sideA:battle.sideB)[index];ApplyState(car,record);
-                    if(battle.resolved){Nwh.StopEngine(car);Nwh.SetHandbrake(car,1f);Patrol.Handbrake(car,true);if((side==0?battle.wreckA:battle.wreckB)[index])Explode.BattleWreck(car);SpawnBattleCorpses(original??template,car,live);}
+                    if(battle.resolved){Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(car);Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(car,1f);Patrol.Handbrake(car,true);if((side==0?battle.wreckA:battle.wreckB)[index])Explode.BattleWreck(car);SpawnBattleCorpses(original??template,car,live);}
                     else car.GetComponent<Crew>()?.Release();
                     PatrolsModule.Verbose("Battle: registered "+side+":"+index+" "+car.name);
                 }
