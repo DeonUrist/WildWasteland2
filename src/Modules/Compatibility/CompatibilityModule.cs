@@ -1,4 +1,8 @@
+using System;
+using BepInEx.Configuration;
+using UnityEngine.SceneManagement;
 using WildWasteland.Core;
+using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.Compatibility
 {
@@ -14,11 +18,32 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Name shown on the Modules page.</summary>
         public override string DisplayName { get { return "Compatibility"; } }
 
-        /// <summary>No entries yet (Core binds [Compatibility] Enabled).</summary>
-        public override void BindConfig(ModuleConfig cfg) { }
+        private readonly EngineSimBridge _engineSim = new EngineSimBridge();
+        private ConfigEntry<bool> _engineEnabled;
+        private bool _running;
+        /// <summary>Binds per-mod switches; session takeover remains mandatory and independent of these switches.</summary>
+        public override void BindConfig(ModuleConfig cfg)
+        {
+            _engineEnabled = cfg.Player("EngineSim", "Enabled", true, "Schedule Engine Sim through Wild Wasteland and provide player and crew ignition.");
+            _engineEnabled.SettingChanged += EngineChanged;
+        }
+        /// <summary>Restarts only Engine Sim resources when its player switch changes.</summary>
+        private void EngineChanged(object sender, EventArgs args)
+        {
+            if (!_running) return;
+            _engineSim.Shutdown();
+            if (!_engineEnabled.Value) return;
+            try { _engineSim.Init(); }
+            catch (Exception error) { _engineSim.Shutdown(); Log.Error(this, "Engine Sim bridge could not start; standalone callbacks retained", error); }
+        }
+        /// <summary>Reseeds shared scene discovery and clears ignition requests.</summary>
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (_running && _engineEnabled.Value) _engineSim.OnSceneLoaded(scene, mode); }
+
+        /// <summary>Exposes the per-mod Engine Sim switch in the shared settings shell.</summary>
+        public override void Settings(SettingsShell shell) { shell.Row(this, SettingsShell.Page.System, "Compatibility", _engineEnabled, "Engine Sim"); }
 
         /// <summary>Installs detected SigmaMod and Vistas hooks under this module's lifetime.</summary>
-        public override void Init() { SigmaFsmStates.Install(this); VistasWorldGen.Init(this); }
+        public override void Init() { SigmaFsmStates.Install(this); VistasWorldGen.Init(this); _running = true; if (_engineEnabled.Value) _engineSim.Init(); }
 
         /// <summary>Registers the detected third-party vehicle owner before Core optimization starts.</summary>
         public override void ProvideApis()
@@ -30,7 +55,7 @@ namespace WildWasteland.Modules.Compatibility
         }
 
         /// <summary>Detaches external listeners and clears runtime state before Core removes this module's hooks.</summary>
-        public override void Shutdown() { VistasWorldGen.Shutdown(); SigmaFsmStates.Clear(); }
+        public override void Shutdown() { _running = false; _engineSim.Shutdown(); VistasWorldGen.Shutdown(); SigmaFsmStates.Clear(); }
 
         /// <summary>Publishes generation facts without exposing reflective third-party bridge state.</summary>
         private sealed class VistasFacts : IWorldGenFacts
