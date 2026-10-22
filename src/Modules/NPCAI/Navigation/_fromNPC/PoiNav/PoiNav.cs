@@ -158,7 +158,12 @@ namespace WildWasteland.Modules.NPC
         }
 
         // One node per scheduler step; the ray allowance is shared by every POI in the frame.
-        internal static bool BuildStep()
+        /// <summary>Old NPC-entry sliced job body: forwards to <see cref="BuildSlice"/> unless the NPCAI entry runs "NPCAI.PoiNav.Build".</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static bool BuildStep() { return !NavRuntime.Active && BuildSlice(); }
+
+        /// <summary>Job "NPCAI.PoiNav.Build" (sliced, 500 us): one graph/node step of the queued POI instances; true = more work.</summary>
+        internal static bool BuildSlice()
         {
             if (_builds.Count == 0 || Enabled == null || !Enabled.Value) return false;
             if (_buildFrame != Time.frameCount) { _buildFrame = Time.frameCount; _buildNodes = _buildRays = 0; }
@@ -252,8 +257,12 @@ namespace WildWasteland.Modules.NPC
             }
             catch (Exception) { }
         }
-        /// <summary>Every frame: bodies nobody walked for 0.25 s (the brain stopped driving it: an attack, a stand) get their physics back.</summary>
-        internal static void WalkerTick()
+        /// <summary>Old NPC-entry job body: forwards to <see cref="UpdateWalkers"/> unless the NPCAI entry runs "NPCAI.PoiNav.Walkers".</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void WalkerTick() { if (!NavRuntime.Active) UpdateWalkers(); }
+
+        /// <summary>Job "NPCAI.PoiNav.Walkers" (every frame): bodies nobody walked for 0.25 s (the brain stopped driving it: an attack, a stand) get their physics back.</summary>
+        internal static void UpdateWalkers()
         {
             if (_walkers.Count == 0) return;
             _walkDone.Clear();
@@ -624,7 +633,12 @@ namespace WildWasteland.Modules.NPC
             _routes.Clear();
             Rescan(true);
         }
-        internal static void Shift(Vector3 delta)
+        /// <summary>Old NPC-entry origin shift: forwards to <see cref="ShiftCore"/> unless the NPCAI entry shifts navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Shift(Vector3 delta) { if (!NavRuntime.Active) ShiftCore(delta); }
+
+        /// <summary>Floating origin: instance points, boxes, routes and running traversals move by delta.</summary>
+        internal static void ShiftCore(Vector3 delta)
         {
             foreach (var i in _inst.Values)
             {
@@ -634,7 +648,12 @@ namespace WildWasteland.Modules.NPC
             foreach (var r in _routes.Values) { r.Goal += delta; r.Next += delta; }
             PoiNavTraverse.Shift(delta);
         }
-        internal static void Reset()
+        /// <summary>Old NPC-entry reset: forwards to <see cref="ResetCore"/> unless the NPCAI entry owns navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Reset() { if (!NavRuntime.Active) ResetCore(); }
+
+        /// <summary>Releases walkers and traversals and forgets every instance, route, graph and loaded data (scene load, start/stop).</summary>
+        internal static void ResetCore()
         {
             foreach (int id in new List<int>(_walkers.Keys)) Release(id);
             PoiNavTraverse.Clear();

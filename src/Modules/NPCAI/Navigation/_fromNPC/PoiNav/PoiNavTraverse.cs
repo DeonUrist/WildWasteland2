@@ -190,7 +190,12 @@ namespace WildWasteland.Modules.NPC
         }
 
         // EarlyFixedUpdate: every traversal moves its body
-        internal static void Tick()
+        /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs "NPCAI.PoiNav.Traverse".</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Tick() { if (!NavRuntime.Active) Update(); }
+
+        /// <summary>Job "NPCAI.PoiNav.Traverse" (every frame, EarlyFixedUpdate): advances every running ladder / climb / drop traversal.</summary>
+        internal static void Update()
         {
             Services.LadderClimbers.Clear();
             if (_runs.Count == 0 || Time.timeScale < .01f) return;

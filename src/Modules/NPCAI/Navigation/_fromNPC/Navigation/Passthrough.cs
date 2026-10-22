@@ -24,10 +24,20 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<Collider> _colBuf = new List<Collider>();
         private const float NewPairRange = 6f, ReapplyRange = 3f;
 
-        public static void OnSceneLoaded() { _cols.Clear(); _pairs.Clear(); }
+        /// <summary>Old NPC-entry reset: forwards to <see cref="ResetCore"/> unless the NPCAI entry owns navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        public static void OnSceneLoaded() { if (!NavRuntime.Active) ResetCore(); }
+
+        /// <summary>Forgets cached colliders and pairs (scene load: the objects are gone).</summary>
+        internal static void ResetCore() { _cols.Clear(); _pairs.Clear(); }
 
         // (WW) module shutdown: every pair collides again
-        internal static void Shutdown()
+        /// <summary>Old NPC-entry shutdown step: forwards to <see cref="ShutdownCore"/> unless the NPCAI entry owns navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Shutdown() { if (!NavRuntime.Active) ShutdownCore(); }
+
+        /// <summary>Module stop: every ignored pair collides again.</summary>
+        internal static void ShutdownCore()
         {
             foreach (var kv in _pairs) if (kv.Value.Key.Owner != null && kv.Value.Value.Owner != null) { try { Set(kv.Value.Key, kv.Value.Value, false); } catch (System.Exception) { } }
             _pairs.Clear(); _cols.Clear();
@@ -61,7 +71,12 @@ namespace WildWasteland.Modules.NPC
 
         private static long Key(int a, int b) { if (a > b) { int t = a; a = b; b = t; } return ((long)a << 32) ^ (uint)b; }
 
-        public static void Tick()      // (WW) a 0.25 s Interval job (game time), was gated here
+        /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs "NPCAI.Passthrough".</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        public static void Tick() { if (!NavRuntime.Active) Update(); }
+
+        /// <summary>Job "NPCAI.Passthrough" (0.25 s game time): makes / re-applies / releases same-faction collision ignores in narrow places.</summary>
+        internal static void Update()
         {
             bool on = NpcModule.FriendsPassThrough.Value && Senses.On;
             if (!on)

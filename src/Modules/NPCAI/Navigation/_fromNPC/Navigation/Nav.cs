@@ -125,10 +125,20 @@ namespace WildWasteland.Modules.NPC
 
         internal static bool On { get { return NpcModule.Running && NpcModule.BrainEnabled.Value; } }
 
-        public static void OnSceneLoaded() { ResetMapHighlight(); foreach (var s in _structures) CloseMap(s); _needed = null; Needed = false; _structures.Clear(); _known.Clear(); _baking = null; _debug.Clear(); _floorCols.Clear(); _exits.Clear(); _relaxedFields.Clear(); _pool.Clear(); _heaps.Clear(); _player = null; _sweep.Clear(); _swept = false; _nodeKind.Clear(); _outPlans.Clear(); _outMemo.Clear(); _compRing.Clear(); PickReset(); _maskQueue.Clear(); }
+        /// <summary>Old NPC-entry reset (scene load / init / shutdown): forwards to <see cref="ResetCore"/> unless the NPCAI entry owns navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        public static void OnSceneLoaded() { if (!NavRuntime.Active) ResetCore(); }
+
+        /// <summary>Drops every structure, map job, route cache and discovery state (scene load, module start/stop).</summary>
+        internal static void ResetCore() { ResetMapHighlight(); foreach (var s in _structures) CloseMap(s); _needed = null; Needed = false; _structures.Clear(); _known.Clear(); _baking = null; _debug.Clear(); _floorCols.Clear(); _exits.Clear(); _relaxedFields.Clear(); _pool.Clear(); _heaps.Clear(); _player = null; _sweep.Clear(); _swept = false; _nodeKind.Clear(); _outPlans.Clear(); _outMemo.Clear(); _compRing.Clear(); PickReset(); _maskQueue.Clear(); }
 
         // ---------- discovery + baking (per frame) ----------
-        public static void Tick()
+        /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs the "NPCAI.Nav" job.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        public static void Tick() { if (!NavRuntime.Active) Update(); }
+
+        /// <summary>Job "NPCAI.Nav" (every frame, Update): exit picks, move masks, discovery sweep, bake scheduling and one bake slice.</summary>
+        internal static void Update()
         {
             TickMapHighlight();
             if (!On) return;
@@ -1915,7 +1925,12 @@ namespace WildWasteland.Modules.NPC
         // (WW) floating origin: the prefab-aligned grids are scene-space data. Box, grid origins and floor heights move with the world; the grid
         // (cells, edges, areas) is relative and stays. Route caches keyed by world positions (fields to outside goals, exit plans, memos,
         // debug marks) are dropped and rebuilt on the next think. A bake in progress continues on the shifted box.
-        internal static void Shift(Vector3 d)
+        /// <summary>Old NPC-entry origin shift: forwards to <see cref="ShiftCore"/> unless the NPCAI entry shifts navigation.</summary>
+        [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]
+        internal static void Shift(Vector3 d) { if (!NavRuntime.Active) ShiftCore(d); }
+
+        /// <summary>Floating origin: moves boxes, grid origins and floors by d; drops world-keyed route caches.</summary>
+        internal static void ShiftCore(Vector3 d)
         {
             foreach (var s in _structures)
             {
