@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.Patrols
     // Runner on the hidden plugin object: the car builder (template spawner + convoy), the in-game check, the persistence tick.
     internal partial class Patrol : MonoBehaviour
     {
-        internal static void ResetForScene() { BuildQueue.Reset(); VehicleBuildCache.Reset(); PatrolLoadPreparation.Reset(); Prefabs.Invalidate(); Register.Invalidate(); DayLight.Reset(); _lightState = -1; SceneGen++; WorldTraffic.ResetForScene(); }
+        internal static void ResetForScene() { BuildQueue.Reset(); VehiclePreparation.Reset(); PatrolLoadPreparation.Reset(); Prefabs.Invalidate(); Register.Invalidate(); DayLight.Reset(); _lightState = -1; SceneGen++; WorldTraffic.ResetForScene(); }
 
         // bumped on every scene load: a build or a convoy that waited through a load does not continue in the new world
         internal static int SceneGen;
@@ -172,8 +172,8 @@ namespace WildWasteland.Modules.Patrols
                     }
                 }
 
-                var packed = VehicleBuildCache.Require(tpl, tpl.RollBumper(), false);
-                var packedTrailer = tpl.Trailer != null ? VehicleBuildCache.Require(tpl.Trailer, "", true) : null;
+                var packed = VehiclePreparation.Require(tpl, tpl.RollBumper(), false);
+                var packedTrailer = tpl.Trailer != null ? VehiclePreparation.Require(tpl.Trailer, "", true) : null;
                 while (!packed.Ready || (packedTrailer != null && !packedTrailer.Ready))
                 {
                     if (gen != SceneGen || packed.Failed || (packedTrailer != null && packedTrailer.Failed)) yield break;
@@ -183,7 +183,7 @@ namespace WildWasteland.Modules.Patrols
                 if (!saveOk[0]) yield break;
                 // An origin jump can occur while a custom build warms.
                 if (at.HasValue) pos = TrafficSpace.Scene(trafficSpawn);
-                car = VehicleBuildCache.Spawn(packed, pos, rot);
+                car = VehiclePreparation.Spawn(packed, pos, rot);
                 if(!menu&&tpl.Origin!="POI")EncounterCar.Attach(car,eventId,tpl.ConvoyMember,true);
                 car.SetActive(true);
                 Paint.Apply(car, body.name,tpl.Faction);
@@ -200,7 +200,7 @@ namespace WildWasteland.Modules.Patrols
                     var hitch = FindChild(car.transform, "hitch");
                     var attacher = FindChild(trailerBody.transform, "attacher");
                     var trailerPos = hitch.position - car.transform.rotation * trailerBody.transform.InverseTransformPoint(attacher.position);
-                    trailer = VehicleBuildCache.Spawn(packedTrailer, trailerPos, car.transform.rotation);
+                    trailer = VehiclePreparation.Spawn(packedTrailer, trailerPos, car.transform.rotation);
                     TrailerSupport.Connect(car, trailer); // before the first frame: native TrailerLoad must not add a second joint
                     yield return null;
                     if (car == null || trailer == null) yield break;

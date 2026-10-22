@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>
     /// Vehicle build cache: packed, uninitialised template structures (frame + fitted parts) and preprocessed reserve copies, so a template
@@ -18,11 +18,13 @@ namespace WildWasteland.Modules.Patrols
     internal static class VehicleBuildCache
     {
         /// <summary>One structural variant (template body/parts, bumper, trailer flag) with its packed root and ready reserves.</summary>
-        internal sealed class Entry
+        internal sealed class Entry : IPreparedVehicle
         {
-            internal CarTemplate Template;   // refs-ok: REFACTOR-REQUEST B12-1 (template data model stays Patrols')
+            internal VehicleStructure Template;
             internal string Bumper;
-            internal bool Trailer, Ready, Failed, Queued;
+            internal bool Trailer, Queued;
+            public bool Ready { get; set; }
+            public bool Failed { get; set; }
             internal GameObject Root;
             internal GameObject Preparing;
             internal PlayMakerFSM[] Fsms;
@@ -37,7 +39,7 @@ namespace WildWasteland.Modules.Patrols
         private static readonly Queue<Entry> Pending = new Queue<Entry>();
         private static Entry _active;
         private static GameObject _holder;
-        private static bool _warmRequested = true, _reported;
+        private static bool _warmRequested = false, _reported;
         private const int ReserveCount = 2;
         private const double LoadingBudgetMs = 12;
         private static readonly System.Diagnostics.Stopwatch LoadTime = new System.Diagnostics.Stopwatch(), LoadSliceTime = new System.Diagnostics.Stopwatch();
@@ -76,17 +78,6 @@ namespace WildWasteland.Modules.Patrols
         /// Old Patrols loading-progress source (registered by PatrolsModule): while the Vehicles module runs it reports only the Patrols restore
         /// part (the cache reports itself through <see cref="PreparationWork"/>), otherwise the old combined line.
         /// </summary>
-        [Obsolete("refactor: Vehicles reports VehicleBuildCache.PreparationWork; Patrols should report its own restore progress")]
-        internal static LoadingProgress.Work? LoadWork()
-        {
-            bool restoring = PatrolPersistence.Restoring;   // refs-ok: REFACTOR-REQUEST B12-1 (Patrols restore progress)
-            if (VehiclesModule.Running)
-                return restoring ? new LoadingProgress.Work(PatrolPersistence.LoadFraction, "restoring saved patrols, crew and AI") : (LoadingProgress.Work?)null;   // refs-ok: REFACTOR-REQUEST B12-1
-            if (!Warming && !restoring) return null;
-            string detail = Warming ? Detail() : "restoring saved patrols, crew and AI";
-            return new LoadingProgress.Work(.85f * LoadFraction + .15f * PatrolPersistence.LoadFraction, detail);   // refs-ok: REFACTOR-REQUEST B12-1
-        }
-
         /// <summary>Loading-progress source of the Vehicles module: vehicle preparation while the cache warms (null otherwise).</summary>
         internal static LoadingProgress.Work? PreparationWork()
         {
@@ -101,18 +92,10 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Requests warming of every template of the park (Patrols load/refresh).</summary>
-        internal static void WarmPark() { _warmRequested = true; _reported = false; }
+        internal static void WarmPark() { _warmRequested = false; _reported = false; }
         /// <summary>Requires the variants of one template (each bumper, its trailer).</summary>
-        internal static void Warm(CarTemplate t, bool trailer = false)   // refs-ok: REFACTOR-REQUEST B12-1
-        {
-            if (t == null || !t.Available) return;
-            if (trailer || t.Bumpers == null || t.Bumpers.Length == 0) Require(t, "", trailer);
-            else foreach (string bumper in t.Bumpers) Require(t, bumper ?? "", false);
-            if (t.Trailer != null) Warm(t.Trailer, true);
-        }
-
         /// <summary>Exact binary definition of a variant, independent of template name, crew/cargo rolls and traffic-instance metadata.</summary>
-        private static string Key(CarTemplate t, string bumper, bool trailer)   // refs-ok: REFACTOR-REQUEST B12-1
+        private static string Key(VehicleStructure t, string bumper, bool trailer)
         {
             using (var stream = new MemoryStream()) using (var writer = new BinaryWriter(stream))
             {
@@ -136,7 +119,7 @@ namespace WildWasteland.Modules.Patrols
         { writer.Write(values != null ? values.Length : 0); if (values != null) foreach (float v in values) writer.Write(v); }
 
         /// <summary>The variant entry for a template/bumper/trailer, created and queued when new.</summary>
-        internal static Entry Require(CarTemplate t, string bumper, bool trailer)   // refs-ok: REFACTOR-REQUEST B12-1
+        internal static Entry Require(VehicleStructure t, string bumper, bool trailer)
         {
             string key = Key(t, bumper, trailer); Entry entry;
             if (Entries.TryGetValue(key, out entry)) return entry;
@@ -175,7 +158,7 @@ namespace WildWasteland.Modules.Patrols
         /// </summary>
         private static void LoadSlice()
         {
-            if (!PatrolsModule.Running || !Loading || !Warming) return;   // refs-ok: REFACTOR-REQUEST B12-1 (cache serves the Patrols park)
+            if (!Loading || !Warming) return;
             // Loading spends its own bounded slice; normal reserve refills retain the shared gameplay budget.
             if (!LoadTime.IsRunning)
             {
@@ -198,13 +181,11 @@ namespace WildWasteland.Modules.Patrols
         /// </summary>
         private static bool StepCore()
         {
-            if (!PatrolsModule.Running) return false;   // refs-ok: REFACTOR-REQUEST B12-1 (cache serves the Patrols park)
             if (!Warming || !WorldWork.Try(WorldWork.Vehicles)) return false;
             if (_warmRequested)
             {
                 if (GameRefs.NewGOArrayList == null) return false;
                 _warmRequested = false;
-                foreach (var t in CarTemplate.Park) Warm(t);   // refs-ok: REFACTOR-REQUEST B12-1
                 return true;
             }
             if (_active == null)
@@ -222,7 +203,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 if (entry.Root == null)
                 {
-                    var source = Prefabs.Exact(entry.Template.Body);   // refs-ok: REFACTOR-REQUEST B12-3 (Patrols prefab index)
+                    var source = entry.Template.Resolve(entry.Template.Body);
                     if (source == null) throw new InvalidOperationException("Missing frame " + entry.Template.Body);
                     if (_holder == null)
                     {
@@ -232,7 +213,7 @@ namespace WildWasteland.Modules.Patrols
                     entry.Root = UnityEngine.Object.Instantiate(source, _holder.transform, false);
                     entry.Root.name = source.name; entry.Root.transform.localPosition = Vector3.zero; entry.Root.transform.localRotation = Quaternion.identity;
                     entry.Root.SetActive(true); // inactive hierarchy: no native Awake, save registration, physics or AI
-                    entry.Build = Patrol.PackStructure(entry.Root, entry.Template, entry.Bumper, entry.Trailer);
+                    entry.Build = VehicleAssembler.PackStructure(entry.Root, entry.Template, entry.Bumper, entry.Trailer);
                     return true;
                 }
                 if (entry.Build != null)
@@ -315,9 +296,10 @@ namespace WildWasteland.Modules.Patrols
         {
             LoadTime.Reset(); LoadSliceTime.Reset(); _loadWorkMs = 0;
             if (_active != null && _active.Build != null) ((IDisposable)_active.Build).Dispose();
+            foreach (var entry in Entries.Values) { entry.Ready=false; entry.Failed=true; }
             _active = null; Pending.Clear(); Entries.Clear();
             if (_holder != null) UnityEngine.Object.Destroy(_holder);
-            _holder = null; _warmRequested = true; _reported = false;
+            _holder = null; _warmRequested = false; _reported = false;
         }
     }
 }
