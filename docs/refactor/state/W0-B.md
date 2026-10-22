@@ -17,7 +17,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 11. WorldTiles
 - [x] 12. FsmIndex
 - [x] 13. FsmPause
-- [ ] 14. PrefabCatalog
+- [x] 14. PrefabCatalog
 - [ ] 15. ItemSpawner.RegisterSaved
 - [ ] 16. Clock
 - [ ] 17. Names
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-6d6d8c9 (COMPILE OK; state line updated in next commit)
+f65b470 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 14 PrefabCatalog: read Patrols Prefabs, Towns PoiPropCatalog/PoiSpawnCatalog, Quests FindPrefab/ScanForPrefab, Patrols PickupCatalog.
+Item 15 ItemSpawner.RegisterSaved: read InventorySupplies:65, Quests Game.cs:104, WarRigFeature:59, Patrol.cs:1596, Gungirl:602, AmmoMechanics:420.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -50,3 +50,4 @@ Item 14 PrefabCatalog: read Patrols Prefabs, Towns PoiPropCatalog/PoiSpawnCatalo
 - WorldIndex: WatchName/WatchPrefix/WatchComponent<T>/Watch(filter) + PruneBelow; Found lists with sliced destroyed-sweep (Removed(id)); roots from scene load, WorldTiles Applied, QueueRoot, Rescan; Core sliced job 'Core.WorldIndex' 300us; self-subscribes SceneManager.sceneLoaded. NOTE: compile.sh prints COMPILE OK from a stale outdir on failure - always use a fresh outdir / grep 'Compilation succeeded'.
 - FsmIndex: IFsmIndexProvider (PM1 registers in Wave A); ByOwner fallback = GetComponents filtered isActiveAndEnabled; ByName/All via Track(owner,name) and one sliced FsmList pass (256/step, 0.5 s) publishing atomically; Int/Float/String/Bool/Go var helpers.
 - FsmPause: verbatim Performance logic + FsmSleep bit 8, dynamic Bit(owner, reason), Own/ReleaseAll(owner), Paused, ClearCopiedFlag (Awake postfix rule).
+- PrefabCatalog: Patrols ScanExact name rules (exact, ES3 override, fold preferring ES3Prefab) + ById(prefabId) + AssetFsms + Item(name); sliced warm 'Core.PrefabCatalog', sync completion on early query; invalidated on scene load / ES3 count change (Refresh). Domain catalogs (Patrols kinds, Towns spawn profiles) stay in their modules on top of it.
