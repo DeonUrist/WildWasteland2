@@ -10,7 +10,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 4. Bindposes
 - [x] 5. Audio (WAV decode + Level + LoadAsync)
 - [x] 6. Textures (Load + cache + Destroy on shutdown)
-- [ ] 7. Access (one accessor facade)
+- [x] 7. Access (one accessor facade)
 - [ ] 8. KeyMap
 - [ ] 9. GameBindings
 - [ ] 10. WorldIndex
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-1392196 (COMPILE OK; state line updated in next commit)
+246f476 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 7 Access: read NativeAccess, OptionalAccess, Performance FastReflect/BatchCompiler/CompileQueue.
+Item 8 KeyMap: diff PlayerBody/Quests KeyMap.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -44,3 +44,4 @@ Item 7 Access: read NativeAccess, OptionalAccess, Performance FastReflect/BatchC
 - Gltf: verbatim PlayerBody copy; Load(path, owner) prefixes the sparse warning with the caller's module (PlayerBody/NPC). Bindposes: identical copies; added TryGet(bone, out Matrix4x4).
 - Audio: DecodeWav = Guns/NPC Wav verbatim (broadest); LoadWav = VoiceAudio API (now accepts all formats); TryLoadWav = Rider (null on failure); NormalizePeak = Quests; Level/Process = NPC Women Level; LoadAsync(path, type, cb, decompress) returns cancellable Audio.Load.
 - Textures: TextureSettings expresses each old site exactly (defaults = Unity defaults); cache per (source,settings), negative cache, reloadIfChanged by write time, Release(owner) needs ModuleHost wiring (request W0B-1).
+- Access (src/Core/Util/Access/, partial static class Access): Call/Get (NativeAccess), Read/Call(MethodInfo) (OptionalAccess), FastReflect builders verbatim, FieldBatch (BatchCompiler), Queue (CompileQueue; job name <owner>.AccessCompile, Telemetry mark via Queue.OnFirstBatch). Old classes untouched (Wave A makes them wrappers).
