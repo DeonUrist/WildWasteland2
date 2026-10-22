@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.Towns
     /// Wave A (A6): partial split of Towns/PoiPropCatalog.cs (POI part, B13). Capture/Sources stay here because Resolve needs them
     /// at runtime (file-map listed them for Tools); the marker gizmo assets (Marker) stay in the Tools part.
     /// </summary>
-    internal sealed partial class PoiPropCatalog
+    internal sealed partial class PoiPropCatalog : IDisposable
     {
         internal sealed class Shape
         {

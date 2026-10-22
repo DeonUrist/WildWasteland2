@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Towns
     /// POI editor catalog of vanilla meshes (sliced ES3/prefab MeshFilter scan) and the marker gizmo assets.
     /// Wave A (A6): Tools part of Towns/PoiPropCatalog.cs; runtime Resolve/Create/Pose in POI/_fromTowns/PoiPropCatalog.Runtime.cs.
     /// </summary>
-    internal sealed partial class PoiPropCatalog : IDisposable
+    internal sealed partial class PoiPropCatalog
     {
         private readonly HashSet<ulong> _listed = new HashSet<ulong>();
         internal readonly List<Asset> All = new List<Asset>();
