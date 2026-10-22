@@ -22,8 +22,10 @@ namespace WildWasteland.Modules.Survival
 
         /// <summary>Captures the native sky controller from the shared component walker.</summary>
         internal static void Observe(Transform node, string name, Component component) { _azure = component as UnityEngine.AzureSky.AzureTimeController; }
+        /// <summary>Clears sky and FSM references on world replacement.</summary>
         internal static void Reset() { _azure = null; _dayTime = null; _nextFind = 0f; _nextEval = 0f; _known = false; }
 
+        /// <summary>Samples darkness at most once every two seconds while preserving dawn hysteresis.</summary>
         internal static bool Dark
         {
             get
@@ -31,11 +33,12 @@ namespace WildWasteland.Modules.Survival
                 if (_known && Time.unscaledTime < _nextEval) return _dark;
                 _nextEval = Time.unscaledTime + 2f;
                 try { Evaluate(); }
-                catch (Exception e) { Core.Log.Warn("[Patrols] " + "DayLight: " + e.Message); _azure = null; _nextFind = Time.unscaledTime + 30f; }
+                catch (Exception e) { Core.Log.Warn("[Survival] DayLight: " + e.Message); _azure = null; _nextFind = Time.unscaledTime + 30f; }
                 return _dark;
             }
         }
 
+        /// <summary>Samples sun elevation with dawn/dusk hysteresis, falling back to native time.</summary>
         private static void Evaluate()
         {
             if (_azure == null && Time.unscaledTime >= _nextFind)

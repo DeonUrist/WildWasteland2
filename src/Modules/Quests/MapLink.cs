@@ -16,8 +16,8 @@ namespace WildWasteland.Modules.Quests
         }
         static readonly Dictionary<string, Marker> Markers = new Dictionary<string, Marker>();
         static readonly List<string> Removed = new List<string>();
-        internal static bool Available { get { return Services.Map != null || Services.Compass != null; } }
-        internal static bool IsExplored(Vector3 scene) { return Services.Map != null && Services.Map.Explored(scene); }
+        internal static bool Available { get { return ModApi.Get<IMapMarkers>() != null || ModApi.Get<ICompassMarkers>() != null; } }
+        internal static bool IsExplored(Vector3 scene) { return ModApi.Get<IMapMarkers>() != null && ModApi.Get<IMapMarkers>().Explored(scene); }
         internal static Color QuestColor(string id)
         {
             uint hash = 2166136261u;
@@ -51,8 +51,8 @@ namespace WildWasteland.Modules.Quests
         {
             foreach (var m in Markers.Values)
             {
-                if (m.CompassApi != Services.Compass) { if (m.CompassApi != null) m.CompassApi.Remove(m.Compass); m.CompassApi = Services.Compass; m.Compass = 0; }
-                if (m.MapApi != Services.Map) { if (m.MapApi != null) m.MapApi.Remove(m.Map); m.MapApi = Services.Map; m.Map = 0; }
+                if (m.CompassApi != ModApi.Get<ICompassMarkers>()) { if (m.CompassApi != null) m.CompassApi.Remove(m.Compass); m.CompassApi = ModApi.Get<ICompassMarkers>(); m.Compass = 0; }
+                if (m.MapApi != ModApi.Get<IMapMarkers>()) { if (m.MapApi != null) m.MapApi.Remove(m.Map); m.MapApi = ModApi.Get<IMapMarkers>(); m.Map = 0; }
                 if (m.CompassApi != null && !m.CompassApi.Exists(m.Compass)) m.Compass = m.CompassApi.Add(Owner, m.Scene, "flag", m.Color);
                 if (m.MapApi != null && !m.MapApi.Exists(m.Map)) m.Map = m.MapApi.Add(Owner, m.Scene, "flag", m.Color, m.Label);
             }

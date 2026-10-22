@@ -191,6 +191,7 @@ namespace WildWasteland.Modules.Survival
         private void PrepareAssets()
         {
             if (_visuals==null) _visuals=new WeatherVisuals(_audio);
+            if (!_visuals.Ready) throw new System.InvalidOperationException("Weather assets are unavailable; native storm behavior is retained.");
             _audio.Load(); UpdateLayout();
             var policy=ModApi.Get<IWeatherVisualPolicy>();
             _visuals.Prepare(new Vector2(_width.Value*500,_depth.Value*500),_columnCount,policy!=null ? policy.WeatherDetail : WeatherVisualDetail.Balanced);

@@ -321,6 +321,12 @@ namespace WildWasteland.Modules.Quests
     /// <summary>Optional link to Talk's public TalkApi (flags, "action = ..." events) by reflection (Wave A, from Quests/TalkHook.cs; B17).</summary>
     internal static class TalkApiLink
     {
+        /// <summary>Exposes the active optional flag adapter without leaking third-party reflection into Quests.</summary>
+        private sealed class FlagsApi : IConversationFlags
+        {
+            /// <summary>Writes through the resolved external API.</summary>
+            public void Set(string name, bool value) { SetFlag(name, value); }
+        }
         static Type api;
         static EventInfo actionEvent; static Delegate actionHandler;
         static MethodInfo getFlag, setFlag;
@@ -336,6 +342,7 @@ namespace WildWasteland.Modules.Quests
                 if (api == null) return;
                 getFlag = api.GetMethod("GetFlag", new Type[] { typeof(string) });
                 setFlag = api.GetMethod("SetFlag", new Type[] { typeof(string), typeof(bool) });
+                if (setFlag != null) ModApi.Provide<IConversationFlags>(Compatibility.CompatibilityModule.Instance, new FlagsApi());
                 EventInfo ev = api.GetEvent("ActionTriggered");
                 MethodInfo m = listener.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
                 if (ev != null && m != null)
@@ -349,7 +356,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         /// <summary>Unsubscribes from ActionTriggered and forgets TalkApi.</summary>
-        internal static void Shutdown() { if (actionEvent != null && actionHandler != null) actionEvent.RemoveEventHandler(null, actionHandler); actionEvent = null; actionHandler = null; api = null; getFlag = setFlag = null; }
+        internal static void Shutdown() { ModApi.Withdraw<IConversationFlags>(Compatibility.CompatibilityModule.Instance); if (actionEvent != null && actionHandler != null) actionEvent.RemoveEventHandler(null, actionHandler); actionEvent = null; actionHandler = null; api = null; getFlag = setFlag = null; }
 
         /// <summary>Sets a Talk dialogue flag (ignored when TalkApi is absent).</summary>
         public static void SetFlag(string name, bool value)

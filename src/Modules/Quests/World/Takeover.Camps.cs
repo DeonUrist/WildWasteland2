@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.Quests
         {
             if (GarrisonSize <= 0 || Stamps == null) return;
             if (Time.unscaledTime < settleUntil) return;                        // a save was just loaded: the game first restores its own NPCs
-            double now = Game.GameHours();
+            double now = WildWasteland.Core.Clock.GameHours;
             if (now < 0.0) return;
             string key = "camp:" + Factions.KeyOf(p);
             float rt = Time.unscaledTime;

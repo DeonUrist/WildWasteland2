@@ -59,6 +59,12 @@ namespace WildWasteland.Modules.Loot
                 }
             }
             else dirty = true;
+            if (_file.Count == 0)
+            {
+                using(var stream=DiskResources.Open("Patrols.EditorDefaults.json"))
+                using(var reader=new StreamReader(stream))
+                { var defaults=Json.ParseObject(reader.ReadToEnd());ImportProfiles(defaults,"carLoot","car");ImportProfiles(defaults,"truckLoot","truck"); }
+            }
             if (ImportPatrolsLoot()) dirty = true;
             if (dirty) Save();
             Revision++;
@@ -149,7 +155,7 @@ namespace WildWasteland.Modules.Loot
         }
 
         /// <summary>Runtime table first, then the file table; null when unknown.</summary>
-        private LootTable Find(string tableId)
+        internal LootTable Find(string tableId)
         {
             if (string.IsNullOrEmpty(tableId)) return null;
             LootTable table;

@@ -9,6 +9,21 @@ namespace WildWasteland.Modules.Quests
     /// <summary>Camp takeover, NPCAI part (Wave A, from Quests/Takeover.cs): spawning the winning faction's walkers and garrisons, raycast steering, the walker loop and the save restore of walks (B07; README 6.2: steer through INpcApi.Travel).</summary>
     internal static partial class Takeover
     {
+        // one line per walker for the F7 dump: where it is, how far from the camp and the player
+        public static List<string> DescribeWalkers(Vector3 playerWorld)
+        {
+            var res = new List<string>();
+            for (int i = 0; i < walkers.Count; i++)
+            {
+                Walker w = walkers[i];
+                if (w.Go == null) { res.Add((w.Name ?? "?") + ": gone (destroyed or unloaded)"); continue; }
+                Vector3 p = w.Go.transform.position;
+                Vector3 camp = Game.Abs(w.TargetRel);
+                res.Add(w.Go.name + ": at (" + p.x.ToString("0") + ", " + p.y.ToString("0") + ", " + p.z.ToString("0") + ")  " + (int)Game.HDist(p, camp) + " m from camp, " + (int)Game.HDist(p, playerWorld) + " m from you");
+            }
+            return res;
+        }
+
         static readonly List<Walker> walkers = new List<Walker>();
 
         static readonly Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
@@ -283,7 +298,7 @@ namespace WildWasteland.Modules.Quests
                     if (w.CampKey != null && Stamps != null)
                     {
                         Transform plr = Game.Player();
-                        double gh = Game.GameHours();
+                        double gh = WildWasteland.Core.Clock.GameHours;
                         if (plr != null && gh >= 0.0 && Game.HDist(plr.position, Game.Abs(w.TargetRel)) < 200f)
                         {
                             Stamps[w.CampKey] = (long)(gh * 1000.0);

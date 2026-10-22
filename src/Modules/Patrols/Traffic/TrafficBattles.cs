@@ -229,7 +229,7 @@ namespace WildWasteland.Modules.Patrols
                     if(generation!=Patrol.SceneGen||!PatrolsModule.ConvoyEnabled.Value||!_battles.Contains(battle)){Cleanup.Remove(car.GetComponent<PatrolMarker>(),"cancelled battle build");return;}
                     live.Cars[side+":"+index]=car;BattleAttach(car,battle,side,index);
                     var record=(side==0?battle.sideA:battle.sideB)[index];ApplyState(car,record);
-                    if(battle.resolved){Nwh.StopEngine(car);Nwh.SetHandbrake(car,1f);Patrol.Handbrake(car,true);if((side==0?battle.wreckA:battle.wreckB)[index])Explode.BattleWreck(car);SpawnBattleCorpses(original??template,car,live);}
+                    if(battle.resolved){Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(car);Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(car,1f);Patrol.Handbrake(car,true);if((side==0?battle.wreckA:battle.wreckB)[index])Explode.BattleWreck(car);SpawnBattleCorpses(original??template,car,live);}
                     else car.GetComponent<Crew>()?.Release();
                     PatrolsModule.Verbose("Battle: registered "+side+":"+index+" "+car.name);
                 }
@@ -244,7 +244,7 @@ namespace WildWasteland.Modules.Patrols
             int slot=0;foreach(var name in names)
             {
                 if(string.IsNullOrEmpty(name))continue;var prefab=Prefabs.FindAny(name.Replace("_Dead","")+"_Dead")??Prefabs.FindAny("Scraffa_Dead");if(prefab==null)continue;
-                var corpse=Instantiate(prefab,car.transform.position+car.transform.right*(3f+slot%2)+car.transform.forward*(slot/2f),Quaternion.identity);CrewAppearance.Dress(corpse,name.Replace("_Dead","")+"_Dead");corpse.SetActive(true);live.Corpses.Add(corpse);slot++;
+                var corpse=Instantiate(prefab,car.transform.position+car.transform.right*(3f+slot%2)+car.transform.forward*(slot/2f),Quaternion.identity);CrewLooks.Dress(corpse,name.Replace("_Dead","")+"_Dead");corpse.SetActive(true);live.Corpses.Add(corpse);slot++;
             }
         }
         private void UnloadBattle(TrafficBattle battle,BattleLive live)

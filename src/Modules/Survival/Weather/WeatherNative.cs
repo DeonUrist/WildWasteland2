@@ -27,6 +27,7 @@ namespace WildWasteland.Modules.Survival
             internal readonly HashSet<Collider>[] Current = { new HashSet<Collider>(), new HashSet<Collider>(), new HashSet<Collider>() };
             internal float Age;
             internal int Id;
+            /// <summary>Clears reused per-column contact sets after a storm is suspended.</summary>
             internal void Contacts() { for (int i=0;i<3;i++) { Previous[i].Clear(); Current[i].Clear(); } }
         }
         internal struct Visual
@@ -36,6 +37,7 @@ namespace WildWasteland.Modules.Survival
             internal AudioSource Audio;
             internal bool Playing, Paused, RenderingOff, Muted;
         }
+        /// <summary>Retains the original enabled state of one native component.</summary>
         internal struct Switch { internal Behaviour Behaviour; internal Collider Collider; internal bool Enabled; }
         private static WeatherNative _active;
         private readonly WeatherRuntime _owner;
@@ -52,8 +54,10 @@ namespace WildWasteland.Modules.Survival
         private PlayMakerFSM _disable;
         private bool _disableEnabled;
         internal readonly Func<Explosion,GameObject,bool> AllowsForce;
+        /// <summary>Whether native storm components are temporarily restored for serialization.</summary>
         internal bool Saving { get { return _saving; } }
 
+        /// <summary>Installs native anchor discovery and hazard interception under the weather scope.</summary>
         internal WeatherNative(WeatherRuntime owner)
         {
             _owner=owner;
@@ -72,7 +76,9 @@ namespace WildWasteland.Modules.Survival
             _active=this;
             Log.Always("[Weather] Native storm replacement enabled: native encounter/save anchors retained; WW walls and safe-eye tornado hazards replace vanilla graphics/physics.");
         }
+        /// <summary>Starts a bounded rediscovery of existing native storm anchors.</summary>
         internal void Scan() { _scan=0; _scanning=true; }
+        /// <summary>Finds the native storm prefab root above a scene object.</summary>
         private static GameObject Root(Transform node)
         {
             for (;node!=null;node=node.parent)
@@ -82,6 +88,7 @@ namespace WildWasteland.Modules.Survival
             }
             return null;
         }
+        /// <summary>Registers an anchor and retains its native physics and presentation state.</summary>
         private Storm Track(GameObject root)
         {
             if (root==null) return null;
@@ -104,6 +111,7 @@ namespace WildWasteland.Modules.Survival
             }
             Log.Warn("[Weather] Native storm anchor capacity (64) reached; replacement discovery deferred."); return null;
         }
+        /// <summary>Observes enabled native storm FSMs without scanning unrelated hierarchies.</summary>
         private void Enabled(PlayMakerFSM fsm)
         {
             if (_restoring || fsm==null) return;
@@ -115,21 +123,25 @@ namespace WildWasteland.Modules.Survival
             if (fsm.FsmName!="SandPlayer") return;
             Track(Root(fsm.transform));
         }
+        /// <summary>Intercepts native storm events while replacement presentation owns the anchor.</summary>
         private bool EventBefore(Fsm fsm,FsmEvent ev,FsmEventData data)
         {
             if (ev!=null && ev.Name=="SaveGame" && !_saving) Save(true);
             return true;
         }
+        /// <summary>Suppresses original explosion execution only for replaced storm actions.</summary>
         private static bool ExplosionBefore(Explosion __instance)
         {
             if (_active==null || __instance.Fsm.Name!="Tornado") return true;
             return !_active.NativeAction(__instance);
         }
+        /// <summary>Suppresses original trigger execution only for replaced storm actions.</summary>
         private static bool TriggerBefore(TriggerEventByLayer __instance)
         {
             if (_active==null || __instance.Fsm.Name!="TornadoDamage") return true;
             return !_active.NativeAction(__instance);
         }
+        /// <summary>Checks whether an action belongs to a tracked replacement storm.</summary>
         private bool NativeAction(FsmStateAction action)
         {
             bool native;
@@ -141,6 +153,7 @@ namespace WildWasteland.Modules.Survival
             }
             return native;
         }
+        /// <summary>Keeps native storm motion while excluding replacement-owned velocity actions.</summary>
         private bool VelocityBefore(SetVelocity action)
         {
             if (action.Fsm.Name!="Move") return true;
@@ -150,6 +163,7 @@ namespace WildWasteland.Modules.Survival
             { if (storm.Body!=null && !storm.Body.isKinematic) storm.Body.velocity=Vector3.zero; return false; }
             return true;
         }
+        /// <summary>Observes freshly created native storm roots and defers their presentation.</summary>
         private void Created(CreateObject action)
         {
             if (_restoring || _saving || action.Fsm.Name!="ItemSpawner" || action.Owner.name!="EnemySpawn_Sandstorm") return;
@@ -165,6 +179,7 @@ namespace WildWasteland.Modules.Survival
                 PositionEncounter(storm,away.normalized);
             }
         }
+        /// <summary>Waits for delayed native heading before materializing a fresh encounter.</summary>
         internal bool PrepareEncounter(Storm storm)
         {
             if (!storm.AwaitMotion) return true;
@@ -176,6 +191,7 @@ namespace WildWasteland.Modules.Survival
             Log.Always("[Weather] New storm positioned before reveal: front clearance >=3000 m; world="+Origin.World(storm.Root.transform.position).ToString("F1"));
             return true;
         }
+        /// <summary>Places a fresh native encounter with the configured distant front clearance.</summary>
         private void PositionEncounter(Storm storm,Vector3 away)
         {
             Vector3 player=GameRefs.Player.transform.position, position=storm.Root.transform.position;
@@ -185,6 +201,7 @@ namespace WildWasteland.Modules.Survival
             storm.Root.transform.position=position;
             if (storm.Body!=null) storm.Body.position=position;
         }
+        /// <summary>Advances bounded discovery and native-state capture.</summary>
         private bool Step()
         {
             for (int k=0;k<Storms.Length;k++)
@@ -205,6 +222,7 @@ namespace WildWasteland.Modules.Survival
             if (_scan>=fsms.Count) { _scanning=false; return false; }
             Enabled(fsms[_scan++]); return true;
         }
+        /// <summary>Captures one node’s native render, audio, particle and hazard components.</summary>
         private void Capture(Storm storm,Transform node)
         {
             for (int i=0;i<node.childCount;i++) storm.Pending.Add(node.GetChild(i));
@@ -241,6 +259,7 @@ namespace WildWasteland.Modules.Survival
                 if (collider!=null) { storm.Switches.Add(new Switch { Collider=collider,Enabled=collider.enabled }); if (!_saving) collider.enabled=false; }
             }
         }
+        /// <summary>Creates an unsaved native preview anchor at the requested pose.</summary>
         internal Storm Preview(Vector3 position,Quaternion rotation)
         {
             var manager=ES3ReferenceMgrBase.Current; var prefab=manager!=null ? manager.GetPrefab(PrefabId,true) : null;
@@ -253,6 +272,7 @@ namespace WildWasteland.Modules.Survival
             if (storm.Body!=null) { storm.Body.velocity=Vector3.zero; storm.Body.isKinematic=true; }
             return storm;
         }
+        /// <summary>Prunes dead native FSMs and asks the runtime to reconcile selected anchors.</summary>
         private void Reconcile()
         {
             if (!GameRefs.InPlay || _saving) return;
@@ -261,6 +281,7 @@ namespace WildWasteland.Modules.Survival
             for (int i=0;i<_deadFsms.Count;i++) _nativeFsms.Remove(_deadFsms[i]);
             _owner.ReconcileNative();
         }
+        /// <summary>Restores native components around serialization and reapplies replacement afterwards.</summary>
         internal void Save(bool saving)
         {
             if (_saving && saving) return;
@@ -268,6 +289,7 @@ namespace WildWasteland.Modules.Survival
             try { for (int i=0;i<Storms.Length;i++) if (Storms[i].Root!=null && !Storms[i].Owned) Apply(Storms[i],saving); }
             finally { _restoring=false; }
         }
+        /// <summary>Applies retained native flags or hides components for replacement presentation.</summary>
         private static void Apply(Storm storm,bool restore)
         {
             if (storm.Body!=null)
@@ -291,6 +313,7 @@ namespace WildWasteland.Modules.Survival
                 else item.System.Stop(false,ParticleSystemStopBehavior.StopEmittingAndClear);
             }
         }
+        /// <summary>Releases one anchor and restores native state unless the anchor is an owned preview.</summary>
         internal void Remove(Storm storm)
         {
             if (storm==null) return;
@@ -299,6 +322,7 @@ namespace WildWasteland.Modules.Survival
             if (storm.Root!=null) { _roots.Remove(storm.Id); UnityEngine.Object.Destroy(storm.Root); }
             storm.Root=null; storm.Pending.Clear();
         }
+        /// <summary>Restores tracked native anchors and clears all discovery registries.</summary>
         internal void Reset()
         {
             _restoring=true;
@@ -315,6 +339,7 @@ namespace WildWasteland.Modules.Survival
             finally { _restoring=false; }
             _disable=null; _roots.Clear(); _nativeFsms.Clear(); _deadFsms.Clear(); _saving=false; Scan();
         }
+        /// <summary>Restores native anchors and withdraws the active interception instance.</summary>
         public void Dispose() { Reset(); if (_active==this) _active=null; }
     }
 }

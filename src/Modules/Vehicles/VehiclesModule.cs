@@ -110,6 +110,7 @@ namespace WildWasteland.Modules.Vehicles
             _ignitionJob = null;
             Try("ignition row", IgnitionControl.Remove);
             Try("cockpit", Car.Release);
+            Try("vehicle input leases", VehicleDriveApi.ReleaseAll);
             Try("vehicle structure cache", VehicleBuildCache.Reset);
             Try("exit speed", ExitSpeed.Restore);
             Try("War Rig", WarRig.WarRigFeature.Stop);
@@ -127,6 +128,7 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Scene change: per-scene caches of the cockpit, exit speed, War Rig and motorcycle chassis lookups are dropped.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            VehicleDriveApi.ReleaseAll();
             VehicleBuildCache.Reset();
             Car.Reset();
             ExitSpeed.Restore();
@@ -138,6 +140,7 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Provides the factory and cockpit APIs, claims module-built vehicles and registers the War Rig shelter with Survival.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<IVehicleDrive>(this,new VehicleDriveApi());
             ModApi.Provide<IVehicleAssembly>(this, new VehicleAssemblyApi());
             var ownership = ModApi.Get<IVehicleOwnership>();
             if (ownership != null) ownership.Register(this, this);

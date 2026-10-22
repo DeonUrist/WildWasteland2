@@ -27,21 +27,6 @@ namespace WildWasteland.Modules.Quests
         public static Action<string> Log = delegate { };
         public static bool PatrolAtCamp = true;     // [Takeover] PatrolAtCamp: walk around the camp after arriving
 
-        // one line per walker for the F7 dump: where it is, how far from the camp and the player
-        public static List<string> DescribeWalkers(Vector3 playerWorld)
-        {
-            var res = new List<string>();
-            for (int i = 0; i < walkers.Count; i++)
-            {
-                Walker w = walkers[i];
-                if (w.Go == null) { res.Add((w.Name ?? "?") + ": gone (destroyed or unloaded)"); continue; }
-                Vector3 p = w.Go.transform.position;
-                Vector3 camp = Game.Abs(w.TargetRel);
-                res.Add(w.Go.name + ": at (" + p.x.ToString("0") + ", " + p.y.ToString("0") + ", " + p.z.ToString("0") + ")  " + (int)Game.HDist(p, camp) + " m from camp, " + (int)Game.HDist(p, playerWorld) + " m from you");
-            }
-            return res;
-        }
-
         // ---- choosing and describing the target -----------------------------------------------
 
         // A camp owned by a faction that is not friendly with the giver's, within minD..maxD of the giver.

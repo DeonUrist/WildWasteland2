@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.Survival
 {
     internal sealed class WeatherThunder : IDisposable
     {
+        /// <summary>One bounded delayed thunder event with its stable world position.</summary>
         private struct Pending { internal bool Used; internal float Due, Strength; internal Vector3 World; }
         private readonly Pending[] _pending = new Pending[32];
         private readonly AudioSource[] _voices = new AudioSource[16];
@@ -19,7 +20,9 @@ namespace WildWasteland.Modules.Survival
         private bool _attempted, _paused;
         private float _lastClock;
         private int _nextVoice;
+        /// <summary>Retains the thunder audio path for lazy decoding.</summary>
         internal WeatherThunder(string path) { _path=path; }
+        /// <summary>Requests the decompressed thunder clip once per scope.</summary>
         internal void Load()
         {
             if (_attempted) return; _attempted=true;
@@ -42,6 +45,7 @@ namespace WildWasteland.Modules.Survival
                 }
                 Log.Always("[Weather] Thunder loaded: sound/thunder.mp3; distance / 343 m/s delay, 16 bounded voices.");
         }
+        /// <summary>Queues a bounded delayed thunder sound from distance and strike strength.</summary>
         internal void Strike(float clock, Vector3 position, Vector3 eye, float strength)
         {
             float distance=Vector3.Distance(position,eye), delay=distance/343f;
@@ -52,6 +56,7 @@ namespace WildWasteland.Modules.Survival
                 return;
             }
         }
+        /// <summary>Advances delayed events and reuses the bounded audio voice pool.</summary>
         internal void Tick(float clock, Camera camera)
         {
             if (clock<_lastClock) Stop(); _lastClock=clock;
@@ -76,11 +81,13 @@ namespace WildWasteland.Modules.Survival
                 if (Log.Verbose) Log.Info("[Weather] Thunder played at weather time "+clock.ToString("0.00")+" s");
             }
         }
+        /// <summary>Stops voices and clears pending strikes without destroying the pool.</summary>
         internal void Stop()
         {
             Array.Clear(_pending,0,_pending.Length); _lastClock=0; _paused=false;
             for (int i=0;i<_voices.Length;i++) if (_voices[i]!=null) _voices[i].Stop();
         }
+        /// <summary>Cancels decoding and releases owned thunder objects and audio.</summary>
         public void Dispose()
         {
             Stop(); if (_load!=null) _load.Cancel(); _load=null;

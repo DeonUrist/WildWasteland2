@@ -50,6 +50,7 @@ namespace WildWasteland.Modules.Survival
         static bool failureLogged;
         static AudioClip drinkingClip;
 
+        /// <summary>Handles drinking input only when a pot owns the interaction.</summary>
         internal static bool DrinkInput(HutongGames.PlayMaker.Actions.GetButtonDown __instance)
         {
             if (useDrink == null || __instance.Fsm != useDrink.Fsm || grabbed == null || grabbed.Value == null) return true;
@@ -59,8 +60,10 @@ namespace WildWasteland.Modules.Survival
                 || !pot.Root.transform.IsChildOf(hand.Value.transform);
         }
 
+        /// <summary>Sets the transient effects parent and schedules initial discovery.</summary>
         internal static void Init(Transform owner) { effects = owner; Clear(); discoveryPending = true; }
 
+        /// <summary>Starts a fresh bounded search for already loaded pots.</summary>
         internal static void BeginDiscovery()
         {
             discoveryPending = false;
@@ -72,6 +75,7 @@ namespace WildWasteland.Modules.Survival
             roots.Clear();
         }
 
+        /// <summary>Processes the next bounded discovery slice.</summary>
         internal static bool Discover()
         {
             if (discoveryPending) BeginDiscovery();
@@ -85,6 +89,7 @@ namespace WildWasteland.Modules.Survival
             return discovery.Count != 0;
         }
 
+        /// <summary>Restores pot interaction state before destroying transient effects.</summary>
         internal static void Shutdown()
         {
             for (int i = pots.Count - 1; i >= 0; i--)
@@ -101,12 +106,14 @@ namespace WildWasteland.Modules.Survival
             Clear(); discovery.Clear(); roots.Clear(); effects = null; discoveryPending = false;
         }
 
+        /// <summary>Returns a registered pot by its native object identity.</summary>
         internal static Pot FindPot(GameObject go)
         {
             Pot pot;
             return go != null && byObject.TryGetValue(go, out pot) ? pot : null;
         }
 
+        /// <summary>Drops dead references and clears interaction state for the next scene.</summary>
         internal static void Clear()
         {
             // sceneLoaded runs after new objects' Awake: keep registrations belonging to the new scene.
@@ -118,6 +125,7 @@ namespace WildWasteland.Modules.Survival
             failureLogged = false;
         }
 
+        /// <summary>Registers a native pot once and reads its saved FSM variables.</summary>
         internal static void Register(GameObject root)
         {
             if (root == Factory.Cached || byObject.ContainsKey(root)) return;
@@ -138,6 +146,7 @@ namespace WildWasteland.Modules.Survival
             if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(null, "[Survival] StewPot registered: " + root.name);
         }
 
+        /// <summary>Releases one pot registration and its transient presentation.</summary>
         static void Remove(int index)
         {
             var pot = pots[index];
@@ -147,6 +156,7 @@ namespace WildWasteland.Modules.Survival
             pots.RemoveAt(index);
         }
 
+        /// <summary>Advances pot interaction and cooking only during active gameplay.</summary>
         internal static void LateTick()
         {
             if (pots.Count == 0) return;
@@ -203,6 +213,7 @@ namespace WildWasteland.Modules.Survival
             }
         }
 
+        /// <summary>Refreshes native player, camera, hand and UI references.</summary>
         internal static void Resolve()
         {
             var globals = FsmVariables.GlobalVariables;
@@ -247,12 +258,14 @@ namespace WildWasteland.Modules.Survival
             }
         }
 
+        /// <summary>Finds the native UI text component named by a global variable.</summary>
         static Text Text(FsmVariables globals, string name)
         {
             var go = globals.GetFsmGameObject(name).Value;
             return go != null ? go.GetComponent<Text>() : null;
         }
 
+        /// <summary>Interpolates the held pot pose between resting and drinking.</summary>
         static void Pose(Pot pot, bool drinking, float dt)
         {
             pot.Pose = Mathf.MoveTowards(pot.Pose, drinking ? 1 : 0, dt > 0 ? dt / .35f : 1);
@@ -270,6 +283,7 @@ namespace WildWasteland.Modules.Survival
             pot.Visual.localScale = Vector3.one;
         }
 
+        /// <summary>Updates visible liquid material, amount and surface pose.</summary>
         static void UpdateLiquid(Pot pot)
         {
             pot.Amount.Value = Mathf.Clamp(pot.Amount.Value, 0, Factory.Capacity);
@@ -295,6 +309,7 @@ namespace WildWasteland.Modules.Survival
             if (pot.Body != null) pot.Body.mass = 3f + pot.Amount.Value;
         }
 
+        /// <summary>Writes the current pot contents into the native interaction labels.</summary>
         static void ShowLabel(Pot pot)
         {
             if (uiName != null) uiName.text = "Stew Pot";
@@ -304,6 +319,7 @@ namespace WildWasteland.Modules.Survival
             if (uiDetails != null) uiDetails.text = pot.Stew.Details;
         }
 
+        /// <summary>Transfers liquid from a tilted pot into its target or the world.</summary>
         static void Pour(Pot source, float dt)
         {
             var tr = source.Root.transform;
@@ -356,6 +372,7 @@ namespace WildWasteland.Modules.Survival
             source.Stream.Draw(start, Vector3.Cross(tr.up, low).normalized, distance, source.Amount.Value, rate, source.Content.Value);
         }
 
+        /// <summary>Logs a pot interaction when detailed diagnostics are enabled.</summary>
         static void Trace(Pot pot, string action)
         {
             if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(null, "[Survival] StewPot " + action + ": " + pot.Root.name + " " + pot.Amount.Value.ToString("0.00", CultureInfo.InvariantCulture) + "/20 L");

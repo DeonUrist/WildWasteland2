@@ -30,6 +30,7 @@ namespace WildWasteland.Modules.Survival
         {
             get { if (player == null || !player.activeInHierarchy) player = Core.GameRefs.Player; return player; }
         }
+        /// <summary>Finds the native storm ancestor using the canonical Survival prefab identity.</summary>
         internal static Transform StormRoot(Transform source)
         {
             for (var node = source; node != null; node = node.parent)
@@ -41,6 +42,7 @@ namespace WildWasteland.Modules.Survival
         }
         // ---- WW wiring. SendEvent / SetFsmFloat go through the shared Core.Hooks dispatchers; the Assembly-CSharp targets are module patches;
         // PlayMakerFSM.OnEnable goes through Core.Hooks.FsmEnable. First line of every hot handler: no War Rig loaded -> nothing can be sheltered.
+        /// <summary>Installs native force, suction, damage and dust shelter observers.</summary>
         internal static void Install(Core.IModule owner)
         {
             Core.Hooks.FsmEnable.Postfix(owner, TrackDust.Postfix);   // shared dispatcher (Performance also needs PlayMakerFSM.OnEnable)
@@ -50,12 +52,15 @@ namespace WildWasteland.Modules.Survival
             Core.Hooks.SendEventEnter.Prefix(owner, DamageEventEnter.Prefix);
             Core.Hooks.SendEventUpdate.Prefix(owner, DamageEventUpdate.Prefix);
         }
+        /// <summary>Drops scene-owned shelter presentation caches after restoration.</summary>
         internal static void ResetForScene() { player = null; lastFrame = -1; dust.Clear(); emission.Clear(); stormTornado.Clear(); }
         private static readonly Dictionary<int, bool> stormTornado = new Dictionary<int, bool>();
 
+        /// <summary>Checks whether a native action belongs to a storm anchor.</summary>
         private static bool StormAction(HutongGames.PlayMaker.FsmStateAction action)
         { return action != null && action.Owner != null && StormRoot(action.Owner.transform) != null; }
 
+        /// <summary>Updates player dust visibility when entering or leaving registered shelter.</summary>
         internal static void Tick()
         {
             if (lastFrame == Time.frameCount) return; lastFrame = Time.frameCount;
@@ -70,6 +75,7 @@ namespace WildWasteland.Modules.Survival
                 module.enabled = false; ps.Clear();
             }
         }
+        /// <summary>Restores the native particle emission values changed for shelter visibility.</summary>
         internal static void Restore()
         {
             foreach (var pair in emission)
@@ -91,6 +97,7 @@ namespace WildWasteland.Modules.Survival
 
         private static class TrackDust
         {
+            /// <summary>Observes native dust FSMs for shelter-controlled visibility.</summary>
             internal static void Postfix(PlayMakerFSM __instance)
             {
                 if (__instance.FsmName != "SandPlayer") return;
@@ -103,11 +110,13 @@ namespace WildWasteland.Modules.Survival
 
         private static class RadialForce
         {
+            /// <summary>Rejects native explosion force for actors inside registered shelter.</summary>
             internal static void Postfix(Explosion __instance, GameObject __0, ref bool __result)
             { if (__result && !NoRigs && StormAction(__instance) && Protected(__0)) __result = false; }
         }
         private static class Suction
         {
+            /// <summary>Skips native tornado suction for a sheltered collider.</summary>
             internal static bool Prefix(Tornado __instance, Collider __0)
             {
                 if (NoRigs || __0 == null) return true;
@@ -119,6 +128,7 @@ namespace WildWasteland.Modules.Survival
         }
         private static class DamageValue
         {
+            /// <summary>Prevents native storm damage values from reaching a sheltered player.</summary>
             internal static bool Prefix(SetFsmFloat __instance)
             {
                 if (NoRigs) return true;
@@ -126,6 +136,7 @@ namespace WildWasteland.Modules.Survival
                 return !Protected(__instance.Fsm.GetOwnerDefaultTarget(__instance.gameObject));
             }
         }
+        /// <summary>Checks whether a native damage event targets a sheltered actor.</summary>
         private static bool BlockDamage(SendEvent action)
         {
             if (action.Fsm.Name != "TornadoDamage" || action.sendEvent == null || action.sendEvent.Name != "Damage" ||
@@ -134,6 +145,7 @@ namespace WildWasteland.Modules.Survival
         }
         private static class DamageEventEnter
         {
+            /// <summary>Suppresses the native storm damage event while its actor is sheltered.</summary>
             internal static bool Prefix(SendEvent __instance)
             { if (NoRigs || !BlockDamage(__instance)) return true; __instance.Finish(); return false; }
         }

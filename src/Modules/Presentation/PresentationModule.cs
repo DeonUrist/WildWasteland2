@@ -205,6 +205,7 @@ namespace WildWasteland.Modules.Presentation
         /// IWeaponPose, IPoseAuthoring, ICharacterAssets, INpcAppearance while Women of Wasteland runs), then World's.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<ICrewAppearance>(this,new CrewAppearance());
             ModApi.Provide<IAnimationApi>(this, _animation);
             ModApi.Provide<ICharacterPresentation>(this, _characters);
             ModApi.Provide<ICharacterAppearance>(this, _appearance);

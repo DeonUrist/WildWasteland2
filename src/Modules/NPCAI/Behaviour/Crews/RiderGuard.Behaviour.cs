@@ -241,7 +241,7 @@ namespace WildWasteland.Modules.Patrols
                 if (dead != null)
                 {
                     var body = UnityEngine.Object.Instantiate(dead, transform.position, transform.rotation);
-                    CrewAppearance.Transfer(gameObject, body);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+                    CrewLooks.Transfer(gameObject, body);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
                     body.SetActive(true);
                     foreach (var r in body.GetComponentsInChildren<Rigidbody>(true)) r.velocity = _vel * 0.3f + Vector3.up * 4f + UnityEngine.Random.insideUnitSphere * 3f;
                     UnityEngine.Object.Destroy(body, 120f);
@@ -276,7 +276,7 @@ namespace WildWasteland.Modules.Patrols
             var owner=_marker!=null?_marker.gameObject:_car;
             if(CrewReturn.FrontDoor(owner)==null){JumpOff("crew under attack");return;}   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
             _mode=Mode.Done;if(_marker!=null)_marker.DropRider(gameObject);
-            var mob=Patrol.BailOut(owner,gameObject,CrewAppearance.Identity(gameObject,_prefab),1f,false);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+            var mob=Patrol.BailOut(owner,gameObject,CrewLooks.Identity(gameObject,_prefab),1f,false);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
             if(mob!=null)Dismounted(mob);
         }
 
@@ -292,7 +292,7 @@ namespace WildWasteland.Modules.Patrols
                 SimpleBanditBridge.Fight(mob);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
                 TrafficFactions.Dismount(mob,_car);
                 mob.SetActive(true);
-                Register.Name(mob, prefab.name); CrewAppearance.Transfer(gameObject, mob); Register.Add(mob, false);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+                Register.Name(mob, prefab.name); CrewLooks.Transfer(gameObject, mob); Register.Add(mob, false);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
                 if (health > 0f) { Patrol.SetHealth(mob, health); mob.AddComponent<Patrol.LateHealth>().Value = health; }
                 if (_car != null)   // it leaves the vehicle: never caught on it
                 {
@@ -311,7 +311,7 @@ namespace WildWasteland.Modules.Patrols
         private void Dismounted(GameObject mob)
         {
             var owner = _marker != null ? _marker.gameObject : _car;
-            string identity = CrewAppearance.Identity(mob, CrewAppearance.Identity(gameObject, _prefab));   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+            string identity = CrewLooks.Identity(mob, CrewLooks.Identity(gameObject, _prefab));   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
             string who = _gunner || !_warboyPrefab ? identity : Rider.Warboy;
             float[] local = null;
             if (_anchor != null) { var lp = _anchor.localPosition; local = new[] { lp.x, lp.y, lp.z }; }
@@ -351,7 +351,7 @@ namespace WildWasteland.Modules.Patrols
                 mob.SetActive(true);
                 var col = mob.GetComponent<Collider>();
                 if (col != null) mob.transform.position += Vector3.up * (at.y + 0.15f - col.bounds.min.y);
-                Register.Name(mob, prefab.name); CrewAppearance.Transfer(gameObject, mob); Register.Add(mob, false);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+                Register.Name(mob, prefab.name); CrewLooks.Transfer(gameObject, mob); Register.Add(mob, false);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
                 if (health > 0f) { Patrol.SetHealth(mob, health); mob.AddComponent<Patrol.LateHealth>().Value = health; }
                 if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + mob.name + " landed and fights on foot");
                 Core.Services.RaiseCrewBailedOut(_car, gameObject, mob);

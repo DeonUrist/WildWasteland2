@@ -2,12 +2,12 @@ using System;
 using UnityEngine;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
-    internal static class CrewAppearance
+    internal sealed class CrewAppearance : WildWasteland.Core.ICrewAppearance
     {
         /// <summary>Names also resolve with NPC off, so saved female crew still has a native fallback body.</summary>
-        internal static string BasePrefab(string name)
+        public string BasePrefab(string name)
         {
             if (string.Equals(name, "Gungirl", StringComparison.OrdinalIgnoreCase)) return "Flexa";
             if (string.Equals(name, "Shoota", StringComparison.OrdinalIgnoreCase)) return "Sprokka";
@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Female identity of a crew root by its name (Gungirl/Shoota), else the fallback.</summary>
-        internal static string Identity(GameObject root, string fallback)
+        public string Identity(GameObject root, string fallback)
         {
             if (root == null) return fallback;
             string name = root.name; int suffix = name.IndexOf('(');
@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Dresses a crew member: alias names (Gungirl, Shoota, their corpses) rename the root, then the Women of Wasteland body applies (randomize = population roll).</summary>
-        internal static void Dress(GameObject root, string requested, bool randomize = true)
+        public void Dress(GameObject root, string requested, bool randomize = true)
         {
             if (root == null) return;
             if (requested != BasePrefab(requested))
@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Carries a female identity over to a replacement object (corpse, bailed-out NPC).</summary>
-        internal static void Transfer(GameObject source, GameObject destination)
+        public void Transfer(GameObject source, GameObject destination)
         {
             string identity = Identity(source, null);
             if (identity != null)

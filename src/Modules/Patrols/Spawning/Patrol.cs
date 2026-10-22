@@ -22,7 +22,6 @@ namespace WildWasteland.Modules.Patrols
         {
             if (!InGame()) return;
             Ram.Tick();
-            ExitSpeed.Tick();
             if (Time.unscaledTime >= _nextLights) { _nextLights = Time.unscaledTime + 5f; LightsTick(); }
             if (Time.unscaledTime >= _nextPrune) { _nextPrune = Time.unscaledTime + 30f; PruneIgnoreSignatures(); }
         }
@@ -221,19 +220,20 @@ namespace WildWasteland.Modules.Patrols
                 List<GameObject> trailerCargo = null;
                 string lootKey = null;
                 // a truck: its fixed cargo option (template "E" in the editor) when it has one, else a roll among the convoy's allowed cargo
-                var loot = tpl.IsTruck ? (tpl.SpawnLoot == null ? (EditorStore.Loot(true, tpl.LootPreset) ?? EditorStore.RollTruckLoot(() => UnityEngine.Random.value, tpl.SpawnCargoOptions)) : null) : EditorStore.Loot(false, tpl.LootPreset);
-                var rolled = tpl.SpawnLoot ?? (loot != null ? loot.Roll(() => UnityEngine.Random.value) : new Dictionary<string, int>());
-                lootKey = tpl.SpawnCargoKey ?? EditorStore.CargoTexture(rolled, loot != null ? loot.TextureKey : "");
-                if (rolled.Count > 0)
+                var cargoApi=Core.ModApi.Get<Core.ICargoLoot>();
+                string table=cargoApi!=null&&tpl.SpawnLoot==null?cargoApi.Select(tpl.IsTruck,tpl.LootPreset,tpl.SpawnCargoOptions,()=>UnityEngine.Random.value):null;
+                var rolled=tpl.SpawnLoot??(cargoApi!=null?cargoApi.Roll(table,()=>UnityEngine.Random.value):new Dictionary<string,int>());
+                lootKey=tpl.SpawnCargoKey??(cargoApi!=null?cargoApi.Texture(table):"none");
+                if (rolled.Count > 0 && cargoApi!=null)
                 {
                     cargo = new List<GameObject>();
-                    yield return Cargo.Load(car, rolled, tpl.IsTruck, cargo);
+                    yield return cargoApi.Load(car, rolled, tpl.IsTruck, cargo);
                     if (car == null) yield break;
                 }
-                if (trailer != null && tpl.Trailer.SpawnLoot != null)
+                if (trailer != null && tpl.Trailer.SpawnLoot != null && cargoApi!=null)
                 {
                     trailerCargo = new List<GameObject>();
-                    yield return Cargo.Load(trailer, tpl.Trailer.SpawnLoot, true, trailerCargo);
+                    yield return cargoApi.Load(trailer, tpl.Trailer.SpawnLoot, true, trailerCargo);
                     if (car == null || trailer == null) yield break;
                 }
 
@@ -251,7 +251,7 @@ namespace WildWasteland.Modules.Patrols
                 var marker = PatrolMarker.Attach(car, body.name, tpl.Driver, driver, tpl.Passenger, passenger, tpl.Rams);
                 marker.CargoKey = lootKey ?? "";
                 marker.TemplateName = tpl.Name;
-                marker.SetupOnly=tpl.SetupOnly;if(tpl.SetupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Nwh.StopEngine(car);Handbrake(car,true);foreach(var person in new[]{driver,passenger})if(person!=null)Crew.MuteAi(person);}
+                marker.SetupOnly=tpl.SetupOnly;if(tpl.SetupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(car);Handbrake(car,true);foreach(var person in new[]{driver,passenger})if(person!=null)Crew.MuteAi(person);}
                 MerchantRuntime.Attach(car,tpl);
                 marker.Faction=TrafficFactions.Normalize(tpl.Faction);marker.ExplodeChance=tpl.ExplodeChance;
                 TrafficFactions.Crew(car,marker);
@@ -278,8 +278,8 @@ namespace WildWasteland.Modules.Patrols
 
                 yield return new WaitForSeconds(1f);
                 if (car == null) yield break;
-                if (cargo != null) Cargo.SettleFsms(cargo);
-                if (trailerCargo != null) Cargo.SettleFsms(trailerCargo);
+                if (cargo != null) cargoApi.Settle(cargo);
+                if (trailerCargo != null) cargoApi.Settle(trailerCargo);
                 if (Explode.IsWreck(car)) yield break;   // crew killed during the build: it already blew up
                 var carFsms = car.GetComponentsInChildren<PlayMakerFSM>(true);
                 SetPartConditions(car, carFsms);
@@ -365,7 +365,7 @@ namespace WildWasteland.Modules.Patrols
             var drv = UnityEngine.Object.Instantiate(prefab, pos, rot);
             drv.SetActive(true);
             drv.name = prefab.name + "(Driver)";
-            CrewAppearance.Dress(drv, prefabName, randomize);
+            CrewLooks.Dress(drv, prefabName, randomize);
 
             var drvCols = drv.GetComponentsInChildren<Collider>(true);
 
@@ -450,7 +450,7 @@ namespace WildWasteland.Modules.Patrols
             else if (PatrolsModule.RangedCombat.Value) PassengerGuard.Prepare(go, true);   // ranged-only rewiring + mute, before the FSMs' Start
             else Crew.MuteAi(go);
             go.name = prefab.name + "(" + role + ")";
-            CrewAppearance.Dress(go, prefabName, randomize);
+            CrewLooks.Dress(go, prefabName, randomize);
 
             var root = go.GetComponent<Rigidbody>() ?? go.AddComponent<Rigidbody>();
             root.isKinematic = true;
@@ -602,6 +602,15 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Any occupant gets out on the given side (+1 right, -1 left, 0 = the side its seat is on relative to sitPos).
+        /// <summary>Publishes the native replacement handoff to typed consumers before end-of-frame destruction.</summary>
+        private static void PublishBailOut(GameObject car,GameObject previous,GameObject actor)
+        {
+            if(!Core.ModEvents.HasListeners<Core.Events.CrewBailedOut>())return;
+            var rigidbody=car!=null?car.GetComponent<Rigidbody>():null;
+            var ev=new Core.Events.CrewBailedOut { Vehicle=Core.Entities.Of(car),Passenger=Core.Entities.Of(previous),Npc=Core.Entities.Of(actor),Seat=previous!=null&&previous.name.IndexOf("(Driver)",StringComparison.Ordinal)>=0?0:1,Reason=Core.Events.CrewLeaveReason.Combat,WorldPos=Core.Origin.World(actor!=null?actor.transform.position:previous!=null?previous.transform.position:car!=null?car.transform.position:Vector3.zero),Velocity=rigidbody!=null?rigidbody.velocity:Vector3.zero };
+            Core.ModEvents.Publish(ref ev);
+        }
+
         internal static GameObject BailOut(GameObject car, GameObject pax, string prefabName, float side,bool record=true)
         {
             float health = GetHealth(pax);
@@ -639,6 +648,7 @@ namespace WildWasteland.Modules.Patrols
                 Core.Log.Warn("[Patrols] " + "Bail-out: prefab not found: " + prefabName + "; " + pax.name + " just disappears");
                 UnityEngine.Object.Destroy(pax);
                 if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
+                PublishBailOut(car,pax,null);
                 Core.Services.RaiseCrewBailedOut(car, pax, null);   // WW: ex a Harmony postfix other mods put on this method
                 return null;
             }
@@ -654,15 +664,16 @@ namespace WildWasteland.Modules.Patrols
                 mob.transform.position += Vector3.up * (groundY + 0.15f - bottom);
             }
             pos = mob.transform.position;
-            Register.Name(mob, prefab.name); CrewAppearance.Transfer(pax, mob); Register.Add(mob, false);
+            Register.Name(mob, prefab.name); CrewLooks.Transfer(pax, mob); Register.Add(mob, false);
             if (health > 0f) { SetHealth(mob, health); mob.AddComponent<LateHealth>().Value = health; }
             UnityEngine.Object.Destroy(pax);
             if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
             PatrolsModule.Verbose("Bail-out: " + mob.name + " got out of " + car.name + " with " + (health > 0f ? health.ToString("0") : "full") + " health at " + pos);
+            PublishBailOut(car,pax,mob);
             Core.Services.RaiseCrewBailedOut(car, pax, mob);   // WW: the NPC module subscribes (ex its Harmony postfix on Apocapatrol.Patrol.BailOut)
             // awareness handover + return-to-car membership (pax is destroyed at the end of the frame; its name still tells the seat)
             if(record)CrewReturn.Dismounted(car, mob, pax.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0 ? CrewReturn.RoleDriver : CrewReturn.RolePassenger, -1,
-                CrewAppearance.Identity(mob, prefabName), null, null, false);
+                CrewLooks.Identity(mob, prefabName), null, null, false);
             return mob;
         }
 

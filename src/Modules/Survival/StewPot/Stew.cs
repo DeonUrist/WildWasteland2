@@ -21,8 +21,10 @@ namespace WildWasteland.Modules.Survival
         internal string Details = "";
         float nextCook, lastCook, nextSpoil, coldSeconds, nextDetails;
 
+        /// <summary>Total raw and cooked nutrition still held in the pot.</summary>
         internal float Nutrition { get { return Raw.Value + Cooked.Value; } }
 
+        /// <summary>Binds the existing saved FSM variables for this pot.</summary>
         internal Stew(PlayMakerFSM save)
         {
             var vars = save.FsmVariables;
@@ -34,6 +36,7 @@ namespace WildWasteland.Modules.Survival
             nextSpoil = lastCook + 5f;
         }
 
+        /// <summary>Advances cooking, spoilage and boiling effects with gameplay time.</summary>
         internal void Tick(Runtime.Pot pot, float dt, bool live, Transform owner)
         {
             if (live)
@@ -109,6 +112,7 @@ namespace WildWasteland.Modules.Survival
         }
 
         // Call before reducing donor litres so every dissolved value follows exactly the same fraction.
+        /// <summary>Transfers a fraction of contents into another pot or player nutrition.</summary>
         internal void Remove(float fraction, Stew destination, FsmFloat hunger, FsmFloat sanity)
         {
             fraction = Mathf.Clamp01(fraction);
@@ -130,18 +134,21 @@ namespace WildWasteland.Modules.Survival
             if (sanity != null) sanity.Value = Mathf.Clamp(sanity.Value + insanity, 0, 100);
         }
 
+        /// <summary>Clears the saved contents after the last serving is consumed.</summary>
         internal void Empty()
         {
             Raw.Value = Cooked.Value = Insanity.Value = SpoiledNutrition.Value = StaleSeconds.Value = 0;
             Spoiled.Value = 0; Heating = false; coldSeconds = 0; nextDetails = 0;
         }
 
+        /// <summary>Chooses the liquid material category for a saved content type.</summary>
         internal int MaterialKey(int type)
         {
             if (type == (int)Contents.Water) return type;
             return type + (Spoiled.Value == 2 ? 18 : Spoiled.Value == 1 ? 12 : Raw.Value > .0001f ? 6 : 0);
         }
 
+        /// <summary>Returns the shared liquid material for the requested content category.</summary>
         internal Material Material(int type)
         {
             if (type == (int)Contents.Water) return Factory.Liquids[type];
@@ -149,6 +156,7 @@ namespace WildWasteland.Modules.Survival
                 : Raw.Value > .0001f ? Factory.RawLiquids[type] : Factory.Liquids[type];
         }
 
+        /// <summary>Destroys this pot’s transient boiling effect.</summary>
         internal void Dispose() { if (Boiling != null) Object.Destroy(Boiling.gameObject); }
     }
 
@@ -167,11 +175,13 @@ namespace WildWasteland.Modules.Survival
         static string notice;
         static Runtime.Pot noticePot;
 
+        /// <summary>Clears held-food and interaction hints without changing saved pot contents.</summary>
         internal static void Clear()
         {
             heldFood = null; foodValid = false; Target = noticePot = null; AddHint = notice = null; nextAim = noticeUntil = 0;
         }
 
+        /// <summary>Tests whether the native fire trigger overlaps the pot collider.</summary>
         internal static bool OnFire(Collider collider)
         {
             if (collider == null || !collider.enabled) return false;
@@ -189,6 +199,7 @@ namespace WildWasteland.Modules.Survival
             return false;
         }
 
+        /// <summary>Handles adding held food and choosing the active pot interaction target.</summary>
         internal static void Interact(GameObject held, Camera camera, bool input, PlayMakerFSM grab)
         {
             if (held != heldFood)
@@ -230,6 +241,7 @@ namespace WildWasteland.Modules.Survival
             Object.Destroy(held); foodValid = false;
         }
 
+        /// <summary>Reads supported food nutrition and insanity from its native FSM.</summary>
         static bool ReadFood(GameObject go)
         {
             foodNutrition = foodInsanity = 0; foodRaw = false;
@@ -252,6 +264,7 @@ namespace WildWasteland.Modules.Survival
             return foodNutrition > 0;
         }
 
+        /// <summary>Returns the current contextual interaction hint for a pot.</summary>
         internal static string Hint(Runtime.Pot pot)
         {
             if (noticePot == pot && Clock < noticeUntil) return notice;
@@ -259,6 +272,7 @@ namespace WildWasteland.Modules.Survival
             return pot.Amount.Value > .0001f ? "Drink: hold Use" : "Empty - pour water into the pot";
         }
 
+        /// <summary>Combines existing and added content types into the saved mixed category.</summary>
         internal static int MergeContents(int current, int added)
         {
             if (added <= (int)Contents.Water) return current;
@@ -284,6 +298,7 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Aborts an unfinished load when the Survival scope shuts down.</summary>
         internal static void StopSoundLoad() { if (_soundLoad != null) _soundLoad.Cancel(); _soundLoad = null; }
 
+        /// <summary>Writes a detailed pot-state diagnostic only at verbose level.</summary>
         internal static void Trace(Runtime.Pot pot, string text)
         {
             if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(null, "[Survival] StewPot " + text + ": " + pot.Root.name);

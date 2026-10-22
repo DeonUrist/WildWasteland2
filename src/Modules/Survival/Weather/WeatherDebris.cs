@@ -19,17 +19,21 @@ namespace WildWasteland.Modules.Survival
         private Camera _camera;
         private int _limit;
         private float _retry;
+        /// <summary>Installs the camera observer for native debris presentation.</summary>
         internal WeatherDebris() { Camera.onPreCull += Before; }
+        /// <summary>Prepares the bounded native debris pools when prefabs become available.</summary>
         internal bool Prepare()
         {
             bool ready=true; for (int slot=0;slot<3;slot++) ready &= Ensure(slot);
             Suspend(); return ready;
         }
+        /// <summary>Begins one camera’s debris frame at the requested detail level.</summary>
         internal void Begin(Camera camera, WeatherVisualDetail detail)
         {
             _camera = camera; _limit = detail == WeatherVisualDetail.Low ? 1 : detail == WeatherVisualDetail.Max ? 3 : 2;
             Array.Clear(_used,0,_used.Length);
         }
+        /// <summary>Updates one reused debris slot at the supplied storm pose.</summary>
         internal void Draw(int key, Vector3 position, Quaternion rotation, WeatherVisualDetail detail)
         {
 
@@ -56,6 +60,7 @@ namespace WildWasteland.Modules.Survival
                 }
             }
         }
+        /// <summary>Creates one missing native debris pool without repeating successful work.</summary>
         private bool Ensure(int slot)
         {
             if (_systems[slot] == null)
@@ -92,16 +97,20 @@ namespace WildWasteland.Modules.Survival
             }
             return true;
         }
+        /// <summary>Hides slots not used by the current frame.</summary>
         internal void End()
         {
             for (int i=0;i<3;i++) if (!_used[i] && _systems[i] != null && !_systems[i].isStopped)
                 _systems[i].Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);
         }
+        /// <summary>Restricts debris visibility to the prepared gameplay camera.</summary>
         private void Before(Camera camera)
         {
             for (int i=0;i<3;i++) if (_renderers[i] != null) _renderers[i].enabled = _used[i] && camera == _camera;
         }
+        /// <summary>Clears camera and slot visibility while retaining the prepared pools.</summary>
         internal void Suspend() { _camera = null; Array.Clear(_used,0,3); End(); }
+        /// <summary>Unsubscribes the camera observer and destroys owned debris pools.</summary>
         public void Dispose()
         {
             Camera.onPreCull -= Before; Suspend();
