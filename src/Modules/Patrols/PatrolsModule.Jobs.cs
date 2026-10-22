@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.Patrols
         private void TickPatrol() { if (_patrol != null) _patrol.Tick(); }
         /// <summary>Refreshes distance and boss progression without per-frame editor work.</summary>
         private void TickConvoy() { if (_convoy != null) _convoy.Tick(); }
-        /// <summary>Advances virtual journeys and physical representations at the existing quarter-second cadence.</summary>
+        /// <summary>Admits the existing scaled-time quarter-second traffic accumulator, preserving pause, slow motion and hitch elapsed time.</summary>
         private void TickTraffic() { if (_traffic != null) _traffic.Tick(); }
         /// <summary>Walks the existing bounded location-discovery slice only during active traffic gameplay.</summary>
         private void TickLocations() { if (TrafficReady()) TrafficLocations.Tick(); }

@@ -539,7 +539,7 @@ namespace WildWasteland.Modules.Patrols
             string name = Path.GetFileName(slot ?? "");
             if (string.IsNullOrEmpty(name) || name != slot || !name.EndsWith(".es3", StringComparison.OrdinalIgnoreCase)) return false;
             foreach (char c in name) if (!(char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '_')) return false;
-            path = Path.Combine(SavesDir ?? Core.Assets.ModuleConfigDir("Patrols"), name + ".bin");
+            path = Path.Combine(SavesDir ?? Path.Combine(Core.Assets.ModuleConfigDir("Patrols"), "Saves"), name + ".bin");
             return true;
         }
 
