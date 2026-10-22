@@ -1,7 +1,7 @@
 using UnityEngine;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Navigation side of custom POI dressing: the Nav.Make prefix that holds a custom POI back until its static props exist

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
-using WildWasteland.Modules.Loot;
+using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.Loot
 {
     /// <summary>
     /// Spawn-profile catalog of POI layout markers (Loot, README 6.9): named item/monster lists built from the native weighted
@@ -15,24 +15,10 @@ namespace WildWasteland.Modules.Towns
     /// (<see cref="Core.PrefabCatalog.AssetFsms"/>) instead of its own Resources.FindObjectsOfTypeAll scan. Monster profiles are
     /// consumed by the marker builder for NPC groups. Namespace kept for Wave C.
     /// </summary>
-    internal sealed class PoiSpawnCatalog
+    internal sealed class PoiSpawnCatalog : INativeSpawnCatalog
     {
-        /// <summary>One selectable list: native template FSM, kind (Items/CarParts/Monsters), name and the filtered selector rows.</summary>
-        internal sealed class Profile
-        {
-            /// <summary>Display name and marker kind.</summary>
-            internal string Name, Kind;
-            /// <summary>Native ItemSpawner template FSM cloned by the marker.</summary>
-            internal PlayMakerFSM Template;
-            /// <summary>Accepted native list indices.</summary>
-            internal int[] Indices;
-            /// <summary>Their native weights.</summary>
-            internal float[] Weights;
-            /// <summary>Number of accepted rows.</summary>
-            internal int Count;
-        }
         /// <summary>Built profiles (sorted by name when ready).</summary>
-        internal readonly List<Profile> Profiles = new List<Profile>();
+        public List<NativeSpawnProfile> Profiles { get; } = new List<NativeSpawnProfile>();
         private PlayMakerFSM[] _scan;
         private int _next;
         private PlayMakerArrayListProxy _itemList;
@@ -40,24 +26,24 @@ namespace WildWasteland.Modules.Towns
         private readonly HashSet<string> _names = new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<GameObject,bool> _safe = new Dictionary<GameObject,bool>();
         /// <summary>True when every asset FSM has been visited.</summary>
-        internal bool Ready;
+        public bool Ready { get; private set; }
 
         /// <summary>Starts a scan (no-op while one runs or when ready): snapshot of the Core asset FSM list sorted by object name.</summary>
-        internal void Start()
+        public void Start()
         {
             if (_scan != null || Ready) return;
             _scan = Core.PrefabCatalog.AssetFsms.ToArray();
             Array.Sort(_scan, (a,b) => string.CompareOrdinal(a == null ? "" : a.name, b == null ? "" : b.name));
             SpawnerProgress.ScanProgress = 0f;
         }
-        /// <summary>Profile of a kind by exact name, or null.</summary>
-        internal Profile Find(string kind, string name)
+        /// <summary>NativeSpawnProfile of a kind by exact name, or null.</summary>
+        public NativeSpawnProfile Find(string kind, string name)
         { foreach (var p in Profiles) if (p.Kind == kind && p.Name == name) return p; return null; }
         /// <summary>Every profile of a kind (new list; editor use).</summary>
-        internal List<Profile> For(string kind)
-        { var result = new List<Profile>(); foreach (var p in Profiles) if (p.Kind == kind) result.Add(p); return result; }
+        public List<NativeSpawnProfile> For(string kind)
+        { var result = new List<NativeSpawnProfile>(); foreach (var p in Profiles) if (p.Kind == kind) result.Add(p); return result; }
         /// <summary>Sliced step: visits one asset FSM; false when idle or finished (then sorts the profiles and sets <see cref="Ready"/>).</summary>
-        internal bool Step()
+        public bool Step()
         {
             if (_scan == null) return false;
             if (_next >= _scan.Length) { _scan = null; Ready = true; SpawnerProgress.ScanProgress = 1f; Profiles.Sort((a,b) => string.CompareOrdinal(a.Name,b.Name)); return false; }
@@ -122,7 +108,7 @@ namespace WildWasteland.Modules.Towns
             }
             if (indices.Count == 0) return;
             _names.Add(kind + ":" + name);
-            Profiles.Add(new Profile { Template = f, Kind = kind, Name = name, Indices = indices.ToArray(), Weights = weights.ToArray(), Count = indices.Count });
+            Profiles.Add(new NativeSpawnProfile { Template = f, Kind = kind, Name = name, Indices = indices.ToArray(), Weights = weights.ToArray(), Count = indices.Count });
         }
         /// <summary>Coarse category of an item prefab (tags, layer and name words): Car parts, Weapons &amp; equipment, Items &amp; supplies.</summary>
         internal static string ItemCategory(GameObject root)
@@ -147,6 +133,6 @@ namespace WildWasteland.Modules.Towns
             _safe[prefab] = safe; return safe;
         }
         /// <summary>Forgets profiles and any running scan (new world / unload).</summary>
-        internal void Clear() { Profiles.Clear(); _names.Clear(); _safe.Clear(); _scan = null; _next = 0; Ready = false; _itemList = null; _itemListSearched = false; if (SpawnerProgress.ScanProgress < 1f) SpawnerProgress.ScanProgress = 1f; }
+        public void Clear() { Profiles.Clear(); _names.Clear(); _safe.Clear(); _scan = null; _next = 0; Ready = false; _itemList = null; _itemListSearched = false; if (SpawnerProgress.ScanProgress < 1f) SpawnerProgress.ScanProgress = 1f; }
     }
 }

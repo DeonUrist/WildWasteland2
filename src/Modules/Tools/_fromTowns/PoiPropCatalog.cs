@@ -4,7 +4,7 @@ using ES3Internal;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     // Catalog work runs once in slices. Placing a prop never clones its native scripts, tags or Rigidbody.
     /// <summary>

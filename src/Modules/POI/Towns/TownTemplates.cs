@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>Immutable, validated generation rules loaded once before terrain workers start.</summary>
     internal sealed class TownTemplate
@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Towns
         internal string Id, DisplayName;
         internal TownFaction Faction;
         internal int Weight = 1, MinLots = 5, MaxLots = 8;
-        internal bool Walls = true, RequireMerchant = true;
+        internal bool Walls = true, RequireMerchant = true, UseGlobalLotRange;
         internal string[] AllowedPois = new string[0];
         internal string[] ExternalParkingPois = new[] { "TownsGasStation" };
         internal int PopulationMin = 10, PopulationMax = 20, LootMin = 5, LootMax = 10;
@@ -27,6 +27,7 @@ namespace WildWasteland.Modules.Towns
             var t = new TownTemplate { Id = id, DisplayName = Text(d, "DisplayName", id), Faction = faction,
                 Weight = Number(d, "Weight", 1, 0, 1000), MinLots = Number(d, "MinLots", 5, 3, 32), MaxLots = Number(d, "MaxLots", 8, 3, 32),
                 Walls = Flag(d, "Walls", true), RequireMerchant = Flag(d, "RequireMerchant", true),
+                UseGlobalLotRange = !d.ContainsKey("MinLots") && !d.ContainsKey("MaxLots"),
                 AllowedPois = Strings(d, "AllowedPois", new string[0]), ExternalParkingPois = Strings(d, "ExternalParkingPois", new[] { "TownsGasStation" }),
                 PopulationMin = Number(d, "PopulationMinPercent", 10, 0, 500), PopulationMax = Number(d, "PopulationMaxPercent", 20, 0, 500),
                 LootMin = Number(d, "LootMinPercent", 5, 0, 500), LootMax = Number(d, "LootMaxPercent", 10, 0, 500), Data = d };
@@ -60,7 +61,7 @@ namespace WildWasteland.Modules.Towns
             foreach (TownFaction faction in Enum.GetValues(typeof(TownFaction)))
             {
                 string id = faction.ToString();
-                var data = new Dictionary<string, object> { { "Id", id }, { "Faction", id }, { "DisplayName", id }, { "Weight", 1 }, { "MinLots", 5 }, { "MaxLots", 8 },
+                var data = new Dictionary<string, object> { { "Id", id }, { "Faction", id }, { "DisplayName", id }, { "Weight", 1 },
                     { "Walls", faction == TownFaction.Coyotes || faction == TownFaction.Scrapyard }, { "RequireMerchant", faction == TownFaction.Coyotes },
                     { "AllowedPois", new object[0] }, { "ExternalParkingPois", new object[] { "TownsGasStation" } }, { "PopulationMinPercent", 10 }, { "PopulationMaxPercent", 20 }, { "LootMinPercent", 5 }, { "LootMaxPercent", 10 } };
                 _templates[id] = TownTemplate.Parse(id, Json.Write(data));

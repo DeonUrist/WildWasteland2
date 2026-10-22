@@ -4,7 +4,7 @@ using MapMagic.Products;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Per-building instance overlay computed from the plan and the read-only prefab templates, normally on the MapMagic worker.

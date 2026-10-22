@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Isolated navigation bake of the extracted small tower: one <see cref="Nav.IsolatedBake"/> of the kit's prefab (ex reflection into

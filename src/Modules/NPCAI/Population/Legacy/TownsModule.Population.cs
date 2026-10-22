@@ -1,4 +1,4 @@
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Former NPCAI/Population part of the old Towns entry (Wave A split). Empty since B07: NPCAIModule installs the interior / native-POI

@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     // Applies to native interior groups throughout the world while the addon is loaded.
     // Native FSMs still own creation, registration, names and one-shot progress.

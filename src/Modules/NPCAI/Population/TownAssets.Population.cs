@@ -8,7 +8,7 @@ using Den.Tools.Matrices;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Native population catalog of the graph POIs: faction actor pools, Scrapyard Yard Hounds, boss prefab test.

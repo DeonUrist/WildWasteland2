@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.POI
         public override void Generate(TileData data, StopToken stop)
         {
             var result = new TransitionsList();
-            if (!Towns.TownPoiSettings.Allows(data)) { data.StoreProduct(this, result); return; }
+            if (!TownPoiSettings.Allows(data)) { data.StoreProduct(this, result); return; }
             var heights = data.ReadInletProduct(Heights);
             if (heights == null || (stop != null && stop.stop)) return;
             var area = data.area.active;
