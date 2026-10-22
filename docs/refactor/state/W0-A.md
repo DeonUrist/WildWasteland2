@@ -14,13 +14,13 @@ Branch `refactor/W0-A`, worktree `/home/claude/wt/W0-A`.
 - [x] 8b. Plugin.VERSION = "2.0.0"
 - [x] 9. Skeleton modules (Debug, Presentation, NPCAI, Gunplay, Vehicles, Loot, Tools, Developer, Compatibility, Saves) registered after existing ones
 - [x] 10. tools/refactor/*.py work against new layout
-- [ ] Report docs/refactor/reports/W0-A.md, ownership check
+- [x] Report docs/refactor/reports/W0-A.md, ownership check
 
 ## Last good compile (commit)
-steps 1-10, COMPILE OK
+all steps, COMPILE OK (see git log for the commit)
 
 ## Next action
-Write docs/refactor/reports/W0-A.md, run check_ownership, final commit.
+Done. Waiting for coordinator merge.
 
 ## Blockers / questions for Denis
 - csproj has no NoWarn for CS0618: the [Obsolete] Services/Log wrappers will produce many warnings in `dotnet build` (compile.sh suppresses 618). Request: add `<NoWarn>$(NoWarn);CS0618</NoWarn>` to WildWasteland.csproj until Wave C (see requests/W0-A.md).
