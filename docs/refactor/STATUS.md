@@ -15,7 +15,7 @@ Reference DLLs for compile.sh: copy `Apocalypter_Data/Managed` and `BepInEx/core
 |---|---|---|---|---|---|
 | W0 | W0-A Core kernel | refactor/W0-A | done | 37c5df5 | contracts frozen; requests in requests/W0-A.md |
 | W0 | W0-B Core utilities | refactor/W0-B | done | 67f9b61 | requests in requests/W0-B.md |
-| A | A1..A8 | | not started | | |
+| A | A1..A8 | refactor/A1..A8 | done | all merged | compile OK (36 warnings); check_partials fixed 1 (EngineSim BindCompatibility, original was empty); questions answered as D18 |
 | B | B01..B18 | | not started | | |
 | C | C | | not started | | |
 

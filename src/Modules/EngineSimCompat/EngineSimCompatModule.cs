@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.EngineSimCompat
         /// <summary>Name shown on the Modules page.</summary>
         public override string DisplayName { get { return "Engine Sim compatibility"; } }
         /// <summary>Binds nothing of its own; the Compatibility part may add entries.</summary>
-        public override void BindConfig(ModuleConfig cfg) { BindCompatibility(cfg); }
+        public override void BindConfig(ModuleConfig cfg) { }
         /// <summary>Starts the Engine Sim bridge (Compatibility part).</summary>
         public override void Init() { InitCompatibility(); }
         /// <summary>Forwards scene loads to the bridge.</summary>
@@ -22,8 +22,6 @@ namespace WildWasteland.Modules.EngineSimCompat
         /// <summary>Stops the bridge and withdraws the ignition provider.</summary>
         public override void Shutdown() { ShutdownCompatibility(); }
 
-        /// <summary>Compatibility part: config entries (none today).</summary>
-        partial void BindCompatibility(ModuleConfig cfg);
         /// <summary>Compatibility part: Engine Sim detection, patches and jobs.</summary>
         partial void InitCompatibility();
         /// <summary>Compatibility part: reseeds the discovery cache and clears start requests.</summary>
