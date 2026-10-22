@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.NPC
                     }
                 }
                 Vector3 origin = refs.Muzzle != null ? refs.Muzzle.position : owner.transform.position;
-                if (Senses.On) Senses.Shot(owner.transform.root.gameObject, origin, kind, false);
+                { var npc = ModApi.Get<INpcApi>(); if (npc != null) npc.Shot(owner.transform.root.gameObject, origin, (int)kind, false); }
                 if (ModEvents.HasListeners<WeaponFired>())
                     CombatEvents.Fired(owner.transform.root.gameObject, -1, (WeaponKind)(int)kind, origin, owner.transform.forward, 1, false);
             }
@@ -178,7 +178,7 @@ namespace WildWasteland.Modules.NPC
                         { _muzzleBuf.Add(t); if (!found && t.gameObject.activeInHierarchy) { position = t.position; found = true; } }
                     si.Muzzles = _muzzleBuf.ToArray();
                 }
-                if (senses) Senses.Shot(Core.GameRefs.Player, position, si.Kind, true);
+                if (senses) { var npc = ModApi.Get<INpcApi>(); if (npc != null) npc.Shot(Core.GameRefs.Player, position, (int)si.Kind, true); }
                 CombatEvents.Fired(Core.GameRefs.Player, WeaponCatalog.Instance.Handle(fsm.GameObject.name), (WeaponKind)(int)si.Kind, position, fsm.GameObject.transform.forward, 1, true);
             }
             catch (Exception e) { GunplayLog.Warn("Vanilla player shot observation: " + e.Message); }
@@ -218,7 +218,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 if (!senses) return;
                 if(melee&&!player){Core.Services.RaiseNpcHurt(target,fsm.GameObject);return;}
-                Senses.Hurt(target, player ? Core.GameRefs.Player : fsm.GameObject);
+                { var npc = ModApi.Get<INpcApi>(); if (npc != null) npc.Hurt(target, player ? Core.GameRefs.Player : fsm.GameObject); }
             }
             catch (Exception e) { GunplayLog.Warn("Vanilla hurt observation: " + e.Message); }
         }

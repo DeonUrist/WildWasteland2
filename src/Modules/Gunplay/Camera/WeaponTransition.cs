@@ -15,9 +15,6 @@ namespace WildWasteland.Modules.Guns
         private static Fsm _handlerFsm, _switcherFsm;
         private static FsmEvent _pending;
         private static FsmEventData _data;
-        private static Transform _posed;
-        private static Vector3 _position;
-        private static Quaternion _rotation;
         private static float _nextFind, _at, _weight;
         private static bool _replaying, _lowering, _holster;
         private const float Duration = .14f;
@@ -28,7 +25,6 @@ namespace WildWasteland.Modules.Guns
             Hooks.ProcessEvent.Prefix(owner, BeforeEvent);
             Hooks.ActivateGameObjectEnter.Postfix(owner, AfterActivate);
             Scheduler.EveryFrame(owner, "Gunplay.WeaponTransition", Tick, Phase.EarlyUpdate);
-            Scheduler.EveryFrame(owner, "Gunplay.WeaponTransitionPose", Pose, Phase.LateUpdateLast);   // refs-ok: Pose is the Presentation-part method of this partial class (REFACTOR-REQUEST B09-5), not the Presentation type Pose
         }
         /// <summary>The native WeaponInHand weaponType of the drawn weapon ("hands" or empty = none); null before the rig is found.</summary>
         internal static string CurrentWeaponType
@@ -48,7 +44,7 @@ namespace WildWasteland.Modules.Guns
         /// <summary>Drops rig references and the switch state; the pose is restored.</summary>
         internal static void Reset()
         {
-            Restore(); _handler = _switcher = null; _handlerFsm = _switcherFsm = null; _pending = null; _data = null;
+            _handler = _switcher = null; _handlerFsm = _switcherFsm = null; _pending = null; _data = null;
             _weight = _nextFind = 0f; _lowering = _replaying = _holster = false;
         }
         /// <summary>World ready: weapons get holstered once the Weapons FSM runs.</summary>
@@ -56,7 +52,6 @@ namespace WildWasteland.Modules.Guns
         /// <summary>Restores the pose and replays a held-back switch event.</summary>
         internal static void Shutdown()
         {
-            Restore();
             if (_pending != null && _handler != null && GameRefs.InPlay) Replay();
             Reset();
         }
@@ -109,7 +104,6 @@ namespace WildWasteland.Modules.Guns
         /// <summary>The switch work of one frame: rig lookup, world-ready holster, lowering/raising weight and the delayed event replay.</summary>
         private static void TickSwitch()
         {
-            Restore();
             if (_handler == null && Time.unscaledTime >= _nextFind)
             {
                 _nextFind = Time.unscaledTime + 1f;

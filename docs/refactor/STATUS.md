@@ -19,6 +19,7 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 ## Claude takeover (2026-10-22 evening)
 Denis stopped Codex; Claude completes Wave B and C (see work-packages.md "Claude takeover"). Merged: B01+B02 (coord-wiring), B03 -> refactor/main 25b90be; Presentation/NPCAI partial entries re-applied. B04 continues on claude/B04 (= main + save-bootstrap WIP; session-compat's 3 extra commits to integrate), B17 on claude/B17 (= main + Codex B17 WIP, merge conflict left for the agent). D19: delete weather diagnostics (B14).
 Batch 1 (B04, B17, B09, B12, B15): DONE, merged into refactor/main, compile OK, partials 0 missing, repo-wide module refs 867 (was 1078). Registry: Presentation/NPCAI/Gunplay now register right after PlayerBody/NPC/Guns (B09-1).
+Batch 2 (B05, B06, B07, B08): DONE, merged, compile OK, partials 0 missing, module refs 656. Coordinator: B05-3 (Gunplay WeaponTransition pose job/Restore removed, Presentation stub deleted), B07-10 (VanillaEvents -> INpcApi), registry PlayerBody, NPCAI, Presentation, NPC (B07-1; player-body hooks now after NPCAI on shared dispatchers - disjoint targets), module Embedded folders added to Wave B ownership. OPEN for later: B07-8 (Presentation subscribe NpcSpawned + delete Senses.Registry direct Gungirl.Registered call, same step) and B05-11 single player/NPC character driver (not done; follow-up package proposed).
 Batches: 1 = B04, B17, B09, B12, B15; 2 = B05, B06, B07, B08; 3 = B10, B11, B13, B14, B16, B18; then Wave C.
 
 ## Waves
@@ -47,6 +48,10 @@ Batches: 1 = B04, B17, B09, B12, B15; 2 = B05, B06, B07, B08; 3 = B10, B11, B13,
 Originally a cloud mirror; Denis authorized local continuation on 2026-10-22. Preserve local commits and changes when synchronizing with cloud work; do not reset this checkout to an older cloud checkpoint. Local continuation started from 473fef9 (Wave A merged). Active Wave B branches are listed above; agent work remains isolated until reviewed integration.
 
 ## Open questions for Denis (behaviour-preserving default in place; answer any time)
+- B05 Q1: unify player onto the shared NPC character driver as a follow-up package (needs your in-game testing)? Q2: keep animation LOD (unseen >40 m every 3rd frame) on by default? Q3: OK that without a complete animation bundle there is no player body?
+- B06 Q1/Q2: vehicle skin textures in plugins/WildWasteland/Presentation/VehicleSkins, grip setups + BusPassengerPose.json in config/WildWasteland/Presentation - OK? Q3: delete Paint.RepairFrame (pre-1.9.0 save repair) under D12?
+- B07 Q1: storm exposure >= 0.5 counts as inside a sandstorm? Q4: fully merge Brain/Idle movement drivers (risky) or keep shared Mover only? Q5: NPC-vs-NPC sight budget 256 checks/frame OK?
+- B08 Q1: switch Nav structure sweep to Core WorldIndex (would change which structures are found)? Q2: POI owns town routing classes via INavApi, or extend ITownsApi geometry?
 - B04-6: save-library menu entry points: Core `UiActions` registry (Codex) or a new `ISaveMenu` contract? (Menu.Saves.cs calls Saves directly meanwhile.)
 - B09 Q1: switching Gunplay off also disables vanilla HUD hit feedback, NPC reaction to vanilla shots, and the driver-seat blast lance fix - OK? Q2: move NPC magazine/reload and follower gun code to NPCAI?
 - B12 Q1: move War Rig model files to plugins/WildWasteland/Vehicles/WarRig (fallback to Patrols folder now)? Q3: should Patrols still spawn vehicles when Vehicles is off (it does now)?

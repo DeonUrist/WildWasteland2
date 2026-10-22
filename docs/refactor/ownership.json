@@ -162,7 +162,8 @@
    "src/Modules/Presentation/Player/**",
    "src/Modules/Presentation/PresentationModule*.cs",
    "!src/Modules/Presentation/PresentationModule.World.cs",
-   "src/Modules/PlayerBody/PlayerBodyModule.cs"
+   "src/Modules/PlayerBody/PlayerBodyModule.cs",
+   "src/Modules/Presentation/Embedded/**"
   ],
   "B06": [
    "src/Modules/Presentation/Camera/**",
@@ -181,7 +182,8 @@
    "src/Modules/NPCAI/NpcModule*.cs"
   ],
   "B08": [
-   "src/Modules/NPCAI/Navigation/**"
+   "src/Modules/NPCAI/Navigation/**",
+   "src/Modules/NPCAI/Embedded/**"
   ],
   "B09": [
    "src/Modules/Gunplay/**",
@@ -189,11 +191,13 @@
   ],
   "B10": [
    "src/Modules/HUD/**",
-   "src/Modules/CleanHUD/CleanHudModule.cs"
+   "src/Modules/CleanHUD/CleanHudModule.cs",
+   "src/Modules/HUD/Embedded/**"
   ],
   "B11": [
    "src/Modules/Patrols/**",
-   "!src/Modules/Patrols/Embedded/**"
+   "!src/Modules/Patrols/Embedded/**",
+   "src/Modules/Patrols/Embedded/**"
   ],
   "B12": [
    "src/Modules/Vehicles/**"
@@ -201,7 +205,8 @@
   "B13": [
    "src/Modules/POI/**",
    "src/Modules/Towns/TownsModule.cs",
-   "src/Modules/Towns/**"
+   "src/Modules/Towns/**",
+   "src/Modules/POI/Embedded/**"
   ],
   "B14": [
    "src/Modules/Survival/**",
@@ -209,14 +214,17 @@
    "src/Modules/Debug/Weather/**",
    "src/Core/Diagnostics/WeatherDiagnosticState.cs",
    "src/Modules/Debug/DebugModule.cs",
-   "src/Modules/Tools/_fromWeather/**"
+   "src/Modules/Tools/_fromWeather/**",
+   "src/Modules/Survival/Embedded/**"
   ],
   "B15": [
    "src/Modules/Loot/**"
   ],
   "B16": [
    "src/Modules/Tools/**",
-   "src/Modules/Developer/**"
+   "src/Modules/Developer/**",
+   "src/Modules/Tools/Embedded/**",
+   "src/Modules/Developer/Embedded/**"
   ],
   "B17": [
    "src/Modules/Compatibility/**",
@@ -224,7 +232,8 @@
   ],
   "B18": [
    "src/Modules/Quests/**",
-   "!src/Modules/Quests/Embedded/**"
+   "!src/Modules/Quests/Embedded/**",
+   "src/Modules/Quests/Embedded/**"
   ],
   "C": [
    "**"
