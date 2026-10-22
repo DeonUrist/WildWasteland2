@@ -290,36 +290,6 @@ namespace WildWasteland.Modules.Patrols
                     if (f != null && f.enabled == locked) f.enabled = !locked;   // de_Attach's start state is idle: a restart is harmless
         }
 
-        // 2.6.2 [Balance] RaidersOverheat off: while the crew holds the car its engine's own heat value (the engine item's [heatValue] FSM,
-        // copied every frame by the engine's getHeatValue into engineOil_Temperature and by the radiator's into water_Temperature) is 0, so the
-        // oil only cools (-0.4/s) and never reaches the game's 120 (overheating: smoke, steam, engine Condition -0.5/s). The original value is
-        // put back when the seat lock lifts (driver dead, crew bailed, explosion) - a taken car or a looted engine heats like any other.
-        // No polling: applied on lock changes, once 2 s after Init and when the setting changes (Plugin).
-        internal void ApplyOverheat()
-        {
-            if (_car == null) return;
-            try
-            {
-                bool cool = _locked && !PatrolsModule.RaidersOverheat.Value;
-                foreach (var f in _car.GetComponentsInChildren<PlayMakerFSM>(true))
-                {
-                    if (f == null || f.FsmName != "heatValue") continue;
-                    var v = f.FsmVariables.GetFsmFloat("heatValue");
-                    if (v == null || _heat.Any(kv => kv.Key == v)) continue;
-                    _heat.Add(new System.Collections.Generic.KeyValuePair<FsmFloat, float>(v, v.Value));
-                }
-                foreach (var kv in _heat) if (kv.Key != null) kv.Key.Value = cool ? 0f : kv.Value;
-                if (_heat.Count > 0) PatrolsModule.Verbose("Crew: " + _car.name + " engine heat " + (cool ? "off (RaidersOverheat off)" : "normal") + " on " + _heat.Count + " engine(s)");
-            }
-            catch (Exception e) { PatrolsModule.Verbose("Crew: overheat setting: " + e.Message); }
-        }
-        private IEnumerator OverheatLater()
-        {
-            yield return new WaitForSeconds(2f);
-            ApplyOverheat();
-        }
-        internal static void ApplyOverheatAll() { foreach (var c in FindObjectsOfType<Crew>()) c.ApplyOverheat(); }
-
         // The car is fully vacated: the crew is dead or got out. With SelfDestructingCars the car explodes shortly after.
         private void Vacated(string why)
         {
@@ -337,31 +307,6 @@ namespace WildWasteland.Modules.Patrols
             if (_ctl != null && _ctl.Taken) _ctl.Release();
             SeatLocked(false);
             _dead = true; _done = true; _driving = false; _stuck = false;
-        }
-
-        // Switch off the AI / body-mover FSMs; called right after Instantiate (before their Start) and every frame as a guard,
-        // because Detection/Damage carry EnableFSM actions that could switch them back on.
-        internal static void MuteAi(GameObject who, string[] allowedFsms = null)
-        {
-            if (who == null) return;
-            MuteAi(who.GetComponents<PlayMakerFSM>(), allowedFsms);
-        }
-
-        internal static void MuteAi(PlayMakerFSM[] fsms, string[] allowedFsms)
-        {
-            if (fsms == null) return;
-            foreach (var f in fsms)
-                if (f != null && f.enabled && Array.IndexOf(MutedFsms, f.FsmName) >= 0
-                    && (allowedFsms == null || Array.IndexOf(allowedFsms, f.FsmName) < 0)) f.enabled = false;
-        }
-
-        // a shooting driver keeps its combat FSMs (its guard gates the Attack FSM); everything else is muted
-        private PlayMakerFSM[] _driverFsms; private GameObject _driverFsmsOf;   // the driver's FSMs, fetched once (the guard runs twice a second)
-        internal void MuteAi()
-        {
-            if (_driver == null) return;
-            if (_driverFsms == null || _driverFsmsOf != _driver) { _driverFsms = _driver.GetComponents<PlayMakerFSM>(); _driverFsmsOf = _driver; }
-            MuteAi(_driverFsms, Marker?.SetupOnly!=true && _driver.GetComponent<PassengerGuard>() != null ? PassengerGuard.CombatFsms : null);
         }
 
         // healthVar: the FSM's Health variable, resolved once by the caller and kept (GetFsmFloat is a name search every call)

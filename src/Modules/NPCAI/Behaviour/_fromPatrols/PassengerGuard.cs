@@ -8,7 +8,8 @@ namespace WildWasteland.Modules.Patrols
 {
     // Ranged passengers retain vanilla detection and firing, but never receive movement or animation FSMs. Their
     // visible body always uses the exact same fixed Pose component as the driver. Sound2 preserves weapon audio.
-    internal class PassengerGuard : MonoBehaviour
+    /// <summary>Seated ranged combat of vehicle occupants and quest followers (vanilla Attack FSM gating, target search, ranged-only, AI muting); NPCAI part of PassengerGuard (Wave A split of Patrols Crews/Passenger.cs).</summary>
+    internal partial class PassengerGuard : MonoBehaviour
     {
         internal static readonly string[] CombatFsms = { "Detection", "Attack", "RangedAttackWait", "Damage Ranged", "WeaponType", "Sound2" };
         private static readonly string[] TargetFsms = { "Detection", "Attack", "RangedAttackWait", "Damage Ranged", "WeaponType" };
@@ -104,43 +105,6 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
-        // a gunner on a turret spot (roof / motorcycle seat): passenger combat, but all around - no fire arc, the Pose turns the whole body
-        internal static PassengerGuard AttachTurret(GameObject who, GameObject car, Transform anchor, float arc)
-        {
-            Attach(who, car, anchor);
-            var guard = who.GetComponent<PassengerGuard>();
-            guard._turret = true; guard._turretArc = arc; guard._nextCombatCheck = 0f;
-            return guard;
-        }
-
-        // A shooting mob at the wheel: like a passenger, but it only shoots in bursts at random intervals and sits in the
-        // generic driver pose (hands on the wheel) in between.
-        internal static PassengerGuard AttachDriver(GameObject driver, GameObject car, Transform sit)
-        {
-            Attach(driver, car, sit);
-            var guard = driver.GetComponent<PassengerGuard>();
-            guard.SetDriverMode(sit);
-            return guard;
-        }
-
-        internal void SetDriverMode(Transform sit)
-        {
-            _anchor = sit;
-            _driverMode = true; _nextCombatCheck = 0f;
-            _shooting = false;
-            _ranged = _rangedPrefab && PatrolsModule.RangedCombat.Value;
-            if (_ranged) foreach (var fsm in _combat) if (fsm != null) fsm.enabled = true;
-            if (_attack != null) _attack.enabled = false;
-            if (_pose != null) { _pose.SetShooting(false); _pose.SetAim(Vector3.zero, false); }
-            ScheduleBurst();
-            PatrolsModule.Verbose("Driver: " + _passenger.name + (_ranged ? " shoots in bursts every " + PatrolsModule.FireIntervalMin.Value + "-" + PatrolsModule.FireIntervalMax.Value + " s" : " does not shoot"));
-        }
-
-        private void ScheduleBurst()
-        {
-            _nextBurst = Time.time + UnityEngine.Random.Range(PatrolsModule.FireIntervalMin.Value, Mathf.Max(PatrolsModule.FireIntervalMin.Value, PatrolsModule.FireIntervalMax.Value));
-        }
-
         // Ranged enemies normally switch to their separate melee Damage FSM when Attack's distance FloatCompare emits
         // d_melee. Redirect every melee event output to the same ranged event already used by that FSM, then keep the
         // melee damage FSM disabled. This preserves native targeting, cadence, projectile damage and Sound2 at all ranges.
@@ -203,58 +167,6 @@ namespace WildWasteland.Modules.Patrols
 
             PatrolsModule.Verbose("Passenger: neutralized melee/contact damage on " + passenger.name
                 + "; disabled " + disabledActions + " FSM action(s)" + (hitbox == null ? "; hitbox not found" : "; hitbox disabled"));
-        }
-
-        internal static void Attach(GameObject passenger, GameObject car, Transform anchor)
-        {
-            var guard = passenger.GetComponent<PassengerGuard>() ?? passenger.AddComponent<PassengerGuard>();
-            guard._passenger = passenger;
-            guard._car = car;
-            guard._anchor = anchor; guard._nextCombatCheck = 0f;
-            guard._rangedPrefab = IsRanged(passenger);
-            guard._ranged = guard._rangedPrefab && PatrolsModule.RangedCombat.Value;
-            guard._combat = Array.FindAll(passenger.GetComponents<PlayMakerFSM>(), f => Array.IndexOf(CombatFsms, f.FsmName) >= 0);
-            guard._attack = Array.Find(guard._combat, f => f.FsmName == "Attack");
-            guard._fsms = passenger.GetComponents<PlayMakerFSM>();
-            guard._meleeWeapons = guard._rangedPrefab ? FindMeleeWeapons(passenger) : new GameObject[0];
-            var rs = new List<Renderer>(); var cs = new List<Collider>();
-            foreach (var w in guard._meleeWeapons) { rs.AddRange(w.GetComponentsInChildren<Renderer>(true)); cs.AddRange(w.GetComponentsInChildren<Collider>(true)); }
-            guard._meleeRenderers = rs.ToArray(); guard._meleeColliders = cs.ToArray();
-            guard.IndexTargetSources();
-            guard.HideMeleeWeapons();
-            guard._pose = passenger.GetComponent<Pose>();
-            if (guard._pose != null) guard._pose.ConfigurePassengerAim();
-            MuteNonCombatAi(passenger, PatrolsModule.RangedCombat.Value);
-            PatrolsModule.Verbose("Passenger: " + passenger.name + " fixed in driver pose; "
-                + (guard._ranged ? "vanilla ranged fire and Sound2 enabled in +/-" + PatrolsModule.FireArc.Value + " degree arc" : "passive"));
-        }
-
-        private static GameObject[] FindMeleeWeapons(GameObject passenger)
-        {
-            return Array.FindAll(Array.ConvertAll(passenger.GetComponentsInChildren<Transform>(true), t => t.gameObject), go =>
-            {
-                string name = go.name;
-                return string.Equals(name, "machete", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "old_knife", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "shiv", StringComparison.OrdinalIgnoreCase);
-            });
-        }
-
-        // The melee prop is neutralised in place (renderers and colliders off) rather than deactivated: the Attack FSM's
-        // close-range state re-activates the object every frame, and a SetActive ping-pong made its collider enter the car's
-        // CarAttack trigger every frame ("Could not find FSM: ID on collider" spam, a physics pair reset per frame, lag).
-        private float _nextWeaponCheck, _nextGuard;
-        private void HideMeleeWeapons()
-        {
-            foreach (var r in _meleeRenderers) if (r != null && r.enabled) r.enabled = false;
-            foreach (var c in _meleeColliders) if (c != null && c.enabled) c.enabled = false;
-        }
-
-        private void LateUpdate()
-        { if (!PatrolsModule.Running) return;
-            // Attack can activate the right-hand blade after Update when its close-range state runs. Apply this after
-            // PlayMaker so no melee prop is ever displayed, while leaving left-hand firearms and their effects alone.
-            if (_rangedPrefab && Time.time >= _nextWeaponCheck) { _nextWeaponCheck = Time.time + 0.5f; HideMeleeWeapons(); }
         }
 
         private static bool IsRanged(GameObject passenger)
@@ -413,23 +325,6 @@ namespace WildWasteland.Modules.Patrols
             if (candidate == null || candidate == _passenger || candidate.transform.IsChildOf(_passenger.transform)) return;
             best = candidate;
             bestScore = score;
-        }
-
-        // the Head bone of the target (found once per target, not by walking its whole hierarchy every frame)
-        private Vector3 AimPoint(GameObject target)
-        {
-            if (target != _aimTargetGo || (_aimHead == null && target != null))
-            {
-                _aimTargetGo = target; _aimHead = null;
-                foreach (var t in target.GetComponentsInChildren<Transform>(true))
-                {
-                    string n = t.name;
-                    int colon = n.LastIndexOf(':');
-                    if ((colon >= 0 ? n.Substring(colon + 1) : n) == "Head") { _aimHead = t; break; }
-                }
-                if (_aimHead == null) _aimHead = target.transform;   // no Head: aim at the root (collider centre would need a lookup per frame too)
-            }
-            return _aimHead.position;
         }
     }
 }
