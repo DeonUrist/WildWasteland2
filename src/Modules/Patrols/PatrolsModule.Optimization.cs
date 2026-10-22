@@ -25,14 +25,14 @@ namespace WildWasteland.Modules.Patrols
             /// <summary>Protects a rig only while the patrol module and its native cleanup interception are active.</summary>
             public bool Protected(GameObject go)
             {
-                return Running && WarRig.PoiEncounter.CleanupProtectionArmed && WarRig.PoiEncounter.Protected(go);
+                return Running && WarRig.PatrolRetention.CleanupProtectionArmed && WarRig.PatrolRetention.Protected(go);
             }
 
             /// <summary>Detaches a far truck's tankers only under the same native eligibility condition.</summary>
             public void BeforeFarDelete(GameObject go)
             {
-                if (!Running || go == null || !WarRig.PoiEncounter.CleanupProtectionArmed) return;
-                try { WarRig.PoiEncounter.DetachTankers(go); }
+                if (!Running || go == null || !WarRig.PatrolRetention.CleanupProtectionArmed) return;
+                try { WarRig.PatrolRetention.DetachTankers(go); }
                 catch (Exception error) { Log.Error(Instance, "Far-delete trailer cleanup", error); }
             }
         }
