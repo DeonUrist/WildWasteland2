@@ -76,6 +76,8 @@ namespace WildWasteland.Core
         void Preview(bool editing, int pose, int preview);
         /// <summary>Validates and applies the full current-wheel setup, including wheel-side mirroring.</summary>
         void SetValues(string key, float[] values, int editedPose, int editedSide);
+        /// <summary>Restarts steering stroke interpolation after replacing a complete copied setup.</summary>
+        void ResetMotion();
         /// <summary>Atomically saves the current authored data through its real owner.</summary>
         void Save();
         /// <summary>Restores the fitted wheel defaults and saves them.</summary>

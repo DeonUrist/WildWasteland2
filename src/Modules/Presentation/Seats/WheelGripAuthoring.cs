@@ -23,6 +23,8 @@ namespace WildWasteland.Modules.Presentation
         public void Preview(bool editing,int pose,int preview){WheelArms.AuthorPreview(editing,pose,preview);}
         /// <summary>Publishes a validated full setup and mirrors the edited wheel side.</summary>
         public void SetValues(string key,float[] values,int editedPose,int editedSide){WheelArms.AuthorValues(key,values,editedPose,editedSide);}
+        /// <summary>Restarts runtime stroke interpolation after a complete setup replacement.</summary>
+        public void ResetMotion(){WheelArms.AuthorResetMotion();}
         /// <summary>Atomically saves the current authored wheel setup.</summary>
         public void Save(){WheelArms.AuthorSave();}
         /// <summary>Resets and saves the current wheel setup.</summary>
