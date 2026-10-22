@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Performance
     public sealed partial class PerformancePage : ToolPage
     {
         static PerformancePage _instance;
+        /// <summary>The single Performance tab (created on first use by CorePages.Register).</summary>
         public static PerformancePage Instance { get { return _instance ?? (_instance = new PerformancePage()); } }
 
         /// <summary>Tab in the General group, visible while the module is off (it holds the module switch).</summary>
@@ -45,6 +46,7 @@ namespace WildWasteland.Modules.Performance
 
         // Wave A split (refactor): measurements and the Developer feature list are drawn by the Debug part
         // (src/Modules/Debug/Framework/_fromPerformance/PerformancePage.Debug.cs).
+        /// <summary>Debug part: Telemetry measurements and the scheduler job table at the end of the tab.</summary>
         partial void DrawMeasurements(ToolLayout l);
     }
 }

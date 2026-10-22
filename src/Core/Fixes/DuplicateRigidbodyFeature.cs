@@ -18,24 +18,34 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class DuplicateRigidbodyFeature : Feature
     {
+        /// <summary>Plan id CT9 (shared with DataFsmRestartFeature).</summary>
         public override string PlanId { get { return "CT9"; } }
+        /// <summary>tools.cfg key under [Performance / Game logic].</summary>
         public override string Key { get { return "Duplicate Rigidbody"; } }
+        /// <summary>Developer page title.</summary>
         public override string Title { get { return "No duplicate Rigidbody adds"; } }
+        /// <summary>Game logic category.</summary>
         public override string Category { get { return Categories.Content; } }
+        /// <summary>Order inside the category.</summary>
         public override int Order { get { return 9; } }
+        /// <summary>Developer page help text.</summary>
         public override string Help { get { return "Car parts no longer try to add a second Rigidbody on every spawn (same result, no error spam)."; } }
 
         internal static bool On;
         internal static long Skipped;
         static readonly System.Reflection.FieldInfo _added = AccessTools.Field(typeof(AddComponent), "addedComponent");   // SetValue: only on a skipped add
 
+        /// <summary>Patches AddComponent.OnEnter (once) and turns the skip on.</summary>
         protected override void OnEnable(FeatureMode mode) { if (!EnsurePatched(typeof(Patch))) throw new Exception("AddComponent.OnEnter patch failed"); On = true; }
+        /// <summary>Turns the skip off (the patch stays until the module stops).</summary>
         protected override void OnDisable() { On = false; }
+        /// <summary>Skipped duplicate adds.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Duplicate adds skipped", Skipped.ToString()); }
 
         [HarmonyPatch]
         static class Patch
         {
+            /// <summary>AddComponent.OnEnter prefix (every AddComponent action enter): length-gated "UnityEngine.Rigidbody" check; when the target already has one, finish like vanilla's failed add without the native call and error logs.</summary>
             [HarmonyPatch(typeof(AddComponent), "OnEnter"), HarmonyPrefix]
             static bool Pre(AddComponent __instance)
             {

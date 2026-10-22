@@ -14,25 +14,40 @@ namespace WildWasteland.Core.UI
     internal static partial class CorePages
     {
         // Contribution points (implemented in src/Core/UI/_pages/*.cs; an absent part draws nothing).
+        /// <summary>POI part: finds the POI master entry for the WORLD page.</summary>
         static partial void FindPoiSwitch();
+        /// <summary>HUD part: adds the optional ChaseCamera driving-HUD switch to RESET.</summary>
         static partial void AddResetEntriesHud(List<ConfigEntryBase> entries);
+        /// <summary>HUD part: prepares body pictures and crosshair previews when a game page opens.</summary>
         static partial void PrepareHudPreviews();
+        /// <summary>Patrols part: WORLD enemy vehicles and foot patrols rows.</summary>
         static partial void WorldPatrols(ToolLayout l);
+        /// <summary>POI part: WORLD New POI row.</summary>
         static partial void WorldPoi(ToolLayout l);
+        /// <summary>Survival part: WORLD storm-areas-on-map row.</summary>
         static partial void WorldWeather(ToolLayout l);
+        /// <summary>HUD part: WORLD map/compass rows.</summary>
         static partial void NavigationSettings(ToolLayout l);
+        /// <summary>Gunplay part: HUD Toggle Ironsights row.</summary>
         static partial void HudGunplay(ToolLayout l);
+        /// <summary>NPCAI part: HUD Shout key pair row.</summary>
         static partial void HudNpc(ToolLayout l);
+        /// <summary>HUD part: Debug map fog tuning (CleanHUD category).</summary>
         static partial void DebugSectionHud(ToolLayout l, IModule owner);
+        /// <summary>Survival part: Debug storm tuning (Weather category).</summary>
         static partial void DebugSectionSurvival(ToolLayout l, IModule owner);
+        /// <summary>Patrols part: Debug patrol editor keys and button (Patrols category).</summary>
         static partial void DebugSectionPatrols(ToolLayout l, IModule owner);
+        /// <summary>Patrols part: Debug ground recovery switch (Patrols category).</summary>
         static partial void DebugSwitchesPatrols(ToolLayout l, IModule owner);
 
         internal static ToolPage GamePage, WorldPage, HudPage, SystemPage, DebugPage, DeveloperPage;
         static readonly List<ToolPage> _debugPages = new List<ToolPage>();
         static ConfigPage _settings;
+        /// <summary>Adds a module tool page drawn inside the Developer page's module category.</summary>
         internal static void AddDebugPage(ToolPage page) { _debugPages.Add(page); }
 
+        /// <summary>Registers the Game (PLAYER/WORLD/HUD/SYSTEM), Saves, Modules, Performance, Debug and Developer pages.</summary>
         internal static void Register()
         {
             GamePage = new GameSettingsPage("PLAYER", DrawPlayer);
@@ -50,8 +65,10 @@ namespace WildWasteland.Core.UI
             FindPoiSwitch();
         }
 
+        /// <summary>Milliseconds with three decimals (invariant culture).</summary>
         static string F(double v) { return v.ToString("0.000", CultureInfo.InvariantCulture); }
 
+        /// <summary>Game tab RESET: restores every bound entry except module masters (but Performance/POI) to its default, Vanilla preset first, saving once per file.</summary>
         internal static void ResetSettings()
         {
             var excluded = new HashSet<ConfigEntryBase>();
@@ -83,12 +100,15 @@ namespace WildWasteland.Core.UI
         sealed class GameSettingsPage : ToolPage
         {
             readonly System.Action<ToolLayout> _draw;
+            /// <summary>General-group page drawn by draw.</summary>
             internal GameSettingsPage(string title, System.Action<ToolLayout> draw) { Group = ToolGroups.General; Title = title; _draw = draw; }
             /// <summary>Prepares the HUD previews (body pictures, crosshair sprites) when a game page opens, never per frame.</summary>
             public override void OnShow() { PrepareHudPreviews(); }
+            /// <summary>Draws the page rows.</summary>
             public override void Draw(ToolLayout l) { _draw(l); }
         }
 
+        /// <summary>Off/On choice row bound to a bool entry.</summary>
         static void Switch(ToolLayout l, string label, ConfigEntry<bool> entry)
         {
             bool value = l.Choices(label, entry.Value ? 1 : 0, "Off", "On") == 1;
@@ -105,6 +125,7 @@ namespace WildWasteland.Core.UI
             NavigationSettings(l);
         }
 
+        /// <summary>Modules page: Enabled toggle per module with conflict/failure notes.</summary>
         static void Modules(ToolLayout l)
         {
             l.Text("Turn feature groups on or off. Changes apply immediately.");
@@ -118,8 +139,10 @@ namespace WildWasteland.Core.UI
             }
         }
 
+        /// <summary>Debug/Developer category title ("Core" or "Id / Display name", "(module off)").</summary>
         static string CategoryTitle(IModule owner) { return owner == null ? "Core" : owner.Id + " / " + owner.DisplayName + (ModuleHost.IsRunning(owner) ? "" : " (module off)"); }
 
+        /// <summary>Draws a module tool page inside a Developer category (read-only while its module is off, errors shown inline).</summary>
         static void DrawDebugPage(ToolLayout l, ToolPage p)
         {
             l.SearchSection(p.Group + " / " + p.Title);

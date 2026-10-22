@@ -24,11 +24,17 @@ namespace WildWasteland.Modules.Performance
         // Wave A split (refactor): Debug (Telemetry) and Compatibility (SigmaMod guard) parts live in partial files of their
         // target folders: src/Modules/Debug/Framework/_fromPerformance/PerformanceModule.Debug.cs and
         // src/Modules/Compatibility/SigmaMod/_fromPerformance/PerformanceModule.Compatibility.cs. Call order is unchanged.
+        /// <summary>Debug part: binds the Telemetry entries after the feature entries.</summary>
         partial void BindDebug(ModuleConfig cfg);
+        /// <summary>Debug part: starts Telemetry (after the WeatherVisualPolicy provider is set).</summary>
         partial void InitDebug();
+        /// <summary>Debug part: stops Telemetry after the features stopped.</summary>
         partial void ShutdownDebug();
+        /// <summary>Debug part: tags the scene-load frame before features react.</summary>
         partial void SceneLoadedDebug();
+        /// <summary>Debug part: tags the current frame with a lifecycle event (save, load, tile).</summary>
         partial void MarkDebug(string tag);
+        /// <summary>Compatibility part: installs the SigmaMod FSM guard first in Init.</summary>
         partial void InitCompatibility();
 
         public override string Id { get { return "Performance"; } }

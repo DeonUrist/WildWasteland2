@@ -12,6 +12,7 @@ namespace WildWasteland.Core.UI
     /// <summary>Debug/Developer pages of the settings window (Wave A split): entry filters, logging switches, switches block, scheduler table, Harmony list. B03 takes the logging/perf parts over.</summary>
     internal static partial class CorePages
     {
+        /// <summary>True for entries the Debug/Developer pages list (excludes saving, game-page rows, module masters, verbose switches; tools.cfg only debug switches).</summary>
         static bool DebugSetting(ConfigEntryBase e)
         {
             if (e.Definition.Section.StartsWith("System /", System.StringComparison.Ordinal)) return false;
@@ -42,6 +43,7 @@ namespace WildWasteland.Core.UI
             return true;
         }
 
+        /// <summary>tools.cfg bools shown on Debug: "/ Debug" and "/ Editors" sections and log/verbose/map-debug keys.</summary>
         static bool ToolsDebugSwitch(ConfigEntryBase e)
         {
             if (e.SettingType != typeof(bool)) return false;
@@ -50,6 +52,7 @@ namespace WildWasteland.Core.UI
             return key == "Log" || key.IndexOf("Verbose", System.StringComparison.Ordinal) >= 0 || key == "DebugMap" || key == "Real patrol names" || key == "hide route type";
         }
 
+        /// <summary>Log/verbose switches (and NPC ShowNav) drawn under Logging.</summary>
         static bool VerboseSetting(ConfigEntryBase e)
         {
             if (e.SettingType != typeof(bool)) return false;
@@ -58,6 +61,7 @@ namespace WildWasteland.Core.UI
             return key.IndexOf("Verbose", System.StringComparison.OrdinalIgnoreCase) >= 0 || key == "Log" || key.EndsWith("Log", System.StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>Logging rows of one module category from one config file.</summary>
         static void Logging(ToolLayout l, ConfigFile file, IModule owner)
         {
             foreach (var key in file.Keys)
@@ -69,6 +73,7 @@ namespace WildWasteland.Core.UI
             }
         }
 
+        /// <summary>Entries kept on Debug (logging, storm/fog tuning, editor keys, bool switches except the Developer editors).</summary>
         static bool RetainedDebugSetting(ConfigEntryBase e)
         {
             if (WeatherTuning(e) || MapFogSetting(e) || VerboseSetting(e) || ReferenceEquals(e, Patrols.MenuKey) || ReferenceEquals(e, Patrols.TemplateDumpKey)) return true;
@@ -76,9 +81,11 @@ namespace WildWasteland.Core.UI
                 && !ReferenceEquals(e, Patrols.TurretSpotEditor) && !ReferenceEquals(e, Patrols.BusPassengerPoseEditorEnabled);
         }
 
+        /// <summary>Debug entries that are not retained on Debug (shown on Developer).</summary>
         static bool DeveloperSetting(ConfigEntryBase e) { return DebugSetting(e) && !RetainedDebugSetting(e); }
 
         static IModule _categoryOwner;
+        /// <summary>True when the entry's section prefix is owner's module Id (Core when none matches; Patrols editor keys forced to Patrols).</summary>
         static bool BelongsTo(ConfigEntryBase e, IModule owner)
         {
             if (ReferenceEquals(e, Patrols.MenuKey) || ReferenceEquals(e, Patrols.TemplateDumpKey)) return owner != null && owner.Id == "Patrols";
@@ -87,13 +94,16 @@ namespace WildWasteland.Core.UI
                 if (section == m.Module.Id || (cut == m.Module.Id.Length && string.CompareOrdinal(section, 0, m.Module.Id, 0, cut) == 0)) return ReferenceEquals(owner, m.Module);
             return owner == null;
         }
+        /// <summary>Developer entries of the category being drawn.</summary>
         static bool RemainingDeveloperSetting(ConfigEntryBase e) { return DeveloperSetting(e) && BelongsTo(e, _categoryOwner); }
+        /// <summary>True when owner has any retained Debug entry in file (empty categories are skipped).</summary>
         static bool HasDebugSettings(ConfigFile file, IModule owner)
         {
             foreach (var key in file.Keys) if (BelongsTo(file[key], owner) && RetainedDebugSetting(file[key])) return true;
             return false;
         }
 
+        /// <summary>Debug page: per module category, module sections, Logging, Switches; Developer mode toggle under Core.</summary>
         static void Debug(ToolLayout l)
         {
             l.DeduplicateEntries = true;
@@ -122,6 +132,7 @@ namespace WildWasteland.Core.UI
             }
         }
 
+        /// <summary>Developer page: per module category, Performance feature list, module tool pages, remaining settings, diagnostics, Harmony patches.</summary>
         static void Developer(ToolLayout l)
         {
             l.DeduplicateEntries = true;
@@ -152,9 +163,11 @@ namespace WildWasteland.Core.UI
 
         // Switches block (RC12): every bool the Debug page shows further down, grouped by module, drawn once here (deduplication hides
         // the lower copies). The sorted list is rebuilt only when either file's entry count changes, not per OnGUI event.
+        /// <summary>One Debug switch row: entry, label, section, module order and heading.</summary>
         sealed class SwitchItem { internal ConfigEntry<bool> Entry; internal string Label, Section; internal int Order, Index; internal IModule Module; internal string Heading, HeadingOff; }
         sealed class SwitchOrder : IComparer<SwitchItem>
         {
+            /// <summary>Module order, then section, label (case-insensitive) and bind index.</summary>
             public int Compare(SwitchItem a, SwitchItem b)
             {
                 int c = a.Order.CompareTo(b.Order); if (c != 0) return c;
@@ -167,6 +180,7 @@ namespace WildWasteland.Core.UI
         static readonly SwitchOrder _switchOrder = new SwitchOrder();
         static int _switchCount = -1;
 
+        /// <summary>Collects and sorts the Debug switches; duplicate labels in one module get their section appended.</summary>
         static void BuildSwitches()
         {
             _switches.Clear();
@@ -179,6 +193,7 @@ namespace WildWasteland.Core.UI
                     { _switches[i].Label += " (" + _switches[i].Section + ")"; _switches[j].Label += " (" + _switches[j].Section + ")"; }
         }
 
+        /// <summary>Adds the bool Debug entries of file with readable labels and their module.</summary>
         static void AddSwitches(ConfigFile file, ref int index)
         {
             if (file == null) return;
@@ -217,6 +232,7 @@ namespace WildWasteland.Core.UI
             return sb.ToString();
         }
 
+        /// <summary>Rebuilds the switch list only when either file's entry count changed (not per OnGUI event).</summary>
         static void EnsureSwitches()
         {
             int count = (Plugin.Settings != null ? Plugin.Settings.Count : 0) + (Plugin.Tools != null ? Plugin.Tools.Count : 0);
@@ -225,6 +241,7 @@ namespace WildWasteland.Core.UI
 
         static readonly Dictionary<string, double[]> _sum = new Dictionary<string, double[]>();
 
+        /// <summary>Scheduler table: WW frame avg/worst, per-module avg and worst job, per-job avg/last/worst/calls/errors.</summary>
         internal static void Performance(ToolLayout l)
         {
             l.Text("Managed time of every Wild Wasteland job, measured by the scheduler. Budget: average <= 0.5 ms per frame, worst <= 2 ms. Times while this window is open are from the paused game; close it and reopen to read live numbers.");
@@ -246,6 +263,7 @@ namespace WildWasteland.Core.UI
                 l.Value(j.ToString(), F(j.TotalMs / frames) + "  " + F(j.LastMs) + "  " + F(j.MaxMs) + "  " + j.Calls + (j.Exceptions > 0 ? "  ERR " + j.Exceptions : "") + (j.Enabled ? "" : "  (off)"));
         }
 
+        /// <summary>Harmony patch records of one owner (Core also shows conflicts and the Hooks summary).</summary>
         static void Harmony(ToolLayout l, IModule module)
         {
             string owner = module != null ? module.Id : "Core";
