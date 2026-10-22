@@ -23,8 +23,10 @@ namespace WildWasteland.Modules.Patrols
         private int _bosses;
         private Patrol _patrol;
 
+        /// <summary>Initializes this native component and its runtime registration.</summary>
         private void Awake() { _inst = this; }
 
+        /// <summary>Clears previous-scene objects and starts a fresh runtime generation.</summary>
         internal static void ResetForScene()
         {
             if (_inst == null) return;
@@ -35,22 +37,27 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // [Debug] AiOverlay with no raider car driving: the world traffic's state
+        /// <summary>[Debug] AiOverlay with no raider car driving: the world traffic's state</summary>
         internal static string OverlayLine()
         {
             if (PatrolsModule.ConvoyEnabled.Value) return WorldTraffic.OverlayLine();
             return "Raiders: automatic spawns off";
         }
 
+        /// <summary>Reads native travelled distance for current progression gates.</summary>
         internal float Km { get { return _km; } }
+        /// <summary>Reads native boss progression for current spawn eligibility.</summary>
         internal int Bosses { get { return _bosses; } }
 
         // WW: was Update (Update job)
+        /// <summary>WW: was Update (Update job)</summary>
         internal void Tick()
         {
             try { Step(); }
             catch (Exception e) { Core.Log.Error("[Patrols] " + "Convoy: " + e); }
         }
 
+        /// <summary>Performs the next bounded step of the current runtime state machine.</summary>
         private void Step()
         {
             if (_patrol == null) _patrol = GetComponent<Patrol>();
@@ -62,6 +69,7 @@ namespace WildWasteland.Modules.Patrols
 
         // The game's Distance Travelled (__GameManager__ [DistanceTravelled].distance, km from the starting area) and boss kills
         // (the game's Boss_* global flags).
+        /// <summary>The game's Distance Travelled (__GameManager__ [DistanceTravelled].distance, km from the starting area) and boss kills (the game's Boss_* global flags).</summary>
         private void UpdateHeat()
         {
             if (_distanceFsm == null || _distanceFsm.gameObject == null)
@@ -86,8 +94,11 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // [General] Fury Road: every group's minimum distance / boss kills count as met
+        /// <summary>[General] Fury Road: every group's minimum distance / boss kills count as met</summary>
         private float RollKm { get { return PatrolsModule.FuryRoad.Value ? 1e6f : _km; } }
+        /// <summary>Rolls bosses for the current convoy.</summary>
         private int RollBosses { get { return PatrolsModule.FuryRoad.Value ? 999 : _bosses; } }
+        /// <summary>Checks the current traffic group condition for convoy.</summary>
         internal static SpawnGroup TrafficGroup(bool convoy,string faction=null)
         {
             if (_inst == null) return null;
@@ -95,9 +106,12 @@ namespace WildWasteland.Modules.Patrols
                 &&(convoy||TrafficFactions.Normalize(g.Faction)!="Coyotes"||CoyoteRoster(g))),
                 _inst.RollKm, _inst.RollBosses, () => UnityEngine.Random.value);
         }
+        /// <summary>Checks the current coyote roster condition for convoy.</summary>
         private static bool CoyoteRoster(SpawnGroup group)=>group.Templates.Any(n=>{var t=CarTemplate.Find(n);return t!=null&&t.Available&&CrewFactions.Compatible(t,"Coyotes");});
+        /// <summary>Checks availability of traffic faction for the current convoy.</summary>
         internal static bool HasTrafficFaction(string faction)=>_inst!=null&&EditorStore.Data.Patrols.Any(g=>TrafficFactions.Normalize(g.Faction)==faction&&g.Eligible(_inst.RollKm,_inst.RollBosses)&&(faction!="Coyotes"||CoyoteRoster(g)));
 
+        /// <summary>Checks the current launch condition for convoy.</summary>
         private bool Launch(SpawnGroup definition, bool convoy, bool debug)
         {
             CarTemplates.Refresh(false);
@@ -127,6 +141,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Where the player is and which way "ahead" is: the car's travel direction while driving; behind the camera on foot.
+        /// <summary>Where the player is and which way "ahead" is: the car's travel direction while driving; behind the camera on foot.</summary>
         private static bool Heading(out Vector3 origin, out Vector3 dir, out bool driving)
         {
             origin = Vector3.zero; dir = Vector3.forward; driving = false;
@@ -154,6 +169,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Rows of three facing the player (the first car - the truck in a convoy - in the middle of the first row), 7 m apart,
         // rows 9 m behind each other. Every spot needs open terrain under it; null when most of them have none.
+        /// <summary>Rows of three facing the player (the first car - the truck in a convoy - in the middle of the first row), 7 m apart, rows 9 m behind each other. Every spot needs open terrain under it; null when most of them have none.</summary>
         private static List<Vector3> Formation(Vector3 center, Vector3 facing, int count, bool truck)
         {
             var right = Vector3.Cross(Vector3.up, facing).normalized;
@@ -174,6 +190,7 @@ namespace WildWasteland.Modules.Patrols
 
         // open terrain straight below: the nearest hit of a downward ray from high above must be the terrain (not a roof, rock or car)
         private static readonly RaycastHit[] GroundHits = new RaycastHit[64];
+        /// <summary>Checks the current ground point condition for convoy.</summary>
         private static bool GroundPoint(Vector3 p, float grade, out Vector3 ground)
         {
             ground = p;
@@ -187,6 +204,7 @@ namespace WildWasteland.Modules.Patrols
             ground = best.point;
             return true;
         }
+        /// <summary>Checks the current ground at condition for convoy.</summary>
         internal static bool GroundAt(Vector3 p, out Vector3 ground, bool truck = false)
         {
             float grade = truck ? .22f : .30f;
@@ -204,6 +222,7 @@ namespace WildWasteland.Modules.Patrols
         // has finished the whole group is released at once and departs together.
         private const float BuildInterval = 0.7f;
 
+        /// <summary>Queues each accepted convoy vehicle at its authored formation pose.</summary>
         private IEnumerator BuildAll(List<CarTemplate> group, List<Vector3> spots, Quaternion rot)
         {
             var cars = new List<GameObject>();

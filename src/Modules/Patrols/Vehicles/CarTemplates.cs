@@ -16,11 +16,13 @@ namespace WildWasteland.Modules.Patrols
         internal static string Folder { get; private set; }
         internal static string PlayerFolder { get; private set; }
         internal static string Summary = "";
+        /// <summary>Initializes native references and retained runtime state before scheduled work starts.</summary>
         internal static void Init(string dataDir)
         {
             _root = Path.GetFullPath(dataDir); Folder = Path.Combine(_root, "BaseTemplates"); PlayerFolder = Path.Combine(_root, "PlayerTemplates");
             Directory.CreateDirectory(Folder); Directory.CreateDirectory(PlayerFolder);
         }
+        /// <summary>Loads current owned authoring or runtime data without rerolling valid records.</summary>
         internal static void Load()
         {
             _defaults.Clear(); var asm = Assembly.GetExecutingAssembly();
@@ -29,7 +31,9 @@ namespace WildWasteland.Modules.Patrols
             foreach (var pair in _defaults) { string path = EditorStore.SafePath(Folder, pair.Key + ".json"); if (!File.Exists(path)) EditorStore.AtomicWrite(path, pair.Value); }
             Refresh(true);
         }
+        /// <summary>Restores defaults for the current car templates.</summary>
         internal static void RestoreDefaults() { foreach (var pair in _defaults) EditorStore.AtomicWrite(EditorStore.SafePath(Folder, pair.Key + ".json"), pair.Value); }
+        /// <summary>Checks the current refresh condition for car templates.</summary>
         internal static void Refresh(bool force)
         {
             string stamp = Stamp(Folder) + Stamp(PlayerFolder); if (!force && stamp == _stamp) return; _stamp = stamp;
@@ -45,6 +49,7 @@ namespace WildWasteland.Modules.Patrols
             Summary = CarTemplate.Park.Length + " templates: code defaults + BaseTemplates + PlayerTemplates";
             VehiclePreparation.WarmPark();
         }
+        /// <summary>Loads folder for the current car templates.</summary>
         private static void LoadFolder(string folder, bool favorite, Dictionary<string, CarTemplate> list)
         {
             if (!Directory.Exists(folder)) return;
@@ -64,11 +69,13 @@ namespace WildWasteland.Modules.Patrols
             }
             catch (Exception e) { Warn("Template file preserved: " + path + ": " + e.Message); }
         }
+        /// <summary>Reads file metadata used to detect current authoring changes.</summary>
         private static string Stamp(string folder)
         {
             if (!Directory.Exists(folder)) return "";
             return string.Join(";", Directory.GetFiles(folder, "*.json").OrderBy(x => x).Select(path => { var info = new FileInfo(path); return info.Name + "|" + info.Length + "|" + info.LastWriteTimeUtc.Ticks; }).ToArray());
         }
+        /// <summary>Moves the template into or out of its managed favourites directory.</summary>
         internal static void Favorite(CarTemplate t)
         {
             if (t.IsDefault || t.SourcePath.Length == 0) return;
@@ -76,6 +83,7 @@ namespace WildWasteland.Modules.Patrols
             if (File.Exists(target)) throw new IOException("That filename already exists in the destination folder");
             File.Move(source, target); Refresh(true);
         }
+        /// <summary>Removes the accepted authored item using its actual managed-file or table owner.</summary>
         internal static void Delete(CarTemplate t)
         {
             if (t.IsDefault || t.Favorite) throw new InvalidOperationException("Unfavourite custom templates before deleting them");
@@ -83,17 +91,22 @@ namespace WildWasteland.Modules.Patrols
             foreach (var g in EditorStore.Data.Patrols.Concat(EditorStore.Data.Convoys)) g.Templates.RemoveAll(n => n.Equals(t.Name, StringComparison.OrdinalIgnoreCase));
             EditorStore.Save(); Refresh(true);
         }
+        /// <summary>Validates that the template path remains inside an allowed managed authoring directory.</summary>
         private static string ManagedPath(string path)
         {
             string full = Path.GetFullPath(path); var folders = new[] { Folder, PlayerFolder, Path.Combine(_root, "OldTemplatesFolder") };
             if (!folders.Any(dir => string.Equals(Path.GetDirectoryName(full), Path.GetFullPath(dir), StringComparison.OrdinalIgnoreCase)) || !full.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("File outside managed template folders");
             return full;
         }
+        /// <summary>Moves the validated authored template to the native Recycle Bin.</summary>
         internal static void Recycle(string path) { string file = ManagedPath(path); if (File.Exists(file)) ShellRecycle.Move(file); }
+        /// <summary>Reports an authoring or runtime warning through the owning logger.</summary>
         private static void Warn(string message) { Core.Log.Warn("[Patrols] " + message); }
 
+        /// <summary>Normalizes a nullable authored string to its trimmed representation.</summary>
         private static string S(string s) { return (s ?? "").Trim(); }
 
+        /// <summary>Checks the current parse condition for car templates.</summary>
         internal static CarTemplate Parse(string json, string fallbackName, string origin, string where, bool isTrailer = false)
         {
             TemplateFile f;
@@ -150,6 +163,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // "small;motorcycle" / "small, motorcycle" / "small motorcycle" -> { "small", "motorcycle" }
+        /// <summary>"small;motorcycle" / "small, motorcycle" / "small motorcycle" -&gt; { "small", "motorcycle" }</summary>
         internal static string[] ParseKinds(string kind)
         {
             if (string.IsNullOrEmpty(kind)) return new string[0];

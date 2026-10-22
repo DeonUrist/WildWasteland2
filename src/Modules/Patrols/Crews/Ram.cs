@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.Patrols
         {
             private PatrolMarker _mk; private Rigidbody _rb;   // cached (a car scraping along a wall fires this many times a second)
 
+            /// <summary>Handles the qualifying native event for collision enter for the current ram.</summary>
             private void OnCollisionEnter(Collision col)
             { if (!PatrolsModule.Running) return;
                 try
@@ -53,10 +54,12 @@ namespace WildWasteland.Modules.Patrols
         // car's own CarAttack trigger (OnTriggerEnter, layer 10 = the NPC layer; Sources fsm/prefabs/Rustallion.md "CarAttack")
         // could now see its own crew when a collider of theirs (re)enters it, and ram-damage them above 5 m/s. The old ignore
         // pairs suppressed that; this keeps it suppressed: a car never ram-damages anything in its own hierarchy.
+        /// <summary>Seated drivers / passengers / turrets are all-trigger bodies (Rider.NoContacts) without per-pair collision ignores, so a car's own CarAttack trigger (OnTriggerEnter, layer 10 = the NPC layer; Sources fsm/prefabs/Rustallion.md "CarAttack") could now see its own crew when a collider of theirs (re)enters it, and ram-damage them above 5 m/s. The old ignore pairs suppressed that; this keeps it suppressed: a car never ram-damages anything in its own hierarchy.</summary>
         static bool OwnCrew(HutongGames.PlayMaker.Fsm fsm, GameObject target)
         {
             return target != null && fsm.GameObject != null && ReferenceEquals(target.transform.root, fsm.GameObject.transform.root);
         }
+        /// <summary>Handles the qualifying native transition before set fsm float for the current ram.</summary>
         internal static bool BeforeSetFsmFloat(HutongGames.PlayMaker.Actions.SetFsmFloat action)
         {
             if (!PatrolsModule.Running) return true;
@@ -64,6 +67,7 @@ namespace WildWasteland.Modules.Patrols
             if (fsm == null || fsm.Name.Length != 9 || fsm.Name != "CarAttack") return true;
             return !OwnCrew(fsm, fsm.GetOwnerDefaultTarget(action.gameObject));
         }
+        /// <summary>Handles the qualifying native transition before send event for the current ram.</summary>
         internal static bool BeforeSendEvent(HutongGames.PlayMaker.Actions.SendEvent action)
         {
             if (!PatrolsModule.Running) return true;
@@ -75,6 +79,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // kind: 1 = the player on foot, 2 = the player's car. rel = the car's speed into the contact (m/s), carVel = its velocity (push direction).
+        /// <summary>kind: 1 = the player on foot, 2 = the player's car. rel = the car's speed into the contact (m/s), carVel = its velocity (push direction).</summary>
         internal static void Hit(GameObject car, string body, int kind, float rel, Collider hit, Vector3 carVel)
         {
             if (!PatrolsModule.RamDamage.Value || car == null || kind == 0) return;
@@ -133,6 +138,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Explosion damage to the player (the "Witness me!" rider, 2.1.4), the same vanilla path as a ram: Bodypart.Damage = -amount +
         // "Damage", the effect FSM's "Damage" for the hurt sound and splash. God mode: nothing. Returns whether it landed.
+        /// <summary>Explosion damage to the player (the "Witness me!" rider, 2.1.4), the same vanilla path as a ram: Bodypart.Damage = -amount + "Damage", the effect FSM's "Damage" for the hurt sound and splash. God mode: nothing. Returns whether it landed.</summary>
         internal static bool HurtPlayer(float amount, string source)
         {
             var player = PlayerRef.Player;
@@ -166,6 +172,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Shove the player on foot along the car's direction of travel (plus a small hop). The Movement FSM rewrites the velocity every
         // frame (SetVelocity from the input axes), so it is paused for PushSeconds - RestartOnEnable off, so it resumes in the same state.
+        /// <summary>Shove the player on foot along the car's direction of travel (plus a small hop). The Movement FSM rewrites the velocity every frame (SetVelocity from the input axes), so it is paused for PushSeconds - RestartOnEnable off, so it resumes in the same state.</summary>
         private static void Push(Transform player, PlayMakerFSM movement, GameObject car, Vector3 carVel, float rel)
         {
             float strength = PatrolsModule.RamPushStrength.Value;
@@ -193,6 +200,7 @@ namespace WildWasteland.Modules.Patrols
         // an entry only matters until its time has passed; dropped every 30 s (destroyed cars left theirs behind for good)
         private static float _nextPrune;
         private static readonly List<int> _expired = new List<int>();
+        /// <summary>Prunes hit times for the current ram.</summary>
         private static void PruneHitTimes()
         {
             _expired.Clear();
@@ -200,6 +208,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var k in _expired) _next.Remove(k);
         }
 
+        /// <summary>Advances scheduled work under the current save, pause and admission gates.</summary>
         internal static void Tick()
         {
             if (Time.unscaledTime >= _nextPrune) { _nextPrune = Time.unscaledTime + 30f; PruneHitTimes(); }
@@ -225,6 +234,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // "Junker=50, Rust*=70" -> full-speed damage for this body; unlisted bodies = DefaultDamage.
+        /// <summary>"Junker=50, Rust*=70" -&gt; full-speed damage for this body; unlisted bodies = DefaultDamage.</summary>
         internal static float BaseDamage(string body)
         {
             string b = (body ?? "").Trim();

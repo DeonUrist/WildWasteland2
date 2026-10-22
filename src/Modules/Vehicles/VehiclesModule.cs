@@ -141,6 +141,7 @@ namespace WildWasteland.Modules.Vehicles
         public override void ProvideApis()
         {
             ModApi.Provide<IWarRigWorld>(this,new WarRigWorldApi());
+            ModApi.Provide<IVehicleAuthoring>(this,new VehicleAuthoringApi());
             ModApi.Provide<IVehicleAttachments>(this,new VehicleAttachmentsApi());
             ModApi.Provide<IVehicleDrive>(this,new VehicleDriveApi());
             ModApi.Provide<IVehicleAssembly>(this, new VehicleAssemblyApi());

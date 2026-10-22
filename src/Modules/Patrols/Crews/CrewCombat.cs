@@ -12,11 +12,13 @@ namespace WildWasteland.Modules.Patrols
         internal bool CombatExit;
         internal bool BusDefence;
         internal bool FullyStuck { get { return _fullyStuck||_outOfFuel||Marker!=null&&Marker.StuckBails>0; } }
+        /// <summary>Returns the next separated front-door dismount offset.</summary>
         internal Vector3 FrontExitOffset()
         { int n=_frontExitIndex++%9;return transform.forward*(n%3==1?0.8f:n%3==2?-0.8f:0f)+transform.right*(n/3*0.8f); }
         internal GameObject CombatEnemy { get { return _combatEnemy!=null&&_combatEnemy.activeInHierarchy&&(_enemyHealth==null||_enemyHealth.Value>0f)?_combatEnemy:null; } }
         internal bool CombatPursuit { get { return _resumeChase&&CombatEnemy!=null&&Regroup==null; } }
 
+        /// <summary>Routes an observed actor attack to its owning patrol crew.</summary>
         internal static void Attacked(GameObject victim,GameObject attacker)
         {
             if(!PatrolsModule.Running||victim==null||attacker==null)return;
@@ -32,6 +34,7 @@ namespace WildWasteland.Modules.Patrols
             if((attacker.transform.position-crew.transform.position).sqrMagnitude>2500f&&crew.Regroup==null&&!crew.MerchantWaiting&&!crew.TownParking)crew.ResumePursuit();
         }
 
+        /// <summary>Checks the current combat tick condition for crew combat.</summary>
         private bool CombatTick()
         {
             if(Time.time<_nextCombat)return false;_nextCombat=Time.time+0.5f;
@@ -59,6 +62,7 @@ namespace WildWasteland.Modules.Patrols
             _attackedAt=-1e6f;return ExitCrew(false);
         }
 
+        /// <summary>Resumes ordinary vehicle pursuit after the explicit hold ends.</summary>
         internal void ResumePursuit()
         {
             if(BusDefence){BusDefence=false;_combatEnemy=null;_enemyHealth=null;_resumeChase=false;_partRetaliation=false;return;}
@@ -69,6 +73,7 @@ namespace WildWasteland.Modules.Patrols
             if(_resumeChase){Hold=false;WaitForMerchant(false);}
         }
 
+        /// <summary>Checks the current pursuit target condition for crew combat.</summary>
         internal bool PursuitTarget(out Vector3 position,out Vector3 velocity,out GameObject car)
         {
             position=velocity=Vector3.zero;car=null;

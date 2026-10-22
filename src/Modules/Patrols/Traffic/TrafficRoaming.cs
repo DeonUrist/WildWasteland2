@@ -8,7 +8,9 @@ namespace WildWasteland.Modules.Patrols
         private sealed class RoamingDeparture
         {internal RoadJob Incoming,Outgoing;internal TrafficPoi Point;internal SpawnGroup Group;internal TrafficVehicle[] Vehicles;internal Vector3 Player,Side;}
         private RoamingDeparture _roamingDeparture;
+        /// <summary>Returns the current roaming cap used by traffic roaming.</summary>
         private int RoamingCap=>Convoy.HasTrafficFaction("Coyotes")?Mathf.Min(2,Mathf.CeilToInt(PatrolsModule.MaxPatrols.Value/2f)):0;
+        /// <summary>Populates roaming for the current traffic roaming.</summary>
         private void PopulateRoaming(Vector3 player)
         {
             if(_journeys.Count(j=>j.roaming)>=RoamingCap||_journeys.Count(j=>!j.merchant&&!j.convoy&&!j.foot)+_nearDepartures.Count(d=>d.Role==0)>=PatrolsModule.MaxPatrols.Value||_journeys.Count>=PatrolsModule.TrafficMaxGroups.Value)

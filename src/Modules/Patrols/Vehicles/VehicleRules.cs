@@ -4,6 +4,7 @@ namespace WildWasteland.Modules.Patrols
 {
     internal static class VehicleRules
     {
+        /// <summary>Returns the native clearance distance used when occupants leave this vehicle type.</summary>
         internal static float ExitDistance(string vehicleName)
         {
             string body = TemplateExporter.PrefabName(vehicleName);

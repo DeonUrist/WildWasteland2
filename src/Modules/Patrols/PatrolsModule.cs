@@ -23,12 +23,16 @@ namespace WildWasteland.Modules.Patrols
     // Unity loops and stand down while Running is false.
     public sealed partial class PatrolsModule : ModuleBase
     {
+        /// <summary>Returns the stable current record identifier.</summary>
         public override string Id { get { return "Patrols"; } }
+        /// <summary>Returns the current display name used by patrols module.</summary>
         public override string DisplayName { get { return "Patrols, traffic & War Rig"; } }
         static readonly string[] Conflicts = { "com.denis.apocalypter.apocapatrol", "com.denis.apocalypter.warrig", "com.denis.apocalypter.merchantspotter" };
+        /// <summary>Returns the current conflicts with used by patrols module.</summary>
         public override string[] ConflictsWith { get { return Conflicts; } }
 
         internal const string NAME = "Wild Wasteland Patrols";
+        /// <summary>Returns the current version used by patrols module.</summary>
         internal static string VERSION { get { return WildWasteland.Plugin.VERSION; } }
 
         internal static PatrolsModule Instance;
@@ -45,6 +49,7 @@ namespace WildWasteland.Modules.Patrols
         private static void OnTownTrafficStopped(ref TownTrafficStopped stopped){WorldTraffic.TownsStopped();}
         // ---------------------------------------------------------------- lifecycle
 
+        /// <summary>Initializes native references and retained runtime state before scheduled work starts.</summary>
         public override void Init()
         {
             try { InitInner(); }
@@ -59,6 +64,7 @@ namespace WildWasteland.Modules.Patrols
             LoadingProgress.Register(this, VehiclePreparation.LoadWork);
         }
 
+        /// <summary>Contributes existing abandoned-patrol cleanup settings to the owner settings page.</summary>
         static void DrawSaveCleanupSettings(ToolLayout l)
         {
             l.Heading("Existing abandoned-patrol cleanup");
@@ -69,6 +75,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Shares current combat eligibility with the typed patrol query provider.</summary>
         internal static bool CombatActive { get { return Running && VehicleCombatActive(); } }
 
+        /// <summary>Checks the current vehicle combat active condition for patrols module.</summary>
         static bool VehicleCombatActive()
         {
             foreach (var marker in PatrolMarker.All)
@@ -78,6 +85,7 @@ namespace WildWasteland.Modules.Patrols
             return false;
         }
 
+        /// <summary>Checks availability of combat crew for the current patrols module.</summary>
         static bool HasCombatCrew(PatrolMarker marker)
         {
             if (marker.Driver != null && !marker.DriverDied && !marker.DriverBailed || marker.Passenger != null) return true;
@@ -85,6 +93,7 @@ namespace WildWasteland.Modules.Patrols
             return false;
         }
 
+        /// <summary>Starts the module in native dependency order before exposing it as running.</summary>
         void InitInner()
         {
             Instance = this;
@@ -125,6 +134,7 @@ namespace WildWasteland.Modules.Patrols
             Log.Always("[Patrols] " + DisplayName + " ready (" + CarTemplates.Summary + ")");
         }
 
+        /// <summary>Releases owned subscriptions, jobs, temporary objects and native state changes.</summary>
         public override void Shutdown()
         {
             Core.ModApi.Changed-=EditorStore.CargoApiChanged;
@@ -160,6 +170,7 @@ namespace WildWasteland.Modules.Patrols
             Instance = null;
         }
 
+        /// <summary>Discards old-scene references and initializes the new runtime generation.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             WarRig.PatrolRetention.Clear();
@@ -169,13 +180,17 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Core.Origin (NWH FloatingOrigin.Jump): legacy physics caches of the pilots and PlayerRef move with the world
+        /// <summary>Core.Origin (NWH FloatingOrigin.Jump): legacy physics caches of the pilots and PlayerRef move with the world</summary>
         public override void OnOriginShift(Vector3 delta) { TrafficSpace.OriginShift(delta); }
-        public override void OnWorldReady() { WarRig.PatrolRetention.Prepare(); Prefabs.Refresh();  WorldTraffic.RestoreTownGuards(); }
+        /// <summary>Refreshes native references and publishes world-ready runtime contributions.</summary>
+        public override void OnWorldReady() { WarRig.PatrolRetention.Prepare(); Prefabs.Refresh(); WorldTraffic.RestoreTownGuards(); }
+        /// <summary>Materializes an authored POI vehicle through the current patrol assembly queue.</summary>
         internal void SpawnPoi(CarTemplate template, Vector3 position, Quaternion rotation, Action<GameObject> onDone)
         { if (_patrol != null && Running) _patrol.SpawnAt(template, position, rotation, true, onDone); else onDone(null); }
 
         // ---------------------------------------------------------------- runner object + jobs
 
+        /// <summary>Creates the hidden runtime host and its orchestration components when absent.</summary>
         void EnsureRunner()
         {
             // the game destroys the plugin's GameObject on scene load; the logic lives on a child of Core's hidden runner object
@@ -195,6 +210,7 @@ namespace WildWasteland.Modules.Patrols
 
         // the old runner components' order: Patrol, TemplateMenu, TemplateExporter, TurretSpotter, BusPassengerPoseEditor, Convoy,
         // WorldTraffic, Cleanup (then the absorbed MerchantSpotter editor). Each job re-reads the component (recreated after a scene load).
+        /// <summary>the old runner components' order: Patrol, TemplateMenu, TemplateExporter, TurretSpotter, BusPassengerPoseEditor, Convoy, WorldTraffic, Cleanup (then the absorbed MerchantSpotter editor). Each job re-reads the component (recreated after a scene load).</summary>
         void RegisterJobs()
         {
             Scheduler.Interval(this, "Patrols.Prepare authored structures", .5f, VehiclePreparation.PublishWarm);
@@ -224,6 +240,7 @@ namespace WildWasteland.Modules.Patrols
             RegisterDeveloperMerchantGui();
         }
 
+        /// <summary>Registers hotkeys for the current patrols module.</summary>
         void RegisterHotkeys()
         {
             RegisterToolsHotkeys();
@@ -231,6 +248,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // per-object coroutines (overheat, revive, bail-out timers, merchant setup) end with the module; the objects themselves stay
+        /// <summary>per-object coroutines (overheat, revive, bail-out timers, merchant setup) end with the module; the objects themselves stay</summary>
         static void StopObjectCoroutines()
         {
             var types = new[] { typeof(Crew), typeof(Pilot), typeof(PassengerGuard), typeof(RiderGuard), typeof(MerchantHost), typeof(MerchantGuardHealth), typeof(TrafficActor) };
@@ -242,6 +260,7 @@ namespace WildWasteland.Modules.Patrols
                 }
         }
 
+        /// <summary>Isolates one lifecycle operation so failure does not skip later cleanup.</summary>
         static void Try(string what, Action a)
         {
             try { a(); }
@@ -250,6 +269,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ---------------------------------------------------------------- small helpers the old Plugin class provided
 
+        /// <summary>Writes optional patrol diagnostics through the current verbosity gate.</summary>
         internal static void Verbose(string msg) { if (Log.Verbose) Log.Info("[Patrols] " + msg); }
 
         // ---------------------------------------------------------------- per-target parts (Wave A split; implemented in the target module folders)
