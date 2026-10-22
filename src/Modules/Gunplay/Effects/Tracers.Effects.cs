@@ -32,7 +32,7 @@ namespace WildWasteland.Modules.Guns
                 else if (_metalImpact == null && go.name == "MetalImpact" && go.transform.parent == null) _metalImpact = go;
                 if (_rangedHit != null && _metalImpact != null) break;
             }
-            if (Core.Log.Verbose) GunplayLog.Main("Tracers: impact effects " + (_rangedHit != null ? "RangedHit_Effect" : "none") + (_metalImpact != null ? " + MetalImpact" : ""));
+            if (Log.L2) GunplayLog.Deep("Tracers: impact effects " + (_rangedHit != null ? "RangedHit_Effect" : "none") + (_metalImpact != null ? " + MetalImpact" : ""));
         }
 
         /// <summary>

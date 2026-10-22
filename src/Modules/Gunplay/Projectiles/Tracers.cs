@@ -181,8 +181,8 @@ namespace WildWasteland.Modules.Guns
             TickBolts();
             Snapshot();
             if (GunplaySettings.MeleeOnWheels.Value)                          // (WW) [Guns] MeleeOnWheels
-                try { SwingAtFittedWheels(); } catch (Exception e) { Core.Log.Error("[Guns] Tracers melee (fitted wheels)", e); }
-            if (_meleeWheels.Count > 0) { try { CheckMeleeWheels(); } catch (Exception e) { Core.Log.Error("[Guns] Tracers melee", e); _meleeWheels.Clear(); } }
+                try { SwingAtFittedWheels(); } catch (Exception e) { GunplayLog.Error("Tracers melee (fitted wheels)", e); }
+            if (_meleeWheels.Count > 0) { try { CheckMeleeWheels(); } catch (Exception e) { GunplayLog.Error("Tracers melee", e); _meleeWheels.Clear(); } }
             if (dt <= 0f) { if (!_drawnPaused) { Draw(); _drawnPaused = true; } return; }   // paused: the mesh is drawn once and left as it is
             _drawnPaused = false;
             if (GunplaySettings.Lead) TrackPlayer(dt);
@@ -200,7 +200,7 @@ namespace WildWasteland.Modules.Guns
                     float st = ticks / SimHz;
                     s.Prev = s.Pos; s.StepLen = st; s.Ahead += st;
                     try { Step(ref s, st); }
-                    catch (Exception e) { s.Alive = false; Core.Log.Error("[Guns] Tracers: bullet dropped", e); }
+                    catch (Exception e) { s.Alive = false; GunplayLog.Error("Tracers: bullet dropped", e); }
                 }
                 if (s.Alive) { Vector3 rp; float rt; RenderOf(ref s, out rp, out rt); MoveBoltAt(ref s, rp); _shots[i] = s; }
                 else { if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); _shots.RemoveAt(i); }

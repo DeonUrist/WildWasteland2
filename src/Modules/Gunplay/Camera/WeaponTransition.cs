@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.Guns
             if (weapon == null || string.IsNullOrEmpty(weapon.Value) || weapon.Value == "hands") return true;
             _pending = ev; _data = data;
             if (!_lowering) { _at = Time.time; _lowering = true; }
-            if (Log.Verbose) Log.Info("[Guns] Weapon transition: lower " + weapon.Value + " for " + ev.Name);
+            if (Log.L2) GunplayLog.Deep("Weapon transition: lower " + weapon.Value + " for " + ev.Name);
             return false;
         }
         private static void AfterActivate(ActivateGameObject action)
@@ -82,7 +82,7 @@ namespace WildWasteland.Modules.Guns
             if (_handler == null || !ReferenceEquals(action.Fsm, _handler.Fsm) || !GunplaySettings.SmoothWeaponSwitch.Value || !action.activate.Value) return;
             if (action.Fsm.ActiveStateName == "hands") return;
             _at = Time.time; _weight = 1f; _lowering = false;
-            if (Log.Verbose) Log.Info("[Guns] Weapon transition: raise " + action.Fsm.ActiveStateName);
+            if (Log.L2) GunplayLog.Deep("Weapon transition: raise " + action.Fsm.ActiveStateName);
         }
         private static Core.Events.WeaponSwitchStage _lastStage = Core.Events.WeaponSwitchStage.Done;
 
@@ -121,7 +121,7 @@ namespace WildWasteland.Modules.Guns
                 _holster = false; _pending = null; _data = null; _lowering = false; _weight = 0f;
                 _at = Time.time - Duration;
                 _switcher.SendEvent("Activate"); // Native off 2 also deactivates WeaponInHand and all arm models.
-                if (Log.Verbose) Log.Info("[Guns] World ready: weapons holstered");
+                if (Log.L2) GunplayLog.Deep("World ready: weapons holstered");
             }
             if (!GunplaySettings.SmoothWeaponSwitch.Value)
             {

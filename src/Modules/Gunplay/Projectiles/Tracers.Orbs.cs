@@ -72,9 +72,9 @@ namespace WildWasteland.Modules.Guns
                     S = new Shot { Kind = Kind.Pistol, DmgMult = 1f, Alive = true, Orb = true },
                 };
                 _orbs[obj.GetInstanceID()] = o;
-                if (Core.Log.Verbose) GunplayLog.Main("Orbs: " + owner.name + " fires " + obj.name + " (r " + o.Radius.ToString("0.00") + ")");
+                if (Log.L2) GunplayLog.Deep("Orbs: " + owner.name + " fires " + obj.name + " (r " + o.Radius.ToString("0.00") + ")");
             }
-            catch (Exception e) { Core.Log.Error("[Guns] Orbs (spawn)", e); }
+            catch (Exception e) { GunplayLog.Error("Orbs (spawn)", e); }
         }
 
         // TranslatePosition.OnFixedUpdate prefix: false = we moved it (or stopped it)
@@ -109,7 +109,7 @@ namespace WildWasteland.Modules.Guns
             }
             catch (Exception e)
             {
-                Core.Log.Error("[Guns] Orbs", e);
+                GunplayLog.Error("Orbs", e);
                 return true;
             }
         }
@@ -158,7 +158,7 @@ namespace WildWasteland.Modules.Guns
                 // stopped
                 WorldImpact(col, h.point, h.normal, dir);
                 HitWorld(ref o.S, col, h.point, dmg);
-                if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + o.ShooterName + "'s " + o.Go.name + " stopped by " + col.name + " at " + h.distance.ToString("0.00") + " m");
+                if (Log.L2) GunplayLog.Deep("Hit: " + o.ShooterName + "'s " + o.Go.name + " stopped by " + col.name + " at " + h.distance.ToString("0.00") + " m");
                 Kill(o, p + dir * h.distance);
                 return false;
             }

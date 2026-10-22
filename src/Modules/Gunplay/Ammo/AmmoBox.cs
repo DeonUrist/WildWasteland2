@@ -46,8 +46,8 @@ namespace WildWasteland.Modules.Guns
                 else if (instance == null && go.name.StartsWith(name + "(Clone)", StringComparison.Ordinal)) instance = go;
             }
             var found = asset ?? instance;
-            if (found != null) { _prefabs[caliber] = found; AmmoSettings.V("Ammo box template for " + caliber + ": " + found.name + (asset != null ? " (prefab)" : " (scene copy)")); }
-            else Core.Log.Warn("[Guns] No ammo box prefab named '" + name + "' is loaded");
+            if (found != null) { _prefabs[caliber] = found; if (Log.L2) AmmoSettings.V("Ammo box template for " + caliber + ": " + found.name + (asset != null ? " (prefab)" : " (scene copy)")); }
+            else GunplayLog.Warn("No ammo box prefab named '" + name + "' is loaded");
             return found;
         }
 
@@ -69,7 +69,7 @@ namespace WildWasteland.Modules.Guns
                     if ((p.referenceName ?? "").ToLowerInvariant().Contains("item")) { list = p; break; }
             if (counter == null || list == null)
             {
-                Core.Log.Warn("[Guns] Cannot drop " + caliber + ": save registry/counter unavailable; retaining ammo");
+                GunplayLog.Warn("Cannot drop " + caliber + ": save registry/counter unavailable; retaining ammo");
                 return false;
             }
             var mainCam = GameRefs.MainCamera;
@@ -124,7 +124,7 @@ namespace WildWasteland.Modules.Guns
                     var rb = go.GetComponent<Rigidbody>();
                     if (rb != null) { rb.isKinematic = false; if (caliber == "armorplate") rb.useGravity = true; rb.velocity = fwd * 1.5f; }
                 }
-                if (Core.Log.Verbose) Core.Log.Info("[Guns] Dropped " + rounds + " x " + caliber + " in " + created.Count + " save-registered item(s)");
+                if (Log.L2) GunplayLog.Deep("Dropped " + rounds + " x " + caliber + " in " + created.Count + " save-registered item(s)");
                 CombatEvents.Dropped(caliber, rounds, created.Count > 0 ? created[0] : null, pos);
                 return true;
             }
@@ -136,7 +136,7 @@ namespace WildWasteland.Modules.Guns
                     go.SetActive(false);
                     UnityEngine.Object.Destroy(go);
                 }
-                Core.Log.Warn("[Guns] Could not drop " + caliber + "; retaining ammo: " + ex.Message);
+                GunplayLog.Warn("Could not drop " + caliber + "; retaining ammo: " + ex.Message);
                 return false;
             }
             finally { UnityEngine.Object.Destroy(staging); }

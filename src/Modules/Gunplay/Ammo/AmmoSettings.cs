@@ -3,6 +3,7 @@ using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using WildWasteland.Modules.Gunplay;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -17,7 +18,7 @@ namespace WildWasteland.Modules.Guns
         internal static ConfigEntry<float> HoldSeconds, PhaseTimeout;
         internal static ConfigEntry<Key> FallbackKey;
         internal static int TapFrame = -100;
-        internal static void V(string message) { GunplayLog.Main(message); }
+        internal static void V(string message) { if (Log.L2) GunplayLog.Deep(message); }
 
         internal static bool ReloadHeld()
         {

@@ -19,7 +19,7 @@ namespace WildWasteland.Modules.Patrols
         {
             if (_hand == null) return;
             var prefab = LancePrefabs.FindAny(Rider.LanceItem);
-            if (prefab == null) { PatrolsModule.Verbose("Rider: no " + Rider.LanceItem + " prefab for the hand prop"); return; }
+            if (prefab == null) { if (Log.L2) GunplayLog.Deep("Rider: no " + Rider.LanceItem + " prefab for the hand prop"); return; }
             var go = UnityEngine.Object.Instantiate(prefab, _hand.position, _hand.rotation);
             foreach (var f in go.GetComponentsInChildren<PlayMakerFSM>(true)) UnityEngine.Object.DestroyImmediate(f);
             foreach (var j in go.GetComponentsInChildren<Joint>(true)) UnityEngine.Object.DestroyImmediate(j);
@@ -41,11 +41,11 @@ namespace WildWasteland.Modules.Patrols
             {
                 if (Lance != null) Lance.gameObject.SetActive(false);
                 var prefab = LancePrefabs.FindAny(Rider.Projectile);
-                if (prefab == null) { Core.Log.Warn("[Patrols] " + "Rider: projectile prefab not found: " + Rider.Projectile); return; }
+                if (prefab == null) { GunplayLog.Warn("Rider: projectile prefab not found: " + Rider.Projectile); return; }
                 float speed = PatrolsModule.RiderLanceSpeed.Value;
                 var from = HandPos(); var carVel = CarVel();
                 Vector3 launch; float flight;
-                if (!Rider.Solve(from, carVel, tpos + Vector3.up * 0.9f, tvel, speed, out launch, out flight)) PatrolsModule.Verbose("Rider: target moved out of reach during the swing - thrown at the best angle");
+                if (!Rider.Solve(from, carVel, tpos + Vector3.up * 0.9f, tvel, speed, out launch, out flight) && Log.L2) GunplayLog.Deep("Rider: target moved out of reach during the swing - thrown at the best angle");
                 var dir = launch.normalized;
                 var go = UnityEngine.Object.Instantiate(prefab, from + dir * 0.6f, Quaternion.LookRotation(dir));
                 go.SetActive(true);
@@ -54,9 +54,9 @@ namespace WildWasteland.Modules.Patrols
                 rb.velocity = launch + carVel;
                 IgnoreOwn(go);
                 go.AddComponent<LanceFuse>();   // explodes on any hit, whatever angle it lands at
-                PatrolsModule.Verbose("Rider: " + name + " threw a blast lance, " + flight.ToString("0.00") + " s flight, " + Rider.Elevation(launch).ToString("0") + "° up");
+                if (Log.L2) GunplayLog.Deep("Rider: " + name + " threw a blast lance, " + flight.ToString("0.00") + " s flight, " + Rider.Elevation(launch).ToString("0") + "° up");
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Rider: throw: " + e.Message); }
+            catch (Exception e) { GunplayLog.Warn("Rider: throw: " + e.Message); }
         }
     }
 }

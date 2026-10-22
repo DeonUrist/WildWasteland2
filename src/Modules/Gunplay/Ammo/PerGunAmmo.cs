@@ -128,7 +128,7 @@ namespace WildWasteland.Modules.Guns
             _item = item; _identity = item.name; _type = itemType.Value; _reload = reload; _handler = handler.FsmComponent;
             Apply(reload, magazine);
             CombatEvents.Magazine(model.name, _identity, magazine.Rounds);
-            if (Core.Log.Verbose) AmmoSettings.V("Magazine " + _identity + ": " + magazine.Rounds + " rounds");
+            if (Log.L2) AmmoSettings.V("Magazine " + _identity + ": " + magazine.Rounds + " rounds");
         }
 
         // Fsm.EnterState prefix: every state entry of every FSM. Both FSM names we watch are 12 characters long, so one int compare
@@ -242,7 +242,7 @@ namespace WildWasteland.Modules.Guns
         {
             AmmoRunner.Unloader.CancelForLoad();
             _faulted = true;
-            Core.Log.Error("[Guns] Per-gun ammo suspended to preserve save data", error);
+            GunplayLog.Error("Per-gun ammo suspended to preserve save data", error);
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using WildWasteland.Core;
 using UnityEngine;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -24,7 +25,7 @@ namespace WildWasteland.Modules.NPC
             var g = Services.Guns;
             if (g != null)
                 try { float range = g.EffectiveRange((int)k); if (!float.IsNaN(range) && !float.IsInfinity(range)) return Mathf.Max(1f, range); }
-                catch (Exception e) { NpcModule.Warn("Gunplay range query failed: " + e.Message); }
+                catch (Exception e) { GunplayLog.Warn("Gunplay range query failed: " + e.Message); }
             switch (k)
             {
                 case Kind.Pistol: return 60f;
@@ -46,7 +47,7 @@ namespace WildWasteland.Modules.NPC
             var g = Services.Guns;
             if (g != null)
                 try { int found; bool gun = g.TryGetWeaponKind(owner, out found); if (found >= 0 && found <= 5) kind = (Kind)found; return gun; }
-                catch (Exception e) { NpcModule.Warn("Gunplay weapon query failed: " + e.Message); }
+                catch (Exception e) { GunplayLog.Warn("Gunplay weapon query failed: " + e.Message); }
             int id = owner.GetInstanceID(); Info info;
             if (_shooters.TryGetValue(id, out info) && info.Owner == owner && (info.Weapon != null ? info.Weapon.gameObject.activeInHierarchy : Time.time < info.Retry))
             { kind = info.Kind; return info.IsGun; }

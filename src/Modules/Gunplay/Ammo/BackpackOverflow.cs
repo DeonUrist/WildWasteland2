@@ -5,6 +5,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -58,7 +59,7 @@ namespace WildWasteland.Modules.Guns
             {
                 int excess = count.Value - retained;
                 count.Value = retained;
-                if (Core.Log.Verbose) Core.Log.Info("[Guns] Backpack capacity reduced: dropped " + excess + " x " + count.Name + "; retained " + count.Value + "/" + capacity);
+                if (Log.L2) GunplayLog.Deep("Backpack capacity reduced: dropped " + excess + " x " + count.Name + "; retained " + count.Value + "/" + capacity);
             }
             // Letting vanilla run here would delete the ammo we could not put into a world item.
             return allowClamp;

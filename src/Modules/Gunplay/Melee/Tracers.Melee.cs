@@ -46,9 +46,9 @@ namespace WildWasteland.Modules.Guns
                 var hit = __instance.gameObject != null ? __instance.gameObject.Value : null;
                 if (hit == null || !IsCorpse(hit)) return;
                 __instance.storeResult.Value = 10;                       // the FSM goes on to actorHitSound: knife_hit + BloodHit_Effect
-                if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + fsm.GameObject.name + " (melee) -> corpse " + hit.transform.root.name + "/" + hit.name + ": blood" + (IsBlade(fsm.GameObject.name) ? ", stab sound" : ""));
+                if (Log.L2) GunplayLog.Deep("Hit: " + fsm.GameObject.name + " (melee) -> corpse " + hit.transform.root.name + "/" + hit.name + ": blood" + (IsBlade(fsm.GameObject.name) ? ", stab sound" : ""));
             }
-            catch (Exception e) { Core.Log.Error("[Guns] Tracers melee corpse", e); }
+            catch (Exception e) { GunplayLog.Error("Tracers melee corpse", e); }
         }
 
         public static void AfterSetAudioClip(SetAudioClip __instance)
@@ -66,10 +66,10 @@ namespace WildWasteland.Modules.Guns
                 if (src != null)
                 {
                     src.clip = clip;                                    // the hit state's AudioPlay plays it (pitch 0.5-1.5, volume 0.5 as vanilla)
-                    if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + fsm.GameObject.name + " (melee): stab sound");
+                    if (Log.L2) GunplayLog.Deep("Hit: " + fsm.GameObject.name + " (melee): stab sound");
                 }
             }
-            catch (Exception e) { Core.Log.Error("[Guns] Tracers stab sound", e); }
+            catch (Exception e) { GunplayLog.Error("Tracers stab sound", e); }
         }
 
         public static bool BeforeMeleeEffect(CreateObject __instance)
@@ -86,7 +86,7 @@ namespace WildWasteland.Modules.Guns
             FindEffects();
             if (_metalImpact == null) return true;
             MetalSparks(col, __instance.position.Value, __instance.rotation.Value);
-            if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + fsm.GameObject.name + " (melee) -> " + hit.name + ": metal sparks");
+            if (Log.L2) GunplayLog.Deep("Hit: " + fsm.GameObject.name + " (melee) -> " + hit.name + ": metal sparks");
             __instance.Finish();
             return false;
         }
@@ -119,7 +119,7 @@ namespace WildWasteland.Modules.Guns
             string path = System.IO.Path.IsPathRooted(rel) ? rel : System.IO.Path.Combine(GunplayModule.AssetDir ?? "", rel);
             try
             {
-                if (!System.IO.File.Exists(path)) { Core.Log.Warn("[Guns] Tracers: no stab sound at " + path + " - blades get the game's knife sound"); return null; }
+                if (!System.IO.File.Exists(path)) { GunplayLog.Warn("Tracers: no stab sound at " + path + " - blades get the game's knife sound"); return null; }
                 int ch, rate;
                 float[] smp = Core.Audio.DecodeWav(System.IO.File.ReadAllBytes(path), out ch, out rate);
                 // AudioPlay sets source volume to 0.5; amplify the clip for an effective 1.5 (source volume clamps at 1).
@@ -127,9 +127,9 @@ namespace WildWasteland.Modules.Guns
                 _stab = AudioClip.Create("knifestab", Math.Max(1, smp.Length / ch), ch, rate, false);
                 _stab.SetData(smp, 0);
                 _stab.hideFlags = HideFlags.DontUnloadUnusedAsset;
-                GunplayLog.Main("Tracers: stab sound loaded (" + System.IO.Path.GetFileName(path) + ", " + (smp.Length / ch / (float)rate).ToString("0.00") + " s)");
+                if (Log.L1) GunplayLog.Main("Tracers: stab sound loaded (" + System.IO.Path.GetFileName(path) + ", " + (smp.Length / ch / (float)rate).ToString("0.00") + " s)");
             }
-            catch (Exception e) { Core.Log.Warn("[Guns] Tracers: stab sound " + path + " not loaded: " + e.Message); _stab = null; }
+            catch (Exception e) { GunplayLog.Warn("Tracers: stab sound " + path + " not loaded: " + e.Message); _stab = null; }
             return _stab;
         }
 
@@ -167,7 +167,7 @@ namespace WildWasteland.Modules.Guns
                     if (v == null) continue;
                     v.Value *= mult;
                     Bridge.PartHit(part.gameObject, target.transform.position, Mathf.Abs(v.Value));
-                    if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + weapon.name + " (melee) -> " + part.name + ", condition " + before.ToString("0.0") + " " + v.Value.ToString("0.0") + " (x" + mult.ToString("0.#") + ")");
+                    if (Log.L2) GunplayLog.Deep("Hit: " + weapon.name + " (melee) -> " + part.name + ", condition " + before.ToString("0.0") + " " + v.Value.ToString("0.0") + " (x" + mult.ToString("0.#") + ")");
                     break;
                 }
                 FsmBuffers.Return(tf);
@@ -176,7 +176,7 @@ namespace WildWasteland.Modules.Guns
                 CombatEvents.PartHit(part, GameRefs.Player, true, before, -1f, true);
                 if (GunplaySettings.WheelPopOff.Value && before > 0f) _meleeWheels.Add(new MeleeWheel { Part = part, Before = before, Dir = dir, Frame = Time.frameCount });
             }
-            catch (Exception e) { Core.Log.Error("[Guns] Tracers melee", e); }
+            catch (Exception e) { GunplayLog.Error("Tracers melee", e); }
         }
 
         // ---------- melee on FITTED wheels (1.5.1) ----------
@@ -273,7 +273,7 @@ namespace WildWasteland.Modules.Guns
                 v.Value = dmg * mult;
                 f.SendEvent("Damage");
                 Bridge.PartHit(wheel.gameObject, at == Vector3.zero ? wheel.position : at, Mathf.Abs(v.Value));
-                if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + active.gameObject.name + " (melee, fitted wheel) -> " + wheel.name + ", condition " + before.ToString("0.0") + " " + v.Value.ToString("0.0") + " (x" + mult.ToString("0.#") + ")");
+                if (Log.L2) GunplayLog.Deep("Hit: " + active.gameObject.name + " (melee, fitted wheel) -> " + wheel.name + ", condition " + before.ToString("0.0") + " " + v.Value.ToString("0.0") + " (x" + mult.ToString("0.#") + ")");
                 break;
             }
             CombatEvents.PartHit(wheel, GameRefs.Player, true, before, -1f, true);

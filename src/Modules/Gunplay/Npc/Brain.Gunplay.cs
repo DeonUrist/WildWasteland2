@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -92,7 +93,7 @@ namespace WildWasteland.Modules.NPC
             }
             n.ReloadRounds = rounds; n.ReloadShown = false;
             n.Reloading = true; n.ReloadUntil = now + len; n.ReloadLen = len; n.ReloadSoundsPlayed = 0;
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " reloads " + n.WeaponKey + " (" + n.Shots + " shots, " + len.ToString("0.0") + " s" + (rounds > 0 ? ", " + rounds + " rounds one at a time" : "") + ")");
+            if (WildWasteland.Core.Log.L2) GunplayLog.Deep("Brain: " + n.Owner.name + " reloads " + n.WeaponKey + " (" + n.Shots + " shots, " + len.ToString("0.0") + " s" + (rounds > 0 ? ", " + rounds + " rounds one at a time" : "") + ")");
             return true;
         }
     }

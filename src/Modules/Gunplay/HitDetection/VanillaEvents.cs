@@ -53,7 +53,7 @@ namespace WildWasteland.Modules.NPC
                 if (ModEvents.HasListeners<WeaponFired>())
                     CombatEvents.Fired(owner.transform.root.gameObject, -1, (WeaponKind)(int)kind, origin, owner.transform.forward, 1, false);
             }
-            catch (Exception e) { NpcModule.Warn("Vanilla NPC shot observation: " + e.Message); }
+            catch (Exception e) { GunplayLog.Warn("Vanilla NPC shot observation: " + e.Message); }
             return true;
         }
 
@@ -169,7 +169,7 @@ namespace WildWasteland.Modules.NPC
                 if (senses) Senses.Shot(Core.GameRefs.Player, position, si.Kind, true);
                 CombatEvents.Fired(Core.GameRefs.Player, WeaponCatalog.Instance.Handle(fsm.GameObject.name), (WeaponKind)(int)si.Kind, position, fsm.GameObject.transform.forward, 1, true);
             }
-            catch (Exception e) { NpcModule.Warn("Vanilla player shot observation: " + e.Message); }
+            catch (Exception e) { GunplayLog.Warn("Vanilla player shot observation: " + e.Message); }
             return true;
         }
 
@@ -207,7 +207,7 @@ namespace WildWasteland.Modules.NPC
                 if(melee&&!player){Core.Services.RaiseNpcHurt(target,fsm.GameObject);return;}
                 Senses.Hurt(target, player ? Core.GameRefs.Player : fsm.GameObject);
             }
-            catch (Exception e) { NpcModule.Warn("Vanilla hurt observation: " + e.Message); }
+            catch (Exception e) { GunplayLog.Warn("Vanilla hurt observation: " + e.Message); }
         }
     }
 }

@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.Guns
                 if (Services.Animation != null && Services.Animation.TryPlayerWeaponMuzzle(out bodyMuzzle))
                 {
                     muzzle = bodyMuzzle;
-                    if (Core.Log.Verbose && _playerMuzzleLogs++ < 3) GunplayLog.Main("Player shot origin: visible body muzzle " + muzzle);
+                    if (Log.L2 && _playerMuzzleLogs++ < 3) GunplayLog.Deep("Player shot origin: visible body muzzle " + muzzle);
                 }
                 for (int p = 0; p < pellets; p++)
                 {
@@ -106,8 +106,8 @@ namespace WildWasteland.Modules.Guns
                     if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); }
                     else _shots.Add(s);
                 }
-                if (gun.Kind == Kind.Shotgun && Core.Log.Verbose)
-                    GunplayLog.Main("Shotgun spread: circular, " + pellets + " pellets, player accuracy " + GunplaySettings.Accuracy(true).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%");
+                if (gun.Kind == Kind.Shotgun && Log.L2)
+                    if (Log.L2) GunplayLog.Deep("Shotgun spread: circular, " + pellets + " pellets, player accuracy " + GunplaySettings.Accuracy(true).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%");
                 Bridge.Shot(_player, muzzle, (int)gun.Kind, true);
                 CombatEvents.Fired(_player, gun.Handle, (WeaponKind)(int)gun.Kind, muzzle, ft.forward, pellets, true);
                 __instance.Finish();         // vanilla: no hit -> FINISHED -> wait -> next shot, same rhythm
@@ -115,7 +115,7 @@ namespace WildWasteland.Modules.Guns
             }
             catch (Exception e)
             {
-                Core.Log.Error("[Guns] Tracers (player)", e);
+                GunplayLog.Error("Tracers (player)", e);
                 return true;
             }
         }
@@ -172,7 +172,7 @@ namespace WildWasteland.Modules.Guns
             if (entry != null && (gun.Kind == Kind.Crossbow || (!crossbowName && entry.DamageMultiplier != 1f))) gun.DamageMultiplier = entry.DamageMultiplier;
             if (gun.Kind == Kind.Crossbow) CacheBoltModel(go.transform);
             if (gun.Kind == Kind.Shotgun && !shotgun) gun.Kind = Kind.Rifle;      // a "rochester" without pellets is not a shotgun
-            if (Core.Log.Verbose) GunplayLog.Main("Tracers: player gun " + go.name + " = " + gun.Kind + (shotgun ? ", " + gun.Pellets + " pellets" : "") + (gun.Muzzle != null ? "" : ", no muzzle point"));
+            if (Log.L2) GunplayLog.Deep("Tracers: player gun " + go.name + " = " + gun.Kind + (shotgun ? ", " + gun.Pellets + " pellets" : "") + (gun.Muzzle != null ? "" : ", no muzzle point"));
             return gun;
         }
 

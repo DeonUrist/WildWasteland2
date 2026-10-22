@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly HashSet<string> _reported = new HashSet<string>();
         private static void ReportHitbox(Collider head)
         {
-            if (!Core.Log.Verbose) return;
+            if (!Log.L2) return;
             var root = RootOf(head.transform);
             string name = root.name; int cut = name.IndexOf('('); if (cut > 0) name = name.Substring(0, cut);
             if (!_reported.Add(name)) return;
@@ -46,10 +46,10 @@ namespace WildWasteland.Modules.Guns
                 float headTop = head.bounds.max.y - feet, headBottom = head.bounds.min.y - feet;
                 float meshTop = 0f;
                 foreach (var smr in root.GetComponentsInChildren<SkinnedMeshRenderer>()) meshTop = Mathf.Max(meshTop, smr.bounds.max.y - feet);
-                Core.Log.Info("[Guns] Hitbox " + name + ": body capsule 0.00-" + bodyTop.ToString("0.00") + " m above the feet, head " + headBottom.ToString("0.00")
+                if (Log.L2) GunplayLog.Deep("Hitbox " + name + ": body capsule 0.00-" + bodyTop.ToString("0.00") + " m above the feet, head " + headBottom.ToString("0.00")
                     + "-" + headTop.ToString("0.00") + " (r " + head.bounds.extents.x.ToString("0.00") + "), model top " + meshTop.ToString("0.00"));
             }
-            catch (Exception e) { GunplayLog.Main("Hitbox report failed: " + e.Message); }
+            catch (Exception e) { if (Log.L1) GunplayLog.Main("Hitbox report failed: " + e.Message); }
         }
 
         private static bool Ignored(Transform t, Transform shooterRoot, GameObject player)
@@ -76,11 +76,11 @@ namespace WildWasteland.Modules.Guns
             bool creature = !isPart && !corpse && (HasBodypart(go) || HasBodypart(RootOf(go.transform).gameObject));
             if (creature) Bridge.Hurt(go, s.Player);
             bool feedback = creature;
-            float before = Core.Log.Verbose || feedback ? HealthOf(go) : 0f;
+            float before = Log.L2 || feedback ? HealthOf(go) : 0f;
             Replay(fsm, (go.layer == 10 || corpse) && gun.ActorHit != null ? gun.ActorHit : gun.GetLayer, falloff);   // a corpse bleeds like the living NPC did
             float headF = creature && col_isHead(go) && !IsPlayerObj(go) ? HeadFactor(go) : 1f;     // [Gunplay] HeadshotMultiplier instead of the head's own x2
             Replay(fsm, gun.Hit, falloff * headF, GunplaySettings.VehicleDamage.Value && isPart, (creature || corpse) && (go.layer == 10 || corpse) && gun.ActorHit != null);
-            float after = Core.Log.Verbose || feedback ? HealthOf(go) : 0f;
+            float after = Log.L2 || feedback ? HealthOf(go) : 0f;
             if (feedback)
             {
                 float nominal = gun.Damage != null ? gun.Damage.Value * falloff : 0f;
@@ -91,9 +91,9 @@ namespace WildWasteland.Modules.Guns
             }
             CombatEvents.ProjectileHit(s.Id, s.Player, isPart || creature || corpse ? RootOf(go.transform).gameObject : null, go.name, h.point, h.normal,
                 gun.Damage != null ? Mathf.Abs(gun.Damage.Value * falloff) : 0f, creature && col_isHead(go), false);
-            if (Core.Log.Verbose)
+            if (Log.L2)
             {
-                Core.Log.Info("[Guns] Hit: " + fsm.GameObject.name + " -> " + RootOf(go.transform).name + "/" + go.name + " at " + (s.Travelled + h.distance).ToString("0.0") + " m, damage "
+                if (Log.L2) GunplayLog.Deep("Hit: " + fsm.GameObject.name + " -> " + RootOf(go.transform).name + "/" + go.name + " at " + (s.Travelled + h.distance).ToString("0.0") + " m, damage "
                     + (gun.Damage != null ? gun.Damage.Value * falloff : 0f).ToString("0.0") + " (x" + falloff.ToString("0.00") + ")"
                     + (float.IsNaN(before) ? ", no Health FSM" : ", Health " + before.ToString("0.0") + " -> " + after.ToString("0.0")));
             }
@@ -187,7 +187,7 @@ namespace WildWasteland.Modules.Guns
                     var se = a as SendEvent;
                     if (se != null && se.sendEvent != null) { fsm.Event(se.eventTarget, se.sendEvent); continue; }
                 }
-                catch (Exception e) { if (Core.Log.Verbose) GunplayLog.Main("Tracers: replay " + a.GetType().Name + " failed: " + e.Message); }
+                catch (Exception e) { if (Log.L2) GunplayLog.Deep("Tracers: replay " + a.GetType().Name + " failed: " + e.Message); }
             }
         }
 
@@ -289,7 +289,7 @@ namespace WildWasteland.Modules.Guns
                 float falloff = Falloff(ref s, dist) * s.DmgMult;
                 float mult = vhead ? _headMult : 1f;
                 if (s.Bolt) LandBolt(ref s, s.Pos + s.Dir * vt, -s.Dir, vhead && s.Head != null ? s.Head.transform : s.Target.transform, true);
-                if (vhead && Core.Log.Verbose) GunplayLog.Main("Tracers: headshot on " + s.Target.name + " at " + dist.ToString("0.0") + " m");
+                if (vhead && Log.L2) GunplayLog.Deep("Tracers: headshot on " + s.Target.name + " at " + dist.ToString("0.0") + " m");
                 HitTarget(ref s, s.Pos + s.Dir * vt, s.Damage * falloff * mult, vhead && s.Head != null ? s.Head : s.Target, dist);
                 s.Pos += s.Dir * vt;
                 s.Travelled = dist;
@@ -430,7 +430,7 @@ namespace WildWasteland.Modules.Guns
                         var v = f.FsmVariables.GetFsmFloat("Damage");
                         if (v != null) v.Value = damage;
                     }
-                before = Core.Log.Verbose ? HealthOf(target) : 0f;
+                before = Log.L2 ? HealthOf(target) : 0f;
                 foreach (var f in fsms) if (s.EventFsm == null || f.FsmName == s.EventFsm) f.SendEvent(s.EventName);
             }
             finally { FsmBuffers.Return(fsms); }
@@ -443,8 +443,8 @@ namespace WildWasteland.Modules.Guns
                 float hp = HealthOf(target);
                 CombatEvents.Hurt(victim, s.ShooterRoot, Mathf.Abs(damage), HurtKind.Projectile, target.name, point, -1, head, !float.IsNaN(hp) && hp <= 0f);
             }
-            if (Core.Log.Verbose)
-                Core.Log.Info("[Guns] Hit: " + (s.ShooterRoot != null ? s.ShooterRoot.name : "?") + " -> " + RootOf(target.transform).name + "/" + target.name + " at "
+            if (Log.L2)
+                if (Log.L2) GunplayLog.Deep("Hit: " + (s.ShooterRoot != null ? s.ShooterRoot.name : "?") + " -> " + RootOf(target.transform).name + "/" + target.name + " at "
                     + dist.ToString("0.0") + " m, damage " + damage.ToString("0.0")
                     + (float.IsNaN(before) ? "" : ", Health " + before.ToString("0.0") + " -> " + HealthOf(target).ToString("0.0")));
         }
@@ -539,7 +539,7 @@ namespace WildWasteland.Modules.Guns
             int id = part.GetInstanceID();
             if (s.Passed == 0) s.Passed0 = id; else s.Passed1 = id;
             s.Passed++;
-            if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + (s.Orb ? "monster orb" : s.Kind + " bullet") + " goes through " + part.name + " (" + m + "), damage x" + s.DmgMult.ToString("0.00"));
+            if (Log.L2) GunplayLog.Deep("Hit: " + (s.Orb ? "monster orb" : s.Kind + " bullet") + " goes through " + part.name + " (" + m + "), damage x" + s.DmgMult.ToString("0.00"));
             return true;
         }
 
@@ -559,13 +559,13 @@ namespace WildWasteland.Modules.Guns
         private static void PopOff(Transform part, Vector3 dir, string why)
         {
             part.gameObject.layer = 9;
-            try { part.tag = "vehPartRemoved"; } catch (Exception e) { GunplayLog.Main("Tracers: wheel tag: " + e.Message); }
+            try { part.tag = "vehPartRemoved"; } catch (Exception e) { if (Log.L1) GunplayLog.Main("Tracers: wheel tag: " + e.Message); }
             Vector3 d = dir; d.y = 0f; d = d.sqrMagnitude > 0.001f ? d.normalized : Vector3.zero;
             _popped.Add(new KeyValuePair<GameObject, Vector3>(part.gameObject, d * 2.5f + Vector3.up * 4f));
             CombatEvents.WheelOff(part, part.root, d * 2.5f + Vector3.up * 4f);
             _forceFree.Add(part.gameObject);
             _poppedFrame = Time.frameCount + 2;
-            if (Core.Log.Verbose) GunplayLog.Main("Tracers: " + part.name + " " + why);
+            if (Log.L2) GunplayLog.Deep("Tracers: " + part.name + " " + why);
         }
 
         // a wheel / tyre part: the hit collider or any object up to (and including) its part is named like one

@@ -44,23 +44,23 @@ namespace WildWasteland.Modules.Guns
                     var g = a as GetFsmInt;
                     if (g != null && g.fsmName != null && g.fsmName.Value == "Ammo") { caliber = g.variableName.Value; break; }
                 }
-            if (string.IsNullOrEmpty(caliber)) { Core.Log.Warn("[Guns] " + "Could not determine caliber for " + reload.gameObject.name); return; }
+            if (string.IsNullOrEmpty(caliber)) { GunplayLog.Warn("Could not determine caliber for " + reload.gameObject.name); return; }
 
             var gm = GameRefs.GameManager;
             var ammoFsm = gm != null ? FsmUtil.Find(gm, "Ammo") : null;
-            if (ammoFsm == null || ammoFsm.FsmVariables.GetFsmInt(caliber) == null) { Core.Log.Warn("[Guns] " + "Ammo FSM / variable " + caliber + " not found"); return; }
+            if (ammoFsm == null || ammoFsm.FsmVariables.GetFsmInt(caliber) == null) { GunplayLog.Warn("Ammo FSM / variable " + caliber + " not found"); return; }
 
             // The state the game enters after checkAmmo passes: it sends Deactivate/Reloading/animation events.
             FsmState start = null;
             if (check != null)
                 foreach (var t in check.Transitions) if (t.EventName == "next") { start = FindState(reload, t.ToState); break; }
-            if (start == null) { Core.Log.Warn("[Guns] " + "No start state found for " + reload.gameObject.name); return; }
+            if (start == null) { GunplayLog.Warn("No start state found for " + reload.gameObject.name); return; }
 
             _reload = reload; _weapon = reload.gameObject; _ammoFsm = ammoFsm; _caliber = caliber; _moved = false; _rounds = inGun.Value; _item = PerGunAmmo.CurrentItem;
             CombatEvents.UnloadStarted(_weapon.name, _item, _rounds);
             bool threePhase = false;
             foreach (var t in start.Transitions) if (t.EventName == "AnimStart") { threePhase = true; break; }
-            if (Core.Log.Verbose) Core.Log.Info("[Guns] Unloading " + _weapon.name + ": " + inGun.Value + " x " + caliber + (threePhase ? " (3-phase)" : ""));
+            if (Log.L2) GunplayLog.Deep("Unloading " + _weapon.name + ": " + inGun.Value + " x " + caliber + (threePhase ? " (3-phase)" : ""));
 
             ReplaySendEvents(start);
             _phase = threePhase ? Phase.WaitAnimStart : Phase.WaitAnimFinished;
@@ -82,9 +82,9 @@ namespace WildWasteland.Modules.Guns
         public void Tick()
         {
             if (_phase == Phase.Idle) return;
-            if (_weapon == null || !_weapon.activeInHierarchy) { Core.Log.Warn("[Guns] Weapon vanished during unload; aborting"); _aborted = true; Finish(); return; }
+            if (_weapon == null || !_weapon.activeInHierarchy) { GunplayLog.Warn("Weapon vanished during unload; aborting"); _aborted = true; Finish(); return; }
             if (Time.unscaledTime < _deadline) return;
-            Core.Log.Warn("[Guns] Unload phase " + _phase + " timed out; continuing");
+            GunplayLog.Warn("Unload phase " + _phase + " timed out; continuing");
             if (_phase == Phase.WaitAnimStart) AfterAnimStart(); else Finish();
         }
 
@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.Guns
             if (leftover > 0)
             {
                 if (AmmoBox.Drop(_caliber, leftover, _weapon.transform)) inGun.Value = 0;
-                else Core.Log.Warn("[Guns] Could not spawn an ammo box; " + leftover + " rounds left in the gun");
+                else GunplayLog.Warn("Could not spawn an ammo box; " + leftover + " rounds left in the gun");
             }
             var mirror = _reload.FsmVariables.GetFsmInt("ammo");
             if (mirror != null) mirror.Value = store.Value;
@@ -144,7 +144,7 @@ namespace WildWasteland.Modules.Guns
                 var hammer = attack == null ? null : attack.FsmVariables.GetFsmBool("hammer");
                 if (hammer != null) hammer.Value = false;
             }
-            if (Core.Log.Verbose) Core.Log.Info("[Guns] Returned " + toStore + " x " + _caliber + " to backpack (now " + store.Value + "/" + cap + ")" + (leftover > 0 ? ", " + leftover + " dropped as a box" : ""));
+            if (Log.L2) GunplayLog.Deep("Returned " + toStore + " x " + _caliber + " to backpack (now " + store.Value + "/" + cap + ")" + (leftover > 0 ? ", " + leftover + " dropped as a box" : ""));
         }
 
         private void Finish()
@@ -167,9 +167,9 @@ namespace WildWasteland.Modules.Guns
             {
                 var se = a as SendEvent;
                 if (se == null || !se.Enabled || se.sendEvent == null) continue;
-                AmmoSettings.V("  replay " + st.Name + ": " + se.sendEvent.Name);
+                if (Log.L2) AmmoSettings.V("  replay " + st.Name + ": " + se.sendEvent.Name);
                 try { _reload.Fsm.Event(se.eventTarget, se.sendEvent); }
-                catch (Exception e) { Core.Log.Warn("[Guns] SendEvent replay failed: " + e.Message); }
+                catch (Exception e) { GunplayLog.Warn("SendEvent replay failed: " + e.Message); }
             }
         }
 
@@ -207,7 +207,7 @@ namespace WildWasteland.Modules.Guns
                 bool underArm = false;
                 while (p != null) { if (p.name == "WeaponsArm") { underArm = true; break; } p = p.parent; }
                 if (!underArm) continue;
-                if (f.ActiveStateName != "idle") { AmmoSettings.V(f.gameObject.name + " Reload busy (" + f.ActiveStateName + ")"); continue; }
+                if (f.ActiveStateName != "idle") { if (Log.L2) AmmoSettings.V(f.gameObject.name + " Reload busy (" + f.ActiveStateName + ")"); continue; }
                 return f;
             }
             return null;

@@ -60,9 +60,9 @@ namespace WildWasteland.Modules.Patrols
                         if (acts == null || acts.Length == 0) { st.LoadActions(); acts = st.Actions; }
                         if (acts != null) foreach (var a in acts) { var c = a as HutongGames.PlayMaker.Actions.CreateObject; if (c != null && c.gameObject != null && c.gameObject.Value != null) { _explosion = c.gameObject.Value; break; } }
                     }
-                PatrolsModule.Verbose("Rider: blast lance explosion = " + (_explosion != null ? _explosion.name : "not found (falls back to setting off a lance)"));
+                if (Log.L2) GunplayLog.Deep("Rider: blast lance explosion = " + (_explosion != null ? _explosion.name : "not found (falls back to setting off a lance)"));
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Rider: explosion lookup: " + e.Message); }
+            catch (Exception e) { GunplayLog.Warn("Rider: explosion lookup: " + e.Message); }
             return _explosion;
         }
 
@@ -111,7 +111,7 @@ namespace WildWasteland.Modules.Patrols
         // the edge; in the car too) and a shove of the player's car away from it
         internal static void Kaboom(Vector3 at, string who)
         {
-            try { Explode.BlastAt(at); } catch (Exception e) { Core.Log.Warn("[Patrols] " + "Rider: blast effect: " + e.Message); }
+            try { Explode.BlastAt(at); } catch (Exception e) { GunplayLog.Warn("Rider: blast effect: " + e.Message); }
             try
             {
                 float radius = PatrolsModule.RiderBlastRadius.Value;
@@ -123,9 +123,9 @@ namespace WildWasteland.Modules.Patrols
                 if (crb != null) d = Mathf.Min(d, Mathf.Max(0f, Vector3.Distance(crb.worldCenterOfMass, at) - 2f));   // the car's hull is ~2 m around its centre
                 if (d <= radius) Ram.HurtPlayer(PatrolsModule.RiderBlastDamage.Value * Mathf.Lerp(1f, 0.33f, d / radius), "Rider " + who + " blast");
                 if (crb != null && !crb.isKinematic && d <= radius) crb.AddExplosionForce(crb.mass * 5f, at, radius * 1.5f, 0.5f, ForceMode.Impulse);
-                PatrolsModule.Verbose("Rider: " + who + " blast at " + at + ", the player " + d.ToString("0.0") + " m away");
+                if (Log.L2) GunplayLog.Deep("Rider: " + who + " blast at " + at + ", the player " + d.ToString("0.0") + " m away");
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Rider: blast damage: " + e.Message); }
+            catch (Exception e) { GunplayLog.Warn("Rider: blast damage: " + e.Message); }
         }
 
         internal static float Elevation(Vector3 v) { return Mathf.Asin(Mathf.Clamp(v.normalized.y, -1f, 1f)) * Mathf.Rad2Deg; }

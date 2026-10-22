@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -16,7 +17,7 @@ namespace WildWasteland.Modules.Guns
             if (npc != null)
             {
                 try { return npc.SpreadFactor(distance); }
-                catch (Exception e) { Core.Log.Warn("[Guns] NPC spread: " + e.Message); }
+                catch (Exception e) { GunplayLog.Warn("NPC spread: " + e.Message); }
             }
             float beyond = distance - 5f;
             return 1f + (beyond <= 0f ? 0 : (int)(beyond / 5f)) * 0.1f;
@@ -26,26 +27,26 @@ namespace WildWasteland.Modules.Guns
         {
             Services.ReportCombat();
             var npc = Services.Npc; if (npc == null) return;
-            try { npc.Shot(shooter, position, kind, player); } catch (Exception e) { Core.Log.Warn("[Guns] NPC shot: " + e.Message); }
+            try { npc.Shot(shooter, position, kind, player); } catch (Exception e) { GunplayLog.Warn("NPC shot: " + e.Message); }
         }
 
         internal static void Hurt(GameObject victim, GameObject attacker)
         {
             Services.ReportCombat();
             var npc = Services.Npc; if (npc == null) return;
-            try { npc.Hurt(victim, attacker); } catch (Exception e) { Core.Log.Warn("[Guns] NPC hurt: " + e.Message); }
+            try { npc.Hurt(victim, attacker); } catch (Exception e) { GunplayLog.Warn("NPC hurt: " + e.Message); }
         }
 
         internal static void PlayerHit(GameObject target, Vector3 position, float damage, bool head)
         {
             var hud = Services.Hud; if (hud == null) return;
-            try { hud.PlayerHit(target, position, damage, head); } catch (Exception e) { Core.Log.Warn("[Guns] HUD hit: " + e.Message); }
+            try { hud.PlayerHit(target, position, damage, head); } catch (Exception e) { GunplayLog.Warn("HUD hit: " + e.Message); }
         }
 
         internal static void PartHit(GameObject target, Vector3 position, float damage)
         {
             var hud = Services.Hud; if (hud == null) return;
-            try { hud.PartHit(target, position, damage); } catch (Exception e) { Core.Log.Warn("[Guns] HUD part hit: " + e.Message); }
+            try { hud.PartHit(target, position, damage); } catch (Exception e) { GunplayLog.Warn("HUD part hit: " + e.Message); }
         }
     }
 }

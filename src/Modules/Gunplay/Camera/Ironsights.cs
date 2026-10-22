@@ -96,7 +96,7 @@ namespace WildWasteland.Modules.Guns
             if (_resetAim && _ads != null && _ads.Fsm.Initialized && GameRefs.InPlay)
             {
                 _resetAim = false; _ads.SendEvent("Activate");
-                if (Log.Verbose) Log.Info("[Guns] World ready: ironsights off");
+                if (Log.L2) GunplayLog.Deep("World ready: ironsights off");
             }
             if (!GameRefs.InPlay || !GunplaySettings.ToggleIronsights.Value || _ads == null || !_ads.enabled || _ads.ActiveStateName == "reloading") _buttonValue = false;
             if (!GunplaySettings.IronsightWheelZoom.Value) { _target = _zoom = 1f; return; }
@@ -108,7 +108,7 @@ namespace WildWasteland.Modules.Guns
                 if (wheel != 0f)
                 {
                     _target = Mathf.Clamp(_target * Mathf.Pow(.82f, wheel), 1f / 3f, 1f);
-                    Log.Info("[Guns] Ironsight zoom target: " + (1f / _target).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "x");
+                    if (Log.L2) GunplayLog.Deep("Ironsight zoom target: " + (1f / _target).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "x");
                 }
             }
             _zoom = Mathf.Lerp(_zoom, _target, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 16f));

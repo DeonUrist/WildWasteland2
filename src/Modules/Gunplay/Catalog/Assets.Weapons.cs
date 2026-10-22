@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Rendering;
+using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.CleanHUD
 {

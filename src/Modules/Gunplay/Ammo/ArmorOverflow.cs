@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using HarmonyLib;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
+using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -50,7 +52,7 @@ namespace WildWasteland.Modules.Guns
             {
                 float returned = armor.Value - retained;
                 armor.Value = retained;
-                if (Core.Log.Verbose) Core.Log.Info("[Guns] Armor capacity reduced: returned " + returned + " armor as " + (returned / OverflowTransfer.ArmorPerPlate) + " plate(s)");
+                if (Log.L2) GunplayLog.Deep("Armor capacity reduced: returned " + returned + " armor as " + (returned / OverflowTransfer.ArmorPerPlate) + " plate(s)");
             }
             return allowClamp;
         }

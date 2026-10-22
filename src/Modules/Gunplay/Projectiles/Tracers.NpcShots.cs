@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.Guns
                         float err = 1f + UnityEngine.Random.Range(-1f, 1f) * Mathf.Clamp(GunplaySettings.LeadError.Value, 0f, 100f) / 100f;
                         Vector3 lead = v * (t * skill * err);
                         aim += lead;
-                        if (Core.Log.Verbose) Core.Log.Info("[Guns] Lead: " + owner.name + " leads " + lead.magnitude.ToString("0.00") + " m (target " + v.magnitude.ToString("0.0") + " m/s, flight " + t.ToString("0.00") + " s, skill " + skill.ToString("0.00") + ")");
+                        if (Log.L2) GunplayLog.Deep("Lead: " + owner.name + " leads " + lead.magnitude.ToString("0.00") + " m (target " + v.magnitude.ToString("0.0") + " m/s, flight " + t.ToString("0.00") + " s, skill " + skill.ToString("0.00") + ")");
                     }
                 }
                 aim += jitter;
@@ -122,7 +122,7 @@ namespace WildWasteland.Modules.Guns
             }
             catch (Exception e)
             {
-                Core.Log.Error("[Guns] Tracers", e);
+                GunplayLog.Error("Tracers", e);
                 return true;
             }
         }
@@ -199,7 +199,7 @@ namespace WildWasteland.Modules.Guns
                 {
                     if (mf.name != "arrow" || mf.sharedMesh == null) continue;
                     var b = mf.sharedMesh.bounds; info.Muzzle = mf.transform; info.MuzzleLocal = new Vector3(b.center.x, b.center.y, b.max.z);
-                    if (Core.Log.Verbose) GunplayLog.Main("NPC crossbow shot origin: native arrow tip on " + owner.name);
+                    if (Log.L2) GunplayLog.Deep("NPC crossbow shot origin: native arrow tip on " + owner.name);
                     break;
                 }
             }
@@ -235,7 +235,7 @@ namespace WildWasteland.Modules.Guns
                 var rs = ray.GetComponent<Micosmo.SensorToolkit.RaySensor>();
                 if (rs != null) { info.ObstructLayers = rs.ObstructedByLayers.value; info.DetectLayers = rs.DetectsOnLayers.value; }
             }
-            if (Core.Log.Verbose) GunplayLog.Main("Tracers: " + owner.name + " fires " + info.Kind + " (" + info.Weapon.name + "), damage " +
+            if (Log.L2) GunplayLog.Deep("Tracers: " + owner.name + " fires " + info.Kind + " (" + info.Weapon.name + "), damage " +
                            (info.DamageVar != null ? info.DamageVar.Value : info.DamageLiteral) + ", impact " + (info.Impact != null ? info.Impact.name : "none"));
             return info;
         }

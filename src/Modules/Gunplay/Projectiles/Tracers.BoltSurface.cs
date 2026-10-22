@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Modules.Gunplay;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -99,10 +100,10 @@ namespace WildWasteland.Modules.Guns
                 var b = _landedBolts[i];
                 if (b.Owner != owner || b.Visual == null) continue;
                 var bone = b.Bone == "" ? made.transform : b.Bone != null ? made.transform.Find(b.Bone) : null;
-                if (bone == null) { Core.Log.Warn("[Guns] Crossbow bolt: corpse has no matching bone " + b.Bone); continue; }
+                if (bone == null) { GunplayLog.Warn("Crossbow bolt: corpse has no matching bone " + b.Bone); continue; }
                 b.Visual.SetParent(bone, false); b.Visual.gameObject.layer = bone.gameObject.layer;
                 b.Owner = made.transform; _landedBolts[i] = b;
-                if (Core.Log.Verbose) GunplayLog.Main("Crossbow bolt: transferred to corpse bone " + b.Bone + " at the same local position and angle");
+                if (Log.L2) GunplayLog.Deep("Crossbow bolt: transferred to corpse bone " + b.Bone + " at the same local position and angle");
             }
         }
 

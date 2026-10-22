@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Guns
                 _boltScale = new Vector3(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
                 return;
             }
-            Core.Log.Warn("[Guns] Crossbow bolt: native arrow mesh missing on " + weapon.name);
+            GunplayLog.Warn("Crossbow bolt: native arrow mesh missing on " + weapon.name);
         }
 
         private static void LaunchBolt(ref Shot s)
@@ -76,7 +76,7 @@ namespace WildWasteland.Modules.Guns
             _landedBolts.Add(new LandedBolt { Visual = bolt, Owner = owner, Bone = owner != null ? BoltBonePath(anchor, owner) : null, Until = Time.time + 15f });
             CombatEvents.BoltLanded(s.Id, soft ? (owner != null ? owner : target) : null, owner != null ? BoltBonePath(anchor, owner) : null, bolt, 15f);
             s.Visual = null;
-            if (Core.Log.Verbose) GunplayLog.Main("Crossbow bolt: " + (soft ? "embedded halfway in " : "ricochet from ") + (target != null ? target.name : "world") + " (15 s)");
+            if (Log.L2) GunplayLog.Deep("Crossbow bolt: " + (soft ? "embedded halfway in " : "ricochet from ") + (target != null ? target.name : "world") + " (15 s)");
         }
 
         private static void TickBolts()

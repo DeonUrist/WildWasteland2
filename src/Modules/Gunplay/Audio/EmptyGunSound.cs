@@ -2,6 +2,7 @@ using HarmonyLib;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -31,7 +32,7 @@ namespace WildWasteland.Modules.Guns
             if (camera == null || clip == null || empty && clip.name != "empty_fire") return true;
             // Weapon roots are offset from the camera; first-person handling sounds belong at the listener.
             AudioSource.PlayClipAtPoint(clip, camera.position, __instance.volume.Value);
-            if (Log.Verbose) Log.Info("[Guns] " + weapon.name + " " + (empty ? "empty click" : "reload sound") + ": source corrected to first-person camera.");
+            if (Log.L2) GunplayLog.Deep(weapon.name + " " + (empty ? "empty click" : "reload sound") + ": source corrected to first-person camera.");
             return false;       // OnEnter still calls Finish() after DoPlaySound.
         }
     }
