@@ -16,6 +16,14 @@ namespace WildWasteland.Core.UI
     public static class Skin
     {
         public static string Dir;
+        static float _nextFontAsk;
+        /// <summary>Requests the optional native menu font at most once per second until captured.</summary>
+        public static void EnsureGameFont()
+        {
+            if (GameFont != null || Time.unscaledTime < _nextFontAsk) return;
+            _nextFontAsk = Time.unscaledTime + 1f;
+            var font = ApocasetterBridge.GameFont; if (font != null) SetGameFont(font);
+        }
         public static Font GameFont;           // picked up from the cloned MODS button, if it uses a legacy Font
         public static float S { get; private set; }
 

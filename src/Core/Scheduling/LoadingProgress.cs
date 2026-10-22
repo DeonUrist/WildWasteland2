@@ -47,6 +47,14 @@ namespace WildWasteland.Core
             _holds = remaining.ToArray();
         }
 
+        /// <summary>Removes one named hold without disturbing another Core or module readiness gate.</summary>
+        internal static void RemoveHold(IModule owner, string name)
+        {
+            var remaining = new List<Hold>(_holds.Length);
+            foreach (var hold in _holds) if (hold.Owner != owner || hold.Name != name) remaining.Add(hold);
+            _holds = remaining.ToArray();
+        }
+
         /// <summary>Registers or replaces a named load-handoff readiness predicate; all predicates run on each handoff tick.</summary>
         internal static void RegisterHold(IModule owner, string name, Func<bool> ready)
         {

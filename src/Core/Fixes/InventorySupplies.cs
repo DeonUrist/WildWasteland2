@@ -8,6 +8,8 @@ namespace WildWasteland.Core
     // Native local supply counts and save-registered partial drops.
     internal static class InventorySupplies
     {
+        static readonly FixOwner Owner = new FixOwner("InventorySupplies");
+        static bool _installed;
         internal static readonly string[] Keys = { "arrow", "22caliber", "9mm", "20gauge", "12gauge", "556", "762", "3006", "grenade", "battery", "nuts", "bandage", "first_aid" };
         static readonly string[] Prefabs = { "ammo_arrow", "ammo_box_22", "ammo_box_9mm", "ammo_box_20gauge", "ammo_box_12gauge", "ammo_box_556mm", "ammo_box_762mm", "ammo_box_3006", "grenade", "flashlight_batteries", "tin_can_nuts", "bandage_1", "first_aid_1" };
         sealed class MedicalSupply { internal PlayMakerFSM Slot, QuantityFsm; internal FsmGameObject Item; internal GameObject Source; internal FsmInt Quantity; }
@@ -17,7 +19,17 @@ namespace WildWasteland.Core
         static ES3Internal.ES3ReferenceMgrBase _manager;
         static int _scan;
         internal static bool Ready { get { var saves = ModApi.Get<ISaves>(); return GameRefs.Player != null && GameRefs.SaveLoadGame != null && SaveBus.State == "isPlay" && (saves == null || !saves.Busy) && PlayerState.Health >= 1; } }
-        internal static void Install() { Scheduler.Sliced(null, "Inventory supply prefabs", 500, Discover); }
+        internal static void Install()
+        {
+            if (_installed) return; _installed = true;
+            Scheduler.Sliced(Owner, "Core.InventorySupplies.Discover", 500, Discover);
+        }
+        /// <summary>Stops prefab discovery and releases native scene references.</summary>
+        internal static void Remove()
+        {
+            Owner.Remove(); _installed = false; _manager = null; _scan = 0; _ammo = null; PrefabCache.Clear();
+            foreach (var supply in Medical) { supply.Slot = supply.QuantityFsm = null; supply.Item = null; supply.Source = null; supply.Quantity = null; }
+        }
         static bool Discover()
         {
             var manager = ES3Internal.ES3ReferenceMgrBase.Current;

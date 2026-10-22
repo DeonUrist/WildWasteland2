@@ -5,9 +5,15 @@ namespace WildWasteland.Core
 {
     internal static class ColorGrading
     {
-        internal static void Init()
+        static readonly FixOwner Owner = new FixOwner("ColorGrading");
+        static bool _installed;
+        /// <summary>Removes this fix's hooks and patches so installation can be repeated safely.</summary>
+        internal static void Remove() { Owner.Remove(); _installed = false; }
+
+        internal static void Install()
         {
-            Hooks.ActivateGameObjectDo.Prefix(null, BeforeActivate);
+            if (_installed) return; _installed = true;
+            Hooks.ActivateGameObjectDo.Prefix(Owner, BeforeActivate);
             Log.Always("[Core] Color grading policy ready (native graphics option forced off)");
         }
 

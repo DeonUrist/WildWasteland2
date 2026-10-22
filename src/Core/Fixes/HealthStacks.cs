@@ -9,18 +9,24 @@ namespace WildWasteland.Core
     // HealthStacks 1.0.0 (a326d8d): always-on quick-slot top-up, with no config or module switch.
     internal static class HealthStacks
     {
+        static readonly FixOwner Owner = new FixOwner("HealthStacks");
+        static bool _installed;
         internal const string GUID = "com.denis.apocalypter.healthstacks";
         internal const int MaxCharges = 3;
 
-        internal static void Init()
+        /// <summary>Removes this fix's hooks and patches so installation can be repeated safely.</summary>
+        internal static void Remove() { Owner.Remove(); _installed = false; }
+
+        internal static void Install()
         {
+            if (_installed) return; _installed = true;
             BepInEx.PluginInfo info;
             if (Chainloader.PluginInfos.TryGetValue(GUID, out info) && !ReferenceEquals(info.Instance, null))
             {
                 Log.Warn("[Core] HealthStacks: " + ReplacementGuard.Status(GUID) + ". Built-in fix waits until restart.");
                 return;
             }
-            Hooks.GetButtonDownUpdate.Prefix(null, TakeItemUsePatch.Prefix);
+            Hooks.GetButtonDownUpdate.Prefix(Owner, TakeItemUsePatch.Prefix);
             Log.Always("[Core] HealthStacks ready (always on, max 3 charges)");
         }
     }

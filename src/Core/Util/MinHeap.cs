@@ -1,31 +1,27 @@
 using System.Collections.Generic;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Core
 {
-    /// <summary>
-    /// Wave A (A6): the live part of the old Towns TownPaths class - its binary min-heap, used by TownNavigation's per-source
-    /// Dijkstra. The dead grid A* path builder (TownPaths.Grid/Build/EntranceRoute) was deleted. B01 replaces this with a Core
-    /// binary heap (namespace kept until then).
-    /// </summary>
-    internal static class TownPaths
+    /// <summary>Numeric priority queue shared by native navigation adapters; duplicate cells are allowed.</summary>
+    public static class MinHeap
     {
         /// <summary>One queued cell with its priority.</summary>
         private struct Open { internal int Cell; internal float Cost; }
         /// <summary>Binary min-heap of (cell, cost); duplicates allowed (callers skip closed cells).</summary>
-        internal sealed class Heap
+        public sealed class Heap
         {
             private readonly List<Open> _items = new List<Open>();
             /// <summary>Queued entries.</summary>
-            internal int Count { get { return _items.Count; } }
+            public int Count { get { return _items.Count; } }
             /// <summary>Adds a cell with its cost (sift up).</summary>
-            internal void Push(int cell, float cost)
+            public void Push(int cell, float cost)
             {
                 int i = _items.Count; _items.Add(new Open());
                 while (i > 0) { int p = (i - 1) / 2; if (_items[p].Cost <= cost) break; _items[i] = _items[p]; i = p; }
                 _items[i] = new Open { Cell = cell, Cost = cost };
             }
             /// <summary>Removes and returns the cell with the lowest cost (sift down).</summary>
-            internal int Pop()
+            public int Pop()
             {
                 int result = _items[0].Cell, last = _items.Count - 1; var tail = _items[last]; _items.RemoveAt(last);
                 if (last == 0) return result;
