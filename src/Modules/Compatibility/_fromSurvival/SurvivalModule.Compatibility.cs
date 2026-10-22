@@ -6,16 +6,10 @@ namespace WildWasteland.Modules.Survival
     /// </summary>
     public sealed partial class SurvivalModule
     {
-        /// <summary>Resolves Apocaspawner by reflection and hooks its catalog when the mod is loaded.</summary>
-        partial void InitCompatibility()
-        {
-            SpawnerBridge.Install(this);
-        }
+        /// <summary>Empty (B17): the Stew Pot entry is added by the Compatibility Apocaspawner bridge while Survival runs.</summary>
+        partial void InitCompatibility() { }
 
-        /// <summary>Removes the injected Stew Pot catalog entry and clears the cached reflection handles.</summary>
-        partial void ShutdownCompatibility()
-        {
-            SpawnerBridge.Shutdown();
-        }
+        /// <summary>Empty (B17): the Compatibility Apocaspawner bridge removes the Stew Pot entry once Survival is off.</summary>
+        partial void ShutdownCompatibility() { }
     }
 }

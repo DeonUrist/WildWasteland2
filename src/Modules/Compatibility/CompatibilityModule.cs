@@ -34,6 +34,7 @@ namespace WildWasteland.Modules.Compatibility
         public CompatibilityModule()
         {
             _bridges.Add(new OptionalBridge(this, "BloodFX", "BloodFX", "Recover the optional BloodFX updater after scene destruction and suppress its F8 debug hit.", BloodFxCompat.Start, BloodFxCompat.Shutdown));
+            _bridges.Add(new OptionalBridge(this, "Apocaspawner", "Apocaspawner", "List the War Rig and the Stew Pot in Apocaspawner and scale its crossbow damage like Wild Wasteland crossbows.", ApocaspawnerBridge.Start, ApocaspawnerBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "WeaponsPack", "Weapons Pack", "Connect optional Weapons Pack behavior (NPC fear, chainsaw kills, held-model shadows, HUD icons, slash sound) through Wild Wasteland services.", WeaponsPackBridge.Start, WeaponsPackBridge.Shutdown));
         }
 
