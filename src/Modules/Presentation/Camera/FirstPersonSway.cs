@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (f.Name != "Sway") { _state[__instance] = NotSway; return true; }
                 s = new State(); _state[__instance] = s;
             }
-            if (!PlayerBodyModule.FirstPersonSwayOn.Value) { s.Ready = false; return true; }
+            if (!CharacterSettings.FirstPersonSwayOn.Value) { s.Ready = false; return true; }
             try
             {
                 var cam = Game.PlayerCamera;

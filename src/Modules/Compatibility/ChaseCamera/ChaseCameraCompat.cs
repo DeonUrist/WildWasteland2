@@ -30,8 +30,8 @@ namespace WildWasteland.Modules.PlayerBody
             _attempted = false; _owner = owner;
             var host = CompatibilityHost.PlayerBody.Config;
             Enabled = host != null ? host.Enabled : null;
-            ThirdCarHeight = PlayerBodyModule.ThirdCarHeight; // refs-ok: REFACTOR-REQUEST B17-8
-            OcclusionPrototype = PlayerBodyModule.OcclusionPrototype; OcclusionInVehicle = PlayerBodyModule.OcclusionInVehicle; // refs-ok: REFACTOR-REQUEST B17-8
+            ThirdCarHeight = CameraSettings.ThirdCarHeight; // refs-ok: REFACTOR-REQUEST B17-8
+            OcclusionPrototype = CameraSettings.OcclusionPrototype; OcclusionInVehicle = CameraSettings.OcclusionInVehicle; // refs-ok: REFACTOR-REQUEST B17-8
             TryInstall();
             _discovery = Scheduler.Interval(owner, "Compatibility.ChaseCamera.Discovery", 1f, Discover);
         }

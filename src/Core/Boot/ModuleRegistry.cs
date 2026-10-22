@@ -15,7 +15,6 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.Debug.DebugModule());
             ModuleHost.Add(new Modules.Compatibility.CompatibilityModule());
             ModuleHost.Add(new Modules.Saves.SavesModule());
-            ModuleHost.Add(new Modules.PlayerBody.PlayerBodyModule());
             ModuleHost.Add(new Modules.NPCAI.NPCAIModule());
             ModuleHost.Add(new Modules.Presentation.PresentationModule());
             ModuleHost.Add(new Modules.Gunplay.GunplayModule());

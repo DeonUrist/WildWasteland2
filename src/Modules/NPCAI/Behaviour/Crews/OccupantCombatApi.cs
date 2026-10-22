@@ -17,8 +17,8 @@ namespace WildWasteland.Modules.NPC
         public bool CanAnswer(GameObject actor,GameObject enemy){var guard=actor!=null?actor.GetComponent<PassengerGuard>():null;return guard!=null&&guard.CanAnswer(enemy);}
         public void Promote(GameObject actor,Transform seat){var guard=actor!=null?actor.GetComponent<PassengerGuard>():null;if(guard!=null&&PassengerGuard.Policy!=null)guard.SetDriverMode(seat);}
         public void Release(GameObject actor){var guard=actor!=null?actor.GetComponent<PassengerGuard>():null;if(guard!=null){guard.enabled=false;UnityEngine.Object.Destroy(guard);}}
-        public void Mute(GameObject actor,bool combat)=>NpcSeatState.MuteAi(actor,combat?PassengerGuard.CombatFsms:null);
-        public void Mute(PlayMakerFSM[] fsms,bool combat)=>NpcSeatState.MuteAi(fsms,combat?PassengerGuard.CombatFsms:null);
+        public void Mute(GameObject actor,bool combat)=>Core.SeatedActorFsm.MuteAi(actor,combat?PassengerGuard.CombatFsms:null);
+        public void Mute(PlayMakerFSM[] fsms,bool combat)=>Core.SeatedActorFsm.MuteAi(fsms,combat?PassengerGuard.CombatFsms:null);
         public Component Follow(GameObject actor,GameObject car,Transform seat){var component=Attach(actor,car,seat);var guard=component as PassengerGuard;if(guard!=null)guard.QuestRanged();return component;}
     }
 }

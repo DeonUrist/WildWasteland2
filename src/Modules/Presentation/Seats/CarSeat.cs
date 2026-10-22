@@ -77,7 +77,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             _seat = seat; _src = src; _failedCar = null;
             if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Car " + car.name + ": driver seat found");
-            if (PlayerBodyModule.ReplaceDriver.Value)
+            if (CharacterSettings.ReplaceDriver.Value)
                 foreach (var r in seat.GetComponentsInChildren<Renderer>(true))
                     if (r.enabled) { r.enabled = false; _hidden.Add(r); }
             if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Sitting in " + car.name + ", driver model hidden (" + _hidden.Count + " renderers)");

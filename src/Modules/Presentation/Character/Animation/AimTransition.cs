@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.PlayerBody
                     o = new Orig { Speed = __instance.speed.Value, Ease = EaseField != null ? EaseField.GetValue(__instance) : null };
                     _orig[__instance] = o;
                 }
-                float t = PlayerBodyModule.AdsTime.Value;
+                float t = CameraSettings.AdsTime.Value;
                 if (!PresentationModule.Running || !CharacterSettings.SmoothAimDownSights.Value || t <= 0.001f || __instance.speed.IsNone || __instance.vectorPosition == null || __instance.vectorPosition.IsNone
                     || __instance.transformPosition != null && __instance.transformPosition.Value != null)
                 {   // the game's own move

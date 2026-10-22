@@ -1,3 +1,4 @@
+using WildWasteland.Modules.Presentation;
 using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.PlayerBody
@@ -18,8 +19,8 @@ namespace WildWasteland.Modules.PlayerBody
             l.Toggle(CameraSettings.ToggleMiddleMouse);
             l.Toggle(CameraSettings.DynamicCrosshair);
             l.Toggle(CameraSettings.PickAssistOn);
-            l.Toggle(PlayerBodyModule.FirstPersonSwayOn);
-            l.Toggle(PlayerBodyModule.SmoothAimDownSights);
+            l.Toggle(CharacterSettings.FirstPersonSwayOn);
+            l.Toggle(CharacterSettings.SmoothAimDownSights);
             l.Toggle(CameraSettings.OcclusionPrototype);
             l.Toggle(CameraSettings.OcclusionInVehicle);
             l.Entry(CameraSettings.ObserveKey);

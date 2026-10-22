@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.NPC
                 ForceRangedOnly(passenger);
                 NeutralizeMeleeDamage(passenger);
             }
-            NpcSeatState.MuteAi(passenger, ranged && combatAllowed ? CombatFsms : null);
+            Core.SeatedActorFsm.MuteAi(passenger, ranged && combatAllowed ? CombatFsms : null);
         }
 
         /// <summary>Mutes the non-combat AI of a passenger (its FSMs fetched now).</summary>
@@ -90,7 +90,7 @@ namespace WildWasteland.Modules.NPC
             if (ranged)
                 foreach (var fsm in fsms)
                     if (fsm != null && fsm.FsmName == "Damage" && fsm.enabled) fsm.enabled = false;
-            NpcSeatState.MuteAi(fsms, ranged && combatAllowed ? CombatFsms : null);
+            Core.SeatedActorFsm.MuteAi(fsms, ranged && combatAllowed ? CombatFsms : null);
         }
 
         // a human turret gunner (2.2.0) also needs [Combat] HumanTurrets

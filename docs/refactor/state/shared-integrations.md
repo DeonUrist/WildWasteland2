@@ -20,3 +20,5 @@ Preserve D20 throughout: all persistent world records, descriptions and thumbnai
 
 - External quest conversation composition completed: Compatibility owns reflection/hooks/buttons/flags and publishes IExternalQuestConversation; native quest session remains Quests-owned. Typed callbacks replace reflection into the Quests plugin. External provider replacement invalidates queued choices and releases exact-owner callbacks.
 - Empty NPC shell removed from registry and its distributed empty entry partials deleted. Existing settings consumers now use the actual settings authority; reverse implementation dependencies remain to close with the remaining runtime partial consolidation.
+
+- PlayerBody shell and its eight distributed legacy entry/forwarder files removed; actual Presentation/Vehicles settings and lifetimes remain. Weapons Pack shadows now query actual Presentation IPlayerWeaponVisual instead of reflecting private Body fields or reading foreign settings. Generic seated native FSM state lives once in Core so vehicle crew muting still works when NPCAI is disabled. Build zero warnings/errors.

@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 if (bundle == null)
                 {
-                    string path = PlayerBodyModule.ModPath("Models/apocaplayer_climbing.bundle");
+                    string path = WildWasteland.Modules.Presentation.PresentationModule.AssetPath("Models/apocaplayer_climbing.bundle");
                     bundle = AssetBundle.LoadFromFile(path);
                 }
                 if (bundle != null) foreach (var clip in bundle.LoadAllAssets<AnimationClip>())

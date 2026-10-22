@@ -45,7 +45,7 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>The module instance (log/hook owner); set at BindConfig so logging works before the first Init.</summary>
         internal static PresentationModule Instance;
 
-        /// <summary>True between Init and Shutdown of the character part (replaces PlayerBodyModule.Running for the character code).</summary>
+        /// <summary>True between Init and Shutdown of the character part (replaces WildWasteland.Modules.Presentation.PresentationModule.Running for the character code).</summary>
         internal static bool Running { get { return _running; } }
 
         /// <summary>BepInEx\plugins\WildWasteland\Presentation\ (models, clips, sounds).</summary>
@@ -220,6 +220,7 @@ namespace WildWasteland.Modules.Presentation
             ModApi.Provide<ICrewAppearance>(this,new CrewAppearance());
             ModApi.Provide<IAnimationApi>(this, _animation);
             ModApi.Provide<ICharacterPresentation>(this, _characters);
+            ModApi.Provide<IPlayerWeaponVisual>(this,new PlayerWeaponVisual());
             ModApi.Provide<ICharacterAppearance>(this, _appearance);
             ModApi.Provide<IWeaponPose>(this, _weaponPose);
             ModApi.Provide<IPoseAuthoring>(this, _poseAuthoring);

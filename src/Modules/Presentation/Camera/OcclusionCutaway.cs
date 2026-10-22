@@ -78,7 +78,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _tried = true;
                 try
                 {
-                    var bundle = AssetBundle.LoadFromFile(PlayerBodyModule.ModPath("Models/apocaplayer_camera.bundle"));
+                    var bundle = AssetBundle.LoadFromFile(WildWasteland.Modules.Presentation.PresentationModule.AssetPath("Models/apocaplayer_camera.bundle"));
                     if (bundle != null) { _shader = bundle.LoadAsset<Shader>("Assets/OcclusionComposite.shader"); bundle.Unload(false); }
                 }
                 catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Camera cutaway shader: " + e.Message); }

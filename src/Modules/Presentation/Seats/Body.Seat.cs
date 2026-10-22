@@ -54,7 +54,7 @@ namespace WildWasteland.Modules.PlayerBody
                 Turn("mixamorig:Spine1", Vector3.up, yaw / 3f);
                 Turn("mixamorig:Spine2", Vector3.up, yaw / 3f);
             }
-            float p = pitch * PlayerBodyModule.AimPitchShare.Value;
+            float p = pitch * CharacterSettings.AimPitchShare.Value;
             if (Mathf.Abs(p) > 0.5f)
             {
                 Turn("mixamorig:Spine", Vector3.right, p * 0.3f);
@@ -100,9 +100,9 @@ namespace WildWasteland.Modules.PlayerBody
                 {
                     var camera = Game.PlayerCamera;
                     var yaw = Quaternion.Euler(0f, camera.eulerAngles.y, 0f);
-                    var eye = PlayerBodyModule.BodyInCar ? ThirdPerson.CarShiftEye(camera) : camera.position;
+                    var eye = CharacterSettings.BodyInCar ? ThirdPerson.CarShiftEye(camera) : camera.position;
                     // Match the existing model eye height; only the local view moves after the seated pose was captured.
-                    Root.transform.position += eye - yaw * Vector3.forward * PlayerBodyModule.BodyBack.Value - Vector3.up * .075f - head.position;
+                    Root.transform.position += eye - yaw * Vector3.forward * CharacterSettings.BodyBack.Value - Vector3.up * .075f - head.position;
                 }
             }
         }
@@ -172,7 +172,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (hasHips) Root.transform.position += seatHips - hips.position;
                 float tcorr = 0f; if (throwing) _carYawFix.TryGetValue(fixKey, out tcorr);
                 AimPitch(aimPitch, tcorr);
-                headYaw = -tcorr; headPitch = aimPitch * (1f - PlayerBodyModule.AimPitchShare.Value);
+                headYaw = -tcorr; headPitch = aimPitch * (1f - CharacterSettings.AimPitchShare.Value);
                 if (throwing) LearnCarThrow(player, aimYaw, true);
             }
             else
@@ -188,7 +188,7 @@ namespace WildWasteland.Modules.PlayerBody
                         for (int i = 0; i < carBoneCount; i++) { Transform b; if (Bones.TryGetValue(CarArmBones[i], out b)) b.localRotation = fists && !throwing ? Quaternion.Slerp(b.localRotation, _carArms[i], _upperW) : _carArms[i]; }
                     float corr; _carYawFix.TryGetValue(fixKey, out corr);
                     AimPitch(aimPitch, Mathf.Clamp(aimYaw, -90f, 90f) + corr);
-                    headYaw = aimYaw - Mathf.Clamp(aimYaw, -90f, 90f) - corr; headPitch = aimPitch * (1f - PlayerBodyModule.AimPitchShare.Value);
+                    headYaw = aimYaw - Mathf.Clamp(aimYaw, -90f, 90f) - corr; headPitch = aimPitch * (1f - CharacterSettings.AimPitchShare.Value);
                     if (throwing) LearnCarThrow(player, aimYaw, false);
                 }
             }

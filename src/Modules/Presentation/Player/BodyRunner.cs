@@ -159,10 +159,10 @@ namespace WildWasteland.Modules.PlayerBody
                     {
                         bool firstPerson = fpCam && (!ThirdPerson.On || ThirdPerson.Peek);   // binoculars: first person
                         _body.LateCar(PlayerState.Player.transform, firstPerson);
-                        if (firstPerson) _body.ShiftFirstPerson(PlayerState.Player.transform.rotation, PlayerBodyModule.CarViewBase + new Vector3(PlayerBodyModule.FpCarCamX.Value, PlayerBodyModule.FpCarCamY.Value, PlayerBodyModule.FpCarCamZ.Value));
+                        if (firstPerson) _body.ShiftFirstPerson(PlayerState.Player.transform.rotation, CarSeatSettings.CarViewBase + new Vector3(CarSeatSettings.FpCarCamX.Value, CarSeatSettings.FpCarCamY.Value, CarSeatSettings.FpCarCamZ.Value));
                         _body.SetMesh(firstPerson, true, Game.DrawnWeapon != "");
                         _body.SetVisible(!firstPerson || CharacterSettings.BodyInCar, firstPerson && CharacterSettings.BodyInCar);
-                        ThirdPerson.CarShift = firstPerson && CharacterSettings.BodyInCar && PlayerBodyModule.CarCameraForward.Value != 0f;
+                        ThirdPerson.CarShift = firstPerson && CharacterSettings.BodyInCar && CarSeatSettings.CarCameraForward.Value != 0f;
                         // no body in first person: still her arms on the wheel while nothing is drawn (the body mesh has them when it is shown)
                         fpArms = firstPerson && fpCam && !CharacterSettings.BodyInCar && CharacterSettings.ArmsInCar && Game.DrawnWeapon == "" && !Game.Binoculars && (Game.ToolInHand || !Game.GameArmsShown);
                         mode = firstPerson ? "car, first person" : "car, third person";

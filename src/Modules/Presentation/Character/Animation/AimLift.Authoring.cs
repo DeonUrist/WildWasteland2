@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal static string EditWeapon, EditClip;
         internal static int EditFrame = -1;
         internal static bool EditCrouched;
-        internal static bool CanEditArms { get { return PlayerBodyModule.Running && Game.Ready && !Game.Dead && !Game.InCar && GunPose.Editing && ThirdPerson.On && EditFrame >= UnityEngine.Time.frameCount - 1 && GunPose.CurrentFrame >= UnityEngine.Time.frameCount - 1 && !string.IsNullOrEmpty(EditWeapon) && !string.IsNullOrEmpty(EditClip); } }
+        internal static bool CanEditArms { get { return WildWasteland.Modules.Presentation.PresentationModule.Running && Game.Ready && !Game.Dead && !Game.InCar && GunPose.Editing && ThirdPerson.On && EditFrame >= UnityEngine.Time.frameCount - 1 && GunPose.CurrentFrame >= UnityEngine.Time.frameCount - 1 && !string.IsNullOrEmpty(EditWeapon) && !string.IsNullOrEmpty(EditClip); } }
         static float[] _armKeys;
         static int _armKeysRevision;
         static string _armWeapon, _armClip; static bool _armCrouched;
