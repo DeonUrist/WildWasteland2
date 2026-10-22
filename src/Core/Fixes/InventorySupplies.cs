@@ -16,7 +16,7 @@ namespace WildWasteland.Core
         static readonly Dictionary<string, GameObject> PrefabCache = new Dictionary<string, GameObject>();
         static ES3Internal.ES3ReferenceMgrBase _manager;
         static int _scan;
-        internal static bool Ready { get { return SaveSystem.LocalReady && !SinglePlayerSaving.Serializing && SaveRuntime.Health() >= 1; } }
+        internal static bool Ready { get { var saves = ModApi.Get<ISaves>(); return GameRefs.Player != null && GameRefs.SaveLoadGame != null && SaveBus.State == "isPlay" && (saves == null || !saves.Busy) && PlayerState.Health >= 1; } }
         internal static void Install() { Scheduler.Sliced(null, "Inventory supply prefabs", 500, Discover); }
         static bool Discover()
         {

@@ -10,7 +10,7 @@ namespace WildWasteland.Core
     internal static partial class SaveRuntime
     {
         /// <summary>Registers the predicate-gated overlay GUI job (end of Install, as before).</summary>
-        static partial void InstallHud() { Scheduler.Gui(null, "Native saving fallback", DrawSaving, WantsSaving); }
+        static partial void InstallHud(IModule owner) { Scheduler.Gui(owner, "Native saving fallback", DrawSaving, WantsSaving); }
 
         /// <summary>GUI predicate: true only while SinglePlayerSaving serializes.</summary>
         static bool WantsSaving() { return SinglePlayerSaving.Serializing; }

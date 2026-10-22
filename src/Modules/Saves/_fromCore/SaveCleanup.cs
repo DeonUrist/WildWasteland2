@@ -26,16 +26,27 @@ namespace WildWasteland.Core
         static ArrayList _offlineItems;
         static PlayMakerFSM[] _referenceFsms;
         const string ProtectionKey = "WildWasteland.CleanupProtected";
-        internal static void Install()
+        /// <summary>Binds conservative cleanup policy in the Saves module settings.</summary>
+        internal static void Bind(ModuleConfig cfg)
         {
-            var cfg = Plugin.Settings;
-            Enabled = TunedSettings.Bind(cfg, "System / Cleanup", "Cleanup on save", false, "Remove only selected, positively identified disposable objects after a verified save. Unknown ownership/references always retain objects.");
-            Corpses = TunedSettings.Bind(cfg, "System / Cleanup", "Non-resource zombie remains", false, "Remove abandoned Zombie_Runner_Dead roots only; never resource carcasses, live actors or player bodies.");
-            Packs = TunedSettings.Bind(cfg, "System / Cleanup", "Exhausted disposable packs", false, "Remove empty ammo/battery packs only when they have no remaining sale value and have never been observed in player custody.");
-            Distance = TunedSettings.Bind(cfg, "System / Cleanup", "Minimum distance metres", 1000, new ConfigDescription("Must remain this far from the player.", new AcceptableValueRange<int>(1000, 10000)));
-            Minutes = TunedSettings.Bind(cfg, "System / Cleanup", "Abandoned minutes", 10, new ConfigDescription("Continuous active gameplay beyond the minimum distance. Enabling cleanup starts a fresh observation period.", new AcceptableValueRange<int>(10, 600)));
-            Scheduler.Interval(null, "Conservative save cleanup observations", 5f, Tick);
-            Scheduler.Sliced(null, "Save cleanup observation slice", 500, ObservationStep);
+            Enabled = cfg.Player("Cleanup", "Cleanup on save", false, "Remove only selected, positively identified disposable objects after a verified save. Unknown ownership/references always retain objects.");
+            Corpses = cfg.Player("Cleanup", "Non-resource zombie remains", false, "Remove abandoned Zombie_Runner_Dead roots only; never resource carcasses, live actors or player bodies.");
+            Packs = cfg.Player("Cleanup", "Exhausted disposable packs", false, "Remove empty ammo/battery packs only when they have no remaining sale value and have never been observed in player custody.");
+            Distance = cfg.Player("Cleanup", "Minimum distance metres", 1000, "Must remain this far from the player.", new AcceptableValueRange<int>(1000, 10000));
+            Minutes = cfg.Player("Cleanup", "Abandoned minutes", 10, "Continuous active gameplay beyond the minimum distance. Enabling cleanup starts a fresh observation period.", new AcceptableValueRange<int>(10, 600));
+        }
+        /// <summary>Starts observations under the Saves scheduler owner.</summary>
+        internal static void Install(IModule owner)
+        {
+            Scheduler.Interval(owner, "Conservative save cleanup observations", 5f, Tick);
+            Scheduler.Sliced(owner, "Save cleanup observation slice", 500, ObservationStep);
+        }
+        /// <summary>Restores uncommitted registry removals and forgets observations when Saves stops.</summary>
+        internal static void Shutdown()
+        {
+            Rollback(); Far.Clear(); Touched.Clear(); Removed.Clear(); RemovedKeys.Clear();
+            Array.Clear(_observations, 0, _observations.Length); _observation = _observationCount = 0;
+            _offlineItems = null; _referenceFsms = null; _generation = -1; _tracking = false; _last = 0;
         }
         static bool Category(GameObject go)
         {

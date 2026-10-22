@@ -10,10 +10,11 @@ namespace WildWasteland.Core
     internal static class SaveTerrain
     {
         static bool _held, _draining;
-        internal static void Install()
+        /// <summary>Installs the module-owned terrain admission barrier used during save publication.</summary>
+        internal static void Install(IModule owner)
         {
-            if (!Patches.Patch(null, Patches.Method(typeof(MapMagicObject), "Update"), prefix: Patches.Method(typeof(SaveTerrain), "MapUpdate"))
-                || !Patches.Patch(null, Patches.Method(typeof(CoroutineManager), "Update"), prefix: Patches.Method(typeof(SaveTerrain), "ApplyUpdate")))
+            if (!Patches.Patch(owner, Patches.Method(typeof(MapMagicObject), "Update"), prefix: Patches.Method(typeof(SaveTerrain), "MapUpdate"))
+                || !Patches.Patch(owner, Patches.Method(typeof(CoroutineManager), "Update"), prefix: Patches.Method(typeof(SaveTerrain), "ApplyUpdate")))
                 throw new InvalidOperationException("Terrain save barrier could not be installed");
             Log.Always("[System] Terrain save barrier ready: drain pending work, hold streaming until publication completes");
         }

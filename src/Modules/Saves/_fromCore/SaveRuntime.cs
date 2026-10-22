@@ -10,15 +10,12 @@ using UnityEngine.SceneManagement;
 namespace WildWasteland.Core
 {
     // Standalone native-menu adapters. No multiplayer assembly, player identity or redirected save root.
-    // Wave A split (refactor): the "SAVING" overlay lives in src/Modules/HUD/_fromCore/SaveRuntime.HUD.cs; the player
-    // queries (Health, InCar), the placement probe (Surface) and the InventorySupplies install live in
-    // src/Core/Fixes/SaveRuntime.Fixes.cs. Install order is unchanged.
+    // The temporary HUD partial is owner-bound until B10 moves its presentation to the Saves events.
+    // Canonical player/placement queries belong to Core; native save menu interception belongs to Saves.
     internal static partial class SaveRuntime
     {
-        /// <summary>Core part: installs InventorySupplies.</summary>
-        static partial void InstallFixes();
         /// <summary>HUD part: registers the SAVING overlay GUI job.</summary>
-        static partial void InstallHud();
+        static partial void InstallHud(IModule owner);
         static readonly Regex FileName = new Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", RegexOptions.IgnoreCase);
         internal static string ActiveFile, SelectedFile;
         static bool _leaving;
@@ -32,15 +29,17 @@ namespace WildWasteland.Core
         internal static float PlayerDistance(Vector3 position, Transform player) { return player != null ? Vector3.Distance(position, player.position) : float.PositiveInfinity; }
         /// <summary>Sets the active save file (validated identity).</summary>
         internal static void SetActive(string file) { if (!IsSaveFile(file)) throw new IOException("Invalid save identity"); ActiveFile = file; }
-        /// <summary>Native menu adapter (ProcessEvent prefix), SaveBus/scene watchers, then the Core and HUD parts.</summary>
-        internal static void Install()
+        /// <summary>Installs module-owned native-menu/scene observers and the temporary HUD presentation adapter.</summary>
+        internal static void Install(IModule owner)
         {
-            Hooks.ProcessEvent.Prefix(null, NativeMenuEvent);
+            ActiveFile = SaveBus.Slot; SelectedFile = null; _latestVersion = -1;
+            Hooks.ProcessEvent.Prefix(owner, NativeMenuEvent);
             SaveBus.StateChanged += StateChanged;
             SceneManager.sceneLoaded += SceneLoaded;
-            InstallFixes();
-            InstallHud();
+            InstallHud(owner);
         }
+        /// <summary>Detaches scene/native state observation; current-world identity survives a runtime toggle.</summary>
+        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; SceneManager.sceneLoaded -= SceneLoaded; SelectedFile = null; _leaving = false; _latestVersion = -1; }
         /// <summary>Clears cached player FSMs; the main menu clears the active file and bumps the save catalogue.</summary>
         static void SceneLoaded(Scene scene, LoadSceneMode mode)
         { _health = _inCar = null; if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }

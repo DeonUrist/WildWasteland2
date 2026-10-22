@@ -9,9 +9,9 @@ namespace WildWasteland.Core
         // Wave A split (refactor): the countdown drawing (GUI job, CleanHUD compass anchor and glyph font) lives in
         // src/Modules/HUD/_fromCore/SaveWarning.HUD.cs; the phase/text state stays here.
         /// <summary>HUD part: registers the countdown GUI job.</summary>
-        static partial void InstallHud();
+        static partial void InstallHud(IModule owner);
         /// <summary>Registers the countdown drawing (HUD part).</summary>
-        internal static void Install() { InstallHud(); }
+        internal static void Install(IModule owner) { InstallHud(owner); }
         /// <summary>Hides the countdown (no local world).</summary>
         static void Clear() { _phase = 0; _text = null; }
         /// <summary>Sets the countdown phase (0 none, 1 countdown, 2 delayed, 3 saving now); text is rebuilt only on change.</summary>

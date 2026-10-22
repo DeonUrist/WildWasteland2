@@ -11,16 +11,20 @@ namespace WildWasteland.Core
     // src/Modules/Compatibility/Apocasaver/_fromCore/SaveCompatibility.Apocasaver.cs; the pose store (Poses/SavePoses) stays here.
     internal static partial class SaveCompatibility
     {
+        static int _generation = -1;
         static readonly Dictionary<string, string> Poses = new Dictionary<string, string>();
         /// <summary>Patches ES3PlayMaker Save/Load.Enter (prefix + finalizer) and clears the pose table on load/new game.</summary>
-        internal static void Install()
+        internal static void Install(IModule owner)
         {
-            if (!Patches.Patch(null, AccessTools.Method(typeof(ES3PlayMaker.Save), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeSave"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterSave"))
-                || !Patches.Patch(null, AccessTools.Method(typeof(ES3PlayMaker.Load), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeLoad"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterLoad"))) throw new InvalidOperationException("Stable hinge compatibility hooks failed");
+            if (_generation != SaveBus.Generation) { Poses.Clear(); _generation = SaveBus.Generation; }
+            if (!Patches.Patch(owner, AccessTools.Method(typeof(ES3PlayMaker.Save), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeSave"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterSave"))
+                || !Patches.Patch(owner, AccessTools.Method(typeof(ES3PlayMaker.Load), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeLoad"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterLoad"))) throw new InvalidOperationException("Stable hinge compatibility hooks failed");
             SaveBus.StateChanged += StateChanged;
         }
+        /// <summary>Detaches load resets; the current world's pose values remain valid across a toggle.</summary>
+        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; }
         /// <summary>Clears the session pose table on LoadGame/Start/setSeed.</summary>
-        static void StateChanged(string previous, string current) { if (current == "LoadGame" || current == "Start" || current == "setSeed") Poses.Clear(); }
+        static void StateChanged(string previous, string current) { if (current == "LoadGame" || current == "Start" || current == "setSeed") { Poses.Clear(); _generation = SaveBus.Generation; } }
         /// <summary>Apocasaver stable ES3 key for a hinge saveItemVar FSM on a saved prefab, or null.</summary>
         static string Stable(Fsm fsm)
         {
