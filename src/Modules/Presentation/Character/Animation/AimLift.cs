@@ -115,7 +115,9 @@ namespace WildWasteland.Modules.PlayerBody
             sb.AppendLine("# Optional values after forward: left arm up/right (cm), pitch/yaw/roll (degrees), then right arm up/right, pitch/yaw/roll. Missing values are zero; edited with F7 weapon pose buttons.");
             var keys = new List<string>(_v.Keys); keys.Sort(StringComparer.Ordinal);
             foreach (var k in keys) sb.AppendLine(k + " = " + string.Join(", ", Array.ConvertAll(_v[k], x => x.ToString("0.#", CultureInfo.InvariantCulture))));
-            File.WriteAllText(_file, sb.ToString());
+            string tmp = _file + ".tmp";   // (D17) temp + same-directory atomic replace, never an in-place overwrite
+            File.WriteAllText(tmp, sb.ToString());
+            Core.AtomicFile.Replace(tmp, _file);
         }
         // (2.1.8) standing and crouched have their own values: the key is the clip + "@crouch" when crouched; a crouched aim without its own entry
         // starts from the standing one (so a tuned weapon doesn't jump back to the default)

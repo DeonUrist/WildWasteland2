@@ -44,9 +44,6 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Forwarder of <see cref="CharacterSettings.FirstPersonArmsOnlyOnFoot"/>.</summary>
         [System.Obsolete("refactor: use Presentation CharacterSettings.FirstPersonArmsOnlyOnFoot")]
         internal static ConfigEntry<bool> FirstPersonArmsOnlyOnFoot { get { return CharacterSettings.FirstPersonArmsOnlyOnFoot; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.MirrorBody"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.MirrorBody")]
-        internal static ConfigEntry<bool> MirrorBody { get { return CharacterSettings.MirrorBody; } }
         /// <summary>Forwarder of <see cref="CharacterSettings.FootIK"/>.</summary>
         [System.Obsolete("refactor: use Presentation CharacterSettings.FootIK")]
         internal static ConfigEntry<bool> FootIK { get { return CharacterSettings.FootIK; } }
@@ -65,33 +62,12 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Forwarder of <see cref="CharacterSettings.AnimBundleFile"/>.</summary>
         [System.Obsolete("refactor: use Presentation CharacterSettings.AnimBundleFile")]
         internal static ConfigEntry<string> AnimBundleFile { get { return CharacterSettings.AnimBundleFile; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.IdleClip"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.IdleClip")]
-        internal static ConfigEntry<string> IdleClip { get { return CharacterSettings.IdleClip; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.RunClip"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.RunClip")]
-        internal static ConfigEntry<string> RunClip { get { return CharacterSettings.RunClip; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.RifleClip"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.RifleClip")]
-        internal static ConfigEntry<string> RifleClip { get { return CharacterSettings.RifleClip; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.PistolClip"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.PistolClip")]
-        internal static ConfigEntry<string> PistolClip { get { return CharacterSettings.PistolClip; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.MeleeClip"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.MeleeClip")]
-        internal static ConfigEntry<string> MeleeClip { get { return CharacterSettings.MeleeClip; } }
         /// <summary>Forwarder of <see cref="CharacterSettings.BodyBack"/>.</summary>
         [System.Obsolete("refactor: use Presentation CharacterSettings.BodyBack")]
         internal static ConfigEntry<float> BodyBack { get { return CharacterSettings.BodyBack; } }
         /// <summary>Forwarder of <see cref="CharacterSettings.BodyBackDown"/>.</summary>
         [System.Obsolete("refactor: use Presentation CharacterSettings.BodyBackDown")]
         internal static ConfigEntry<float> BodyBackDown { get { return CharacterSettings.BodyBackDown; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.RunClipSpeed"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.RunClipSpeed")]
-        internal static ConfigEntry<float> RunClipSpeed { get { return CharacterSettings.RunClipSpeed; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.WalkStride"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.WalkStride")]
-        internal static ConfigEntry<float> WalkStride { get { return CharacterSettings.WalkStride; } }
         /// <summary>Forwarder of <see cref="CharacterSettings.RunFrom"/>.</summary>
         [System.Obsolete("refactor: use Presentation CharacterSettings.RunFrom")]
         internal static ConfigEntry<float> RunFrom { get { return CharacterSettings.RunFrom; } }
@@ -158,18 +134,6 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Forwarder of <see cref="CharacterSettings.ClipCrouchSpeed"/>.</summary>
         [System.Obsolete("refactor: use Presentation CharacterSettings.ClipCrouchSpeed")]
         internal static ConfigEntry<float> ClipCrouchSpeed { get { return CharacterSettings.ClipCrouchSpeed; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.ThighSwing"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.ThighSwing")]
-        internal static ConfigEntry<float> ThighSwing { get { return CharacterSettings.ThighSwing; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.KneeBend"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.KneeBend")]
-        internal static ConfigEntry<float> KneeBend { get { return CharacterSettings.KneeBend; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.ArmSwing"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.ArmSwing")]
-        internal static ConfigEntry<float> ArmSwing { get { return CharacterSettings.ArmSwing; } }
-        /// <summary>Forwarder of <see cref="CharacterSettings.HipBob"/>.</summary>
-        [System.Obsolete("refactor: use Presentation CharacterSettings.HipBob")]
-        internal static ConfigEntry<float> HipBob { get { return CharacterSettings.HipBob; } }
         /// <summary>Forwarder of <see cref="CharacterSettings.CrouchDrop"/>.</summary>
         [System.Obsolete("refactor: use Presentation CharacterSettings.CrouchDrop")]
         internal static ConfigEntry<float> CrouchDrop { get { return CharacterSettings.CrouchDrop; } }

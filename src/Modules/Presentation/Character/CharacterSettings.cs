@@ -23,16 +23,15 @@ namespace WildWasteland.Modules.Presentation
         internal static ConfigEntry<bool> BodyFirstPerson, FullBodyOnlyOnFoot, EmptyHandArms, FirstPersonArmsOnlyOnFoot, FemaleArms, ReplaceDriver, EquipmentOnBody, PainSounds, FirstPersonSwayOn, SmoothAimDownSights;
 
         // ------------------------------------------------------------------ tools.cfg [Presentation / First person|Animation|Animation (fallback clips)|Model]
-        internal static ConfigEntry<bool> MirrorBody, FootIK, WalkToStop;
+        internal static ConfigEntry<bool> FootIK, WalkToStop;
         internal static ConfigEntry<string> ModelFile, TextureFile, ArmsTextureFile, AnimBundleFile;
-        internal static ConfigEntry<string> IdleClip, RunClip, RifleClip, PistolClip, MeleeClip;
-        internal static ConfigEntry<float> BodyBack, BodyBackDown, RunClipSpeed, WalkStride, RunFrom, AimPitchShare;
+        internal static ConfigEntry<float> BodyBack, BodyBackDown, RunFrom, AimPitchShare;
         internal static ConfigEntry<float> FirstPersonWeaponBack, FirstPersonChestLean;
         internal static ConfigEntry<float> FpCamX, FpCamY, FpCamZ;
         internal static ConfigEntry<float> JumpClipStart, StrikeWindup;
         internal static ConfigEntry<float> UpperPhase, ClipSprintSpeed, SprintFrom, TurnClipAngle, TurnStartRate, DirBlendSpeed, PumpClipSpeed;
         internal static ConfigEntry<float> RunLegsIn, RunLegsTurn;
-        internal static ConfigEntry<float> HipsDrift, ClipWalkSpeed, ClipRunSpeed, ClipCrouchSpeed, ThighSwing, KneeBend, ArmSwing, HipBob, CrouchDrop;
+        internal static ConfigEntry<float> HipsDrift, ClipWalkSpeed, ClipRunSpeed, ClipCrouchSpeed, CrouchDrop;
 
         // ------------------------------------------------------------------ NPC characters (ex [NPC] / [NPC / Brain|NpcAim|Behaviour])
         internal static ConfigEntry<bool> DogAnimationsEnabled, DogsLieDown, ApocaplayerClips, AimPose, AnimationLod;
@@ -145,10 +144,10 @@ namespace WildWasteland.Modules.Presentation
             return e;
         }
 
-        /// <summary>[Presentation / Animation|Animation (fallback clips)|Model] (tools.cfg): clip tuning, the non-bundle fallback clips and the model files.</summary>
+        /// <summary>[Presentation / Animation|Model] (tools.cfg): clip tuning and the model files.</summary>
         static void BindAnimationTools(ModuleConfig cfg)
         {
-            const string Anim = "Animation", Leg = "Animation (fallback clips)", Mdl = "Model";
+            const string Anim = "Animation", Mdl = "Model";   // (B05, README 7) the 12 "Animation (fallback clips)" entries are gone with the non-Mixamo path
             JumpClipStart = cfg.Tool(Anim, "JumpClipStart", 0.2f, "Jump / RifleJump / PistolJump clips start this far in (share of the clip): Mixamo jumps crouch first, the game's jump leaves the ground at once.");
             StrikeWindup = cfg.Tool(Anim, "StrikeWindup", 0.08f, "Melee / bare hands: seconds the wind-up takes before the blow lands (the game hits the moment the swing starts).");
             HipsDrift = cfg.Tool(Anim, "HipsDrift", 0.25f, "Bundle clips: how far (m) the hips may move away from the player sideways/forward (room for the idle sway).");
@@ -169,19 +168,6 @@ namespace WildWasteland.Modules.Presentation
             RunLegsTurn = cfg.Tool(Anim, "RunLegsTurn", 75f, "Relaxed running (not aiming): the legs turn up to this many degrees toward the way she runs; the chest keeps facing the camera.");
             CrouchDrop = cfg.Tool(Anim, "CrouchDrop", 0.42f, "How far the hips go down when crouched, m.");
             AimPitchShare = cfg.Tool(Anim, "AimPitch", 0.9f, "Share of the camera pitch the spine follows (aiming up/down).");
-
-            IdleClip = cfg.Tool(Leg, "IdleClip", "merchant_idle", "Without the animation bundle: humanoid clip for standing (the game has: merchant_idle, enemy_1_idle, zombie_idle).");
-            RunClip = cfg.Tool(Leg, "RunClip", "enemy_1_run", "Without the bundle: humanoid clip for running.");
-            RifleClip = cfg.Tool(Leg, "RifleClip", "enemy_machinegun", "Without the bundle: upper-body clip with a rifle / SMG / shotgun / crossbow drawn.");
-            PistolClip = cfg.Tool(Leg, "PistolClip", "sprokka_shoot", "Without the bundle: upper-body clip with a pistol / revolver drawn.");
-            MeleeClip = cfg.Tool(Leg, "MeleeClip", "enemy_1_attack", "Upper-body clip played once per melee swing (when the bundle has no Melee clip).");
-            RunClipSpeed = cfg.Tool(Leg, "RunClipSpeed", 4.5f, "Without the bundle: ground speed (m/s) at which the run clip plays at normal speed.");
-            WalkStride = cfg.Tool(Leg, "WalkStride", 1.25f, "Procedural walk: length of one full walk cycle (two steps), m.");
-            ThighSwing = cfg.Tool(Leg, "ThighSwing", 26f, "Procedural walk: thigh swing, degrees.");
-            KneeBend = cfg.Tool(Leg, "KneeBend", 38f, "Procedural walk: knee bend in the swing phase, degrees.");
-            ArmSwing = cfg.Tool(Leg, "ArmSwing", 16f, "Procedural walk: arm swing without a weapon, degrees.");
-            HipBob = cfg.Tool(Leg, "HipBob", 0.025f, "Procedural walk: hip bob, m.");
-            MirrorBody = cfg.Tool(Leg, "RightHanded", true, "Raider-clip mode only: mirror the body so the gun is in the right hand.");
 
             ModelFile = cfg.Tool(Mdl, "Model", "Models/Player_female.glb", "Female body model (.glb/.gltf) relative to plugins/WildWasteland/Presentation, rigged to Flexa's skeleton (22 mixamorig bones). Restart the module to reload.");
             TextureFile = cfg.Tool(Mdl, "Texture", "Models/Player_female.png", "Female body texture relative to the module folder.");

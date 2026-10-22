@@ -232,7 +232,9 @@ namespace WildWasteland.Modules.PlayerBody
                 sb.AppendLine("# Wild Wasteland (PlayerBody) weapon poses: weapon|Animation = x, y, z (cm), rotation x, y, z (degrees) of the weapon model in her right hand.");
                 sb.AppendLine("# Absolute values, edited in game with WeaponAdjustment (numpad). Missing animation = the weapon's Idle, else the raider's grip.");
                 foreach (var k in keys) sb.Append(k).Append(" = ").AppendLine(Fmt(_user[k]));
-                File.WriteAllText(_file, sb.ToString());
+                string tmp = _file + ".tmp";   // (D17) temp + same-directory atomic replace, never an in-place overwrite
+                File.WriteAllText(tmp, sb.ToString());
+                Core.AtomicFile.Replace(tmp, _file);
                 ExportBuiltinTable();   // (Wave A) the C# export lives with the editor (Developer)
             }
             catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Weapon poses: saving failed: " + e.Message); }

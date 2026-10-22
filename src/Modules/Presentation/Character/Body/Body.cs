@@ -9,9 +9,11 @@ using WildWasteland.Modules.Presentation;
 namespace WildWasteland.Modules.PlayerBody
 {
     // Her body: a clone of Flexa's "Anim" object (Animator with the humanoid avatar enemy_1_IdleAvatar + the 22 mixamorig bones +
-    // the skinned mesh), stripped of props/colliders/FSMs, with our mesh and texture. Animated by a PlayableGraph with the game's own
-    // humanoid clips (idle, run, rifle / pistol aim, melee swing), plus procedural layers in LateUpdate: walk cycle, strafe twist,
-    // aim pitch, crouch, prone. In a car the Animator is off and the pose is copied from the car's seated driver (CarSeat).
+    // the skinned mesh), stripped of props/colliders/FSMs, with our mesh and texture. Animated by a PlayableGraph with the Mixamo clips of
+    // the animation bundle (Body.Loco.cs), plus procedural layers in LateUpdate (aim pitch, crouch, prone, hand rig). In a car the
+    // Animator is off and the pose is copied from the car's seated driver (CarSeat).
+    // (B05, README 7 / A2-3) the non-Mixamo fallback (the game's raider clips + procedural walk, mirrored body, the 12 [Animation (fallback
+    // clips)] entries) is gone: without a complete bundle no body is built and the game's own first-person view stays.
     internal sealed partial class Body
     {
         public GameObject Root;          // mirror lives here (scale x -1)
@@ -76,7 +78,6 @@ namespace WildWasteland.Modules.PlayerBody
         private readonly Dictionary<string, Quaternion> _bindLocal = new Dictionary<string, Quaternion>();
 
         private PlayableGraph _graph;
-        private AnimationMixerPlayable _loco;
         private AnimationLayerMixerPlayable _layers;
         private AnimationClipPlayable _upper;
         // upper layer = a 2-input mixer: _upper (the current clip, input 0) and _upperOld (the clip it replaced, input 1) cross-faded.
@@ -117,7 +118,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
         private string _upperClip = "";
         private AnimationClip _fallback;
-        private bool _mixamo;                       // locomotion from the animation bundle (Mixamo clips) instead of the game's clips + procedural walk
+        private bool _mixamo;                       // the Mixamo graph is built (always true for a built body since B05; read by the seat part)
         private float _reloadUntil, _throwUntil, _reloadStart;
         private bool _reloading;
         private string _kickState = "", _jumpState = "";
@@ -189,7 +190,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
         private readonly Dictionary<string, AnimationClip> _clips = new Dictionary<string, AnimationClip>();
 
-        private float _phase, _speedSmooth, _strafeSmooth, _crouch, _prone, _runW;
+        private float _speedSmooth, _crouch, _prone, _runW;
         private float _legThigh, _legShin;
         private bool _inCar, _snap;
         private View _lastView = View.FirstPerson;
@@ -199,8 +200,17 @@ namespace WildWasteland.Modules.PlayerBody
         public enum View { FirstPerson, ThirdPerson }
 
         // ---------------------------------------------------------------- build
+        /// <summary>True when the animation bundle carries the rifle pack's idle and walk (the body's locomotion set).</summary>
+        internal static bool MixamoReady { get { return Anims.Loaded && Anims.Get("RifleIdle") != null && (Anims.Get("RifleWalk") != null || Anims.Get("RifleWalkLow") != null); } }
+        private static bool _noBundleWarned;
+
         public static Body Create()
         {
+            if (!MixamoReady)
+            {
+                if (!_noBundleWarned) { _noBundleWarned = true; Core.Log.Warn(PresentationModule.Instance, "Animation bundle missing or without RifleIdle + RifleWalk / RifleWalkLow (" + CharacterSettings.AnimBundleFile.Value + "): no player body, the game's own first-person view"); }
+                return null;
+            }
             var flexa = FlexaPrefab();
             if (flexa == null) return null;
             var animSrc = flexa.transform.Find("Anim");
@@ -306,7 +316,7 @@ namespace WildWasteland.Modules.PlayerBody
             b._rootMotion = clone.AddComponent<RootMotionTap>();
             b.Root.SetActive(true);
             b.BuildGraph(flexa);
-            if (b._mixamo) b.BuildUpperRig(clone);
+            b.BuildUpperRig(clone);
             b.MeasureLegs();
             if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Body built from Flexa's skeleton (" + b.Bones.Count + " bones)");
             return b;
@@ -344,46 +354,19 @@ namespace WildWasteland.Modules.PlayerBody
             _graph = PlayableGraph.Create("Apocaplayer");
             _graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
             var output = AnimationPlayableOutput.Create(_graph, "body", _animator);
-            _mixamo = Anims.Loaded && Anims.Get("RifleIdle") != null && (Anims.Get("RifleWalk") != null || Anims.Get("RifleWalkLow") != null);   // 2.0: the rifle pack's legs carry every weapon
-            if (Anims.Loaded && !_mixamo) Core.Log.Warn(PresentationModule.Instance, "Animation bundle without RifleIdle + RifleWalk / RifleWalkLow: the bundle's locomotion is OFF (the game's clips + procedural legs)");
-            if (_mixamo) { BuildMixamo(output); return; }
-            _loco = AnimationMixerPlayable.Create(_graph, 2);
-            var idle = Clip(CharacterSettings.IdleClip.Value);
-            var run = Clip(CharacterSettings.RunClip.Value);
-            if (idle == null) idle = Clip("enemy_1_idle");
-            if (run == null) run = idle;
-            _fallback = idle;
-            var pIdle = AnimationClipPlayable.Create(_graph, idle);
-            var pRun = AnimationClipPlayable.Create(_graph, run);
-            pIdle.SetApplyFootIK(false); pRun.SetApplyFootIK(false);
-            _graph.Connect(pIdle, 0, _loco, 0);
-            _graph.Connect(pRun, 0, _loco, 1);
-            _loco.SetInputWeight(0, 1f); _loco.SetInputWeight(1, 0f);
-
-            _layers = AnimationLayerMixerPlayable.Create(_graph, 2);
-            _graph.Connect(_loco, 0, _layers, 0);
-            _layers.SetInputWeight(0, 1f);
-            MakeUpper(idle);
-            var mask = new AvatarMask();
-            foreach (AvatarMaskBodyPart part in Enum.GetValues(typeof(AvatarMaskBodyPart)))
-            {
-                if (part == AvatarMaskBodyPart.LastBodyPart) continue;
-                bool upper = part == AvatarMaskBodyPart.Body || part == AvatarMaskBodyPart.Head || part == AvatarMaskBodyPart.LeftArm || part == AvatarMaskBodyPart.RightArm
-                          || part == AvatarMaskBodyPart.LeftFingers || part == AvatarMaskBodyPart.RightFingers || part == AvatarMaskBodyPart.LeftHandIK || part == AvatarMaskBodyPart.RightHandIK;
-                mask.SetHumanoidBodyPartActive(part, upper);
-            }
-            _layers.SetLayerMaskFromAvatarMask((uint)_lUpper, mask);
-            output.SetSourcePlayable(_layers);
-            _graph.Play();
-            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Animation graph: idle " + (idle != null ? idle.name : "-") + ", run " + (run != null ? run.name : "-"));
+            _mixamo = true;
+            BuildMixamo(output);
         }
 
+
+        /// <summary>The game's raider swing, used when the bundle has no Melee clip (ex [Animation (fallback clips)] MeleeClip default).</summary>
+        private const string RaiderMeleeClip = "enemy_1_attack";
 
         private void PlayStrike(float dt)
         {
             if (_meleeStart > 0f)
             {
-                string mc = Anims.Get("Melee") != null ? "Melee" : CharacterSettings.MeleeClip.Value;
+                string mc = Anims.Get("Melee") != null ? "Melee" : RaiderMeleeClip;
                 if (UpdateMelee(mc)) { SetUpper(mc, 1f, _meleeSpeed); return; }
                 _strikeEnd = Time.time;
             }
@@ -563,7 +546,7 @@ namespace WildWasteland.Modules.PlayerBody
             TickUpper(dt);
             if (_inCar) StartPoseFade(0.3f, false);   // out of the driver's seat: the seated pose eases into standing
             LateFootInner(view, dt);
-            if (_mixamo) { ApplyPoseFade(dt, null); CapturePose(null); }
+            ApplyPoseFade(dt, null); CapturePose(null);
         }
 
         private void LateFootInner(View view, float dt)
@@ -592,79 +575,11 @@ namespace WildWasteland.Modules.PlayerBody
                 pos = feet - yaw * Vector3.forward * (1.45f * _prone) + Vector3.up * (0.12f * _prone);
             }
             Root.transform.SetPositionAndRotation(pos, rot);
-            bool mirror = CharacterSettings.MirrorBody.Value && !_mixamo;   // Mixamo clips hold guns right-handed already
-            Root.transform.localScale = new Vector3(mirror ? -1f : 1f, 1f, 1f);
+            Root.transform.localScale = Vector3.one;   // Mixamo clips hold guns right-handed (the old mirrored raider-clip body is gone)
             _anim.localPosition = Vector3.zero; _anim.localRotation = Quaternion.identity;
 
             if (view != _lastView) { _lastView = view; _snap = true; }
-            if (_mixamo) { Sway(view, dt); LateMixamo(view, dt, yaw, camPitch); _snap = false; FitFirstPerson(view, yaw, camPitch); return; }
-
-            // locomotion
-            Vector3 v = PlayerState.Velocity; v.y = 0f;
-            var local = Quaternion.Inverse(yaw) * v;
-            float speed = v.magnitude;
-            _speedSmooth = Mathf.Lerp(_speedSmooth, speed, 1f - Mathf.Exp(-dt * 10f));
-            float runW = Mathf.Clamp01((_speedSmooth - CharacterSettings.RunFrom.Value) / 0.8f);
-            if (_crouch > 0.5f || _prone > 0.5f) runW = 0f;
-            _runW = Mathf.MoveTowards(_runW, runW, dt * 4f);
-            _loco.SetInputWeight(0, 1f - _runW);
-            _loco.SetInputWeight(1, _runW);
-            var run = (AnimationClipPlayable)_loco.GetInput(1);
-            if (run.IsValid()) run.SetSpeed(Mathf.Max(0.6f, _speedSmooth / Mathf.Max(0.5f, CharacterSettings.RunClipSpeed.Value)));
-
-            // weapon -> upper-body clip
-            string weapon = Game.DrawnWeapon;
-            var kind = Props.KindOf(weapon);
-            bool fire = !PlayerState.Paused && Input.GetMouseButton(0);
-            if (kind == Props.Kind.Melee || kind == Props.Kind.None || kind == Props.Kind.Throw)
-            {
-                if (kind == Props.Kind.Melee && !PlayerState.Paused && (Input.GetMouseButtonDown(0) || Input.GetMouseButton(0) && _meleeStart <= 0f)) StartMelee(weapon);
-                if (UpdateMelee(CharacterSettings.MeleeClip.Value)) SetUpper(CharacterSettings.MeleeClip.Value, 1f, _meleeSpeed);
-                else SetUpper("", 0f, 0f);
-            }
-            else
-            {
-                string clip = kind == Props.Kind.Pistol ? CharacterSettings.PistolClip.Value : CharacterSettings.RifleClip.Value;
-                SetUpper(clip, 1f, fire ? 1f : 0f);
-                if (!fire && _upper.IsValid()) _upper.SetTime(0);
-            }
-            UpdateProp(weapon); ShowProp(view == View.ThirdPerson);
-
-            // ---- procedural, in the (unmirrored) space of the Anim object ----
-            float walkW = (1f - _runW) * Mathf.Clamp01(_speedSmooth / 0.6f) * (1f - _prone);
-            if (walkW > 0.001f)
-            {
-                float dir = local.z < -0.2f ? -1f : 1f;
-                _phase += dt * (_speedSmooth / Mathf.Max(0.3f, CharacterSettings.WalkStride.Value)) * Mathf.PI * 2f * dir;
-                if (_phase > Mathf.PI * 2f) _phase -= Mathf.PI * 2f; else if (_phase < 0f) _phase += Mathf.PI * 2f;
-            }
-            // strafe: legs turn toward the movement direction, the chest keeps facing the camera
-            float strafe = 0f;
-            if (speed > 0.3f) { strafe = Mathf.Atan2(local.x, Mathf.Abs(local.z)) * Mathf.Rad2Deg; strafe = Mathf.Clamp(strafe, -60f, 60f); }
-            _strafeSmooth = Mathf.Lerp(_strafeSmooth, strafe * (1f - _prone), 1f - Mathf.Exp(-dt * 8f));
-            float ysign = mirror ? -1f : 1f;   // a turn about the up axis flips in the mirrored body
-            if (Mathf.Abs(_strafeSmooth) > 0.5f)
-            {
-                Turn("mixamorig:Hips", Vector3.up, _strafeSmooth * ysign);
-                Turn("mixamorig:Spine", Vector3.up, -_strafeSmooth * 0.5f * ysign);
-                Turn("mixamorig:Spine1", Vector3.up, -_strafeSmooth * 0.5f * ysign);
-            }
-            if (walkW > 0.001f) Walk(walkW, kind == Props.Kind.None);
-            if (_crouch > 0.001f) Crouch(_crouch);
-
-            // aim pitch: the spine follows the camera (looking down = positive)
-            // (not in first person: bending the torso toward the camera put her chest in front of the lens)
-            float pitch = view == View.FirstPerson ? 0f : camPitch * CharacterSettings.AimPitchShare.Value * (1f - _prone);
-            if (Mathf.Abs(pitch) > 0.5f)
-            {
-                Turn("mixamorig:Spine", Vector3.right, pitch * 0.3f);
-                Turn("mixamorig:Spine1", Vector3.right, pitch * 0.3f);
-                Turn("mixamorig:Spine2", Vector3.right, pitch * 0.3f);
-                Turn("mixamorig:Neck", Vector3.right, pitch * 0.1f);
-            }
-            Turn("mixamorig:Head", Vector3.right, camPitch * (1f - _prone) - pitch);
-            PoseProp(kind, yaw);
-            FitFirstPerson(view, yaw, camPitch);
+            Sway(view, dt); LateMixamo(view, dt, yaw, camPitch); _snap = false; FitFirstPerson(view, yaw, camPitch);
         }
 
         // first person: after the pose is final, slide her (horizontally) so her head is right under the camera, a little behind it -
@@ -842,30 +757,6 @@ namespace WildWasteland.Modules.PlayerBody
             var q = Quaternion.identity;
             for (var x = t; x != null && x != _anim; x = x.parent) q = x.localRotation * q;
             return q;
-        }
-
-        private void Walk(float w, bool swingArms)
-        {
-            float s = Mathf.Sin(_phase), c = Mathf.Cos(_phase);
-            float A = CharacterSettings.ThighSwing.Value * w, K = CharacterSettings.KneeBend.Value * w;
-            // thighs: forward swing = negative about the right axis
-            Turn("mixamorig:LeftUpLeg", Vector3.right, -A * s);
-            Turn("mixamorig:RightUpLeg", Vector3.right, A * s);
-            // knees bend while the leg swings forward
-            float kl = K * Mathf.Max(0f, c) + 6f * w, kr = K * Mathf.Max(0f, -c) + 6f * w;
-            Turn("mixamorig:LeftLeg", Vector3.right, kl);
-            Turn("mixamorig:RightLeg", Vector3.right, kr);
-            Turn("mixamorig:LeftFoot", Vector3.right, -0.5f * kl + 0.3f * A * s);
-            Turn("mixamorig:RightFoot", Vector3.right, -0.5f * kr - 0.3f * A * s);
-            Transform hips;
-            if (Bones.TryGetValue("mixamorig:Hips", out hips))
-                hips.localPosition += Vector3.up * (-CharacterSettings.HipBob.Value * w * (1f - Mathf.Abs(c)));
-            Turn("mixamorig:Spine1", Vector3.up, 4f * w * s);
-            if (swingArms)
-            {
-                Turn("mixamorig:LeftArm", Vector3.right, CharacterSettings.ArmSwing.Value * w * s);
-                Turn("mixamorig:RightArm", Vector3.right, -CharacterSettings.ArmSwing.Value * w * s);
-            }
         }
 
         private void Crouch(float k, float jumpDrop = -1f)
