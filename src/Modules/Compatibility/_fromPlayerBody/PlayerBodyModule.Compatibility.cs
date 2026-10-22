@@ -8,16 +8,10 @@ namespace WildWasteland.Modules.PlayerBody
     /// </summary>
     public sealed partial class PlayerBodyModule
     {
-        /// <summary>Init: ChaseCamera adapter (+ its discovery job) and the optional Weapons Pack patch.</summary>
-        partial void InitCompatibility()
-        {
-            ChaseCameraCompat.Init(this);
-        }
+        /// <summary>Empty (B17): the ChaseCamera adapter and the Weapons Pack shadows belong to their Compatibility bridges.</summary>
+        partial void InitCompatibility() { }
 
-        /// <summary>Shutdown (first): Weapons Pack shadows removed, ChaseCamera adapter cleared.</summary>
-        partial void ShutdownCompatibility()
-        {
-            ChaseCameraCompat.Clear();
-        }
+        /// <summary>Empty (B17): the Compatibility bridges unbind ChaseCamera / restore Weapons Pack shadows when the player body stops.</summary>
+        partial void ShutdownCompatibility() { }
     }
 }

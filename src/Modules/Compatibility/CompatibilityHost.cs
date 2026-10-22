@@ -27,6 +27,16 @@ namespace WildWasteland.Modules.Compatibility
             }
         }
 
+        /// <summary>Config of the host module (its `[its `[<Id>] Enabled` entrylt;Idits `[<Id>] Enabled` entrygt;] Enabled` entry), or null when no such module is registered.</summary>
+        internal ModuleConfig Config
+        {
+            get
+            {
+                if (!_resolved) Resolve();
+                return _entry != null ? _entry.Config : null;
+            }
+        }
+
         /// <summary>Finds the host entry once; modules are registered before any module initializes, so the result is final.</summary>
         private void Resolve()
         {

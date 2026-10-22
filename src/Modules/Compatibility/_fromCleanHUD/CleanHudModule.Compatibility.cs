@@ -8,10 +8,9 @@ namespace WildWasteland.Modules.CleanHUD
     /// </summary>
     public sealed partial class CleanHudModule
     {
-        /// <summary>Installs the ChaseCamera telemetry bridge and the Apocapocket slot reader.</summary>
+        /// <summary>Installs the Apocapocket slot reader (the ChaseCamera part moved to the Compatibility ChaseCamera bridge, B17).</summary>
         partial void InitCompatibilityEarly()
         {
-            ChaseCameraHud.Clear(); ChaseCameraHud.Install(this);
             ApocapocketInventory.Install(this);
         }
 
@@ -27,11 +26,8 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Registers the "Dialogue window" job (LateUpdateLast) of the Apocatalker mirror.</summary>
         partial void InitCompatibilityDialogueJob() { Scheduler.EveryFrame(this, "Dialogue window", TalkDialogue.Tick, Phase.LateUpdateLast); }
 
-        /// <summary>From the HUD attachment job: lazy ChaseCamera install (the Weapons Pack icon part moved to the Compatibility bridge, B17).</summary>
-        partial void AttachCompatibility()
-        {
-            ChaseCameraHud.Install(this);
-        }
+        /// <summary>Empty (B17): the Weapons Pack icons and the ChaseCamera HUD observer are installed by their Compatibility bridges.</summary>
+        partial void AttachCompatibility() { }
 
         /// <summary>Hides the Apocatalker window on scene load.</summary>
         partial void SceneLoadedCompatibility() { TalkDialogue.Hide(); }
@@ -42,10 +38,9 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Clears the Vistas engine heat overlay state.</summary>
         partial void ShutdownCompatibilityVistas() { VistasEngineHud.Clear(); }
 
-        /// <summary>Clears the ChaseCamera bridge and disposes the Apocatalker window.</summary>
+        /// <summary>Disposes the Apocatalker window (the ChaseCamera observer is cleared by its Compatibility bridge, B17).</summary>
         partial void ShutdownCompatibilityChase()
         {
-            ChaseCameraHud.Clear();
             TalkDialogue.Dispose();
         }
 
