@@ -48,7 +48,7 @@ namespace WildWasteland.Modules.Tools
             if (root == null) throw new FormatException("Expected editor JSON object");
             var result = new PatrolEditorData();
             result.Patrols = Groups(root, "patrols"); result.Convoys = Groups(root, "convoys");
-            result.Merchants=root.ContainsKey("merchants")?Groups(root,"merchants"):EditorMerchants.DefaultGroups();
+            result.Merchants=Groups(root,"merchants");
             result.CarLoot = root.ContainsKey("carLoot")?Loot(root, "carLoot"):new List<LootProfile>(); result.TruckLoot = root.ContainsKey("truckLoot")?Loot(root, "truckLoot"):new List<LootProfile>();
             object order;
             if (root.TryGetValue("templateOrder", out order) && order is List<object>) result.TemplateOrder = ((List<object>)order).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();

@@ -27,7 +27,6 @@ namespace WildWasteland.Modules.Tools
         internal static string Label(string type) { return PatrolEditor.Source.MerchantLabel(type); }
         internal static string Selected(IEnumerable<string> types) { return PatrolEditor.Source.MerchantSelected(types); }
         internal static string[] Selection(IEnumerable<string> types) { return new[]{Selected(types)}; }
-        internal static List<AuthoringGroup> DefaultGroups() { return new List<AuthoringGroup>(); }
     }
     /// <summary>Owner-provided cargo item catalog for the ledger search.</summary>
     internal static class EditorItems
