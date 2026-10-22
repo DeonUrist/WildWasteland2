@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Towns
             if (Core.VistasWorldGen.Present) { plan.AccessPath = new Vector3[0]; plan.GradeAccess = false; return; }
             foreach (var lot in plan.Lots) if (lot.IsParking)
             {
-                var stop = new Patrols.TownStop { Parking = plan.World(lot.LocalPosition), Center = plan.WorldCenter, Radius = plan.Radius,
+                var stop = new Core.TownTrafficStop { Parking = plan.World(lot.LocalPosition), Center = plan.WorldCenter, Radius = plan.Radius,
                     Heading = Quaternion.Euler(0, plan.Yaw + lot.Yaw, 0) * Vector3.forward };
                 var end = stop.Approach; var start = stop.Parking;
                 // A single unpainted ground approach, outside the buildings. No road/path meshes.

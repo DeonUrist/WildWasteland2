@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Patrols
             var saves = ModApi.Get<ISaves>();
             if (saves == null) return SaveBus.Busy;
             float remaining = saves.AutosaveDueIn;
-            return saves.Busy || remaining >= 0f && remaining < within;
+            return saves.Busy || remaining > 0f && remaining < within;
         }
     }
 }
