@@ -114,12 +114,12 @@ namespace WildWasteland.Modules.Patrols
             Try("Suspension", () => Suspension.Install(this));
             Prefabs.Install(this);
             PatrolLoadPreparation.Install(this);
-            Core.Hooks.SetFsmFloatEnter.Postfix(this, Ram.AfterSetFsmFloat);
             Core.Hooks.SetFsmFloatDo.Prefix(this, Ram.BeforeSetFsmFloat);   // a car never rams its own (trigger-only) crew
             Core.Hooks.SendEventEnter.Prefix(this, Ram.BeforeSendEvent);
             Try("Motorcycle save hook (saved motorcycles may not load)", () => MotorcycleIntegration.Install(this));
 
             EditorStore.Load(DataDir);
+            Core.ModApi.Changed-=Crew.HeatApiChanged;Core.ModApi.Changed+=Crew.HeatApiChanged;
             Core.ModApi.Changed-=EditorStore.CargoApiChanged;Core.ModApi.Changed+=EditorStore.CargoApiChanged;EditorStore.CargoApiChanged(null);
             CarTemplates.Init(DataDir);
             CarTemplates.Load();
@@ -140,6 +140,7 @@ namespace WildWasteland.Modules.Patrols
         public override void Shutdown()
         {
             Core.ModApi.Changed-=EditorStore.CargoApiChanged;
+            Core.ModApi.Changed-=Crew.HeatApiChanged;
             Services.NpcHurt-=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;
             CrewReturn.Reset();

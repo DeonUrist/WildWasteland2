@@ -1,55 +1,49 @@
 using System;
-using System.Collections;
+using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Vehicles;
-
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
-    /// <summary>Raider engine heat rule (Vehicles part of Crew): with [Patrols] Raiders overheat off, the engine heat value is held at 0 while the crew holds the car.</summary>
-    internal partial class Crew
+    /// <summary>Captures native engine values once and restores them on release or owner teardown.</summary>
+    internal sealed class VehicleEngineHeat : IVehicleEngineHeat
     {
-        // 2.6.2 [Balance] RaidersOverheat off: while the crew holds the car its engine's own heat value (the engine item's [heatValue] FSM,
-        // copied every frame by the engine's getHeatValue into engineOil_Temperature and by the radiator's into water_Temperature) is 0, so the
-        // oil only cools (-0.4/s) and never reaches the game's 120 (overheating: smoke, steam, engine Condition -0.5/s). The original value is
-        // put back when the seat lock lifts (driver dead, crew bailed, explosion) - a taken car or a looted engine heats like any other.
-        // No polling: applied on lock changes, once 2 s after Init and when the setting changes.
-        /// <summary>Applies (lock held, setting off) or restores the engine heat values of this crew's car.</summary>
-        internal void ApplyOverheat()
+        internal static readonly VehicleEngineHeat Instance = new VehicleEngineHeat();
+        private readonly Dictionary<GameObject, Dictionary<FsmFloat,float>> _held = new Dictionary<GameObject, Dictionary<FsmFloat,float>>();
+        /// <summary>Applies the caller's traffic policy without retaining traffic actors or settings.</summary>
+        public void Hold(GameObject car, bool cool)
         {
-            if (_car == null) return;
+            if (car == null) return;
+            Dictionary<FsmFloat,float> values;
+            if (!cool)
+            {
+                if (_held.TryGetValue(car,out values)) { Restore(values); _held.Remove(car); }
+                return;
+            }
+            if (!_held.TryGetValue(car,out values)) _held[car] = values = new Dictionary<FsmFloat,float>();
             try
             {
-                bool cool = _locked && !PatrolsModule.RaidersOverheat.Value;   // refs-ok: Patrols crew setting read inside Patrols' Crew class
-                foreach (var f in _car.GetComponentsInChildren<PlayMakerFSM>(true))
+                foreach(var f in car.GetComponentsInChildren<PlayMakerFSM>(true))
                 {
-                    if (f == null || f.FsmName != "heatValue") continue;
-                    var v = f.FsmVariables.GetFsmFloat("heatValue");
-                    if (v == null || Known(v)) continue;
-                    _heat.Add(new System.Collections.Generic.KeyValuePair<FsmFloat, float>(v, v.Value));
+                    if(f==null || f.FsmName!="heatValue") continue;
+                    var v=f.FsmVariables.GetFsmFloat("heatValue");
+                    if(v==null) continue;
+                    if(!values.ContainsKey(v)) values.Add(v,v.Value);
+                    v.Value=0f;
                 }
-                foreach (var kv in _heat) if (kv.Key != null) kv.Key.Value = cool ? 0f : kv.Value;
-                if (_heat.Count > 0 && Log.L2) Log.Deep(VehiclesModule.Instance, "Crew: " + _car.name + " engine heat " + (cool ? "off (RaidersOverheat off)" : "normal") + " on " + _heat.Count + " engine(s)");
             }
-            catch (Exception e) { Log.Deep(VehiclesModule.Instance, "Crew: overheat setting: " + e.Message); }
+            catch(Exception e) { Log.Warn(VehiclesModule.Instance,"Engine heat: "+e.Message); }
         }
-
-        /// <summary>True when the heat variable is already remembered (a loop, no LINQ closure).</summary>
-        private bool Known(FsmFloat v)
+        /// <summary>Returns captured values before the engine can pass to player or another owner.</summary>
+        private static void Restore(Dictionary<FsmFloat,float> values)
         {
-            foreach (var kv in _heat) if (kv.Key == v) return true;
-            return false;
+            foreach(var kv in values) if(kv.Key!=null) kv.Key.Value=kv.Value;
         }
-
-        /// <summary>Coroutine: applies the heat rule 2 s after the crew took the car.</summary>
-        private IEnumerator OverheatLater()
+        /// <summary>Restores every held engine when Vehicles stops or a scene is discarded.</summary>
+        internal static void ReleaseAll()
         {
-            yield return new WaitForSeconds(2f);
-            ApplyOverheat();
+            foreach(var values in Instance._held.Values) Restore(values);
+            Instance._held.Clear();
         }
-
-        /// <summary>Re-applies the heat rule on every crew (setting changed).</summary>
-        internal static void ApplyOverheatAll() { foreach (var c in FindObjectsOfType<Crew>()) c.ApplyOverheat(); }
     }
 }

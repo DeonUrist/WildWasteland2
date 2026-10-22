@@ -78,9 +78,7 @@ namespace WildWasteland.Modules.Gunplay
             Patch(typeof(GetLayer), "OnEnter", "AfterGetLayer", false);
             Patch(typeof(SetAudioClip), "OnEnter", "AfterSetAudioClip", false);
             Patch(typeof(TranslatePosition), "OnFixedUpdate", "BeforeTranslatePosition", true);
-            Core.Patches.ApplyClass(this, typeof(MagazineSavePatch));
             Core.Patches.ApplyClass(this, typeof(MagazineLoadPatch));
-            Core.Patches.ApplyClass(this, typeof(MagazineStorePatch));
             Core.Patches.ApplyClass(this, typeof(AmmoCapacityPatch));
             Core.Patches.ApplyClass(this, typeof(ArmorCapacityPatch));
             Core.Patches.ApplyClass(this, typeof(BackpackSlotPatch));
@@ -149,6 +147,9 @@ namespace WildWasteland.Modules.Gunplay
             var h = Services.Hud;
             if (h != null) { try { h.ExternalReporter = false; } catch (Exception e) { Log.Warn(this, "HUD ExternalReporter: " + e.Message); } }
         }
+
+        /// <summary>Snapshots the actual magazine ledger into the verified active world-save transaction.</summary>
+        public override void OnSaveBegin(string slot){try{PerGunAmmo.SaveWorld(slot);}catch(Exception e){SaveBus.ReportFailure(this,"Magazine ledger save failed: "+e.Message);throw;}}
 
         /// <summary>Scene change: per-scene caches of every part are dropped.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)

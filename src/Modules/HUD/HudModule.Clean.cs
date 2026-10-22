@@ -80,7 +80,7 @@ namespace WildWasteland.Modules.HUD
         {
             Running = true; _retry = 0; _throttle.Clear();
             InitCoreTheme();
-            InitCompatibilityEarly();
+
             MessageHook.Clear(); Bindings.Clear(); Menu.BlockCancelFrame = -1;
             var dir = Core.Assets.ModuleConfigDir("HUD");
             Core.TunedSettings.InstallProfiles("HUD");
@@ -89,20 +89,21 @@ namespace WildWasteland.Modules.HUD
             InitCoreAssets();
             Binoculars.Init(this);
             VistasBanners.Init(this);
-            InitCompatibilityVistas();
+
             Scheduler.Interval(this, "Vantage terrain", .2f, VantageDiscovery.Tick);
             LocationMarkers.Init();
             MapFog.Init();
             _loadingScreen = new LoadingScreen();
+            ModApi.Provide<IExternalSavePresentation>(this,new ExternalSavePresentation(_loadingScreen));
             ModEvents.Subscribe<Core.Events.SavePresentation>(this, SavePresented);
-            InitCompatibilityApocasaver();
+
             _menu = new Menu(_loadingScreen);
             InitCoreUpdateCheck();
             SaveBus.StateChanged += _loadingScreen.StateChanged;
             Services.VehicleStatus = this;
             Services.Compass = this;
             _questMap = new MapMarkers(); Services.Map = _questMap;
-            InitCompatibilityTalk();
+
             QuestNotifications.Install(this);
             QuestTracker.Install(this);
             QuestJournal.Install(this);
@@ -122,7 +123,7 @@ namespace WildWasteland.Modules.HUD
             Scheduler.Gui(this, "Player map marker", _questMap.DrawPlayer, _questMap.PlayerShown);
             Scheduler.Interval(this, "Map fog exploration", .2f, MapFog.Paint);
             Scheduler.Sliced(this, "Map fog painting", 500, MapFog.PaintStep);
-            InitCompatibilityDialogueJob();
+
             Scheduler.EveryFrame(this, "Quest journal", QuestJournal.Tick, Phase.LateUpdateLast);
             Scheduler.EveryFrame(this, "Quest dialogue", QuestDialogue.Tick, Phase.LateUpdateLast);
             _attach = Scheduler.Interval(this, "HUD attachment", 1f, AttachHud, Phase.LateUpdateLast);
@@ -147,7 +148,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Retries native HUD attachment within the existing scene readiness and retry gates.</summary>
         private void AttachHud()
         {
-            AttachCompatibility();
+
             if (!KeyCatalog.ScanStarted) KeyCatalog.StartScan();
             if (!CleanHudEnabled.Value || Time.unscaledTime < _retry) return;
             if (_hud != null && !_hud.Valid) Release();
@@ -200,7 +201,7 @@ namespace WildWasteland.Modules.HUD
             VantageDiscovery.Reset(); VistasBanners.Reset();
             InventoryStyle.Restore();
             LocationMarkers.Begin(false);
-            if (_questMap != null) _questMap.SceneLoaded(); SceneLoadedCompatibility(); QuestJournal.Hide(); QuestDialogue.Hide();
+            if (_questMap != null) _questMap.SceneLoaded();  QuestJournal.Hide(); QuestDialogue.Hide();
             Release(); _menu.Teardown(); SceneResetCore(); MessageHook.Clear(); Bindings.Clear(); Assets.SceneLoaded();
             _loadingScreen.SceneLoaded();
             _retry = 0; _attach.RunNow();
@@ -214,15 +215,15 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Restores native UI, unsubscribes feature handlers and releases owned clean HUD resources.</summary>
         private void ShutdownClean()
         {
-            ShutdownCompatibilityEarly();
+
             _weatherMap.Clear();
             Binoculars.Shutdown();
             VantageDiscovery.Reset(); VistasBanners.Shutdown();
-            ShutdownCompatibilityVistas();
+
             InventoryStyle.Restore();
             Running = false; Release();
             ShutdownCoreUpdateCheck();
-            ShutdownCompatibilityChase();
+
             QuestTracker.Clear();
             QuestJournal.Clear(); QuestDialogue.Dispose(); QuestNotifications.Clear();
             if (ReferenceEquals(Services.Map, _questMap)) Services.Map = null;
@@ -232,7 +233,7 @@ namespace WildWasteland.Modules.HUD
             LocationMarkers.Shutdown();
             MapFrame.Restore(); MapFog.Shutdown();
             if (_menu != null) _menu.Teardown(); _menu = null;
-            ShutdownCompatibilityLate();
+
             if (_loadingScreen != null) { SaveBus.StateChanged -= _loadingScreen.StateChanged; _loadingScreen.Dispose(); _loadingScreen = null; }
             MessageHook.Clear(); Bindings.Clear(); Menu.BlockCancelFrame = -1;
             ShutdownCoreAssets(); Menu.DisposeAssets(); ShutdownCoreTheme();
@@ -261,28 +262,6 @@ namespace WildWasteland.Modules.HUD
         partial void ShutdownCoreAssets();
         /// <summary>Core/UI theme: glyph font and accent theme teardown.</summary>
         partial void ShutdownCoreTheme();
-        /// <summary>Compatibility: ChaseCamera HUD bridge and Apocapocket slots.</summary>
-        partial void InitCompatibilityEarly();
-        /// <summary>Compatibility: Vistas World Gen engine heat overlay.</summary>
-        partial void InitCompatibilityVistas();
-        /// <summary>Compatibility: Apocasaver autosave screen and naming popup.</summary>
-        partial void InitCompatibilityApocasaver();
-        /// <summary>Compatibility: Apocatalker dialogue mirror.</summary>
-        partial void InitCompatibilityTalk();
-        /// <summary>Compatibility: the Apocatalker "Dialogue window" job.</summary>
-        partial void InitCompatibilityDialogueJob();
-        /// <summary>Compatibility: lazy Weapons Pack icons and ChaseCamera install (HUD attachment job).</summary>
-        partial void AttachCompatibility();
-        /// <summary>Compatibility: hides the Apocatalker window on scene load.</summary>
-        partial void SceneLoadedCompatibility();
-        /// <summary>Compatibility: Weapons Pack icon teardown.</summary>
-        partial void ShutdownCompatibilityEarly();
-        /// <summary>Compatibility: Vistas engine overlay teardown.</summary>
-        partial void ShutdownCompatibilityVistas();
-        /// <summary>Compatibility: ChaseCamera and Apocatalker teardown.</summary>
-        partial void ShutdownCompatibilityChase();
-        /// <summary>Compatibility: Apocasaver and Apocapocket teardown.</summary>
-        partial void ShutdownCompatibilityLate();
         /// <summary>Saves: fog-of-war sidecar read at world ready.</summary>
         partial void WorldReadySaves();
 

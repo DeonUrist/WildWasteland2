@@ -3,15 +3,11 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Vehicles
 {
     /// <summary>NPC ram damage rule (Vehicles part of Ram): every car's CarAttack hit on a creature other than the player is scaled by [Vehicles / Combat] NPC ram damage multiplier.</summary>
-    internal static partial class Ram
+    internal static class NativeRamDamage
     {
-        /// <summary>Old Patrols-registered SetFsmFloat.OnEnter postfix; the Vehicles module registers <see cref="ScaleNpcRamDamage"/> instead (no double scaling whoever still subscribes this).</summary>
-        [Obsolete("refactor: the Vehicles module hooks Ram.ScaleNpcRamDamage itself")]
-        internal static void AfterSetFsmFloat(HutongGames.PlayMaker.Actions.SetFsmFloat action) { }
-
         /// <summary>
         /// Postfix of SetFsmFloat.OnEnter (Core.Hooks.SetFsmFloatEnter, every SetFsmFloat entered in the game): scales the native creature hit
         /// after CarAttack wrote it into the target's Bodypart Damage, before CarAttack sends Damage; never changes the shared speed/bumper

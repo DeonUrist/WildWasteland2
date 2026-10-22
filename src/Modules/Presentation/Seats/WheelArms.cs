@@ -43,6 +43,8 @@ namespace WildWasteland.Modules.PlayerBody
         private static float _nextWheel, _nextLog, _towardDriver;
         private static Vector3 _center, _radius;
         private static string _key = "", _name = "", _owner = "off";
+        /// <summary>Current visual seat has an empty removable-wheel mount.</summary>
+        internal static bool MissingWheel=>_removableWheel&&_mount!=null&&FittedWheel(_mount)==null;
         private static Setup _setup;
         private static readonly float[] _top = new float[2];
         private static float _lastSpin;

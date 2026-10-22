@@ -19,7 +19,7 @@ namespace WildWasteland.Modules.Guns
         private static MagazineLedger _ledger = new MagazineLedger();
         private static PlayMakerFSM _reload, _handler, _saveFsm;
         private static GameObject _item;
-        private static string _identity, _type, _snapshot, _saveFile;
+        private static string _identity, _type, _snapshot;
         private static bool _loading = true, _saving, _faulted;
         private static float _scanAt;
         private static readonly List<PlayMakerFSM> _buf = new List<PlayMakerFSM>(64);
@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.Guns
             _ledger = new MagazineLedger();
             _handler = null; _saveFsm = null; _scanAt = 0f;
             Release();
-            _loading = true; _saving = false; _faulted = false; _snapshot = null; _saveFile = null;
+            _loading = true; _saving = false; _faulted = false; _snapshot = null;
         }
 
         /// (WW) [Guns] PerGunMagazines changed at runtime: start from a fresh ledger (as a fresh install would).
@@ -163,7 +163,7 @@ namespace WildWasteland.Modules.Guns
                 ArmorOverflow.Reset();
                 AmmoRunner.Unloader.CancelForLoad();
                 _ledger = new MagazineLedger(); Release();
-                _loading = true; _saving = false; _faulted = false; _snapshot = null; _saveFile = null;
+                _loading = true; _saving = false; _faulted = false; _snapshot = null;
             }
             else if (state == "wait" || state == "SaveGame") BeginSave();
         }

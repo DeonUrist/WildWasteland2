@@ -46,8 +46,6 @@ namespace WildWasteland.Modules.Patrols
         private PatrolMarker _marker;         // the car's marker (attached after the crew on a fresh build: resolved lazily)
         private PlayMakerFSM[] _partDetach;   // the parts' de_Attach FSMs: off while the crew drives, so the wrench cannot take the wheels off
         private bool _locked;                 // the seat lock is on (a live driver holds the car)
-        private readonly System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<FsmFloat, float>> _heat =
-            new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<FsmFloat, float>>();   // engine heat values + originals
         private bool _vacated;                // the crew is gone (dead or bailed): the self-destruct has been scheduled
 
         /// <summary>Returns the retained patrol marker, resolving it once when needed.</summary>
@@ -684,6 +682,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Releases this component runtime registrations and owned native state.</summary>
         private void OnDestroy()
         {
+            Core.ModApi.Get<Core.IVehicleEngineHeat>()?.Hold(_car,false);
             if (_ctl != null && _ctl.Taken) _ctl.Release();
             if (Regroup != null) { var g = Regroup; Regroup = null; CrewReturn.CarLost(g); }
             if (_pilot != null) { _pilot.Detach(); _pilot = null; }

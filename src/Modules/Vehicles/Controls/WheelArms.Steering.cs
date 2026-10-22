@@ -1,32 +1,25 @@
 using NWH.VehiclePhysics2;
+using UnityEngine;
 using WildWasteland.Core;
-
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Vehicles
 {
-    /// <summary>
-    /// Vehicles part of WheelArms (the seat/arms solver is Presentation's): the gameplay rule of the removable steering wheel. While the
-    /// wheel is missing from the player's car, NWH Steering.CalculateSteerAngles sees zero steering input. The forced returnToCenter of the
-    /// player's car is applied by the Vehicles cockpit tick (Car.HoldSteering).
-    /// </summary>
-    internal static partial class WheelArms
+    /// <summary>Owns the native removable-wheel steering rule independently of presentation updates.</summary>
+    internal static class MissingSteeringWheel
     {
-        /// <summary>True while the player's car has a removable steering wheel and none is fitted on its mount.</summary>
-        internal static bool MissingWheel { get { return _removableWheel && _mount != null && FittedWheel(_mount) == null; } }
-
-        /// <summary>Installs the Steering.CalculateSteerAngles prefix (module patch owned by <paramref name="owner"/>).</summary>
-        internal static void PatchSteering(IModule owner)
-        {
-            Patches.Patch(owner, Patches.Method(typeof(Steering), "CalculateSteerAngles"), prefix: Patches.Method(typeof(WheelArms), "BeforeSteer"));
-        }
-
-        /// <summary>
-        /// Prefix of NWH Steering.CalculateSteerAngles (every vehicle, every physics step): zeroes the steering input of the player's car while its
-        /// removable wheel is missing. Early-out: not the player's steering (reference compare) or the wheel is fitted.
-        /// </summary>
+        private static GameObject _car;
+        private static VehicleController _vehicle;
+        /// <summary>Installs the native steering guard under its actual vehicle owner.</summary>
+        internal static void Install(IModule owner){Patches.Patch(owner,Patches.Method(typeof(Steering),"CalculateSteerAngles"),prefix:Patches.Method(typeof(MissingSteeringWheel),"BeforeSteer"));}
+        /// <summary>Prevents native steering only on the player's car with an empty removable-wheel mount.</summary>
         private static void BeforeSteer(Steering __instance)
         {
-            if (!ReferenceEquals(__instance, _steering) || !MissingWheel) return;
-            _vehicle.input.Steering = 0f; // Native steering still owns smoothing and centering, after all keyboard/mouse input writers.
+            var car=PlayerState.Car;if(!ReferenceEquals(car,_car)||_vehicle==null){_car=car;_vehicle=car!=null?car.GetComponent<VehicleController>():null;}
+            if(_vehicle==null||!ReferenceEquals(__instance,_vehicle.steering))return;
+            var mount=__instance.steeringWheel;if(mount==null||mount.name!="hinge_steeringwheel")return;
+            for(int i=0;i<mount.childCount;i++){var part=mount.GetChild(i);if(part.gameObject.activeInHierarchy&&part.CompareTag("vehPart"))return;}
+            _vehicle.input.Steering=0f;
         }
+        /// <summary>Drops native cache references when the world or owner changes.</summary>
+        internal static void Clear(){_car=null;_vehicle=null;}
     }
 }

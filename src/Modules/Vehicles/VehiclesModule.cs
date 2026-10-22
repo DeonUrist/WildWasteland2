@@ -62,7 +62,7 @@ namespace WildWasteland.Modules.Vehicles
             ModApi.Provide<IVehicleHudData>(this, new VehicleHudData());
             // Patrols part (old PatrolsModule.InitInner order): suspension hook, ram damage, motorcycle resolver, War Rig
             Suspension.Hook(this);
-            Hooks.SetFsmFloatEnter.Postfix(this, Ram.ScaleNpcRamDamage);
+            Hooks.SetFsmFloatEnter.Postfix(this, NativeRamDamage.ScaleNpcRamDamage);
             MotorcycleIntegration.Hook(this);
             WarRig.WarRigFeature.Start(this, WarRigDir());
             ExitSpeed.Restore();
@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.Vehicles
             // PlayerBody part (old InitVehicles order): ignition row, MousePickEvent patch, steering patch, ignition job, cockpit tick
             IgnitionControl.Load(Path.Combine(Assets.ModuleConfigDir(Id), "ignition-key.txt"), KeyCode.I);
             Car.Patch(this);
-            WheelArms.PatchSteering(this);
+            MissingSteeringWheel.Install(this);
             _ignitionJob = Scheduler.Interval(this, "Vehicles.Ignition control", .5f, IgnitionControl.Tick);
             Scheduler.EveryFrame(this, "Vehicles.Cockpit", Car.TickCockpit, Phase.Update);
             Hotkeys.Register(this, VehiclesSettings.CassetteKey, NoOp, Never);
@@ -106,10 +106,12 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Undoes every game-state change: ignition row, cockpit state, steering centring, exit speed, War Rig registrations and the shelter.</summary>
         public override void Shutdown()
         {
+            MissingSteeringWheel.Clear();
             Running = false;
             _ignitionJob = null;
             Try("ignition row", IgnitionControl.Remove);
             Try("cockpit", Car.Release);
+            Try("engine heat", VehicleEngineHeat.ReleaseAll);
             Try("vehicle input leases", VehicleDriveApi.ReleaseAll);
             Try("vehicle structure cache", VehicleBuildCache.Reset);
             Try("exit speed", ExitSpeed.Restore);
@@ -128,6 +130,7 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Scene change: per-scene caches of the cockpit, exit speed, War Rig and motorcycle chassis lookups are dropped.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            VehicleEngineHeat.ReleaseAll();
             VehicleDriveApi.ReleaseAll();
             VehicleBuildCache.Reset();
             Car.Reset();
@@ -144,6 +147,7 @@ namespace WildWasteland.Modules.Vehicles
             ModApi.Provide<IVehicleAuthoring>(this,new VehicleAuthoringApi());
             ModApi.Provide<IVehicleAttachments>(this,new VehicleAttachmentsApi());
             ModApi.Provide<IVehicleDrive>(this,new VehicleDriveApi());
+            ModApi.Provide<IVehicleEngineHeat>(this,VehicleEngineHeat.Instance);
             ModApi.Provide<IVehicleAssembly>(this, new VehicleAssemblyApi());
             var ownership = ModApi.Get<IVehicleOwnership>();
             if (ownership != null) ownership.Register(this, this);

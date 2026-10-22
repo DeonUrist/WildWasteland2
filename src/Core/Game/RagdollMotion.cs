@@ -1,16 +1,9 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using ES3Internal;
-using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Core
 {
-    /// <summary>Ragdoll pushes (launch every bone, throw a carcass); Presentation part of Patrol (Wave A split of Patrols Spawning/Patrol.cs).</summary>
-    internal partial class Patrol
+    /// <summary>Native rigidbody ragdoll operations shared by gameplay owners.</summary>
+    internal static class RagdollMotion
     {
         // Gives every bone of a ragdoll the same velocity (a shove), waking it up.
         /// <summary>Gives every non-kinematic bone of a ragdoll the same velocity (a shove), waking it up.</summary>

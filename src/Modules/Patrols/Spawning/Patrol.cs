@@ -590,7 +590,7 @@ namespace WildWasteland.Modules.Patrols
                     foreach (var b in carCols) if (b != null) Physics.IgnoreCollision(a, b, true);   // the carcass is solid; the passenger is all triggers (no pairs needed)
                 }
                 var velocity = left * PatrolsModule.EjectSpeed + Vector3.up * (PatrolsModule.EjectSpeed * 0.5f) - car.transform.forward * 0.5f;
-                Launch(root, velocity);
+                WildWasteland.Core.RagdollMotion.Launch(root, velocity);
                 PatrolsModule.Verbose("Eject: " + root.name + " thrown out of " + car.name + " at " + velocity.magnitude.ToString("0.0") + " m/s ("
                     + joints + " joints, " + jointsToCar + " were attached to the car)");
             }
@@ -753,7 +753,7 @@ namespace WildWasteland.Modules.Patrols
                 var ground = target + Vector3.down * 1.5f;
                 foreach (var h in Physics.RaycastAll(target, Vector3.down, 8f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
                     if (h.collider != null && !h.collider.transform.IsChildOf(transform) && !h.collider.transform.IsChildOf(root) && h.point.y > ground.y) ground = h.point;
-                Patrol.Throw(root, ground + Vector3.up * 0.4f, Vector3.zero);
+                WildWasteland.Core.RagdollMotion.Throw(root, ground + Vector3.up * 0.4f, Vector3.zero);
                 PatrolsModule.Verbose("Eject: " + root.name + " did not get clear in 3 s, put down " + PatrolsModule.EjectDistance + " m left of the seat");
             }
             Done = true;
