@@ -30,6 +30,8 @@ namespace WildWasteland.Core
         void Forget(string poi);
         /// <summary>Requests native structure and POI rediscovery.</summary>
         void Rescan();
+        /// <summary>Registers an editor-created actor with the actual NPC brain before navigation testing.</summary>
+        void NotifyTestSpawn(GameObject actor);
         /// <summary>Canonical POI type normalization.</summary>
         string TypeOf(string rootName);
         /// <summary>Current output file for one authored POI type.</summary>
