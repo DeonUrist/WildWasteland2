@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.NPC
     {
         // (1.4.9) An idle NPC that nobody moves (waiting to go back, standing at home) must not play the run: the game's Movement FSM left in
         // its Run state (the run animation, a forward push every frame) or our own run animation left on -> back to the game's Idle.
+        /// <summary>An idle NPC nobody moves must not play the run: back to the game's Idle state / clip.</summary>
         private static void RunInPlace(Ctl c)
         {
             try

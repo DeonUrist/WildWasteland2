@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.NPC
     internal static partial class Idle
     {
         // [Debug] ShowNavigation: home (green; grey = forgotten), patrol points (lime), search points (violet) and a label above the head
+        /// <summary>ShowNavigation overlay: homes, patrol / search points and a label above each idle controller.</summary>
         internal static void DrawDebug()
         {
             if (!NpcModule.ShowNav.Value || _ctl.Count == 0) return;

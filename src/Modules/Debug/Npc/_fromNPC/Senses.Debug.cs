@@ -17,14 +17,17 @@ namespace WildWasteland.Modules.NPC
     /// <summary>Senses part owned by Debug: the per-agent log line, the status line and the ghost / state world overlay (DrawDebug).</summary>
     internal static partial class Senses
     {
+        /// <summary>Per-agent verbose log line (callers build the text; Wave B guards it by level).</summary>
         private static void Log(Agent a, string s)
         {
             if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Senses: " + a.Owner.name + " " + s);
         }
 
+        /// <summary>Status line for the Debug page and the log.</summary>
         internal static string Status() { return _agents.Count + " NPCs, " + _ghosts.Count + " ghosts"; }
 
         private static readonly Color[] SrcColor = { Color.gray, new Color(0.4f, 0.6f, 1f), new Color(0.4f, 0.9f, 0.4f), new Color(1f, 0.9f, 0.2f), new Color(1f, 0.55f, 0.15f), new Color(1f, 0.3f, 0.9f), new Color(1f, 0.25f, 0.2f) };
+        /// <summary>ShowNavigation overlay: ghosts (by source colour) and each agent's state label.</summary>
         internal static void DrawDebug()
         {
             if (!On || !NpcModule.ShowNav.Value) return;

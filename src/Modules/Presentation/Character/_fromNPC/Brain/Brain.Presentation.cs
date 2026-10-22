@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly Queue<Npc> _rigs = new Queue<Npc>();
         private static int _rigFrame = -1;
 
+        /// <summary>Empties the rig build queue.</summary>
         private static void ClearRigs() { while (_rigs.Count > 0) _rigs.Dequeue().RigQueued = false; _rigFrame = -1; }
 
         // A holding gunman keeps the gun up: the Movement FSM's shooting animation (attack 2 / attack 4: a 0.2-0.6 s clip that starts with the gun
@@ -23,6 +24,7 @@ namespace WildWasteland.Modules.NPC
         // the target (Hold / Rest / in cover / backing up / the hit sidestep) or in a burst; moving after the target = the relaxed low-ready set.
         // Dead, seated (Apocapatrol) or in a melee swing the body is suspended: the game's own clips and the gun back in its own hand.
         private static readonly int GroundProbeMask = ~((1 << 2) | (1 << 4) | (1 << 5) | (1 << 12) | (1 << 13) | (1 << 22));
+        /// <summary>Tells the NPC's character body (ApBody) every frame what the gunman does: crouched, aiming, firing, airborne, target, reloads.</summary>
         private static void Drive(Npc n, string state, float now, float dt)
         {
             var body = n.Body;
@@ -88,6 +90,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // (perf) WeaponOf over the NPC's cached hand bones (scanned again if the skeleton went away)
+        /// <summary>The weapon model in the NPC's hands (cached hand bones).</summary>
         private static Transform HeldWeapon(Npc n)
         {
             var c = n.Hands;
@@ -96,12 +99,14 @@ namespace WildWasteland.Modules.NPC
         }
 
         // (perf) ApBody.HasPoses(WeaponKey), cached per key and re-read once a second (a pose table edited live is seen within 1 s)
+        /// <summary>True when the player has poses for this weapon (cached per key, re-read once a second).</summary>
         private static bool GunPoses(Npc n, float now)
         {
             if (now >= n.GunPosesAt || !ReferenceEquals(n.GunPosesKey, n.WeaponKey)) { n.GunPosesKey = n.WeaponKey; n.GunPoses = ApBody.HasPoses(n.WeaponKey); n.GunPosesAt = now + 1f; }
             return n.GunPoses;
         }
 
+        /// <summary>Freezes the Animator on the first frame of the shooting clip (gun up between bursts).</summary>
         private static void Aim(Npc n)
         {
             if (n.Body != null) return;     // Drive() tells the body every frame
@@ -115,6 +120,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { n.AimState = null; }
         }
 
+        /// <summary>Lets the Animator run again (the burst plays the clip from the start).</summary>
         private static void Unfreeze(Npc n)
         {
             if (!n.Frozen) return;
@@ -124,12 +130,14 @@ namespace WildWasteland.Modules.NPC
         }
 
         // (1.1.1) the sidestep clip for Hit(): left = toward -right
+        /// <summary>Plays the sidestep clip for Hit() (left = toward -right).</summary>
         private static void StrafeClip(Npc n, bool left)
         {
             if (n.Body == null) return;
             n.MakeWayLeft = left; n.Strafing = true;      // Drive() plays the (Fire)Strafe clip while MakeWayUntil lasts
         }
 
+        /// <summary>Kneels / stands the NPC: capsule height and the crouch clip.</summary>
         private static void Crouch(Npc n, bool on)
         {
             if (on == n.Crouched) return;
@@ -156,6 +164,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // (1.2.0) Apocaplayer's ModAPI for this gunman: its Animator (humanoid avatar) animated with the player's clips, its gun in the right hand
+        /// <summary>Queues the NPC for a character rig (Apocaplayer ModAPI body).</summary>
         private static void TryRig(Npc n)
         {
             if (n.Body != null || n.Anim == null || !n.Ranged || Time.time < n.RigTried + 2f) return;
@@ -164,6 +173,7 @@ namespace WildWasteland.Modules.NPC
             n.RigQueued = true; _rigs.Enqueue(n);
         }
 
+        /// <summary>Sliced LateUpdate job: builds one queued rig per frame within the frame budget.</summary>
         internal static bool BuildRig()
         {
             if (!NpcModule.Running || _rigFrame == Time.frameCount || _rigs.Count == 0 || Core.Scheduler.FrameMs >= Core.Scheduler.FrameBudgetMs) return false;
@@ -183,6 +193,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // (1.2.0) a hop over a low lip (the brain's or Idle's): the player's jump on the body (ModAPI: the take-off, held in the air, the landing)
+        /// <summary>A hop over a low lip: the player's jump animation on the NPC body.</summary>
         internal static void HopAnim(GameObject owner)
         {
             var n = Get(owner);

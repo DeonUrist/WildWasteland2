@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.NPC
     internal static partial class DogBite
     {
         // LateUpdate, after the Animator: the lunge on the head / neck bones (and a short jolt of the body)
+        /// <summary>LateUpdate: the procedural lunge on the head / neck bones.</summary>
         internal static void LateTick()
         {
             DogAnimations.LateTick();

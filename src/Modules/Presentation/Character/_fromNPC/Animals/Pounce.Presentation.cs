@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.NPC
     internal static partial class Pounce
     {
         // runs in LateUpdate, after the Animator: in the air the body rears back (nose up, about the feet) - the belly towards the player
+        /// <summary>LateUpdate: an airborne spider rears back (belly towards the player).</summary>
         internal static void LateTick()
         {
             float dt = Time.deltaTime;
@@ -27,6 +28,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // CreateObject.OnEnter postfix: the Health FSM's carcass of a spider that is in the air flies on, reared back and tumbling
+        /// <summary>CreateObject.OnEnter postfix: the carcass of a spider killed mid-leap flies on, reared back and tumbling.</summary>
         public static void AfterCreateObject(CreateObject __instance)
         {
             if (Airborne == 0 || !NpcModule.Running) return;

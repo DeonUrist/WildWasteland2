@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.NPC
     /// <summary>Nav part owned by Debug: NavTrace / NavDump BMP pictures, trace cell texts, the waypoint overlay (DrawDebug) and the status line.</summary>
     internal static partial class Nav
     {
+        /// <summary>Trace text of the last Next call (structure, cells, exit, pick) for the brain's per-second trace line.</summary>
         internal static string TraceInfo()
         {
             var s = _tS;
@@ -27,6 +28,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // the cell of a world point on the map the NPC was traced on ("x,z" or "-")
+        /// <summary>The cell of a world point on the traced map ("x,z" or "-").</summary>
         internal static string CellText(Vector3 p)
         {
             var s = _tS; int x, z;
@@ -34,11 +36,13 @@ namespace WildWasteland.Modules.NPC
             int i = z * s.W + x;
             return x + "," + z + (float.IsNaN(s.FloorY[i]) ? (s.Why != null ? " (" + WhyName(s.Why[i]) + ")" : " (no floor)") : "");
         }
+        /// <summary>Readable name of a no-floor reason byte.</summary>
         private static string WhyName(byte w) { return w == 2 ? "too tight" : w == 3 ? "in rock" : w == 4 ? "why4" : "no floor"; }
 
         // A trace picture: the map, the NPC's area (from where the trace started) tinted, the route the map plans from the start cell to the
         // goal (cyan cells; to the exit when the goal is not reachable), and the NPC's real trail (white = on the map, orange = steering
         // without the map, red = backing up / resting). File <structure>_<x>_<z>_trace_<npc>.bmp
+        /// <summary>Writes a trace picture: the map, the NPC's area, the planned route and the walked trail (BMP).</summary>
         internal static void TraceDump(string who, List<Vector3> trail, List<byte> kinds, Vector3 goal)
         {
             if (trail == null || trail.Count < 2) return;
@@ -75,7 +79,9 @@ namespace WildWasteland.Modules.NPC
         // greenish, under a roof bluish); a walkable cell next to a walkable one more than MaxStep higher or lower: yellow; no floor: black;
         // too tight for a body: red; inside rock: brown. On a "no route" dump: the NPC's reachable area is tinted, the NPC white, the goal
         // magenta, the chosen exit cyan.
+        /// <summary>Writes the map picture without route / trail.</summary>
         private static void Dump(Structure s, string tag, int npc, int goalCell, int exit, float[] area) { Dump(s, tag, npc, goalCell, exit, area, null, null, null); }
+        /// <summary>Writes the map as a BMP (2 px per cell), optionally with the NPC's area, goal, exit, route and trail.</summary>
         private static void Dump(Structure s, string tag, int npc, int goalCell, int exit, float[] area, List<int> route, List<int> trail, List<byte> trailKind)
         {
             try
@@ -156,11 +162,13 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcModule.Log.LogError("Nav: dump failed: " + e.Message); }
         }
 
+        /// <summary>Sets one cell (sc x sc pixels) of the BMP pixel buffer.</summary>
         private static void Paint(byte[] px, int row, int sc, int x, int z, byte r, byte g, byte b)
         {
             for (int dy = 0; dy < sc; dy++) for (int dx = 0; dx < sc; dx++) { int o = (z * sc + dy) * row + (x * sc + dx) * 3; if (o >= 0 && o + 2 < px.Length) { px[o] = b; px[o + 1] = g; px[o + 2] = r; } }
         }
 
+        /// <summary>ShowNavigation overlay: the waypoint each NPC follows and where it came from.</summary>
         internal static void DrawDebug()
         {
             if (!On || !NpcModule.ShowNav.Value) return;
@@ -183,6 +191,7 @@ namespace WildWasteland.Modules.NPC
             foreach (var k in dead) _debug.Remove(k);
         }
 
+        /// <summary>Status line for the Debug page and the log.</summary>
         internal static string Status()
         {
             int b = 0; foreach (var s in _structures) if (s.Baked) b++;

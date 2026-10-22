@@ -12,8 +12,10 @@ namespace WildWasteland.Modules.NPC
     /// <summary>DogAnimations part owned by NPCAI: the attack decisions (reach, start/try attack, dash drive, idle pose timer) and the FSM hooks that gate native damage.</summary>
     internal static partial class DogAnimations
     {
+        /// <summary>Random stand / lie duration between DogIdlePoseMinSeconds and DogIdlePoseMaxSeconds.</summary>
         private static float IdleSpan() { float lo = idleMin != null ? idleMin.Value : 10f, hi = idleMax != null ? Mathf.Max(lo, idleMax.Value) : 25f; return UnityEngine.Random.Range(lo, hi); }
 
+        /// <summary>True when the dog's current target is within bite reach (line of reach checked).</summary>
         private static bool InReach(Dog d, GameObject target)
         {
             if (target == null || !target.activeInHierarchy || d.Agent.Target != target) return false;
@@ -32,6 +34,7 @@ namespace WildWasteland.Modules.NPC
             return d.ReachLine == 1;
         }
         // the target's point nearest origin, once per frame per (target, origin); a new point clears the remembered line of reach
+        /// <summary>The target's point nearest origin, once per frame per (target, origin).</summary>
         private static Vector3 ReachPoint(Dog d, GameObject target, Vector3 origin)
         {
             int frame = UnityEngine.Time.frameCount;
@@ -41,6 +44,7 @@ namespace WildWasteland.Modules.NPC
             d.ReachPoint = col != null ? col.ClosestPoint(origin) : target.transform.position;
             return d.ReachPoint;
         }
+        /// <summary>The collider of the target used for reach (cached per dog).</summary>
         private static Collider TargetCollider(Dog d, GameObject target)
         {
             float now = UnityEngine.Time.time;
@@ -51,9 +55,12 @@ namespace WildWasteland.Modules.NPC
             }
             return d.TargetCol;
         }
+        /// <summary>True when the collider belongs to the target.</summary>
         private static bool IntendedTarget(Collider collider, GameObject target)
         { return collider != null && target != null && (collider.gameObject == target || collider.transform.IsChildOf(target.transform)); }
+        /// <summary>The target's reach point seen from the dog's mouth origin.</summary>
         private static Vector3 TargetPoint(Dog d, GameObject target) { return ReachPoint(d, target, Origin(d)); }
+        /// <summary>True when the native damage may be applied now (reach at contact).</summary>
         private static bool DamageReady(Dog d)
         {
             if (d.Companion != null) return !d.Companion.Riding && d.Companion.TargetAlive(d.Agent.Target);
@@ -69,6 +76,7 @@ namespace WildWasteland.Modules.NPC
             }
             return d.DamageComponent != null && d.DamageComponent.enabled && d.DamageComponent.Fsm != null && d.DamageComponent.Fsm.Initialized && d.DamageComponent.Fsm.ActiveStateName == "trigger";
         }
+        /// <summary>Starts a bite / running bite / jump attack against the Damage FSM's target.</summary>
         private static void StartAttack(Dog d, Fsm damage, bool running)
         {
             d.BiteTarget = d.Agent.Target; d.DamageFsm = damage; d.HitSent = false;
@@ -87,6 +95,7 @@ namespace WildWasteland.Modules.NPC
             d.Drag = d.Body.drag; d.Body.drag = 0f; d.Dashing = true;
             Brain.SetTravel(d.Agent.Owner, true); d.Agent.Travel = true;
         }
+        /// <summary>Tries an attack when the target is in reach and the dog is ready.</summary>
         private static void TryAttack(Dog d)
         {
             var a = d.Agent;
@@ -99,6 +108,7 @@ namespace WildWasteland.Modules.NPC
             if (d.Clips.ContainsKey("MovingBite") && distance <= d.Reach + speed * .22f && Grounded(d) && (distance < .05f || Vector3.Dot(a.T.forward, to / distance) >= .55f))
                 StartAttack(d, damage, true);
         }
+        /// <summary>Moves a dashing (running bite) dog toward its target each frame.</summary>
         private static void DriveDash(Dog d, float dt)
         {
             float seconds = d.Time / Mathf.Max(.01f, d.AttackRate);
@@ -110,6 +120,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 velocity = d.DashDirection * (blocked ? 0f : speed); velocity.y = d.Body.velocity.y;
             d.Agent.T.rotation = Quaternion.LookRotation(d.DashDirection); d.Body.velocity = velocity;
         }
+        /// <summary>Wait.OnEnter prefix: the Damage FSM's wait of a driven dog follows the animation.</summary>
         public static void BeforeDamageWait(Wait __instance)
         {
             if (Dogs.Count == 0 || !NpcModule.Running) return;      // (WW) cheap filter: Wait.OnEnter runs everywhere
@@ -119,6 +130,7 @@ namespace WildWasteland.Modules.NPC
             __instance.time.Value = d.Pose == Pose.RunningBite ? .48f : .32f;
         }
 
+        /// <summary>Fsm.ProcessEvent prefix: native damage events of driven dogs only when the bite really connects.</summary>
         public static bool BeforeDamageEvent(Fsm __instance, FsmEvent fsmEvent, FsmEventData eventData)
         {
             if (Dogs.Count == 0 || !NpcModule.Running) return true;      // (WW) Fsm.ProcessEvent is the hottest method in the game: no dog, no string compare
@@ -147,6 +159,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
+        /// <summary>SetVelocity.DoSetVelocity prefix: held / dashing dogs are moved by this module, not the FSM.</summary>
         public static bool BeforeSetVelocity(SetVelocity __instance)
         {
             if (Dogs.Count == 0 || !NpcModule.Running) return true;

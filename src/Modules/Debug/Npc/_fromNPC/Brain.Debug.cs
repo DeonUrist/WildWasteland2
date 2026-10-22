@@ -10,7 +10,9 @@ namespace WildWasteland.Modules.NPC
     internal static partial class Brain
     {
         // [Debug] NavTrace (NavDump + VerboseLog): a line per moving NPC per second and a picture of its trail when a chase ends / it rests
+        /// <summary>NavTrace on: NavDump and the NPC verbose log are both on.</summary>
         private static bool Tracing { get { return NpcModule.NavDump.Value && NpcModule.VerboseLog.Value; } }
+        /// <summary>Writes a trace picture of the NPC's trail (at most every 15 s per NPC).</summary>
         private static void TraceDump(Npc n, string why)
         {
             if (!Tracing || n.Trail.Count < 2 || Time.time < n.NextTraceDump) return;
@@ -20,6 +22,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // [Debug] BrainLog, at a stuck: what is in front of the body (any layer, triggers too) - names the thing the feelers missed
+        /// <summary>At a stuck (verbose log): logs what is in front of the body (any layer, triggers too).</summary>
         private static void LogAhead(Npc n)
         {
             try
@@ -55,6 +58,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
         }
 
+        /// <summary>Status line for the Debug page and the log.</summary>
         internal static string Status() { return _npcs.Count + " NPCs, " + _active + " engaged, tick " + _interval + " s"; }
     }
 }

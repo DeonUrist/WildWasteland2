@@ -23,7 +23,9 @@ namespace WildWasteland.Modules.NPC
         private static float _nextShout;
 
         // (WW) Core.Hotkeys: [Keys] "Shout" pressed (not while Apocasetter blocks input / time is stopped) and ShoutAllowed()
+        /// <summary>Hotkey predicate of [Keys] Shout: the senses run and the shout modifier is held.</summary>
         internal static bool ShoutAllowed() { return On && ModifierHeld(); }
+        /// <summary>[Keys] Shout pressed: the player's raider shout (voice) and a SHOUT ghost for every hostile NPC within PlayerShoutRange (cooldown ShoutCooldown).</summary>
         internal static void ShoutPressed()
         {
             if (!On || !ModifierHeld()) return;
@@ -44,12 +46,14 @@ namespace WildWasteland.Modules.NPC
 
         // ShoutModifier held (an Alt key stands for either Alt). (WW) read once per frame: the button prefixes ask for every GetButton action.
         private static int _modFrame = -1; private static bool _modHeld;
+        /// <summary>ShoutModifier held this frame (read once per frame).</summary>
         private static bool ModifierHeld()
         {
             int f = Time.frameCount;
             if (f != _modFrame) { _modFrame = f; _modHeld = ReadModifier(); }
             return _modHeld;
         }
+        /// <summary>Reads the modifier key now (an Alt key stands for either Alt).</summary>
         private static bool ReadModifier()
         {
             var m = NpcModule.ShoutModifier.Value;
@@ -64,6 +68,7 @@ namespace WildWasteland.Modules.NPC
 
         // the game's own buttons on the shout key do nothing while the modifier is held (Alt+Q must not kick)
         private static HashSet<string> _blocked; private static string _blockedSrc;
+        /// <summary>True when the game button name is one of ShoutBlocksButtons (cached set).</summary>
         private static bool Blocked(FsmString name)
         {
             // (WW) cheapest first: the module runs and the modifier is held this frame (one keyboard read per frame); then the key checks and the set
@@ -77,18 +82,21 @@ namespace WildWasteland.Modules.NPC
             }
             return _blocked.Contains(name.Value ?? "");
         }
+        /// <summary>GetButton.DoGetButton prefix: the blocked game buttons read as up while the modifier is held.</summary>
         public static bool BeforeGetButton(GetButton __instance)
         {
             try { if (Blocked(__instance.buttonName)) { if (__instance.storeResult != null) __instance.storeResult.Value = false; return false; } }
             catch (Exception) { }
             return true;
         }
+        /// <summary>GetButtonDown.OnUpdate prefix: the blocked game buttons do not fire while the modifier is held.</summary>
         public static bool BeforeGetButtonDown(GetButtonDown __instance)
         {
             try { if (Blocked(__instance.buttonName)) { if (__instance.storeResult != null) __instance.storeResult.Value = false; return false; } }
             catch (Exception) { }
             return true;
         }
+        /// <summary>GetButtonUp.OnUpdate prefix: the blocked game buttons do not fire while the modifier is held.</summary>
         public static bool BeforeGetButtonUp(GetButtonUp __instance)
         {
             try { if (Blocked(__instance.buttonName)) { if (__instance.storeResult != null) __instance.storeResult.Value = false; return false; } }

@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.NPC
     internal static partial class Senses
     {
         // the human Sound FSM's combat shout (Harmony prefix on AudioPlay.OnEnter, FSM "Sound", state "attack")
+        /// <summary>AudioPlay.OnEnter prefix: the human Sound FSM's combat shout plays only as a taunt (Taunt decides).</summary>
         public static bool BeforeAudioPlay(AudioPlay __instance)
         {
             try
@@ -46,6 +47,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
+        /// <summary>A human's taunt: passes its knowledge to friends in TauntRange and tells enemies where it stands.</summary>
         private static void Taunt(Agent t)
         {
             float now = Time.time, range = NpcModule.TauntRange.Value;
@@ -87,6 +89,7 @@ namespace WildWasteland.Modules.NPC
         private static AudioClip[] _voice;
 
         private static AudioSource _voiceSrc;
+        /// <summary>A 2D AudioSource on the camera for the player's shout.</summary>
         private static AudioSource VoiceSource()
         {
             var cam = Core.GameRefs.MainCamera;
@@ -99,6 +102,7 @@ namespace WildWasteland.Modules.NPC
             return _voiceSrc;
         }
 
+        /// <summary>A random raider shout clip for the player's shout (Animation PlayerShout or the Flexa clips).</summary>
         private static AudioClip Voice()
         {
             var animation = Core.Services.Animation;
@@ -130,6 +134,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         private static GameObject _flexaPrefab;
+        /// <summary>The Flexa prefab asset (looked up once).</summary>
         private static GameObject FlexaPrefab()
         {
             if (_flexaPrefab != null) return _flexaPrefab;
@@ -140,6 +145,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         private static float _nextFlexaScan;
+        /// <summary>The enemy_human_single clips of the Flexa Sound FSM.</summary>
         private static AudioClip[] FlexaClips(GameObject flexa)
         {
             foreach (var f in flexa.GetComponents<PlayMakerFSM>())

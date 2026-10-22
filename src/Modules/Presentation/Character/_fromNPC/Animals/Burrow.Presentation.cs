@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.NPC
 
         // runs in LateUpdate, after the Animator: the body (the Rig child) is sunk along the NPC's own up axis.
         // Amount 0..1 = the burrow (the eyes stay up), 1..2 = a hunter's dive (the tail goes under too)
+        /// <summary>LateUpdate: sinks the rig along the NPC's up axis (0..1 burrow, 1..2 a hunter's dive).</summary>
         internal static void LateTick()
         {
             for (int i = 0; i < _list.Count; i++)
@@ -36,6 +37,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- the sand worm's puff and sound, small and quiet ----------
+        /// <summary>Finds the sand worm's Burrower_Effect prefab and its clip (at most once a minute while missing).</summary>
         private static void FindEffect()
         {
             if (_effect != null || Time.time < _nextFind) return;
@@ -61,6 +63,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcModule.Warn("Burrow: effect lookup: " + e.Message); }
         }
 
+        /// <summary>Plays a sand puff and sound at a point (pooled, small scale, low volume).</summary>
         private static void Fx(B b, Vector3 at)
         {
             var cam = Core.GameRefs.MainCamera;
@@ -106,6 +109,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // puffs whose time is up: off, and back to the free list (at most 6 kept; more are destroyed as before)
+        /// <summary>Puffs whose time is up go back to the free list (at most 6 kept).</summary>
         private static void FxRecycle(float now)
         {
             for (int i = _fxLive.Count - 1; i >= 0; i--)

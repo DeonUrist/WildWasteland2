@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.NPC
     {
         // ---------- (1.1.2) magazines ----------
         private static Dictionary<string, int> _mags; private static string _magSrc;
+        /// <summary>Magazine capacity of a weapon model from [NpcAim] MagazineTable (0 = never reloads).</summary>
         internal static int MagazineOf(string weaponKey)
         {
             if (weaponKey == null) return 0;
@@ -30,6 +31,7 @@ namespace WildWasteland.Modules.NPC
 
         // VanillaEvents: one ray of the Damage Ranged burst = one shot; a burst never fires past the magazine (the FSM's own loop counter
         // "multyAttack" is pushed past its limit, so the loop ends after this ray: a single-shot gun fires one ray per burst)
+        /// <summary>One ray of the Damage Ranged burst = one shot; the burst stops at the end of the magazine.</summary>
         internal static void Shot(GameObject owner, Fsm damageRanged)
         {
             var n = Get(owner);
@@ -48,6 +50,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // Aim, before a burst: true = hold fire (reloading, or empty and not yet standing still enough to reload)
+        /// <summary>Before a burst: true = hold fire (reloading, or empty and not yet still enough to reload).</summary>
         internal static bool NeedsReload(GameObject owner)
         {
             var n = Get(owner);

@@ -14,8 +14,10 @@ namespace WildWasteland.Modules.NPC
         // Fallback: the parent of an active muzzle flash ("fire_effect"), or an active crossbow renderer.
         // (perf) the bones / candidates WeaponOf looks at, found once per NPC (the skeleton and the gun models under it do not change; the
         // rig only moves a gun from one hand to the other): hand bones in hierarchy order, muzzle flashes, crossbow renderers
+        /// <summary>Hand bones, muzzle flashes and crossbow renderers of an NPC, found once (the held-weapon lookup).</summary>
         internal sealed class HandCache { public Transform[] Hands, Effects, Bows; }
         private static readonly List<Transform> _hb = new List<Transform>(), _eb = new List<Transform>(), _bb = new List<Transform>();
+        /// <summary>Scans an NPC's hand bones / muzzle flashes / crossbow renderers into a HandCache.</summary>
         internal static HandCache ScanHands(GameObject owner)
         {
             _hb.Clear(); _eb.Clear(); _bb.Clear();
@@ -29,6 +31,7 @@ namespace WildWasteland.Modules.NPC
             return new HandCache { Hands = _hb.ToArray(), Effects = _eb.ToArray(), Bows = _bb.ToArray() };
         }
         // same result as WeaponOf(owner) from the cached lists; null cache, no hand bone or a destroyed bone: the full scan
+        /// <summary>The held weapon model from the cached lists (falls back to the full scan).</summary>
         internal static Transform WeaponOf(GameObject owner, HandCache c)
         {
             if (owner == null) return null;
@@ -48,6 +51,7 @@ namespace WildWasteland.Modules.NPC
                 if (t != null && t.gameObject.activeInHierarchy) return t;
             return null;
         }
+        /// <summary>True when t sits under one of the cached hand bones.</summary>
         internal static bool UnderHand(HandCache c, Transform t)
         {
             if (c == null || c.Hands.Length == 0 || t == null) return true;      // unknown: as before (re-find)
@@ -55,6 +59,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
+        /// <summary>The weapon model the NPC holds now (full scan).</summary>
         internal static Transform WeaponOf(GameObject owner)
         {
             if (owner == null) return null;

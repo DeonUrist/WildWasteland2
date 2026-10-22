@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.NPC
         private static Func<bool> _dustOn, _dustActive;
         private static Func<double, double, double> _dustIntensity;
 
+        /// <summary>Resolves ApocaDustStorm's API by reflection once (only when that mod is loaded).</summary>
         private static void LookForDust()
         {
             _dustLooked = true;
@@ -43,6 +44,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { _dustOn = null; _dustActive = null; _dustIntensity = null; NpcModule.Log.LogWarning("Storm: ApocaDustStorm bridge off: " + e.Message); }
         }
 
+        /// <summary>Switches the dust bridge off after a reflection failure (logged once).</summary>
         private static void DustOff(Exception e)
         {
             _dust = false; _dustOn = null; _dustActive = null; _dustIntensity = null;
