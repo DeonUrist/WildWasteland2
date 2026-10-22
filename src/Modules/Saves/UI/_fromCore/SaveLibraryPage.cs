@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Core.UI;
 
-namespace WildWasteland.Core.UI
+namespace WildWasteland.Modules.Saves
 {
+    /// <summary>Named-save library presentation, owned by Saves and hosted through Core's generic page lifecycle.</summary>
     internal sealed class SaveLibraryPage : ToolPage
     {
         internal static readonly SaveLibraryPage Instance = new SaveLibraryPage();
@@ -20,6 +23,12 @@ namespace WildWasteland.Core.UI
         bool _saving;
         int _kind, _page, _selected = -1;
         SaveLibraryPage() { Title = "SAVES"; }
+        /// <summary>Opens the library in save/load mode from gameplay or an already paused native menu.</summary>
+        internal static void Open(bool saving = false) { Instance.Configure(saving); ToolWindow.Open(Instance, true); }
+        /// <summary>Draws the save library across the full shared settings surface.</summary>
+        public override bool DrawFullPage() { DrawLibrary(); return true; }
+        /// <summary>Releases preview images when the library is hidden.</summary>
+        public override void OnHide() { ReleasePictures(); }
         internal void Configure(bool saving)
         { _saving = saving; _kind = _page = 0; _search = ""; }
         public override void OnShow()
@@ -208,7 +217,7 @@ namespace WildWasteland.Core.UI
             l.Toggle(SaveSystem.Autosave, "Autosave"); l.Entry(SaveSystem.Interval); l.Entry(SaveSystem.Warning); l.Toggle(SaveSystem.WhileDriving, "Autosave while driving");
             l.Toggle(SaveSystem.ExitSave, "Exit save");
             l.Entry(SaveSystem.AutoKeep); l.Entry(SaveSystem.BackupKeep); l.Toggle(SaveSystem.Screenshots, "Save screenshots");
-            if (l.Button("MANAGE SAVES")) ToolWindow.OpenSaves(SaveSystem.LocalWorld);
+            if (l.Button("MANAGE SAVES")) SaveLibraryPage.Open(SaveSystem.LocalWorld);
             if (l.Button("OPEN BACKUPS FOLDER")) OpenBackups();
             l.Heading("Cleanup on successful save");
             l.Text("Off by default. Requires continuous distance from the player. Attached cargo, player custody and uncertain references are protected. Unknown save records are preserved.");

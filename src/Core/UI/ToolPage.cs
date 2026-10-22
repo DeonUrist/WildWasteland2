@@ -37,6 +37,10 @@ namespace WildWasteland.Core.UI
         public bool IsTool;
         /// <summary>Called when the page becomes visible / the window opens.</summary>
         public virtual void OnShow() { }
+        /// <summary>Releases page-owned previews and modal state when the page or window is closed.</summary>
+        public virtual void OnHide() { }
+        /// <summary>Draws a page that owns the entire settings surface; true skips the standard settings layout.</summary>
+        public virtual bool DrawFullPage() { return false; }
         /// <summary>Called every frame while the window is open on this page (before drawing; use for live data).</summary>
         public virtual void Update() { }
         public abstract void Draw(ToolLayout l);

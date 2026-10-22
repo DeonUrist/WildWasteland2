@@ -93,19 +93,19 @@ namespace WildWasteland.Core
             if (!SaveSystem.Installed || fsm == null || ev == null || ev.Name != "Clicked" || fsm.GameObject == null || SinglePlayerSaving.Serializing) return true;
             string name = fsm.GameObject.name;
             if (SaveSystem.LocalReady && fsm.Name == "Continue" && (name.StartsWith("save_game_", StringComparison.Ordinal) || name == "savegame" || name == "Yes_Save" || name == "Save_Game_slots" || name == "Save_Game"))
-            { UI.ToolWindow.OpenSaves(true); return false; }
+            { WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); return false; }
             if (SaveSystem.LocalReady && !_leaving && name == "Yes_Quit")
             {
                 SaveSystem.SaveBeforeExit(() => { _leaving = true; try { fsm.Event("Clicked"); } finally { _leaving = false; } }); return false;
             }
             if (InMainMenu && fsm.Name == "NewGame" && name == "loadgame")
             {
-                if (!SaveSystem.Ready) { UI.ToolWindow.OpenSaves(false); return false; }
+                if (!SaveSystem.Ready) { WildWasteland.Modules.Saves.SaveLibraryPage.Open(false); return false; }
                 var selected = fsm.Variables.FindFsmString("SaveFile");
                 if (selected != null && IsSaveFile(selected.Value)) { SelectedFile = selected.Value; SetActive(selected.Value); }
             }
             if (InMainMenu && fsm.Name == "NewGame" && name == "LoadGameSlots")
-            { UI.ToolWindow.OpenSaves(false); return false; }
+            { WildWasteland.Modules.Saves.SaveLibraryPage.Open(false); return false; }
             // Older native single-file LOAD/Continue buttons also choose the newest published SP snapshot.
             if (InMainMenu && fsm.Name == "NewGame" && name == "LoadGame" && fsm.GameObject.transform.parent != null && fsm.GameObject.transform.parent.name == "MainMenu")
             { var file = Latest(); if (file != null) Launch(file); return false; }
