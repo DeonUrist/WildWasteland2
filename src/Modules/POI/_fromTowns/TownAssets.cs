@@ -19,7 +19,12 @@ namespace WildWasteland.Modules.Towns
         internal TownPopulation.NativeBudget[] Budgets;
         internal string[] Strip = new string[0];   // (WW) a camp's perimeter fences/walls, switched off on town clones
     }
-    internal sealed class TownAssets
+    /// <summary>
+    /// Graph catalog of town building templates (specs, bakes, spawner paths/budgets, camp wall strips, car shells, road input).
+    /// Wave A (A6): POI part of Towns/TownAssets.cs; population pools in NPCAI/Population/_fromTowns/TownAssets.Population.cs.
+    /// Still inline for Wave B: the spawner Budgets capture in Load (Loot, B15) and ColliderBox/Measure/Box bounds code (Core geometry helper, B01).
+    /// </summary>
+    internal sealed partial class TownAssets
     {
         internal readonly Dictionary<string, BuildingAsset> Buildings = new Dictionary<string, BuildingAsset>(StringComparer.Ordinal);
         internal BuildingSpec[] Specs;
@@ -27,8 +32,6 @@ namespace WildWasteland.Modules.Towns
         internal Material PavementMaterial;
         internal Vector2 TextureSize;
         internal string RoadName;
-        internal readonly Dictionary<TownFaction, List<GameObject>> Population = new Dictionary<TownFaction, List<GameObject>>();
-        internal readonly List<GameObject> Hounds = new List<GameObject>();
         internal IOutlet<SplineSys> Roads;
         internal TerrainLayer RoadLayer;
         internal readonly List<GameObject> NativePoiPrefabs = new List<GameObject>();
@@ -37,7 +40,6 @@ namespace WildWasteland.Modules.Towns
         internal readonly List<CarShell> CarShells = new List<CarShell>();
         internal readonly List<Bounds> ShellBounds = new List<Bounds>(); // CarShells order; numeric copy for worker-side dressing/overlay plans
         internal float NavMaxStep = .45f;
-        private readonly Dictionary<GameObject, bool> _bosses = new Dictionary<GameObject, bool>();
         // Root-local AABB of every enabled non-trigger collider under root (inactive prefabs included), composed like Measure.
         internal static bool ColliderBox(Transform root, out Bounds bounds)
         {
@@ -66,13 +68,6 @@ namespace WildWasteland.Modules.Towns
                 }
             }
             return any;
-        }
-        internal bool IsBoss(GameObject prefab)
-        {
-            bool boss; if (_bosses.TryGetValue(prefab, out boss)) return boss;
-            boss = prefab.name.IndexOf("Boss", StringComparison.OrdinalIgnoreCase) >= 0;
-            foreach (var fsm in prefab.GetComponentsInChildren<PlayMakerFSM>(true)) if (fsm.FsmName == "BossUI") { boss = true; break; }
-            _bosses[prefab] = boss; return boss;
         }
         internal void Load(Graph graph, TownSettings settings)
         {
@@ -180,35 +175,6 @@ namespace WildWasteland.Modules.Towns
             StreetMaterial.SetFloat("_Glossiness", road.smoothness); StreetMaterial.SetFloat("_Metallic", road.metallic);
             if (road.normalMapTexture != null) { StreetMaterial.SetTexture("_BumpMap", road.normalMapTexture); StreetMaterial.EnableKeyword("_NORMALMAP"); }
             TextureSize = road.tileSize; RoadName = road.name;
-        }
-        private void CatalogPopulation(GameObject root)
-        {
-            foreach (var proxy in root.GetComponentsInChildren<PlayMakerArrayListProxy>(true))
-                if (proxy.preFillGameObjectList != null) foreach (var prefab in proxy.preFillGameObjectList)
-                {
-                    if (prefab == null || IsBoss(prefab)) continue;
-                    TownFaction faction;
-                    if (prefab.CompareTag("Mutant")) faction = TownFaction.Mutants;
-                    else if (prefab.CompareTag("Carnivore") || prefab.CompareTag("Herbivore")) faction = TownFaction.Animals;
-                    else if (prefab.CompareTag("Scrapyard")) faction = TownFaction.Scrapyard;
-                    else if (prefab.CompareTag("Coyotes")) faction = TownFaction.Coyotes;
-                    else continue;
-                    NativePoiPopulation.Catalog(prefab, faction);
-                    if (faction == TownFaction.Scrapyard || faction == TownFaction.Coyotes)
-                    {
-                        // Keep accompanying Yard Hounds separate so a base cannot roll only dogs.
-                        var animator = prefab.GetComponentInChildren<Animator>(true);
-                        if (animator == null || animator.avatar == null || !animator.avatar.isHuman)
-                        {
-                            if (faction == TownFaction.Scrapyard && prefab.name == "Yard Hound" && !Hounds.Contains(prefab)) Hounds.Add(prefab);
-                            continue;
-                        }
-                    }
-                    if (prefab.name.IndexOf("Boss", StringComparison.OrdinalIgnoreCase) >= 0 || prefab.name.IndexOf("Merchant", StringComparison.OrdinalIgnoreCase) >= 0
-                        || prefab.name.IndexOf("Mechanic", StringComparison.OrdinalIgnoreCase) >= 0) continue;
-                    List<GameObject> pool; if (!Population.TryGetValue(faction, out pool)) Population.Add(faction, pool = new List<GameObject>());
-                    if (!pool.Contains(prefab)) pool.Add(prefab);
-                }
         }
         // (WW) a camp with a merchant (a merchant NPC among its spawn lists or a node named after one)
         private static bool HasMerchant(GameObject camp)
