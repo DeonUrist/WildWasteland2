@@ -10,7 +10,7 @@ namespace WildWasteland.Core
     /// Player queries shared by every module (README 4.2), superset of PlayerBody Game.cs (rig, InCar/Movement/Jump FSMs, Dead,
     /// MoveState, StandingHeight, Velocity, CarRoot, CarFsm, DriveUse), Patrols PlayerRef (Car from InCar.Car with the
     /// DriveTrigger/VehicleController fallbacks, GodMode, ram Target per physics step, Kind) and Quests Game.cs (Player
-    /// transform, UnderPlayer). Weapon/arms/reload queries stay with Gunplay/Presentation.
+    /// transform, UnderPlayer). Feature-specific arm animation and reload behavior stay with Gunplay/Presentation.
     /// Every answer is cached (per frame, per physics step or per owning object) and nothing allocates after the first lookup;
     /// references come from GameRefs and are re-resolved at most once per second while missing and cleared on scene load.
     /// </summary>
@@ -40,7 +40,8 @@ namespace WildWasteland.Core
         static void Resolve()
         {
             if (!_installed) { _installed = true; SceneManager.sceneLoaded += SceneLoaded; }
-            if (_player != null && _inCar != null && _movement != null && _jump != null && _health != null && _camera != null && _cam != null) return;
+            if (_player != null && _inCar != null && _movement != null && _jump != null && _health != null && _camera != null && _cam != null
+                && _weaponsArm != null && _weaponsParent != null && _driveUse != null) return;
             if (Time.unscaledTime < _nextFind) return;
             _nextFind = Time.unscaledTime + 1f;
             if (_player == null || _inCar == null || _movement == null || _jump == null || _health == null)
@@ -79,10 +80,15 @@ namespace WildWasteland.Core
                     _holder = holder.transform;
                     _camera = _holder.Find("PlayerCamera");
                     _cam = _camera != null ? _camera.GetComponent<Camera>() : null;
-                    _weaponsArm = _camera != null ? _camera.Find("WeaponsArm") : null;
-                    _weaponsParent = _weaponsArm != null ? _weaponsArm.Find("Parent") : null;
-                    _driveUse = _camera != null ? FsmUtil.Find(_camera.gameObject, "DriveUse") : null;
+                    _weaponsArm = _weaponsParent = null; _driveUse = null;
                 }
+            }
+            // Native rig children/FSMs can appear after the camera; retry only missing paths on this same throttle.
+            if (_camera != null)
+            {
+                if (_weaponsArm == null) _weaponsArm = _camera.Find("WeaponsArm");
+                if (_weaponsParent == null && _weaponsArm != null) _weaponsParent = _weaponsArm.Find("Parent");
+                if (_driveUse == null) _driveUse = FsmUtil.Find(_camera.gameObject, "DriveUse");
             }
         }
 
