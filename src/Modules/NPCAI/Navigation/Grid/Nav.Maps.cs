@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.NPC
             s.RefY = rootY + t.RefOffset; s.Walkable = t.Walkable; s.Next = n;
             s.LoadedMap = true; s.LoadedVanilla = t.Vanilla; s.MapSource = t.Source; s.LoadedTemplate = true; s.Phase = 2;
             RememberCapturedMap(s);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nav: cloned map " + s.Name + " from memory (" + (t.Vanilla ? "vanilla" : "custom cache") + "); " + t.Source);
+            if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: cloned map " + s.Name + " from memory (" + (t.Vanilla ? "vanilla" : "custom cache") + "); " + t.Source);
             return true;
         }
         internal static void ForgetTemplates(bool vanillaToo)
@@ -98,7 +98,7 @@ namespace WildWasteland.Modules.NPC
             // Yaw and positive scale preserve the horizontal grid and world-sized NPC clearance. Other placements retain the old bake.
             var root = s.Root; var scale = root.lossyScale;
             if (Vector3.Dot(root.up, Vector3.up) < 0.999999f || scale.x <= 0f || scale.y <= 0f || scale.z <= 0f)
-            { NpcModule.Log.LogInfo("Nav: per-instance bake for " + s.Name + " (tilted or mirrored root)"); return; }
+            { if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: per-instance bake for " + s.Name + " (tilted or mirrored root)"); return; }
             for (int i = 0; i < 3; i++) scale[i] = Mathf.Round(scale[i] * 10000f) / 10000f;
             var hash = new MapHash { Value = 14695981039346656037UL };
             string name = root.name; int end = name.IndexOfAny(new[] { '(', ' ' });
@@ -130,7 +130,7 @@ namespace WildWasteland.Modules.NPC
                     size[capsule.direction] = Mathf.Max(capsule.height, capsule.radius * 2f);
                     shape = new Bounds(capsule.center, size); hash.Add((long)capsule.direction);
                 }
-                else { NpcModule.Log.LogInfo("Nav: per-instance bake for " + s.Name + " (unsupported " + c.GetType().Name + ")"); return; }
+                else { if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: per-instance bake for " + s.Name + " (unsupported " + c.GetType().Name + ")"); return; }
                 hash.Add(shape);
                 // Compose local transforms: worldToLocal * localToWorld loses precision far from the floating origin.
                 var matrix = Matrix4x4.identity;
@@ -199,7 +199,7 @@ namespace WildWasteland.Modules.NPC
                     job.Vanilla = false; job.Source = s.MapFile;
                     if (!File.Exists(job.Source))
                     {
-                        CloseMap(s); NpcModule.Log.LogInfo("Nav: map missing " + s.Name + "; baking " + s.MapFile);
+                        CloseMap(s); if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: map missing " + s.Name + "; baking " + s.MapFile);
                         return false;
                     }
                     stream = new FileStream(job.Source, FileMode.Open, FileAccess.Read, FileShare.Read, 16384);
@@ -221,7 +221,7 @@ namespace WildWasteland.Modules.NPC
                 int n = s.W * s.H;
                 if (r.ReadInt32() != n || r.BaseStream.Length - r.BaseStream.Position != n * 7L + 4L) throw new InvalidDataException("invalid map length");
                 s.RefY = s.Root.position.y + job.RefOffset; s.Phase = -1;
-                NpcModule.Log.LogInfo("Nav: loading map " + s.Name + " (" + (job.Vanilla ? "vanilla" : "custom cache") + "); " + job.Source);
+                if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: loading map " + s.Name + " (" + (job.Vanilla ? "vanilla" : "custom cache") + "); " + job.Source);
                 return true;
             }
             catch (Exception e) { bool vanilla = RejectMap(s, e); s.FloorHits.Clear(); return vanilla && OpenMap(s); }
@@ -293,7 +293,7 @@ namespace WildWasteland.Modules.NPC
                 Core.AtomicFile.Replace(job.Temp, s.MapFile);   // (D17) same-directory replace (was File.Replace / File.Move)
                 job.Temp = null; CloseMap(s); s.Phase = 2; s.MapSaved = true;
                 RememberCapturedMap(s);
-                NpcModule.Log.LogInfo("Nav: saved map " + s.Name + ": " + s.W + " x " + s.H + ", " + s.Walkable + " walkable; " + s.MapFile);
+                if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: saved map " + s.Name + ": " + s.W + " x " + s.H + ", " + s.Walkable + " walkable; " + s.MapFile);
             }
             catch (Exception e) { MapWriteFailed(s, e); s.Phase = 2; }
             return true;
@@ -322,12 +322,12 @@ namespace WildWasteland.Modules.NPC
             CloseMap(s);
             if (vanilla) s.SkipVanilla = true; else s.ReplaceMap = true;
             _capturedMapTypes.Remove(HighlightMapName(s.Name));
-            NpcModule.Log.LogWarning("Nav: rejected map " + s.Name + " (" + e.Message + "); " + (vanilla ? "trying custom cache; " : "rebaking; ") + source);
+            WildWasteland.Core.Log.Warn(NavRuntime.Owner, "Nav: rejected map " + s.Name + " (" + e.Message + "); " + (vanilla ? "trying custom cache; " : "rebaking; ") + source);
             return vanilla;
         }
         private static void MapWriteFailed(Structure s, Exception e)
         {
-            CloseMap(s); NpcModule.Log.LogWarning("Nav: could not save map " + s.Name + " (" + e.Message + "); using the live bake");
+            CloseMap(s); WildWasteland.Core.Log.Warn(NavRuntime.Owner, "Nav: could not save map " + s.Name + " (" + e.Message + "); using the live bake");
         }
         private static void CloseMap(Structure s)
         {

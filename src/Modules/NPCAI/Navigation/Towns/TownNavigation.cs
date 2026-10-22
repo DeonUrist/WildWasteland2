@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.Towns
                     int count = TownOverlap.PortalCandidates(building.transform, Scene(_site.Plan.Lots[_lot].EntryNode), _cells, out known, out baked);
                     if (!known) TownBakeBridge.Discover(building);
                     if (!baked) { _retry = Time.unscaledTime + .5f; return false; }
-                    if (count == 0) Log.Warn("[Towns] no walkable cells beside measured entrance for " + building.name);
+                    if (count == 0) Log.Warn(NavRuntime.Owner, "Towns: no walkable cells beside measured entrance for " + building.name);
                     _probeAnchor = _site.Anchor.position; _portalCost = float.PositiveInfinity; _cellIndex = 0;
                 }
                 var lot = _site.Plan.Lots[_lot];
@@ -103,7 +103,7 @@ namespace WildWasteland.Modules.Towns
                 return true;
             }
             Ready = true;
-            Log.Always("[Towns] connected " + _site.Plan.Key + ": " + _site.Plan.LotCount + " separate baked buildings, " + _nodes.Length + " validated street/entrance nodes.");
+            if (Log.L1) Log.Main(NavRuntime.Owner, "Towns: connected " + _site.Plan.Key + ": " + _site.Plan.LotCount + " separate baked buildings, " + _nodes.Length + " validated street/entrance nodes.");
             return false;
         }
         private bool NeedsCast(int a, int b)

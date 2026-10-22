@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.Towns
             if (_bake.Ready)
             {
                 Ready = true;
-                Log.Main(NavRuntime.Owner, "isolated small-tower navigation ready; shared reusable map: " + _bake.MapFile);
+                if (Log.L1) Log.Main(NavRuntime.Owner, "isolated small-tower navigation ready; shared reusable map: " + _bake.MapFile);
                 _bake = null;
             }
             return true;

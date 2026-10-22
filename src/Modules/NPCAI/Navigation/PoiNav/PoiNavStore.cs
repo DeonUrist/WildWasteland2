@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.NPC
                     {
                         if (load.Cancel.IsCancellationRequested) return null;
                         try { if (File.Exists(path)) { var parsed = PoiNavData.Read(File.ReadAllText(path)); parsed.Poi = poi; return parsed; } }
-                        catch (Exception e) { load.Errors.Add("[NPC] POI navigation file " + path + " ignored: " + e.Message); }
+                        catch (Exception e) { load.Errors.Add("POI navigation file " + path + " ignored: " + e.Message); }
                     }
                     return (PoiNavData)null;
                 });
@@ -59,8 +59,8 @@ namespace WildWasteland.Modules.NPC
             }
             if (!job.Work.IsCompleted) return null;
             _loading.Remove(poi);
-            if (job.Work.IsFaulted) { Log.Warn("[NPC] POI navigation load failed: " + poi + ": " + job.Work.Exception.GetBaseException().Message); _cache[poi] = null; return null; }
-            foreach (var error in job.Errors) Log.Warn(error);
+            if (job.Work.IsFaulted) { Log.Warn(NavRuntime.Owner, "POI navigation load failed: " + poi + ": " + job.Work.Exception.GetBaseException().Message); _cache[poi] = null; return null; }
+            foreach (var error in job.Errors) Log.Warn(NavRuntime.Owner, error);
             data = job.Work.Result; _cache[poi] = data; return data;
         }
 
@@ -74,7 +74,7 @@ namespace WildWasteland.Modules.NPC
             foreach (var path in new[] { ConfigPath(poi), Path.Combine(ShippedDir, FileName(poi)) })
             {
                 try { if (File.Exists(path)) { d = PoiNavData.Read(File.ReadAllText(path)); d.Poi = poi; break; } }
-                catch (Exception e) { Log.Warn("[NPC] POI navigation file " + path + " ignored: " + e.Message); }
+                catch (Exception e) { Log.Warn(NavRuntime.Owner, "POI navigation file " + path + " ignored: " + e.Message); }
             }
             _cache[poi] = d;
             Loading pending; if (_loading.TryGetValue(poi, out pending)) { pending.Cancel.Cancel(); _loading.Remove(poi); }

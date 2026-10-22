@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.NPC
                 int c; s = BakedAt(p, out c);
                 if (s != null) { from = c; break; }
             }
-            if (s == null) { NpcModule.Log.LogInfo("Nav: trace of " + who + ": the trail is on no baked map"); return; }
+            if (s == null) { if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: trace of " + who + ": the trail is on no baked map"); return; }
             int gx, gz; bool inside = CellOf(s, goal, out gx, out gz);
             int gc = inside ? NearestWalkable(s, gx, gz, 4) : -1;
             if (inside && gc < 0) inside = false;
@@ -57,7 +57,7 @@ namespace WildWasteland.Modules.NPC
             var tr = new List<int>(); var tk = new List<byte>();
             for (int i = 0; i < trail.Count; i++) { int x, z; if (CellOf(s, trail[i], out x, out z)) { tr.Add(z * s.W + x); tk.Add(kinds[i]); } }
             Dump(s, "trace_" + who.Replace("(Clone)", ""), from, inside ? gc : -1, route.Count > 0 ? route[route.Count - 1] : -1, mine.Dist, route, tr, tk);
-            NpcModule.Log.LogInfo("Nav: trace of " + who + " on " + s.Name + ": start cell " + (from % s.W) + "," + (from / s.W) + ", goal " + (inside ? "cell " + (gc % s.W) + "," + (gc / s.W) : "outside")
+            if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: trace of " + who + " on " + s.Name + ": start cell " + (from % s.W) + "," + (from / s.W) + ", goal " + (inside ? "cell " + (gc % s.W) + "," + (gc / s.W) : "outside")
                 + (route.Count > 0 ? ", map route " + route.Count + " cells" : ", NO map route from the start cell") + ", trail " + trail.Count + " points");
             Return(f); Return(mine);
         }

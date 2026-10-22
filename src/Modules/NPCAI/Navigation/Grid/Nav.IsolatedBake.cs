@@ -104,7 +104,7 @@ namespace WildWasteland.Modules.NPC
                 try
                 {
                     job.Step();
-                    if (job.Ready) { _queued = null; Log.Main(NavRuntime.Owner, "isolated navigation map ready: " + job.MapFile); }
+                    if (job.Ready) { _queued = null; if (Log.L1) Log.Main(NavRuntime.Owner, "isolated navigation map ready: " + job.MapFile); }
                 }
                 catch (Exception e) { _queued = null; job.Release(); Log.Warn(NavRuntime.Owner, "isolated navigation bake failed: " + e.Message); }
             }

@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.NPC
             rb.useGravity = false; rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.Interpolate;
             NoShove(run, true);
             _runs[owner.GetInstanceID()] = run;
-            if (WildWasteland.Core.Log.L2) Log.Info("[NPC] " + owner.name + " was stuck on its POI route: slides " + len.ToString("0.0") + " m along it");
+            if (WildWasteland.Core.Log.L2) Log.Deep(NavRuntime.Owner, "" + owner.name + " was stuck on its POI route: slides " + len.ToString("0.0") + " m along it");
             return true;
         }
         static bool StepGlide(Run r)
@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.NPC
                 run.Anim = ModApi.Get<IAnimationApi>().BeginNpcTraversal(anim, l.Kind == PoiLinkKind.Ladder ? "Ladder" : (run.To.y - run.From.y) > 1.25f ? "ClimbHigh" : "ClimbWaist");
             NoShove(run, true); NoAttack(run, true);
             _runs[owner.GetInstanceID()] = run;
-            if (WildWasteland.Core.Log.L2) Log.Info("[NPC] " + owner.name + " takes the " + l.Kind + " of " + inst.Poi + " (" + (run.To.y - run.From.y).ToString("0.0") + " m)");
+            if (WildWasteland.Core.Log.L2) Log.Deep(NavRuntime.Owner, "" + owner.name + " takes the " + l.Kind + " of " + inst.Poi + " (" + (run.To.y - run.From.y).ToString("0.0") + " m)");
             return true;
         }
 
@@ -210,7 +210,7 @@ namespace WildWasteland.Modules.NPC
                     if (Step(r, dt)) _done.Add(kv.Key);
                     else if (r.L != null && r.L.Kind == PoiLinkKind.Ladder) Services.LadderClimbers.Add(r.Owner.transform.position - Vector3.up * r.Lift);
                 }
-                catch (Exception e) { Log.Error("[NPC] POI traversal", e); _done.Add(kv.Key); }
+                catch (Exception e) { Log.Error(NavRuntime.Owner, "POI traversal", e); _done.Add(kv.Key); }
             }
             foreach (int k in _done) { Run r; if (_runs.TryGetValue(k, out r)) End(r, k); }
         }

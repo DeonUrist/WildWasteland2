@@ -53,7 +53,6 @@ namespace WildWasteland.Modules.Towns
         private static readonly Dictionary<Transform, Nav.Structure> Native = new Dictionary<Transform, Nav.Structure>();
         private static readonly Dictionary<Nav.Structure, TownOverlap> Owners = new Dictionary<Nav.Structure, TownOverlap>();
         private static float _step;
-        private static IModule _ownerModule { get { return NavRuntime.Owner; } }
         private readonly TownSite _site;   // refs-ok: REFACTOR-REQUEST B08-6
         private Grid[] _grids;
         private int _grid, _cell, _phase, _blocked, _edges;
@@ -86,7 +85,7 @@ namespace WildWasteland.Modules.Towns
             if (!TownMarkers.Owns(s.Root)) return true;   // refs-ok: REFACTOR-REQUEST B08-6 (POI town ownership query)
             // A manual rebake here sees neighbouring town geometry through physics. It may be used
             // for this instance, but must never replace a reusable standalone building template.
-            Log.Main(_ownerModule, "instance bake kept in memory; reusable template file preserved."); return false;
+            Log.Main(NavRuntime.Owner, "instance bake kept in memory; reusable template file preserved."); return false;
         }
 
         /// <summary>Remembers the structure made for a town building (the overlay grids read it).</summary>
@@ -159,7 +158,7 @@ namespace WildWasteland.Modules.Towns
                 g.Changed = g.Neighbours.Length > 0 || g.Props;
                 var patch = _planned ? overlay.Lots[g.Lot] : null;
                 if (patch != null && patch.W == g.W && patch.H == g.H && Mathf.Abs(patch.Cell - g.Cell) < .0001f) { g.Patch = patch; g.Changed = patch.Any(_dressing); }
-                else if (patch != null) Log.Warn("[Towns] overlay plan mismatch for " + _site.Plan.Lots[g.Lot].Prefab + " (" + patch.W + "x" + patch.H + " vs " + g.W + "x" + g.H + "); runtime projection used.");
+                else if (patch != null) Log.Warn(NavRuntime.Owner, "Towns: overlay plan mismatch for " + _site.Plan.Lots[g.Lot].Prefab + " (" + patch.W + "x" + patch.H + " vs " + g.W + "x" + g.H + "); runtime projection used.");
             }
             _grids = grids; foreach (var g in grids) Owners[g.Native] = this;
             return true;
@@ -207,7 +206,7 @@ namespace WildWasteland.Modules.Towns
                 // Commit all copies together; native NPC queries never see half-projected maps.
                 foreach (var g in _grids) if (g.Changed) Apply(g);
                 Invalidate(); Ready = true;
-                Log.Always("[Towns] global blockers " + _site.Plan.Key + ": " + _blocked + " cells, " + _edges + " edges shared across " + _grids.Length + " separate baked maps" + (_planned ? " (planned overlay" + (_dressing ? ", with perimeter dressing)" : ")") : " (runtime projection)") + ".");
+                if (Log.L1) Log.Main(NavRuntime.Owner, "Towns: global blockers " + _site.Plan.Key + ": " + _blocked + " cells, " + _edges + " edges shared across " + _grids.Length + " separate baked maps" + (_planned ? " (planned overlay" + (_dressing ? ", with perimeter dressing)" : ")") : " (runtime projection)") + ".");
                 return true;
             }
             var target = _grids[_grid]; int n = target.Floor.Length;
