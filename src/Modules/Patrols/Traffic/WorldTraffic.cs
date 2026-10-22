@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.Patrols
         internal Vector3 LastKnown;
         internal string Detection = "travelling";
 
+        /// <summary>Resolves the accepted journey or encounter destination.</summary>
         internal bool Goal(out Vector3 goal, out float cruise, out bool stop, out bool hunt)
         {
             goal = transform.position; cruise = 0f; stop = true; hunt = false;
@@ -63,10 +64,12 @@ namespace WildWasteland.Modules.Patrols
         partial void SensePlayer(TrafficJourney journey, bool hasPlayer, Vector3 player, GameObject car);
         private bool _detected;
         private float _ignorePlayerUntil;
+        /// <summary>Releases retained player-pursuit intent without changing ordinary route progress.</summary>
         internal void ForgetPlayer() { SeenUntil = 0f; _detected = false; Detection = "travelling"; _ignorePlayerUntil = Time.time + 10f; }
         private PatrolMarker _pm;
         private Rigidbody _rb; private bool _rbKnown;   // the car's root Rigidbody (fixed for the car's life)
 
+        /// <summary>Formats ion rank for the current world traffic.</summary>
         internal static int FormationRank(TrafficJourney journey, int slot)
         {
             if (!journey.convoy) return slot;
@@ -131,21 +134,28 @@ namespace WildWasteland.Modules.Patrols
         private int _generation;
         private float _nextRoadRefresh;
         private int _routeTowns = int.MinValue;
+        /// <summary>Initializes this native component and its runtime registration.</summary>
         private void Awake() { _instance = this; _generation = Patrol.SceneGen; }
+        /// <summary>Finds the exact existing record without creating or rerolling it.</summary>
         internal static TrafficJourney Find(string id)
         { return _instance != null ? _instance._journeys.Find(id) : null; }
+        /// <summary>Checks the current owns condition for world traffic.</summary>
         internal static bool Owns(PatrolMarker marker)
         { return marker != null && marker.GetComponent<TrafficAgent>() != null && PatrolsModule.ConvoyEnabled.Value; }
+        /// <summary>Checks the current combat allowed condition for world traffic.</summary>
         internal static bool CombatAllowed(GameObject car)
         {if(car!=null&&car.GetComponent<PatrolMarker>()?.SetupOnly==true)return false;var a = AgentOf(car); return a == null || a.CanFight; }
+        /// <summary>Finds the current driving agent of the retained journey vehicle.</summary>
         internal static TrafficAgent AgentOf(GameObject car)
         { return car == null ? null : car.GetComponent<TrafficAgent>() ?? car.GetComponent<TrafficPlatform>()?.Owner; }
+        /// <summary>Formats one current runtime diagnostic line for the owning display.</summary>
         internal static string OverlayLine()
         {
             if (_instance == null) return "World traffic: initializing";
             return "World traffic: " + TrafficLocations.Known.Count + " camps, " + _instance._journeys.Count
                 + " groups, " + _instance.RealCars + " cars, " + TrafficRoads.Status + (TrafficLocations.Known.Count < 2 ? " — discovering camps" : "");
         }
+        /// <summary>Clears previous-scene objects and starts a fresh runtime generation.</summary>
         internal static void ResetForScene()
         {
             TrafficLocations.Reset();
@@ -173,6 +183,7 @@ namespace WildWasteland.Modules.Patrols
         {get{int count=0;foreach(var live in _live.Values){count+=live.Reserved;foreach(var car in live.Cars.Values)if(car!=null)count++;}foreach(var battle in _battleLive.Values){count+=battle.Reserved;foreach(var car in battle.Cars.Values)if(car!=null)count++;}return count;}}
 
         // WW: was Update (Update job)
+        /// <summary>WW: was Update (Update job)</summary>
         internal void Tick()
         {
             if (_patrol == null) _patrol = GetComponent<Patrol>();
@@ -196,6 +207,7 @@ namespace WildWasteland.Modules.Patrols
 
         private readonly List<TrafficJourney> _tickJourneys = new List<TrafficJourney>();
         private readonly List<KeyValuePair<int, GameObject>> _tickCars = new List<KeyValuePair<int, GameObject>>();
+        /// <summary>Advances scheduled work under the current save, pause and admission gates.</summary>
         private void Tick(float seconds)
         {
             var player = PlayerRef.Player; if (player == null) return;
@@ -295,7 +307,9 @@ namespace WildWasteland.Modules.Patrols
             Populate(false, Mathf.Min(Mathf.Max(0,PatrolsModule.MaxPatrols.Value-RoamingCap),nearby)); Populate(true, Mathf.Min(PatrolsModule.MaxConvoys.Value,nearby));
         }
 
+        /// <summary>Clears ed for the current world traffic.</summary>
         private static bool Cleared(string id)=>id!=null&&TrafficLocations.Known.TryGetValue(id,out var camp)&&camp.cleared;
+        /// <summary>Excludes cleared origins from the eligible current departure set.</summary>
         private void ExcludeClearedBases()
         {
             foreach(var journey in _journeys.ToArray())
@@ -320,6 +334,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Retires excess virtual population while preserving protected native vehicles.</summary>
         private void TrimPopulation(Transform player)
         {
             if(!TrafficLocations.DiscoveryReady)return; // Preserve saved journeys while lazy camp discovery initializes after load.
@@ -338,6 +353,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Checks the current populate condition for world traffic.</summary>
         private void Populate(bool convoy, int desired)
         {
             if (convoy && TownTravel) { PopulateTownConvoys(); return; }
@@ -383,6 +399,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Refreshes road routes for the current world traffic.</summary>
         private void RefreshRoadRoutes()
         {
             var towns = Core.ModApi.Get<Core.ITownTraffic>();
@@ -439,6 +456,7 @@ namespace WildWasteland.Modules.Patrols
 
         // WW: OnApplicationQuit -> PatrolsModule.Shutdown (ModuleHost.Quit) calls TrafficRoads.Flush()
 
+        /// <summary>WW: OnApplicationQuit -&gt; PatrolsModule.Shutdown (ModuleHost.Quit) calls TrafficRoads.Flush()</summary>
         private static TrafficVehicle Freeze(CarTemplate t)
         {
             var record = new TrafficVehicle { template = t.Name, truck = t.IsTruck, cargoKey = t.SpawnCargoKey,faction=t.Faction,strength=TrafficBattles.Strength(t) };
@@ -472,6 +490,7 @@ namespace WildWasteland.Modules.Patrols
             return record;
         }
 
+        /// <summary>Reconstructs an authored runtime template from its current saved vehicle record.</summary>
         private static CarTemplate Thaw(TrafficVehicle record)
         {
             var t = string.IsNullOrEmpty(record.definition) ? CarTemplate.Find(record.template)?.CloneForSpawn()
@@ -503,6 +522,7 @@ namespace WildWasteland.Modules.Patrols
             return t;
         }
 
+        /// <summary>Builds native representations of the same retained journey roster.</summary>
         private IEnumerator Materialize(TrafficJourney journey, Live live)
         {
             live.Building = true; live.Reserved = journey.vehicles.Count(v => !v.retired);
@@ -557,6 +577,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
         private static void Attach(GameObject car, TrafficJourney journey, int slot)
         {
             var a = car.GetComponent<TrafficAgent>() ?? car.AddComponent<TrafficAgent>();
@@ -571,6 +592,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Attaches pending for the current world traffic.</summary>
         internal static void AttachPending(GameObject car, string id, int slot)
         {
             var journey = Find(id);
@@ -580,6 +602,7 @@ namespace WildWasteland.Modules.Patrols
             Attach(car, journey, slot); // before native save registration, including manual saves during engine startup
         }
 
+        /// <summary>Releases current native driving ownership and its retained runtime association.</summary>
         private static void Detach(GameObject car)
         {
             var marker = car.GetComponent<PatrolMarker>();
@@ -589,6 +612,7 @@ namespace WildWasteland.Modules.Patrols
             Destroy(car.GetComponent<TrafficAgent>());
         }
 
+        /// <summary>Binds restored for the current world traffic.</summary>
         internal static void BindRestored(PatrolMarker marker, bool legacyState = true)
         {
             var journey = Find(marker.TrafficId); if (journey == null || _instance == null) return;
@@ -613,6 +637,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // CrewReturn: the crew is back aboard; the car rejoins its journey when that is still physically represented
+        /// <summary>CrewReturn: the crew is back aboard; the car rejoins its journey when that is still physically represented</summary>
         internal static void Reattach(GameObject car, string id, int slot)
         {
             if (_instance == null || car == null || car.GetComponent<TrafficAgent>() != null || !PatrolsModule.ConvoyEnabled.Value) return;
@@ -623,6 +648,7 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Return to car: " + car.name + " rejoined traffic group " + journey.name);
         }
 
+        /// <summary>Handles a native saved vehicle absent from its retained journey record.</summary>
         internal static void MissingRestored(PatrolCarData car)
         {
             var journey = Find(car.trafficId);
@@ -630,6 +656,7 @@ namespace WildWasteland.Modules.Patrols
                 journey.vehicles[car.trafficSlot].retired = true; // late game load cannot create a second copy
         }
 
+        /// <summary>Captures live native state before continuing the same journey virtually.</summary>
         private void Unload(TrafficJourney journey, Live live)
         {
             if(journey.merchant)journey.waitSeconds=0f;
@@ -654,6 +681,7 @@ namespace WildWasteland.Modules.Patrols
             // Rejoin the current leg from the actual departure point, never teleport back to the pre-encounter point.
         }
 
+        /// <summary>Removes the accepted record and its eligible owned physical representation.</summary>
         private void Remove(TrafficJourney journey)
         {
             if (journey.foot) { RemoveFoot(journey); return; }
@@ -667,6 +695,7 @@ namespace WildWasteland.Modules.Patrols
             _journeys.Remove(journey);
         }
 
+        /// <summary>Persists json for the current world traffic.</summary>
         internal static string SaveJson()
         {
             if (_instance == null) return "";
@@ -679,6 +708,7 @@ namespace WildWasteland.Modules.Patrols
             return TrafficCodec.Write(new TrafficSave { bases = TrafficLocations.Known.Values.ToArray(),pois=TrafficLocations.Points.Values.ToArray(), journeys = _instance._journeys.ToArray(),battles=_instance._battles.ToArray() });
         }
 
+        /// <summary>Restores json for the current world traffic.</summary>
         internal static void RestoreJson(string json)
         {
             if (_instance == null || string.IsNullOrEmpty(json)) return;

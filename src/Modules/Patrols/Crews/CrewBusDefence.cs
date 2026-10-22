@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.Patrols
         private static readonly Collider[] BusThreats=new Collider[48];
         private static readonly RaycastHit[] BusSight=new RaycastHit[24];
 
+        /// <summary>Records a qualifying native vehicle-part attack for crew retaliation.</summary>
         internal static void PartHit(GameObject part,GameObject attacker)
         {
             if(!PatrolsModule.Running||part==null||attacker==null)return;
@@ -41,6 +42,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Finds bus threat for the current crew bus defence.</summary>
         private void FindBusThreat()
         {
             if(Marker.Faction!="Coyotes"||Core.Services.Npc==null)return;
@@ -68,6 +70,7 @@ namespace WildWasteland.Modules.Patrols
             if(best!=null){_combatEnemy=best;_enemyHealth=CrewReturn.HealthVar(best);_attackedAt=Time.time;}
         }
 
+        /// <summary>Refits eligible original wheels after the existing safety and delay gates.</summary>
         private void RepairWheels()
         {
             if(_damagedWheels.Count==0||Core.SaveBus.Busy||Marker.Faction!="Coyotes"||Explode.IsWreck(_car)||Time.time-_wheelHitAt<10f||_rb!=null&&_rb.velocity.sqrMagnitude>1f)return;

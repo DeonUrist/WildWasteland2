@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols
 {
+    /// <summary>Driver ownership and motion phases persisted in the current vehicle record.</summary>
     internal enum CrewPhase { Waiting, Driving, DeadStuck, DeadRolling, Released }
 
     // Lives on the car. Owns the driver: keeps its AI off, drives while it is alive, and keeps the player out of the
@@ -18,6 +19,7 @@ namespace WildWasteland.Modules.Patrols
         private Collider _enterTrigger;       // DriveTrigger SphereCollider = the "press F to drive" trigger
         private Rigidbody _rb;
         private Core.IVehicleInputLease _ctl;
+        private Core.IVehicleDrive _driveProvider;
         private Pilot _pilot;                 // the driving AI while the driver drives and [AI] Enabled
         private static readonly string[] MutedFsms =
             { "Movement", "Unstuck", "Rotate", "Detection", "Attack", "RangedAttackWait", "Damage Ranged", "Codex", "Sound", "Sound2", "Sound3" };
@@ -48,6 +50,7 @@ namespace WildWasteland.Modules.Patrols
             new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<FsmFloat, float>>();   // engine heat values + originals
         private bool _vacated;                // the crew is gone (dead or bailed): the self-destruct has been scheduled
 
+        /// <summary>Returns the retained patrol marker, resolving it once when needed.</summary>
         private PatrolMarker Marker { get { if (_marker == null && _car != null) _marker = _car.GetComponent<PatrolMarker>(); return _marker; } }
 
         // A car built for a convoy waits for Convoy to release the whole group at once (so the group departs together and
@@ -56,6 +59,7 @@ namespace WildWasteland.Modules.Patrols
         internal bool MerchantWaiting;
         internal bool TownParking;
         internal float TownParkedAt;
+        /// <summary>Stops the crew at its accepted exterior town parking destination.</summary>
         internal void ParkForTown()
         {
             if (Marker?.PlayerEntered == true || PlayerRef.PlayerCar == _car) { TownParking = false; return; }
@@ -106,11 +110,15 @@ namespace WildWasteland.Modules.Patrols
         internal bool Regrouping;
         private float _nextRegroup = -1f;
         private float _lastDriverHealth = -1f, _lastPaxHealth = -1f;   // player-hit detection for the awareness handover
+        /// <summary>Returns the current out of fuel used by crew.</summary>
         internal bool OutOfFuel { get { return _outOfFuel; } }
+        /// <summary>Checks the current driver seated alive condition for crew.</summary>
         internal bool DriverSeatedAlive { get { return !_dead && !_done && DriverAlive(); } }
+        /// <summary>Returns the current driving used by crew.</summary>
         internal bool Driving { get { return _driving && !_dead; } }
 
         // CrewReturn: a member is about to be seated as the new driver; Crew starts over like a promoted passenger (FinishPromote)
+        /// <summary>CrewReturn: a member is about to be seated as the new driver; Crew starts over like a promoted passenger (FinishPromote)</summary>
         internal void PrepareReboard()
         {
             if (_pilot != null) { _pilot.Detach(); _pilot = null; }
@@ -120,13 +128,16 @@ namespace WildWasteland.Modules.Patrols
             _delayOverride = PatrolsModule.TakeoverSeconds;
         }
         // the new driver could not be seated: an empty car again
+        /// <summary>the new driver could not be seated: an empty car again</summary>
         internal void MarkVacant() { _dead = true; _done = true; _driving = false; _driver = null; _health = null; _healthVar = null; SeatLocked(false); }
         // every living member is aboard (or the regroup gave up on the rest): the car carries on
+        /// <summary>every living member is aboard (or the regroup gave up on the rest): the car carries on</summary>
         internal void FinishReboard(bool newDriver)
         {
             Regrouping = false; Release();
             if (newDriver) { _seated = 0f; Revive(); }
         }
+        /// <summary>Checks retained driver health and reacts once to a qualifying hit.</summary>
         private void HitCheck()
         {
             var mk = Marker; if (mk == null) return;
@@ -136,6 +147,7 @@ namespace WildWasteland.Modules.Patrols
             _lastDriverHealth = d; _lastPaxHealth = p;
         }
 
+        /// <summary>Checks the current wait for merchant condition for crew.</summary>
         internal void WaitForMerchant(bool waiting)
         {
             if (MerchantWaiting == waiting) return;
@@ -145,6 +157,7 @@ namespace WildWasteland.Modules.Patrols
             else if (!_dead && !_done && !Hold) Revive();
         }
 
+        /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
         internal static Crew Attach(GameObject car, GameObject driver)
         {
             var c = car.GetComponent<Crew>() ?? car.AddComponent<Crew>();
@@ -152,6 +165,7 @@ namespace WildWasteland.Modules.Patrols
             return c;
         }
 
+        /// <summary>Initializes native references and retained runtime state before scheduled work starts.</summary>
         private void Init(GameObject car, GameObject driver)
         {
             _car = car; _driver = driver;
@@ -167,7 +181,8 @@ namespace WildWasteland.Modules.Patrols
             var dt = Patrol.FindChild(car.transform, "DriveTrigger");
             if (dt != null) _enterTrigger = dt.GetComponents<Collider>().FirstOrDefault(c => c is SphereCollider);
             if (_ctl != null && _ctl.Taken) _ctl.Release();
-            _ctl = Core.ModApi.Get<Core.IVehicleDrive>()?.InputLease(car);
+            _driveProvider=Core.ModApi.Get<Core.IVehicleDrive>();
+            _ctl = _driveProvider?.InputLease(car);
             _partDetach = fsms.Where(f => f.FsmName == "de_Attach").ToArray();
 
             // nobody else drives while the driver lives: no enter trigger (no F prompt), no Drive FSM (Activate events are ignored).
@@ -178,6 +193,7 @@ namespace WildWasteland.Modules.Patrols
                 + (_enterTrigger != null ? "" : " (no enter trigger found!)") + (_drive != null ? "" : " (no Drive FSM found!)"));
         }
 
+        /// <summary>Rebinds recorded state to native objects without rerolling authored outcomes.</summary>
         internal static Crew Restore(GameObject car, GameObject driver, CrewPhase phase, float seated)
         {
             var c = car.GetComponent<Crew>() ?? car.AddComponent<Crew>();
@@ -207,6 +223,7 @@ namespace WildWasteland.Modules.Patrols
 
         // After a save load: the car comes back with its handbrake FSM in its start state (on) and the START FSM off.
         // Same start-up as a fresh build, once the car's FSMs are initialized. Safe to call more than once.
+        /// <summary>After a save load: the car comes back with its handbrake FSM in its start state (on) and the START FSM off. Same start-up as a fresh build, once the car's FSMs are initialized. Safe to call more than once.</summary>
         internal void Revive()
         {
             if (_revived || _done || MerchantWaiting || Marker?.SetupOnly==true || Explode.IsWreck(_car)) return;
@@ -215,6 +232,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // The native load already restored all parts/fluids. Prepare ownership while its loading screen still holds time at zero.
+        /// <summary>The native load already restored all parts/fluids. Prepare ownership while its loading screen still holds time at zero.</summary>
         internal IEnumerator PrepareLoaded()
         {
             if (_done || _dead || Hold || MerchantWaiting || Marker?.SetupOnly == true || Explode.IsWreck(_car)) yield break;
@@ -235,6 +253,7 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Load AI prepared: " + _car.name + "; pilot attached, native parts/fluids unchanged");
         }
 
+        /// <summary>Restores native ignition and driver control through the saved vehicle startup sequence.</summary>
         private IEnumerator ReviveRoutine()
         {
             float until = Time.realtimeSinceStartup + 5f;
@@ -254,7 +273,9 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Crew: revived " + _car.name + " after load: engine running " + Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(_car) + ", handbrake released, " + Core.ModApi.Get<Core.IVehicleDrive>().Diag(_car));
         }
 
+        /// <summary>Returns the current driver used by crew.</summary>
         internal GameObject Driver { get { return _driver; } }
+        /// <summary>Returns the current seated seconds used by crew.</summary>
         internal float SeatedSeconds { get { return _seated; } }
         // a live driver, or a live passenger still in the car
         internal bool CrewAlive
@@ -279,6 +300,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Nobody enters and nothing comes off while the driver lives: the enter trigger, the Drive FSM and the parts' de_Attach FSMs
         // (the wrench sends de_Attach to the part; a disabled FSM ignores it) are off together.
+        /// <summary>Nobody enters and nothing comes off while the driver lives: the enter trigger, the Drive FSM and the parts' de_Attach FSMs (the wrench sends de_Attach to the part; a disabled FSM ignores it) are off together.</summary>
         private void SeatLocked(bool locked)
         {
             _locked = locked;
@@ -291,6 +313,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // The car is fully vacated: the crew is dead or got out. With SelfDestructingCars the car explodes shortly after.
+        /// <summary>The car is fully vacated: the crew is dead or got out. With SelfDestructingCars the car explodes shortly after.</summary>
         private void Vacated(string why)
         {
             if (_vacated) return;
@@ -301,6 +324,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // the car blew up: nothing drives it any more
+        /// <summary>the car blew up: nothing drives it any more</summary>
         internal void OnExploded()
         {
             if (_pilot != null) { _pilot.Detach(); _pilot = null; }
@@ -310,6 +334,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // healthVar: the FSM's Health variable, resolved once by the caller and kept (GetFsmFloat is a name search every call)
+        /// <summary>healthVar: the FSM's Health variable, resolved once by the caller and kept (GetFsmFloat is a name search every call)</summary>
         private static bool Alive(GameObject who, PlayMakerFSM health, ref FsmFloat healthVar)
         {
             if (who == null) return false;                           // Health FSM destroyed it (carcass spawned)
@@ -322,8 +347,17 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>Rebinds the reversible input lease after the actual Vehicles provider restarts.</summary>
+        private void RefreshDrivingProvider()
+        {
+            var provider=Core.ModApi.Get<Core.IVehicleDrive>();if(ReferenceEquals(provider,_driveProvider))return;
+            if(_ctl!=null)_ctl.Release();_driveProvider=provider;_ctl=provider?.InputLease(_car);
+            if(_ctl!=null&&_driving&&!_dead&&!_done)_ctl.Take();
+        }
+        /// <summary>Advances this component during gameplay under its timing and lifecycle guards.</summary>
         private void Update()
         { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null || Core.ModApi.Get<Core.IVehicleAttachments>()==null) return;
+            RefreshDrivingProvider();
             if (_car == null) { Destroy(this); return; }
             if (Time.timeScale <= 0f) return;
             if(CombatTick())return;
@@ -390,6 +424,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Once a second: a dry tank while the car stands (driving, or restored/waiting with a dead engine) = stuck for good.
         // StuckBailChance decides whether the crew gets out; otherwise it sits in the dead car. Returns true when it fired.
+        /// <summary>Once a second: a dry tank while the car stands (driving, or restored/waiting with a dead engine) = stuck for good. StuckBailChance decides whether the crew gets out; otherwise it sits in the dead car. Returns true when it fired.</summary>
         private bool CheckDry()
         {
             if(EventBudget.IsConvoy(_car)){_dryFor=0f;return false;}
@@ -409,6 +444,7 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>Checks the current handbrake on condition for crew.</summary>
         private bool HandbrakeOn()
         {
             if (_handbrake == null || !_handbrake.Fsm.Initialized) return false;
@@ -417,11 +453,14 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // convoy: every car of the group is released together
+        /// <summary>convoy: every car of the group is released together</summary>
         internal void Release() { Hold = false; }
 
         // NWH samples its input on the physics step, so the inputs are written here, not in Update.
+        /// <summary>NWH samples its input on the physics step, so the inputs are written here, not in Update.</summary>
         private void FixedUpdate()
         { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null || Core.ModApi.Get<Core.IVehicleAttachments>()==null) return;
+            RefreshDrivingProvider();
             if (_car == null || _done || Time.timeScale <= 0f || Marker?.SetupOnly==true) return;
             if (TownParking && Marker?.PlayerEntered != true && PlayerRef.PlayerCar != _car) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
             if (Regrouping) { if (!_dead && _driving) Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); return; }   // waiting for the crew to get back in
@@ -438,6 +477,7 @@ namespace WildWasteland.Modules.Patrols
             Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, _stuck ? PatrolsModule.AiThrottle.Value : 0f, 0f, paxAboard ? 1f : 0f);
         }
 
+        /// <summary>Checks the current pax aboard condition for crew.</summary>
         private bool PaxAboard()
         {
             var mk = Marker;
@@ -446,8 +486,10 @@ namespace WildWasteland.Modules.Patrols
 
         private const float PassengerActAfter = 4f;   // a surviving passenger acts this long after the driver's death, whatever the car does
 
+        /// <summary>Checks the current driver alive condition for crew.</summary>
         private bool DriverAlive() { return Alive(_driver, _health, ref _healthVar); }
 
+        /// <summary>Checks the current passenger alive condition for crew.</summary>
         private static bool PassengerAlive(PatrolMarker marker, GameObject pax) { return marker != null && Alive(pax, marker.PassengerHealthFsm, ref marker.PassengerHealthVar); }
 
         // ------------------------------------------------------------ the surviving passenger
@@ -455,6 +497,7 @@ namespace WildWasteland.Modules.Patrols
         // After the driver's death a live passenger either takes the wheel or bails out (BailChance %), as soon as the car
         // stands still. A stuck pedal is kicked off after StuckPedalTakeover seconds so the car can stop. If the player took
         // the car first, the passenger always gets out. Returns true while it handled the frame.
+        /// <summary>After the driver's death a live passenger either takes the wheel or bails out (BailChance %), as soon as the car stands still. A stuck pedal is kicked off after StuckPedalTakeover seconds so the car can stop. If the player took the car first, the passenger always gets out. Returns true while it handled the frame.</summary>
         private bool PassengerReacts()
         {
             var marker = Marker;
@@ -506,6 +549,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Step 1: throw the dead driver out; the climb-over follows once the carcass is clear (or right away if there is none).
+        /// <summary>Step 1: throw the dead driver out; the climb-over follows once the carcass is clear (or right away if there is none).</summary>
         private void Promote(GameObject pax, PatrolMarker marker)
         {
             _eject = Patrol.EjectCorpses(_car, pax);
@@ -516,6 +560,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Called by the Pilot when it gives up (MaxRecovers reached). With [Driver] StuckBailChance the whole crew gets out
         // instead of waiting: the car is left standing as an ordinary vehicle. Returns true if the crew left.
+        /// <summary>Called by the Pilot when it gives up (MaxRecovers reached). With [Driver] StuckBailChance the whole crew gets out instead of waiting: the car is left standing as an ordinary vehicle. Returns true if the crew left.</summary>
         internal bool OnStuck()
         {
             if (_dead || _done) return false;
@@ -524,6 +569,7 @@ namespace WildWasteland.Modules.Patrols
             return ExitCrew(true);
         }
 
+        /// <summary>Checks the current exit crew condition for crew.</summary>
         private bool ExitCrew(bool stuck)
         {
             var marker = Marker;
@@ -553,6 +599,7 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>Checks the current bail after condition for crew.</summary>
         private IEnumerator BailAfter(float wait, PatrolMarker marker, GameObject pax, GameObject driver,bool combat=false)
         {
             if (wait > 0f) yield return new WaitForSeconds(wait);
@@ -567,6 +614,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Step 2: the passenger climbs onto the driver seat and Crew starts over with it as the driver.
+        /// <summary>Step 2: the passenger climbs onto the driver seat and Crew starts over with it as the driver.</summary>
         private void FinishPromote(GameObject pax, PatrolMarker marker)
         {
             if (_ctl != null && _ctl.Taken) _ctl.Release();
@@ -585,11 +633,13 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Crew: " + drv.name + " took the wheel, " + "drives off in " + _delayOverride + " s" + "; car " + Speed() + " km/h, " + Core.ModApi.Get<Core.IVehicleDrive>().Diag(_car));
         }
 
+        /// <summary>Checks the current player inside condition for crew.</summary>
         private bool PlayerInside()
         {
             return _drive != null && _drive.Fsm.Initialized && _drive.ActiveStateName == "inCar";
         }
 
+        /// <summary>Starts driving for the current crew.</summary>
         private void StartDriving()
         {
             _driving = true;
@@ -598,6 +648,7 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Crew: driver drives off at " + Speed() + " km/h, " + Core.ModApi.Get<Core.IVehicleDrive>().Diag(_car));
         }
 
+        /// <summary>Handles the qualifying native event for driver died for the current crew.</summary>
         private void OnDriverDied()
         {
             var marker=Marker;
@@ -630,6 +681,7 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Crew: driver died at " + Speed() + " km/h - gas released, rolling out, seat free");
         }
 
+        /// <summary>Releases this component runtime registrations and owned native state.</summary>
         private void OnDestroy()
         {
             if (_ctl != null && _ctl.Taken) _ctl.Release();
@@ -637,6 +689,7 @@ namespace WildWasteland.Modules.Patrols
             if (_pilot != null) { _pilot.Detach(); _pilot = null; }
         }
 
+        /// <summary>Reads current speed for the accepted control or diagnostic operation.</summary>
         private string Speed() { return _rb != null ? (_rb.velocity.magnitude * 3.6f).ToString("0.0") : "?"; }
     }
 }

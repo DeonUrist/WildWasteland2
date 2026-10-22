@@ -7,7 +7,9 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Exposes asynchronous road planning through pollable results and owner-scoped main-thread route hints.</summary>
     internal sealed class VehicleRoutingApi : IVehicleRouting
     {
+        /// <summary>One owner-scoped numeric route hint contribution.</summary>
         private sealed class Hint { internal int Id,Order,Revision; internal IModule Owner;internal IRouteHintProvider Provider; }
+        /// <summary>One bounded cached asynchronous route request.</summary>
         private sealed class Query { internal Vector3 From,To;internal int Revision;internal RoadJob Job; }
         private static readonly List<Hint> Hints=new List<Hint>();
         private readonly List<Query> _queries=new List<Query>();

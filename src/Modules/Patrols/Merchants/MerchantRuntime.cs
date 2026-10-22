@@ -9,16 +9,21 @@ namespace WildWasteland.Modules.Patrols
 {
     internal static class MerchantRuntime
     {
+        /// <summary>Materializes template for the current merchant runtime.</summary>
         internal static void SpawnTemplate(Patrol patrol,CarTemplate source,SpawnGroup group)
         {if(source==null||!CrewFactions.Compatible(source,(group??MerchantCatalog.DefaultGroup()).Faction))return;group=group??MerchantCatalog.DefaultGroup();if(WorldTraffic.MerchantTypeInUse(MerchantCatalog.Selected(group.MerchantTypes))){Core.Log.Warn("[Patrols] " + "That merchant type already exists; remove its current bus before spawning another.");return;}var copy=source.CloneForSpawn();Configure(copy,group);copy.SetupOnly=true;patrol.Spawn(copy);}
+        /// <summary>Binds the accepted authored merchant identity and native stock settings.</summary>
         internal static void Configure(CarTemplate template,SpawnGroup group)
         {template.Faction=TrafficFactions.Normalize(group.Faction);template.MerchantGroup=group.Name;template.MerchantTypes=MerchantCatalog.Selection(group.MerchantTypes);template.SpawnLoot=new Dictionary<string,int>();template.LootPreset="car-empty";template.ReleaseHandbrake=false;template.ConvoyMember=true;}
+        /// <summary>Materializes group for the current merchant runtime.</summary>
         internal static void SpawnGroup(Patrol patrol,SpawnGroup group)
         {
             WorldTraffic.DebugDeparture(group,2);
         }
+        /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
         internal static void Attach(GameObject car,CarTemplate template)
         {if(template.MerchantTypes==null||template.MerchantTypes.Length==0)return;var host=car.GetComponent<MerchantHost>()??car.AddComponent<MerchantHost>();host.Data=!string.IsNullOrEmpty(template.MerchantSaveJson)?TrafficCodec.ReadRecord<MerchantSave>(template.MerchantSaveJson):null;host.Data=host.Data??new MerchantSave{template=template.Name,group=template.MerchantGroup,types=MerchantCatalog.Selection(template.MerchantTypes),travelling=template.MerchantTravelling};host.Park();}
+        /// <summary>Rebinds recorded state to native objects without rerolling authored outcomes.</summary>
         internal static void Restore(GameObject car,string json)
         {
             if(string.IsNullOrEmpty(json))return;var data=TrafficCodec.ReadRecord<MerchantSave>(json);
@@ -43,11 +48,14 @@ namespace WildWasteland.Modules.Patrols
         private readonly List<GameObject> _probes=new List<GameObject>();
         private Transform _root;private float _next;private Collider[] _chassis;internal bool Ready;
         private PlayMakerFSM _start;
+        /// <summary>Registers this component in its active runtime collection.</summary>
         private void OnEnable(){All.Add(this);}
+        /// <summary>Releases this component runtime registrations and owned native state.</summary>
         private void OnDestroy(){All.Remove(this);foreach(var pair in _stock)if(pair.Value!=null&&!pair.Key.purchased)Register.RemoveTree(pair.Value);}
         // Perf: marker / crew / handbrake FSM resolved once (re-resolved while missing); was GetComponent x2 + a whole-bus
         // GetComponentsInChildren<PlayMakerFSM> per Park (2/s). Park still re-asserts every call (ignition off, handbrake, inputs).
         private PatrolMarker _marker;private Crew _crew;private PlayMakerFSM _handbrake;private float _handbrakeSearch=-1f;
+        /// <summary>Stops the native merchant vehicle in its accepted waiting state.</summary>
         internal void Park()
         {
             if(_marker==null)_marker=GetComponent<PatrolMarker>();if(_crew==null)_crew=GetComponent<Crew>();
@@ -63,6 +71,7 @@ namespace WildWasteland.Modules.Patrols
             if(_handbrake==null&&Time.unscaledTime>=_handbrakeSearch){_handbrakeSearch=Time.unscaledTime+5f;_handbrake=Patrol.FindFsm(gameObject,"handbrake","Handbrake");}
             Core.ModApi.Get<Core.IVehicleDrive>().SetInput(gameObject,0f,0f,1f);Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(gameObject,1f);Patrol.Handbrake(gameObject,true,_handbrake);
         }
+        /// <summary>Resolves native references after the component enters the loaded scene.</summary>
         private IEnumerator Start()
         {
             if(Data==null){Destroy(this);yield break;}Park();
@@ -132,7 +141,9 @@ namespace WildWasteland.Modules.Patrols
             Park();Ready=true;
             MerchantGuards.Restore(this);
         }
+        /// <summary>Resolves the actual native owner of the current runtime object.</summary>
         private static FsmOwnerDefault Owner(GameObject who)=>new FsmOwnerDefault{OwnerOption=OwnerDefaultOption.SpecifyGameObject,GameObject=new FsmGameObject{Value=who}};
+        /// <summary>Creates one owned native merchant stock observation probe.</summary>
         internal GameObject CreateProbe(GameObject prefab)
         {
             if(prefab==null)return null;
@@ -147,22 +158,29 @@ namespace WildWasteland.Modules.Patrols
             probe.transform.SetParent(_root,false);probe.transform.localPosition=Vector3.zero;probe.SetActive(true);
             _probes.Add(probe);return probe;
         }
+        /// <summary>Removes owned native merchant observation probes.</summary>
         private void CleanProbes()
         {
             if(_probes.Count==0||_lists.Any(f=>f!=null&&f.ActiveStateName!="done"))return;
             foreach(var probe in _probes)if(probe!=null){Register.RemoveTree(probe);Destroy(probe);}
             _probes.Clear();
         }
+        /// <summary>Initializes native references and retained runtime state before scheduled work starts.</summary>
         private static void Init(PlayMakerFSM f){f.Fsm.InitData();f.Fsm.Preprocess(f);f.Fsm.Init(f);f.enabled=true;}
+        /// <summary>Resolves the current merchant placement anchor on its native vehicle.</summary>
         private static Transform Anchor(Transform parent,string name){var node=new GameObject(name).transform;node.SetParent(parent,false);return node;}
+        /// <summary>Returns the current add used by merchant runtime.</summary>
         private void Add(string id,string label,string kind,Transform node)=>Objects.Add(new MerchantObject{Id=id,Label=label,Kind=kind,Transform=node});
+        /// <summary>Sets demand for the current merchant runtime.</summary>
         private static void SetDemand(PlayMakerFSM list,MerchantDemand demand)
         {
             list.FsmVariables.FindFsmArray("ItemNameArray").Values=demand.names.Cast<object>().ToArray();list.FsmVariables.FindFsmArray("ItemPriceArray").Values=demand.prices.Cast<object>().ToArray();
             var names=list.transform.GetComponentsInChildren<Transform>(true).FirstOrDefault(t=>t.name=="item_list");var prices=list.transform.GetComponentsInChildren<Transform>(true).FirstOrDefault(t=>t.name=="price_list");
             for(int i=0;i<demand.names.Length;i++){if(names!=null&&i<names.childCount)Text(names.GetChild(i),demand.names[i]);if(prices!=null&&i<prices.childCount)Text(prices.GetChild(i),demand.prices[i].ToString());}
         }
+        /// <summary>Reads or formats current native merchant display text.</summary>
         private static void Text(Transform node,string text){var component=node.GetComponents<Component>().FirstOrDefault(c=>c!=null&&c.GetType().Name=="TextMeshPro");component?.GetType().GetProperty("text")?.SetValue(component,text,null);}
+        /// <summary>Advances this component during gameplay under its timing and lifecycle guards.</summary>
         private void Update()
         { if (!PatrolsModule.Running) return;
             if(Time.time<_next||Data==null)return;_next=Time.time+0.5f;Park();
@@ -172,9 +190,11 @@ namespace WildWasteland.Modules.Patrols
             CleanProbes();
         }
         // Perf: each stock item's ForBuy / Value / Buyable FSMs found once per item (was GetComponents + LINQ x3 per item, 2/s)
+        /// <summary>Perf: each stock item's ForBuy / Value / Buyable FSMs found once per item (was GetComponents + LINQ x3 per item, 2/s)</summary>
         private sealed class ItemFsms{internal GameObject Item;internal PlayMakerFSM Buy,Value,Buyable;}
         private readonly Dictionary<MerchantStock,ItemFsms> _itemFsms=new Dictionary<MerchantStock,ItemFsms>();
         private static readonly List<PlayMakerFSM> _fs=new List<PlayMakerFSM>();
+        /// <summary>Resolves current native FSMs of the supplied merchant object.</summary>
         private ItemFsms FsmsOf(MerchantStock record,GameObject item)
         {
             if(_itemFsms.TryGetValue(record,out var c)&&ReferenceEquals(c.Item,item))return c;
@@ -182,6 +202,7 @@ namespace WildWasteland.Modules.Patrols
             foreach(var f in _fs){if(f==null)continue;if(c.Buy==null&&f.FsmName=="ForBuy")c.Buy=f;else if(c.Value==null&&f.FsmName=="Value")c.Value=f;else if(c.Buyable==null&&f.FsmName=="Buyable")c.Buyable=f;}
             _fs.Clear();_itemFsms[record]=c;return c;
         }
+        /// <summary>Observes stock for the current merchant runtime.</summary>
         private void ObserveStock(bool trading)
         {
             foreach(var pair in _stock)
@@ -193,6 +214,7 @@ namespace WildWasteland.Modules.Patrols
                 var buyable=fsms.Buyable;if(buyable!=null&&buyable.enabled!=trading)buyable.enabled=trading;
             }
         }
+        /// <summary>Copies current native state into a detached record.</summary>
         internal string Snapshot()
         {
             MerchantGuards.Capture(this);
@@ -205,6 +227,7 @@ namespace WildWasteland.Modules.Patrols
     {
         public FsmGameObject source,store;
         public MerchantHost host;
+        /// <summary>Handles the qualifying native event for enter for the current merchant runtime.</summary>
         public override void OnEnter(){store.Value=host.CreateProbe(source.Value);Finish();}
     }
 }

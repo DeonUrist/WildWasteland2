@@ -60,10 +60,14 @@ namespace WildWasteland.Modules.Patrols
 
         // every live marker: the cleanup and the save walk this list instead of FindObjectsOfType (a scan of every MonoBehaviour)
         internal static readonly List<PatrolMarker> All = new List<PatrolMarker>();
+        /// <summary>Registers this component in its active runtime collection.</summary>
         private void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+        /// <summary>Withdraws this component from active runtime discovery.</summary>
         private void OnDisable() { All.Remove(this); }
+        /// <summary>Releases this component runtime registrations and owned native state.</summary>
         private void OnDestroy() { All.Remove(this); }
 
+        /// <summary>Returns the configured ram-target policy for this vehicle.</summary>
         internal RamTargets Rams { get { return _rams; } }
         internal bool PlayerEntered;          // the player has sat in this car: it is theirs, the cleanup never removes it
         internal float FarSeconds;            // how long it has been beyond the cleanup distance
@@ -88,10 +92,14 @@ namespace WildWasteland.Modules.Patrols
         internal readonly GameObject[] Riders = new GameObject[TotalTurretSlots];
         internal bool SetupOnly;
         internal readonly Transform[] RiderAnchors = new Transform[TotalTurretSlots];
+        /// <summary>Returns the actor assigned to the primary rider slot.</summary>
         internal GameObject Rider { get { foreach (var r in Riders) if (r != null) return r; return null; } }
+        /// <summary>Returns the current anchor of the requested rider slot.</summary>
         internal Transform RiderAnchor { get { foreach (var a in RiderAnchors) if (a != null) return a; return null; } }
+        /// <summary>Clears the exact rider slot after its actor leaves the vehicle.</summary>
         internal void DropRider(GameObject go) { for (int i = 0; i < Riders.Length; i++) if (Riders[i] == go) Riders[i] = null; }
 
+        /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
         internal static PatrolMarker Attach(GameObject car, string bodyPrefab, string driverPrefab, GameObject driver,
             string passengerPrefab, GameObject passenger, RamTargets rams)
         {
@@ -106,8 +114,11 @@ namespace WildWasteland.Modules.Patrols
             return marker;
         }
 
+        /// <summary>Returns the current passenger used by persistence.</summary>
         internal GameObject Passenger { get { return _passenger; } }
+        /// <summary>Returns the current driver used by persistence.</summary>
         internal GameObject Driver { get { return _driver; } }
+        /// <summary>Returns the current passenger prefab used by persistence.</summary>
         internal string PassengerPrefab { get { return _passengerPrefab; } }
 
         // the passenger's Health FSM and its Health variable, resolved once per passenger (the Crew asks every frame after the
@@ -129,6 +140,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // the passenger became the driver: the car is saved with it at the wheel and an empty passenger seat
+        /// <summary>the passenger became the driver: the car is saved with it at the wheel and an empty passenger seat</summary>
         internal void Promote(GameObject newDriver)
         {
             _driverPrefab = _passengerPrefab;
@@ -138,15 +150,22 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // the passenger left the car (it lives on as an ordinary registered mob, saved by the game itself)
+        /// <summary>the passenger left the car (it lives on as an ordinary registered mob, saved by the game itself)</summary>
         internal void PassengerLeft() { _passenger = null; _passengerHealth = null; _passengerHealthOf = null; PassengerHealthVar = null; }
+        /// <summary>Returns the current driver prefab used by persistence.</summary>
         internal string DriverPrefab { get { return _driverPrefab; } }
         // CrewReturn: a member walked back and was seated again (fresh instance, same identity)
+        /// <summary>CrewReturn: a member walked back and was seated again (fresh instance, same identity)</summary>
         internal void SetDriver(GameObject driver, string prefab) { _driver = driver; _driverPrefab = prefab ?? ""; }
+        /// <summary>Sets passenger for the current persistence.</summary>
         internal void SetPassenger(GameObject passenger, string prefab)
         { _passenger = passenger; _passengerPrefab = prefab ?? ""; _passengerHealth = null; _passengerHealthOf = null; PassengerHealthVar = null; }
+        /// <summary>Returns the retained authored native frame identity.</summary>
         internal string BodyPrefab { get { return _bodyPrefab; } }
+        /// <summary>Clears driver ownership after the native actor leaves its seat.</summary>
         internal void DriverLeft() { _driver = null; }
 
+        /// <summary>Copies current native state into a detached record.</summary>
         internal PatrolCarData Snapshot()
         {
             var crew = GetComponent<Crew>();
@@ -199,12 +218,14 @@ namespace WildWasteland.Modules.Patrols
         private static float _nextScan;
         private static bool _restoreRunning;
         private static Coroutine _restore;
+        /// <summary>Returns the current restoring used by persistence.</summary>
         internal static bool Restoring { get { return _restoreRunning; } }
         internal static float LoadFraction { get; private set; }
         private const string EsKey = "Apocapatrol.Patrol";
         private static bool _readFailed;
         internal static MonoBehaviour Runner;   // Restores run as coroutines owned by Patrols.
 
+        /// <summary>Refreshes refs for the current persistence.</summary>
         static void RefreshRefs()
         {
             if (!Alive(_saveLoad)) _saveLoad = Core.GameRefs.SaveLoadGame;   // cached by Core (1 s retry while missing)
@@ -215,9 +236,11 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Unsubscribes native callbacks and clears retained runtime references.</summary>
         internal static void Uninstall() { ResetForScene(); }
 
         // WW: Core.SaveBus.StateChanged (the only SaveLoadGame watcher); same transitions as the old per-frame poll
+        /// <summary>WW: Core.SaveBus.StateChanged (the only SaveLoadGame watcher); same transitions as the old per-frame poll</summary>
         internal static void OnStateChanged(string previous, string state)
         {
             RefreshRefs();
@@ -240,6 +263,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Clears previous-scene objects and starts a fresh runtime generation.</summary>
         internal static void ResetForScene()
         {
             _readFailed = false;
@@ -250,6 +274,7 @@ namespace WildWasteland.Modules.Patrols
             LoadFraction = 0f;
         }
 
+        /// <summary>Reads current save slot for the current persistence.</summary>
         private static string CurrentSaveSlot()
         {
             // ES3's default path is changed by the selected save/load-slot button and is authoritative in every
@@ -264,18 +289,21 @@ namespace WildWasteland.Modules.Patrols
             return string.IsNullOrEmpty(slot) ? FsmString(_saveLoad, "SaveFile") : slot;
         }
 
+        /// <summary>Reads current seed for the current persistence.</summary>
         private static int CurrentSeed()
         {
             var seed = Alive(_saveLoad) ? _saveLoad.FsmVariables.GetFsmInt("seed") : null;
             return seed != null ? seed.Value : 0;
         }
 
+        /// <summary>Reads the named native FSM string without creating replacement variables.</summary>
         private static string FsmString(PlayMakerFSM fsm, string name)
         {
             var value = fsm != null ? fsm.FsmVariables.GetFsmString(name) : null;
             return value != null ? value.Value : null;
         }
 
+        /// <summary>Publishes current owned data through its authoritative persistence boundary.</summary>
         private static void Save(string slot, int seed)
         {
             if (string.IsNullOrEmpty(slot) || _readFailed)
@@ -294,6 +322,7 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { Core.SaveBus.ReportFailure(PatrolsModule.Instance, "Patrol save failed: " + e.Message); Core.Log.Error("[Patrols] Persistence save failed: " + e); }
         }
 
+        /// <summary>Restores tracked for the current persistence.</summary>
         private static IEnumerator RestoreTracked(string slot, int seed)
         {
             _restoreRunning = true;
@@ -302,6 +331,7 @@ namespace WildWasteland.Modules.Patrols
             finally { _restoreRunning = false; _restore = null; LoadFraction = 1f; }
         }
 
+        /// <summary>Restores when ready for the current persistence.</summary>
         private static IEnumerator RestoreWhenReady(string slot, int seed)
         {
             _restoreRunning = true;
@@ -376,6 +406,7 @@ namespace WildWasteland.Modules.Patrols
                 }
         }
 
+        /// <summary>Finds car for the current persistence.</summary>
         private static GameObject FindCar(PatrolCarData data, List<GameObject> roots)
         {
             foreach (var go in roots)
@@ -392,6 +423,7 @@ namespace WildWasteland.Modules.Patrols
             return null;
         }
 
+        /// <summary>Restores car for the current persistence.</summary>
         private static void RestoreCar(GameObject car, PatrolCarData data)
         {
             if (car.GetComponent<PatrolMarker>() != null) return;
@@ -445,6 +477,7 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Persistence: crew restored on " + car.name + " (" + phase + ")");
         }
 
+        /// <summary>Repairs the native frame visual using its actual authored prefab.</summary>
         private static void RepairFrame(GameObject car, string body)
         {
             if (car == null || string.IsNullOrEmpty(body)) return;
@@ -469,6 +502,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Encodes current patrol state for embedding in the world save.</summary>
         private static byte[] Serialize(PatrolSaveData data)
         {
             using (var stream = new MemoryStream())
@@ -490,6 +524,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Decodes the current embedded record and rejects unsupported or trailing data.</summary>
         private static PatrolSaveData Deserialize(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes, false))
@@ -514,6 +549,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Encodes one complete vehicle record in current schema order.</summary>
         private static void WriteCar(BinaryWriter writer, PatrolCarData car, int version)
         {
             WriteString(writer, car.carName); WriteString(writer, car.bodyPrefab);
@@ -535,6 +571,7 @@ namespace WildWasteland.Modules.Patrols
             writer.Write(car.setupOnly);
         }
 
+        /// <summary>Decodes one complete current-schema vehicle record.</summary>
         private static PatrolCarData ReadCar(BinaryReader reader, int version)
         {
             var car = new PatrolCarData
@@ -560,8 +597,10 @@ namespace WildWasteland.Modules.Patrols
             return car;
         }
 
+        /// <summary>Writes a null-safe string in the current binary record.</summary>
         private static void WriteString(BinaryWriter writer, string value) { writer.Write(value ?? ""); }
 
+        /// <summary>Reads a bounded string from the current binary record.</summary>
         private static string ReadString(BinaryReader reader)
         {
             string value = reader.ReadString();
@@ -569,6 +608,7 @@ namespace WildWasteland.Modules.Patrols
             return value;
         }
 
+        /// <summary>Checks that the native object still exists and remains alive.</summary>
         private static bool Alive(PlayMakerFSM fsm) { return fsm != null && fsm.gameObject != null; }
     }
 }

@@ -18,8 +18,11 @@ namespace WildWasteland.Modules.Patrols
     }
     internal static class TrafficBattles
     {
+        /// <summary>Calculates authored combat strength of the supplied vehicle.</summary>
         internal static int Strength(CarTemplate car)=>car.IsTruck||car.IsJunker||(car.Body??"").StartsWith("Rust",StringComparison.OrdinalIgnoreCase)?6:car.IsMotorcycle&&!car.IsSmall?1:2;
+        /// <summary>Calculates retained combat power of the accepted battle roster.</summary>
         internal static int Power(TrafficVehicle[] cars,bool[] dead)=>cars.Select((c,i)=>dead[i]?0:Math.Max(1,c.strength)).Sum();
+        /// <summary>Distributes the accepted battle outcome over its retained roster.</summary>
         internal static int[] Shares(int a,int b,int cap,int perSide)
         {
             cap=Math.Max(0,Math.Min(cap,a+b));if(cap==0)return new[]{0,0};
@@ -29,6 +32,7 @@ namespace WildWasteland.Modules.Patrols
             while(left+right<cap){if(left<a&&left<perSide)left++;else if(right<b&&right<perSide)right++;else break;}
             return new[]{left,right};
         }
+        /// <summary>Resolves the existing native path or accepted simulation outcome.</summary>
         internal static void Resolve(TrafficBattle battle)
         {
             int a=Power(battle.sideA,battle.deadA),b=Power(battle.sideB,battle.deadB);
@@ -49,6 +53,7 @@ namespace WildWasteland.Modules.Patrols
     internal sealed class BattleCar : MonoBehaviour
     {
         internal string Battle;internal int Side,Slot;
+        /// <summary>Resolves the accepted journey or encounter destination.</summary>
         internal bool Goal(out Vector3 goal,out float speed,out bool stop,out bool hunt)
         {
             var battle=WorldTraffic.Battle(Battle);var journey=battle!=null?WorldTraffic.Find(Side==0?battle.a:battle.b):null;
@@ -71,7 +76,9 @@ namespace WildWasteland.Modules.Patrols
         private readonly List<TrafficBattle> _battles=new List<TrafficBattle>();
         private readonly Dictionary<string,BattleLive> _battleLive=new Dictionary<string,BattleLive>();
         private float _nextBattleScan;
+        /// <summary>Returns the current battle used by traffic battles.</summary>
         internal static TrafficBattle Battle(string id)=>_instance?._battles.FirstOrDefault(b=>b.id==id);
+        /// <summary>Checks the current traffic battle valid condition for traffic battles.</summary>
         private static bool TrafficBattleValid(TrafficBattle b)
         {
             if(b==null||string.IsNullOrEmpty(b.id)||b.sideA==null||b.sideB==null||b.sideA.Length>100||b.sideB.Length>100||b.remaining<=0f||b.remaining>300f)return false;
@@ -80,7 +87,9 @@ namespace WildWasteland.Modules.Patrols
             if(b.claimedA==null)b.claimedA=new bool[b.sideA.Length];if(b.claimedB==null)b.claimedB=new bool[b.sideB.Length];
             return b.claimedA.Length==b.sideA.Length&&b.claimedB.Length==b.sideB.Length&&b.deadA.Length==b.sideA.Length&&b.deadB.Length==b.sideB.Length&&b.wreckA.Length==b.sideA.Length&&b.wreckB.Length==b.sideB.Length&&b.slotsA.Length==b.sideA.Length&&b.slotsB.Length==b.sideB.Length&&b.sideA.All(c=>c!=null)&&b.sideB.All(c=>c!=null);
         }
+        /// <summary>Checks whether the current value represents battle car for the current traffic battles.</summary>
         internal static bool IsBattleCar(GameObject car)=>car!=null&&car.GetComponent<BattleCar>()!=null;
+        /// <summary>Advances virtual and physical battle state without rerolling completed outcomes.</summary>
         private void BattleTick(float seconds,Transform player)
         {
             var position=TrafficSpace.World(player.position);
@@ -122,10 +131,13 @@ namespace WildWasteland.Modules.Patrols
                 BeginBattle(left,right);return;
             }
         }
+        /// <summary>Counts living battle feet for the current traffic battles.</summary>
         private static bool LivingBattleFeet(TrafficBattle battle,int side)
         {foreach(var actor in TrafficFactions.Actors)if(actor!=null&&actor.Battle==battle.id&&actor.Side==side&&actor.transform.parent==null&&(actor.Health==null||actor.Health.Value>0f))return true;return false;}
+        /// <summary>Counts living battle cars for the current traffic battles.</summary>
         private static bool LivingBattleCars(BattleLive live,TrafficBattle battle,int side)
         {foreach(var pair in live.Cars)if(pair.Key.StartsWith(side+":",StringComparison.Ordinal)&&pair.Value!=null){var tag=pair.Value.GetComponent<BattleCar>();if(tag!=null&&!(side==0?battle.deadA:battle.deadB)[tag.Slot])return true;}return false;}
+        /// <summary>Scales battle casualties for the current traffic battles.</summary>
         private static void ScaleBattleCasualties(TrafficBattle battle,BattleLive live,int side,bool lost)
         {
             var dead=side==0?battle.deadA:battle.deadB;
@@ -135,6 +147,7 @@ namespace WildWasteland.Modules.Patrols
             int kept=represented.Count(i=>!dead[i]);int virtualKeep=Math.Max(0,(int)Math.Round((double)dead.Length*kept/represented.Length)-kept);
             for(int i=0;i<dead.Length;i++)if(!represented.Contains(i)){dead[i]=virtualKeep<=0;if(virtualKeep>0)virtualKeep--;}
         }
+        /// <summary>Begins battle for the current traffic battles.</summary>
         private void BeginBattle(TrafficJourney a,TrafficJourney b)
         {
             if(!PatrolsModule.FactionBattles.Value)return;   // WW: F6 [Patrols] Faction battles (new battles only; running ones finish)
@@ -157,6 +170,7 @@ namespace WildWasteland.Modules.Patrols
             }
             if(live.Cars.Count>0)_battleLive[battle.id]=live;
         }
+        /// <summary>Completes battle for the current traffic battles.</summary>
         private void FinishBattle(TrafficBattle battle,bool auto)
         {
             if(auto)TrafficBattles.Resolve(battle);else{battle.resolved=true;battle.remaining=300f;}
@@ -176,6 +190,7 @@ namespace WildWasteland.Modules.Patrols
                 if(journey!=null){journey.battle="";if(journey.vehicles.All(v=>v.retired))Remove(journey);}
             }
         }
+        /// <summary>Binds a native vehicle to its exact retained battle side and slot.</summary>
         private static void BattleAttach(GameObject car,TrafficBattle battle,int side,int slot)
         {
             var tag=car.GetComponent<BattleCar>()??car.AddComponent<BattleCar>();tag.Battle=battle.id;tag.Side=side;tag.Slot=slot;
@@ -183,6 +198,7 @@ namespace WildWasteland.Modules.Patrols
             var agent=car.GetComponent<TrafficAgent>()??car.AddComponent<TrafficAgent>();agent.Journey="";
             EncounterCar.Attach(car,"battle:"+battle.id+":"+side,Find(side==0?battle.a:battle.b)?.convoy==true);TrafficFactions.Crew(car,marker);
         }
+        /// <summary>Queues native representations of the existing retained battle roster.</summary>
         private IEnumerator MaterializeBattle(TrafficBattle battle,BattleLive live)
         {
             live.Building=true;
@@ -218,6 +234,7 @@ namespace WildWasteland.Modules.Patrols
             live.Building=false;live.RetryAt=Time.time+15f;
             live.Ready=Enumerable.Range(0,2).All(side=>live.Cars.Keys.Count(k=>k.StartsWith(side+":",StringComparison.Ordinal))>=Math.Min(shares[side],Enumerable.Range(0,side==0?battle.sideA.Length:battle.sideB.Length).Count(i=>!battle.resolved||(side==0?battle.deadA:battle.deadB)[i])));
         }
+        /// <summary>Builds one exact retained battle vehicle at its accepted placement.</summary>
         private IEnumerator BuildBattleSlot(TrafficBattle battle,BattleLive live,int side,int index,CarTemplate template,CarTemplate original,Vector3 ground,int generation)
         {
             bool pending=true;live.Reserved=1;
@@ -237,6 +254,7 @@ namespace WildWasteland.Modules.Patrols
             });
             while(pending&&generation==Patrol.SceneGen)yield return null;
         }
+        /// <summary>Materializes battle corpses for the current traffic battles.</summary>
         private static void SpawnBattleCorpses(CarTemplate template,GameObject car,BattleLive live)
         {
             var names=new List<string>{template.Driver,template.Passenger};names.AddRange(template.Turrets);
@@ -247,6 +265,7 @@ namespace WildWasteland.Modules.Patrols
                 var corpse=Instantiate(prefab,car.transform.position+car.transform.right*(3f+slot%2)+car.transform.forward*(slot/2f),Quaternion.identity);CrewLooks.Dress(corpse,name.Replace("_Dead","")+"_Dead");corpse.SetActive(true);live.Corpses.Add(corpse);slot++;
             }
         }
+        /// <summary>Captures native battle state before continuing the encounter virtually.</summary>
         private void UnloadBattle(TrafficBattle battle,BattleLive live)
         {
             foreach(var pair in live.Cars)
@@ -262,6 +281,7 @@ namespace WildWasteland.Modules.Patrols
             foreach(var actor in TrafficFactions.Actors.ToArray())if(actor!=null&&actor.Battle==battle.id&&actor.transform.parent==null)Destroy(actor.gameObject);
             _battleLive.Remove(battle.id);
         }
+        /// <summary>Binds battle for the current traffic battles.</summary>
         internal static void BindBattle(PatrolMarker marker,PatrolCarData data)
         {
             if(_instance==null||string.IsNullOrEmpty(data.battleId))return;

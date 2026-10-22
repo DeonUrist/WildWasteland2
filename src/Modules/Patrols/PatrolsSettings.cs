@@ -18,10 +18,13 @@ namespace WildWasteland.Modules.Patrols
         internal static ConfigEntry<float> MinPartHealth, MaxPartHealth, MinPartsFill, MaxPartsFill;
 
         // Condition of a spawned part: min..max, weighted toward two thirds of the way up (triangular distribution)
+        /// <summary>Condition of a spawned part: min..max, weighted toward two thirds of the way up (triangular distribution)</summary>
         internal static float RollPartHealth() { return Triangular(MinPartHealth.Value, MaxPartHealth.Value); }
+        /// <summary>Rolls part fill for the current patrols settings.</summary>
         internal static float RollPartFill() { return Triangular(MinPartsFill.Value, MaxPartsFill.Value); }
 
         // random between a and b, weighted toward two thirds of the way up
+        /// <summary>random between a and b, weighted toward two thirds of the way up</summary>
         internal static float Triangular(float a, float b)
         {
             float lo = Mathf.Min(a, b), hi = Mathf.Max(a, b);
@@ -90,6 +93,7 @@ namespace WildWasteland.Modules.Patrols
 
         internal static ModuleConfig Cfg;
 
+        /// <summary>Binds current module configuration and its live change handlers.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             Cfg = cfg;
@@ -104,6 +108,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // ---------------------------------------------------------------- F6: one toggle per feature, in feature order
+        /// <summary>Binds toggles for the current patrols settings.</summary>
         void BindToggles(ModuleConfig cfg)
         {
             ConvoyEnabled = cfg.Player(null, "Automatic spawns", true,
@@ -149,6 +154,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // ---------------------------------------------------------------- F6: player-facing values
+        /// <summary>Binds values for the current patrols settings.</summary>
         void BindValues(ModuleConfig cfg)
         {
             const string sp = "Spawning";
@@ -187,6 +193,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // ---------------------------------------------------------------- [Keys]
+        /// <summary>Binds keys for the current patrols settings.</summary>
         void BindKeys(ModuleConfig cfg)
         {
             BindToolsKeys(cfg);
@@ -194,6 +201,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // ---------------------------------------------------------------- F7 tools.cfg
+        /// <summary>Binds tools for the current patrols settings.</summary>
         void BindTools(ModuleConfig cfg)
         {
             BindDeveloperDebug(cfg);

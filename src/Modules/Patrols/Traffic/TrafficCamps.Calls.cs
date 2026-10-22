@@ -9,10 +9,15 @@ namespace WildWasteland.Modules.Patrols
     {
         private static readonly List<Core.CampResidentInfo> Residents=new List<Core.CampResidentInfo>();
         internal sealed class Status : Core.ICampStatus { public Core.CampState At(Vector3 p,float radius)=>Core.ModApi.Get<Core.IWorldLocations>()?.StateAt(p,radius)??Core.CampState.Unknown; }
+        /// <summary>Registers native callbacks under the current owning runtime lifecycle.</summary>
         internal static void Install(Core.IModule owner) { }
+        /// <summary>Clears retained runtime state at the owning lifecycle boundary.</summary>
         internal static void Reset() { Residents.Clear(); }
+        /// <summary>Loads ed for the current traffic camps.</summary>
         internal static bool Loaded(string id)=>Core.ModApi.Get<Core.IWorldDiscovery>()?.Loaded(id)??false;
+        /// <summary>Returns the current bind used by traffic camps.</summary>
         internal static void Bind(string id,GameObject actor)=>Core.ModApi.Get<Core.IWorldDiscovery>()?.Bind(id,actor);
+        /// <summary>Advances scheduled work under the current save, pause and admission gates.</summary>
         internal static void Tick()
         {
             var provider=Core.ModApi.Get<Core.IWorldDiscovery>();if(provider==null||!PatrolsModule.ConvoyEnabled.Value)return;

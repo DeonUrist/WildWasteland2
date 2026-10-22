@@ -7,6 +7,7 @@ namespace WildWasteland.Modules.Patrols
 {
     internal sealed partial class WorldTraffic
     {
+        /// <summary>Builds the stable child path used to identify an existing native object.</summary>
         private static string PathOf(Transform root, Transform node)
         {
             if (root == node) return "";
@@ -21,6 +22,7 @@ namespace WildWasteland.Modules.Patrols
             segments.Reverse(); return string.Join("/", segments.ToArray());
         }
 
+        /// <summary>Resolves the existing native path or accepted simulation outcome.</summary>
         private static Transform Resolve(Transform root, string path)
         {
             if (string.IsNullOrEmpty(path)) return root;
@@ -42,6 +44,7 @@ namespace WildWasteland.Modules.Patrols
             return node;
         }
 
+        /// <summary>Enumerates existing fitted parts under the current ownership rules.</summary>
         private static string[] Parts(GameObject car)
         {
             var result = new List<string>();
@@ -53,12 +56,14 @@ namespace WildWasteland.Modules.Patrols
             return result.OrderBy(s => s).ToArray();
         }
 
+        /// <summary>Checks admission for virtualize for the current traffic state.</summary>
         private static bool CanVirtualize(GameObject car, TrafficVehicle record)
         {
             // Missing/looted parts or a detached trailer are left as real salvage; never rebuild them from a pristine template.
             return record.partPaths == null || record.partPaths.SequenceEqual(Parts(car));
         }
 
+        /// <summary>Captures state for the current traffic state.</summary>
         private static void CaptureState(GameObject car, TrafficVehicle record)
         {
             var marker = car.GetComponent<PatrolMarker>(); if (marker == null) return;
@@ -84,6 +89,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Captures cargo for the current traffic state.</summary>
         private static void CaptureCargo(GameObject car, Dictionary<string, int> counts)
         {
             foreach (var fsm in car.GetComponentsInChildren<PlayMakerFSM>(true))
@@ -95,6 +101,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Captures values for the current traffic state.</summary>
         private static void CaptureValues(GameObject car, string prefix, List<TrafficValue> values)
         {
             foreach (var fsm in car.GetComponentsInChildren<PlayMakerFSM>(true))
@@ -107,6 +114,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Applies state for the current traffic state.</summary>
         private static void ApplyState(GameObject car, TrafficVehicle record)
         {
             var marker = car.GetComponent<PatrolMarker>();

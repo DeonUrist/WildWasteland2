@@ -9,17 +9,21 @@ namespace WildWasteland.Modules.Patrols
     internal static class VehicleRoute
     {
         private const float Cell = 40f;
+        /// <summary>One numeric route-search priority queue entry.</summary>
         private struct Open { internal int Id; internal float Cost, Score; }
         private sealed class Heap
         {
             private readonly List<Open> _items = new List<Open>();
+            /// <summary>Returns the number of retained entries.</summary>
             internal int Count { get { return _items.Count; } }
+            /// <summary>Adds the accepted entry to the current operation.</summary>
             internal void Push(Open value)
             {
                 int i = _items.Count; _items.Add(value);
                 while (i > 0) { int parent = (i - 1) / 2; if (_items[parent].Score <= value.Score) break; _items[i] = _items[parent]; i = parent; }
                 _items[i] = value;
             }
+            /// <summary>Removes and returns the lowest-cost queued route-search entry.</summary>
             internal Open Pop()
             {
                 var result = _items[0]; var last = _items[_items.Count - 1]; _items.RemoveAt(_items.Count - 1);
@@ -31,6 +35,7 @@ namespace WildWasteland.Modules.Patrols
                 _items[i] = last; return result;
             }
         }
+        /// <summary>Builds or plans the accepted detached definition through its staged pipeline.</summary>
         internal static Vector3[] Build(Vector3 a, Vector3 b, Vector3[][] lines, ElevationGrid[] grids, Bounds[] blocks, bool convoy, out bool[] roads, out float total)
         {
             roads = null; total = float.PositiveInfinity;
@@ -116,7 +121,9 @@ namespace WildWasteland.Modules.Patrols
             }
             points.Add(b); kinds.Add(false); roads = kinds.ToArray(); total = cost[end]; return points.ToArray();
         }
+        /// <summary>Resolves a numeric position along the accepted route.</summary>
         private static Vector3 Point(int id, int width, float x, float z) { return new Vector3(x + id % width * Cell, 0, z + id / width * Cell); }
+        /// <summary>Checks the current revalidate condition for vehicle route.</summary>
         internal static Vector3[] Revalidate(Vector3[] route, Vector3[][] lines, ElevationGrid[] grids, Bounds[] blocks, bool convoy, out bool[] roads)
         {
             roads = null; var points = new List<Vector3>(); var kinds = new List<bool>();
@@ -134,8 +141,10 @@ namespace WildWasteland.Modules.Patrols
             }
             roads = kinds.ToArray(); return points.ToArray();
         }
+        /// <summary>Checks the current inside condition for vehicle route.</summary>
         private static bool Inside(Bounds[] blocks, Vector3 p)
         { p.y = 0; foreach (var box in blocks) if (box.Contains(p)) return true; return false; }
+        /// <summary>Checks the current safe condition for vehicle route.</summary>
         private static bool Safe(Vector3 a, Vector3 b, ElevationGrid[] grids, Bounds[] blocks, float limit, out float roughness)
         {
             roughness = 0; var delta = b - a; delta.y = 0; float length = delta.magnitude;

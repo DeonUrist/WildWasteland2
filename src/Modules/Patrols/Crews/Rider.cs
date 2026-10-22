@@ -23,19 +23,26 @@ namespace WildWasteland.Modules.Patrols
         internal const float BikeArc = 55f;   // 2.2.1: on a motorcycle a turret sits straight and turns only its upper body this far left / right
         // what the editors offer: a Warboy (blast lances, "Witness me!") or a ranged crew human (a gunner); "None" first, the rest A-Z
         internal static readonly string[] TurretChoices = { "None", "Boltjaw", "Flexa", "Gungirl", "Lugnut", "Scrud", "Shoota", "Sprokka", Warboy, "Bodyguard", "Bolter", "Gunnar", "Lugger", "Mechanic", "Merchant", "Organic_Mechanic", "Pistoleer", "Pup" };
+        /// <summary>Checks whether the current value represents gunner for the current rider.</summary>
         internal static bool IsGunner(string who) { return !string.IsNullOrEmpty(who) && Array.Exists(PassengerGuard.RangedHumans, n => string.Equals(n, CrewLooks.BasePrefab(who.Trim()), StringComparison.OrdinalIgnoreCase)); }
         // a stored value as the editors show it: "" = None, a ranged human as is, anything else (Warboy, the 2.1.x "Scraffa") = Warboy
+        /// <summary>a stored value as the editors show it: "" = None, a ranged human as is, anything else (Warboy, the 2.1.x "Scraffa") = Warboy</summary>
         internal static bool IsWarboy(string who)=>string.Equals(who,Warboy,StringComparison.OrdinalIgnoreCase)||string.Equals(who,"Scraffa",StringComparison.OrdinalIgnoreCase);
+        /// <summary>Returns the existing human-readable authored crew label.</summary>
         internal static string Display(string stored) { return string.IsNullOrEmpty(stored) ? "None" : IsWarboy(stored)?Warboy:stored.Trim(); }
+        /// <summary>Returns the stable authored identity retained for crew persistence.</summary>
         internal static string Stored(string display) { return string.IsNullOrEmpty(display) || display == "None" ? "" : display; }
+        /// <summary>Checks whether the current value represents bike body for the current rider.</summary>
         internal static bool IsBikeBody(string body) { return MotorcycleIntegration.IsBody(body) || string.Equals(body, "Halfbreed", StringComparison.OrdinalIgnoreCase); }
         // turret spots a vehicle has: 3 on a car (roof), 1 on a motorcycle, none on a truck
+        /// <summary>turret spots a vehicle has: 3 on a car (roof), 1 on a motorcycle, none on a truck</summary>
         internal static int Slots(string body, bool truck, bool motorcycleKind)
         {
             if (truck || string.Equals(body, "Rustcargo", StringComparison.OrdinalIgnoreCase)) return 0;
             return motorcycleKind || IsBikeBody(body) ? 1 : 3;
         }
 
+        /// <summary>Places the actor in its accepted original crew seat.</summary>
         internal static GameObject Seat(GameObject car, PatrolMarker marker, int slot, string who, float[] localPos, GameObject platform = null,bool standing=false,bool randomize=true)
         {
             if (marker == null || slot < 0 || slot >= marker.Riders.Length) return null;
@@ -87,6 +94,7 @@ namespace WildWasteland.Modules.Patrols
         // hits (vanilla raycasts hit triggers; WW Guns counts triggers on objects with a Bodypart FSM, which every NPC root and head
         // has). Replaces the old per-pair Physics.IgnoreCollision of every occupant collider vs every car collider. Bail-out and
         // death never reuse the seated body (a fresh prefab instance / the game's _Dead ragdoll), so it is never made solid again.
+        /// <summary>Disables contacts for the current rider.</summary>
         internal static void NoContacts(GameObject go)
         {
             foreach (var rb in go.GetComponentsInChildren<Rigidbody>(true)) if (rb != null) rb.isKinematic = true;
@@ -101,6 +109,7 @@ namespace WildWasteland.Modules.Patrols
         // Cheap periodic re-check: only the occupant's own colliders (no car colliders, no pair rebuilds). Reused buffers.
         private static readonly List<Collider> _ncCols = new List<Collider>();
         private static readonly List<Rigidbody> _ncBodies = new List<Rigidbody>();
+        /// <summary>Retains no contacts for the current rider.</summary>
         internal static void KeepNoContacts(GameObject go)
         {
             if (go == null) return;
@@ -120,6 +129,7 @@ namespace WildWasteland.Modules.Patrols
 
         // the automatic spot (feet). Car: turret 1 on the top of the car (the highest point of its renderers, centred), turrets 2 and 3 behind
         // it to the left and right, on whatever roof is under them. Motorcycle: behind the driver on the seat.
+        /// <summary>the automatic spot (feet). Car: turret 1 on the top of the car (the highest point of its renderers, centred), turrets 2 and 3 behind it to the left and right, on whatever roof is under them. Motorcycle: behind the driver on the seat.</summary>
         internal static Vector3 AutoSpot(GameObject car, int slot, bool bike)
         {
             var ct = car.transform;
@@ -168,6 +178,7 @@ namespace WildWasteland.Modules.Patrols
 
         // the highest car surface under a frame-local point (a ray down onto the car's own colliders); fallback when none
         private static readonly RaycastHit[] _downHits = new RaycastHit[32];
+        /// <summary>Probes the native frame top at the requested local mounting coordinates.</summary>
         private static float TopAt(GameObject car, Vector3 local, float fallback)
         {
             var ct = car.transform;
@@ -191,6 +202,7 @@ namespace WildWasteland.Modules.Patrols
         // 3D voice on the rider
         private static readonly List<AudioClip> _screams = new List<AudioClip>(4); private static bool _screamLooked;
         // plays the scream; returns its length (1.5 s when the wav is missing: the rider still pauses before leaping)
+        /// <summary>plays the scream; returns its length (1.5 s when the wav is missing: the rider still pauses before leaping)</summary>
         internal static float Scream(Transform at)
         {
             try
@@ -223,6 +235,7 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { PatrolsModule.Verbose("Rider: scream: " + e.Message); return 1.5f; }
         }
 
+        /// <summary>Parses v3 for the current rider.</summary>
         internal static Vector3 ParseV3(string s, Vector3 def)
         {
             try
@@ -233,11 +246,13 @@ namespace WildWasteland.Modules.Patrols
             }
             catch (Exception) { return def; }
         }
+        /// <summary>Formats v3 for the current rider.</summary>
         internal static string FormatV3(Vector3 v) { return v.x.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + ", " + v.y.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + ", " + v.z.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture); }
     }
 
     internal sealed partial class RiderGuard : MonoBehaviour
     {
+        /// <summary>Mounted rider and airborne attack phases.</summary>
         private enum Mode { Riding, Throwing, Witness, Flying, Dismount, Done }
         private GameObject _car; private PatrolMarker _marker; private Transform _anchor; private string _prefab;
         private PlayMakerFSM _health; private FsmFloat _healthVar; private float _maxHealth = -1f;
@@ -251,14 +266,19 @@ namespace WildWasteland.Modules.Patrols
         private Mode _mode = Mode.Riding;
         private int _slot; private bool _gunner, _bike;   // 2.2.0: turret spot 0..2, a gunner (PassengerGuard shoots, Pose crouches / seats), on a motorcycle
         private bool _standing;
+        /// <summary>Checks the current standing pose condition for rider.</summary>
         internal bool StandingPose=>_standing||(_bike&&_standAt>=0f);
+        /// <summary>Checks the current animated pose condition for rider.</summary>
         internal bool AnimatedPose=>(_body!=null&&(_body is Core.IAnimatedCharacter character && Core.ModApi.Get<Core.IAnimationApi>()!=null && character.Valid && !character.Suspended))||_graphOk;
+        /// <summary>Returns the native maximum health bound for the rider.</summary>
         internal void MaxHealth(float health){_maxHealth=health;}
         private float _standAt = -1f;                      // a Warboy on a bike stands up (crouch -> stand blend) before the leap
         private float _nextIgnore, _outOfArc;
         private bool _warboyPrefab;                        // Perf: the prefab compare once at Init (was per frame)
         private PatrolMarker _carMarker; private float _nextTrailerCheck; private bool _trailerConnected;
+        /// <summary>Checks whether the current value represents warboy for the current rider.</summary>
         internal bool IsWarboy { get { return !_gunner && _warboyPrefab && (_mode == Mode.Riding || _mode == Mode.Throwing || _mode == Mode.Witness); } }
+        /// <summary>Checks the current mounted condition for rider.</summary>
         internal bool Mounted { get { return (_mode == Mode.Riding || _mode == Mode.Throwing || _mode == Mode.Witness) && Alive(); } }
         private AnimationClipPlayable _stand;
         private bool _released, _inClose, _kamikazeArmed;
@@ -276,6 +296,7 @@ namespace WildWasteland.Modules.Patrols
         private const float AfterScream = 0.35f;       // pause between the end of "Witness me!" and the leap, s - the player's chance to get away
         private float _windUp = 1.85f;
 
+        /// <summary>Initializes native references and retained runtime state before scheduled work starts.</summary>
         internal void Init(GameObject car, PatrolMarker marker, Transform anchor, string prefab, int slot, bool gunner, bool bike,bool standing)
         {
             _car = car; _marker = marker; _anchor = anchor; _prefab = prefab; _slot = slot; _gunner = gunner; _bike = bike;
@@ -296,6 +317,7 @@ namespace WildWasteland.Modules.Patrols
             BuildLance();
         }
 
+        /// <summary>Reads native actor health used by the current runtime state machine.</summary>
         private float Health()
         {
             if (_health == null || !_health.Fsm.Initialized) return -1f;
@@ -304,12 +326,17 @@ namespace WildWasteland.Modules.Patrols
             if (_maxHealth < 0f || _healthVar.Value > _maxHealth) _maxHealth = _healthVar.Value;
             return _healthVar.Value;
         }
+        /// <summary>Checks that the native object still exists and remains alive.</summary>
         private bool Alive() { float h = Health(); return h < 0f || h > 0f; }
+        /// <summary>Checks the current wounded condition for rider.</summary>
         private bool Wounded() { float h = Health(); return h > 0f && _maxHealth > 0f && h < _maxHealth - 0.5f; }
 
+        /// <summary>Returns the native hand position or existing body fallback.</summary>
         private Vector3 HandPos() { return _hand != null ? _hand.position : transform.position + Vector3.up * 1.2f; }
+        /// <summary>Reads native platform velocity for rider launch and landing.</summary>
         private Vector3 CarVel() { return _carRb != null ? _carRb.velocity : Vector3.zero; }
 
+        /// <summary>Ignores own for the current rider.</summary>
         private void IgnoreOwn(GameObject go)
         {
             var mine = go.GetComponentsInChildren<Collider>(true);
@@ -317,6 +344,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // leaves the roof anchor: free kinematic body, no more collisions to ignore, the lance prop stays in the hand
+        /// <summary>leaves the roof anchor: free kinematic body, no more collisions to ignore, the lance prop stays in the hand</summary>
         private void Unseat()
         {
             if (_marker != null) _marker.DropRider(gameObject);   // the car no longer carries it (Explode won't bail it again)
@@ -325,6 +353,7 @@ namespace WildWasteland.Modules.Patrols
             transform.rotation = up;
         }
 
+        /// <summary>Releases rider controls and lets native death state take over.</summary>
         private void Die()
         {
             _mode = Mode.Done;
@@ -335,6 +364,7 @@ namespace WildWasteland.Modules.Patrols
             if (_marker != null) _marker.DropRider(gameObject);
         }
 
+        /// <summary>Releases this component runtime registrations and owned native state.</summary>
         private void OnDestroy()
         {
             if (_mode == Mode.Flying && gameObject.scene.isLoaded && Time.timeScale > 0f) { _mode = Mode.Done; Rider.Kaboom(transform.position + Vector3.up * 0.9f, name); }   // removed mid-air by something else: still goes off
@@ -343,6 +373,7 @@ namespace WildWasteland.Modules.Patrols
             if (Lance != null) Destroy(Lance.gameObject);
         }
 
+        /// <summary>Releases body for the current rider.</summary>
         private void ReleaseBody()
         {
             if (_body == null) return;

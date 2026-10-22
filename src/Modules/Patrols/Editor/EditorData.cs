@@ -19,8 +19,10 @@ namespace WildWasteland.Modules.Patrols
         public List<string> Templates = new List<string>();
         public List<string> AllowedCargo = new List<string>();
         public List<string> MerchantTypes = new List<string>();
+        /// <summary>Checks current progression and chance gates for the authored spawn group.</summary>
         public bool Eligible(float km, int bosses) { return Chance > 0 && km >= MinKm && bosses >= MinBosses; }
 
+        /// <summary>Selects the configured outcome using the caller random source.</summary>
         public static SpawnGroup Roll(IEnumerable<SpawnGroup> source, float km, int bosses, Func<double> random, string avoid = null)
         {
             var list = source.Where(g => g.Eligible(km, bosses)).ToList();
@@ -39,6 +41,7 @@ namespace WildWasteland.Modules.Patrols
         public List<LootProfile> CarLoot = new List<LootProfile>(), TruckLoot = new List<LootProfile>();
         public List<string> TemplateOrder = new List<string>();   // the template lists' order in the editor (names; unlisted ones follow, defaults first, by name)
 
+        /// <summary>Parses current JSON authoring data and validates its supported fields.</summary>
         public static EditorData FromJson(string text)
         {
             var root = Json.Parse(text) as Dictionary<string, object>;
@@ -54,6 +57,7 @@ namespace WildWasteland.Modules.Patrols
             return result;
         }
 
+        /// <summary>Enumerates and validates current JSON object rows.</summary>
         private static IEnumerable<Dictionary<string, object>> Rows(Dictionary<string, object> root, string key)
         {
             object value;
@@ -66,6 +70,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Parses authored spawn groups and their faction and eligibility fields.</summary>
         private static List<SpawnGroup> Groups(Dictionary<string, object> root, string key)
         {
             var result = new List<SpawnGroup>();
@@ -84,6 +89,7 @@ namespace WildWasteland.Modules.Patrols
             return result;
         }
 
+        /// <summary>Reads the current editor cargo metadata.</summary>
         private static List<LootProfile> Loot(Dictionary<string, object> root, string key)
         {
             var result = new List<LootProfile>();
@@ -103,12 +109,14 @@ namespace WildWasteland.Modules.Patrols
             return result;
         }
 
+        /// <summary>Reads and clamps an authored number after rejecting invalid numeric values.</summary>
         private static float Number(Dictionary<string, object> row, string key, float min, float max)
         {
             float n = Json.Num(row, key, min);
             if (float.IsInfinity(n) || float.IsNaN(n)) throw new FormatException("Invalid " + key);
             return Math.Max(min, Math.Min(max, n));
         }
+        /// <summary>Returns the shipped default cargo chance for the current editor data.</summary>
         private static float DefaultCargoChance(string id)
         {
             switch (id)
@@ -120,6 +128,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Serializes current authoring data in its stable field order.</summary>
         public string ToJson()
         {
             Func<SpawnGroup, object> group = g => Json.Object("id", g.Id, "name", g.Name,"faction",g.Faction, "minKm", g.MinKm, "minBosses", g.MinBosses, "chance", g.Chance, "uniformCargo", g.UniformCargo, "templates", g.Templates, "allowedCargo", g.AllowedCargo,"merchantTypes",Merchants.Contains(g)?MerchantCatalog.Selection(g.MerchantTypes).ToList():g.MerchantTypes);
