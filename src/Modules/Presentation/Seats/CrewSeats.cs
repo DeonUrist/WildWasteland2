@@ -9,6 +9,10 @@ namespace WildWasteland.Modules.Presentation
     internal sealed class CrewSeats : ICrewSeats
     {
         /// <summary>Applies an actual seat pose to a native actor.</summary>
+        public Vector3 DriverOffset=>new Vector3(SeatPoseSettings.DriverOffsetX.Value,SeatPoseSettings.DriverOffsetY.Value,SeatPoseSettings.DriverOffsetZ.Value);
+        /// <summary>Reports whether this provider currently permits its owned feature.</summary>
+        public bool Enabled=>SeatPoseSettings.PoseEnabled.Value;
+        /// <summary>Creates the real Presentation-owned occupant pose on the supplied seat.</summary>
         public ICrewSeatPose Apply(GameObject actor,Transform seat,string humanType) {return Pose.Apply(actor,seat,humanType);}
         /// <summary>Reads an existing pose without creating or guessing it.</summary>
         public ICrewSeatPose Find(GameObject actor) {return actor!=null?actor.GetComponent<Pose>():null;}

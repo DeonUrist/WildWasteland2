@@ -16,6 +16,8 @@ namespace WildWasteland.Core
     /// <summary>Creates and queries real Presentation-owned seat poses without exposing component implementations.</summary>
     public interface ICrewSeats
     {
+        Vector3 DriverOffset { get; }
+        bool Enabled { get; }
         ICrewSeatPose Apply(GameObject actor,Transform seat,string humanType);
         ICrewSeatPose Find(GameObject actor);
         void Anchor(GameObject actor,Transform anchor,bool gunner,Func<bool> mounted);

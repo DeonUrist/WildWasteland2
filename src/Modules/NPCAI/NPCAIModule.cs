@@ -75,7 +75,6 @@ namespace WildWasteland.Modules.NPCAI
             InstallPatches();
             SeatedLosGuard.Install(this);                  // seated crews' target-less LOS actions (ex Patrols; after Senses on the same dispatchers)
             Bosses.Install(this);
-            NpcWorld.Install(this);
             Brain.InstallHides(this);                      // "Hide" cover objects from a WorldIndex watch (no 10 s tag scan)                        // Health / ID FSM tracking for the follower and walker code (ex Quests QuestWorld)                          // human boss health: FsmIndex "BossUI" tracking (ex Guns entry)
             InteriorPopulation.Install(this);              // interior / native-POI population rules (ex Towns entry): hooks + jobs
 
@@ -92,6 +91,10 @@ namespace WildWasteland.Modules.NPCAI
             Scheduler.EveryFrame(this, "NPCAI.Nests", Nests.Tick);
             Scheduler.Interval(this, "NPCAI.Ambush", 0.5f, Ambush.Tick, Phase.Update, true);
             Scheduler.EveryFrame(this, "NPCAI.DogBite", DogBite.Tick);
+            Scheduler.EveryFrame(this,"NPCAI.BurrowPose",Burrow.LateTick,Core.Phase.LateUpdate);
+            Scheduler.EveryFrame(this,"NPCAI.PouncePose",Pounce.LateTick,Core.Phase.LateUpdate);
+            Scheduler.EveryFrame(this,"NPCAI.BitePose",DogBite.LateTick,Core.Phase.LateUpdate);
+            Scheduler.Interval(this,"NPCAI.WeaponRanges.Sweep",30f,WeaponRanges.Sweep);
             Scheduler.Interval(this, "NPCAI.Aim.Sweep", 10f, Aim.Sweep);
             Scheduler.Interval(this, "NPCAI.Bosses", 0.5f, Bosses.Job);
 
@@ -145,9 +148,10 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Clears every behaviour registry / cache (the old Plugin.SceneLoaded chain). Init and Shutdown call it too.</summary>
         static void ResetAll()
         {
+            WeaponRanges.OnSceneLoaded();
             Aim.OnSceneLoaded(); Brain.OnSceneLoaded(); Senses.OnSceneLoaded(); Idle.OnSceneLoaded();
             Burrow.OnSceneLoaded(); Pounce.OnSceneLoaded(); Webs.OnSceneLoaded(); Nests.OnSceneLoaded(); Ambush.OnSceneLoaded(); DogBite.OnSceneLoaded();
-            Bosses.OnSceneLoaded(); NpcWorld.Clear();
+            Bosses.OnSceneLoaded();
         }
 
         /// <summary>Scene load: every behaviour registry reset, then the Navigation part.</summary>
@@ -215,9 +219,15 @@ namespace WildWasteland.Modules.NPCAI
             Hooks.SendEventEnter.Prefix(this, Aim.BeforeSendEvent);
             // SetVelocity.DoSetVelocity: Brain (the pedal; registers NPCs); DogAnimations follows (Presentation, NPC shell)
             Hooks.SetVelocityDo.Prefix(this, Brain.BeforeSetVelocity);
+            var canine=CanineBehaviour.Instance;
+            Hooks.ProcessEvent.Prefix(this,canine.BeforeDamageEvent);Hooks.SetVelocityDo.Prefix(this,canine.BeforeSetVelocity);
+            Core.Patches.Patch(this,HarmonyLib.AccessTools.Method(typeof(Wait),"OnEnter"),prefix:HarmonyLib.AccessTools.Method(typeof(CanineBehaviour),"BeforeDamageWait"));
+
+            Core.Patches.Patch(this,HarmonyLib.AccessTools.Method(typeof(HutongGames.PlayMaker.Actions.AudioPlay),"OnEnter"),prefix:HarmonyLib.AccessTools.Method(typeof(Senses),"BeforeAudioPlay"));
             // CreateObject.OnEnter postfixes: Senses (structures, pending rigs, blasts), Idle (camp spawn points)
             Hooks.CreateObjectEnter.Postfix(this, Senses.AfterCreateObject);
             Hooks.CreateObjectEnter.Postfix(this, Idle.AfterCreateObject);
+            Hooks.CreateObjectEnter.Postfix(this, Pounce.AfterCreateObject);
             Hooks.CreateObjectEnter.Postfix(this, Bosses.AfterCreateObject);   // spawned human bosses (ex Guns entry)
             // SetFsmFloat.OnEnter postfix: a real dog bite -> DogBite's lunge (vanilla hits are Gunplay's, subscribed by GunplayModule)
             Hooks.SetFsmFloatEnter.Postfix(this, DogBite.AfterSetFsmFloat);
@@ -255,6 +265,8 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Registers ModAPI providers: the NPC API, the private diagnostics source for Debug, then the Navigation part.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<INpcShotPolicy>(this,new NpcShotPolicy());
+            ModApi.Provide<ICanineBehaviour>(this,CanineBehaviour.Instance);
             ModApi.Provide<INativePopulation>(this,new NativePopulationApi());
             var api = new NpcApi();
             ModApi.Provide<INpcApi>(this, api);

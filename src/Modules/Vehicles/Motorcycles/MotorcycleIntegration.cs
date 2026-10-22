@@ -7,21 +7,17 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.Patrols
 {
     /// <summary>Motorcycle chassis integration (Vehicles part; the MotorcycleMod bridge is the Compatibility part): ES3 prefab resolver, template, rear collider trim, body name.</summary>
-    internal static partial class MotorcycleIntegration
+    internal static class MotorcycleIntegration
     {
         internal const string Body = "Motorcycle";
-        private static bool _modLooked;
-        private static MethodInfo _modTemplate;
 
         /// <summary>Old Patrols entry point; the Vehicles module installs the resolver itself (<see cref="Hook"/>).</summary>
         [Obsolete("refactor: the Vehicles module installs the motorcycle resolver (MotorcycleIntegration.Hook)")]
-        internal static void Install(IModule owner) { }
 
         /// <summary>Installs the ES3 prefab-id resolver (shared Core.Hooks.GetPrefab dispatcher) and the optional MotorcycleMod template patch.</summary>
         internal static void Hook(IModule owner)
         {
             Hooks.GetPrefab.Resolver(owner, ResolvePrefab);
-            PatchMotorcycleMod(owner);   // Compatibility part (MotorcycleIntegration.MotorcycleMod.cs)
         }
 
         /// <summary>
@@ -30,8 +26,8 @@ namespace WildWasteland.Modules.Patrols
         /// </summary>
         internal static GameObject Template()
         {
-            if (!_modLooked) { _modLooked = true; _modTemplate = MotorcycleModTemplate(); }   // Compatibility part (MotorcycleIntegration.MotorcycleMod.cs)
-            if (_modTemplate != null) return (GameObject)_modTemplate.Invoke(null, null);
+            var external=ModApi.Get<IExternalMotorcycle>()?.Template();
+            if(external!=null)return external;
             return Motorcycles.Factory.Template();
         }
 

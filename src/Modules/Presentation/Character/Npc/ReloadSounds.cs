@@ -5,13 +5,13 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Presentation
 {
     // (1.1.2) The reload sounds of a gunman: the clips the player's own copy of that gun plays while reloading (its "AnimSound" FSM -
     // mag_out / mag_in / pistol_slide for the AKs, bolt_action / shotgun_shell_insert for the shotguns, metal_screwing / ammo_in for the
     // pipe pistol ...), found once per weapon key under PlayerCameraHolder/PlayerCamera/WeaponsArm/Parent/<key> and spread evenly over
     // the NPC's reload time, played as 3D sounds at the NPC (linear rolloff to [NpcAim] ReloadSoundRange m).
-    internal static class ReloadSounds
+    internal sealed class ReloadSounds : WildWasteland.Core.INpcReloadAudio
     {
         private static readonly Dictionary<string, AudioClip[]> _clips = new Dictionary<string, AudioClip[]>(StringComparer.OrdinalIgnoreCase);
         private static readonly AudioClip[] _none = new AudioClip[0];
@@ -70,16 +70,15 @@ namespace WildWasteland.Modules.NPC
         private static int _next;
 
         /// <summary>called every frame while the NPC reloads: plays clip i at (i + 0.5) / count of the reload time</summary>
-        internal static void Tick(Brain.Npc n, float now)
+        public void Tick(string weapon,Vector3 at,float until,float length,ref int played,float now)
         {
-            if (CharacterSettings.ReloadVolume.Value <= 0f || n.ReloadLen <= 0.05f) return;
-            var clips = ClipsOf(n.WeaponKey);
-            if (clips.Length == 0 || n.ReloadSoundsPlayed >= clips.Length) return;
-            float start = n.ReloadUntil - n.ReloadLen;
-            float due = start + (n.ReloadSoundsPlayed + 0.5f) / clips.Length * n.ReloadLen;
+            if (CharacterSettings.ReloadVolume.Value <= 0f || length <= 0.05f) return;
+            var clips = ClipsOf(weapon);
+            if (clips.Length == 0 || played >= clips.Length) return;
+            float start = until - length;
+            float due = start + (played + 0.5f) / clips.Length * length;
             if (now < due) return;
-            var clip = clips[n.ReloadSoundsPlayed++];
-            Vector3 at = n.Weapon != null ? n.Weapon.position : n.T.position + Vector3.up * 1.3f;
+            var clip = clips[played++];
             Play(clip, at, CharacterSettings.ReloadVolume.Value);
         }
 

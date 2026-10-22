@@ -19,19 +19,15 @@ namespace WildWasteland.Modules.Patrols
     {
         internal const float RemoveDistance = 1000f;          // a dead chassis is removed beyond this (the game only deletes cars at 5 km)
         private const float Delay = 1f;                        // after the vacate, so the last carcass has left the seat
-        private const string BlastPrefab = "Explosion_BlastZombie";   // what the exploder zombie's Health FSM spawns when it dies
-        private static readonly Color Charred = new Color(0.06f, 0.06f, 0.06f, 1f);
-        private static readonly int ColorId = Shader.PropertyToID("_Color"), EmissionId = Shader.PropertyToID("_EmissionColor");
-        private static GameObject _blast; private static bool _blastLooked;
-        // the blast prefab's harmful half: ExplosionRadius grows its trigger sphere, ExplosionDamage sends distance-scaled Damage to every
-        // Bodypart its Range/LOS sensors detect. Switched off right after Instantiate, before they Start.
-        private static readonly string[] HarmfulFsms = { "ExplosionRadius", "ExplosionDamage" };
-
+        /// <summary>Actual native mechanics supplied by Vehicles while it runs.</summary>
+        private static Core.IVehicleWreck Wreck { get { return Core.ModApi.Get<Core.IVehicleWreck>(); } }
+        /// <summary>Traffic-owned persistent destruction flag used by restart and crew policy.</summary>
+        internal static bool IsWreck(GameObject car) { return car==null || car.GetComponent<PatrolMarker>()?.Exploded==true; }
         // Called by the Crew when the car is vacated. Re-checks after a short delay: a car the player took or sits in is never blown up.
         /// <summary>Called by the Crew when the car is vacated. Re-checks after a short delay: a car the player took or sits in is never blown up.</summary>
         internal static void Schedule(Crew crew, GameObject car, PatrolMarker marker, string why)
         {
-            if (car == null || marker == null || marker.Exploded || !Eligible(marker)) return;
+            if (Wreck==null || car == null || marker == null || marker.Exploded || !Eligible(marker)) return;
             crew.StartCoroutine(Routine(car, marker, why));
         }
 
@@ -39,10 +35,11 @@ namespace WildWasteland.Modules.Patrols
         private static IEnumerator Routine(GameObject car, PatrolMarker marker, string why)
         {
             yield return new WaitForSeconds(Delay);
-            if (car == null || marker == null || marker.Exploded || marker.PlayerEntered) yield break;
+            if (Wreck==null || car == null || marker == null || marker.Exploded || marker.PlayerEntered) yield break;
             if (!Eligible(marker)) yield break;
             while(car!=null&&marker!=null&&LivingOccupants(marker))yield return new WaitForSeconds(0.25f);
             if(car==null||marker==null||marker.Exploded||marker.PlayerEntered||!Eligible(marker))yield break;   // Exploded: a second routine (CrewReturn re-schedule) never blasts twice
+            var wreck=Wreck;if(wreck==null)yield break;
             if(!marker.ExplodeRolled){marker.ExplodeRolled=true;marker.ExplodeSelected=Roll(marker.ExplodeChance,PatrolsModule.SelfDestruct.Value,UnityEngine.Random.value);}
             if(!marker.ExplodeSelected&&!PatrolsModule.SelfDestruct.Value)yield break;
             if (PlayerRef.PlayerCar == car) yield break;
@@ -61,24 +58,24 @@ namespace WildWasteland.Modules.Patrols
             Core.ModApi.Get<Core.IVehicleDrive>()?.SetInput(car, 0f, 0f, truck ? 1f : 0f);
             if (truck) { Core.ModApi.Get<Core.IVehicleDrive>()?.StopEngine(car); Patrol.Handbrake(car, true); Core.ModApi.Get<Core.IVehicleDrive>()?.SetHandbrake(car, 1f); }
 
-            if (!truck) Darken(car);
+            if (!truck) wreck.Darken(car);
             Blast(car);
 
             // the hinges' engine wobble (Shake FSM: iTweenRotateTo on the part while the car's rpm is up) stops before anything pops,
             // so it cannot start a new tween on a part that is about to be loose
-            QuietHinges(car);
+            wreck.QuietHinges(car);
             Patrol.Headlights(car, false);   // popped headlights would keep shining on the ground
             var parts = new List<Transform>();
             int kept = 0, wheels = 0;
             foreach (var p in Parts(car))
             {
                 bool keep = KeepsCondition();
-                if (!keep) SetCondition(p, 0f);
+                if (!keep) wreck.SetCondition(p, 0f);
                 else kept++;
                 if (truck && OnWheelHinge(car, p)) { wheels++; continue; }   // a truck keeps its wheels (rolled like the rest)
                 parts.Add(p);
-                StopRpm(p);
-                StopTweens(p);
+                wreck.StopRpm(p);
+                wreck.StopTweens(p);
                 // the wrench's de_Attach: layer Item + tag vehPartRemoved -> the part's CheckTag FSM unparents it and adds a Rigidbody
                 p.gameObject.layer = 9;
                 try { p.tag = "vehPartRemoved"; } catch (Exception e) { Core.Log.Warn("[Patrols] " + "Explode: tag: " + e.Message); }
@@ -98,7 +95,7 @@ namespace WildWasteland.Modules.Patrols
             yield return null;   // CheckTag / LockPhysics have run: the Rigidbodies exist
             if (car == null) yield break;
             var centre = car.transform.position;
-            foreach (var t in parts) { StopRpm(t); StopTweens(t); Shove(t, centre, 3f, 6f); }   // again: CheckTag has re-enabled OnOff / Rotate
+            foreach (var t in parts) { wreck.StopRpm(t); wreck.StopTweens(t); Shove(t, centre, 3f, 6f); }   // again: CheckTag has re-enabled OnOff / Rotate
             foreach (var t in cargo) Shove(t, centre, 2f, 4f);
             // a part the CheckTag FSM did not free (none expected): free it ourselves
             foreach (var t in parts)
@@ -109,7 +106,7 @@ namespace WildWasteland.Modules.Patrols
                     Shove(t, centre, 3f, 6f);
                 }
 
-            Deaden(car, truck);
+            wreck.Deaden(car, truck);
         }
 
         // ------------------------------------------------------------ pieces
@@ -123,10 +120,11 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Applies the accepted battle wreck outcome without rerolling it.</summary>
         internal static void BattleWreck(GameObject car)
         {
+            var wreck=Wreck;if(wreck==null || car==null)return;
             var marker=car.GetComponent<PatrolMarker>();if(marker==null||marker.PlayerEntered)return;
             marker.Exploded=true;marker.DriverDied=true;Core.ModApi.Get<Core.IVehicleDrive>()?.StopEngine(car);Core.ModApi.Get<Core.IVehicleDrive>()?.SetHandbrake(car,1f);
-            foreach(var part in Parts(car))SetCondition(part,0f);
-            bool truck=IsTruck(marker.BodyPrefab);if(!truck)Darken(car);Blast(car);QuietHinges(car);Patrol.Headlights(car,false);Deaden(car,truck);
+            foreach(var part in Parts(car))wreck.SetCondition(part,0f);
+            bool truck=IsTruck(marker.BodyPrefab);if(!truck)wreck.Darken(car);Blast(car);wreck.QuietHinges(car);Patrol.Headlights(car,false);wreck.Deaden(car,truck);
         }
         /// <summary>Counts living occupants for the current explode.</summary>
         private static bool LivingOccupants(PatrolMarker marker)
@@ -154,13 +152,6 @@ namespace WildWasteland.Modules.Patrols
         // what a dead truck keeps working: the rear doors (parts/door_hinge_*: DoorOpen/DoorClose), the wheel hinges (Suspension,
         // checkWheel, attach - the NWH wheels read them) and the cargo in parts/PhysicsLock (its own LockPhysics/pickup FSMs)
         /// <summary>what a dead truck keeps working: the rear doors (parts/door_hinge_*: DoorOpen/DoorClose), the wheel hinges (Suspension, checkWheel, attach - the NWH wheels read them) and the cargo in parts/PhysicsLock (its own LockPhysics/pickup FSMs)</summary>
-        private static bool KeptOnTruck(GameObject car, Transform t)
-        {
-            for (var a = t; a != null && a != car.transform; a = a.parent)
-                if (a.name.StartsWith("door_hinge", StringComparison.Ordinal) || a.name.StartsWith("hinge_wheel", StringComparison.Ordinal)) return true;
-            return false;
-        }
-
         // Every attached part: a vehPart-tagged object under the car (not one nested in another part, not an occupant)
         /// <summary>Every attached part: a vehPart-tagged object under the car (not one nested in another part, not an occupant)</summary>
         private static List<Transform> Parts(GameObject car)
@@ -224,15 +215,8 @@ namespace WildWasteland.Modules.Patrols
         private static void Blast(GameObject car)
         {
             Core.Services.RaiseVehicleExploded(car);   // WW: the NPC module subscribes (ex a Harmony patch on Apocapatrol.Explode.Blast)
-            if (!_blastLooked)
-            {
-                _blastLooked = true;
-                _blast = Prefabs.FindAny(BlastPrefab);
-                if (_blast == null) Core.Log.Warn("[Patrols] " + "Explode: " + BlastPrefab + " prefab not found; no blast effect");
-            }
-            if (_blast == null) return;
             var rb = car.GetComponent<Rigidbody>();
-            BlastAt((rb != null ? rb.worldCenterOfMass : car.transform.position) + Vector3.up * 0.3f);
+            Wreck?.BlastAt((rb != null ? rb.worldCenterOfMass : car.transform.position) + Vector3.up * 0.3f);
         }
     }
 }

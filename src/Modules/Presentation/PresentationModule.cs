@@ -135,12 +135,11 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Init step: the dog animation bundle hooks, the NPC rig builder and the visual LateUpdate ticks of burrowing / pouncing / biting animals, the carcass and taunt hooks.</summary>
         void InitNpcVisuals()
         {
-            DogAnimations.Initialize(this);
-            Scheduler.EveryFrame(this, "Presentation.BurrowLate", Burrow.LateTick, Phase.LateUpdate);
-            Scheduler.EveryFrame(this, "Presentation.PounceLate", Pounce.LateTick, Phase.LateUpdate);
-            Scheduler.EveryFrame(this, "Presentation.DogBiteLate", DogBite.LateTick, Phase.LateUpdate);
-            Hooks.CreateObjectEnter.Postfix(this, Pounce.AfterCreateObject);
-            PatchAction(typeof(AudioPlay), "OnEnter", typeof(Senses), "BeforeAudioPlay", true);
+            CanineVisuals.Initialize(this);
+            Scheduler.EveryFrame(this,"Presentation.CanineBehavior",CanineVisuals.Tick,Phase.Update);
+            Scheduler.EveryFrame(this,"Presentation.CanineVisuals",CanineVisuals.LateTick,Phase.LateUpdate);
+            Scheduler.EveryFrame(this,"Presentation.AnimalEffects",AnimalVisuals.Tick,Phase.Update);
+
         }
 
         /// <summary>Patches target.method with patchType.patchMethod as a prefix or postfix through Core.Patches (recorded for this module).</summary>
@@ -161,13 +160,17 @@ namespace WildWasteland.Modules.Presentation
             WheelGripAuthoring.Clear();
             ShutdownStep("Women of Wasteland", WomenFeature.Shutdown);
             ShutdownWorld();
+            ShutdownStep("rider visuals", RiderVisuals.Clear);
+            ShutdownStep("animal effects", AnimalVisuals.Clear);
+            ShutdownStep("voice audio", NpcVoice.Clear);
+            ShutdownStep("reload audio", ReloadSounds.Clear);
             ShutdownStep("body", BodyRunner.TearDown);
             ShutdownStep("aim transition", AimTransition.RestoreAll);
             ShutdownStep("weapon lowering", WeaponPoseService.Reset);
             _characters.Clear();
             ShutdownStep("ModAPI characters", ModAPI.OnSceneLoaded);
             _animation.Clear();
-            ShutdownStep("dog animations", DogAnimations.Shutdown);
+            ShutdownStep("dog animations", CanineVisuals.Shutdown);
             _running = false;
         }
 
@@ -183,6 +186,7 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Scene load: body state, ModAPI characters, service handles, ADS tweens and Gungirl caches dropped, then World.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            RiderVisuals.Clear(); AnimalVisuals.Clear(); NpcVoice.Clear(); CanineVisuals.OnSceneLoaded();
             BodyRunner.OnSceneLoaded();
             ModAPI.OnSceneLoaded();
             _animation.Clear();
@@ -212,6 +216,11 @@ namespace WildWasteland.Modules.Presentation
         /// IWeaponPose, IPoseAuthoring, ICharacterAssets, INpcAppearance while Women of Wasteland runs), then World's.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<IAnimalVisuals>(this,new AnimalVisuals());
+            ModApi.Provide<INpcReloadAudio>(this,new ReloadSounds());
+            ModApi.Provide<INpcVoice>(this,new NpcVoice());
+            ModApi.Provide<IRiderVisuals>(this,new RiderVisuals());
+            var canine=new CaninePresentation();ModApi.Provide<ICaninePresentation>(this,canine);ModApi.Provide<ICanineRestPolicy>(this,canine);
             ModApi.Provide<IBusPassengerAuthoring>(this,new BusPassengerAuthoring());
             ModApi.Provide<IVehicleVisuals>(this,new VehicleVisuals());
             ModApi.Provide<ICrewSeats>(this,new CrewSeats());

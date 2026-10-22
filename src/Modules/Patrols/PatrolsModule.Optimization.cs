@@ -17,7 +17,9 @@ namespace WildWasteland.Modules.Patrols
             ModApi.Provide<IVehicleRouting>(this, new VehicleRoutingApi());
             ModApi.Provide<IPatrols>(this, new PatrolQueries());
             ModApi.Provide<IOccupantCombatPolicy>(this,new OccupantCombatPolicy());
-            ModApi.Provide<IVehicleCrewMetadata>(this,new VehicleCrewMetadata());
+            var crewMetadata=new VehicleCrewMetadata();
+            ModApi.Provide<IVehicleCrewMetadata>(this,crewMetadata);
+            ModApi.Provide<IVehicleCrewWreck>(this,crewMetadata);
             ModApi.Provide<ICullingProtection>(this, new PatrolCullingProtection());
             var ownership = ModApi.Get<IVehicleOwnership>();
             if (ownership != null) ownership.Register(this, new PatrolVehicleOwnership());

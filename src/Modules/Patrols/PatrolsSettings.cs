@@ -104,7 +104,6 @@ namespace WildWasteland.Modules.Patrols
             BindTools(cfg);
             RaidersOverheat.SettingChanged += (s, e) => { if (Running) Crew.ApplyOverheatAll(); };
             SimpleConvoyBanditsAI.SettingChanged += (sender, args) => { if (Running) SimpleBanditBridge.RefreshAll(); };
-            HookCoreSettings();
         }
 
         // ---------------------------------------------------------------- F6: one toggle per feature, in feature order
@@ -150,7 +149,6 @@ namespace WildWasteland.Modules.Patrols
             ReturnToCar = cfg.Player(null, "Return to car", true,
                 "Patrol, convoy and merchant crews reboard when their attacker dies or moves beyond 50 m from the car, then resume pursuit or their route. A surviving passenger or gunner can drive; fully stuck cars are abandoned");
             TacticalDriving = cfg.Player(null, "Tactical driving", true, "World traffic: varied attack runs and vehicle-checked camp approaches");
-            BindVehiclesToggles(cfg);
         }
 
         // ---------------------------------------------------------------- F6: player-facing values
@@ -176,7 +174,6 @@ namespace WildWasteland.Modules.Patrols
             MerchantCheckMinutes = cfg.Player(mc, "Merchant check interval (minutes)", 5f, "Check and adjust merchant route population this often, including replacing departed merchants. No immediate replacement when a route ends. Loaded merchants finish their visit before excess routes are removed.", new AcceptableValueRange<float>(1f, 60f));
 
             const string cb = "Combat";
-            BindVehiclesCombat(cfg);
             ShootDistance = cfg.Player(cb, "ShootDistance", 40f, "Occupants only shoot at a target closer than this, m", new AcceptableValueRange<float>(1f, 200f));
             WitnessMeChance = cfg.Player(cb, "WitnessMeChance", 10f,
                 "% chance that an unhurt blast-lance rider screams \"Witness me!\" and leaps at your car when you drive close " +
@@ -203,8 +200,6 @@ namespace WildWasteland.Modules.Patrols
         void BindTools(ModuleConfig cfg)
         {
 
-            BindCoreDebug(cfg);
-            BindVehiclesDebug(cfg);
 
             RealPatrolNames = cfg.Tool(TTraffic, "Real patrol names", true, "Use each group's actual name on the game debug map; off labels groups Patrol or Convoy");
             HideRouteType = cfg.Tool(TTraffic, "hide route type", false, "Draw every traffic route and marker gray and label it Distant traffic; overrides Real patrol names");
@@ -231,7 +226,6 @@ namespace WildWasteland.Modules.Patrols
             DismountMemorySeconds = cfg.Tool(TTraffic, "DismountMemorySeconds", 90f, "Crew that fought or detected the player from the car still know where he is this long after getting out, s", new AcceptableValueRange<float>(0f, 600f));
             FootTargetRange = cfg.Tool(TTraffic, "FootTargetRange", 350f, "On-foot crew and foot patrols are offered the player as a target only within this distance (they still need to see, hear or remember him), m", new AcceptableValueRange<float>(50f, 1000f));
 
-            BindCoreAudio(cfg);
 
             // combat tuning (was the hidden [Combat] block)
             FireArc = cfg.Tool(TCombat, "FireArcHalfAngle", 100f, "Occupants may fire this many degrees left or right of the car's forward direction", new AcceptableValueRange<float>(0f, 180f));
@@ -246,9 +240,7 @@ namespace WildWasteland.Modules.Patrols
             RamFullSpeedKmh = cfg.Tool(TCombat, "RamFullSpeedKmh", 30f, "Impact speed (km/h, relative) for the full damage. At half that speed the hit does half damage; below half it does nothing", new AcceptableValueRange<float>(5f, 200f));
             RamPushStrength = cfg.Tool(TCombat, "RamPushStrength", 1f, "A damaging hit also shoves you (on foot) in the car's direction: 1 = about the impact speed plus a hop; 0 = off", new AcceptableValueRange<float>(0f, 4f));
             RamInCarFactor = cfg.Tool(TCombat, "RamInCarFactor", 1f, "With Ram damage in car: damage factor while you sit in your own car (1 = same as on foot)", new AcceptableValueRange<float>(0f, 1f));
-            BindNpcaiRiderTuning(cfg);
-            BindVehiclesTuning(cfg);
-            BindNpcaiRiderLeap(cfg);
+            BindRiders(cfg);
 
 
             StuckPedalChance = cfg.Tool(TDriving, "StuckPedalChance", 5f, "% chance that a killed driver's gas pedal stays stuck; otherwise the gas is released and the car rolls to a stop", new AcceptableValueRange<float>(0f, 100f));
@@ -297,24 +289,6 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // ---------------------------------------------------------------- per-target parts (Wave A split; implemented in the target module folders)
-        /// <summary>Binds the War Rig F6 toggles (spawns, ground recovery) in their old position after the Patrols feature toggles. Implemented in Vehicles (_fromPatrols).</summary>
-        partial void BindVehiclesToggles(ModuleConfig cfg);
-        /// <summary>Binds the F6 Combat entry NPC ram damage multiplier (applies to every car, Vehicles rule). Implemented in Vehicles (_fromPatrols).</summary>
-        partial void BindVehiclesCombat(ModuleConfig cfg);
-        /// <summary>Binds the tools.cfg Debug entry Hide missing-FSM warnings (drives Core QuietFsm). Implemented in Core (_fromPatrols).</summary>
-        partial void BindCoreDebug(ModuleConfig cfg);
-        /// <summary>Binds the tools.cfg Debug entry ExitSpeedKmh (player exit-speed rule). Implemented in Vehicles (_fromPatrols).</summary>
-        partial void BindVehiclesDebug(ModuleConfig cfg);
-        /// <summary>Binds the tools.cfg Audio entry AudioVoices (read by Core at startup). Implemented in Core (_fromPatrols).</summary>
-        partial void BindCoreAudio(ModuleConfig cfg);
-        /// <summary>Binds the Combat tuning entries of the blast-lance rider decisions (range, throw angle, jump, intervals, leap reach, bail range). Implemented in NPCAI (_fromPatrols).</summary>
-        partial void BindNpcaiRiderTuning(ModuleConfig cfg);
-        /// <summary>Binds the Combat tuning entry SuspensionLiftCenterOfMass (lift-kit centre of mass). Implemented in Vehicles (_fromPatrols).</summary>
-        partial void BindVehiclesTuning(ModuleConfig cfg);
-        /// <summary>Binds the Combat tuning entries of the rider leap and lance (leap speed, blast damage/radius, lance speed). Implemented in NPCAI (_fromPatrols).</summary>
-        partial void BindNpcaiRiderLeap(ModuleConfig cfg);
         /// <summary>Binds the Turret pose entries (crouched gunner pose and the Warboy lance prop). Implemented in Presentation (_fromPatrols).</summary>
-        /// <summary>Wires the Core QuietFsm switch to its entry (initial value + live changes). Implemented in Core (_fromPatrols).</summary>
-        partial void HookCoreSettings();
     }
 }

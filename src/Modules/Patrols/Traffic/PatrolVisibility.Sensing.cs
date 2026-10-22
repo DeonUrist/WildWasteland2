@@ -52,6 +52,6 @@ namespace WildWasteland.Modules.Patrols
         }
         /// <summary>Engine noise distance of the player's car (0 when the engine is off or unknown).</summary>
         internal static float EngineDistance(GameObject car)
-        {if(car==null||!Nwh.EngineRunning(car))return 0f;var cache=Of(car);Refresh(cache);return cache.Engine!=null&&cache.Engine.IsChildOf(car.transform)?TrafficRules.EngineRange(cache.Horsepower):0f;}   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+        {if(car==null||Core.ModApi.Get<Core.IVehicleDrive>()?.EngineRunning(car)!=true)return 0f;var cache=Of(car);Refresh(cache);return cache.Engine!=null&&cache.Engine.IsChildOf(car.transform)?TrafficRules.EngineRange(cache.Horsepower):0f;}
     }
 }

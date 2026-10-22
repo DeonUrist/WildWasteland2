@@ -27,6 +27,7 @@ namespace WildWasteland.Modules.Compatibility
         internal static void Start(IModule scope)
         {
             _scope = scope;
+            ModApi.Provide<IExternalItemNames>(scope,new ExternalItemNames());
             var asm = FindAssembly();
             if (asm == null) { if (Log.L2) Log.Deep(scope, "Apocaspawner not installed"); return; }
             _entry = asm.GetType("Apocaspawner.Entry");

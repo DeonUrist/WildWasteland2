@@ -5,11 +5,25 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Burrow part owned by Presentation: the visual sink of the rig (LateTick) and the sand puff / sound FX pool (Burrower_Effect).</summary>
-    internal static partial class Burrow
+    internal sealed class AnimalVisuals : Core.IAnimalVisuals
     {
+        /// <summary>Applies the requested burrow displacement in the actor's local plane.</summary>
+        public void Sink(Transform rig,Transform actor,Vector3 origin,float depth) { if(rig!=null && actor!=null)rig.localPosition=origin+actor.InverseTransformVector(-actor.up*depth); }
+        /// <summary>Applies the requested leap pitch to the authored rig rotation.</summary>
+        public void Pitch(Transform rig,Quaternion origin,float pitch) { if(rig!=null)rig.localRotation=Quaternion.AngleAxis(-pitch,Vector3.right)*origin; }
+        /// <summary>Applies the procedural neck/head bite and body displacement.</summary>
+        public void Bite(Transform actor,Transform rig,Vector3 origin,Transform[] bones,float angle,float push) {
+            if(actor==null)return; var axis=actor.right;
+            if(bones!=null)for(int b=0;b<bones.Length;b++)if(bones[b]!=null)bones[b].rotation=Quaternion.AngleAxis(angle*(b==bones.Length-1?.4f:.3f),axis)*bones[b].rotation;
+            if(rig!=null)rig.localPosition=origin+actor.InverseTransformVector(actor.forward*push);
+        }
+        /// <summary>Returns finished particles to the bounded Presentation pool.</summary>
+        internal static void Tick() { if(_fxLive.Count>0)FxRecycle(Time.time); }
+        /// <summary>Destroys all owned effects on scene reset or shutdown.</summary>
+        internal static void Clear() { foreach(var fx in _fxLive)if(fx!=null)UnityEngine.Object.Destroy(fx); foreach(var fx in _fxFree)if(fx!=null)UnityEngine.Object.Destroy(fx); _fxLive.Clear();_fxFree.Clear();_fxUntil.Clear();_nextFind=0f;if(_effect==null)_clip=null; }
         private static GameObject _effect; private static AudioClip _clip; private static float _nextFind;
 
         // (WW perf) the sand puffs: finished ones are deactivated and reused (was Instantiate + Destroy per puff)
@@ -18,24 +32,6 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<float> _fxUntil = new List<float>();
         private static readonly List<ParticleSystem> _psBuf = new List<ParticleSystem>();
         private static readonly List<PlayMakerFSM> _fsmBuf = new List<PlayMakerFSM>();
-
-        // runs in LateUpdate, after the Animator: the body (the Rig child) is sunk along the NPC's own up axis.
-        // Amount 0..1 = the burrow (the eyes stay up), 1..2 = a hunter's dive (the tail goes under too)
-        /// <summary>LateUpdate: sinks the rig along the NPC's up axis (0..1 burrow, 1..2 a hunter's dive).</summary>
-        internal static void LateTick()
-        {
-            for (int i = 0; i < _list.Count; i++)
-            {
-                var b = _list[i];
-                if (b.Rig == null || b.T == null) continue;
-                if (b.Amount <= 0.0005f && !b.Applied) continue;
-                float a1 = Mathf.Clamp01(b.Amount), a2 = Mathf.Clamp01(b.Amount - 1f);
-                float sink = b.Depth * a1 * a1 * (3f - 2f * a1) + (b.Deep - b.Depth) * a2 * a2 * (3f - 2f * a2);
-                b.Rig.localPosition = b.RigBase + b.T.InverseTransformVector(-b.T.up * sink);
-                b.Applied = b.Amount > 0.0005f;
-                if (!b.Applied) b.Rig.localPosition = b.RigBase;
-            }
-        }
 
         // ---------- the sand worm's puff and sound, small and quiet ----------
         /// <summary>Finds the sand worm's Burrower_Effect prefab and its clip (at most once a minute while missing).</summary>
@@ -65,15 +61,15 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>Plays a sand puff and sound at a point (pooled, small scale, low volume).</summary>
-        private static void Fx(B b, Vector3 at)
+        public void Sand(Vector3 at,float scale,float volume,float pitch,float range,bool hunter)
         {
             var cam = Core.GameRefs.MainCamera;
-            if (cam == null || (cam.transform.position - at).sqrMagnitude > NpcaiSettings.BurrowFxRange.Value * NpcaiSettings.BurrowFxRange.Value) return;
+            if (cam == null || (cam.transform.position - at).sqrMagnitude > range * range) return;
             FindEffect();
             if (_effect == null) return;
             try
             {
-                float s = Mathf.Clamp(b.Hunter ? NpcaiSettings.HuntFxScale.Value : NpcaiSettings.BurrowFxScale.Value, 0.05f, 1f);
+                float s = Mathf.Clamp(scale, 0.05f, 1f);
                 GameObject fx = null;
                 while (_fxFree.Count > 0 && fx == null) { fx = _fxFree[_fxFree.Count - 1]; _fxFree.RemoveAt(_fxFree.Count - 1); }
                 if (fx == null)
@@ -98,9 +94,9 @@ namespace WildWasteland.Modules.NPC
                 if (src != null)
                 {
                     if (_clip != null) src.clip = _clip;
-                    src.volume = Mathf.Clamp01(b.Hunter ? NpcaiSettings.HuntFxVolume.Value : NpcaiSettings.BurrowFxVolume.Value);
-                    src.pitch = Mathf.Clamp(b.Hunter ? NpcaiSettings.HuntFxPitch.Value : NpcaiSettings.BurrowFxPitch.Value, 0.5f, 3f);
-                    src.spatialBlend = 1f; src.rolloffMode = AudioRolloffMode.Linear; src.minDistance = 1f; src.maxDistance = Mathf.Max(5f, NpcaiSettings.BurrowFxRange.Value * (b.Hunter ? 1f : 0.5f));
+                    src.volume = Mathf.Clamp01(volume);
+                    src.pitch = Mathf.Clamp(pitch, 0.5f, 3f);
+                    src.spatialBlend = 1f; src.rolloffMode = AudioRolloffMode.Linear; src.minDistance = 1f; src.maxDistance = Mathf.Max(5f, range * (hunter ? 1f : 0.5f));
                     src.loop = false; src.dopplerLevel = 0f;
                     if (src.clip != null) { src.Play(); life = Mathf.Max(life, src.clip.length / src.pitch + 0.5f); }
                 }

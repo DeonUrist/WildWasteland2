@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Quests
+namespace WildWasteland.Modules.Loot
 {
-    /// <summary>Item query memo (Loot, ex Quests/QueryCache.cs): caches "does this item match the token" per ItemName FSM for 30 s
-    /// (invalidated when the object, its name or its display name changes; the whole memo is dropped after 20000 entries).
-    /// Part of the Quests Game helper (REFACTOR-REQUEST B15-4). Namespace kept for Wave C.</summary>
-    internal static partial class Game
+    /// <summary>Loot-owned token-match memo, invalidated with the item identity, name, display text and world lifecycle.</summary>
+    internal sealed partial class QuestItems : IQuestItems
     {
+        /// <summary>Releases item identities and native ammo references at world boundaries.</summary>
+        internal void Clear() { MatchesByToken.Clear();_matches=0;ammoFsm=null; }
         /// <summary>One memoized token match.</summary>
         sealed class MatchMemo
         {
@@ -22,11 +22,11 @@ namespace WildWasteland.Modules.Quests
             /// <summary>Unscaled time the entry expires.</summary>
             internal float Until;
         }
-        static readonly Dictionary<string, Dictionary<int, MatchMemo>> MatchesByToken = new Dictionary<string, Dictionary<int, MatchMemo>>(StringComparer.Ordinal);
-        static int _matches;
+        readonly Dictionary<string, Dictionary<int, MatchMemo>> MatchesByToken = new Dictionary<string, Dictionary<int, MatchMemo>>(StringComparer.Ordinal);
+        int _matches;
 
         /// <summary>Memoized <see cref="MatchUncached"/>; <paramref name="display"/> is always the item's current display name.</summary>
-        static bool Matches(GameObject go, PlayMakerFSM itemNameFsm, string token, out string display)
+        bool Matches(GameObject go, PlayMakerFSM itemNameFsm, string token, out string display)
         {
             display = ItemText(itemNameFsm, "ItemName");
             if (go == null || itemNameFsm == null || token == null) return false;

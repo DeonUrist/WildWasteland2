@@ -46,7 +46,11 @@ namespace WildWasteland.Modules.Compatibility
             _bridges.Add(new OptionalBridge(this, "Apocapocket", "Apocapocket", "Show Apocapocket's extra slots on the Wild Wasteland HUD and provide them to Wild Wasteland modules.", ApocapocketBridge.Start, ApocapocketBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "Apocatalker", "Apocatalker", "Show Apocatalker conversations in the Wild Wasteland dialogue window.", ApocatalkerBridge.Start, ApocatalkerBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "ChaseCamera", "ChaseCamera", "Drive ChaseCamera with the Wild Wasteland player body and show its speed, RPM and gear on the Wild Wasteland HUD.", ChaseCameraBridge.Start, ChaseCameraBridge.Shutdown));
-            _bridges.Add(new OptionalBridge(this, "DogCompanion", "Dog Companion", "Drive Dog Companion's dog with Wild Wasteland canine animation, combat and vehicle seating (the [NPC] DogCompanionCompat switch still applies).", DogCompanionCompat.Initialize, DogCompanionCompat.Stop));
+            _bridges.Add(new OptionalBridge(this, "DogCompanion", "Dog Companion", "Drive Dog Companion's dog with Wild Wasteland canine animation, combat and vehicle seating.", DogCompanionCompat.Initialize, DogCompanionCompat.Stop));
+            _bridges.Add(new OptionalBridge(this,"ImmersiveMap","Immersive Map","Let Immersive Map own map fog while installed.",scope=>ModApi.Provide<IExternalMapPolicy>(scope,new ExternalMapPolicy()),()=>{}));
+            _bridges.Add(new OptionalBridge(this,"ModVehicles","Mod vehicle templates","Discover external runtime vehicle factories.",scope=>ModApi.Provide<IExternalVehicleTemplates>(scope,new ExternalVehicleTemplates()),()=>{}));
+            _bridges.Add(new OptionalBridge(this,"PartAdjustment","Part Adjustment","Use Part Adjustment suspension operations when available.",scope=>ModApi.Provide<IExternalSuspension>(scope,new ExternalSuspension()),()=>{}));
+            _bridges.Add(new OptionalBridge(this,"MotorcycleMod","Motorcycle Mod","Use the external motorcycle template and preparation hook.",scope=>ModApi.Provide<IExternalMotorcycle>(scope,new ExternalMotorcycle(scope)),()=>{}));
             _bridges.Add(new OptionalBridge(this, "WeaponsPack", "Weapons Pack", "Connect optional Weapons Pack behavior (NPC fear, chainsaw kills, held-model shadows, HUD icons, slash sound) through Wild Wasteland services.", WeaponsPackBridge.Start, WeaponsPackBridge.Shutdown));
         }
 
@@ -97,6 +101,7 @@ namespace WildWasteland.Modules.Compatibility
             if (_engineEnabled.Value) _engineSim.OnSceneLoaded(scene, mode);
             WeaponsPackBridge.OnSceneLoaded();
             ApocatalkerBridge.OnSceneLoaded();
+            DogCompanionCompat.OnSceneLoaded();
         }
 
         /// <summary>Contributes every per-mod switch to the System page's Compatibility group.</summary>
@@ -118,4 +123,3 @@ namespace WildWasteland.Modules.Compatibility
         public override void Shutdown() { _running = false; for (int i = _bridges.Count - 1; i >= 0; i--) _bridges[i].Stop(); if (_caveDiscovery != null) _caveDiscovery.Remove(); _caveDiscovery = null; ModApi.Withdraw<ICaveAmbient>(this); _cave = null; ModApi.Withdraw<ILanguageMenu>(this); _language = null; _engineSim.Shutdown(); }
     }
 }
-

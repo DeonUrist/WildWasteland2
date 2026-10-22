@@ -27,7 +27,7 @@ namespace WildWasteland.Modules.Patrols
         internal static void Refresh()
         {
             if (!PatrolsModule.Running) return;
-            ModVehicles.Refresh(); Core.PrefabCatalog.Refresh(); EnsureClassification();
+            Core.ModApi.Get<Core.IVehicleAuthoring>()?.RefreshTemplates(); Core.PrefabCatalog.Refresh(); EnsureClassification();
         }
         /// <summary>Releases only the derived display/kind index; Core owns the source asset snapshots.</summary>
         private static void ClearClassification() { _all = null; _roots = null; _byName = null; _classifiedGeneration = -1; }
@@ -46,8 +46,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 var exact = Core.PrefabCatalog.Exact(name); if (exact != null) return exact;
             }
-            if (MotorcycleIntegration.IsBody(name)) return MotorcycleIntegration.Template();
-            var mod = ModVehicles.Template(name);
+            var mod = Core.ModApi.Get<Core.IVehicleAuthoring>()?.Template(name);
             return mod != null ? mod : Core.PrefabCatalog.Find(name);
         }
 
@@ -55,8 +54,7 @@ namespace WildWasteland.Modules.Patrols
         internal static GameObject Find(string query, string kind)
         {
             if (string.IsNullOrEmpty(query)) return null;
-            if (MotorcycleIntegration.IsBody(query)) return MotorcycleIntegration.Template();
-            { var mod = ModVehicles.Template(query); if (mod != null) return mod; }
+            { var mod = Core.ModApi.Get<Core.IVehicleAuthoring>()?.Template(query); if (mod != null) return mod; }
             EnsureClassification();
             string q = query.Trim();
             Entry e = _all.FirstOrDefault(x => x.Kind == kind && string.Equals(x.Name, q, StringComparison.OrdinalIgnoreCase))
@@ -81,8 +79,7 @@ namespace WildWasteland.Modules.Patrols
         internal static GameObject FindAny(string query)
         {
             if (string.IsNullOrEmpty(query)) return null;
-            if (MotorcycleIntegration.IsBody(query)) return MotorcycleIntegration.Template();
-            { var mod = ModVehicles.Template(query); if (mod != null) return mod; }
+            { var mod = Core.ModApi.Get<Core.IVehicleAuthoring>()?.Template(query); if (mod != null) return mod; }
             string q = CrewLooks.BasePrefab(query.Trim());
             EnsureClassification();
             return Lookup(q);

@@ -3,30 +3,45 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>NPC storm-senses part of the ApocaDustStorm bridge (partial of the NPC/Survival Storm, which calls <see cref="LookForDust"/>
     /// and reads the delegates): ApocaDustStorm's dust storms count as sandstorms for NPC sight and hearing. Uses the bridge's shared
     /// detection, so it is off while [Compatibility / ApocaDustStorm] Enabled is off.</summary>
-    internal static partial class Storm
+    internal sealed class ExternalStormField : Core.IExternalStormField
     {
+        /// <summary>True while the optional model was successfully resolved.</summary>
+        public bool Available { get { Ensure(); return _dustIntensity != null; } }
+        /// <summary>Reads live third-party activity, withdrawing failed delegates before the next query.</summary>
+        public bool Active
+        {
+            get { Ensure(); try { return _dustOn!=null && _dustOn() && _dustActive(); } catch(Exception e) { DustOff(e); return false; } }
+        }
+        /// <summary>Applies the third-party hazardous intensity threshold in scene space.</summary>
+        public bool Inside(Vector3 scene)
+        {
+            if(!Active)return false;
+            try { return _dustIntensity(scene.x,scene.z)>=DustHazard; } catch(Exception e) { DustOff(e);return false; }
+        }
+        /// <summary>Resolves only while the owning optional bridge runs.</summary>
+        private static void Ensure() { if(!_dustLooked)LookForDust(); }
         // (1.9.3) ApocaDustStorm (local.apocalypter.duststorm), only when that mod is loaded: its worldwide dust storms count as sandstorms
         // (the same StormSight / StormHearing) wherever its dust is hazardous (intensity >= 0.35, where its player damage starts). It also
         // switches the game's own storms off but leaves them in ArrayList_Sandstorms, parked and invisible: a storm whose SandPlayer FSM is
         // disabled is skipped, funnels included (no "shoved by a tornado" from a storm that shoves nobody).
         private const double DustHazard = 0.35;
-        private static bool _dustLooked, _dust;
+        private static bool _dustLooked;
         private static Func<bool> _dustOn, _dustActive;
         private static Func<double, double, double> _dustIntensity;
 
         /// <summary>Resolves ApocaDustStorm's API by reflection once (only when that mod is loaded).</summary>
         private static void LookForDust()
         {
-            _dustLooked = Compatibility.ApocaDustStormBridge.Enabled;   // retried while the bridge is off (a dictionary lookup per refresh)
+            _dustLooked = ApocaDustStormBridge.Enabled;   // retried while the bridge is off (a dictionary lookup per refresh)
             if (!_dustLooked) return;
             try
             {
-                var info = Compatibility.ApocaDustStormBridge.Plugin;
+                var info = ApocaDustStormBridge.Plugin;
                 if (info == null) return;
                 const BindingFlags any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
                 Assembly asm = info.Instance.GetType().Assembly;
@@ -47,12 +62,12 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>The ApocaDustStorm bridge stopped: dust no longer counts as a sandstorm; it re-resolves when switched on.</summary>
-        internal static void DustBridgeOff() { _dust = false; _dustOn = null; _dustActive = null; _dustIntensity = null; _dustLooked = false; }
+        internal static void Clear() { _dustOn = null; _dustActive = null; _dustIntensity = null; _dustLooked = false; }
 
         /// <summary>Switches the dust bridge off after a reflection failure (logged once).</summary>
         private static void DustOff(Exception e)
         {
-            _dust = false; _dustOn = null; _dustActive = null; _dustIntensity = null;
+            _dustOn = null; _dustActive = null; _dustIntensity = null;
             Core.Log.Warn((Core.IModule)null, "Storm: ApocaDustStorm bridge off: " + e.Message);
         }
     }

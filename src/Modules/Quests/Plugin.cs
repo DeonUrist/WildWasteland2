@@ -441,8 +441,8 @@ namespace WildWasteland.Modules.Quests
                 case QType.Fetch:
                     {
                         float rad = itemRange.Value > 0f ? itemRange.Value : 4000f;
-                        List<ItemHit> hits = Game.FindItems(q.Target, pp, rad, false);
-                        ItemHit best = null;
+                        List<QuestItemHit> hits = Game.FindItems(q.Target, pp, rad, false);
+                        QuestItemHit best = null;
                         for (int i = 0; i < hits.Count; i++)
                         {
                             if (hits[i].Go == null || hits[i].Reserve || hits[i].Dist <= handRadius.Value) continue;      // items within hand range are already counted
@@ -691,7 +691,7 @@ namespace WildWasteland.Modules.Quests
                 if (q.Type != QType.Deliver || !q.HasPos) continue;
                 if (Game.HDist(t.position, Game.Abs(q.Pos)) > q.Radius) continue;
                 if (Game.IsPlayerEnemy(t.gameObject)) continue;                 // anyone at the camp who isn't hostile to you
-                List<ItemHit> hits = Game.FindItems(q.Target, pl.position, handRadius.Value, countCarried.Value);
+                List<QuestItemHit> hits = Game.FindItems(q.Target, pl.position, handRadius.Value, countCarried.Value);
                 int have = Game.CountStacks(hits);
                 if (have < q.Count) { bridge.Say(Format(q.Remind, q, have)); Speak(q, "remind"); return false; }
                 if (Game.MoneyVar(moneyVar.Value) == null) { AddToast("Could not pay the reward: money variable not found (see the BepInEx log)."); return true; }
@@ -746,7 +746,7 @@ namespace WildWasteland.Modules.Quests
             if (!book.Active.Contains(q)) return;
             bridge.You((Returning(q) ? "There was nobody to deliver to. Here are your " : "I can't make that delivery. Here are your ") + q.Label + ".");
             Transform pl = Game.Player();
-            List<ItemHit> hits = Game.FindItems(q.Target, pl != null ? pl.position : Vector3.zero, handRadius.Value, countCarried.Value);
+            List<QuestItemHit> hits = Game.FindItems(q.Target, pl != null ? pl.position : Vector3.zero, handRadius.Value, countCarried.Value);
             int have = Game.CountStacks(hits);
             if (have < q.Count)
             {
@@ -1906,7 +1906,7 @@ namespace WildWasteland.Modules.Quests
             Transform pl = Game.Player();
             Vector3 pp = pl != null ? pl.position : Vector3.zero;
 
-            List<ItemHit> hits = null;
+            List<QuestItemHit> hits = null;
             int have = 0;
             if (q.Type == QType.Fetch)
             {

@@ -17,6 +17,8 @@ namespace WildWasteland.Modules.Compatibility
         internal static void Start(IModule scope)
         {
             Scope = scope;
+            LogicalEquipmentInventory.Clear();
+            ModApi.Provide<ILogicalEquipmentInventory>(scope,new LogicalEquipmentInventory());
             ApocapocketInventory.Install(scope);
             if (ApocapocketInventory.Ready) { ModApi.Provide<IInventorySlots>(scope, new ApocapocketSlots()); ModApi.Provide<IPocketHud>(scope, new PocketHudAdapter()); }
         }
@@ -24,8 +26,8 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Withdraws the query and forgets the reader.</summary>
         internal static void Shutdown()
         {
-            if (Scope != null) { ModApi.Withdraw<IInventorySlots>(Scope); ModApi.Withdraw<IPocketHud>(Scope); }
-            ApocapocketInventory.Clear(); Scope = null;
+            if (Scope != null) { ModApi.Withdraw<ILogicalEquipmentInventory>(Scope); ModApi.Withdraw<IInventorySlots>(Scope); ModApi.Withdraw<IPocketHud>(Scope); }
+            ApocapocketInventory.Clear(); LogicalEquipmentInventory.Clear(); Scope = null;
         }
     }
 }

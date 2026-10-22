@@ -110,7 +110,7 @@ namespace WildWasteland.Modules.Patrols
                     (FsmStateAction)new MerchantProbeAction{source=create.gameObject,store=create.storeObject,host=this}:action).ToArray();
                 foreach(var seller in station.GetComponentsInChildren<PlayMakerFSM>(true).Where(f=>f.FsmName=="SellItemsHere"))
                 {foreach(var state in seller.Fsm.States)foreach(var action in state.Actions)if(action is GetParent parent)parent.gameObject=Owner(lookup.gameObject);_sellers.Add(seller);}
-                var goods=MerchantCatalog.Goods(type);
+                var goods=Core.ModApi.Get<Core.IMerchantGoods>()?.Goods(MerchantCatalog.Station(type)) ?? new GameObject[0];
                 for(int i=0;i<4;i++)
                 {var sale=Anchor(station.transform,"Sale"+i);sale.localPosition=new Vector3(0.4f+i%2*0.55f,0.1f,-0.5f-i/2*0.65f);Add(type+"/sale/"+i,MerchantCatalog.Label(type)+" sale item "+(i+1),"Sale items",sale);
                     if(!stock.Any(s=>s.type==type&&s.slot==i)&&goods.Length>0)stock.Add(new MerchantStock{type=type,slot=i,prefab=goods[UnityEngine.Random.Range(0,goods.Length)].name});}

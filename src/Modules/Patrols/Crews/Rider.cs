@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Returns the stable authored identity retained for crew persistence.</summary>
         internal static string Stored(string display) { return string.IsNullOrEmpty(display) || display == "None" ? "" : display; }
         /// <summary>Checks whether the current value represents bike body for the current rider.</summary>
-        internal static bool IsBikeBody(string body) { return MotorcycleIntegration.IsBody(body) || string.Equals(body, "Halfbreed", StringComparison.OrdinalIgnoreCase); }
+        internal static bool IsBikeBody(string body) { return Core.ModApi.Get<Core.IVehicleAuthoring>()?.IsMotorcycleBody(body)==true || string.Equals(body, "Halfbreed", StringComparison.OrdinalIgnoreCase); }
         // turret spots a vehicle has: 3 on a car (roof), 1 on a motorcycle, none on a truck
         /// <summary>turret spots a vehicle has: 3 on a car (roof), 1 on a motorcycle, none on a truck</summary>
         internal static int Slots(string body, bool truck, bool motorcycleKind)
@@ -199,43 +199,8 @@ namespace WildWasteland.Modules.Patrols
             return best > float.MinValue ? best : fallback;
         }
 
-        // "Witness me!" - Sounds/witness-me.wav (16-bit PCM, normalised to the game's human_hurt voice: -23.8 LUFS, peak -5.6 dBTP) as a
-        // 3D voice on the rider
-        private static readonly List<AudioClip> _screams = new List<AudioClip>(4); private static bool _screamLooked;
-        // plays the scream; returns its length (1.5 s when the wav is missing: the rider still pauses before leaping)
-        /// <summary>plays the scream; returns its length (1.5 s when the wav is missing: the rider still pauses before leaping)</summary>
-        internal static float Scream(Transform at)
-        {
-            try
-            {
-                if (!_screamLooked)
-                {
-                    _screamLooked = true;
-                    for (int i = 1; i <= 4; i++)
-                    {
-                        string clipName = i == 1 ? "witness-me" : "witness-me" + i;
-                        var path = System.IO.Path.Combine(PatrolsModule.DataDir, "Sounds", clipName + ".wav");
-                        var clip = WildWasteland.Core.Audio.TryLoadWav(path, clipName, 1.8f);   // +5 dB over the normalised file (peak about -0.5 dBFS)
-                        if (clip != null) _screams.Add(clip);
-                        else Core.Log.Warn("[Patrols] " + "Rider: " + path + " not found or not a PCM wav - skipped");
-                    }
-                }
-                if (_screams.Count == 0 || at == null) return 1.5f;
-                var scream = _screams[UnityEngine.Random.Range(0, _screams.Count)];
-                var go = new GameObject("Apocapatrol.WitnessMe");
-                go.transform.SetParent(at, false); go.transform.localPosition = Vector3.up * 1.6f;
-                var src = go.AddComponent<AudioSource>();
-                // loud and far: full volume within 35 m, still clearly heard at 200+ m (mostly 3D, a little 2D so distance doesn't swallow it)
-                src.clip = scream; src.spatialBlend = 0.8f; src.rolloffMode = AudioRolloffMode.Logarithmic; src.minDistance = 35f; src.maxDistance = 400f;
-                src.volume = 1f; src.priority = 64; src.dopplerLevel = 0f;
-                src.Play();
-                UnityEngine.Object.Destroy(go, scream.length + 0.2f);
-                if (Core.Log.Verbose) PatrolsModule.Verbose("Rider: scream " + scream.name);
-                return scream.length;
-            }
-            catch (Exception e) { PatrolsModule.Verbose("Rider: scream: " + e.Message); return 1.5f; }
-        }
-
+        /// <summary>Routes explosion intent to the actual Gunplay engine.</summary>
+        internal static void Kaboom(Vector3 at,string who) { Core.ModApi.Get<Core.IRiderWeapons>()?.Blast(at,who,PatrolsModule.RiderBlastRadius.Value,PatrolsModule.RiderBlastDamage.Value); }
         /// <summary>Parses v3 for the current rider.</summary>
         internal static Vector3 ParseV3(string s, Vector3 def)
         {
@@ -258,19 +223,34 @@ namespace WildWasteland.Modules.Patrols
         private GameObject _car; private PatrolMarker _marker; private Transform _anchor; private string _prefab;
         private PlayMakerFSM _health; private FsmFloat _healthVar; private float _maxHealth = -1f;
         private Rigidbody _carRb;
-        private Animator _anim;
-        private PlayableGraph _graph; private bool _graphOk;
-        private AnimationMixerPlayable _mixer; private AnimationClipPlayable _idle, _throw, _jump;
-        private float _throwLen = 1.2f, _jumpLen = 1f;
-        private object _body;   // 2.6.1: Apocaplayer's ModAPI character (PlayerAnims) - the player's crouch / throw / jump; null = the clips graph below
-        private readonly float[] _w = new float[4];
+        private Core.IRiderVisual _visual;
+        private Core.IRiderVisuals _visualProvider;
+        /// <summary>Rebinds actual presentation on provider restart without recreating traffic state.</summary>
+        private void EnsureVisual()
+        {
+            var provider=Core.ModApi.Get<Core.IRiderVisuals>();
+            if(ReferenceEquals(provider,_visualProvider) && (provider==null || _visual?.Active==true))return;
+            _visual?.Dispose();_visualProvider=provider;_visual=provider?.Attach(gameObject,_car,this,_bike);
+        }
+        /// <summary>Returns the actual held visual supplied by Presentation.</summary>
+        internal Transform Lance { get { return _visual?.Lance; } }
+        /// <summary>Starts a rider one-shot on the current Presentation lease.</summary>
+        private void Play(int clip) { _visual?.Play(clip); }
+        /// <summary>Blends the current rider visual towards its requested pose.</summary>
+        private void Blend(int target,float seconds) { _visual?.Blend(target,seconds); }
+        /// <summary>Requests suppression of the rider native held renderers.</summary>
+        private void HideOwnWeapons() { _visual?.HideWeapons(); }
+        /// <summary>Turns the current rider visual within the platform plane.</summary>
+        private void Face(Vector3 dir) { _visualProvider?.Face(gameObject,_car,_bike,dir); }
+        /// <summary>Applies authored offsets to the current held lance visual.</summary>
+        internal void ApplyLanceOffset() { _visual?.Offset(); }
         private Mode _mode = Mode.Riding;
         private int _slot; private bool _gunner, _bike;   // 2.2.0: turret spot 0..2, a gunner (PassengerGuard shoots, Pose crouches / seats), on a motorcycle
         private bool _standing;
         /// <summary>Checks the current standing pose condition for rider.</summary>
         public bool StandingPose=>_standing||(_bike&&_standAt>=0f);
         /// <summary>Checks the current animated pose condition for rider.</summary>
-        public bool AnimatedPose=>(_body!=null&&(_body is Core.IAnimatedCharacter character && Core.ModApi.Get<Core.IAnimationApi>()!=null && character.Valid && !character.Suspended))||_graphOk;
+        public bool AnimatedPose=>_visual?.Animated==true;
         /// <summary>Returns the native maximum health bound for the rider.</summary>
         internal void MaxHealth(float health){_maxHealth=health;}
         private float _standAt = -1f;                      // a Warboy on a bike stands up (crouch -> stand blend) before the leap
@@ -281,15 +261,13 @@ namespace WildWasteland.Modules.Patrols
         internal bool IsWarboy { get { return !_gunner && _warboyPrefab && (_mode == Mode.Riding || _mode == Mode.Throwing || _mode == Mode.Witness); } }
         /// <summary>Checks the current mounted condition for rider.</summary>
         public bool Mounted { get { return (_mode == Mode.Riding || _mode == Mode.Throwing || _mode == Mode.Witness) && Alive(); } }
-        private AnimationClipPlayable _stand;
         private bool _released, _inClose, _kamikazeArmed;
         private float _nextWitness;
         private Pilot _pilot;
         private float _modeStart, _nextThrow, _nextHide, _lanceBackAt;
         private Vector3 _vel;                       // flight velocity (witness jump / dismount hop)
         private float _side = 1f;
-        private Transform _hand; internal Transform Lance;   // the visual lance in the right hand (RiderApi moves it)
-        private readonly List<Renderer> _ownWeapons = new List<Renderer>();
+        private Transform _hand;   // the visual lance in the right hand (RiderApi moves it)
         private Collider[] _carCols = new Collider[0], _myCols = new Collider[0];
         private static readonly RaycastHit[] _hits = new RaycastHit[16];
         private const float ReleaseFraction = 0.42f;   // where in the Throw clip the lance leaves the hand
@@ -306,16 +284,12 @@ namespace WildWasteland.Modules.Patrols
             _carRb = car.GetComponent<Rigidbody>();
             _health = GetComponents<PlayMakerFSM>().FirstOrDefault(f => f.FsmName == "Health");
             _nextThrow = Time.time + UnityEngine.Random.Range(2f, 4f);
-            _anim = GetComponentInChildren<Animator>();
-            var lHand = Rider.Bone(transform, "LeftHand"); _hand = Rider.Bone(transform, "RightHand") ?? lHand;
-            foreach (var h in new[] { lHand, _hand }) if (h != null) foreach (var r in h.GetComponentsInChildren<Renderer>(true)) _ownWeapons.Add(r);
+            var lHand = Core.ActorBones.Find(transform, "LeftHand"); _hand = Core.ActorBones.Find(transform, "RightHand") ?? lHand;
             _carCols = car.GetComponentsInChildren<Collider>(true);
             _myCols = GetComponentsInChildren<Collider>(true);
             _side = Vector3.Dot(anchor.position - car.transform.position, car.transform.right) >= 0f ? 1f : (UnityEngine.Random.value < 0.5f ? -1f : 1f);
             if (_gunner||!_warboyPrefab) return;
-            HideOwnWeapons();
-            BuildGraph();
-            BuildLance();
+            EnsureVisual();
         }
 
         /// <summary>Reads native actor health used by the current runtime state machine.</summary>
@@ -337,11 +311,11 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Reads native platform velocity for rider launch and landing.</summary>
         private Vector3 CarVel() { return _carRb != null ? _carRb.velocity : Vector3.zero; }
 
-        /// <summary>Ignores own for the current rider.</summary>
-        private void IgnoreOwn(GameObject go)
+        /// <summary>Supplies launch intent to Gunplay without exposing private actor state.</summary>
+        private void Release(Vector3 target,Vector3 velocity)
         {
-            var mine = go.GetComponentsInChildren<Collider>(true);
-            foreach (var c in _carCols) foreach (var p in mine) if (c != null && p != null) Physics.IgnoreCollision(p, c, true);
+            if(Lance!=null)Lance.gameObject.SetActive(false);
+            Core.ModApi.Get<Core.IRiderWeapons>()?.Throw(HandPos(),CarVel(),target,velocity,PatrolsModule.RiderLanceSpeed.Value,_carCols);
         }
 
         // leaves the roof anchor: free kinematic body, no more collisions to ignore, the lance prop stays in the hand
@@ -358,7 +332,7 @@ namespace WildWasteland.Modules.Patrols
         private void Die()
         {
             _mode = Mode.Done;
-            if (_graphOk) { _graph.Destroy(); _graphOk = false; }   // the ragdoll / death takes over
+            _visual?.Dispose();   // the ragdoll / death takes over
             ReleaseBody();
             var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Find(gameObject); if (pose != null) pose.ReleaseBody();   // a gunner: its gun back in its own hand
             if (Lance != null) Destroy(Lance.gameObject);
@@ -369,7 +343,7 @@ namespace WildWasteland.Modules.Patrols
         private void OnDestroy()
         {
             if (_mode == Mode.Flying && gameObject.scene.isLoaded && Time.timeScale > 0f) { _mode = Mode.Done; Rider.Kaboom(transform.position + Vector3.up * 0.9f, name); }   // removed mid-air by something else: still goes off
-            if (_graphOk) { try { _graph.Destroy(); } catch (Exception) { } _graphOk = false; }
+            _visual?.Dispose();
             ReleaseBody();
             if (Lance != null) Destroy(Lance.gameObject);
         }
@@ -377,9 +351,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Releases body for the current rider.</summary>
         private void ReleaseBody()
         {
-            if (_body == null) return;
-            try { (_body as Core.IAnimatedCharacter)?.Dispose(); } catch (Exception) { }
-            _body = null;
+            _visual?.Dispose();_visual=null;_visualProvider=null;
         }
     }
 

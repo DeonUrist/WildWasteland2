@@ -8,11 +8,16 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Rider animation helpers (humanoid clips via the animation service, bone lookup); Presentation part of Rider (Wave A split of Crews/Rider.cs).</summary>
-    internal static partial class Rider
+    internal static class RiderVisualHelpers
     {
+        /// <summary>Parses the authored lance offset without depending on traffic helpers.</summary>
+        internal static Vector3 Parse(string text,Vector3 fallback)
+        {
+            try{var values=(text??"").Split(',');if(values.Length!=3)return fallback;return new Vector3(float.Parse(values[0],System.Globalization.CultureInfo.InvariantCulture),float.Parse(values[1],System.Globalization.CultureInfo.InvariantCulture),float.Parse(values[2],System.Globalization.CultureInfo.InvariantCulture));}catch{return fallback;}
+        }
         // the player animation framework's humanoid clips (WW: Core.Services.Animation.GetClip, ex reflection on Apocaplayer.Anims.Get)
         // - null without the provider (PlayerBody off) or the clip
         /// <summary>A humanoid clip of the animation service, or null without the provider or the clip.</summary>

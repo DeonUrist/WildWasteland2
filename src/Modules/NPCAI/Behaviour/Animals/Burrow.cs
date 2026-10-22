@@ -50,7 +50,7 @@ namespace WildWasteland.Modules.NPC
         internal static int Hidden;
 
         /// <summary>(WW perf) _effect is a prefab asset, not a scene object: it survives scene loads (unloaded -&gt; Unity-null -&gt; found again), no new FSM scan per scene</summary>
-        internal static void OnSceneLoaded() { _list.Clear(); if (_effect == null) { _effect = null; _clip = null; } _nextFind = 0f; _sandLayers.Clear(); _terrainOf.Clear(); _sandAt.Clear(); _fxFree.Clear(); _fxLive.Clear(); _fxUntil.Clear(); Hidden = 0; }
+        internal static void OnSceneLoaded() { _list.Clear(); _sandLayers.Clear(); _terrainOf.Clear(); _sandAt.Clear(); Hidden = 0; }
 
         /// <summary>(WW) module shutdown: a hunter under the ground comes back up where it dived (colliders on, not kinematic), every body is raised to its rig's own position, the brain's hold is released</summary>
         internal static void Shutdown()
@@ -76,9 +76,7 @@ namespace WildWasteland.Modules.NPC
                 catch (Exception e) { NpcaiRuntime.Warn("Burrow shutdown: " + e.Message); }
             }
             _list.Clear(); Hidden = 0;
-            foreach (var fx in _fxLive) if (fx != null) UnityEngine.Object.Destroy(fx);
-            foreach (var fx in _fxFree) if (fx != null) UnityEngine.Object.Destroy(fx);
-            _fxLive.Clear(); _fxUntil.Clear(); _fxFree.Clear(); _terrainOf.Clear(); _sandAt.Clear();
+            _terrainOf.Clear(); _sandAt.Clear();
         }
 
         /// <summary>(WW) floating origin: the dive spot and the destination are scene space</summary>
@@ -137,7 +135,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Job "NPCAI.Burrow" (every frame): puff recycling, then each burrower's phase (burrow when calm on sand, rise when alerted or after a while, the hunter's dive / travel / rise behind its target).</summary>
         internal static void Tick()
         {
-            if (_fxLive.Count > 0) FxRecycle(Time.time);
+
             if (_list.Count == 0) { Hidden = 0; return; }
             float now = Time.time, dt = Time.deltaTime;
             bool on = NpcaiSettings.BurrowEnabled.Value && Senses.On;

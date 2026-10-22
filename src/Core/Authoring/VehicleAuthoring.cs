@@ -13,6 +13,10 @@ namespace WildWasteland.Core
         bool IsPart(Transform part);
         bool IsFreeAttachment(GameObject part);
         /// <summary>Reads current native suspension adjustment without changing it.</summary>
+        bool ApplySuspension(GameObject vehicle,float width,float height,string reason);
+        string SuspensionDescription(GameObject vehicle);
+        GameObject Template(string name);
+        void RefreshTemplates();
         void ReadSuspension(GameObject vehicle,out float width,out float height);
     }
 }

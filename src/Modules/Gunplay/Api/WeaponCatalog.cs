@@ -53,17 +53,7 @@ namespace WildWasteland.Modules.Gunplay
         /// <summary>Builds the built-in table (CleanHUD calibers, same order and strings).</summary>
         WeaponCatalog()
         {
-            Add("folk_17", "9MM"); Add("9mm_borz_smg", "9MM");
-            Add("22_pipe_pistol", ".22LR"); Add("22_pipe_revolver", ".22LR"); Add("22_pipe_smg", ".22LR");
-            Add("akms", "7.62MM"); Add("akm_trash", "7.62MM"); Add("akm_drum", "7.62MM");
-            Add("m16a1", "5.56MM");
-            Add("redmark_m11", ".30-06"); Add("redmark_m11_scoped", ".30-06");
-            Add("rochester_m24", "12GA"); Add("rochester_m24_chopped", "12GA");
-            Add("slamberg_500", "12GA"); Add("slamberg_500_chopped", "12GA");
-            Add("slamfire_shotgun", "20GA");
-            Add("crossbow", "ARROW");
-            Add("blastlance_1", "THROWN", WeaponKind.Thrown); Add("blastlance_2", "THROWN", WeaponKind.Thrown);
-            Add("machete", "MELEE", WeaponKind.Melee); Add("old_knife", "MELEE", WeaponKind.Melee); Add("shiv", "MELEE", WeaponKind.Melee); Add("pipe_wrench", "MELEE", WeaponKind.Melee);
+            foreach(var row in WeaponNames.BuiltIns())Add(row.Key,row.Caliber,row.Kind==WeaponKind.Other?(WeaponKind?)null:row.Kind);
         }
 
         /// <summary>Adds one built-in row; guns take their kind from the gun classifier.</summary>
@@ -83,28 +73,9 @@ namespace WildWasteland.Modules.Gunplay
         // ------------------------------------------------------------------ classification rules (exact original predicates)
 
         /// <summary>Gun kind of a weapon name - the former Tracers.Classify / WeaponRanges.Classify text, unchanged.</summary>
-        internal static WeaponKind GunKindOfName(string weapon)
-        {
-            string n = weapon.ToLowerInvariant();
-            if (n.Contains("crossbow")) return WeaponKind.Crossbow;
-            if (n.Contains("shotgun") || n.Contains("slamfire") || n.Contains("slamberg") || n.Contains("rochester")) return WeaponKind.Shotgun;
-            if (n.Contains("scoped") || n.Contains("sniper") || n.Contains("redmark")) return WeaponKind.Sniper;
-            if (n.Contains("smg") || n.Contains("borz")) return WeaponKind.Smg;
-            if (n.Contains("pistol") || n.Contains("revolver") || n.Contains("folk_17")) return WeaponKind.Pistol;
-            return WeaponKind.Rifle;
-        }
-
-        /// <summary>Animation hold style of a weapon name - the former PlayerBody Props.KindOfName text, unchanged.</summary>
-        internal static Hold HoldOfName(string weapon)
-        {
-            if (string.IsNullOrEmpty(weapon) || weapon == "hands") return Hold.None;
-            string w = weapon.ToLowerInvariant();
-            if (w.Contains("blastlance") || w.Contains("grenade")) return Hold.Throw;
-            if (w.Contains("shiv") || w.Contains("knife") || w.Contains("machete") || w.Contains("wrench") || w.Contains("pipe_wrench")) return Hold.Melee;
-            // SMGs (borz_smg, 22_pipe_smg) are held and animated like pistols (Pistol* clips, PistolReload)
-            if (w.Contains("pistol") || w.Contains("revolver") || w.Contains("folk_17") || w.Contains("smg") || w.Contains("borz")) return Hold.Pistol;
-            return Hold.Rifle;
-        }
+        internal static WeaponKind GunKindOfName(string weapon) { return WeaponNames.GunKindOfName(weapon); }
+        /// <summary>Canonical native animation hold style.</summary>
+        internal static Hold HoldOfName(string weapon) { return (Hold)(int)WeaponNames.HoldOfName(weapon); }
 
         /// <summary>A catalog entry for a weapon name with the former MakeGun per-name multipliers (same prefix/contains tests).</summary>
         static Entry Describe(string name)

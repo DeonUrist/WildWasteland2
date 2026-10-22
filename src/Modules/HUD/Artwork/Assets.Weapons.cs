@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using UnityEngine.Rendering;
 using WildWasteland.Core;
-using WildWasteland.Modules.Gunplay;
+
 
 namespace WildWasteland.Modules.HUD
 {
@@ -28,14 +28,8 @@ namespace WildWasteland.Modules.HUD
         private static Dictionary<string, WeaponInfo> Table()
         {
             var t = new Dictionary<string, WeaponInfo>(StringComparer.OrdinalIgnoreCase);
-            var cat = WildWasteland.Modules.Gunplay.WeaponCatalog.Instance;
-            foreach (var key in cat.BuiltInKeys)
-            {
-                var e = cat.EntryOf(cat.Resolve(key));
-                if (e == null) continue;
-                var k = e.Info.Kind;
-                t[key] = new WeaponInfo(key, e.Info.Caliber, k == WildWasteland.Core.WeaponKind.Melee ? "melee" : k == WildWasteland.Core.WeaponKind.Thrown ? "thrown" : "gun");
-            }
+            foreach(var row in WeaponNames.BuiltIns())
+                t[row.Key]=new WeaponInfo(row.Key,row.Caliber,row.Kind==WeaponKind.Melee?"melee":row.Kind==WeaponKind.Thrown?"thrown":"gun");
             return t;
         }
 
@@ -45,6 +39,10 @@ namespace WildWasteland.Modules.HUD
         internal static WeaponInfo Describe(GameObject item, string itemName)
         {
             var key = KeyOf(item);
+            var catalog=ModApi.Get<IWeaponCatalog>();
+            Core.WeaponInfo info;
+            if(catalog!=null && key!=null && catalog.TryGet(catalog.Resolve(key),out info) && !string.IsNullOrEmpty(info.Caliber))
+                return new WeaponInfo(key,info.Caliber,info.Kind==WeaponKind.Melee?"melee":info.Kind==WeaponKind.Thrown?"thrown":"gun");
             WeaponInfo w;
             if (key != null && Weapons.TryGetValue(key, out w)) return w;
             string cal = null;

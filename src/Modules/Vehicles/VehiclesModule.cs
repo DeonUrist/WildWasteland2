@@ -106,6 +106,7 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Undoes every game-state change: ignition row, cockpit state, steering centring, exit speed, War Rig registrations and the shelter.</summary>
         public override void Shutdown()
         {
+            NativeVehicleSwitches.Clear();
             MissingSteeringWheel.Clear();
             Running = false;
             _ignitionJob = null;
@@ -130,6 +131,7 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Scene change: per-scene caches of the cockpit, exit speed, War Rig and motorcycle chassis lookups are dropped.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            NativeVehicleSwitches.Clear();
             VehicleEngineHeat.ReleaseAll();
             VehicleDriveApi.ReleaseAll();
             VehicleBuildCache.Reset();
@@ -147,6 +149,8 @@ namespace WildWasteland.Modules.Vehicles
             ModApi.Provide<IVehicleAuthoring>(this,new VehicleAuthoringApi());
             ModApi.Provide<IVehicleAttachments>(this,new VehicleAttachmentsApi());
             ModApi.Provide<IVehicleDrive>(this,new VehicleDriveApi());
+            ModApi.Provide<IVehicleWreck>(this,new VehicleWreck());
+            ModApi.Provide<IMotorcyclePreparation>(this,new MotorcyclePreparation());
             ModApi.Provide<IVehicleEngineHeat>(this,VehicleEngineHeat.Instance);
             ModApi.Provide<IVehicleAssembly>(this, new VehicleAssemblyApi());
             var ownership = ModApi.Get<IVehicleOwnership>();

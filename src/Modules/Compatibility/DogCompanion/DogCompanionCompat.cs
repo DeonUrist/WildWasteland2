@@ -9,7 +9,7 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
     /// Dog Companion (apocalypter.dogcompanion) bridge serving NPC AI and canine animation: Dog Companion strips the hound's Rigidbody
@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>True when the bridge resolved Dog Companion's contract and installed its patches.</summary>
         internal static bool Present { get { return _ok; } }
         /// <summary>Bridge active: resolved, NPC module running and its [NPC] DogCompanionCompat switch on.</summary>
-        private static bool On { get { return _ok && CompatibilityHost.Npc.Running && NpcaiSettings.DogCompanionCompatEnabled.Value; } } // refs-ok: REFACTOR-REQUEST B17-13
+        private static bool On { get { return _ok && ModApi.Get<ICanineBehaviour>()?.Enabled==true && ModApi.Get<ICaninePresentation>()?.Enabled==true; } }
 
         /// <summary>Resolves Dog Companion's complete private contract, then patches Dog/Npc/Distraction under <paramref name="module"/>.</summary>
         internal static void Initialize(IModule module)
@@ -87,7 +87,7 @@ namespace WildWasteland.Modules.NPC
                 if (!all) throw new InvalidOperationException("a Harmony patch was refused");
                 Compile();
                 _ok = true;
-                NpcaiSettings.DogCompanionCompatEnabled.SettingChanged += OnToggle; // refs-ok: REFACTOR-REQUEST B17-13
+                ModApi.Provide<ICompanionThreat>(module,new CompanionThreat());
                 Log.Main(module, "Dog Companion compatibility enabled (" + info.Metadata.Version + "): shared canine locomotion/combat and sitting in vehicles.");
             }
             catch (Exception e)
@@ -99,11 +99,10 @@ namespace WildWasteland.Modules.NPC
 
         /// <summary>[NPC] DogCompanionCompat switched off live: every companion dog is released (Dog Companion's own behaviour); switched on:
         /// they are taken again on their next Update.</summary>
-        private static void OnToggle(object s, EventArgs a) { if (!NpcaiSettings.DogCompanionCompatEnabled.Value) ReleaseAll(); } // refs-ok: REFACTOR-REQUEST B17-13
         /// <summary>Hands every driven companion back to Dog Companion.</summary>
         private static void ReleaseAll()
         {
-            foreach (var d in Drivers.Values) { try { if (d.Dog != null) DogAnimations.RemoveCompanion(d.Dog.gameObject); } catch (Exception) { } }
+            foreach (var d in Drivers.Values) { try { if (d.Dog != null) ModApi.Get<ICaninePresentation>()?.Remove(d.Dog.gameObject); } catch (Exception) { } }
             Drivers.Clear();
         }
         /// <summary>Canine animation shutdown (DogAnimations): hands every companion back to Dog Companion; the bridge stays installed
@@ -114,7 +113,7 @@ namespace WildWasteland.Modules.NPC
         internal static void Stop()
         {
             ReleaseAll();
-            if (_ok) { try { NpcaiSettings.DogCompanionCompatEnabled.SettingChanged -= OnToggle; } catch (Exception) { } } // refs-ok: REFACTOR-REQUEST B17-13
+            if(_owner!=null)ModApi.Withdraw<ICompanionThreat>(_owner);
             _ok = false; _owner = null;
         }
         /// <summary>Number of companion dogs currently driven.</summary>
@@ -190,13 +189,24 @@ namespace WildWasteland.Modules.NPC
             _hurt = Call<Action<object, float>>(mh, typeof(float)) ?? ((o, a) => mh.Invoke(o, new object[] { a }));
         }
 
+        /// <summary>Live external companion actor data; native NPC registries are not borrowed.</summary>
+        internal sealed class CompanionActor : IAnimalActor {
+            public GameObject Owner { get; } public Transform T=>Owner!=null?Owner.transform:null;
+            public Collider Col { get; } public GameObject Target { get; set; }
+            public bool Combat=>Target!=null; public bool Quiet=>Target==null;public bool HasGhost=>false;public bool Blown=>false;public bool Travel { get; set; }
+            /// <summary>Retains the external companion root and collider without constructing a native NPC agent.</summary>
+            internal CompanionActor(GameObject owner) { Owner=owner;Col=owner.GetComponent<Collider>(); }
+        }
+        /// <summary>Publishes actual optional-companion threats without exposing the external driver type.</summary>
+        private sealed class CompanionThreat : ICompanionThreat { public int Count=>DogCompanionCompat.Count;public GameObject CloseThreat(GameObject enemy,float range)=>DogCompanionCompat.CloseThreat(enemy,range); }
         /// <summary>WW-side state of one companion dog: its NPC agent, hold/dash flags, speed and sneaking.</summary>
-        internal sealed class Driver
+        internal sealed class Driver : ICanineCompanion
         {
             internal readonly MonoBehaviour Dog;
-            internal readonly Senses.Agent Agent;
+            internal ICaninePresentation Presentation;
+            internal readonly CompanionActor Agent;
             internal bool Held, Failed, FixedDash;
-            internal float Speed;
+            public float Speed { get; internal set; }
             internal Vector3 Before;
             internal GameObject DashTarget;
             internal bool WantsSneak;
@@ -205,13 +215,13 @@ namespace WildWasteland.Modules.NPC
             private FsmFloat standingHeight;
             /// <summary>Creates the agent for a companion dog.</summary>
             internal Driver(MonoBehaviour dog)
-            { Dog = dog; Agent = new Senses.Agent { Owner = dog.gameObject, T = dog.transform, Col = dog.GetComponent<Collider>() }; }
+            { Dog = dog; Agent = new CompanionActor(dog.gameObject); }
             /// <summary>Usable: not failed, dog alive and enabled.</summary>
-            internal bool Active { get { return !Failed && Dog != null && Dog.isActiveAndEnabled; } }
+            public bool Active { get { return !Failed && Dog != null && Dog.isActiveAndEnabled; } }
             /// <summary>Dog Companion mode 1 = riding in the player's vehicle.</summary>
-            internal bool Riding { get { return _mode(Dog) == 1; } }
+            public bool Riding { get { return _mode(Dog) == 1; } }
             /// <summary>The player sneaks and the dog has no live target.</summary>
-            internal bool Sneaking
+            public bool Sneaking
             {
                 get
                 {
@@ -222,7 +232,7 @@ namespace WildWasteland.Modules.NPC
             /// <summary>Reads the player's Movement FSM (crouch/crawl state or low standing height); FSM lookup cached per player.</summary>
             internal void RefreshSneaking()
             {
-                var player = Senses.PlayerObj ?? (GameObject)_knownPlayer(null);
+                var player = Core.PlayerState.Player ?? (GameObject)_knownPlayer(null);
                 if (player != movementPlayer || (player != null && playerMovement == null))
                 {
                     movementPlayer = player; playerMovement = null; standingHeight = null;
@@ -233,41 +243,41 @@ namespace WildWasteland.Modules.NPC
                     || (playerMovement != null && playerMovement.enabled && standingHeight != null && standingHeight.Value > .1f && standingHeight.Value < 1.4f);
             }
             /// <summary>Dog Companion's ground point of the dog.</summary>
-            internal Vector3 Feet { get { return _feet(Dog); } }
+            public Vector3 Feet { get { return _feet(Dog); } }
             /// <summary>Paw height offset.</summary>
-            internal float PawHeight { get { return -_pawDepth(Dog); } }
+            public float PawHeight { get { return -_pawDepth(Dog); } }
             /// <summary>Dog Companion's run speed x1.1.</summary>
-            internal float RunSpeed { get { return runSpeed.Value * 1.1f; } }
+            public float RunSpeed { get { return runSpeed.Value * 1.1f; } }
             /// <summary>Dog Companion's next-bite time.</summary>
-            internal float NativeNextBite { get { return _nextBite(Dog); } }
+            public float NativeNextBite { get { return _nextBite(Dog); } }
             /// <summary>Sets Dog Companion's next-bite time.</summary>
-            internal void SetCooldown(float until) { _setNextBite(Dog, until); }
+            public void SetCooldown(float until) { _setNextBite(Dog, until); }
             /// <summary>Copies Dog Companion's live target into the NPC agent (combat/idle).</summary>
             internal void SyncTarget()
             {
                 object npc = Riding ? null : _target(Dog);
                 Agent.Target = npc != null && _alive(npc) ? (GameObject)_targetGo(npc) : null;
-                Agent.State = Agent.Target != null ? Senses.State.Combat : Senses.State.Idle;
+
             }
             /// <summary>True when <paramref name="victim"/> is the dog's live target.</summary>
-            internal bool TargetAlive(GameObject victim)
+            public bool TargetAlive(GameObject victim)
             {
                 object npc = _target(Dog);
                 return victim != null && npc != null && (GameObject)_targetGo(npc) == victim && _alive(npc);
             }
             /// <summary>Holds (stops) or releases the dog's own movement.</summary>
-            internal void Halt(bool hold)
+            public void Halt(bool hold)
             { Held = hold; if (hold && Active) _setMoving(Dog, false, 0f); }
             /// <summary>A bite landed: Dog Companion damage, NPC hurt by the player, snarl.</summary>
-            internal void Contact(GameObject victim)
+            public void Contact(GameObject victim)
             {
                 if (!Active || Riding || !TargetAlive(victim)) return;
                 _hurt(_target(Dog), biteDamage.Value);
-                if (Senses.PlayerObj != null) Senses.Hurt(victim, Senses.PlayerObj);
+                if (Core.PlayerState.Player != null) ModApi.Get<INpcApi>()?.Hurt(victim, Core.PlayerState.Player);
                 _snarl(Dog);
             }
             /// <summary>One committed dash step through Dog Companion's Step (steering bypass active).</summary>
-            internal void Dash(Vector3 direction, float speed, float dt, GameObject victim)
+            public void Dash(Vector3 direction, float speed, float dt, GameObject victim)
             {
                 if (!Active || Riding) return;
                 FixedDash = true; DashTarget = victim;
@@ -284,7 +294,7 @@ namespace WildWasteland.Modules.NPC
                 if (distance.magnitude > leash.Value) { _giveUp(Dog, 5f); SyncTarget(); return false; }
                 // The shared animation state owns holding and committed dashes. All
                 // other chasing keeps Dog Companion's obstacle/ground navigation.
-                if (!Held && !DogAnimations.CompanionDashing(Dog.gameObject))
+                if (!Held && ModApi.Get<ICaninePresentation>()?.Dashing(Dog.gameObject)!=true)
                 {
                     _step(Dog, Agent.Target.transform.position, RunSpeed, dt);
                     if (_stuck(Dog, 3f)) { _giveUp(Dog, 6f); SyncTarget(); }
@@ -298,10 +308,11 @@ namespace WildWasteland.Modules.NPC
         {
             if (dog == null) return null;
             Driver driver; int id = dog.GetInstanceID();
-            if (!Drivers.TryGetValue(id, out driver))
+            var view=ModApi.Get<ICaninePresentation>();
+            if (!Drivers.TryGetValue(id, out driver) || !ReferenceEquals(driver.Presentation,view) || (!driver.Failed && view?.Find(dog.gameObject)==null))
             {
-                driver = new Driver(dog);
-                if (!DogAnimations.RegisterCompanion(driver.Agent, driver))
+                driver = new Driver(dog);driver.Presentation=view;
+                if (ModApi.Get<ICaninePresentation>()?.Register(driver.Agent,"Wild_Hound",driver)!=true)
                 {
                     if (!warnedBundle) { warnedBundle = true; Log.Warn(_owner, "Dog Companion needs the updated npcai_dogs.bundle (including sit clips); keeping its original behavior."); }
                     driver.Failed = true;
@@ -311,20 +322,20 @@ namespace WildWasteland.Modules.NPC
             return driver;
         }
         /// <summary>The canine animation drives this dog.</summary>
-        private static bool Owns(Driver d) { return d != null && !d.Failed && DogAnimations.Owns(d.Dog.gameObject); }
+        private static bool Owns(Driver d) { return d != null && !d.Failed && ModApi.Get<ICaninePresentation>()?.Owns(d.Dog.gameObject)==true; }
         /// <summary>Releases one dog after an error (logged).</summary>
         private static void Fail(Driver d, Exception e)
         {
             if (d == null) return;
-            d.Failed = true; DogAnimations.RemoveCompanion(d.Dog.gameObject);
+            d.Failed = true; ModApi.Get<ICaninePresentation>()?.Remove(d.Dog.gameObject);
             Log.Warn(_owner, "Dog Companion compatibility released this dog after an error: " + e.GetBaseException().Message);
         }
         /// <summary>Prefix of Dog.Update (per companion per frame): target/sneak sync and animation restore.</summary>
         public static void BeforeUpdate(MonoBehaviour __instance)
         {
-            if (!On) return;
+            if (!On) { ReleaseAll(); return; }
             Driver d = null;
-            try { d = Get(__instance); if (d == null) return; d.SyncTarget(); d.RefreshSneaking(); DogAnimations.RestoreCompanion(__instance.gameObject); d.Before = __instance.transform.position; }
+            try { d = Get(__instance); if (d == null) return; d.SyncTarget(); d.RefreshSneaking(); ModApi.Get<ICaninePresentation>()?.Restore(__instance.gameObject); d.Before = __instance.transform.position; }
             catch (Exception e) { Fail(d, e); }
         }
         /// <summary>Postfix of Dog.Update: measured speed, procedural jolt suppressed, animation tick.</summary>
@@ -338,7 +349,7 @@ namespace WildWasteland.Modules.NPC
                 d.SyncTarget(); Vector3 moved = __instance.transform.position - d.Before; moved.y = 0f;
                 d.Speed = d.Riding || moved.magnitude > 2f ? 0f : moved.magnitude / Mathf.Max(.001f, Time.deltaTime);
                 if (Owns(d)) _setLunge(__instance, 1f); // suppress the old procedural jolt
-                DogAnimations.TickCompanion(__instance.gameObject);
+                ModApi.Get<ICaninePresentation>()?.Tick(__instance.gameObject);
             }
             catch (Exception e) { Fail(d, e); }
         }
@@ -373,9 +384,9 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Prefix of Distraction.Nearest: NPCs driven by the WW brain ignore Dog Companion's distractions.</summary>
         public static bool BeforeDistraction(FsmStateAction __0)
         {
-            if (!On) return true;
+            if (!_ok) return true;
             var fsm = __0 != null ? __0.Fsm : null;
-            return fsm == null || !Senses.On || !NpcaiSettings.BrainEnabled.Value || Senses.AgentFor(fsm.GameObject) == null; // refs-ok: REFACTOR-REQUEST B17-13
+            return fsm == null || ModApi.Get<ICanineBehaviour>()?.Controls(fsm.GameObject)!=true;
         }
         /// <summary>A driven companion within <paramref name="range"/> of an enemy (NPC Brain: enemies react to the dog), or null.</summary>
         internal static GameObject CloseThreat(GameObject enemy, float range)
@@ -391,7 +402,7 @@ namespace WildWasteland.Modules.NPC
             if (!On) return;
             Driver d;
             if (!Drivers.TryGetValue(__instance.GetInstanceID(), out d) || d.Failed) return;
-            try { DogAnimations.LateCompanion(__instance.gameObject); }
+            try { ModApi.Get<ICaninePresentation>()?.Late(__instance.gameObject); }
             catch (Exception e) { Fail(d, e); }
         }
         /// <summary>Postfix of Dog.RideTick: lowers a riding dog onto its seat.</summary>
@@ -410,11 +421,11 @@ namespace WildWasteland.Modules.NPC
         public static void BeforeDisable(MonoBehaviour __instance)
         {
             if (!_ok) return;
-            DogAnimations.RemoveCompanion(__instance.gameObject);
+            ModApi.Get<ICaninePresentation>()?.Remove(__instance.gameObject);
             Drivers.Remove(__instance.GetInstanceID());
         }
         /// <summary>Scene change: forgets every driver (called by the canine animation).</summary>
-        internal static void OnSceneLoaded() { Drivers.Clear(); }
+        internal static void OnSceneLoaded() { ReleaseAll(); }
     }
 
     /// <summary>Seat offsets of a riding companion dog (merged from DogCompanionSeating.cs; only used by DogCompanionCompat.AfterRideTick).</summary>

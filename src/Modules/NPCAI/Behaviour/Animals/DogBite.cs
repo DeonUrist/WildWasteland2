@@ -22,17 +22,18 @@ namespace WildWasteland.Modules.NPC
 
         private static readonly List<D> _list = new List<D>();
         private static readonly Dictionary<int, D> _byId = new Dictionary<int, D>();
+        private static Core.ICaninePresentation _presentation;
         private static string[] _prefabs; private static string _src;
 
         /// <summary>Scene load: dogs and their animation state dropped.</summary>
-        internal static void OnSceneLoaded() { DogAnimations.OnSceneLoaded(); _list.Clear(); _byId.Clear(); }
+        internal static void OnSceneLoaded() { Core.ModApi.Get<Core.ICaninePresentation>()?.Clear(); _list.Clear(); _byId.Clear();_presentation=null; }
 
         /// <summary>(WW) module shutdown: the dog animations release every dog (bones, culling, IK, waits, drag), the lunge's body jolt is undone</summary>
         internal static void Shutdown()
         {
-            DogAnimations.Shutdown();
+            Core.ModApi.Get<Core.ICaninePresentation>()?.Clear();
             foreach (var d in _list) if (d.Rig != null && d.Applied) { d.Rig.localPosition = d.RigBase; d.Applied = false; }
-            _list.Clear(); _byId.Clear();
+            _list.Clear(); _byId.Clear();_presentation=null;
         }
         /// <summary>Number of dogs handled.</summary>
         internal static int Count { get { return _list.Count; } }
@@ -50,7 +51,7 @@ namespace WildWasteland.Modules.NPC
         internal static void Register(Senses.Agent a)
         {
             if (a == null || a.Owner == null || !Wanted(Senses.PrefabOf(a.Owner))) return;
-            DogAnimations.Register(a);
+            Core.ModApi.Get<Core.ICaninePresentation>()?.Register(a,Senses.PrefabOf(a.Owner).Replace(' ','_'),null);
             var d = new D { A = a, T = a.T, Reach = 1f };
             var ray = a.T.Find("AttackRaycast");
             var rs = ray != null ? ray.GetComponent<Micosmo.SensorToolkit.RaySensor>() : null;
@@ -76,14 +77,16 @@ namespace WildWasteland.Modules.NPC
         /// <summary>per frame, after the brain: in reach -&gt; stand and face the target fast</summary>
         internal static void Tick()
         {
-            DogAnimations.Tick();
+
+            var presentation=Core.ModApi.Get<Core.ICaninePresentation>();
+            if(!ReferenceEquals(presentation,_presentation)) { _presentation=presentation;foreach(var dog in _list)if(dog.A?.Owner!=null)presentation?.Register(dog.A,Senses.PrefabOf(dog.A.Owner).Replace(' ','_'),null); }
             if (_list.Count == 0) return;
             float dt = Time.deltaTime;
             bool on = NpcaiSettings.DogBiteEnabled.Value && Senses.On;
             for (int i = _list.Count - 1; i >= 0; i--)
             {
                 var d = _list[i];
-                if (d.A != null && DogAnimations.Owns(d.A.Owner)) { d.Close = false; continue; }
+                if (d.A != null && Core.ModApi.Get<Core.ICaninePresentation>()?.Owns(d.A.Owner) == true) { d.Close = false; continue; }
                 if (d.A == null || d.A.Owner == null || d.T == null) { if (d.A != null && d.A.Owner != null) _byId.Remove(d.A.Owner.GetInstanceID()); _list.RemoveAt(i); continue; }
                 var tgt = on && d.A.State == Senses.State.Combat && !d.A.Travel && d.T.parent == null ? d.A.Target : null;
                 if (tgt == null) { if (d.Close) { d.Close = false; Brain.Halt(d.A.Owner, false); } continue; }
@@ -111,7 +114,7 @@ namespace WildWasteland.Modules.NPC
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Damage" || fsm.GameObject == null) return;
                 D d;
-                if (!DogAnimations.Owns(fsm.GameObject) && _byId.TryGetValue(fsm.GameObject.GetInstanceID(), out d) && NpcaiSettings.DogBiteEnabled.Value) { d.BiteT = 0f; AnimalEvents.Bite(fsm.GameObject, d.A != null ? d.A.Target : null, fsm.GameObject.transform.position); }
+                if (Core.ModApi.Get<Core.ICaninePresentation>()?.Owns(fsm.GameObject)!=true && _byId.TryGetValue(fsm.GameObject.GetInstanceID(), out d) && NpcaiSettings.DogBiteEnabled.Value) { d.BiteT = 0f; AnimalEvents.Bite(fsm.GameObject, d.A != null ? d.A.Target : null, fsm.GameObject.transform.position); }
             }
             catch (Exception) { }
         }

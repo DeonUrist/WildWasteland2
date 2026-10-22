@@ -13,19 +13,15 @@ namespace WildWasteland.Modules.Patrols
     /// `public const string Name` and `public static GameObject Template()`) are found by the Compatibility scan. Prefabs resolves template
     /// bodies through <see cref="Template"/>.
     /// </summary>
-    internal static partial class ModVehicles
+    internal static class ModVehicles
     {
         private static readonly Dictionary<string, Func<GameObject>> _registered = new Dictionary<string, Func<GameObject>>(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Registers a runtime template body by name (invalidates the prefab index).</summary>
-        internal static void Register(string name, Func<GameObject> template) { if (!string.IsNullOrEmpty(name) && template != null) { _registered[name] = template; Prefabs.Invalidate(); } }   // refs-ok: REFACTOR-REQUEST B12-3 (Patrols prefab index)
+        internal static void Register(string name, Func<GameObject> template) { if (!string.IsNullOrEmpty(name) && template != null) { _registered[name] = template; Core.PrefabCatalog.Invalidate(); } }
 
         /// <summary>Removes a registered template body (its owner stopped).</summary>
-        internal static void Unregister(string name) { if (!string.IsNullOrEmpty(name) && _registered.Remove(name)) Prefabs.Invalidate(); }   // refs-ok: REFACTOR-REQUEST B12-3 (Patrols prefab index)
-
-        /// <summary>Old Patrols shutdown call: forgets only the third-party scan; registrations belong to their owners (Vehicles keeps the War Rig while it runs).</summary>
-        [Obsolete("refactor: owners Unregister their own bodies; this only resets the third-party scan")]
-        internal static void Clear() { _byName = null; _assemblyCount = 0; }
+        internal static void Unregister(string name) { if (!string.IsNullOrEmpty(name) && _registered.Remove(name)) Core.PrefabCatalog.Invalidate(); }
 
         /// <summary>The runtime template of a body name: own registrations first, then the third-party scan; null when unknown or failing.</summary>
         internal static GameObject Template(string name)
@@ -38,10 +34,15 @@ namespace WildWasteland.Modules.Patrols
                 catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Mod vehicle " + name + ": " + e.Message); return null; }
             }
             Refresh();
-            MethodInfo m;
-            if (!_byName.TryGetValue(name.Trim(), out m)) return null;
-            try { return m.Invoke(null, null) as GameObject; }
-            catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Mod vehicle " + name + ": " + (e.InnerException ?? e).Message); return null; }
+            return _external?.Template(name);
+        }
+        private static IExternalVehicleTemplates _external;
+        private static int _externalGeneration=-1;
+        /// <summary>Invalidates the local prefab index when the real external provider or discovered set changes.</summary>
+        internal static void Refresh()
+        {
+            var external=ModApi.Get<IExternalVehicleTemplates>();int generation=external!=null?external.Generation:-1;
+            if(!ReferenceEquals(external,_external)||generation!=_externalGeneration){_external=external;_externalGeneration=generation;Core.PrefabCatalog.Invalidate();}
         }
     }
 }

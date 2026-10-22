@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Gunplay;
+
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -28,6 +28,6 @@ namespace WildWasteland.Modules.PlayerBody
             return _kinds[weapon] = KindOfName(weapon);
         }
         /// <summary>Hold style from the Gunplay weapon catalog rule (same order and text as before; the enum values map 1:1).</summary>
-        private static Kind KindOfName(string weapon) { return (Kind)(int)WildWasteland.Modules.Gunplay.WeaponCatalog.HoldOfName(weapon); }
+        private static Kind KindOfName(string weapon) { return (Kind)(int)WeaponNames.HoldOfName(weapon); }
     }
 }

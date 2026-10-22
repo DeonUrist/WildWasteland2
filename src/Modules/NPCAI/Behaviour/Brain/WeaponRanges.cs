@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using WildWasteland.Core;
 using UnityEngine;
-using WildWasteland.Modules.Gunplay;
+
 
 namespace WildWasteland.Modules.NPC
 {
     // Small deterministic fallback kept consistent with Gunplay's version-one contract (Core.Services.Guns when the Guns module runs).
     /// <summary>NPC weapon kind/range queries (Gunplay's IGunsApi when it runs, else a small deterministic fallback).</summary>
-    internal static partial class WeaponRanges
+    internal static class WeaponRanges
     {
         /// <summary>NPC weapon kinds (values match WeaponKind 0..5).</summary>
         internal enum Kind { Pistol, Smg, Rifle, Sniper, Shotgun, Crossbow }
@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.NPC
             var g = Services.Guns;
             if (g != null)
                 try { float range = g.EffectiveRange((int)k); if (!float.IsNaN(range) && !float.IsInfinity(range)) return Mathf.Max(1f, range); }
-                catch (Exception e) { GunplayLog.Warn("Gunplay range query failed: " + e.Message); }
+                catch (Exception e) { NpcaiRuntime.Warn("Gunplay range query failed: " + e.Message); }
             switch (k)
             {
                 case Kind.Pistol: return 60f;
@@ -42,7 +42,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>Gun kind of a weapon name (Gunplay weapon catalog rule; the enum values match WeaponKind 0..5).</summary>
-        internal static Kind Classify(string weapon) { return (Kind)(int)WildWasteland.Modules.Gunplay.WeaponCatalog.GunKindOfName(weapon); }
+        internal static Kind Classify(string weapon) { return (Kind)(int)WeaponNames.GunKindOfName(weapon); }
 
         /// <summary>Kind of the gun an NPC holds: Gunplay's when it runs, else its own cached lookup.</summary>
         internal static bool GunKindOf(GameObject owner, out Kind kind)
@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.NPC
             var g = Services.Guns;
             if (g != null)
                 try { int found; bool gun = g.TryGetWeaponKind(owner, out found); if (found >= 0 && found <= 5) kind = (Kind)found; return gun; }
-                catch (Exception e) { GunplayLog.Warn("Gunplay weapon query failed: " + e.Message); }
+                catch (Exception e) { NpcaiRuntime.Warn("Gunplay weapon query failed: " + e.Message); }
             int id = owner.GetInstanceID(); Info info;
             if (_shooters.TryGetValue(id, out info) && info.Owner == owner && (info.Weapon != null ? info.Weapon.gameObject.activeInHierarchy : Time.time < info.Retry))
             { kind = info.Kind; return info.IsGun; }

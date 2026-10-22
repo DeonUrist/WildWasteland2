@@ -76,7 +76,7 @@ namespace WildWasteland.Modules.NPC
                     {
                         var gt = go.transform;
                         if (n.Weapon != null && gt != n.Weapon && gt.IsChildOf(n.Weapon)) return;      // a muzzle flash of the held gun: still held
-                        if (gt != n.Weapon && !WeaponRanges.UnderHand(n.Hands, gt)) return;
+                        if (gt != n.Weapon && !Core.HeldWeaponModels.UnderHand(n.Hands, gt)) return;
                     }
                 }
                 n.WeaponDirty = true;

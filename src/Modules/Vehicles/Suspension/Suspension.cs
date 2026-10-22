@@ -19,7 +19,7 @@ namespace WildWasteland.Modules.Patrols
     // from) follows the end of its axle (width) and the height. Only a car with a lift kit on hinge_suspension takes an adjustment: the
     // game's checkSuspension decides stock / lifted by that child, and the tool itself needs the kit (Denis: "no kit, no adjustment").
     /// <summary>Template suspension adjustment (Vehicles part of Suspension; the Part Adjustment API lookup is the Compatibility part).</summary>
-    internal static partial class Suspension
+    internal static class Suspension
     {
 
         /// <summary>The lift-kit hinge (hinge_suspension_parent/hinge_suspension) of a car, or null.</summary>
@@ -45,12 +45,12 @@ namespace WildWasteland.Modules.Patrols
                 if (!standard) if (Log.L2) Deep("Suspension: " + car.name + " has no lift kit - its template's suspension " + width.ToString("0.00") + " / " + height.ToString("0.00") + " is ignored");
                 return false;
             }
-            LookForApi();
-            if (_apiSet != null)
+            var external=Core.ModApi.Get<Core.IExternalSuspension>();
+            if (external?.CanSet==true)
             {
                 try
                 {
-                    bool ok = (bool)_apiSet.Invoke(null, new object[] { car, width, height });
+                    bool ok = external.Set(car,width,height);
                     if (Log.L2) Deep("Suspension: " + car.name + " width x" + width.ToString("0.00") + ", height " + height.ToString("+0.00;-0.00") + " m via Part Adjustment (" + why + ")" + (ok ? "" : " - refused"));
                     return ok;
                 }
@@ -68,13 +68,12 @@ namespace WildWasteland.Modules.Patrols
         {
             width = 1f; height = 0f;
             if (car == null || !KitFitted(car)) return;
-            LookForApi();
-            if (_apiGet != null)
+            var external=Core.ModApi.Get<Core.IExternalSuspension>();
+            if (external?.CanGet==true)
             {
                 try
                 {
-                    var args = new object[] { car, 1f, 0f };
-                    if ((bool)_apiGet.Invoke(null, args)) { width = (float)args[1]; height = (float)args[2]; }
+                    external.Get(car,out width,out height);
                     return;
                 }
                 catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Suspension: Part Adjustment API: " + e.Message); }
@@ -102,7 +101,6 @@ namespace WildWasteland.Modules.Patrols
         // carries our own lift kit -> nothing to do, no string compare on the game's SetPosition actions).
         /// <summary>Old Patrols entry point; the Vehicles module installs the hook itself (<see cref="Hook"/>).</summary>
         [System.Obsolete("refactor: the Vehicles module installs the suspension hook (Suspension.Hook)")]
-        internal static void Install(IModule owner) { }
 
         /// <summary>Subscribes the SetPosition.DoSetPosition postfix (shared Core dispatcher) for the Vehicles module.</summary>
         internal static void Hook(IModule owner)
@@ -129,7 +127,7 @@ namespace WildWasteland.Modules.Patrols
             }
             catch (Exception e) { Log.Warn(VehiclesModule.Instance, "Suspension: after SetPosition: " + e.Message); }
         }
-    
+
         /// <summary>Level-2 log line of the suspension rules.</summary>
         private static void Deep(string msg) { Log.Deep(VehiclesModule.Instance, msg); }
     }

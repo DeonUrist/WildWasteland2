@@ -109,10 +109,10 @@ namespace WildWasteland.Modules.PlayerBody
                         if (_quickBino == null) _quickBino = quick.Find("Binocular_Item");
                         if (_quickFlash == null) _quickFlash = quick.Find("Flashlight_Item");
                     }
-                    _chosen[0] = EquipmentInventory.FirstItem(quick != null ? _quickPack : null);
-                    var binocular = EquipmentInventory.FirstItem(quick != null ? _quickBino : null);
+                    _chosen[0] = WildWasteland.Core.PlayerInventory.FirstItem(quick != null ? _quickPack : null);
+                    var binocular = WildWasteland.Core.PlayerInventory.FirstItem(quick != null ? _quickBino : null);
                     if (binocular != null) { _chosen[7] = binocular; _slots[7] = -1; }
-                    _chosen[FlashIndex] = EquipmentInventory.FirstItem(quick != null ? _quickFlash : null); _slots[FlashIndex] = -1;
+                    _chosen[FlashIndex] = WildWasteland.Core.PlayerInventory.FirstItem(quick != null ? _quickFlash : null); _slots[FlashIndex] = -1;
                     for (int i = 0; i < _mounts.Length; i++) Update(i, _chosen[i], _slots[i]);
                 }
                 _readState = _inventory.WeaponState;   // (Read may have re-found the Weapons FSM)

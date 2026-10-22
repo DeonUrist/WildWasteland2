@@ -90,7 +90,6 @@ namespace WildWasteland.Modules.Gunplay
             // the two old runner components (Gunplay.Runner, Gunplay.Ammo.AmmoRunner), same order; then the ex NPC sweep
             Scheduler.EveryFrame(this, "Gunplay.Tracers", TracersTick);
             Scheduler.EveryFrame(this, "Gunplay.Ammo", AmmoRunner.Tick);
-            Scheduler.Interval(this, "Gunplay.WeaponRanges.Sweep", 30f, WeaponRanges.Sweep);
 
             _running = true;
             SyncHud();
@@ -100,6 +99,7 @@ namespace WildWasteland.Modules.Gunplay
         /// <summary>Provides IGunsApi (old contract), IWeaponCatalog, IWeaponStats and IWeaponState.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<IRiderWeapons>(this,new RiderWeapons());
             ModApi.Provide<IGunsApi>(this, new GunsApi());
             ModApi.Provide<IWeaponCatalog>(this, WeaponCatalog.Instance);
             ModApi.Provide<IWeaponStats>(this, WeaponStats.Instance);
@@ -123,7 +123,6 @@ namespace WildWasteland.Modules.Gunplay
             PerGunAmmo.ResetAll();
             Ironsights.Reset();
             WeaponTransition.Reset();
-            WeaponRanges.OnSceneLoaded();
             VanillaEvents.OnSceneLoaded();
             VanillaHits.Clear();
         }
@@ -162,7 +161,6 @@ namespace WildWasteland.Modules.Gunplay
             PerGunAmmo.SceneChanged();
             ReloadTapHook.Reset();     // keyed by the old scene's actions
             WeaponState.Instance.Clear();
-            WeaponRanges.OnSceneLoaded();
             VanillaEvents.OnSceneLoaded();
             VanillaHits.Clear();
         }

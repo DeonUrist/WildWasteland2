@@ -444,7 +444,7 @@ namespace WildWasteland.Modules.Patrols
                 var dead = PatrolMarker.Attach(car, data.bodyPrefab, data.driverPrefab, null, data.passengerPrefab, null, CarTemplate.ParseRams(data.ramTargets));
                 dead.TemplateName = data.templateName ?? "";
                 dead.PlayerEntered = data.playerEntered; dead.FarSeconds = data.farSeconds; dead.Exploded = true; dead.CargoKey = data.cargoKey ?? "";
-                Explode.RestoreDead(car, data.bodyPrefab);
+                Core.ModApi.Get<Core.IVehicleWreck>()?.RestoreDead(car, data.bodyPrefab);
                 dead.Faction=TrafficFactions.Normalize(data.faction);dead.ExplodeChance=data.explodeChance;WorldTraffic.BindBattle(dead,data);
                 PatrolsModule.Verbose("Persistence: dead chassis restored: " + car.name);
                 return;
@@ -477,7 +477,7 @@ namespace WildWasteland.Modules.Patrols
             mk.FarSeconds = data.farSeconds;
             mk.CargoKey = data.cargoKey ?? "";
             mk.SuspensionWidth = data.suspensionWidth; mk.SuspensionHeight = data.suspensionHeight;
-            if (data.suspensionWidth != 1f || data.suspensionHeight != 0f) Suspension.Apply(car, data.suspensionWidth, data.suspensionHeight, "restored");
+            if (data.suspensionWidth != 1f || data.suspensionHeight != 0f) Core.ModApi.Get<Core.IVehicleAuthoring>()?.ApplySuspension(car, data.suspensionWidth, data.suspensionHeight, "restored");
             // PrepareLoaded runs after every saved car is bound, before the native loading handoff.
             PatrolsModule.Verbose("Persistence: crew restored on " + car.name + " (" + phase + ")");
         }

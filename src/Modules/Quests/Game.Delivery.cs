@@ -7,19 +7,6 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Quests
 {
-    // One stack of a matching item found in the world or on the player.
-    internal class ItemHit
-    {
-        public GameObject Go;
-        public int Stack = 1;
-        public FsmInt Qty;       // the item's own "Quantity" variable, if it is a stack
-        public bool Held;        // in the hand / a quick slot (under the player camera)
-        public bool Reserve;     // not an object: spare rounds in the player's ammo pouch (Qty = that ammo counter)
-        public int PerBox = 1;   // rounds that make one "box" for a reserve hit
-        public float Dist;
-        public string Display = "";
-    }
-
     // A point of interest (camp, cave, building, wreck) in the loaded part of the world.
     internal class Poi
     {
@@ -159,8 +146,8 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Clears cached prefabs, watched deliveries and current-world query state.</summary>
         internal static void ResetWorld()
         {
-            Clock.Reset(); Money.Reset(); ammoFsm = null;
-            liveNames.Clear(); liveNamesAt = -10; MatchesByToken.Clear(); _matches = 0; prefabs.Clear(); watched.Clear();
+            Clock.Reset(); Money.Reset();
+            liveNames.Clear(); liveNamesAt = -10; prefabs.Clear(); watched.Clear();
         }
     }
 }

@@ -10,11 +10,65 @@ using UnityEngine.Playables;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Visual part of a human turret: PlayableGraph/animation-service clips (crouch, throw, jump, stand), lance prop offset, own weapons hidden, body facing; Presentation (Wave A split of Crews/Rider.cs).</summary>
-    internal sealed partial class RiderGuard
+    internal sealed class RiderVisual : IRiderVisual
     {
+        private bool _disposed;
+        private bool _rootMotion;
+        private readonly Dictionary<Renderer,bool> _visibility=new Dictionary<Renderer,bool>();
+        /// <summary>Reports whether the per-actor visual lease still belongs to a live actor.</summary>
+        public bool Active=>!_disposed && _actor!=null;
+        private readonly GameObject _actor;
+        private readonly IRiderPresentationState _state;
+        private readonly Animator _anim;
+        private readonly bool _standing;
+        private PlayableGraph _graph;private bool _graphOk;
+        private AnimationMixerPlayable _mixer;private AnimationClipPlayable _idle,_throw,_jump,_stand;
+        private object _body;private float _throwLen=1.2f,_jumpLen=1f;private readonly float[] _w=new float[4];
+        private readonly List<Renderer> _ownWeapons=new List<Renderer>();
+        public Transform Lance { get; private set; }
+        /// <summary>Reads the live traffic request for a standing rider pose.</summary>
+        private bool StandingPose { get { return _state.StandingPose; } }
+        private string name { get { return _actor!=null?_actor.name:"rider"; } }
+        /// <summary>Reports whether the common character driver or fallback graph can animate this rider.</summary>
+        public bool Animated { get { return (_body is IAnimatedCharacter && ((IAnimatedCharacter)_body).Valid && !((IAnimatedCharacter)_body).Suspended)||_graphOk; } }
+        /// <summary>Returns the active throw clip duration used by traffic release timing.</summary>
+        public float ThrowSeconds { get { return _throwLen; } }
+        /// <summary>Attaches the actual animation and visual lance independently of traffic private state.</summary>
+        internal RiderVisual(GameObject actor,IRiderPresentationState state)
+        {
+            _actor=actor;_state=state;_standing=state.StandingPose;_anim=actor.GetComponentInChildren<Animator>();if(_anim!=null)_rootMotion=_anim.applyRootMotion;
+            Transform left=RiderVisualHelpers.Bone(actor.transform,"LeftHand"),right=RiderVisualHelpers.Bone(actor.transform,"RightHand")??left;
+            foreach(var hand in new[]{left,right})if(hand!=null)foreach(var renderer in hand.GetComponentsInChildren<Renderer>(true))_ownWeapons.Add(renderer);
+            foreach(var renderer in _ownWeapons)if(renderer!=null)_visibility[renderer]=renderer.enabled;
+            HideWeapons();BuildGraph();
+            var prefab=PrefabCatalog.Find("blastlance_1");
+            if(right!=null && prefab!=null)
+            {
+                var go=UnityEngine.Object.Instantiate(prefab,right.position,right.rotation);
+                foreach(var joint in go.GetComponentsInChildren<Joint>(true))UnityEngine.Object.DestroyImmediate(joint);
+                foreach(var body in go.GetComponentsInChildren<Rigidbody>(true))UnityEngine.Object.DestroyImmediate(body);
+                foreach(var collider in go.GetComponentsInChildren<Collider>(true))UnityEngine.Object.DestroyImmediate(collider);
+                foreach(var script in go.GetComponentsInChildren<MonoBehaviour>(true))UnityEngine.Object.DestroyImmediate(script);
+                go.name="RiderLance";foreach(var t in go.GetComponentsInChildren<Transform>(true))t.gameObject.layer=actor.layer;
+                go.SetActive(true);go.transform.SetParent(right,false);Lance=go.transform;Offset();
+            }
+        }
+        /// <summary>Ends all owned graphs and visuals before another presentation owner takes over.</summary>
+        public void Dispose()
+        {
+            if(_disposed)return;_disposed=true;
+            RiderVisuals.Remove(this);
+            if(_graph.IsValid())_graph.Destroy();_graphOk=false;
+            (_body as IAnimatedCharacter)?.Dispose();_body=null;
+            if(Lance!=null)UnityEngine.Object.Destroy(Lance.gameObject);Lance=null;
+            if(_anim!=null)_anim.applyRootMotion=_rootMotion;
+            foreach(var entry in _visibility)if(entry.Key!=null)entry.Key.enabled=entry.Value;_visibility.Clear();
+        }
+        /// <summary>Holds the fallback throw at the release pose; common character commands own their own clocks.</summary>
+        public void PauseThrow() { if(_graphOk)_throw.Pause(); }
         /// <summary>Builds the rider animation: the animation-service body when available, else its own PlayableGraph (crouch / idle, throw, jump, stand).</summary>
         private void BuildGraph()
         {
@@ -33,10 +87,10 @@ namespace WildWasteland.Modules.Patrols
             }
             try
             {
-                var idle = _standing ? Rider.Clip("Idle") ?? Rider.Clip("RifleIdle") : Rider.Clip("CrouchIdle") ?? Rider.Clip("RifleCrouchIdle") ?? Rider.Clip("Idle");
-                var thr = Rider.Clip("Throw");
-                var jump = Rider.Clip("Jump");
-                var stand = Rider.Clip("Idle");
+                var idle = _standing ? RiderVisualHelpers.Clip("Idle") ?? RiderVisualHelpers.Clip("RifleIdle") : RiderVisualHelpers.Clip("CrouchIdle") ?? RiderVisualHelpers.Clip("RifleCrouchIdle") ?? RiderVisualHelpers.Clip("Idle");
+                var thr = RiderVisualHelpers.Clip("Throw");
+                var jump = RiderVisualHelpers.Clip("Jump");
+                var stand = RiderVisualHelpers.Clip("Idle");
                 if (_anim == null || idle == null) { if (_anim == null && Log.L2) Log.Deep(PresentationModule.WorldOwner, "Rider: no Animator on " + name); return; }
                 if (!_anim.isHuman) { if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Rider: " + name + "'s Animator is not humanoid - Apocaplayer clips cannot drive it"); return; }
                 _anim.applyRootMotion = false;
@@ -63,7 +117,7 @@ namespace WildWasteland.Modules.Patrols
 
         // 0 = crouch idle, 1 = throw, 2 = jump (one-shots restart from 0), 3 = standing idle
         /// <summary>Starts a one-shot (1 = throw, 2 = jump) from the start.</summary>
-        private void Play(int clip)
+        public void Play(int clip)
         {
             if (_body != null) { if (clip == 1) PlayerAnims.Throw(_body); else if (clip == 2) PlayerAnims.Jump(_body); return; }
             if (!_graphOk) return;
@@ -72,7 +126,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Blends towards the target clip over <paramref name="seconds"/> (animation-service body: its own blends).</summary>
-        private void Blend(int target, float seconds)
+        public void Blend(int target, float seconds)
         {
             // ModAPI: crouched while riding / throwing (the throw is on the upper body), standing (3), in the air (2) - its own blends
             if (_body != null) { PlayerAnims.Set(_body, !StandingPose&&(target==0||target==1), false, target == 2, 0f); return; }
@@ -82,33 +136,18 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Places the lance prop in the throwing hand from the Turret pose settings.</summary>
-        internal void ApplyLanceOffset()
+        public void Offset()
         {
             if (Lance == null) return;
-            Lance.localPosition = Rider.ParseV3(SeatPoseSettings.RiderLanceOffset.Value, Vector3.zero);
-            Lance.localRotation = Quaternion.Euler(Rider.ParseV3(SeatPoseSettings.RiderLanceRotation.Value, Vector3.zero));
+            Lance.localPosition = RiderVisualHelpers.Parse(SeatPoseSettings.RiderLanceOffset.Value, Vector3.zero);
+            Lance.localRotation = Quaternion.Euler(RiderVisualHelpers.Parse(SeatPoseSettings.RiderLanceRotation.Value, Vector3.zero));
         }
 
         /// <summary>Hides the rider own weapon renderers (not the lance).</summary>
-        private void HideOwnWeapons()
+        public void HideWeapons()
         {
             foreach (var r in _ownWeapons) if (r != null && r.enabled && (Lance == null || !r.transform.IsChildOf(Lance))) r.enabled = false;
         }
 
-        /// <summary>Turns the rider towards a direction on the vehicle plane (bike seats limited to BikeArc).</summary>
-        private void Face(Vector3 dir)
-        {
-            var up = _car != null ? _car.transform.up : Vector3.up;
-            dir = Vector3.ProjectOnPlane(dir, up);
-            if (dir.sqrMagnitude < 1e-4f) return;
-            if (_bike && _car != null)
-            {
-                // on a motorcycle: at most BikeArc degrees off the nose
-                var f = Vector3.ProjectOnPlane(_car.transform.forward, up);
-                if (f.sqrMagnitude > 1e-4f) dir = Quaternion.AngleAxis(Mathf.Clamp(Vector3.SignedAngle(f, dir, up), -Rider.BikeArc, Rider.BikeArc), up) * f;
-            }
-            var want = Quaternion.LookRotation(dir.normalized, up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, want, 240f * Time.deltaTime);
-        }
     }
 }

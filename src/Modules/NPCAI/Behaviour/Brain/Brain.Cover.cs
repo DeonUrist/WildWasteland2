@@ -92,7 +92,7 @@ namespace WildWasteland.Modules.NPC
             n.NextDogCoverCheck = now + .5f;
             var agent = Senses.AgentFor(n.Owner);
             if (agent == null || !agent.Human || !agent.Hostile.Contains("Player") || (agent.State != Senses.State.Combat && agent.State != Senses.State.Hide)) return;
-            var threat = DogCompanionCompat.CloseThreat(n.Owner, 3f);   // refs-ok: REFACTOR-REQUEST B07-11 (Dog Companion threat query)
+            var threat = Core.ModApi.Get<Core.ICompanionThreat>()?.CloseThreat(n.Owner, 3f);   // refs-ok: REFACTOR-REQUEST B07-11 (Dog Companion threat query)
             if (threat == null) return;
             foreach (var fsm in n.Owner.GetComponents<PlayMakerFSM>()) if (fsm.FsmName == "BossUI") return;
             Vector3 dogPos = threat.transform.position, spot = Vector3.zero;

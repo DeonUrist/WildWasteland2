@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using WildWasteland.Core;
 using UnityEngine;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Core
 {
     /// <summary>WeaponRanges part owned by Presentation: finding the weapon model held in an NPC's hands (hand bone scan, held weapon lookup).</summary>
-    internal static partial class WeaponRanges
+    internal static class HeldWeaponModels
     {
         // the gun model in the NPC's hand (the parent of its active fire_effect), independent of Gunplay
         // The weapon model the NPC holds now: the active child of a hand bone that has a renderer (the way Apocaplayer's Props catalog

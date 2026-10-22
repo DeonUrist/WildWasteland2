@@ -57,8 +57,18 @@ namespace WildWasteland.Modules.NPC
             public bool Retired;                     // nobody is on the way any more (only searchers left): never handed out, merged into or relayed again
         }
 
-        internal sealed class Agent
+        internal sealed class Agent : Core.IAnimalActor
         {
+            GameObject Core.IAnimalActor.Owner { get { return Owner; } }
+            Transform Core.IAnimalActor.T { get { return T; } }
+            Collider Core.IAnimalActor.Col { get { return Col; } }
+            GameObject Core.IAnimalActor.Target { get { return Target; } }
+            bool Core.IAnimalActor.Combat { get { return State==Senses.State.Combat; } }
+            bool Core.IAnimalActor.Quiet { get { return State==Senses.State.Idle; } }
+            bool Core.IAnimalActor.HasGhost { get { return Ghost!=null; } }
+            bool Core.IAnimalActor.Blown { get { return Blown; } }
+            bool Core.IAnimalActor.Travel { get { return Travel; } set { Travel=value; } }
+
             public GameObject Owner; public Transform T; public Collider Col; public Transform Head;
             public PlayMakerFSM Detection, Attack; public FsmGameObject DetectedVar;
             public string Tag; public HashSet<string> Hostile; public bool Human;

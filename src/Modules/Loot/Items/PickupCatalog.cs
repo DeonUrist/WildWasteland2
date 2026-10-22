@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.Patrols
         internal static List<PickupItem> All()
         {
             if (_items != null) return _items;
-            var names = ApocaspawnerNames();   // Compatibility part (PickupCatalog.Apocaspawner.cs)
+            var names = Core.ModApi.Get<Core.IExternalItemNames>()?.Read() ?? new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             var items = new Dictionary<string, PickupItem>(StringComparer.OrdinalIgnoreCase);
             foreach (var fsm in Core.PrefabCatalog.AssetFsms)
             {

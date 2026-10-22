@@ -97,7 +97,7 @@ namespace WildWasteland.Modules.NPC
             public bool Travel; public float RunZ;
             public float Boost = 1f, BoostUntil;
             public bool WasEngaged;                        // (perf) engaged last frame: a fresh engagement gets a random think phase
-            public WeaponRanges.HandCache Hands;           // (perf) hand bones / gun candidates, scanned once (WeaponOf)
+            public Core.HeldWeaponModels.HandCache Hands;           // (perf) hand bones / gun candidates, scanned once (WeaponOf)
             public bool GunPoses; public float GunPosesAt = -10f; public string GunPosesKey;   // (perf) ApBody.HasPoses(WeaponKey), re-read on a new key or after 1 s
             public Fsm MultyFsm; public FsmInt MultyVar;   // (perf) the Damage Ranged FSM's "multyAttack" counter
             public bool Halted;                            // (1.8.0) DogBite: in reach of its target - stands (and DogBite turns it)          // (1.7.0) a nest alarm: runs this many times faster until then       // (1.4.0) a hunter under the ground (Burrow): paused; the fastest pedal the game gave it (its run speed)
@@ -129,7 +129,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly float[] _blocks = new float[32];
 
         /// <summary>Scene load: rigs and animated bodies released, every brain, pending spawn and reload-sound cache dropped.</summary>
-        public static void OnSceneLoaded() { ClearRigs(); foreach (var kv in _npcs) if (kv.Value.Body != null) ApBody.Detach(kv.Value.Body); _npcs.Clear(); _ignored.Clear(); _arrive.Clear(); _active = 0; ReloadSounds.Clear(); _pending.Clear(); _pendingAt.Clear(); ApBody.Reset(); }   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
+        public static void OnSceneLoaded() { ClearRigs(); foreach (var kv in _npcs) if (kv.Value.Body != null) ApBody.Detach(kv.Value.Body); _npcs.Clear(); _ignored.Clear(); _arrive.Clear(); _active = 0;  _pending.Clear(); _pendingAt.Clear(); ApBody.Reset(); }   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
 
         /// <summary>(WW) module shutdown: every brain lets go (the game's pedal, facing, Unstuck and animation again), kneeling gunmen stand up, frozen aim poses play on, bodies animated by the player animation framework are handed back</summary>
         internal static void Shutdown()
@@ -229,7 +229,7 @@ namespace WildWasteland.Modules.NPC
                 if (now < n.FrightUntil && n.T.parent == null && (n.HpVar == null || n.HpVar.Value >= 1f)) engaged = true;
                 if (n.Ranged && n.Body == null && now < n.MadeAt + 60f) TryRig(n);
                 if (n.Body != null) Drive(n, state ?? AttackState(n), now, dt);                     // (1.2.0) Apocaplayer's ModAPI: this frame's situation, engaged or not
-                if (n.Reloading) ReloadSounds.Tick(n, now);                                           // (1.1.2) the reload's sounds, rig or not   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
+                if (n.Reloading) Core.ModApi.Get<Core.INpcReloadAudio>()?.Tick(n.WeaponKey,n.Weapon != null ? n.Weapon.position : n.T.position + Vector3.up*1.3f,n.ReloadUntil,n.ReloadLen,ref n.ReloadSoundsPlayed,now);                                           // (1.1.2) the reload's sounds, rig or not   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
                 if (!engaged)
                 {
                     n.WasEngaged = false;

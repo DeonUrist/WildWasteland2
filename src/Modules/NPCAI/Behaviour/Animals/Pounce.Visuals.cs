@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
-using WildWasteland.Modules.Presentation;
+
 
 namespace WildWasteland.Modules.NPC
 {
-    /// <summary>Pounce part owned by Presentation: the rear-up pose in LateUpdate and the airborne carcass tumble of a spider killed mid-leap.</summary>
+    /// <summary>NPC-owned leap-pose timing and native airborne carcass handoff. Presentation applies the requested rig pitch.</summary>
     internal static partial class Pounce
     {
         // runs in LateUpdate, after the Animator: in the air the body rears back (nose up, about the feet) - the belly towards the player
@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.NPC
                 if (p.Pitch == p.PitchGoal && !p.Tilted) continue;
                 float rate = p.PitchGoal > p.Pitch ? 600f : 300f;
                 p.Pitch = Mathf.MoveTowards(p.Pitch, p.PitchGoal, rate * dt);
-                p.Rig.localRotation = Quaternion.AngleAxis(-p.Pitch, Vector3.right) * p.RigLocal;
+                Core.ModApi.Get<Core.IAnimalVisuals>()?.Pitch(p.Rig,p.RigLocal,p.Pitch);
                 p.Tilted = p.Pitch > 0.01f;
                 if (!p.Tilted) p.Rig.localRotation = p.RigLocal;
             }
@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.NPC
                     break;
                 }
             }
-            catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Pounce: carcass: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(NpcaiRuntime.Module, "Pounce: carcass: " + e.Message); }
         }
     }
 }

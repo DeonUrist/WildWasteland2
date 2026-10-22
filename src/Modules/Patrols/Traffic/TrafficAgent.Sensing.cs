@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.Patrols
 
         /// <summary>Patrol sight (range by day/lights, 100 degree cone, raycast) and engine hearing of the player every 0.5 s; updates LastKnown/SeenUntil/Detection and the crew contact time.</summary>
         partial void SensePlayer(
-            TrafficJourney journey,   // refs-ok: REFACTOR-REQUEST B07-12 - part of a Patrols traffic type, B11 moves callers to INpcControl.CanPerceivePlayer
+            TrafficJourney journey,
             bool hasPlayer, Vector3 player, GameObject car)
         {
             if (Time.time >= _nextSense)
@@ -20,14 +20,14 @@ namespace WildWasteland.Modules.Patrols
                 if (hasPlayer && !journey.convoy)
                 {
                     var delta = player - transform.position; delta.y = 0f;
-                    float sight = TrafficRules.VisibilityRange(Night(), PatrolVisibility.LightsOn(car));   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+                    float sight = TrafficRules.VisibilityRange(Night(), PatrolVisibility.LightsOn(car));
                     saw = delta.magnitude <= sight && Vector3.Angle(transform.forward, delta) <= 100f
                         && Sight(player, car);
                     heard = Night() && delta.magnitude <= TrafficLocations.EngineRange(car);
                     if (saw || heard)
                     {
-                        LastKnown = TrafficSpace.World(player); SeenUntil = Time.time + PatrolsModule.PatrolMemorySeconds.Value;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
-                        if (_pm == null) _pm = GetComponent<PatrolMarker>();   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+                        LastKnown = TrafficSpace.World(player); SeenUntil = Time.time + PatrolsModule.PatrolMemorySeconds.Value;
+                        if (_pm == null) _pm = GetComponent<PatrolMarker>();
                         if (_pm != null) _pm.PlayerContactAt = Time.time;   // awareness handover at dismount (CrewReturn)
                     }
                 }
@@ -60,7 +60,7 @@ namespace WildWasteland.Modules.Patrols
         private static bool Night()
         {
             var light = Core.ModApi.Get<Core.IDayLight>();
-            return light != null ? light.Night : DayLight.Dark;   // refs-ok: REFACTOR-REQUEST B07-12 (fallback until B14 provides IDayLight)
+            return light != null ? light.Night : Core.Clock.Dark;
         }
     }
 }

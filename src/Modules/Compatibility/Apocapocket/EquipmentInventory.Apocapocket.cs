@@ -1,19 +1,64 @@
 using System;
+using BepInEx.Configuration;
 using System.Reflection;
 using System.Reflection.Emit;
 using MonoMod.Utils;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.Compatibility
 {
-    /// <summary>
-    /// Apocapocket / Apocainventory part of the player's equipment reader (partial of the Presentation EquipmentInventory, which calls
-    /// <see cref="Resolve"/> and reads the delegates): read-only logical custody of the mod's extra slots - an extra-slot weapon may
-    /// physically occupy a vanilla holder while that holder's original item is parked elsewhere (request A2-7, B17-9).
-    /// </summary>
-    internal sealed partial class EquipmentInventory
+    /// <summary>Reads optional logical inventory custody through accessors owned entirely by Compatibility.</summary>
+    internal sealed class LogicalEquipmentInventory : ILogicalEquipmentInventory
     {
+        private Transform _camera;
+        /// <summary>Reads the external logical snapshot or its existing physical-holder fallback.</summary>
+        public bool Read(GameObject[] Items, ref int Drawn)
+        {
+            if (_camera != PlayerState.PlayerCamera)
+            {
+                _camera = PlayerState.PlayerCamera;
+                Array.Clear(Items, 0, Items.Length); Drawn = -1;
+            }
+            Resolve();
+            if (_instance != null)
+            {
+                var enabled = _enabled != null ? _enabled() as ConfigEntry<bool> : null;
+                var run = _instance();
+                if (run != null && (enabled == null || enabled.Value))
+                {
+                    if (!_ready(run)) return false;
+                    var save = _save != null ? _save(run) : null;
+                    if (_operation != null && _operation(run) != null
+                        || save != null && (_loading != null && _loading(save) || _normalised != null && _normalised(save))) return false;
+                    var slots = _slots(run) as Array;
+                    Array.Clear(Items, 0, Items.Length); Drawn = -1;
+                    for (int i = 0; slots != null && i < Mathf.Min(Items.Length, slots.Length); i++)
+                    {
+                        Items[i] = _content(slots, i);
+                        if (_isDrawn != null && _isDrawn(run, i)) Drawn = i;
+                    }
+                    if (_handOrigin != null && _handName != null && _camera != null)
+                    {
+                        int origin = _handOrigin(run);
+                        var hand = Core.PlayerInventory.FirstItem(_camera.Find("Hand"));
+                        if (origin >= 0 && origin < Items.Length && Items[origin] == null && hand != null && hand.name == _handName(run))
+                        { Items[origin] = hand; Drawn = origin; }
+                    }
+                    return true;
+                }
+            }
+            Core.PlayerInventory.Read(Items, out Drawn);
+            for (int i = 3; i < Items.Length; i++)
+                if (Items[i] == null && _camera != null) Items[i] = Core.PlayerInventory.FirstItem(_camera.Find(PocketNames[i]) ?? _camera.Find(InvNames[i]));
+            return true;
+        }
+        /// <summary>Invalidates external delegates when the optional bridge stops or restarts.</summary>
+        internal static void Clear()
+        {
+            _resolved=false;_instance=_enabled=null;_slots=_operation=_save=null;_ready=_loading=_normalised=null;
+            _content=null;_isDrawn=null;_handOrigin=null;_handName=null;
+        }
         private static readonly string[] PocketNames = { "Apocapocket_ExtraSlots/Slot 1", "Apocapocket_ExtraSlots/Slot 2", "Apocapocket_ExtraSlots/Slot 3", "Apocapocket_ExtraSlots/Slot 4", "Apocapocket_ExtraSlots/Slot 5", "Apocapocket_ExtraSlots/Slot 6" };
         private static readonly string[] InvNames = { "Apocainventory_ExtraSlots/Slot 1", "Apocainventory_ExtraSlots/Slot 2", "Apocainventory_ExtraSlots/Slot 3", "Apocainventory_ExtraSlots/Slot 4", "Apocainventory_ExtraSlots/Slot 5", "Apocainventory_ExtraSlots/Slot 6" };
         private static bool _resolved;   // (WW) resolved once per game session (was once per body)

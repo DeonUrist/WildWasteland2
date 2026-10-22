@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEngine;
 namespace WildWasteland.Modules.Patrols
 {
-    internal static partial class MerchantCatalog
+    internal static class MerchantCatalog
     {
         internal static readonly string[] Types={"general","mechanic","organic"};
         /// <summary>Checks whether the supplied authored or discovered identity is registered.</summary>

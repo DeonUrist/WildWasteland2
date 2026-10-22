@@ -29,20 +29,8 @@ namespace WildWasteland.Modules.Patrols
         // Headlights: the car's light switch (switch_panel/switch_lights, LightOff FSM "useDoor" = the player's click: click sound,
         // switch turned, HeadlightsON sent to the car) when it is off, and HeadlightsON / OFF straight to every Headlight FSM (the
         // headlight items and the dashboard gauges' backlight: global events HeadlightsON / HeadlightsOFF) for cars without a switch.
-        /// <summary>Switches a car's headlights through its light switch (the player's click) or straight through every Headlight FSM.</summary>
-        internal static void Headlights(GameObject car, bool on, PlayMakerFSM[] snapshot = null)
-        {
-            if (car == null) return;
-            int n = 0;
-            foreach (var f in snapshot ?? car.GetComponentsInChildren<PlayMakerFSM>(true))
-            {
-                if (f == null || f.Fsm == null || !f.Fsm.Initialized) continue;
-                if (f.FsmName == (on ? "LightOff" : "LightOn") && f.enabled && f.gameObject.name == "switch_lights" && f.ActiveStateName == "idle")
-                    f.SendEvent("useDoor");
-                else if (f.FsmName == "Headlight") { f.SendEvent(on ? "HeadlightsON" : "HeadlightsOFF"); n++; }
-            }
-            if (Log.L2) Deep("Lights " + (on ? "on" : "off") + ": " + car.name + " (" + n + " light FSM(s))");
-        }
+        /// <summary>Applies traffic light intent using the native vehicle control owner.</summary>
+        internal static void Headlights(GameObject car,bool on,PlayMakerFSM[] snapshot=null) { Core.ModApi.Get<Core.IVehicleControls>()?.SetHeadlights(car,on); }
 
         /// <summary>World position of the driver seat (sitPos, else hinge_seat_driver, else the car).</summary>
         internal static Vector3 DriverSeatPos(GameObject car)
@@ -188,19 +176,10 @@ namespace WildWasteland.Modules.Patrols
 
         // The handbrake lever FSM: HandbrakeOn -> (click) over -> Sound -> HandbrakeOff (SetProperty input.Handbrake + lever rotation).
         // Entering "Sound" plays the click and flows into HandbrakeOff by itself; "Sound 2" goes back to HandbrakeOn.
-        /// <summary>Moves the car's handbrake lever (its handbrake/Handbrake FSM).</summary>
-        internal static void Handbrake(GameObject car, bool on) { Handbrake(car, on, FindFsm(car, "handbrake", "Handbrake")); }
-        // f = the car's handbrake/Handbrake FSM, cached by the caller (null = none)
-        /// <summary>Moves the given handbrake lever FSM through its click states (or NWH input.Handbrake without a lever).</summary>
-        internal static void Handbrake(GameObject car, bool on, PlayMakerFSM f)
-        {
-            if (f == null) { Log.Warn(PatrolsModule.Instance, "No handbrake/Handbrake FSM; setting NWH input.Handbrake only"); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(car, on ? 1f : 0f); return; }
-            string cur = f.Fsm.Initialized ? f.ActiveStateName : "";
-            bool isOn = cur == "HandbrakeOn" || cur == "over" || cur == "Sound 2" || cur == "";
-            if (on == isOn) { if (Log.L2) Deep("Handbrake already " + (on ? "on" : "off") + " (" + cur + ")"); return; }
-            f.Fsm.SetState(on ? "Sound 2" : "Sound");
-            if (Log.L2) Deep("Handbrake " + (on ? "on" : "released") + " (was " + cur + ")");
-        }
+        /// <summary>Applies traffic brake intent using the native vehicle control owner.</summary>
+        internal static void Handbrake(GameObject car,bool on) { Core.ModApi.Get<Core.IVehicleControls>()?.SetHandbrake(car,on); }
+        /// <summary>Preserves existing cached-caller shape while delegating actual native controls.</summary>
+        internal static void Handbrake(GameObject car,bool on,PlayMakerFSM f) { Core.ModApi.Get<Core.IVehicleControls>()?.SetHandbrake(car,on); }
 
         // Parts with a Condition FSM (engine, radiator, wheels) get a rolled condition; the FSM's tiers react to the variable.
         /// <summary>Gives every Condition FSM part (engine, radiator, wheels) a rolled condition (Repair FSM kept in step).</summary>

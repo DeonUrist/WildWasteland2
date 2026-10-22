@@ -94,8 +94,8 @@ namespace WildWasteland.Modules.NPC
         private static Transform HeldWeapon(Npc n)
         {
             var c = n.Hands;
-            if (c == null || (c.Hands.Length > 0 && c.Hands[0] == null)) n.Hands = c = WeaponRanges.ScanHands(n.Owner);
-            return WeaponRanges.WeaponOf(n.Owner, c);
+            if (c == null || (c.Hands.Length > 0 && c.Hands[0] == null)) n.Hands = c = Core.HeldWeaponModels.ScanHands(n.Owner);
+            return Core.HeldWeaponModels.WeaponOf(n.Owner, c);
         }
 
         // (perf) ApBody.HasPoses(WeaponKey), cached per key and re-read once a second (a pose table edited live is seen within 1 s)

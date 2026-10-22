@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.HUD
         internal static void Init()
         {
             Reset();
-            _standDown = ImmersiveMapLoaded();
+            _standDown = ModApi.Get<IExternalMapPolicy>()?.FogOwned == true;
             SaveBus.StateChanged -= SaveState; SaveBus.StateChanged += SaveState;
         }
 

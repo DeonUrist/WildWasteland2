@@ -7,7 +7,7 @@ namespace WildWasteland.Modules.Loot
     /// assignment (<see cref="ILootTables"/>), spawner progress and substitution registry (<see cref="ILootSpawning"/>).
     /// [Loot] Enabled is bound by Core; Loot binds no further entries (D12: no migration). Data: config/WildWasteland/Loot/.
     /// Town/POI spawner control, cargo loading, the loot editor's item catalog, merchant goods and the quest item query live in
-    /// this folder too but are still called by their old owners (see docs/refactor/reports/B15.md).
+    /// this folder too; typed providers expose item queries, native merchant stock and spawning to their policy owners.
     /// </summary>
     public sealed class LootModule : ModuleBase
     {
@@ -24,6 +24,7 @@ namespace WildWasteland.Modules.Loot
         public override string DisplayName { get { return "Loot"; } }
 
         /// <summary>Loot tables and assignments (LootTables.json + runtime tables).</summary>
+        private readonly QuestItems _questItems=new QuestItems();
         internal readonly LootTableStore Tables = new LootTableStore();
 
         /// <summary>No entries beyond [Loot] Enabled (bound by Core).</summary>
@@ -41,6 +42,8 @@ namespace WildWasteland.Modules.Loot
         /// <summary>Provides <see cref="ILootTables"/> and <see cref="ILootSpawning"/>.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<IQuestItems>(this,_questItems);
+            ModApi.Provide<IMerchantGoods>(this,new MerchantGoods());
             ModApi.Provide<ILootAuthoringCatalog>(this, new LootAuthoringCatalog());
             ModApi.Provide<INativeSpawners>(this, new NativeSpawnerApi());
             ModApi.Provide<ICargoLoot>(this,new CargoLootApi(Tables));
@@ -48,9 +51,13 @@ namespace WildWasteland.Modules.Loot
             ModApi.Provide<ILootSpawning>(this, new LootSpawningApi());
         }
 
+        /// <summary>Clears native item and match caches when the scene changes.</summary>
+        public override void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene,UnityEngine.SceneManagement.LoadSceneMode mode) { _questItems.Clear(); }
+
         /// <summary>Drops the substitution rules other modules registered (Core removes the hook handler).</summary>
         public override void Shutdown()
         {
+            _questItems.Clear();
             LootSubstitutions.Clear();
             Tables.ClearRuntime();
         }

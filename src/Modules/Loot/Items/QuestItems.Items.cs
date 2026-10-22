@@ -5,22 +5,17 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Quests
+namespace WildWasteland.Modules.Loot
 {
-    /// <summary>
-    /// Item query (Loot, ex Quests/Game.cs): finding, counting and taking items by token (on the ground near a point, carried by
-    /// the player, spare ammo in the pouch), liquid container fill rule and merchant stock exclusion. Reads the Core FSM index
-    /// ("ItemName" FSMs tracked by Quests) and Core player/geometry queries. Still a part of the Quests Game helper and returns the
-    /// Quests ItemHit record (REFACTOR-REQUEST B15-4). Namespace kept for Wave C.
-    /// </summary>
-    internal static partial class Game
+    /// <summary>Loot-owned native item discovery and consumption. Quests supplies liquid policy through IQuestItems; Core supplies FSM, player and geometry indexes.</summary>
+    internal sealed partial class QuestItems : IQuestItems
     {
         /// <summary>Containers (water cans, fuel cans) have a LiquidAmount FSM with Liquid and LiquidCapacity. An item that holds a
         /// liquid only counts when it is at least this full, so an empty can is not a water can ([Quests / Items] MinLiquidFraction).</summary>
-        public static float MinLiquidFraction = 0.5f;
+        private float MinLiquidFraction = 0.5f;
 
         /// <summary>True when the item is a liquid container below <see cref="MinLiquidFraction"/> of its capacity (empty when capacity is unknown).</summary>
-        static bool TooEmpty(GameObject go)
+        bool TooEmpty(GameObject go)
         {
             if (MinLiquidFraction <= 0f) return false;
             PlayMakerFSM[] fsms = go.GetComponents<PlayMakerFSM>();
@@ -39,7 +34,7 @@ namespace WildWasteland.Modules.Quests
 
         /// <summary>Largest capacity (litres) of the loaded containers matching the item token (0 when it is not a container or none
         /// is loaded); <paramref name="bestHave"/> = the fullest matching container the player carries.</summary>
-        public static float ContainerCapacity(string token, out float bestHave)
+        public float ContainerCapacity(string token, out float bestHave)
         {
             bestHave = 0f;
             float cap = 0f;
@@ -67,7 +62,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         /// <summary>True for merchant stock (an enabled "Buyable" FSM).</summary>
-        static bool ForSale(GameObject go)
+        bool ForSale(GameObject go)
         {
             PlayMakerFSM[] fsms = go.GetComponents<PlayMakerFSM>();
             for (int i = 0; i < fsms.Length; i++)
@@ -78,7 +73,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Token match without the memo: the prefab name, the item's display name or its ID category
         /// (case/space/underscore/dash/dot-insensitive). A trailing * means "starts with"; a leading = means the prefab name only
         /// (alcohol cans have the ID dogfood_can).</summary>
-        static bool MatchUncached(GameObject go, PlayMakerFSM itemNameFsm, string token, out string display)
+        bool MatchUncached(GameObject go, PlayMakerFSM itemNameFsm, string token, out string display)
         {
             display = ItemText(itemNameFsm, "ItemName");
             string t = ItemNorm(token);
@@ -104,13 +99,13 @@ namespace WildWasteland.Modules.Quests
         }
 
         /// <summary>Equality, or prefix match when <paramref name="prefix"/>.</summary>
-        static bool Eq(string a, string t, bool prefix)
+        bool Eq(string a, string t, bool prefix)
         {
             return prefix ? a.StartsWith(t, StringComparison.Ordinal) : a == t;
         }
 
         /// <summary>Lower-cased token without spaces, underscores, dashes and dots (same rule as Quests Util.Norm).</summary>
-        static string ItemNorm(string s)
+        string ItemNorm(string s)
         {
             if (string.IsNullOrEmpty(s)) return "";
             var sb = new System.Text.StringBuilder(s.Length);
@@ -124,12 +119,12 @@ namespace WildWasteland.Modules.Quests
         }
 
         /// <summary>Named string variable of an FSM through the Core FSM index, "" when missing.</summary>
-        static string ItemText(PlayMakerFSM fsm, string name) { var value = FsmIndex.String(fsm, name); return value != null ? value.Value ?? "" : ""; }
+        string ItemText(PlayMakerFSM fsm, string name) { var value = FsmIndex.String(fsm, name); return value != null ? value.Value ?? "" : ""; }
 
         /// <summary>The player's spare ammo lives as plain counters on the game manager's "Ammo" FSM (ammo_9mm, ammo_556 ...), not
         /// as objects: picking a box up empties it into the counter. A quest that asks for ammo boxes can be paid from that counter,
         /// one box = the usual box size. Rows: prefab, counter, rounds per box.</summary>
-        static readonly string[][] AmmoTypes = new string[][]
+        readonly string[][] AmmoTypes = new string[][]
         {
             // prefab,           counter,        rounds per box
             new[] { "ammo_box_9mm",     "ammo_9mm",      "14" },
@@ -142,10 +137,10 @@ namespace WildWasteland.Modules.Quests
             new[] { "ammo_arrow",       "ammo_arrow",    "5"  },
         };
 
-        static PlayMakerFSM ammoFsm;
+        PlayMakerFSM ammoFsm;
 
         /// <summary>The game manager's "Ammo" FSM (cached once found).</summary>
-        static PlayMakerFSM AmmoFsm()
+        PlayMakerFSM AmmoFsm()
         {
             if (ammoFsm != null) return ammoFsm;
             var all = FsmIndex.All;
@@ -160,7 +155,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         /// <summary>Adds one reserve hit per ammo counter matching the token ("ammo" = every type) that holds at least one box.</summary>
-        static void AddReserveAmmo(string token, List<ItemHit> hits) // refs-ok: REFACTOR-REQUEST B15-4
+        void AddReserveAmmo(string token, List<QuestItemHit> hits)
         {
             string t = ItemNorm(token);
             if (t.StartsWith("=")) t = t.Substring(1);
@@ -178,7 +173,7 @@ namespace WildWasteland.Modules.Quests
                 FsmInt counter = FsmIndex.Int(fsm, AmmoTypes[i][1]);
                 int per = int.Parse(AmmoTypes[i][2]);
                 if (counter == null || counter.Value < per) continue;
-                var h = new ItemHit(); // refs-ok: REFACTOR-REQUEST B15-4
+                var h = new QuestItemHit();
                 h.Reserve = true; h.Held = true; h.Dist = 0f;
                 h.Qty = counter; h.PerBox = per; h.Stack = counter.Value / per;
                 h.Display = "ammo";
@@ -188,9 +183,10 @@ namespace WildWasteland.Modules.Quests
 
         /// <summary>Items matching the token on the ground within <paramref name="radius"/> of the player or carried by the player
         /// (plus reserve ammo when counting carried items); merchant stock and too-empty containers are ignored.</summary>
-        public static List<ItemHit> FindItems(string token, Vector3 playerPos, float radius, bool countCarried) // refs-ok: REFACTOR-REQUEST B15-4
+        public List<QuestItemHit> FindItems(string token, Vector3 playerPos, float radius, bool countCarried,float minimumLiquidFraction)
         {
-            var hits = new List<ItemHit>(); // refs-ok: REFACTOR-REQUEST B15-4
+            MinLiquidFraction=minimumLiquidFraction;
+            var hits = new List<QuestItemHit>();
             var all = FsmIndex.ByName("ItemName");
             if (all == null) return hits;
 
@@ -213,7 +209,7 @@ namespace WildWasteland.Modules.Quests
                 if (ForSale(go)) continue;
                 if (TooEmpty(go)) continue;
 
-                var h = new ItemHit(); // refs-ok: REFACTOR-REQUEST B15-4
+                var h = new QuestItemHit();
                 h.Go = go;
                 h.Held = held;
                 h.Dist = dist;
@@ -234,23 +230,15 @@ namespace WildWasteland.Modules.Quests
             return hits;
         }
 
-        /// <summary>Sum of the hits' stack counts.</summary>
-        public static int CountStacks(List<ItemHit> hits) // refs-ok: REFACTOR-REQUEST B15-4
-        {
-            int n = 0;
-            for (int i = 0; i < hits.Count; i++) n += hits[i].Stack;
-            return n;
-        }
-
         /// <summary>Removes <paramref name="count"/> items: ground items first, then carried ones, then reserve ammo boxes. Ground
         /// items are taken nearest first, measured from <paramref name="from"/> when given (the person you are handing them to),
         /// otherwise from where you stood when the items were counted. Partial stacks keep the rest; whole items are destroyed.</summary>
-        public static void TakeItems(List<ItemHit> hits, int count, Vector3? from = null) // refs-ok: REFACTOR-REQUEST B15-4
+        public void TakeItems(List<QuestItemHit> hits, int count, Vector3? from = null)
         {
             if (from.HasValue)
                 for (int i = 0; i < hits.Count; i++)
                     if (hits[i].Go != null && !hits[i].Held) hits[i].Dist = WorldGeometry.HorizontalDistance(hits[i].Go.transform.position, from.Value);
-            hits.Sort(delegate (ItemHit a, ItemHit b) // refs-ok: REFACTOR-REQUEST B15-4
+            hits.Sort(delegate (QuestItemHit a, QuestItemHit b)
             {
                 if (a.Held != b.Held) return a.Held ? 1 : -1;
                 return a.Dist.CompareTo(b.Dist);
@@ -258,7 +246,7 @@ namespace WildWasteland.Modules.Quests
             int remaining = count;
             for (int i = 0; i < hits.Count && remaining > 0; i++)
             {
-                ItemHit h = hits[i]; // refs-ok: REFACTOR-REQUEST B15-4
+                QuestItemHit h = hits[i];
                 if (h.Reserve)
                 {
                     int boxes = Math.Min(h.Stack, remaining);

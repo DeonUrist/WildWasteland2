@@ -261,7 +261,6 @@ namespace WildWasteland.Modules.NPC
             foreach (var kv in _agents) if (kv.Value.FlankObj != null) UnityEngine.Object.Destroy(kv.Value.FlankObj);
             _ghosts.Clear(); _agents.Clear();
             if (_ghostRoot != null) { UnityEngine.Object.Destroy(_ghostRoot.gameObject); _ghostRoot = null; }
-            if (_voiceSrc != null) { UnityEngine.Object.Destroy(_voiceSrc.gameObject); _voiceSrc = null; }
             _handover.Clear(); _remember.Clear(); _crewOrders.Clear(); _thrown = null; _grabFsm = null; _grabState = null;
         }
 

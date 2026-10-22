@@ -6,9 +6,9 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
-using WildWasteland.Modules.Gunplay;
+using WildWasteland.Modules.Guns;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Gunplay
 {
     // Observe vanilla actions without replacing them. Gunplay sends corresponding events
     // at projectile creation/impact, including its immediate over-cap fallback.
@@ -24,21 +24,22 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Core.Hooks.SensorRayHitEnter prefix (every SensorGetDetectionRayHit.OnEnter): one NPC "Damage Ranged" ray = one magazine shot; with projectiles off the burst sensor reaches the gun's range and the shot is heard (WeaponFired). Never skips.</summary>
         public static bool BeforeNpcShot(SensorGetDetectionRayHit __instance)
         {
-            if (!NpcaiRuntime.Running) return true;
+            var policy=ModApi.Get<INpcShotPolicy>();
+            if(policy==null)return true;
             try
             {
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Damage Ranged" || fsm.GameObject == null) return true;
-                Brain.Shot(fsm.GameObject, fsm);        // (1.1.2) one ray = one shot of the magazine (counted whatever else is on)
-                if (WeaponRanges.ProjectilesEnabled || (!Senses.On && !NpcaiSettings.AimEnabled.Value && !NpcaiSettings.BrainEnabled.Value)) return true;
-                WeaponRanges.Kind kind;
+                policy.Shot(fsm.GameObject, fsm);        // (1.1.2) one ray = one shot of the magazine (counted whatever else is on)
+                if (GunplaySettings.ProjectilesEnabled || (!policy.Senses && !policy.ExtendRange)) return true;
+                Tracers.Kind kind;
                 var owner = fsm.GameObject;
-                if (!WeaponRanges.GunKindOf(owner, out kind)) return true;
+                if (!Tracers.GunKindOf(owner, out kind)) return true;
                 // Vanilla's gun sensor is only 80 m. Aim chooses positions from the
                 // effective range; repulse at that reach so rifle/sniper NPCs can hit
                 // from those positions without requiring Gunplay's projectiles.
                 var refs = RefsOf(owner);
-                if (NpcaiSettings.AimEnabled.Value || NpcaiSettings.BrainEnabled.Value)
+                if (policy.ExtendRange)
                 {
                     var sensor = refs.Sensor;
                     if (sensor != null)
@@ -47,7 +48,7 @@ namespace WildWasteland.Modules.NPC
                         if (_rayPool.Count > 0) { st = _rayPool[_rayPool.Count - 1]; _rayPool.RemoveAt(_rayPool.Count - 1); } else st = new RayState();
                         st.Action = __instance; st.Sensor = sensor; st.Length = sensor.Length;
                         _rays.Add(st);
-                        sensor.Length = WeaponRanges.RangeOf(kind);
+                        sensor.Length = Tracers.RangeOf(kind);
                         sensor.Pulse();
                     }
                 }
@@ -118,7 +119,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         /// <summary>Per Attack FSM: gun or not, kind and muzzle transforms.</summary>
-        private sealed class ShotInfo { public bool Gun; public WeaponRanges.Kind Kind; public Transform[] Muzzles; }
+        private sealed class ShotInfo { public bool Gun; public Tracers.Kind Kind; public Transform[] Muzzles; }
         private static readonly Dictionary<Fsm, ShotInfo> _shotInfo = new Dictionary<Fsm, ShotInfo>();
         private static readonly List<Transform> _muzzleBuf = new List<Transform>();
         /// <summary>Scene change: the per-FSM shot info is dropped.</summary>
@@ -129,14 +130,14 @@ namespace WildWasteland.Modules.NPC
             var si = new ShotInfo { Muzzles = new Transform[0] };
             foreach (var f in fsm.GameObject.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "Reload") { si.Gun = true; break; }
             if (!si.Gun) return si;
-            var kind = WeaponRanges.Classify(fsm.GameObject.name);
+            var kind = (Tracers.Kind)(int)WeaponNames.GunKindOfName(fsm.GameObject.name);
             bool shotgun = false;
             var hit = fsm.GetState("hit");
             if (hit != null && hit.Actions != null)
                 foreach (var a in hit.Actions)
                 { var ic = a as IntCompare; if (ic != null && ic.integer1 != null && ic.integer1.Name == "pellets" && ic.integer2 != null) { shotgun = true; break; } }
-            if (shotgun) kind = WeaponRanges.Kind.Shotgun;
-            else if (kind == WeaponRanges.Kind.Shotgun) kind = WeaponRanges.Kind.Rifle;
+            if (shotgun) kind = Tracers.Kind.Shotgun;
+            else if (kind == Tracers.Kind.Shotgun) kind = Tracers.Kind.Rifle;
             si.Kind = kind;
             _muzzleBuf.Clear();
             foreach (var t in fsm.GameObject.GetComponentsInChildren<Transform>(true))
@@ -150,8 +151,8 @@ namespace WildWasteland.Modules.NPC
         {
             try
             {
-                if (WeaponRanges.ProjectilesEnabled) return true;
-                bool senses = Senses.On;
+                if (GunplaySettings.ProjectilesEnabled) return true;
+                bool senses = ModApi.Get<INpcShotPolicy>()?.Senses==true;
                 if (!senses && !ModEvents.HasListeners<WeaponFired>()) return true;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Attack" || fsm.GameObject == null || __instance.repeatInterval == null || __instance.repeatInterval.Value != 0f) return true;
@@ -190,7 +191,7 @@ namespace WildWasteland.Modules.NPC
         {
             try
             {
-                bool senses = Senses.On;
+                bool senses = ModApi.Get<INpcShotPolicy>()?.Senses==true;
                 if ((!senses && !ModEvents.HasListeners<Hurt>()) || __instance.fsmName == null || __instance.fsmName.Value != "Bodypart" || __instance.variableName == null || __instance.variableName.Value != "Damage" || __instance.setValue == null || __instance.setValue.Value >= 0f) return;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.GameObject == null) return;
@@ -206,7 +207,7 @@ namespace WildWasteland.Modules.NPC
                     foreach (var f in fl) if (f != null && f.FsmName == "Reload") { gun = true; break; }
                     FsmBuffers.Return(fl);
                 }
-                if (gun && WeaponRanges.ProjectilesEnabled) return;
+                if (gun && GunplaySettings.ProjectilesEnabled) return;
                 var target = fsm.GetOwnerDefaultTarget(__instance.gameObject);
                 if (target == null) return;
                 var attacker = player ? Core.GameRefs.Player : fsm.GameObject;

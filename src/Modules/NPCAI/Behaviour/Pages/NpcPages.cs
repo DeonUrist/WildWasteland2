@@ -92,9 +92,9 @@ namespace WildWasteland.Modules.NPC
             {
                 l.Value("Burrowers", I(Burrow.Count) + " (" + I(Burrow.Hidden) + " under the sand now)");
                 l.Value("Pouncers", I(Pounce.Count) + " (" + I(Pounce.Airborne) + " in the air)");
-                l.Value("Dogs", I(DogBite.Count) + " (" + I(DogAnimations.DogCount) + " animated)");
-                l.Value("Dog animation bundle", DogAnimations.BundleLoaded ? I(DogAnimations.ClipCount) + " clips (NPC/Models/npcai_dogs.bundle)" : "not loaded - procedural bite");
-                l.Value("Dog Companion", DogCompanionCompat.Present ? (NpcaiSettings.DogCompanionCompatEnabled.Value ? I(DogCompanionCompat.Count) + " companion(s) driven" : "installed, compatibility off (F6)") : "not installed");   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
+                l.Value("Dogs", I(DogBite.Count) + " (" + I((Core.ModApi.Get<Core.ICaninePresentation>()?.DogCount ?? 0)) + " animated)");
+                l.Value("Dog animation bundle", (Core.ModApi.Get<Core.ICaninePresentation>()?.BundleLoaded == true) ? I((Core.ModApi.Get<Core.ICaninePresentation>()?.ClipCount ?? 0)) + " clips (NPC/Models/npcai_dogs.bundle)" : "not loaded - procedural bite");
+                l.Value("Dog Companion", Core.ModApi.Get<Core.ICompanionThreat>() is Core.ICompanionThreat companions ? I(companions.Count)+" companion(s) driven" : "compatibility inactive");
             }, NSec("Behaviour"), NSec("Burrow"), NSec("Hunt"), NSec("Ambush"), NSec("Pounce"), NSec("Dogs")));
 
             pages.Add(new LivePage(m, "Hazards (nests, webs, storms)", "Spider nests and their webs (built in slices while you are far away, layouts kept inside the world save) and sandstorms.", l =>

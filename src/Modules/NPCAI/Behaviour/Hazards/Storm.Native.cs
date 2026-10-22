@@ -18,18 +18,25 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<Transform> _funnels = new List<Transform>();
         private static readonly Dictionary<int, Transform[]> _funnelsOf = new Dictionary<int, Transform[]>();
         internal const float BlastRadius = 150f;
+        /// <summary>Reports whether native tornado funnels are currently tracked.</summary>
         internal static bool AnyFunnel { get { return _funnels.Count > 0; } }
         private static PlayMakerArrayListProxy _list;
         private static float _nextFind;
 
-        internal static bool Any { get { return _storms.Count > 0 || _dust; } }
+        /// <summary>Reports any native or optional external storm exposure source.</summary>
+        internal static bool Any { get { return _storms.Count > 0 || Dust; } }
+        /// <summary>Returns the number of tracked native storms.</summary>
         internal static int StormCount { get { return _storms.Count; } }
+        /// <summary>Returns the number of tracked tornado funnels.</summary>
         internal static int FunnelCount { get { return _funnels.Count; } }
-        internal static bool Dust { get { return _dust; } }
-        internal static bool DustBridge { get { return _dustIntensity != null; } }
+        /// <summary>Reports active dust from the optional external storm provider.</summary>
+        internal static bool Dust { get { return Core.ModApi.Get<Core.IExternalStormField>()?.Active == true; } }
+        /// <summary>Reports whether the external storm field is available.</summary>
+        internal static bool DustBridge { get { return Core.ModApi.Get<Core.IExternalStormField>()?.Available == true; } }
 
         private static readonly Dictionary<int, PlayMakerFSM> _sandPlayer = new Dictionary<int, PlayMakerFSM>();
 
+        /// <summary>Recognizes native storm roots parked by the external storm system.</summary>
         private static bool Parked(GameObject go)
         {
             PlayMakerFSM fsm;
@@ -43,17 +50,13 @@ namespace WildWasteland.Modules.NPC
             return fsm != null && !fsm.enabled;
         }
 
-        internal static void Reset() { _storms.Clear(); _funnels.Clear(); _funnelsOf.Clear(); _sandPlayer.Clear(); _list = null; _nextFind = 0f; _dust = false; }
+        /// <summary>Clears native storm and funnel discovery snapshots at world boundaries.</summary>
+        internal static void Reset() { _storms.Clear(); _funnels.Clear(); _funnelsOf.Clear(); _sandPlayer.Clear(); _list = null; _nextFind = 0f; }
 
+        /// <summary>Refreshes native hazard membership from the shared FSM index.</summary>
         internal static void Refresh()
         {
             _storms.Clear(); _funnels.Clear();
-            if (!_dustLooked) LookForDust();
-            if (_dustIntensity != null)
-            {
-                try { _dust = _dustOn() && _dustActive(); }
-                catch (Exception e) { DustOff(e); }
-            }
             if (_list == null)
             {
                 if (Time.unscaledTime < _nextFind) return;
@@ -69,7 +72,7 @@ namespace WildWasteland.Modules.NPC
             for (int i = 0; i < al.Count; i++)
             {
                 var go = al[i] as GameObject;
-                if (go != null && go.activeInHierarchy && (_dustIntensity == null || !Parked(go))) _storms.Add(go.transform);
+                if (go != null && go.activeInHierarchy && (!DustBridge || !Parked(go))) _storms.Add(go.transform);
             }
             foreach (var st in _storms)
             {
@@ -88,6 +91,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // within the shove radius of a tornado funnel (flat distance)
+        /// <summary>Tests scene position against the tracked native explosion fields.</summary>
         internal static bool InBlast(Vector3 p)
         {
             if (_funnels.Count == 0) return false;
@@ -105,14 +109,10 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Queries only the optional third-party dust provider, without reintroducing the native circle fallback.</summary>
         internal static bool InDust(Vector3 p)
         {
-            if (_dust)
-            {
-                try { if (_dustIntensity(p.x, p.z) >= DustHazard) return true; }
-                catch (Exception e) { DustOff(e); }
-            }
-            return false;
+            return Core.ModApi.Get<Core.IExternalStormField>()?.Inside(p) == true;
         }
 
+        /// <summary>Tests scene position against native and optional external storm fields.</summary>
         internal static bool In(Vector3 p)
         {
             if (InDust(p)) return true;

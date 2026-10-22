@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>BepInEx GUID of ApocaDustStorm.</summary>
         internal const string Guid = "local.apocalypter.duststorm";
         private static bool _enabled;
+        private static IModule _scope;
 
         /// <summary>True while the bridge switch is on (the NPC storm reader only resolves the mod while it is).</summary>
         internal static bool Enabled { get { return _enabled; } }
@@ -32,11 +33,12 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Installs the War Rig shelter patches under <paramref name="scope"/> and enables the NPC reader.</summary>
         internal static void Start(IModule scope)
         {
-            _enabled = true;
+            _enabled = true; _scope=scope;ExternalStormField.Clear();
+            ModApi.Provide<IExternalStormField>(scope,new ExternalStormField());
             DustStormBridge.Install(scope, Plugin);
         }
 
         /// <summary>Disables both parts (the NPC reader re-resolves when switched on again; the scope removes the patches).</summary>
-        internal static void Shutdown() { _enabled = false; DustStormBridge.Shutdown(); Storm.DustBridgeOff(); }
+        internal static void Shutdown() { _enabled = false; if(_scope!=null)ModApi.Withdraw<IExternalStormField>(_scope);_scope=null; DustStormBridge.Shutdown(); ExternalStormField.Clear(); }
     }
 }

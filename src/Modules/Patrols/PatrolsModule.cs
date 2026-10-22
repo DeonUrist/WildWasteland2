@@ -111,12 +111,10 @@ namespace WildWasteland.Modules.Patrols
             Try("Traffic roads", TrafficRoads.Install);
             Scheduler.Sliced(this, "Traffic final terrain", 500, TrafficRoads.GroundStep);
             Try("Camp status", () => TrafficCamps.Install(this));
-            Try("Suspension", () => Suspension.Install(this));
             Prefabs.Install(this);
             PatrolLoadPreparation.Install(this);
             Core.Hooks.SetFsmFloatDo.Prefix(this, Ram.BeforeSetFsmFloat);   // a car never rams its own (trigger-only) crew
             Core.Hooks.SendEventEnter.Prefix(this, Ram.BeforeSendEvent);
-            Try("Motorcycle save hook (saved motorcycles may not load)", () => MotorcycleIntegration.Install(this));
 
             EditorStore.Load(DataDir);
             Core.ModApi.Changed-=Crew.HeatApiChanged;Core.ModApi.Changed+=Crew.HeatApiChanged;
@@ -126,7 +124,7 @@ namespace WildWasteland.Modules.Patrols
             Try("War Rig", () => WarRig.WarRigFeature.Install(this, Path.Combine(DataDir, "WarRig")));
 
             // per-scene state (fresh start, or a restart after Shutdown)
-            Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); PickupCatalog.Invalidate();
+            Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene();
             _onSaveState = PatrolPersistence.OnStateChanged;
             SaveBus.StateChanged += _onSaveState;
 
@@ -166,7 +164,6 @@ namespace WildWasteland.Modules.Patrols
             // debug-map textures; its coroutines (builds, restores, traffic materialisation) stop with it
             if (_host != null) UnityEngine.Object.Destroy(_host);
             _host = null; _patrol = null; _convoy = null; _traffic = null; _cleanup = null;
-            ModVehicles.Clear();
             Prefabs.Invalidate();
             Instance = null;
         }
@@ -176,8 +173,8 @@ namespace WildWasteland.Modules.Patrols
         {
             WarRig.PatrolRetention.Clear();
             TrafficCompass.Clear();
-            PickupCatalog.Invalidate(); PatrolVisibility.Reset(); EnsureRunner(); Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); Convoy.ResetForScene();
-            
+             PatrolVisibility.Reset(); EnsureRunner(); Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); Convoy.ResetForScene();
+
         }
 
         // Core.Origin (NWH FloatingOrigin.Jump): legacy physics caches of the pilots and PlayerRef move with the world

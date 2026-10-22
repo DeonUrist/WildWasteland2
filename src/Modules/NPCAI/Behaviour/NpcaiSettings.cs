@@ -85,7 +85,7 @@ namespace WildWasteland.Modules.NPC
         internal static ConfigEntry<float> BurrowMin, BurrowMax, BurrowAmbushMin, BurrowAmbushMax, BurrowSeenFrom, BurrowSeconds, RiseSeconds, BurrowDepth, BurrowFxScale, BurrowFxVolume, BurrowFxPitch, BurrowFxRange;
         // new in WW (F6 toggles for features NPCAI ran unconditionally)
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
-        internal static ConfigEntry<bool> DogCompanionCompatEnabled, StormsEnabled;
+        internal static ConfigEntry<bool> StormsEnabled;
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
         internal static ConfigEntry<bool> DogJumpAttack;
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
@@ -95,7 +95,6 @@ namespace WildWasteland.Modules.NPC
         /// <summary>[NPCAI / Bosses] AdjustHumanBossHP: human boss health in % of the game's own (ex [Guns / Bosses]).</summary>
         internal static ConfigEntry<float> BossHpPercent;
         /// <summary>[NPCAI / Riders] blast-lance rider decisions and leap/lance numbers (ex [Patrols / Combat tuning] Rider*).</summary>
-        internal static ConfigEntry<float> RiderRange, RiderIntervalMin, RiderIntervalMax, RiderLanceSpeed, RiderMaxThrowAngle, RiderJumpRange, RiderLeapSpeed, RiderBlastDamage, RiderBlastRadius, RiderLeapReachPercent, RiderBailRange;
 
         private static ModuleConfig _cfg;
         /// <summary>Binds a tools.cfg entry in [NPCAI / section].</summary>
@@ -128,7 +127,6 @@ namespace WildWasteland.Modules.NPC
             NestsEnabled = B("SpiderNests", true, "Caves, wrecks and camps with spiders become spider nests: webs across their openings and on the ground, big spiders sitting in the webs. Touch a web and the whole nest comes at you.");
             DogBiteEnabled = B("DogBite", true, "Quadrupeds commit to dodgeable running bites and use faster bites at close range. Without the animation bundle, the original procedural bite is used.");
             DogJumpAttack = B("DogJumpAttack", true, "Optional short, collision-checked jumping bite. Native damage is applied only if the target remains within reach at contact.");
-            DogCompanionCompatEnabled = _cfg.Main.Bind(_cfg.Section(null), "DogCompanionCompat", true, "With FlyingKlick's Dog Companion installed: the companion dog uses the same dog animations (locomotion, bites, sitting in vehicles, sneaking). Off = Dog Companion's own behaviour.");
             BossHealth = cfg.Player("", "BossHealth", true,
                 "Adjust the health of the human bosses (Duke Ironjaw, Buzzgut) to [NPCAI / Bosses] AdjustHumanBossHP. Off = the game's own boss health.");
             // ---------------- F6: player-facing settings ----------------
@@ -337,17 +335,6 @@ namespace WildWasteland.Modules.NPC
             TravelRunBeyond = H("Idle", "TravelRunBeyond", 25f, new ConfigDescription("NPCs sent somewhere by another module (convoy crews back to their car, foot patrols) run while farther than this from the goal and walk the rest, m. 0 = always run.", new AcceptableValueRange<float>(0f, 5000f)));
             IdleWalkRadius = H("Idle", "WalkRadius", 200f, new ConfigDescription("Camp walks only for NPCs within this distance of the camera, m.", new AcceptableValueRange<float>(20f, 1000f)));
             // blast-lance riders (War Rig / motorcycle Warboys): decisions, leap and lance numbers
-            RiderRange = H("Riders", "RiderRange", 35f, new ConfigDescription("A blast-lance rider throws at a target closer than this, m (and only when a flat throw reaches it)", new AcceptableValueRange<float>(5f, 150f)));
-            RiderMaxThrowAngle = H("Riders", "RiderMaxThrowAngle", 20f, new ConfigDescription("The rider only throws when the lance reaches the predicted spot with at most this many degrees up (a throw, not a lob)", new AcceptableValueRange<float>(0f, 45f)));
-            RiderJumpRange = H("Riders", "RiderJumpRange", 15f, new ConfigDescription("\"Witness me!\": the rider leaps when your car is closer than this, m", new AcceptableValueRange<float>(3f, 30f)));
-            RiderIntervalMin = H("Riders", "RiderIntervalMin", 5f, new ConfigDescription("Shortest pause between two of a rider's throws, s", new AcceptableValueRange<float>(1f, 60f)));
-            RiderIntervalMax = H("Riders", "RiderIntervalMax", 9f, new ConfigDescription("Longest pause between two of a rider's throws, s", new AcceptableValueRange<float>(1f, 120f)));
-            RiderLeapReachPercent = H("Riders", "RiderLeapReachPercent", 80f, new ConfigDescription("\"Witness me!\": the Warboy only leaps at a car within this % of his longest jump (RiderLeapSpeed x 1.2 s, the speeds of both cars counted)", new AcceptableValueRange<float>(10f, 100f)));
-            RiderBailRange = H("Riders", "RiderBailRange", 6f, new ConfigDescription("A Warboy on a motorcycle who cannot turn to you jumps off when you are closer than this, m", new AcceptableValueRange<float>(1f, 30f)));
-            RiderLeapSpeed = H("Riders", "RiderLeapSpeed", 11f, new ConfigDescription("\"Witness me!\": the leap's ground speed relative to the rider's car, m/s - a long, flat jump, no lob", new AcceptableValueRange<float>(5f, 40f)));
-            RiderBlastDamage = H("Riders", "RiderBlastDamage", 60f, new ConfigDescription("\"Witness me!\": damage of the rider's blast at its centre (in your car too); falls to a third at the edge", new AcceptableValueRange<float>(0f, 300f)));
-            RiderBlastRadius = H("Riders", "RiderBlastRadius", 7f, new ConfigDescription("\"Witness me!\": reach of the rider's blast, m (damage and the shove of your car)", new AcceptableValueRange<float>(1f, 20f)));
-            RiderLanceSpeed = H("Riders", "RiderLanceSpeed", 30f, new ConfigDescription("Throw speed of a rider's lance, m/s (the player's is 30)", new AcceptableValueRange<float>(5f, 80f)));
         }
     }
 }

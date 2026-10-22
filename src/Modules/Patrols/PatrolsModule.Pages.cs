@@ -20,7 +20,6 @@ namespace WildWasteland.Modules.Patrols
             var v = ToolGroups.Vehicles; var m = ToolGroups.Merchants;
             return new ToolPage[]
             {
-                new ActionPage(this, v, "War Rig", WarRigPage) { IsTool = true },
                 new ActionPage(this, v, "World traffic", WorldTrafficPage),
                 new ActionPage(this, v, "Spawning & cleanup", SpawningPage),
                 new ActionPage(this, m, "Merchants", MerchantsPage),

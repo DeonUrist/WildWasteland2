@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.Vehicles
         public bool SetHeadlights(GameObject vehicle, bool on)
         {
             if (vehicle == null) return false;
-            Patrol.Headlights(vehicle, on);
+            NativeVehicleSwitches.Headlights(vehicle, on);
             return true;
         }
 
@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Vehicles
         public bool SetHandbrake(GameObject vehicle, bool on)
         {
             if (vehicle == null) return false;
-            Patrol.Handbrake(vehicle, on);
+            NativeVehicleSwitches.Handbrake(vehicle, on);
             return true;
         }
     }
