@@ -209,7 +209,7 @@ namespace WildWasteland.Modules.Patrols
             RegisterToolsTicks();
             RegisterDeveloperSeatTicks();
             Scheduler.Interval(this, "Patrols.Progression", .25f, TickConvoy);
-            Scheduler.Interval(this, "Patrols.Traffic", .25f, TickTraffic);
+            Scheduler.EveryFrame(this, "Patrols.Traffic", TickTraffic);
             Scheduler.EveryFrame(this, "Patrols.Locations", TickLocations);
             Scheduler.Interval(this, "Patrols.Camps", .25f, TickCamps);
             Scheduler.Interval(this, "Patrols.Roads", .25f, TickRoads);

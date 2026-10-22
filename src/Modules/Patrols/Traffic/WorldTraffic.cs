@@ -188,7 +188,9 @@ namespace WildWasteland.Modules.Patrols
                 ReleaseFoot("world traffic off");
                 StopAllCoroutines(); _live.Clear(); _journeys.Clear();_battleLive.Clear();_battles.Clear(); return;
             }
-            float seconds = .25f;
+            _elapsed += Time.deltaTime;
+            if (_elapsed < .25f) return;
+            float seconds = _elapsed; _elapsed = 0f;
             try { Tick(seconds); }
             catch (Exception e) { Core.Log.Error("[Patrols] " + "World traffic: " + e); }
         }
