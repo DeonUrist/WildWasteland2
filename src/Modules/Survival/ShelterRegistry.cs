@@ -7,6 +7,7 @@ namespace WildWasteland.Modules.Survival
     /// <summary>Owner-scoped shelter geometry contributed by vehicles or world structures.</summary>
     internal sealed class ShelterRegistry : IShelterRegistry
     {
+        /// <summary>Tracks one provider and its lifecycle owner without copying geometry.</summary>
         sealed class Entry { internal int Id; internal IModule Owner; internal IShelterProvider Provider; }
         readonly List<Entry> _entries = new List<Entry>();
         int _next;

@@ -22,8 +22,11 @@ namespace WildWasteland.Modules.Survival
         private ConfigEntry<bool> _weatherEnabled;
         private bool _active, _weatherActive;
 
+        /// <summary>Canonical settings and resource owner.</summary>
         public override string Id { get { return "Survival"; } }
+        /// <summary>Name shown in the module shell.</summary>
         public override string DisplayName { get { return "Survival"; } }
+        /// <summary>Standalone stew-pot replacement conflict.</summary>
         public override string[] ConflictsWith { get { return new[] { GUID }; } }
 
         /// <summary>Binds the Stew Pot tools.cfg entries (model scale, debug switches, cooking/spoiling tuning) in display order.</summary>
@@ -47,6 +50,7 @@ namespace WildWasteland.Modules.Survival
             return cfg.Tool(section, key, value, description, new AcceptableValueRange<float>(min, max));
         }
 
+        /// <summary>Starts pot interaction, native prefab handling and environmental services.</summary>
         public override void Init()
         {
             _active = true;
@@ -71,17 +75,21 @@ namespace WildWasteland.Modules.Survival
             Core.Log.Always("[Survival] Stew Pot and environment initialized; native saves retained.");
         }
 
+        /// <summary>Resolves only the custom pot prefab through the native catalog chain.</summary>
         private static ES3Prefab ResolvePrefab(long id)
         {
             return id == Factory.PrefabId ? Factory.Template().GetComponent<ES3Prefab>() : null;
         }
 
+        /// <summary>Registers a newly awakened saved pot without adding saved components.</summary>
         private static void PrefabAwake(ES3Prefab __instance)
         {
             if (__instance.prefabId == Factory.PrefabId) Runtime.Register(__instance.gameObject);
         }
 
+        /// <summary>Clears scene references only when the main scene changes.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; Runtime.Clear(); DaylightState.Reset(); if (_stormQueries != null) _stormQueries.Clear(); NativeStormProtection.Restore(); NativeStormProtection.ResetForScene(); if (_weatherActive) _weather.OnSceneLoaded(scene, mode); }
+        /// <summary>Queues existing pot discovery and prepares weather after world readiness.</summary>
         public override void OnWorldReady() { Runtime.BeginDiscovery(); if (_weatherActive) _weather.OnWorldReady(); }
         /// <summary>Retains native storm anchors during world serialization.</summary>
         public override void OnSaveBegin(string slot) { if (_weatherActive) _weather.OnSaveBegin(slot); }
@@ -117,6 +125,7 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Restores native weather and releases only weather-owned hooks and jobs.</summary>
         private void StopWeather()
         { if (_weatherActive) { _weatherActive = false; _weather.Shutdown(); } PublishWeather(); }
+        /// <summary>Restores native storm behavior and releases runtime pot effects.</summary>
         public override void Shutdown()
         {
             _active = false; StopWeather(); NativeStormProtection.Restore(); NativeStormProtection.ResetForScene();
@@ -126,6 +135,7 @@ namespace WildWasteland.Modules.Survival
             _effects = null;
         }
 
+        /// <summary>Contributes the stew-pot tuning page to the shared tools shell.</summary>
         public override IEnumerable<ToolPage> ToolPages()
         {
             return new ToolPage[] { new ConfigPage(this, ToolGroups.General, "Survival / Stew Pot", Config.Tools,

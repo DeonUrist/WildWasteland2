@@ -21,7 +21,9 @@ namespace WildWasteland.Modules.Survival
         private float _reportAt;
         private bool _reported;
 
+        /// <summary>Prepares the private native dust pool once its source becomes available.</summary>
         internal bool Prepare() { return _system!=null || Create(); }
+        /// <summary>Clones and configures the native dust source for camera-local presentation.</summary>
         private bool Create()
         {
             var manager = ES3ReferenceMgrBase.Current;
@@ -50,6 +52,7 @@ namespace WildWasteland.Modules.Survival
             Log.Always("[Weather] Vanilla Sand Player clouds ready: native material, UV flow, velocity, lifetime and shape retained; brown tint, 60/100/100 particle cap.");
             return true;
         }
+        /// <summary>Advances nearby dust from storm intensity, wind and live palette.</summary>
         internal void Tick(Camera camera, float clock, float strength, Vector3 wind, WeatherVisualDetail detail, Color tint)
         {
             _camera = camera;
@@ -89,14 +92,18 @@ namespace WildWasteland.Modules.Survival
                 }
             }
         }
+        /// <summary>Shows local dust only to the selected gameplay camera.</summary>
         private void Before(Camera camera) { if (_renderer != null) _renderer.enabled = camera == _camera; }
+        /// <summary>Clears particles and forgets the previous camera position.</summary>
         internal void Clear() { _hasPosition = false; if (_system != null) _system.Clear(); }
+        /// <summary>Hides and clears local dust while retaining its prepared pool.</summary>
         internal void Suspend()
         {
             Clear(); _camera = null; _next = 0;
             if (_system != null) _system.Stop(true,ParticleSystemStopBehavior.StopEmittingAndClear);
             if (_renderer != null) _renderer.enabled = false;
         }
+        /// <summary>Releases camera observation and destroys private particle resources.</summary>
         public void Dispose()
         {
             Camera.onPreCull -= Before; Suspend();

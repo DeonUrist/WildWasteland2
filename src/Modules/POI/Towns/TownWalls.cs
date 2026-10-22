@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.POI
             for (int i = 0; i < _gateMaterials.Length; i++)
             {
                 string file = i == 0 ? "gate_scrapyard.png" : "gate_coyotes.png";
-                string path = Path.Combine(Assets.ModuleDir("Towns"), "Perimeter", file);
+                string path = Path.Combine(Assets.ModuleDir("POI"), "Perimeter", file);
                 Texture2D texture = null;
                 try
                 {

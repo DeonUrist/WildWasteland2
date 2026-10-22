@@ -5,6 +5,7 @@ namespace WildWasteland.Modules.HUD
     /// <summary>Traffic drawing on the native map (route ink, group labels, battle skulls, War Rig notice; Gui job); HUD map layer part of WorldTraffic (Wave A split of Patrols Traffic/TrafficMap.cs).</summary>
     internal sealed class TrafficMapView
     {
+        private float _snapshotAt;
         private readonly Core.TrafficMapSnapshot _snapshot = new Core.TrafficMapSnapshot();
         private Core.ITrafficMapSource Source { get { return Core.ModApi.Get<Core.ITrafficMapSource>(); } }
         private bool RoutesOn { get { return _snapshot.Routes; } }
@@ -35,7 +36,7 @@ namespace WildWasteland.Modules.HUD
         internal bool GuiWanted()
         {
             bool inGame=Core.GameRefs.InGame;float now=Time.unscaledTime;
-            var source = Source; if (source != null && now >= _gameInkAt) source.Capture(_snapshot); else if (source == null) _snapshot.Enabled = false;
+            var source = Source; if (source != null && inGame && now >= _snapshotAt) { source.Capture(_snapshot); _snapshotAt = now + .5f; } else if (source == null) _snapshot.Enabled = false;
             if(inGame&&now<(Source != null ? Source.NoticeUntil : 0f))return true;
             var mapApi=Core.Services.Map;
             bool traffic=_snapshot.Enabled&&(RoutesOn||MarkersOn);
@@ -56,8 +57,7 @@ namespace WildWasteland.Modules.HUD
             }
             var source = Source;
             int rigs = source != null ? source.RigCount : 0;
-            if (source != null && Time.unscaledTime >= _gameInkAt) source.Capture(_snapshot);
-            else if (source == null) _snapshot.Enabled = false;
+            if (source == null) _snapshot.Enabled = false;
             var mapApi=Core.Services.Map;
             bool traffic=_snapshot.Enabled&&(RoutesOn||MarkersOn);
             if((!traffic&&rigs==0)||!Core.GameRefs.InGame)
@@ -220,7 +220,7 @@ namespace WildWasteland.Modules.HUD
             _skull=new Texture2D(14,11,TextureFormat.RGBA32,false);var pixels=new Color32[154];for(int y=0;y<11;y++)for(int x=0;x<14;x++)pixels[(10-y)*14+x]=rows[y][x]=='1'?new Color32(230,230,230,255):new Color32(0,0,0,0);
             _skull.SetPixels32(pixels);_skull.filterMode=FilterMode.Point;_skull.Apply();return _skull;
         }
-        internal void Reset() { _gameInkAt = 0f; _gameMap = null; _gameMapImage = null; _mapCheat = null; _nextMapScan = 0f; _mapWasOpen = false; _mapLabels.Clear(); _mapBattles.Clear(); }
+        internal void Reset() { _snapshotAt = 0f; _gameInkAt = 0f; _gameMap = null; _gameMapImage = null; _mapCheat = null; _nextMapScan = 0f; _mapWasOpen = false; _mapLabels.Clear(); _mapBattles.Clear(); }
         internal void Dispose(){_gameInk.Dispose();if(_skull!=null)UnityEngine.Object.Destroy(_skull);if(_mapDot!=null)UnityEngine.Object.Destroy(_mapDot);}
     }
 }

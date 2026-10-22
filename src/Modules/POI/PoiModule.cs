@@ -40,8 +40,9 @@ namespace WildWasteland.Modules.POI
         private readonly List<PoiSite> _sites = new List<PoiSite>();
         private readonly HashSet<string> _spawned = new HashSet<string>();
         private readonly TownRuntime _towns;
+        private readonly WorldLocations _locations;
         /// <summary>Creates the town runtime under the same POI lifecycle owner.</summary>
-        public PoiModule() { _towns = new TownRuntime(this); }
+        public PoiModule() { _towns = new TownRuntime(this); _locations = new WorldLocations(_towns); }
         private ConfigEntry<int> _chance;
         private bool _running, _loaded, _loadFailed;
         private string _slot;
@@ -55,18 +56,23 @@ namespace WildWasteland.Modules.POI
                 "Chance for each added POI in each generated 5 km terrain slice. 100 guarantees one site per slice for debugging. Changes affect newly generated slices.", new AcceptableValueRange<int>(0, 100));
         }
         /// <summary>Publishes custom POI registration and detached town geometry/traffic services.</summary>
-        public override void ProvideApis() { ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
+        public override void ProvideApis() { ModApi.Provide<IWorldLocations>(this,_locations); ModApi.Provide<IWorldDiscovery>(this,_locations); ModApi.Provide<ICampStatus>(this,_locations); ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
         public override void Init()
         {
             _running = true;
             Services.Poi = this;
             _towns.Init();
+            TrafficCamps.Install(this);
+            Scheduler.EveryFrame(this,"World discovery",Discover);
+            Scheduler.Interval(this,"Camp state",1f,CheckCamps,Phase.Update,true);
             TerrainTile.OnBeforeTilePrepare += Prepare;
             TerrainTile.OnTileFinalized += Finalized;
             TerrainTile.OnTileApplied += Applied;
             TerrainTile.OnTileMoved += Moved;
             Scheduler.Interval(this, "Site proximity", 1f, Proximity, Phase.Update, true);
         }
+        private void Discover() { if (_running && GameRefs.InGame && !SaveBus.Busy) TrafficLocations.Tick(); }
+        private void CheckCamps() { if (_running && GameRefs.InGame && !SaveBus.Busy) TrafficCamps.Tick(); }
         // Replaces the old 500 m trigger sphere per site (a huge Default-layer trigger every rigidbody and query touched):
         // a site is tried when the player comes within 500 m, as OnTriggerEnter did. Game time, like physics; skipped while not in play.
         private void Proximity()
@@ -187,6 +193,7 @@ namespace WildWasteland.Modules.POI
         private void Applied(TerrainTile tile, TileData data, StopToken stop)
         {
             if (!_running || data == null || data.isDraft || tile == null || (stop != null && stop.stop)) return;
+            TrafficLocations.TileApplied();
             Capture capture;
             if (!_captures.TryRemove(data, out capture)) return;
             try
@@ -243,6 +250,7 @@ namespace WildWasteland.Modules.POI
         public override void OnSaveBegin(string slot)
         {
             _towns.OnSaveBegin(slot);
+            _locations.Save(this,slot);
             if (_loadFailed) { SaveBus.ReportFailure(this, "POI completion state could not be loaded; refusing to replace it"); return; }
             var snapshot = new List<string>(_spawned).ToArray();
             Write(slot, snapshot);
@@ -257,17 +265,18 @@ namespace WildWasteland.Modules.POI
         {
             _spawned.Clear(); _loaded = false; _slot = slot;
             string value;
-            try { value = string.IsNullOrEmpty(slot) ? null : SpawnRecord.Read(slot); }
+            try { _locations.Load(slot); value = string.IsNullOrEmpty(slot) ? null : SpawnRecord.Read(slot); }
             catch (Exception e) { _loadFailed = true; SaveBus.ReportFailure(this, "POI completion state load failed: " + e.Message); throw; }
             if (value != null) foreach (var key in value.Split('\n')) if (!string.IsNullOrEmpty(key)) _spawned.Add(key);
             _loaded = true; _loadFailed = false;
         }
         public override void OnLoadBegin(string slot) { _towns.OnLoadBegin(slot); Load(slot); }
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; _towns.OnSceneLoaded(scene, mode); _sites.Clear(); _captures.Clear(); _spawned.Clear(); _loaded = false; }
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; _towns.OnSceneLoaded(scene, mode); _sites.Clear(); _captures.Clear(); _spawned.Clear(); _locations.Reset(); _loaded = false; }
         public override void Shutdown()
         {
             _running = false;
             _towns.Shutdown();
+            _locations.Reset();
             TerrainTile.OnBeforeTilePrepare -= Prepare; TerrainTile.OnTileApplied -= Applied;
             TerrainTile.OnTileFinalized -= Finalized;
             TerrainTile.OnTileMoved -= Moved;

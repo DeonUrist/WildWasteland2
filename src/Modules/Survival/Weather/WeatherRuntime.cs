@@ -34,16 +34,21 @@ namespace WildWasteland.Modules.Survival
         private IModule _parent;
         /// <summary>Retains the public service owner while patches use the weather child scope.</summary>
         internal void SetParent(IModule parent) { _parent = parent; }
+        /// <summary>Private weather lifecycle scope beneath the registered Survival owner.</summary>
         public override string Id { get { return "Survival.Weather"; } }
+        /// <summary>Diagnostic name of the private weather scope.</summary>
         public override string DisplayName { get { return "Survival.Weather"; } }
+        /// <summary>Number of currently selected natural or preview regions.</summary>
         public int Count { get { return _count; } }
         public bool MapAreas { get { return _mapAreas.Value; } set { _mapAreas.Value = value; } }
         public float HurricaneDensity { get { return _density.Value; } set { _density.Value = value; } }
         public float FrontWidthKm { get { return _width.Value; } set { _width.Value = value; } }
         public float DepthKm { get { return _depth.Value; } set { _depth.Value = value; } }
 
+        /// <summary>Shares Survival configuration with the private weather scope.</summary>
         internal void Bind(ModuleConfig cfg) { Config = cfg; BindConfig(cfg); }
 
+        /// <summary>Binds live storm geometry and map presentation settings.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             WeatherPalette.Bind(cfg);
@@ -54,6 +59,7 @@ namespace WildWasteland.Modules.Survival
             _depth = cfg.Player("Storms", "Depth (km)", 4f, "Depth behind the front; sand fades and the footprint narrows toward the rear. Applies live.", new AcceptableValueRange<float>(1,4));
         }
 
+        /// <summary>Installs the fog scope and defers scene-dependent preparation to a later frame.</summary>
         public override void Init()
         {
             _running = true; _prepared = false; _count = 0; _clock = 0; _nativeAssetsReady=false;
@@ -86,17 +92,24 @@ namespace WildWasteland.Modules.Survival
             }
         }
 
+        /// <summary>Returns a detached region value when the index is active.</summary>
         public bool TryGet(int index, out WeatherRegion region)
         {
             region = index >= 0 && index < _count ? _regions[index] : default(WeatherRegion);
             return index >= 0 && index < _count;
         }
 
+        /// <summary>Clears old scene anchors while retaining prepared weather assets.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { Clear(); if (_native!=null) _native.Reset(); }
+        /// <summary>Restores old anchors before preparing resources for a loaded world.</summary>
         public override void OnLoadBegin(string slot) { Clear(); if (_native!=null) _native.Reset(); if (_prepared) PrepareAssets(); }
+        /// <summary>Prepares late native resources and discovers the loaded world’s storm anchors.</summary>
         public override void OnWorldReady() { StartWhenSceneReady(); if (_prepared) PrepareAssets(); if (_native!=null) { _native.Scan(); _native.Save(false); } }
+        /// <summary>Restores native storm components before serialization.</summary>
         public override void OnSaveBegin(string slot) { if (_native!=null) _native.Save(true); }
+        /// <summary>Reapplies replacement presentation after native serialization.</summary>
         public override void OnSaveEnd(string slot) { if (_native!=null) _native.Save(false); }
+        /// <summary>Restores native state and releases all weather-owned jobs, hooks and assets.</summary>
         public override void Shutdown()
         {
             _running = false; _prepared = false; Clear();

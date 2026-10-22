@@ -13,7 +13,9 @@ namespace WildWasteland.Modules.HUD
             shell.Custom(this, SettingsShell.Page.World, "", NavigationSettings, 40);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawDirection, 140);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawNeeds, 190);
+            shell.Custom(this, SettingsShell.Page.Hud, "", DrawVehicleHints, 220);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawDriving, 230);
+            shell.Custom(this, SettingsShell.Page.Hud, "", DrawVehicleIcons, 240);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawHudTail, 250);
             shell.Custom(this, SettingsShell.Page.Debug, "", DrawFog, 400);
             foreach (SettingsShell.Page page in new[] { SettingsShell.Page.Player, SettingsShell.Page.World, SettingsShell.Page.Hud })
@@ -22,12 +24,16 @@ namespace WildWasteland.Modules.HUD
             if (driving != null) shell.Resettable(this, SettingsShell.Page.Hud, driving);
         }
         /// <summary>Prepares character portrait resources owned by this HUD display.</summary>
-        private static void PreparePictures() { WildWasteland.Modules.PlayerBody.InventoryModel.PrepareSettingsPictures(); }
+        private static void PreparePictures() { InventoryModel.PrepareSettingsPictures(); }
         /// <summary>Damage-direction toggle in its original feedback position.</summary>
         private static void DrawDirection(ToolLayout l) { SettingsShell.Switch(l, "Damage direction", DamageDirection); }
         /// <summary>Needs, health/armor numbers and insanity toggles.</summary>
         private static void DrawNeeds(ToolLayout l)
         { SettingsShell.Switch(l, "Needs", ShowNeeds); SettingsShell.Switch(l, "HP and armor numbers", ShowHealthNumbers); SettingsShell.Switch(l, "Insanity", ShowInsanity); }
+        /// <summary>Retains cockpit key hints at their original settings position.</summary>
+        private static void DrawVehicleHints(ToolLayout l) { SettingsShell.Switch(l, "Vehicle Hints", VehicleHotkeyHint); }
+        /// <summary>Retains native cockpit status icon visibility at its original settings position.</summary>
+        private static void DrawVehicleIcons(ToolLayout l) { SettingsShell.Switch(l, "Vehicle Icons", VehicleStatusHint); }
         /// <summary>The optional driving-HUD mode with its external enable value.</summary>
         private static void DrawDriving(ToolLayout l)
         {

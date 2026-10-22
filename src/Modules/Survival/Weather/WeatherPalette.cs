@@ -10,11 +10,17 @@ namespace WildWasteland.Modules.Survival
         private static ConfigEntry<Color> _wall, _main, _hurricane, _sand;
         private static ConfigEntry<float> _darkening;
         internal static int Revision;
+        /// <summary>Live incoming wall tint.</summary>
         internal static Color Wall { get { return _wall.Value; } }
+        /// <summary>Live interior atmosphere tint.</summary>
         internal static Color Main { get { return _main.Value; } }
+        /// <summary>Live hurricane tint.</summary>
         internal static Color Hurricane { get { return _hurricane.Value; } }
+        /// <summary>Live local sand tint.</summary>
         internal static Color Sand { get { return _sand.Value; } }
+        /// <summary>Live maximum interior darkening strength.</summary>
         internal static float Darkening { get { return _darkening.Value; } }
+        /// <summary>Binds the shared palette once under Survival settings.</summary>
         internal static void Bind(ModuleConfig cfg)
         {
             _wall = cfg.Player("Colors","External wall color",(Color)new Color32(184,154,125,255),"Color of the incoming front and its cloud bank. Live RGB controls are in Developer > Weather > Weather visual preview.");
@@ -24,6 +30,7 @@ namespace WildWasteland.Modules.Survival
             _darkening = cfg.Player("Storms","Storm darkening",.75f,"Extra world dimming with depth inside a storm. 0 = none; 1 = complete darkness in the deep interior. HUD stays readable.",new AcceptableValueRange<float>(0,1));
             _wall.SettingChanged += Changed; _main.SettingChanged += Changed; _hurricane.SettingChanged += Changed; _sand.SettingChanged += Changed;
         }
+        /// <summary>Invalidates cached particle tint after a palette change.</summary>
         private static void Changed(object sender, System.EventArgs args) { Revision++; }
         /// <summary>Copies the live palette controls for the Tools-owned authoring page.</summary>
         internal static void Entries(System.Collections.Generic.List<ConfigEntryBase> into)

@@ -27,6 +27,7 @@ namespace WildWasteland.Modules.Survival
         private static WeatherSky _active;
         private bool _fogLogged;
 
+        /// <summary>Begins the camera-specific storm darkening scope.</summary>
         internal void Begin(Camera camera, float amount)
         {
             _camera = camera; _amount = amount;
@@ -34,8 +35,11 @@ namespace WildWasteland.Modules.Survival
             Camera.onPreCull += Before;
             Camera.onPostRender += After;
         }
+        /// <summary>Sets the current interior darkening weight.</summary>
         internal void SetAmount(float amount) { _amount = amount; }
+        /// <summary>Clamps the lightning flash contribution for this frame.</summary>
         internal void SetFlash(float strength) { _flash=Mathf.Clamp01(strength); }
+        /// <summary>Applies sky treatment only to the selected camera.</summary>
         private void Before(Camera camera)
         {
             if (camera != _camera || (_amount < .001f && _flash < .001f) || _applied) return;
@@ -60,11 +64,13 @@ namespace WildWasteland.Modules.Survival
             }
             _applied = true;
         }
+        /// <summary>Blends a native color with the current lightning flash.</summary>
         private Color FlashColor(Color color)
         {
             Color tint=new Color(.72f,.8f,1,color.a)*Mathf.Max(.35f,Mathf.Max(color.r,Mathf.Max(color.g,color.b)));
             tint.a=color.a; return Color.Lerp(color,tint,_flash*.8f);
         }
+        /// <summary>Blends a native color toward the current atmospheric dust tint.</summary>
         private static Color Dust(Color source, float amount)
         {
             float value = Mathf.Max(source.r, Mathf.Max(source.g, source.b));
@@ -73,7 +79,9 @@ namespace WildWasteland.Modules.Survival
             Color tint = color*(value*.9f/peak); tint.a = source.a;
             return Color.Lerp(source,tint,amount);
         }
+        /// <summary>Restores native sky state after the selected camera finishes.</summary>
         private void After(Camera camera) { if (camera == _camera) Restore(); }
+        /// <summary>Temporarily selects the weather-compatible native fog material for one render call.</summary>
         internal static void NativeFogBefore(AzureFogScattering __instance, out Material __state)
         {
             __state = null;
@@ -90,11 +98,13 @@ namespace WildWasteland.Modules.Survival
                 Log.Always("[Weather] Native Azure distance haze bypassed: gameplay camera uses the unfiltered image; WW regional dust retained.");
             }
         }
+        /// <summary>Restores the original fog material even if native rendering throws.</summary>
         internal static Exception NativeFogAfter(Exception __exception, AzureFogScattering __instance, Material __state)
         {
             if (__instance != null && __state != null) __instance.fogScatteringMaterial = __state;
             return __exception;
         }
+        /// <summary>Restores every native sky value changed by the current render scope.</summary>
         private void Restore()
         {
             if (!_applied) return;
@@ -109,12 +119,14 @@ namespace WildWasteland.Modules.Survival
             }
             _applied = false;
         }
+        /// <summary>Clears camera ownership and restores native sky values.</summary>
         internal void Suspend()
         {
             Restore(); Camera.onPreCull -= Before; Camera.onPostRender -= After;
             if (ReferenceEquals(_active,this)) _active = null;
             _camera = null; _sky = null; _sun = null; _amount = 0; _flash=0;
         }
+        /// <summary>Restores native state before the weather scope is disposed.</summary>
         public void Dispose() { Suspend(); }
     }
 }

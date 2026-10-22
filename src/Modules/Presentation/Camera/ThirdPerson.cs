@@ -390,9 +390,6 @@ namespace WildWasteland.Modules.PlayerBody
         // moved to where that point is in the third-person picture. Off in first person / binoculars (back to its own place).
         public static bool HasCrosshair;
         public static Vector2 CrosshairScreen;
-        private static RectTransform _xhair;
-        private static bool _xhairMoved;
-        private static float _xhairFind;
         private static readonly RaycastHit[] _eyeHits = new RaycastHit[32];
         private const int GunMask = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 14);   // the player guns' Raycast mask
 
@@ -405,9 +402,9 @@ namespace WildWasteland.Modules.PlayerBody
         {
             HasCrosshair = false;
             var cam = Game.Cam;
-            if (!CameraSettings.DynamicCrosshair.Value || !On || Peek || cam == null || Game.Dead || Game.Paused) { _dynK = 0f; RestoreCrosshair(); return; }
+            if (!CameraSettings.DynamicCrosshair.Value || !On || Peek || cam == null || Game.Dead || Game.Paused) { _dynK = 0f; Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
             // no weapon drawn: centred crosshair once the view has turned back to the aim point (placed with the drawn view until then)
-            if (!DynamicWanted && _dynK <= 0f) { RestoreCrosshair(); return; }
+            if (!DynamicWanted && _dynK <= 0f) { Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
             var t = cam.transform;
             // the third-person view exactly as PreCull will draw it this frame
             ComputeView(cam);
@@ -448,10 +445,10 @@ namespace WildWasteland.Modules.PlayerBody
             }
             var vp = Projection(cam, fov) * Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(pos, viewRot, Vector3.one).inverse;
             Vector4 clip = vp * new Vector4(hitPoint.x, hitPoint.y, hitPoint.z, 1f);
-            if (clip.w <= 0.01f) { RestoreCrosshair(); return; }
+            if (clip.w <= 0.01f) { Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
             CrosshairScreen = new Vector2((clip.x / clip.w * 0.5f + 0.5f) * Screen.width, (clip.y / clip.w * 0.5f + 0.5f) * Screen.height);
             HasCrosshair = true;
-            MoveCrosshair(CrosshairScreen);
+            Core.ModApi.Get<Core.ICursorPresentation>()?.Move(CrosshairScreen);
         }
 
         /// <summary>True for the player, her camera rig and her car (the eye ray ignores them).</summary>
@@ -510,7 +507,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Turns third person off and restores the camera, crosshair, cutaway and view model (body teardown); publishes CameraModeChanged.</summary>
         public static void Off()
         {
-            RestoreCrosshair(); HasCrosshair = false;
+            Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); HasCrosshair = false;
             OcclusionCutaway.Stop();
             On = false; Peek = false; Orbiting = false; _orbitOn = false; CarShift = false; HasView = false; AimZoom = false; _zoomK = 0f;
             _deathView = false;

@@ -3,7 +3,7 @@ using HarmonyLib;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Modules.HUD
 {
     [HarmonyPatch(typeof(UiTextSetText), "OnEnter")]
     internal static class WeaponDamageText
@@ -14,7 +14,8 @@ namespace WildWasteland.Modules.Guns
         static void Prefix(UiTextSetText __instance, out FsmString __state)
         {
             __state = null;
-            if (!GunsModule.ProjectilesEnabled || !GunsModule.PlayerTracers.Value) return;
+            var guns = WildWasteland.Core.ModApi.Get<WildWasteland.Core.IGunsApi>();
+            if (guns == null || !guns.PlayerProjectilesEnabled) return;
             var fsm = __instance.Fsm;
             if (fsm == null || (fsm.Name != "ItemName" && fsm.Name != "Buyable")) return;
             var owner = fsm.GameObject;

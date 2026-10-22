@@ -5,16 +5,17 @@ using System.Reflection;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.POI
 {
     // Optional, read-only adapter to the existing NPC Overhaul bake. No assembly dependency or second bake.
     // Discovery also works without NPC Overhaul; unloaded roots never delete a remembered location.
     /// <summary>World locations discovery (camps, POIs, starting area, NPC structure maps, footprints/blocks); POI world-locations part (Wave A split of Patrols Traffic/TrafficLocations.cs).</summary>
     internal static partial class TrafficLocations
     {
-        internal static readonly Dictionary<string, TrafficBase> Known = new Dictionary<string, TrafficBase>();
-        internal static readonly Dictionary<string, TrafficPoi> Points = new Dictionary<string, TrafficPoi>();
+        internal static readonly Dictionary<string, CampDiscovery> Known = new Dictionary<string, CampDiscovery>();
+        internal static readonly Dictionary<string, PoiDiscovery> Points = new Dictionary<string, PoiDiscovery>();
         private static readonly Dictionary<string, Transform> Roots = new Dictionary<string, Transform>();
         private static readonly HashSet<string> Mapped = new HashSet<string>();
         private static readonly HashSet<string> ExaminedPoints = new HashSet<string>();
@@ -37,7 +38,7 @@ namespace WildWasteland.Modules.Patrols
         internal static bool StartingAllowed(Vector3 point)
         { foreach (var p in Points.Values) if (p.name.StartsWith("Starter_Area", StringComparison.Ordinal) && Mathf.Abs(point.x - p.position.x) <= 500f && Mathf.Abs(point.z - p.position.z) <= 500f) return false; return true; }
         internal static int StartingRevision { get { int revision = 0; foreach (var p in Points.Values) if (p.name.StartsWith("Starter_Area", StringComparison.Ordinal)) revision ^= p.position.GetHashCode(); return revision; } }
-        internal static bool Contains(TrafficBase camp,Vector3 point,float margin=35f)
+        internal static bool Contains(CampDiscovery camp,Vector3 point,float margin=35f)
         {return Mathf.Abs(point.x-camp.center.x)<=camp.size.x/2f+margin&&Mathf.Abs(point.z-camp.center.z)<=camp.size.z/2f+margin;}
 
         private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
@@ -118,17 +119,17 @@ namespace WildWasteland.Modules.Patrols
                 }
                 _structures.Clear();
             }
-            catch (Exception e) { PatrolsModule.Verbose("Traffic: NPC Overhaul map adapter: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn("Traffic: NPC Overhaul map adapter: " + e.Message); }
         }
 
         internal static bool IsCamp(string name)
         { return name != null && name.StartsWith("Camp_", StringComparison.OrdinalIgnoreCase) && name.Length > 5 && char.IsDigit(name[5]); }
 
         internal static bool CoyoteCamp(string name)
-        {if(!MaybeCoyote(name))return false;var n=TemplateExporter.PrefabName(name);return n=="Camp_10"||n=="Camp_15"||n=="Camp_16";}
+        {if(!MaybeCoyote(name))return false;var n=Names.Prefab(name);return n=="Camp_10"||n=="Camp_15"||n=="Camp_16";}
         internal static bool PoiName(string name)
         // The game's real world locations (its Codex lists Camps / Buildings / Wrecks / Caves): Building_1-7, Wreck_1-8, Cave_1-7,
-        // Starter_Area and the Coyote camps (Camp_10/15/16). Raider camps are TrafficBase camps, not POIs. Every location is a target
+        // Starter_Area and the Coyote camps (Camp_10/15/16). Raider camps are CampDiscovery camps, not POIs. Every location is a target
         // for roaming Coyote patrols and foot patrols. (The old Apocapatrol "GasStation"/"Shop_" prefixes matched nothing in this game.)
         {return name!=null&&(CoyoteCamp(name)||Numbered(name,"Building_")||Numbered(name,"Wreck_")||Numbered(name,"Cave_")||name.StartsWith("Starter_Area",StringComparison.Ordinal));}
         private static bool Numbered(string name,string prefix)
@@ -144,14 +145,14 @@ namespace WildWasteland.Modules.Patrols
             point=box.center+root.forward*(Mathf.Max(box.extents.x,box.extents.z)+25f);
             if (starting) point = box.center;
             if(Points.Count>=1024)return;
-            Points[id]=new TrafficPoi{id=id,name=TemplateExporter.PrefabName(root.name),position=TrafficSpace.World(point)};
-            if (starting) Revision++;
+            Points[id]=new PoiDiscovery{id=id,name=Names.Prefab(root.name),position=Origin.World(point)};
+            Revision++;
         }
 
         internal static string Identity(Transform t)
         {
-            var p = TrafficSpace.World(t.position);
-            return TemplateExporter.PrefabName(t.name) + ":" + Mathf.RoundToInt(p.x) + ":" + Mathf.RoundToInt(p.z);
+            var p = Origin.World(t.position);
+            return Names.Prefab(t.name) + ":" + Mathf.RoundToInt(p.x) + ":" + Mathf.RoundToInt(p.z);
         }
 
         private static void Remember(Transform root, Bounds? baked, object structure = null)
@@ -179,7 +180,7 @@ namespace WildWasteland.Modules.Patrols
                     if (first) { box = collider.bounds; first = false; } else box.Encapsulate(collider.bounds);
                 }
             }
-            location = new TrafficBase { id = id, name = TemplateExporter.PrefabName(root.name),cleared=location!=null&&location.cleared,patrolCallAt=location!=null?location.patrolCallAt:-1f,faction=CoyoteCamp(root.name)?"Coyotes":"Scrapyard" };
+            location = new CampDiscovery { id = id, name = Names.Prefab(root.name),cleared=location!=null&&location.cleared,faction=CoyoteCamp(root.name)?"Coyotes":"Scrapyard" };
             location.center = box.center; location.center.y = root.position.y;
             location.size = box.size;
             Vector3 interior = location.center;
@@ -213,10 +214,10 @@ namespace WildWasteland.Modules.Patrols
             {
                 var direction = Quaternion.Euler(0f, i * 22.5f, 0f) * Vector3.forward;
                 var outer = location.center + direction * radius;
-                if (!Convoy.GroundAt(outer, out var ground)) continue;
+                if (!GroundAt(outer, out var ground)) continue;
                 var gate = entrance != null ? entrance.position : interior;
                 float score = entrance != null ? FlatDistance(ground, gate) : FlatDistance(ground, fallback);
-                bool clear = VehicleClear(null, ground + Vector3.up * 2f, gate + Vector3.up * 2f, 1.4f);
+                bool clear = VehicleClear(ground + Vector3.up * 2f, gate + Vector3.up * 2f, 1.4f);
                 if (clear) score -= 1000f;
                 if (score >= best) continue;
                 best = score; location.apron = ground; location.gate = clear ? gate : ground;
@@ -225,9 +226,9 @@ namespace WildWasteland.Modules.Patrols
             if (!found) return; // terrain isn't loaded yet; keep the previous stable record and try later
             if (found)
             {
-                location.center = TrafficSpace.World(location.center);
-                location.apron = TrafficSpace.World(location.apron);
-                location.gate = TrafficSpace.World(location.gate);
+                location.center = Origin.World(location.center);
+                location.apron = Origin.World(location.apron);
+                location.gate = Origin.World(location.gate);
                 Known[id] = location;
                 Revision++;
                 if (complete) Mapped.Add(id);

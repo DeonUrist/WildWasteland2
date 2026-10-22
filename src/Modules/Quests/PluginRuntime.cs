@@ -28,9 +28,9 @@ namespace WildWasteland.Modules.Quests
         public int Completed { get { return book.TotalDone; } }
         public IList<QuestRow> Rows { get { return _rows; } }
         public IQuestConversation Conversation { get { return bridge; } }
-        bool TrackerStyled { get { return Services.QuestUi != null && Services.QuestUi.Tracker; } }
-        bool JournalStyled { get { return Services.QuestUi != null && Services.QuestUi.Journal; } }
-        internal bool DialogueStyled { get { return Services.QuestUi != null && Services.QuestUi.Conversation; } }
+        bool TrackerStyled { get { return ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Tracker; } }
+        bool JournalStyled { get { return ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Journal; } }
+        internal bool DialogueStyled { get { return ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Conversation; } }
         internal bool WantsGui { get { return ready && (bridge.NativeOpen || bridge.Prompt.Length > 0 || showLog || toasts.Count > 0 || (!TrackerStyled && showTracker.Value && trackerLines.Count > 0)); } }
 
         internal void Start(QuestsModule owner, HireSettings hiring, VoiceSettings voices)
@@ -87,7 +87,7 @@ namespace WildWasteland.Modules.Quests
             _generation++; ready = false; _sessionSlot = null; _newWorld = false;
             _resumeText = _resumeSlot = null; _resumeCrew = null;
             bridge.Close(); ResetSession(); deferred.Clear(); showLog = false; toasts.Clear(); _rows.Clear();
-            Takeover.Shutdown(); Factions.Overrides.Clear(); CrewHistory.Clear(); QuestFollower.Release(); Game.ResetWorld();
+            Takeover.Shutdown(); Factions.Overrides.Clear(); CrewHistory.Clear(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release(); Game.ResetWorld();
         }
         internal void StateChanged(string previous, string state)
         {
@@ -150,7 +150,7 @@ namespace WildWasteland.Modules.Quests
             if (ready && !saveBlocked && _sessionSlot != null && _sessionSlot == SaveBus.Slot)
             { CaptureBook(); _resumeText = book.Serialize(); _resumeSlot = _sessionSlot; _resumeWorld = SaveBus.Generation; _resumeCrew = CrewHistory.Snapshot(); }
             _generation++; ready = false; bridge.Close(); bridge.Uninstall(); ResetSession();
-            Hire.Shutdown(); Voice.Shutdown(); QuestFollower.Release(); Takeover.Shutdown(); Factions.Reset();
+            Hire.Shutdown(); Voice.Shutdown(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release(); Takeover.Shutdown(); Factions.Reset();
             Game.ResetWorld(); CrewHistory.Clear(); _rows.Clear(); toasts.Clear(); deferred.Clear(); I = null;
         }
     }

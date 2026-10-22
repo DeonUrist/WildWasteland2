@@ -48,6 +48,7 @@ namespace WildWasteland.Modules.Survival
         private static readonly int Critical = Shader.PropertyToID("_Critical");
         internal bool Ready { get; private set; }
 
+        /// <summary>Loads owned bundle resources and creates reusable weather renderers.</summary>
         internal WeatherVisuals(WeatherAudio audio)
         {
             _audio=audio; for (int i=0;i<_strikes.Length;i++) _strikes[i]=int.MinValue;
@@ -79,12 +80,14 @@ namespace WildWasteland.Modules.Survival
             catch (Exception error) { Dispose(); Log.Error("[Weather] Preview assets failed", error); }
         }
 
+        /// <summary>Loads one required named asset from the installed weather bundle.</summary>
         private T Load<T>(string name) where T : UnityEngine.Object
         {
             var asset = _bundle.LoadAsset<T>("assets/weather/generated/" + name);
             if (asset == null) throw new IOException("Weather asset missing: " + name);
             return asset;
         }
+        /// <summary>Prepares retained render banks for region geometry and selected detail.</summary>
         internal void Prepare(Vector2 radii, int columns, WeatherVisualDetail detail)
         {
             if (!Ready) return;
@@ -98,6 +101,7 @@ namespace WildWasteland.Modules.Survival
             _smoke.Suspend(); _vortexSmoke.Prepare(columns,detail);
             Log.Always("[Weather] Storm assets and particle banks prepared at start/load; retained until Weather shutdown.");
         }
+        /// <summary>Prepares native dust and debris pools once their sources are available.</summary>
         internal bool PrepareNative()
         {
             if (!Ready) return false;
@@ -105,6 +109,7 @@ namespace WildWasteland.Modules.Survival
             return dust && debris;
         }
 
+        /// <summary>Begins a frame and samples the gameplay camera position.</summary>
         internal void Begin(float clock, Camera camera)
         {
             _drawing = 0; _clock = clock; _flash=0; _atmosphere.Begin(camera);
@@ -132,6 +137,7 @@ namespace WildWasteland.Modules.Survival
             Shader.SetGlobalColor(Air, air);
         }
 
+        /// <summary>Draws one region with its age, critical blend and shared hurricane layout.</summary>
         internal void Draw(WeatherRegion region, Camera camera, WeatherVisualDetail detail, float life, float critical, Vector3[] columns, int columnCount, int regionIndex)
         {
             if (!Ready) return;
@@ -232,12 +238,14 @@ namespace WildWasteland.Modules.Survival
                 }
         }
 
+        /// <summary>Computes the periodic lightning discharge envelope.</summary>
         private static float Discharge(float clock, float period)
         {
             float t = Mathf.Repeat(clock, period);
             return Mathf.Max(Mathf.Clamp01(1 - t / .09f), Mathf.Clamp01(1 - Mathf.Abs(t - .19f) / .065f) * .65f);
         }
 
+        /// <summary>Completes and publishes rendering for the selected camera.</summary>
         internal void End(Camera camera, WeatherVisualDetail detail)
         {
             _atmosphere.SetFlash(_flash);
@@ -246,15 +254,21 @@ namespace WildWasteland.Modules.Survival
             _debris.End();
             if (_drawing > 0) _localDust.Tick(camera,_clock,_atmosphere.DustStrength,_atmosphere.LocalWind,detail,WeatherPalette.Sand);
         }
+        /// <summary>Hides retained visual pools and restores camera-scoped native state.</summary>
         internal void Suspend() { if (_atmosphere != null) _atmosphere.Suspend(); if (_smoke != null) _smoke.Suspend(); if (_vortexSmoke != null) _vortexSmoke.Suspend(); if (_localDust != null) _localDust.Suspend(); if (_debris != null) _debris.Suspend(); }
+        /// <summary>Stores one column’s ground offset for the shared visual and hazard paths.</summary>
         internal void SetGround(int region,int column,float offset) { _groundOffset[region,column]=offset; _hasGround[region,column]=true; }
+        /// <summary>Reads a cached column ground offset when terrain has been sampled.</summary>
         internal bool TryGround(int region,int column,out float offset) { offset=_groundOffset[region,column]; return _hasGround[region,column]; }
+        /// <summary>Invalidates terrain offsets and strike history after region changes.</summary>
         internal void ClearGround() { Array.Clear(_hasGround,0,_hasGround.Length); _groundProbe = 0; for (int i=0;i<_strikes.Length;i++) _strikes[i]=int.MinValue; }
+        /// <summary>Submits one shared mesh with the prepared camera and material properties.</summary>
         private void Draw(Mesh mesh, Matrix4x4 matrix, Material material, Camera camera, MaterialPropertyBlock properties)
         {
             Graphics.DrawMesh(mesh,matrix,material,2,camera,0,properties,ShadowCastingMode.Off,false,null,LightProbeUsage.Off);
         }
 
+        /// <summary>Disposes private materials, visual pools and the owned bundle resources.</summary>
         public void Dispose()
         {
             Ready = false;

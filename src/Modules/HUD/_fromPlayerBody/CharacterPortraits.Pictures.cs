@@ -2,20 +2,26 @@ using System;
 using System.IO;
 using UnityEngine;
 
-namespace WildWasteland.Modules.PlayerBody
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// CharacterPortraits part (split from PlayerBody/Body/CharacterPortraits.cs in Wave A): the portrait PNGs (plugins/.../Portraits,
     /// extracted when missing, reloaded when edited) shown on the settings page and the TAB screen. Target: HUD (B10).
     /// </summary>
-    internal static partial class CharacterPortraits
+    internal sealed class CharacterPortraitBank : WildWasteland.Core.ICharacterPortraits
     {
-        internal static Texture Picture(int choice) { return Pictures[Canonical(choice)]; }
+        private static readonly string[] Names = { "Female", "Male", "Merchant", "Bodyguard", "Sprokka", "Pistoleer", "Mechanic", "OrganicMechanic", "Gungirl", "Shoota" };
+        private static readonly int[] Order = { 1, 2, 3, 4, 7, 0, 8, 9 };
+        private static readonly Texture2D[] Pictures = new Texture2D[Names.Length];
+        private static readonly DateTime[] Modified = new DateTime[Names.Length];
+        /// <summary>Releases editable portrait textures when the HUD owner stops.</summary>
+        internal void Dispose() { for (int i = 0; i < Pictures.Length; i++) { if (Pictures[i] != null) UnityEngine.Object.Destroy(Pictures[i]); Pictures[i] = null; Modified[i] = default(DateTime); } }
+        public Texture Picture(int choice) { return choice >= 0 && choice < Pictures.Length ? Pictures[choice] : null; }
 
         // Only on opening settings: external Photoshop replacements reload without restarting the game.
-        internal static void Prepare()
+        public void Prepare()
         {
-            string directory = PlayerBodyModule.ModPath("Portraits");
+            string directory = Path.Combine(WildWasteland.Core.Assets.ModuleDir("HUD"), "Portraits");
             Directory.CreateDirectory(directory);
             for (int entry = 0; entry < Order.Length; entry++)
             {
@@ -25,7 +31,7 @@ namespace WildWasteland.Modules.PlayerBody
                 try
                 {
                     if (!File.Exists(path))
-                        using (var source = WildWasteland.Core.DiskResources.Open("PlayerBody.CharacterPortraits." + Names[i] + ".png"))
+                        using (var source = WildWasteland.Core.DiskResources.Open("HUD.Portraits." + Names[i] + ".png"))
                             if (source != null) using (var output = File.Create(path)) source.CopyTo(output);
                     if (!File.Exists(path)) continue;
                     var modified = File.GetLastWriteTimeUtc(path);
@@ -38,7 +44,7 @@ namespace WildWasteland.Modules.PlayerBody
                 catch (Exception e)
                 {
                     if (picture != null) UnityEngine.Object.Destroy(picture);
-                    PlayerBodyModule.Warn("Character portrait " + path + ": " + e.Message);
+                    HudModule.Warn("Character portrait " + path + ": " + e.Message);
                 }
             }
             InventoryModel.RefreshPortrait();

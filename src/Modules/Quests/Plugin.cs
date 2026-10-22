@@ -138,7 +138,7 @@ namespace WildWasteland.Modules.Quests
 
                 if (!ready) return;
                 float dt = Time.deltaTime;                    // stops while paused
-                double gh = Game.GameHours();                 // delivery time limits run on the in-game clock (sleeping counts)
+                double gh = WildWasteland.Core.Clock.GameHours;                 // delivery time limits run on the in-game clock (sleeping counts)
                 if (gh >= 0.0 && lastGameHours >= 0.0) dt = (float)Math.Max(0.0, (gh - lastGameHours) * 3600.0);
                 lastGameHours = gh;
                 for (int i = 0; i < book.Active.Count; i++)
@@ -197,7 +197,7 @@ namespace WildWasteland.Modules.Quests
             Vector3 pp = pl.position;
 
             Quest[] snapshot = book.Active.ToArray();
-            double nowH = Game.GameHours();
+            double nowH = WildWasteland.Core.Clock.GameHours;
             for (int i = 0; i < snapshot.Length; i++)
             {
                 Quest q = snapshot[i];
@@ -291,7 +291,7 @@ namespace WildWasteland.Modules.Quests
         string DeadlineText(Quest q)
         {
             if (q.Type == QType.Deliver || q.Deadline <= 0.0) return "";
-            double now = Game.GameHours();
+            double now = WildWasteland.Core.Clock.GameHours;
             if (now < 0.0) return "";
             double left = Math.Max(0.0, q.Deadline - now);
             if (left >= 24.0)
@@ -616,11 +616,12 @@ namespace WildWasteland.Modules.Quests
         void SetQuestFlags(Quest q, string state)
         {
             string fb = FlagBase(q);
-            if (fb.Length == 0 || !TalkApiLink.Available) return;
-            TalkApiLink.SetFlag(fb + "_active", state == "active");
-            if (state == "done") TalkApiLink.SetFlag(fb + "_done", true);
-            if (state == "failed") TalkApiLink.SetFlag(fb + "_failed", true);
-            if (state == "active") TalkApiLink.SetFlag(fb + "_failed", false);
+            var flags = ModApi.Get<IConversationFlags>();
+            if (fb.Length == 0 || flags == null) return;
+            flags.Set(fb + "_active", state == "active");
+            if (state == "done") flags.Set(fb + "_done", true);
+            if (state == "failed") flags.Set(fb + "_failed", true);
+            if (state == "active") flags.Set(fb + "_failed", false);
         }
 
         // what a job pays, relative to the normal reward, for the faction's reputation with you
@@ -674,7 +675,7 @@ namespace WildWasteland.Modules.Quests
             bool returning = Returning(q);
             if (returning ? !q.HasGiverPos : !q.HasPos) return;
             if (returning && DeliveryRecipient(q, Vector3.zero, float.PositiveInfinity, true)) { q.NoRecipientSince = -1; return; }
-            var camps = Services.Camps; if (camps == null) return;
+            var camps = ModApi.Get<ICampStatus>(); if (camps == null) return;
             Vector3 relative = returning ? q.GiverPos : q.Pos;
             var state = camps.At(relative, 120f);
             if (state == CampState.Cleared) { FailQuest(q, returning ? "return camp is dead" : "destination camp is dead"); return; }
@@ -761,7 +762,7 @@ namespace WildWasteland.Modules.Quests
             int now = Mathf.Clamp(before + delta, -RepMax, RepMax);
             int applied = now - before;
             book.Rep[k] = now;
-            double gh = Game.GameHours();
+            double gh = WildWasteland.Core.Clock.GameHours;
             if (gh >= 0.0) book.RepStamp[k] = gh; else book.RepStamp.Remove(k);
             AddToast(name + " reputation " + (applied > 0 ? "+" : "") + applied + " (now " + now + (now == RepMax ? ", the maximum" : now == -RepMax ? ", the lowest" : "") + ")");
             if (repHostile.Value < 0 && now <= repHostile.Value) AddToast(name + " now treat you as an enemy.");
@@ -788,7 +789,7 @@ namespace WildWasteland.Modules.Quests
         {
             if (Time.unscaledTime < nextRepTick) return;
             nextRepTick = Time.unscaledTime + 3f;
-            double now = Game.GameHours();
+            double now = WildWasteland.Core.Clock.GameHours;
             if (now >= 0.0 && repRecoverHours.Value > 0f)
             {
                 foreach (string k in new List<string>(book.Rep.Keys))
@@ -822,7 +823,7 @@ namespace WildWasteland.Modules.Quests
 
         void AddToast(string text)
         {
-            if (Services.QuestUi != null && Services.QuestUi.Notify(text)) { Core.Log.Always("[Quests] " + text); return; }
+            if (ModApi.Get<IQuestPresentation>() != null && ModApi.Get<IQuestPresentation>().Notify(text)) { Core.Log.Always("[Quests] " + text); return; }
             var t = new Toast();
             t.Text = text;
             t.Until = Time.unscaledTime + 6f;
@@ -1080,7 +1081,7 @@ namespace WildWasteland.Modules.Quests
 
         void HireNpc(Faction f, int cost, Transform tr, string shown)
         {
-            if (tr == null || (Services.FollowerVehicles != null && Services.FollowerVehicles.IsSeated(tr.gameObject))) return;
+            if (tr == null || (ModApi.Get<IFollowerVehicles>() != null && ModApi.Get<IFollowerVehicles>().IsSeated(tr.gameObject))) return;
             bridge.You("I could use some help. What would it take to have you along?");
             if (tr == null) return;
             string missing = Hire.MissingMods();
@@ -1544,7 +1545,7 @@ namespace WildWasteland.Modules.Quests
 
         static double NowHours()
         {
-            double g = Game.GameHours();
+            double g = WildWasteland.Core.Clock.GameHours;
             return g >= 0.0 ? g : Time.unscaledTime / 3600.0;
         }
 
@@ -1610,7 +1611,7 @@ namespace WildWasteland.Modules.Quests
         {
             long stamp;
             if (CooldownHours <= 0f || !book.GiverStamp.TryGetValue(key, out stamp)) return 0.0;
-            double now = Game.GameHours();
+            double now = WildWasteland.Core.Clock.GameHours;
             if (now < 0.0) return 0.0;
             double since = now - stamp / 1000.0;
             if (since < 0.0) { book.GiverStamp.Remove(key); return 0.0; }      // an older save was loaded
@@ -1737,7 +1738,7 @@ namespace WildWasteland.Modules.Quests
         void AssignDeadline(Quest q)
         {
             if (q.Type == QType.Deliver) return;
-            double now = Game.GameHours();
+            double now = WildWasteland.Core.Clock.GameHours;
             if (now < 0.0) { q.Deadline = 0.0; return; }
             q.Deadline = now + DeadlineHours(q);
         }
@@ -1782,7 +1783,7 @@ namespace WildWasteland.Modules.Quests
         // this NPC gives out nothing more for a while (after you took a job from them, or turned one down)
         void StampGiver(Transform tr, string npc)
         {
-            if (CooldownHours > 0f && Game.GameHours() >= 0.0) book.GiverStamp[GiverKey(tr, npc)] = (long)(Game.GameHours() * 1000.0);
+            if (CooldownHours > 0f && WildWasteland.Core.Clock.GameHours >= 0.0) book.GiverStamp[GiverKey(tr, npc)] = (long)(WildWasteland.Core.Clock.GameHours * 1000.0);
         }
 
         void DeclineOffer()

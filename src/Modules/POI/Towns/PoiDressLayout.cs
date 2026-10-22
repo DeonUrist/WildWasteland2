@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.POI
     // These are portable POI authoring assets, shared by every instance; never world/save-slot sidecars.
     internal static class PoiDressStore
     {
-        internal static string DirectoryPath { get { return Path.Combine(Assets.ModuleDir("Towns"), "Layouts"); } }
+        internal static string DirectoryPath { get { return Path.Combine(Assets.ModuleDir("POI"), "Layouts"); } }
         internal static string FilePath(string type)
         {
             var name = new StringBuilder();
@@ -44,7 +44,7 @@ namespace WildWasteland.Modules.POI
             if (new FileInfo(path).Length > 2 * 1024 * 1024) throw new InvalidDataException("POI layout exceeds 2 MB");
             return Parse(File.ReadAllText(path), type);
         }
-        private static PoiDressLayout Parse(string text, string type)
+        internal static PoiDressLayout Parse(string text, string type)
         {
             var root = Json.Parse(text) as Dictionary<string, object>;
             if (root == null || Number(root, "version") != 2 || String(root, "poi") != type) throw new InvalidDataException("Invalid POI layout version/type");
@@ -106,7 +106,7 @@ namespace WildWasteland.Modules.POI
         }
         private static void WriteVector(StringBuilder text, Vector3 value)
         { text.Append('[').Append(value.x.ToString("R", CultureInfo.InvariantCulture)).Append(',').Append(value.y.ToString("R", CultureInfo.InvariantCulture)).Append(',').Append(value.z.ToString("R", CultureInfo.InvariantCulture)).Append(']'); }
-        internal static void Save(PoiDressLayout layout)
+        internal static string Serialize(PoiDressLayout layout)
         {
             var text = new StringBuilder("{\n  \"version\":2,\n  \"poi\":"); Quote(text, layout.Type); text.Append(",\n  \"props\":[\n");
             for (int i = 0; i < layout.Props.Count; i++)
@@ -124,6 +124,11 @@ namespace WildWasteland.Modules.POI
                 text.Append('}');
             }
             string content = text.Append("\n  ]\n}\n").ToString(); Parse(content, layout.Type);
+            return content;
+        }
+        internal static void Save(PoiDressLayout layout)
+        {
+            string content = Serialize(layout);
             Directory.CreateDirectory(DirectoryPath); string path = FilePath(layout.Type), temp = path + ".tmp";
             File.WriteAllText(temp, content, new UTF8Encoding(false));
             if (File.ReadAllText(temp) != content) throw new IOException("POI layout readback failed");

@@ -52,15 +52,15 @@ namespace WildWasteland.Modules.Quests
             }
             if (Plugin.I != _engine) return;
             if (_engine.Ready && !QuestWorld.Ready) return;
-            _engine.Frame(); _engine.InteractionFrame(); FrameNpcai();
+            _engine.Frame(); _engine.InteractionFrame(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Tick();
         }
         void StartEngine()
         {
-            _engine.Start(this, _hire, _voice); Services.Quests = _engine;
+            _engine.Start(this, _hire, _voice); ModApi.Provide<IQuestApi>(this, _engine); ModApi.Provide<IQuestHireState>(this, new Hire.StateApi());
             SaveBus.StateChanged += StateChanged; Services.CrewBailedOut += CrewHistory.Bailed;
             QuestWorld.Begin(this); if (SaveBus.State != null) StateChanged(null, SaveBus.State);
         }
-        void Late() { if (Plugin.I == _engine) { _engine.LateFrame(); LateNpcai(); } }
+        void Late() { if (Plugin.I == _engine) { _engine.LateFrame(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Late(); } }
         bool Live { get { return Plugin.I == _engine && _engine.Ready && QuestWorld.Ready && GameRefs.InGame; } }
         void Progress() { if (Live) _engine.Tick(); }
         void Camps() { if (Live && GameRefs.Player != null) Takeover.NeutralizeTick(GameRefs.Player.transform.position); }
@@ -75,16 +75,10 @@ namespace WildWasteland.Modules.Quests
         public override void Shutdown()
         {
             SaveBus.StateChanged -= StateChanged; Services.CrewBailedOut -= CrewHistory.Bailed;
-            if (ReferenceEquals(Services.Quests, _engine)) Services.Quests = null;
+            ModApi.Withdraw<IQuestApi>(this); ModApi.Withdraw<IQuestHireState>(this);
             if (Plugin.I == _engine) _engine.Stop();
-            QuestWorld.Clear(); MapLink.Reset(); ShutdownNpcai();
+            QuestWorld.Clear(); MapLink.Reset(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release();
         }
-        /// <summary>NPCAI part: per-frame follower body driver tick (after the engine frame).</summary>
-        partial void FrameNpcai();
-        /// <summary>NPCAI part: late follower pose (after the seat lock).</summary>
-        partial void LateNpcai();
-        /// <summary>NPCAI part: releases the follower body driver.</summary>
-        partial void ShutdownNpcai();
         public override IEnumerable<ToolPage> ToolPages()
         {
             return new ToolPage[] { new ConfigPage(this, ToolGroups.General, "Quests & hiring", Config.Tools, "Quests / *")

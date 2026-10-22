@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.Quests
         // Cooldown stamps that have run out are no use any more; dropping them keeps the saved data small over a long game.
         void PruneStamps()
         {
-            double now = Game.GameHours();
+            double now = WildWasteland.Core.Clock.GameHours;
             if (now < 0.0 || book.GiverStamp.Count == 0) return;
             List<string> drop = null;
             foreach (KeyValuePair<string, long> kv in book.GiverStamp)

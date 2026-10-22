@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.HUD
         internal static ConfigEntry<bool> ShowConvoys, ShowLocations;
         internal static ConfigEntry<bool> SimpleMapIcons;
         internal static ConfigEntry<bool> DamageDirection;
+        internal static ConfigEntry<bool> VehicleStatusHint, VehicleHotkeyHint;
         internal static ConfigEntry<bool> AmbiguousPatrols, AmbiguousLocations;
         internal static ConfigEntry<bool> ShowCompass, MapEnabled, DrivingHudOnlyThirdPerson;
         internal static ConfigEntry<MapDetail> MapMarkers, MapRoutes, MapTrafficMarkers;
@@ -38,6 +39,8 @@ namespace WildWasteland.Modules.HUD
 
         private void BindCleanConfig(ModuleConfig cfg)
         {
+            VehicleStatusHint = cfg.Player("Vehicles", "VehicleStatusHint", true, "Show ignition off, handbrake and cassette state while driving.");
+            VehicleHotkeyHint = cfg.Player("Vehicles", "VehicleHotkeyHint", true, "Show cockpit key hints while driving.");
             Instance = this;
             CleanHudEnabled = cfg.Player("", "Clean HUD", true, "Replace the native HUD. Off restores it immediately.");
             ShowNeeds = cfg.Player("HUD", "ShowNeeds", true, "Show water, food and sleep beneath HP and armor.");

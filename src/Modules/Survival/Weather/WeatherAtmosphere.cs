@@ -24,15 +24,20 @@ namespace WildWasteland.Modules.Survival
         private float _dustStrength;
         private Vector4 _stormEye;
         private float _eyeHeight, _eyeFade, _eyeDistance;
+        /// <summary>Current interior blend from the rendered storm field.</summary>
         internal float InsideStrength { get { return _inside; } }
+        /// <summary>Current local dust strength after safe-eye attenuation.</summary>
         internal float DustStrength { get { return _dustStrength*(1-.85f*_eyeFade); } }
+        /// <summary>Current storm wind in scene coordinates.</summary>
         internal Vector3 LocalWind { get { return _wind; } }
+        /// <summary>Forwards the current lightning flash to the sky controller.</summary>
         internal void SetFlash(float strength) { _sky.SetFlash(strength); }
         private static readonly int Centers = Shader.PropertyToID("_WWCenters"), Sizes = Shader.PropertyToID("_WWSizes"), Axes = Shader.PropertyToID("_WWAxes"), Velocity = Shader.PropertyToID("_WWVelocity");
         private static readonly int Count = Shader.PropertyToID("_WWCount"), Samples = Shader.PropertyToID("_WWSamples"), Projection = Shader.PropertyToID("_WWInverseProjection"), View = Shader.PropertyToID("_WWViewToWorld"), Eye = Shader.PropertyToID("_WWEye");
         private static readonly int Inside = Shader.PropertyToID("_WWWeatherInside"), Wind = Shader.PropertyToID("_WWWeatherWind");
         private static readonly int BackLightA = Shader.PropertyToID("_WWBackLightA"), BackLightB = Shader.PropertyToID("_WWBackLightB");
 
+        /// <summary>Creates private atmosphere material and camera-scoped rendering resources.</summary>
         internal WeatherAtmosphere(Material source)
         {
             _material = new Material(source);
@@ -41,7 +46,9 @@ namespace WildWasteland.Modules.Survival
             _screen.uv = new[] { Vector2.zero,Vector2.right,Vector2.one,Vector2.up };
             _screen.triangles = new[] { 0,1,2,0,2,3 };
         }
+        /// <summary>Whether the installed atmosphere shader is supported by this device.</summary>
         internal bool Supported { get { return _material.shader.isSupported; } }
+        /// <summary>Begins collecting storm contributions for one camera.</summary>
         internal void Begin(Camera camera)
         {
             _count = 0;
@@ -60,6 +67,7 @@ namespace WildWasteland.Modules.Survival
                 Log.Always("[Weather] Depth-only atmosphere attached to " + camera.name + "; alpha blend before transparents, no camera-color read/copy; native weather retained.");
             }
         }
+        /// <summary>Adds one region’s volume, age and critical intensity to the current frame.</summary>
         internal void Add(WeatherRegion region, Vector3 center, float height, float life, float critical, Vector4 backA, Vector4 backB)
         {
             if (_count == 4) return;
@@ -70,6 +78,7 @@ namespace WildWasteland.Modules.Survival
             _backLightA[_count] = backA; _backLightB[_count] = backB;
             _velocity[_count++] = new Vector4(region.Velocity.x, region.Velocity.y, region.Velocity.z, Mathf.Lerp(.004f, .005f, critical));
         }
+        /// <summary>Publishes the prepared atmosphere work for the selected detail level.</summary>
         internal void End(Camera camera, WeatherVisualDetail detail, Mesh nearMesh, Material nearMaterial)
         {
             if (_count == 0) { Suspend(); return; }
@@ -80,6 +89,7 @@ namespace WildWasteland.Modules.Survival
             Shader.SetGlobalVector("_WWStormEye",_stormEye);
             Shader.SetGlobalVector("_WWStormEyeShape",new Vector4(_eyeHeight,_eyeFade,0,0));
         }
+        /// <summary>Adds a safe-eye volume to the current atmosphere frame.</summary>
         internal void AddEye(Vector3 center, float radius, float height, float life, Vector3 eye)
         {
             float distance = new Vector2(center.x-eye.x,center.z-eye.z).magnitude;
@@ -87,6 +97,7 @@ namespace WildWasteland.Modules.Survival
             _eyeDistance = distance; _stormEye = new Vector4(center.x,center.y,center.z,radius); _eyeHeight = height;
             _eyeFade = life*(1-Mathf.SmoothStep(0,1,Mathf.Clamp01((distance/radius-.65f)/.35f)));
         }
+        /// <summary>Applies camera-specific atmosphere resources immediately before rendering.</summary>
         private void BeforeCamera(Camera camera)
         {
             if (camera != _camera) return;
@@ -131,6 +142,7 @@ namespace WildWasteland.Modules.Survival
             _insideState = state;
             if (Log.Verbose) Log.Info("[Weather] Local atmosphere: " + (state == 0 ? "outside" : state == 2 ? "interior" : "boundary transition"));
         }
+        /// <summary>Releases camera subscriptions and clears active atmosphere presentation.</summary>
         internal void Suspend()
         {
             if (_commands == null && ReferenceEquals(_camera, null)) return;
@@ -149,6 +161,7 @@ namespace WildWasteland.Modules.Survival
             _inside = 0; _dustStrength = 0; _insideState = 0; Shader.SetGlobalFloat(Inside, 0); Shader.SetGlobalFloat("_WWWeatherApproach",0);
             _eyeFade = 0; Shader.SetGlobalVector("_WWStormEyeShape",Vector4.zero);
         }
+        /// <summary>Restores native presentation and destroys private render resources.</summary>
         public void Dispose() { Suspend(); UnityEngine.Object.Destroy(_material); UnityEngine.Object.Destroy(_screen); }
     }
 }
