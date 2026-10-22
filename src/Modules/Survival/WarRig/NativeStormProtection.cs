@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.Survival
     // Player-only filtering: the storm still affects the surrounding world normally.
     internal static class NativeStormProtection
     {
-        internal const long StormPrefabId = 5697600806714206537L;
+        internal const long StormPrefabId = StormQueries.Prefab;
         private static GameObject player;
         private static int lastFrame = -1;
         private static readonly HashSet<ParticleSystem> dust = new HashSet<ParticleSystem>();

@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -42,7 +43,7 @@ namespace WildWasteland.Modules.Patrols
             CarTemplate.Park = list.Values.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase).ToArray();
             if (CarTemplate.Park.Length == 0) CarTemplate.Park = CarTemplate.Builtin;
             Summary = CarTemplate.Park.Length + " templates: code defaults + BaseTemplates + PlayerTemplates";
-            VehicleBuildCache.WarmPark();
+            VehiclePreparation.WarmPark();
         }
         private static void LoadFolder(string folder, bool favorite, Dictionary<string, CarTemplate> list)
         {

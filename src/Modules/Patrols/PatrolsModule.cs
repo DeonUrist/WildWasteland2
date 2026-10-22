@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.Patrols
             Services.NpcHurt-=Crew.Attacked;Services.NpcHurt+=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;Services.VehiclePartHit+=Crew.PartHit;
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings; SaveBus.CleanupSettings += DrawSaveCleanupSettings;
-            LoadingProgress.Register(this, VehicleBuildCache.LoadWork);
+            LoadingProgress.Register(this, VehiclePreparation.LoadWork);
         }
 
         static void DrawSaveCleanupSettings(ToolLayout l)
@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.Patrols
             Running = false;
             LoadingProgress.Remove(this);
             Try("build queue", BuildQueue.Reset);
-            Try("vehicle build cache", VehicleBuildCache.Reset);
+            Try("vehicle build cache", VehiclePreparation.Reset);
             PatrolLoadPreparation.Reset();
             if (Services.FollowerVehicles is QuestFollowers) Services.FollowerVehicles = null;
             if (Services.Camps is TrafficCamps.Status) Services.Camps = null;
@@ -194,10 +194,9 @@ namespace WildWasteland.Modules.Patrols
         // WorldTraffic, Cleanup (then the absorbed MerchantSpotter editor). Each job re-reads the component (recreated after a scene load).
         void RegisterJobs()
         {
+            Scheduler.Interval(this, "Patrols.Prepare authored structures", .5f, VehiclePreparation.PublishWarm);
             Scheduler.Interval(this, "Patrols.Prefab cache", .5f, Prefabs.Refresh).RunNow();
             Scheduler.Sliced(this, "Patrols.Build", 1000, BuildQueue.Step);
-            Scheduler.Sliced(this, "Patrols.Vehicle build cache", 500, VehicleBuildCache.Step);
-            Scheduler.EveryFrame(this, "Patrols.Vehicle load preparation", VehicleBuildCache.LoadBurst);
             TrafficCompass.Clear();
             Scheduler.Interval(this, "Compass markers", .5f, TrafficCompass.Tick);
             Scheduler.EveryFrame(this, "Patrols.Runtime", TickPatrol);

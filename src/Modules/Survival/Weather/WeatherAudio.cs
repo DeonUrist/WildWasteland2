@@ -15,8 +15,7 @@ namespace WildWasteland.Modules.Survival
         private GameObject _host;
         private AudioSource _source;
         private AudioClip _clip;
-        private Coroutine _load;
-        private UnityWebRequest _request;
+        private Core.Audio.Load _load;
         private bool _attempted;
         private float _nextSample, _target, _volume;
         internal WeatherAudio(string path)
@@ -31,25 +30,20 @@ namespace WildWasteland.Modules.Survival
             _thunder.Load();
             if (_attempted) return; _attempted = true;
             if (!File.Exists(_path)) { Log.Warn("[Weather] Storm sound missing: "+_path); return; }
-            _load = Scheduler.StartCoroutine(LoadClip());
+            _load = Core.Audio.LoadAsync(_path, AudioType.WAV, Loaded);
         }
-        private IEnumerator LoadClip()
+        /// <summary>Creates the shared storm loop after Core decodes its file.</summary>
+        private void Loaded(AudioClip clip, string error)
         {
-            using (var request = UnityWebRequestMultimedia.GetAudioClip(new Uri(_path).AbsoluteUri,AudioType.WAV))
-            {
-                _request = request;
-                yield return request.SendWebRequest(); _request = null;
-                if (request.result != UnityWebRequest.Result.Success) { Log.Warn("[Weather] Storm sound load failed: "+request.error); yield break; }
-                _clip = DownloadHandlerAudioClip.GetContent(request);
-                if (_clip == null) { Log.Warn("[Weather] Storm sound could not be decoded."); yield break; }
+                _load = null;
+                if (clip == null) { Log.Warn("[Weather] Storm sound load failed: "+error); return; }
+                _clip = clip;
                 _clip.hideFlags = HideFlags.HideAndDontSave;
                 _host = new GameObject("WW.Weather.Sound") { hideFlags = HideFlags.HideAndDontSave };
                 _host.transform.SetParent(Runner.Host.transform,false);
                 _source = _host.AddComponent<AudioSource>(); _source.playOnAwake = false; _source.loop = true;
                 _source.spatialBlend = 0; _source.dopplerLevel = 0; _source.volume = 0; _source.clip = _clip;
                 Log.Always("[Weather] Storm sound loaded: sound/sandstorm.wav; silent beyond 1200 m, full volume within 150 m and inside; one shared loop.");
-            }
-            _load = null;
         }
         internal void Strike(float clock, Vector3 position, Vector3 eye, float strength) { _thunder.Strike(clock,position,eye,strength); }
         internal void Tick(WeatherRegion[] regions, float[] ages, int count, Camera camera, float clock)
@@ -98,8 +92,7 @@ namespace WildWasteland.Modules.Survival
         {
             Stop();
             _thunder.Dispose();
-            if (_load != null) Scheduler.StopCoroutine(_load); _load = null;
-            if (_request != null) { try { _request.Dispose(); } catch { } _request = null; }
+            if (_load != null) _load.Cancel(); _load = null;
             if (_host != null) UnityEngine.Object.Destroy(_host); _host = null; _source = null;
             if (_clip != null) UnityEngine.Object.Destroy(_clip); _clip = null;
         }

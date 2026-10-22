@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Survival
     // Native roots remain the encounter/save/movement anchors. Only WW draws and applies hazards.
     internal sealed class WeatherNative : IDisposable
     {
-        internal const long PrefabId = 5697600806714206537L;
+        internal const long PrefabId = StormQueries.Prefab;
         internal sealed class Storm
         {
             internal GameObject Root;
@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.Survival
 
         internal WeatherNative(WeatherRuntime owner)
         {
-            _owner=owner; _active=this;
+            _owner=owner;
             for (int i=0;i<Storms.Length;i++) Storms[i]=new Storm();
             AllowsForce=(Func<Explosion,GameObject,bool>)Delegate.CreateDelegate(typeof(Func<Explosion,GameObject,bool>),Core.Patches.Method(typeof(Explosion),"ShouldApplyForce"));
             if (!Core.Patches.Patch(owner,Core.Patches.Method(typeof(Explosion),"DoExplosion"),prefix:Core.Patches.Method(typeof(WeatherNative),"ExplosionBefore")) ||
@@ -69,6 +69,7 @@ namespace WildWasteland.Modules.Survival
             Scheduler.Sliced(owner,"Weather.NativeDiscovery",500,Step);
             Scheduler.Interval(owner,"Weather.NativeEncounters",.5f,Reconcile);
             Scan();
+            _active=this;
             Log.Always("[Weather] Native storm replacement enabled: native encounter/save anchors retained; WW walls and safe-eye tornado hazards replace vanilla graphics/physics.");
         }
         internal void Scan() { _scan=0; _scanning=true; }

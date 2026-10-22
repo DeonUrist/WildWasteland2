@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>Street routing of one town between separately baked buildings: plan street nodes + one portal per building, validated links, all-pairs routes.</summary>
     internal sealed class TownNavigation

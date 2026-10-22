@@ -12,7 +12,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Object = UnityEngine.Object;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Developer test pads near the starting camp: the gas-station test (three melee raiders after its ground-floor bake) and the

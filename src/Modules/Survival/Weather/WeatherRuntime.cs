@@ -8,9 +8,7 @@ using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.Survival
 {
-    // Native encounters keep their save anchors; Weather owns presentation and annular hazards.
-    // Wave A split (refactor): storm regions/tick/hazards live in src/Modules/Survival/Weather/_fromWeather/WeatherRuntime.Regions.cs,
-    // diagnostic snapshot in src/Modules/Debug/_fromWeather/WeatherRuntime.Debug.cs, the F3 preview page in src/Modules/Tools/_fromWeather/WeatherRuntime.Tools.cs.
+    /// <summary>Survival-owned weather scope preserves native anchors and restores native rendering when disabled.</summary>
     internal sealed partial class WeatherRuntime : ModuleBase, IWeatherRegions
     {
         private readonly WeatherRegion[] _regions = new WeatherRegion[4];
@@ -31,6 +29,11 @@ namespace WildWasteland.Modules.Survival
         private Job _draw;
         private bool _running;
         private bool _nativeAssetsReady;
+        private Job _startup;
+        private bool _prepared;
+        private IModule _parent;
+        /// <summary>Retains the public service owner while patches use the weather child scope.</summary>
+        internal void SetParent(IModule parent) { _parent = parent; }
         public override string Id { get { return "Survival.Weather"; } }
         public override string DisplayName { get { return "Survival.Weather"; } }
         public int Count { get { return _count; } }
@@ -53,18 +56,34 @@ namespace WildWasteland.Modules.Survival
 
         public override void Init()
         {
-            _running = true; _count = 0; _clock = 0; _nativeAssetsReady=false;
+            _running = true; _prepared = false; _count = 0; _clock = 0; _nativeAssetsReady=false;
             if (!Core.Patches.Patch(this,Core.Patches.Method(typeof(UnityEngine.AzureSky.AzureFogScattering),"OnRenderImage"),
                 prefix: Core.Patches.Method(typeof(WeatherSky),"NativeFogBefore"), finalizer: Core.Patches.Method(typeof(WeatherSky),"NativeFogAfter")))
                 throw new System.InvalidOperationException("Weather requires the native Azure fog scope.");
             _audio = new WeatherAudio(System.IO.Path.Combine(Core.Assets.ModuleDir("Survival"),"sound","sandstorm.wav"));
-            PrepareAssets();
-            Scheduler.Interval(this,"Weather.PrepareNativeAssets",1,PrepareNativeAssets);
-
-            _draw = Scheduler.EveryFrame(this, "Moving storm visuals", Tick, Phase.LateUpdateLast);
+            _draw = Scheduler.EveryFrame(this, "Survival.Weather.Visuals", Tick, Phase.LateUpdateLast);
             _draw.Enabled = false;
-            _native = new WeatherNative(this); _hazards = new WeatherHazards();
-            Scheduler.EveryFrame(this,"Weather.HurricaneHazards",TickHazards,Phase.FixedUpdate);
+            _startup = Scheduler.EveryFrame(this, "Survival.Weather.Startup", StartWhenSceneReady, Phase.EarlyUpdate);
+        }
+        /// <summary>Defers all scene/native asset discovery until a loaded scene exists after chainloading.</summary>
+        private void StartWhenSceneReady()
+        {
+            if (!_running || _prepared || !SceneManager.GetActiveScene().isLoaded) return;
+            try
+            {
+                PrepareAssets();
+                _native = new WeatherNative(this); _hazards = new WeatherHazards();
+                Scheduler.Interval(this, "Survival.Weather.PrepareNativeAssets", 1, PrepareNativeAssets);
+                Scheduler.EveryFrame(this, "Survival.Weather.HurricaneHazards", TickHazards, Phase.FixedUpdate);
+                _prepared = true;
+                if (_startup != null) _startup.Remove(); _startup = null;
+                Hooks.ApplyUsed();
+            }
+            catch
+            {
+                Shutdown(); ModApi.Withdraw<IWeatherRegions>(_parent); ModApi.Withdraw<IWeatherPreview>(_parent);
+                throw;
+            }
         }
 
         public bool TryGet(int index, out WeatherRegion region)
@@ -74,13 +93,13 @@ namespace WildWasteland.Modules.Survival
         }
 
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { Clear(); if (_native!=null) _native.Reset(); }
-        public override void OnLoadBegin(string slot) { Clear(); if (_native!=null) _native.Reset(); PrepareAssets(); }
-        public override void OnWorldReady() { PrepareAssets(); if (_native!=null) { _native.Scan(); _native.Save(false); } }
+        public override void OnLoadBegin(string slot) { Clear(); if (_native!=null) _native.Reset(); if (_prepared) PrepareAssets(); }
+        public override void OnWorldReady() { StartWhenSceneReady(); if (_prepared) PrepareAssets(); if (_native!=null) { _native.Scan(); _native.Save(false); } }
         public override void OnSaveBegin(string slot) { if (_native!=null) _native.Save(true); }
         public override void OnSaveEnd(string slot) { if (_native!=null) _native.Save(false); }
         public override void Shutdown()
         {
-            _running = false; Clear();
+            _running = false; _prepared = false; Clear();
             if (_native!=null) _native.Dispose(); _native=null; _hazards=null;
 
             if (_visuals != null) _visuals.Dispose(); _visuals = null; _draw = null;

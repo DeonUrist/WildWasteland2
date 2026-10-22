@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Cached cardinal gates and inner/outer contour vertices of a walled town (Floyd-Warshall over a few nodes), not a town-wide bake.

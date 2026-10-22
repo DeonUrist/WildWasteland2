@@ -53,7 +53,7 @@ namespace WildWasteland.Modules.Survival
             _audio=audio; for (int i=0;i<_strikes.Length;i++) _strikes[i]=int.MinValue;
             try
             {
-                _bundle = AssetBundle.LoadFromFile(DiskResources.FilePath("Weather.weather.bundle"));
+                _bundle = AssetBundle.LoadFromFile(DiskResources.FilePath("Survival.weather.bundle"));
                 if (_bundle == null) throw new IOException("Weather bundle could not be loaded");
                 _funnel[0] = Load<Mesh>("vortex-low.asset"); _funnel[1] = Load<Mesh>("vortex.asset"); _funnel[2] = Load<Mesh>("vortex-max.asset");
                 _canopies[0] = Load<Mesh>("canopy-low.asset"); _canopies[1] = Load<Mesh>("canopy.asset"); _canopies[2] = Load<Mesh>("canopy-max.asset");

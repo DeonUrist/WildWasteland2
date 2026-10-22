@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Read-only template data from the existing baker. Never written by Towns.

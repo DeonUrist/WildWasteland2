@@ -5,11 +5,11 @@ namespace WildWasteland.Modules.Survival
 {
     internal sealed partial class WeatherRuntime : IWeatherPreview
     {
-        /// <summary>Preview creation requires the active weather feature and a loaded player.</summary>
+        /// <summary>Identifies native anchors already counted by the rendered weather regions.</summary>
         internal bool Presents(UnityEngine.GameObject root)
         { for (int i = 0; i < _count; i++) if (_anchors[i] != null && _anchors[i].Root == root) return true; return false; }
         /// <summary>Preview creation requires the active weather feature and a loaded player.</summary>
-        public bool Available { get { return _running && GameRefs.InPlay; } }
+        public bool Available { get { return _running && _prepared && GameRefs.InPlay; } }
         /// <summary>Refreshes the existing deterministic layout before reporting column count.</summary>
         public int Columns { get { UpdateLayout(); return _columnCount; } }
         /// <summary>Copies palette then generation controls in their established authoring order.</summary>

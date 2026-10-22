@@ -1,7 +1,7 @@
 using BepInEx.Configuration;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Towns editor/test settings: POI dresser key, gas-station test pad, gas-station scale, Camp_10 test spawn.

@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Town side of NPC navigation (README P6, A6-9), now inside NPCAI: the town waypoint providers (outside-wall detours, gate entrances,

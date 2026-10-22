@@ -39,8 +39,9 @@ namespace WildWasteland.Modules.POI
         private readonly Dictionary<Graph, Registration> _graphs = new Dictionary<Graph, Registration>();
         private readonly List<PoiSite> _sites = new List<PoiSite>();
         private readonly HashSet<string> _spawned = new HashSet<string>();
-        private readonly Towns.TownRuntime _towns;
-        public PoiModule() { _towns = new Towns.TownRuntime(this); }
+        private readonly TownRuntime _towns;
+        /// <summary>Creates the town runtime under the same POI lifecycle owner.</summary>
+        public PoiModule() { _towns = new TownRuntime(this); }
         private ConfigEntry<int> _chance;
         private bool _running, _loaded, _loadFailed;
         private string _slot;
@@ -53,6 +54,7 @@ namespace WildWasteland.Modules.POI
             _chance = cfg.Player("World", "Spawn chance (%)", 2,
                 "Chance for each added POI in each generated 5 km terrain slice. 100 guarantees one site per slice for debugging. Changes affect newly generated slices.", new AcceptableValueRange<int>(0, 100));
         }
+        /// <summary>Publishes custom POI registration and detached town geometry/traffic services.</summary>
         public override void ProvideApis() { ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
         public override void Init()
         {
@@ -261,7 +263,7 @@ namespace WildWasteland.Modules.POI
             _loaded = true; _loadFailed = false;
         }
         public override void OnLoadBegin(string slot) { _towns.OnLoadBegin(slot); Load(slot); }
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { _towns.OnSceneLoaded(scene, mode); _sites.Clear(); _captures.Clear(); _spawned.Clear(); _loaded = false; }
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; _towns.OnSceneLoaded(scene, mode); _sites.Clear(); _captures.Clear(); _spawned.Clear(); _loaded = false; }
         public override void Shutdown()
         {
             _running = false;
@@ -278,6 +280,7 @@ namespace WildWasteland.Modules.POI
             _sites.Clear(); _captures.Clear(); _graphs.Clear(); _definitions.Clear();
             if (ReferenceEquals(Services.Poi, this)) Services.Poi = null;
         }
+        /// <summary>Forwards origin jumps to town and dressing state.</summary>
         public override void OnOriginShift(Vector3 delta) { _towns.OnOriginShift(delta); }
         public override IEnumerable<ToolPage> ToolPages()
         {
