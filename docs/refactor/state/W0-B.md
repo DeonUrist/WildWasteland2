@@ -18,7 +18,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 12. FsmIndex
 - [x] 13. FsmPause
 - [x] 14. PrefabCatalog
-- [ ] 15. ItemSpawner.RegisterSaved
+- [x] 15. ItemSpawner.RegisterSaved
 - [ ] 16. Clock
 - [ ] 17. Names
 - [ ] 18. Layers
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-f65b470 (COMPILE OK; state line updated in next commit)
+b1a6b0c (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 15 ItemSpawner.RegisterSaved: read InventorySupplies:65, Quests Game.cs:104, WarRigFeature:59, Patrol.cs:1596, Gungirl:602, AmmoMechanics:420.
+Item 16 Clock: read the 5 DayTime FSM readers.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -51,3 +51,4 @@ Item 15 ItemSpawner.RegisterSaved: read InventorySupplies:65, Quests Game.cs:104
 - FsmIndex: IFsmIndexProvider (PM1 registers in Wave A); ByOwner fallback = GetComponents filtered isActiveAndEnabled; ByName/All via Track(owner,name) and one sliced FsmList pass (256/step, 0.5 s) publishing atomically; Int/Float/String/Bool/Go var helpers.
 - FsmPause: verbatim Performance logic + FsmSleep bit 8, dynamic Bit(owner, reason), Own/ReleaseAll(owner), Paused, ClearCopiedFlag (Awake postfix rule).
 - PrefabCatalog: Patrols ScanExact name rules (exact, ES3 override, fold preferring ES3Prefab) + ById(prefabId) + AssetFsms + Item(name); sliced warm 'Core.PrefabCatalog', sync completion on early query; invalidated on scene load / ES3 count change (Refresh). Domain catalogs (Patrols kinds, Towns spawn profiles) stay in their modules on top of it.
+- ItemSpawner: Counter/List(Items|Cars)/NextId/Name/RegisterSaved/Unregister; numbering IncrementFirst (5 copies) vs UseThenIncrement (Quests) selectable; list = exact name then contains rule; cached per instance.
