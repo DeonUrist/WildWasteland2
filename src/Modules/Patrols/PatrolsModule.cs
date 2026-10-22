@@ -42,12 +42,14 @@ namespace WildWasteland.Modules.Patrols
         Convoy _convoy; WorldTraffic _traffic; Cleanup _cleanup;
         SaveBus.StateChange _onSaveState;
 
+        private static void OnTownTrafficStopped(ref TownTrafficStopped stopped){WorldTraffic.TownsStopped();}
         // ---------------------------------------------------------------- lifecycle
 
         public override void Init()
         {
             try { InitInner(); }
             catch { Shutdown(); throw; }   // a failed start leaves nothing running (ModuleHost then removes hooks / jobs / patches)
+            ModEvents.Subscribe<TownTrafficStopped>(this,OnTownTrafficStopped);
             Running = true;   // last: per-object loops only run once everything is in place
             Services.FollowerVehicles = new QuestFollowers();
             Services.Camps = new TrafficCamps.Status();
@@ -163,12 +165,12 @@ namespace WildWasteland.Modules.Patrols
             WarRig.PatrolRetention.Clear();
             TrafficCompass.Clear();
             PickupCatalog.Invalidate(); PatrolVisibility.Reset(); EnsureRunner(); Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); Convoy.ResetForScene();
-            WarRig.WarRigFeature.OnSceneLoaded();
+            
         }
 
         // Core.Origin (NWH FloatingOrigin.Jump): legacy physics caches of the pilots and PlayerRef move with the world
         public override void OnOriginShift(Vector3 delta) { TrafficSpace.OriginShift(delta); }
-        public override void OnWorldReady() { WarRig.PatrolRetention.Prepare(); Prefabs.Refresh(); WarRig.PoiEncounter.Prepare(); WorldTraffic.RestoreTownGuards(); }
+        public override void OnWorldReady() { WarRig.PatrolRetention.Prepare(); Prefabs.Refresh();  WorldTraffic.RestoreTownGuards(); }
         internal void SpawnPoi(CarTemplate template, Vector3 position, Quaternion rotation, Action<GameObject> onDone)
         { if (_patrol != null && Running) _patrol.SpawnAt(template, position, rotation, true, onDone); else onDone(null); }
 

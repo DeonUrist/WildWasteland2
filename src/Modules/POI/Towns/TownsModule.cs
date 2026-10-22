@@ -93,12 +93,6 @@ namespace WildWasteland.Modules.POI
         partial void InitNavigation();
         /// <summary>NPCAI/Navigation part: removes the Nav bridge and its patches.</summary>
         partial void ShutdownNavigation();
-        /// <summary>Tools part: creates the POI dresser (editor) on top of the POI dressing runtime.</summary>
-        partial void InitTools();
-        /// <summary>Tools part: drops the POI dresser reference after the dressing runtime was disposed.</summary>
-        partial void ShutdownTools();
-        /// <summary>Tools part: shifts the editor's cached scene positions on a floating-origin jump.</summary>
-        partial void ShiftTools(Vector3 delta);
         /// <summary>Debug part: Vistas starting-terrain seam trace for applied tiles next to the origin.</summary>
         partial void TraceStartingTerrain(TerrainTile applied, string source);
         /// <summary>Debug part: forgets the last starting-terrain trace (world changed).</summary>
@@ -108,10 +102,10 @@ namespace WildWasteland.Modules.POI
             if (_running) return;
             _running = true; TownsApi.Provider = this;
             _gasStation = new TownGasStation(_settings);
+            ModApi.Provide<IGasStationAuthoring>(Owner,_gasStation);
             TemplateStore.Load(); _names.Load(); _names.Begin(_records);
             InitNavigation();
             _dressing = new PoiDressing(); _dressing.Install(this);
-            InitTools();
 
 
             
@@ -584,7 +578,7 @@ namespace WildWasteland.Modules.POI
             if (!_running) return;
             _running = false; _epoch++;
             LoadingProgress.Remove(Owner);
-            Patrols.WorldTraffic.TownsStopped();
+            var stopped=new TownTrafficStopped();ModEvents.Publish(ref stopped);
             SaveBus.StateChanged -= StateChanged;
             _settings.PopulationMinPercent.SettingChanged -= PopulationChanged; _settings.PopulationMaxPercent.SettingChanged -= PopulationChanged;
             _settings.LootMinPercent.SettingChanged -= PopulationChanged; _settings.LootMaxPercent.SettingChanged -= PopulationChanged;
@@ -599,13 +593,13 @@ namespace WildWasteland.Modules.POI
                 _resume.Add(live);
             }
             ClearSites(); _captures.Clear();
-            if (_dressing != null) _dressing.Dispose(); _dressing = null; ShutdownTools();
+            if (_dressing != null) _dressing.Dispose(); _dressing = null;
 
             foreach (var r in _graphs.Values) Undo(r); _graphs.Clear();
             if (_staging != null) UnityEngine.Object.Destroy(_staging); _staging = null;
              ShutdownNavigation();
             if (ReferenceEquals(TownsApi.Provider, this)) TownsApi.Provider = null;
         }
-        internal void OnOriginShift(Vector3 delta) { if (_gasStation != null) _gasStation.Shift(delta); ShiftTools(delta); }
+        internal void OnOriginShift(Vector3 delta) { if (_gasStation != null) _gasStation.Shift(delta); }
     }
 }
