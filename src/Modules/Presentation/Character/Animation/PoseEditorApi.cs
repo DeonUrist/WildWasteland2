@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Replaces callbacks only for the same owner or after the previous owner stops.</summary>
         public void Register(IModule owner,Func<PoseEditMotion> weaponInput,Action<string,string,bool,float,float> aimInput){if(owner==null)throw new ArgumentNullException(nameof(owner));if(Active && !ReferenceEquals(owner,_owner))throw new InvalidOperationException("Pose editor already owned");_owner=owner;_weapon=weaponInput;_aim=aimInput;}
         /// <summary>Flushes changes and releases only the matching owner's callbacks.</summary>
-        public void Remove(IModule owner){if(!ReferenceEquals(owner,_owner))return;EndMotion();Enabled=false;GunPose.ResetSelection();_owner=null;_weapon=null;_aim=null;}
+        public void Remove(IModule owner){if(!ReferenceEquals(owner,_owner))return;try{EndMotion();}finally{Clear();}}
         /// <summary>Controls live authoring while a valid editor owner is registered.</summary>
         public bool Editing {get{return Active && Enabled;}set{if(!value)EndMotion();Enabled=value;}}
         /// <summary>Routes runtime arm/weapon selection through the actual pose runtime.</summary>
