@@ -26,7 +26,6 @@ namespace WildWasteland.Modules.Quests
         public override string[] ConflictsWith { get { return new[] { QuestContent.LegacyGuid }; } }
         public override void BindConfig(ModuleConfig cfg)
         {
-            Sidecars.Register(this, "Quests/Saves/{slot}.crew.txt");
             _engine = new Plugin(); _engine.Bind(cfg); _hire.Bind(cfg); _voice.Bind(cfg);
             InteractKey = cfg.Hotkey("Quests: talk", Key.F, "Talk to the friendly NPC under your aim. Apocatalker owns its own interaction when installed.");
         }

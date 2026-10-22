@@ -92,7 +92,6 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Binds every NPC entry (F6 toggles and settings, [Keys], tools.cfg tuning) in the original order; target parts are partial calls.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
-            Sidecars.Register(this, "NPC/Saves/{slot}.senses.txt", remapSnapshot: RemapSensesSnapshot);
             _cfg = cfg;
             BindNavigationDiagnostics();
             BindWomen(cfg);

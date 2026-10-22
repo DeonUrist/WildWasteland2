@@ -5,12 +5,14 @@ Scope: coordinator-delegated real Saves lifecycle/provider wiring. This is not c
 - [x] Separate worktree prepared at e3bb88e (`refactor/save-bootstrap`).
 - [x] Inspect existing save runtime, hooks, jobs, configuration and module toggle ordering.
 - [x] Make Saves own binding, startup, shutdown, ISaves and typed event handlers.
-- [x] Decouple delegated Core consumers and remove Core save startup calls.
-- [x] Review failure, disable/re-enable, loading and paused-drop behavior.
-- [x] Windows Release build with Deploy=false, partial consistency and report.
+- [x] Decouple only the delegated Core consumers and remove Core save startup calls.
+- [ ] Review failure, disable/re-enable, loading and paused-drop behavior.
+- [ ] Windows Release build with Deploy=false, relevant static gates, report.
 
-Last good coherent build: `293efaa`, Windows Release/Deploy=false, zero warnings and errors. Partials: 178 declarations, zero missing implementations. See reports/save-bootstrap.md. No runtime verification claim.
+Constraints: current WW2 save formats and keys remain unchanged; no migration, deployment, game or harness execution. Compatibility wiring belongs to coordinator. B04 full framework/UI refactor remains pending.
 
-Next action: full B04 in this branch, following state/B04.md; coordinator reviews cross-owner UI/persistence movement and generic UI command registration before implementation.
+Current blockers: none. Last good coherent build: coordinator e3bb88e base, zero warnings/errors (reported by coordinator); this branch has not yet built changed code.
 
-Blockers: none for completed bootstrap. Full B04 cross-owner coordination in progress.
+Implementation checkpoint: owner-scoped framework hooks/jobs, symmetric event/config subscriptions, tracked iterator disposal, active save/load toggle rejection, ISaves state and normal warning-path autosave requests implemented. Two temporary HUD GUI registrations are owner-bound by coordinator exception. Core native InventorySupplies/VehicleLoadPlacement bootstrap and canonical PlayerState.Health are B01 dependencies.
+
+First changed build: blocked at expected dependency boundary CS0759 SaveRuntime.InstallFixes (B01 removing old Core partial); no success claim yet. Initial --no-restore invocation required normal restore; subsequent normal Windows Release build restored project successfully.

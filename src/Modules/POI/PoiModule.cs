@@ -46,7 +46,6 @@ namespace WildWasteland.Modules.POI
         public override string DisplayName { get { return "Points of interest"; } }
         public override void BindConfig(ModuleConfig cfg)
         {
-            Sidecars.Register(this, "POI/Saves/{slot}.poi.txt");
             _chance = cfg.Player("World", "Spawn chance (%)", 2,
                 "Chance for each added POI in each generated 5 km terrain slice. 100 guarantees one site per slice for debugging. Changes affect newly generated slices.", new AcceptableValueRange<int>(0, 100));
         }

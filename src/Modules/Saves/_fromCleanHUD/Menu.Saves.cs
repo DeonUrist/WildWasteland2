@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Starts the native loading screen and respects recovery admission only while Saves owns the framework.</summary>
         private bool BeginLoad(string path)
         {
+            if (Core.SaveSystem.Installed && Core.SaveSystem.RecoveryError != null) { Confirm(Core.SaveSystem.RecoveryError, null); return false; }
             _loadingScreen.Begin();
             if (Click(path)) return true;
             _loadingScreen.End(); return false;
@@ -26,23 +27,25 @@ namespace WildWasteland.Modules.CleanHUD
         private static string SaveFile(int n) { return Path.Combine(Application.persistentDataPath, "SaveGame" + n + ".es3"); }
         private static bool SlotUsed(int n) { var f = new FileInfo(SaveFile(n)); return f.Exists && f.Length > 1024; }
 
-        /// <summary>Uses the active save owner's caption, otherwise selects the newest usable native ten-slot save.</summary>
+        private string _latestSaveFile;
+        /// <summary>Selects named snapshots while Saves runs; otherwise chooses only the newest usable native ten-slot save.</summary>
         private string LatestSave(out int slot)
         {
-            string caption = UiActions.Caption("Saves.Continue");
-            if (caption != null)
+            if (!Core.SaveSystem.Installed)
             {
-                slot = caption.Length == 0 ? 0 : 1;
-                return caption.Length > 26 ? caption.Substring(0, 25) + "…" : caption;
+                _latestSaveFile = null; slot = 0; DateTime newest = DateTime.MinValue;
+                for (int n = 1; n <= 10; n++)
+                {
+                    if (!SlotUsed(n)) continue;
+                    DateTime time = File.GetLastWriteTimeUtc(SaveFile(n));
+                    if (slot == 0 || time > newest) { slot = n; newest = time; }
+                }
+                return slot == 0 ? "" : SlotLabel(slot, true);
             }
-            slot = 0; DateTime newest = DateTime.MinValue;
-            for (int n = 1; n <= 10; n++)
-            {
-                if (!SlotUsed(n)) continue;
-                DateTime time = File.GetLastWriteTimeUtc(SaveFile(n));
-                if (slot == 0 || time > newest) { slot = n; newest = time; }
-            }
-            return slot == 0 ? "" : SlotLabel(slot, true);
+            _latestSaveFile = Core.SaveRuntime.Latest(); slot = _latestSaveFile == null ? 0 : 1;
+            if (_latestSaveFile == null) return "";
+            string name = Core.SaveSystem.Info(_latestSaveFile).Name;
+            return name.Length > 26 ? name.Substring(0, 25) + "…" : name;
         }
 
         private static readonly Regex SeedPart = new Regex(@"\s*\(Seed:[^)]*\)", RegexOptions.Compiled);
@@ -63,19 +66,19 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Loads through Saves admission when enabled, or directly clicks the selected native slot when disabled.</summary>
         private void ContinueLatest()
         {
-            if (UiActions.TryInvoke("Saves.Continue")) return;
             int slot; LatestSave(out slot);
-            if (slot > 0) BeginLoad("LoadGame_Canvas/LoadGame/load slot " + slot + "/load_game_" + slot);
+            if (Core.SaveSystem.Installed) { if (_latestSaveFile != null) Core.SinglePlayerSaving.Load(_latestSaveFile); }
+            else if (slot > 0) BeginLoad("LoadGame_Canvas/LoadGame/load slot " + slot + "/load_game_" + slot);
         }
 
         /// <summary>Opens the named save library while enabled, with the native ten-slot screen as the disabled fallback.</summary>
         private void OpenSave()
-        { if (!UiActions.TryInvoke("Saves.OpenSave")) ShowSlots(false); }
+        { if (Core.SaveSystem.Installed) WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); else ShowSlots(false); }
 
         // ---------------------------------------------------------------- load / save slots
         private void ShowSlots(bool load)
         {
-            if (UiActions.TryInvoke(load ? "Saves.OpenLoad" : "Saves.OpenSave")) return;
+            if (Core.SaveSystem.Installed) { WildWasteland.Modules.Saves.SaveLibraryPage.Open(!load); return; }
             ResetToMain();
             _screen = load ? "load" : "save";
             _main.gameObject.SetActive(false);

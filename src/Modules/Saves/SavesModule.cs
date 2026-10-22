@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Saves
         public override void BindConfig(ModuleConfig cfg)
         {
             SaveSystem.Bind(cfg);
+            CompanionPolicy.RegisterDefaults(this);
             // ModuleHost attaches its toggle handler after BindConfig: restore the switch before it can stop a live transaction.
             cfg.Enabled.SettingChanged += EnabledChanged;
         }
@@ -32,7 +33,6 @@ namespace WildWasteland.Modules.Saves
         public override void Init()
         {
             SaveRuntime.Install(this);
-            RegisterMenuActions();
             SaveSystem.Install(this);
             SaveBus.FailureReported += FailureReported;
             ModEvents.Subscribe<Core.Events.CombatActivity>(this, CombatActivity);

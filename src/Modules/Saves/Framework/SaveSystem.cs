@@ -101,7 +101,8 @@ namespace WildWasteland.Modules.Saves
             if (!Patches.Patch(_owner, AccessTools.Method(typeof(ES3Internal.ES3IO), "CommitBackup"), finalizer: AccessTools.Method(typeof(SaveSystem), "StorageError"))) throw new InvalidOperationException("Native disk failure observation hook failed");
             if (!Patches.Patch(_owner, AccessTools.Method(typeof(ES3PlayMaker.PMDataWrapper), "ApplyVariables"), postfix: AccessTools.Method(typeof(SaveSystem), "LoadedPath"))) throw new InvalidOperationException("Save identity hook failed");
             SaveCleanup.Install(owner);
-            SaveCombat.Install(owner); 
+            SaveCombat.Install(owner);
+            Core.SaveWarning.Install(owner);
             SinglePlayerSaving.Install(owner);
             WorldHistory.Install(owner); SaveCompatibility.Install(owner);
             SaveBus.StateChanged += StateChanged;
@@ -182,7 +183,10 @@ namespace WildWasteland.Modules.Saves
         {
             if (_pendingNotice == null || !LocalReady || LoadingProgress.MenusBlocked) return;
             var notices = ModApi.Get<INotifications>();
-            if (notices != null && notices.Push(_pendingNotice, NotificationKind.Save, 0)) _pendingNotice = null;
+            if (notices != null) { if (notices.Push(_pendingNotice, NotificationKind.Save, 0)) _pendingNotice = null; return; }
+            // No INotifications provider yet: keep the old message-log delivery until HUD provides it (B10).
+            var text = _pendingNotice; _pendingNotice = null;
+            Modules.CleanHUD.MessageHook.Push(text); // refs-ok: REFACTOR-REQUEST B04-4 (HUD provides INotifications; then delete this fallback)
         }
         
         /// <summary>Reads the unchanged save-description format while retaining unreadable world files.</summary>
@@ -336,7 +340,7 @@ namespace WildWasteland.Modules.Saves
             var copies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (string path in SaveFiles.Participants(source)) if (File.Exists(path))
             {
-                if (!Sidecars.IncludeInSnapshot(path, source)) continue;
+                if (!CompanionPolicy.IncludeInSnapshot(path, source)) continue;
                 // Native .bak and checkpoint files are recovery history, not the new snapshot's authority.
                 if (path.EndsWith(".wwsave", StringComparison.Ordinal) || path.EndsWith(".wwsave.png", StringComparison.Ordinal) || Path.GetFileName(path).IndexOf(".bak", StringComparison.OrdinalIgnoreCase) >= 0 || path.EndsWith(".player-checkpoint.txt", StringComparison.Ordinal)) continue;
                 copies[SaveFiles.Remap(path, source, target)] = path;
@@ -350,9 +354,7 @@ namespace WildWasteland.Modules.Saves
                 foreach (var pair in copies)
                 {
                     string path = Path.Combine(tx.DirectoryPath, "new-" + i++ + ".bin"); SaveFiles.CopyVerified(pair.Value, path);
-                    byte[] original = File.ReadAllBytes(path);
-                    byte[] remapped = Sidecars.RemapSnapshot(pair.Value, source, target, original);
-                    if (!ReferenceEquals(original, remapped)) SaveFiles.WriteDurable(path, remapped);
+                    CompanionPolicy.RemapStaged(pair.Value, path, source, target);
                     stages[pair.Key] = path;
                 }
                 foreach (var pair in stages) SaveFiles.Publish(pair.Value, pair.Key);
