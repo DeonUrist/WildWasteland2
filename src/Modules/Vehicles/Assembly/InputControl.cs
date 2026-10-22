@@ -18,6 +18,9 @@ namespace WildWasteland.Modules.Patrols
     /// </summary>
     internal class InputControl : IVehicleInputLease
     {
+        private static readonly HashSet<InputControl> Active=new HashSet<InputControl>();
+        /// <summary>Restores only actually held native control leases.</summary>
+        internal static void ReleaseAll() { foreach(var lease in new List<InputControl>(Active))lease.Release();Active.Clear(); }
         private static readonly string[] Names = { "INPUT_AxisInput", "INPUT_AxisSteering", "INPUT_NormalizedAxisInput", "INPUT_MouseSteering",
             "Bool_AutomaticGearbox", "Bool_AutoClutch", "Bool_HShifter", "INPUT_HShifter", "INPUT_ShiftUpDown", "INPUT_GearChange" };
         private readonly List<PlayMakerFSM> _taken = new List<PlayMakerFSM>();
@@ -39,7 +42,7 @@ namespace WildWasteland.Modules.Patrols
         public void Take()
         {
             if (_owns) return;
-            _owns = true;
+            _owns = true; Active.Add(this);
             _taken.Clear();
             Nwh.ForgetInput(_car);
             foreach (var f in _car.GetComponentsInChildren<PlayMakerFSM>(true))
@@ -66,7 +69,7 @@ namespace WildWasteland.Modules.Patrols
         public void Release()
         {
             if (!_owns) return;
-            _owns = false;
+            _owns = false; Active.Remove(this);
             if (_vc != null)
             {
                 var transmission = _vc.powertrain.transmission;

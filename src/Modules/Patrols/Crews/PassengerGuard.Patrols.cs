@@ -36,7 +36,7 @@ namespace WildWasteland.Modules.Patrols
             _ranged = _rangedPrefab && PatrolsModule.RangedCombat.Value;
             if (_ranged) foreach (var fsm in _combat) if (fsm != null) fsm.enabled = true;
             if (_attack != null) _attack.enabled = false;
-            if (_pose != null) { _pose.SetShooting(false); _pose.SetAim(Vector3.zero, false); }
+            if (_pose != null) { _pose?.SetShooting(false); _pose.SetAim(Vector3.zero, false); }
             ScheduleBurst();
             PatrolsModule.Verbose("Driver: " + _passenger.name + (_ranged ? " shoots in bursts every " + PatrolsModule.FireIntervalMin.Value + "-" + PatrolsModule.FireIntervalMax.Value + " s" : " does not shoot"));
         }
@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.Patrols
             guard._meleeRenderers = rs.ToArray(); guard._meleeColliders = cs.ToArray();
             guard.IndexTargetSources();
             guard.HideMeleeWeapons();
-            guard._pose = passenger.GetComponent<Pose>();
+            guard._pose = Core.ModApi.Get<Core.ICrewSeats>()?.Find(passenger);
             if (guard._pose != null) guard._pose.ConfigurePassengerAim();
             MuteNonCombatAi(passenger, PatrolsModule.RangedCombat.Value);
             PatrolsModule.Verbose("Passenger: " + passenger.name + " fixed in driver pose; "

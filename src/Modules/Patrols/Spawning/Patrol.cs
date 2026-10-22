@@ -124,6 +124,7 @@ namespace WildWasteland.Modules.Patrols
         // The work is spread over several frames (one Instantiate group per frame) so a build never stalls a single frame for long.
         internal IEnumerator Build(CarTemplate tpl, Vector3? at, Quaternion rot, bool menu, bool hold, Action<GameObject> onDone)
         {
+            while(Core.ModApi.Get<Core.IVehicleAssembly>()==null||Core.ModApi.Get<Core.IVehicleDrive>()==null||Core.ModApi.Get<Core.IVehicleAttachments>()==null)yield return null;
             GameObject car = null;
             GameObject trailer = null;
             int gen = SceneGen;
@@ -157,7 +158,7 @@ namespace WildWasteland.Modules.Patrols
                 if (tpl.Trailer != null)
                 {
                     trailerBody = Prefabs.Exact(tpl.Trailer.Body);
-                    if (trailerBody == null || !TrailerSupport.IsTrailer(trailerBody) || FindChild(body.transform, "hitch") == null || FindChild(trailerBody.transform, "attacher") == null)
+                    if (trailerBody == null || !Core.ModApi.Get<Core.IVehicleAttachments>().IsTrailer(trailerBody) || FindChild(body.transform, "hitch") == null || FindChild(trailerBody.transform, "attacher") == null)
                     { Core.Log.Warn("[Patrols] " + "Cannot build " + tpl.Name + ": trailer prefab or towing hitch is missing"); yield break; }
                     if (WarRig.WorldSpawning.IsTemplate(trailerBody))
                     {
@@ -185,7 +186,7 @@ namespace WildWasteland.Modules.Patrols
                 car = VehiclePreparation.Spawn(packed, pos, rot);
                 if(!menu&&tpl.Origin!="POI")EncounterCar.Attach(car,eventId,tpl.ConvoyMember,true);
                 car.SetActive(true);
-                Paint.Apply(car, body.name,tpl.Faction);
+                Core.ModApi.Get<Core.IVehicleVisuals>()?.Paint(car, body.name,tpl.Faction);
                 // The car, its parts and its cargo go into the game's save lists only once the car is complete (Register.Commit below):
                 // a save during the build (autosave, the player) does not store a half-built car
                 // Spawn has already named/deferred the packed frame and each fitted part before activation.
@@ -200,7 +201,7 @@ namespace WildWasteland.Modules.Patrols
                     var attacher = FindChild(trailerBody.transform, "attacher");
                     var trailerPos = hitch.position - car.transform.rotation * trailerBody.transform.InverseTransformPoint(attacher.position);
                     trailer = VehiclePreparation.Spawn(packedTrailer, trailerPos, car.transform.rotation);
-                    TrailerSupport.Connect(car, trailer); // before the first frame: native TrailerLoad must not add a second joint
+                    Core.ModApi.Get<Core.IVehicleAttachments>().Connect(car, trailer); // before the first frame: native TrailerLoad must not add a second joint
                     yield return null;
                     if (car == null || trailer == null) yield break;
                 }
@@ -274,7 +275,7 @@ namespace WildWasteland.Modules.Patrols
                         if (car == null || trailer == null) yield break;
                         Rider.Seat(car, marker, PatrolMarker.VehicleTurretSlots + ti, tpl.Trailer.Turrets[ti], tpl.Trailer.TurretPos[ti], trailer,tpl.Trailer.TurretStanding[ti],!tpl.RestoreCrewAppearance);
                     }
-                Paint.ApplyCargo(car, lootKey);   // the container's texture by load (Textures/cargo_*.png)
+                Core.ModApi.Get<Core.IVehicleVisuals>()?.Cargo(car, lootKey);   // the container's texture by load (Textures/cargo_*.png)
 
                 yield return new WaitForSeconds(1f);
                 if (car == null) yield break;
@@ -308,7 +309,7 @@ namespace WildWasteland.Modules.Patrols
                 else Register.Discard(car);
                 if (trailer != null)
                 {
-                    if (car != null && TrailerSupport.Connected(car, trailer)) { if (Register.Pending(trailer)) Register.Commit(trailer); }
+                    if (car != null && Core.ModApi.Get<Core.IVehicleAttachments>().Connected(car, trailer)) { if (Register.Pending(trailer)) Register.Commit(trailer); }
                     else { Register.Discard(trailer); Register.RemoveTree(trailer); UnityEngine.Object.Destroy(trailer); }
                 }
                 else Register.Discard(trailer);
@@ -426,7 +427,7 @@ namespace WildWasteland.Modules.Patrols
             var pax = SeatOccupant(car, prefabName, anchor, "Passenger", true, health, randomize);
             if (pax == null) { UnityEngine.Object.Destroy(anchor.gameObject); return null; }
             if(chair!=null||string.Equals(TemplateExporter.PrefabName(car.name),"Rustliner",System.StringComparison.OrdinalIgnoreCase))
-                pax.GetComponent<Pose>()?.ConfigureBusPassenger();
+                Core.ModApi.Get<Core.ICrewSeats>()?.Find(pax)?.ConfigureBusPassenger();
             PassengerGuard.Attach(pax, car, anchor);
             return pax;
         }
@@ -459,8 +460,8 @@ namespace WildWasteland.Modules.Patrols
             go.transform.SetParent(anchor, true);
             if (PatrolsModule.PoseEnabled.Value)
             {
-                var pose = Pose.Apply(go, anchor, prefab.name);
-                if (!passenger) pose.SetShooting(false);   // a driver sits with its hands on the wheel; PassengerGuard raises the gun only while it fires
+                var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Apply(go, anchor, prefab.name);
+                if (!passenger) pose?.SetShooting(false);   // a driver sits with its hands on the wheel; PassengerGuard raises the gun only while it fires
             }
             if (health >= 0f) { SetHealth(go, health); go.AddComponent<LateHealth>().Value = health; }
             PatrolsModule.Verbose(role + " " + go.name + " on " + anchor.name + " at " + pos);
@@ -582,7 +583,7 @@ namespace WildWasteland.Modules.Patrols
             pax.transform.SetParent(sit, true);
             pax.transform.position = sit.position + car.transform.right * off.x + car.transform.up * off.y + car.transform.forward * off.z;
             pax.transform.rotation = Quaternion.LookRotation(car.transform.forward, car.transform.up);
-            var pose = pax.GetComponent<Pose>();
+            var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Find(pax);
             if (pose != null) pose.Reseat(sit);
             pax.name = pax.name.Replace("(Passenger)", "(Driver)");
             if (guard != null) guard.SetDriverMode(sit);

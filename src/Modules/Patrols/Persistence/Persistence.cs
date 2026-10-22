@@ -170,7 +170,7 @@ namespace WildWasteland.Modules.Patrols
                 faction=Faction,explodeChance=ExplodeChance,driverDied=DriverDied,driverBailed=DriverBailed,explodeRolled=ExplodeRolled,explodeSelected=ExplodeSelected,
                 battleId=GetComponent<BattleCar>()?.Battle??"",battleSide=GetComponent<BattleCar>()?.Side??0,battleSlot=GetComponent<BattleCar>()?.Slot??-1,
                 merchantJson=GetComponent<MerchantHost>()?.Snapshot()??"",
-                setupOnly=SetupOnly, riders=PatrolCrewDelta.Capture(this), trailerName=TrailerSupport.Attached(gameObject)?.name??"",
+                setupOnly=SetupOnly, riders=PatrolCrewDelta.Capture(this), trailerName=Core.ModApi.Get<Core.IVehicleAttachments>().Attached(gameObject)?.name??"",
                 ramTargets = _rams.ToString(),
                 positionX = p.x, positionY = p.y, positionZ = p.z,
                 driverPrefab = CrewLooks.Identity(_driver, _driverPrefab),
@@ -370,7 +370,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var kv in restored)
                 if (kv.Key != null)
                 {
-                    RepairFrame(kv.Key, kv.Value.bodyPrefab); Paint.Apply(kv.Key, kv.Value.bodyPrefab);
+                    RepairFrame(kv.Key, kv.Value.bodyPrefab); Core.ModApi.Get<Core.IVehicleVisuals>()?.Paint(kv.Key, kv.Value.bodyPrefab,null);
                     var crew = kv.Key.GetComponent<Crew>();
                     if (crew != null && crew.CrewAlive && !Explode.IsWreck(kv.Key)) Patrol.Headlights(kv.Key, DayLight.Dark);   // lights on at night, off by day
                 }
@@ -396,8 +396,8 @@ namespace WildWasteland.Modules.Patrols
         {
             if (car.GetComponent<PatrolMarker>() != null) return;
             RepairFrame(car, data.bodyPrefab);    // older saves: broken material references -> the body's own materials
-            Paint.Apply(car, data.bodyPrefab,data.faction);
-            Paint.ApplyCargo(car, data.cargoKey);
+            Core.ModApi.Get<Core.IVehicleVisuals>()?.Paint(car, data.bodyPrefab,data.faction);
+            Core.ModApi.Get<Core.IVehicleVisuals>()?.Cargo(car, data.cargoKey);
             GameObject driver = null, passenger = null;
             CrewPhase phase;
             if (!Enum.TryParse(data.driverPhase, out phase)) phase = CrewPhase.Waiting;
@@ -448,7 +448,7 @@ namespace WildWasteland.Modules.Patrols
         private static void RepairFrame(GameObject car, string body)
         {
             if (car == null || string.IsNullOrEmpty(body)) return;
-            Paint.RepairFrame(car, Prefabs.FindAny(body));
+            Core.ModApi.Get<Core.IVehicleVisuals>()?.RepairFrame(car, Prefabs.FindAny(body));
         }
 
         /// <summary>Reads only the record in the selected world save. Invalid data blocks a subsequent save.</summary>

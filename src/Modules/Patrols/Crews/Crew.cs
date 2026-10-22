@@ -167,7 +167,7 @@ namespace WildWasteland.Modules.Patrols
             var dt = Patrol.FindChild(car.transform, "DriveTrigger");
             if (dt != null) _enterTrigger = dt.GetComponents<Collider>().FirstOrDefault(c => c is SphereCollider);
             if (_ctl != null && _ctl.Taken) _ctl.Release();
-            _ctl = Core.ModApi.Get<Core.IVehicleDrive>().InputLease(car);
+            _ctl = Core.ModApi.Get<Core.IVehicleDrive>()?.InputLease(car);
             _partDetach = fsms.Where(f => f.FsmName == "de_Attach").ToArray();
 
             // nobody else drives while the driver lives: no enter trigger (no F prompt), no Drive FSM (Activate events are ignored).
@@ -323,7 +323,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         private void Update()
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null || Core.ModApi.Get<Core.IVehicleAttachments>()==null) return;
             if (_car == null) { Destroy(this); return; }
             if (Time.timeScale <= 0f) return;
             if(CombatTick())return;
@@ -421,7 +421,7 @@ namespace WildWasteland.Modules.Patrols
 
         // NWH samples its input on the physics step, so the inputs are written here, not in Update.
         private void FixedUpdate()
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null || Core.ModApi.Get<Core.IVehicleAttachments>()==null) return;
             if (_car == null || _done || Time.timeScale <= 0f || Marker?.SetupOnly==true) return;
             if (TownParking && Marker?.PlayerEntered != true && PlayerRef.PlayerCar != _car) { Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(_car, 1f); return; }
             if (Regrouping) { if (!_dead && _driving) Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, 0f, 0f, 1f); return; }   // waiting for the crew to get back in

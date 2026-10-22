@@ -80,6 +80,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Coroutine: the game's own ignition (START FSM Ignition -> Start), the ignition provider first, NWH StartEngine as a fallback; stops when the car became a wreck.</summary>
         internal static IEnumerator StartUp(GameObject car, bool loading = false)
         {
+            if (Core.ModApi.Get<Core.IVehicleDrive>()==null) yield break;
             if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;
             var ignition = ModApi.Get<IVehicleIgnition>();
             if (ignition != null && ignition.TryStart(car)) { if (!loading) yield return new WaitForSeconds(1.5f); yield break; }

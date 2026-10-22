@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.Patrols
             var result = new List<string>();
             foreach (var t in car.GetComponentsInChildren<Transform>(true))
                 if (t.CompareTag("vehPart")) result.Add(PathOf(car.transform, t));
-            var trailer = TrailerSupport.Attached(car);
+            var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null) foreach (var t in trailer.GetComponentsInChildren<Transform>(true))
                 if (t.CompareTag("vehPart")) result.Add("trailer:" + PathOf(trailer.transform, t));
             return result.OrderBy(s => s).ToArray();
@@ -70,7 +70,7 @@ namespace WildWasteland.Modules.Patrols
             if (record.partPaths == null) record.partPaths = Parts(car);
             var values = new List<TrafficValue>();
             CaptureValues(car, "", values);
-            var trailer = TrailerSupport.Attached(car); if (trailer != null) CaptureValues(trailer, "trailer:", values);
+            var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car); if (trailer != null) CaptureValues(trailer, "trailer:", values);
             cargo.Clear(); if (trailer != null) CaptureCargo(trailer, cargo);
             record.trailerLootNames = cargo.Keys.ToArray(); record.trailerLootCounts = record.trailerLootNames.Select(k => cargo[k]).ToArray();
             record.values = values.ToArray();
@@ -88,7 +88,7 @@ namespace WildWasteland.Modules.Patrols
         {
             foreach (var fsm in car.GetComponentsInChildren<PlayMakerFSM>(true))
             {
-                if (fsm.FsmName != "LockPhysics" || fsm.CompareTag("vehPart") || VehicleAttachments.IsFreeAttachment(fsm.gameObject)) continue;
+                if (fsm.FsmName != "LockPhysics" || fsm.CompareTag("vehPart") || Core.ModApi.Get<Core.IVehicleAttachments>()?.IsFreeAttachment(fsm.gameObject)==true) continue;
                 if (fsm.GetComponent<ES3Internal.ES3Prefab>() == null) continue;
                 string name = TemplateExporter.PrefabName(fsm.name); int count;
                 counts.TryGetValue(name, out count); counts[name] = count + 1;
@@ -123,7 +123,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var value in record.values ?? new TrafficValue[0])
             {
                 bool trailer = value.path.StartsWith("trailer:", StringComparison.Ordinal);
-                var root = trailer ? TrailerSupport.Attached(car) : car;
+                var root = trailer ? Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car) : car;
                 var t = root != null ? Resolve(root.transform, trailer ? value.path.Substring(8) : value.path) : null;
                 if (t == null) continue;
                 foreach (var fsm in t.GetComponents<PlayMakerFSM>())

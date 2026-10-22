@@ -37,7 +37,6 @@ namespace WildWasteland.Modules.Patrols
         // BepInEx\plugins\WildWasteland\Patrols (templates, layouts, poses, textures, sounds, War Rig models)
         internal static string DataDir = ".";
 
-        static bool _paintPreloaded;
         GameObject _host;
         Patrol _patrol;   // editor components: PatrolsModule.Tools.cs (Tools) and PatrolsModule.Developer.cs (Developer)
         Convoy _convoy; WorldTraffic _traffic; Cleanup _cleanup;
@@ -106,10 +105,8 @@ namespace WildWasteland.Modules.Patrols
             Core.Hooks.SendEventEnter.Prefix(this, Ram.BeforeSendEvent);
             Try("Motorcycle save hook (saved motorcycles may not load)", () => MotorcycleIntegration.Install(this));
 
-            Paint.Init(DataDir);
             EditorStore.Load(DataDir);
             CarTemplates.Init(DataDir);
-            if (!_paintPreloaded) { _paintPreloaded = true; Paint.Preload(); }     // all Textures decoded now, not in the middle of a spawn
             CarTemplates.Load();
             Try("War Rig", () => WarRig.WarRigFeature.Install(this, Path.Combine(DataDir, "WarRig")));
 
@@ -229,7 +226,7 @@ namespace WildWasteland.Modules.Patrols
         // per-object coroutines (overheat, revive, bail-out timers, merchant setup) end with the module; the objects themselves stay
         static void StopObjectCoroutines()
         {
-            var types = new[] { typeof(Crew), typeof(Pilot), typeof(PassengerGuard), typeof(RiderGuard), typeof(Pose), typeof(MerchantHost), typeof(MerchantGuardHealth), typeof(TrafficActor) };
+            var types = new[] { typeof(Crew), typeof(Pilot), typeof(PassengerGuard), typeof(RiderGuard), typeof(MerchantHost), typeof(MerchantGuardHealth), typeof(TrafficActor) };
             foreach (var t in types)
                 foreach (var o in UnityEngine.Object.FindObjectsOfType(t))
                 {

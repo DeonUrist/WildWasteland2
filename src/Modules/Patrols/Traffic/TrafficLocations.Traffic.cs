@@ -58,7 +58,7 @@ namespace WildWasteland.Modules.Patrols
                 var h = Hits[i];
                 if (h.collider == null || h.distance > length || h.distance <= 0f) continue;
                 if (h.collider is TerrainCollider) continue;
-                if (car != null && !h.collider.transform.IsChildOf(car.transform) && !trailerKnown) { trailerKnown = true; trailer = TrailerSupport.Attached(car); }
+                if (car != null && !h.collider.transform.IsChildOf(car.transform) && !trailerKnown) { trailerKnown = true; trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car); }
                 if (car != null && (h.collider.transform.IsChildOf(car.transform)
                     || (trailer != null && h.collider.transform.IsChildOf(trailer.transform)))) continue;
                 if (h.collider.gameObject.layer == 9 || h.collider.GetComponentInParent<PatrolMarker>() != null) continue;

@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.Patrols
 {
     // One fixed seated limb pose for every live occupant. A ranged passenger may rotate that fixed pose through the
     // spine, but combat never receives control of the arms or legs.
-    internal class Pose : MonoBehaviour
+    internal class Pose : MonoBehaviour, ICrewSeatPose
     {
         private Transform _root, _anchor;
         private Transform _hips, _spine, _spine1, _spine2;
@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>True for a bus passenger with a seat anchor (not a turret).</summary>
         internal bool IsBusPassenger=>_busPassenger&&_anchor!=null&&!_turret;
         /// <summary>Uses the shared bus passenger preset for this occupant (loads it now).</summary>
-        internal void ConfigureBusPassenger(){_busPassenger=true;var preset=BusPassengerPoseStore.Current;}
+        public void ConfigureBusPassenger(){_busPassenger=true;var preset=BusPassengerPoseStore.Current;}
         private ArmPoseProfile _armPose;
         private readonly List<WeaponRoot> _weapons = new List<WeaponRoot>();
         private bool _aimActive;
@@ -100,7 +100,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Sets the aim point and whether the occupant aims at it.</summary>
-        internal void SetAim(Vector3 point, bool active)
+        public void SetAim(Vector3 point, bool active)
         {
             _aimPoint = point;
             _aimActive = active;
@@ -108,17 +108,17 @@ namespace WildWasteland.Modules.Patrols
 
         // A shooting mob at the wheel: generic driver arms (hands on the wheel), the per-human shooting profile only while firing.
         /// <summary>A shooting driver: the per-human shooting profile only while firing, the generic wheel arms otherwise.</summary>
-        internal void SetShooting(bool on) { _useProfile = on; }
+        public void SetShooting(bool on) { _useProfile = on; }
 
         /// <summary>A passenger who aims: the seat rotation is locked, only the spine turns.</summary>
-        internal void ConfigurePassengerAim()
+        public void ConfigurePassengerAim()
         {
             _lockSeatRotation = true;
             _seatRotation = _root.localRotation;
         }
 
         /// <summary>Turns the pose into a turret gunner (standing or crouched, bike seat, Warboy); a human roof gunner gets the animation service crouch when available.</summary>
-        internal void ConfigureTurret(bool standing,bool bike,bool warboy=false)
+        public void ConfigureTurret(bool standing,bool bike,bool warboy=false)
         {
             _turret = true; _turretSeated = !standing;_turretBike=bike;_turretWarboy=warboy;
             if(warboy)_turretRider=GetComponent<RiderGuard>();   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.Patrols
 
         // the ModAPI body ends (death, jump-off): its gun back in its own hand, the Animator's own controller back
         /// <summary>Ends the animation-service body (death, jump-off): its gun back in its hand, the Animator controller back.</summary>
-        internal void ReleaseBody()
+        public void ReleaseBody()
         {
             if (_body == null) return;
             try { PlayerAnims.Dispose(_body); } catch (System.Exception) { }
@@ -175,7 +175,7 @@ namespace WildWasteland.Modules.Patrols
 
         // the occupant changed seats (passenger promoted to driver): follow the new anchor, no passenger aiming any more
         /// <summary>The occupant changed seats (passenger promoted to driver): follows the new anchor, no passenger aiming any more.</summary>
-        internal void Reseat(Transform anchor)
+        public void Reseat(Transform anchor)
         {
             _anchor = anchor;
             _busPassenger = false;
