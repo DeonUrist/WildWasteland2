@@ -93,10 +93,6 @@ namespace WildWasteland.Modules.Saves
                 if (target != null && target.activeInHierarchy && !target.CompareTag("Untagged")) { active = true; break; }
             }
             foreach (var fsm in Dead) Actors.Remove(fsm);
-            // Patrols still answers vehicle combat through the old query (REFACTOR-REQUEST B04-5: B11 publishes CombatActivity
-            // VehicleCombat instead, then this poll goes away; the CombatActivity subscription already handles it).
-            var vehicles = Services.VehicleCombatActive;
-            if (vehicles != null && vehicles()) active = true;
             if (active) Activity();
             Unsafe = _scanning || active || Time.unscaledTime < _quietUntil;
             return Unsafe;

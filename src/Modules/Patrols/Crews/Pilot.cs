@@ -220,10 +220,10 @@ namespace WildWasteland.Modules.Patrols
                     StartRecover("hit an obstacle" + (_hitSide != 0f ? (_hitSide > 0f ? " on the right" : " on the left") : " head-on"), _hitSide);
             }
 
-            if (_hasTarget && _state != PilotState.Recover && _state != PilotState.Wait && Modules.Towns.TownsApi.Provider != null)
+            if (_hasTarget && _state != PilotState.Recover && _state != PilotState.Wait && Core.ModApi.Get<Core.ITownTraffic>() != null)
             {
                 Vector3 gate; bool hold;
-                if (Modules.Towns.TownsApi.Provider.VehicleWaypoint(_tf.position, tpos, out gate, out hold))
+                if (Core.ModApi.Get<Core.ITownTraffic>().VehicleWaypoint(_tf.position, tpos, out gate, out hold))
                 {
                     _ramsTarget = false;
                     StepTravel(gate, Mathf.Min(cruise > 0 ? cruise : 6f, 6f), hold && Flat(gate - _tf.position).sqrMagnitude < 16f, speed, forwardSpeed, dt, true);

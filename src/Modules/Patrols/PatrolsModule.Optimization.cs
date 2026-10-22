@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Patrols
         public override void ProvideApis()
         {
             RegisterDiagnostics();
+            ModApi.Provide<IPatrols>(this, new PatrolQueries());
             ModApi.Provide<ICullingProtection>(this, new PatrolCullingProtection());
             var ownership = ModApi.Get<IVehicleOwnership>();
             if (ownership != null) ownership.Register(this, new PatrolVehicleOwnership());

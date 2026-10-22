@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Patrols
         {
             int count=0;foreach(var camp in Known.Values)
                 if(camp.faction!="Coyotes"&&!camp.cleared&&TrafficCamps.Loaded(camp.id)&&!TownInterior(camp.center)&&FlatDistance(camp.center,player)<=range)count++;
-            if (Modules.Towns.TownsApi.Provider != null) count += Modules.Towns.TownsApi.Provider.PatrolCount(player, range);
+            if (Core.ModApi.Get<Core.ITownTraffic>() != null) count += Core.ModApi.Get<Core.ITownTraffic>().PatrolCount(player, range);
             return count;
         }
         internal static TrafficBase[] NearbyBases(Vector3 player,float range)
@@ -23,11 +23,17 @@ namespace WildWasteland.Modules.Patrols
         internal static TrafficBase[] PatrolBases()
         {
             var bases = Known.Values.Where(c => c.faction != "Coyotes" && !c.cleared && !TownInterior(c.center)).ToList();
-            if (Modules.Towns.TownsApi.Provider != null) Modules.Towns.TownsApi.Provider.PatrolBases(bases);
+            var towns = Core.ModApi.Get<Core.ITownTraffic>();
+            if (towns != null)
+            {
+                var origins = new List<Core.TownPatrolBase>(); towns.PatrolBases(origins);
+                foreach (var origin in origins) bases.Add(new TrafficBase { id = origin.Id, name = origin.Name, faction = origin.Faction,
+                    center = origin.Center, gate = origin.Gate, apron = origin.Apron, size = origin.Size });
+            }
             return bases.ToArray();
         }
         internal static bool BaseLoaded(string id)
-        { return TrafficCamps.Loaded(id) || Modules.Towns.TownsApi.Provider != null && Modules.Towns.TownsApi.Provider.PatrolBase(id); }
+        { return TrafficCamps.Loaded(id) || Core.ModApi.Get<Core.ITownTraffic>() != null && Core.ModApi.Get<Core.ITownTraffic>().PatrolBase(id); }
 
         internal static bool PlayerAt(TrafficBase camp)
         {var player=PlayerRef.Player;return player!=null&&Contains(camp,TrafficSpace.World(player.position));}

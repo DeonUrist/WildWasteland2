@@ -53,8 +53,6 @@ namespace WildWasteland.Core
         public static ICharacterAssets CharacterAssets { get { return ModApi.Get<ICharacterAssets>(); } set { Set(value); } }
 
         /// <summary>(Patrols) vehicle combat near the player, read by the autosave deferral.</summary>
-        [Obsolete("refactor: use IPatrols.VehicleCombatActive / CombatActivity event")]
-        internal static Func<bool> VehicleCombatActive;
 
         /// <summary>(Guns) reports combat activity to the autosave deferral.</summary>
         [Obsolete("refactor: publish the CombatActivity event")]
