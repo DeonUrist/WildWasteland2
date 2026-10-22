@@ -2,20 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using BepInEx;
-using BepInEx.Bootstrap;
-using UnityEngine;
-using UnityEngine.UI;
 using WildWasteland.Core;
 
 namespace WildWasteland.Modules.CleanHUD
 {
-    /// <summary>HANDOVER to HUD (B10; REFACTOR-REQUEST B04-1). Fog-of-war sidecar I/O: config/WildWasteland/CleanHUD/Saves/&lt;slot&gt;.fog.bin (gzip "IMFP" v4, world seed checked), read at world ready, written when a save starts and at SaveAll.</summary>
+    /// <summary>HUD-owned exploration record embedded in the ES3 world save; the gzip payload retains its seed and current format.</summary>
     internal static partial class MapFog
     {
-        private static string _saves;
+        private static readonly SaveKey FogSave = SaveBus.Key("WildWasteland.HUD.Fog.v1");
+        private static string _fogReadError;
 
-        // ---- saves: config/WildWasteland/CleanHUD/Saves/<slot>.fog.bin (Immersive Map slot import removed, D12)
         /// <summary>World seed from the SaveLoadGame FSM, or int.MinValue when unknown.</summary>
         private static int Seed()
         {
@@ -23,10 +19,10 @@ namespace WildWasteland.Modules.CleanHUD
             var v = fsm.FsmVariables.FindFsmInt("seed"); return v != null ? v.Value : int.MinValue;
         }
 
-        /// <summary>Resets the fog and reads the slot's fog sidecar when its seed matches the loaded world.</summary>
+        /// <summary>Resets the fog and reads the embedded record when its seed matches the loaded world.</summary>
         internal static void WorldReady(string slot)
         {
-            Chunks.Clear(); _window = false; _havePosition = false; _idle = false; _painting = false; _loaded = true; _seed = Seed();
+            Chunks.Clear(); _fogReadError = null; _window = false; _havePosition = false; _idle = false; _painting = false; _loaded = true; _seed = Seed();
             if (_standDown) return;
             string from = "nothing saved for this world yet";
             try
@@ -34,38 +30,41 @@ namespace WildWasteland.Modules.CleanHUD
                 if (_seed == int.MinValue) from = "unknown world seed";
                 else if (!string.IsNullOrEmpty(slot))
                 {
-                    string own = Path.Combine(_saves, Path.GetFileName(slot) + ".fog.bin");
-                    if (File.Exists(own) && Read(File.ReadAllBytes(own))) from = own;
+                    string record = FogSave.Read(slot);
+                    if (record != null)
+                    {
+                        if (!Read(Convert.FromBase64String(record))) throw new InvalidDataException("Exploration record has an invalid format or world seed");
+                        from = "world save";
+                    }
                 }
             }
-            catch (Exception e) { Chunks.Clear(); CleanHudModule.Warn("Fog of war could not be read: " + e.Message); }
+            catch (Exception e) { Chunks.Clear(); _fogReadError = "Fog of war could not be read: " + e.Message; CleanHudModule.Warn(_fogReadError); }
             CleanHudModule.Log("Fog of war loaded from " + from + " (" + Chunks.Count + " chunks, seed " + _seed + ")");
         }
 
-        /// <summary>Writes the slot's fog sidecar through AtomicFile (seed checked); failures fail the save transaction.</summary>
+        /// <summary>Writes the embedded exploration record through the verified save transaction.</summary>
         internal static void SaveEnded(string slot)
         {
+            if (_fogReadError != null) { SaveBus.ReportFailure(CleanHudModule.Instance, _fogReadError); return; }
             if (!_loaded || _standDown || string.IsNullOrEmpty(slot)) return;
             int seed = Seed();
-            if (seed == int.MinValue || seed != _seed) { CleanHudModule.Warn("Fog of war not saved: world seed " + seed + " differs from " + _seed); return; }
-            // Plain sidecar, not ES3: written at once. Save-and-quit leaves for the title during the save, before isPlay/AfterSave.
+            if (seed == int.MinValue || seed != _seed)
+            {
+                SaveBus.ReportFailure(CleanHudModule.Instance, "Fog of war save rejected: world seed differs from loaded exploration");
+                return;
+            }
             try
             {
                 var data = Write(seed);
-                Directory.CreateDirectory(_saves);
-                string path = Path.Combine(_saves, Path.GetFileName(slot) + ".fog.bin");
-                File.WriteAllBytes(path + ".tmp", data);
-                AtomicFile.Replace(path + ".tmp", path);
-                CleanHudModule.Log("Fog of war saved: " + Path.GetFileName(path) + " (" + Chunks.Count + " chunks, " + data.Length + " bytes)");
+                FogSave.Write(CleanHudModule.Instance, slot, Convert.ToBase64String(data));
             }
-            catch (Exception e) { Core.SaveBus.ReportFailure("Fog of war save failed: " + e.Message); CleanHudModule.Warn("Fog of war could not be saved: " + e.Message); }
+            catch (Exception e) { SaveBus.ReportFailure(CleanHudModule.Instance, "Fog of war save failed: " + e.Message); CleanHudModule.Warn("Fog of war could not be saved: " + e.Message); }
         }
 
-        // SaveGame (global event) -> wait -> SaveGame -> isPlay. Write when the save starts and again at SaveAll.
-        /// <summary>SaveBus state observer: writes the fog when a save starts (wait) and again at SaveGame.</summary>
+        /// <summary>Captures exploration once when native serialization starts.</summary>
         private static void SaveState(string previous, string now)
         {
-            if (now == "wait" || now == "SaveGame") SaveEnded(SaveBus.Slot);
+            if (now == "SaveGame") SaveEnded(SaveBus.Slot);
         }
 
         /// <summary>Encodes the gzip "IMFP" v4 fog file (inverted reveal bytes per 64x64 chunk).</summary>
@@ -101,12 +100,15 @@ namespace WildWasteland.Modules.CleanHUD
                 int version = r.ReadInt32(); if (version != FormatVersion) return false;   // D18: only the current format is read
                 if (r.ReadInt32() != _seed) return false;
                 int count = r.ReadInt32();
+                if (count < 0) return false;
                 for (int n = 0; n < count; n++)
                 {
                     int cx = r.ReadInt32(), cz = r.ReadInt32(); var bytes = r.ReadBytes(4096); if (bytes.Length != 4096) return false;
                     var c = new Chunk(); for (int i = 0; i < 4096; i++) c.D[i] = (byte)(255 - bytes[i]);
-                    read[Key(cx, cz)] = c;
+                    if (read.ContainsKey(Key(cx, cz))) return false;
+                    read.Add(Key(cx, cz), c);
                 }
+                if (r.ReadInt32() != 0 || r.ReadInt32() != 0 || r.BaseStream.ReadByte() != -1) return false;
             }
             Chunks.Clear(); foreach (var pair in read) Chunks[pair.Key] = pair.Value;
             return true;

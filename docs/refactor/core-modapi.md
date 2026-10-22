@@ -1,5 +1,7 @@
 # Core kernel and ModAPI - design sketches (C# 7.3, for Wave 0-A)
 
+**Persistence correction (D20, 2026-10-22):** The sidecar registry sketches below are superseded and their implementation removed. All world records use embedded ES3 keys, batched through `SaveBus.Key` with disk verification before save publication. Writes outside SaveGame are rejected; pending records are discarded on cancellation/load/new-world boundaries. `Read` returns null only for absent records and throws for unreadable records. Module readers must block replacement after decoding failures. Existing save keys/payloads may remain; external sidecar paths/readers may not.
+
 These sketches fix names, signatures and semantics. W0-A implements them; Wave B agents code against them. Contracts are FROZEN after W0 merges; changes go through `docs/refactor/requests/<package>.md` and are applied by the coordinator between waves.
 
 ## 1. ModApi registry

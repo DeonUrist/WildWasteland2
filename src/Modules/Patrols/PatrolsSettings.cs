@@ -92,8 +92,6 @@ namespace WildWasteland.Modules.Patrols
 
         public override void BindConfig(ModuleConfig cfg)
         {
-            Sidecars.Register(this, "Patrols/Saves/{slot}.bin");
-            Sidecars.Register(this, "Patrols/Saves/{slot}.bin.bak");
             Cfg = cfg;
             BindToggles(cfg);
             BindValues(cfg);

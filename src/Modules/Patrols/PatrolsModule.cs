@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Patrols
     // AI-driven raider cars: templates assembled from the game's own frames and parts, live crews with a driving AI, ranged
     // passengers, human turrets, ram damage, loot trucks, a convoy spawner driven by the game's Distance Travelled, persistent world
     // traffic (camps, routes, faction battles, merchants), the editors, and the War Rig tanker trailer. Save data stays verbatim
-    // (ES3 key "Apocapatrol.Patrol", schema-14 sidecar, motorcycle / War Rig ES3 prefab ids).
+    // (ES3 key "Apocapatrol.Patrol", schema-14 embedded record, motorcycle / War Rig ES3 prefab ids).
     //
     // Runner: the old Apocapatrol.Runner MonoBehaviours (Patrol, TemplateMenu, TemplateExporter, TurretSpotter, BusPassengerPoseEditor,
     // Convoy, WorldTraffic, Cleanup + the MerchantEditor) sit on a module-owned child of Core.Runner.Host; their Update / LateUpdate /
@@ -55,7 +55,6 @@ namespace WildWasteland.Modules.Patrols
             Services.NpcHurt-=Crew.Attacked;Services.NpcHurt+=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;Services.VehiclePartHit+=Crew.PartHit;
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings; SaveBus.CleanupSettings += DrawSaveCleanupSettings;
-            SaveBus.SaveCancelled -= PatrolPersistence.CancelPendingSave; SaveBus.SaveCancelled += PatrolPersistence.CancelPendingSave;
             LoadingProgress.Register(this, VehicleBuildCache.LoadWork);
         }
 
@@ -91,9 +90,8 @@ namespace WildWasteland.Modules.Patrols
             DataDir = Dir;
             try { Directory.CreateDirectory(DataDir); } catch (Exception e) { Log.Warn("[Patrols] data folder: " + e.Message); }
 
-            // sidecars: BepInEx\config\WildWasteland\Patrols\Saves, road cache
+            // Derived road cache only; world state is embedded in the ES3 save.
             var cfgDir = Assets.ModuleConfigDir(Id);
-            PatrolPersistence.SavesDir = Path.Combine(cfgDir, "Saves");
             TrafficRoads.CacheDir = Path.Combine(cfgDir, "roads");
 
             // hooks (Core dispatchers) and module patches, each in its own try like the old Awake
@@ -118,7 +116,6 @@ namespace WildWasteland.Modules.Patrols
 
             // per-scene state (fresh start, or a restart after Shutdown)
             Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); PickupCatalog.Invalidate(); ExitSpeed.Restore();
-            PatrolPersistence.Install();
             _onSaveState = PatrolPersistence.OnStateChanged;
             SaveBus.StateChanged += _onSaveState;
 
@@ -134,7 +131,6 @@ namespace WildWasteland.Modules.Patrols
             Services.VehiclePartHit-=Crew.PartHit;
             CrewReturn.Reset();
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings;
-            SaveBus.SaveCancelled -= PatrolPersistence.CancelPendingSave;
             Running = false;
             LoadingProgress.Remove(this);
             Try("build queue", BuildQueue.Reset);
@@ -145,7 +141,7 @@ namespace WildWasteland.Modules.Patrols
             TrafficCompass.Clear();
             Try("foot patrols", WorldTraffic.ReleaseFootAll);
             if (_onSaveState != null) { SaveBus.StateChanged -= _onSaveState; _onSaveState = null; }
-            Try("persistence flush", PatrolPersistence.Uninstall);
+            Try("persistence reset", PatrolPersistence.Uninstall);
             Try("road cache flush", () => { TrafficRoads.Flush(); TrafficRoads.Uninstall(); });
             Try("War Rig", WarRig.WarRigFeature.Uninstall);
             Try("exit speed", ExitSpeed.Restore);

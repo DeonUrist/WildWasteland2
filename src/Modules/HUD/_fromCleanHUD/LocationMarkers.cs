@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using Den.Tools;
 using MapMagic.Products;
 using MapMagic.Terrains;
@@ -22,6 +21,8 @@ namespace WildWasteland.Modules.CleanHUD
         private static readonly Dictionary<Transform, Location> Locations = new Dictionary<Transform, Location>();
         private static readonly List<Transform> Dead = new List<Transform>();
         private static readonly HashSet<string> Discovered = new HashSet<string>(StringComparer.Ordinal);
+        private static readonly SaveKey DiscoveriesSave = SaveBus.Key("WildWasteland.HUD.Locations.v1");
+        private static string _readError;
         private static bool _loaded, _fresh;
         private static string _slot;
         private static int _seed;
@@ -37,37 +38,47 @@ namespace WildWasteland.Modules.CleanHUD
         }
         internal static void Begin(bool fresh)
         {
-            Clear(); _loaded = false; _fresh = fresh; Discovered.Clear();
+            Clear(); _readError = null; _loaded = false; _fresh = fresh; Discovered.Clear();
         }
-        private static void StateChanged(string previous, string now) { if (now == "setSeed") Begin(true); else if (now == "wait" || now == "SaveGame") SaveEnded(SaveBus.Slot); }
+        private static void StateChanged(string previous, string now) { if (now == "setSeed") Begin(true); else if (now == "SaveGame") SaveEnded(SaveBus.Slot); }
         private static int Seed() { var fsm = GameRefs.SaveLoadGame; var seed = fsm != null ? fsm.FsmVariables.FindFsmInt("seed") : null; return seed != null ? seed.Value : int.MinValue; }
-        private static string SavePath(string slot) { return Path.Combine(Path.Combine(Core.Assets.ModuleConfigDir("CleanHUD"), "Saves"), Path.GetFileName(slot) + ".locations.txt"); }
         internal static void WorldReady(string slot)
         {
             int seed = Seed(); if (_loaded && slot == _slot && seed == _seed) return;
-            Discovered.Clear(); _slot = slot; _seed = seed; _loaded = seed != int.MinValue;
+            Discovered.Clear(); _readError = null; _slot = slot; _seed = seed; _loaded = seed != int.MinValue;
             try
             {
-                if (!_fresh && _loaded && !string.IsNullOrEmpty(slot) && File.Exists(SavePath(slot)))
+                if (!_fresh && _loaded && !string.IsNullOrEmpty(slot))
                 {
-                    var lines = File.ReadAllLines(SavePath(slot));
-                    if (lines.Length > 0 && lines[0] == seed.ToString(CultureInfo.InvariantCulture))
+                    string record = DiscoveriesSave.Read(slot);
+                    var lines = record != null ? record.Split('\n') : new string[0];
+                    if (record != null)
+                    {
+                        if (lines.Length == 0 || lines[0] != seed.ToString(CultureInfo.InvariantCulture)) throw new FormatException("Discovery record has an invalid world seed");
                         for (int i = 1; i < lines.Length; i++) if (lines[i].Length > 0) Discovered.Add(lines[i]);
+                    }
                 }
             }
-            catch (Exception e) { CleanHudModule.Warn("Location discoveries could not be read: " + e.Message); }
+            catch (Exception e) { Discovered.Clear(); _readError = "Location discoveries could not be read: " + e.Message; CleanHudModule.Warn(_readError); }
             _fresh = false;
             CleanHudModule.Log("Location discoveries loaded: " + Discovered.Count + " (seed " + seed + ")");
         }
         internal static void SaveEnded(string slot)
         {
-            if (!_loaded || string.IsNullOrEmpty(slot) || Seed() != _seed) return;
+            if (_readError != null) { SaveBus.ReportFailure(CleanHudModule.Instance, _readError); return; }
+            if (!_loaded || string.IsNullOrEmpty(slot)) return;
+            if (Seed() != _seed)
+            {
+                SaveBus.ReportFailure(CleanHudModule.Instance, "Location discoveries save rejected: world seed differs from loaded discoveries");
+                return;
+            }
             _slot = slot;
-            var lines = new string[Discovered.Count + 1]; lines[0] = _seed.ToString(CultureInfo.InvariantCulture); Discovered.CopyTo(lines, 1);
-            string path = SavePath(slot);
-            Directory.CreateDirectory(Path.GetDirectoryName(path)); File.WriteAllLines(path + ".tmp", lines);
-            AtomicFile.Replace(path + ".tmp", path);
-            if (Core.Log.Verbose) Core.Log.Info("[CleanHUD] Location discoveries saved: " + path);
+            try
+            {
+                var lines = new string[Discovered.Count + 1]; lines[0] = _seed.ToString(CultureInfo.InvariantCulture); Discovered.CopyTo(lines, 1);
+                DiscoveriesSave.Write(CleanHudModule.Instance, slot, string.Join("\n", lines));
+            }
+            catch (Exception e) { SaveBus.ReportFailure(CleanHudModule.Instance, "Location discoveries save failed: " + e.Message); CleanHudModule.Warn("Location discoveries could not be saved: " + e.Message); }
         }
 
         internal static void Init()
