@@ -345,5 +345,4 @@ namespace WildWasteland.Modules.Quests
             try { return (bool)getFlag.Invoke(null, new object[] { name }); } catch (Exception) { return false; }
         }
     }
-
 }

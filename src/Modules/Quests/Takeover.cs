@@ -215,7 +215,6 @@ namespace WildWasteland.Modules.Quests
                 if (all[i] != null && all[i].name == name && all[i].scene.IsValid()) return true;
             return false;
         }
-
     }
 
     /// <summary>A walker as stored in the save (AQ1 "W|" lines): object name, origin-relative target, camp key. Merged from SavedWalk.cs.</summary>

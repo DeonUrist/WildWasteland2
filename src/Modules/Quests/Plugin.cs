@@ -14,13 +14,15 @@ using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.Quests
 {
+    /// <summary>
+    /// Native port of Apocalypter Quests 1.8.2, the quest engine: settings apply, per-frame and interval ticks, objectives and tracker
+    /// text, directions, rewards/fail/cancel, deliveries, reputation, kills, talk menu, offers/accept/turn-in and Talk actions.
+    /// Wave A split: save I/O -> Plugin.Save.cs (Quests), IMGUI drawing -> HUD/_fromQuests/Plugin.Hud.cs, conversation fallback UI ->
+    /// HUD/_fromQuests/Plugin.Conversation.cs, RecordNpcName -> Debug/_fromQuests/Plugin.RecordNpcName.cs.
+    /// </summary>
     internal sealed partial class Plugin : EngineSettings
     {
-        public const string PluginGuid = "local.apocalypterquests";
-        public const string PluginName = "Apocalypter Quests";
-        public const string PluginVersion = "1.8.2";
         public const string TalkGuid = "com.example.apocalypter.talk";
-        const string SaveKey = "ApocalypterQuests";
 
         internal static Plugin I;
         static bool logStarted;             // set on the first engine start (the old QuestLogger instance existed from then on)
@@ -56,11 +58,6 @@ namespace WildWasteland.Modules.Quests
 
         // ---- save / load tracking ----
         bool ready, saveBlocked;
-        Type es3Type;
-        bool es3Resolved;
-        MethodInfo es3Save, es3Load, es3Exists, es3SaveS, es3LoadS, es3ExistsS;
-        Type es3SettingsType;
-        object es3FileLocation;      // ES3.Location.File
 
         // ---- ui ----
         class Toast { public string Text; public float Until; }
@@ -69,9 +66,7 @@ namespace WildWasteland.Modules.Quests
         readonly List<string> logLines = new List<string>();
         string logText = "";        // the quest log's text, built once a second instead of on every GUI event
         bool showLog;
-        static bool GamePaused() { return Time.timeScale < 0.01f || (Cursor.visible && Cursor.lockState != CursorLockMode.Locked); }
         float nextRefresh;
-        GUIStyle trackStyle, toastStyle, panelStyle, titleStyle;
 
         // ------------------------------------------------------------------
 
@@ -120,16 +115,6 @@ namespace WildWasteland.Modules.Quests
             anyGen = false;
             for (int i = 0; i < allowedGen.Length; i++) if (allowedGen[i]) anyGen = true;
             if (allowTakeover || allowDeliver) anyGen = true;
-        }
-
-        static Type FindType(string fullName)
-        {
-            foreach (Assembly a in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                Type t = a.GetType(fullName, false);
-                if (t != null) return t;
-            }
-            return null;
         }
 
         // ------------------------------------------------------------------
@@ -963,51 +948,6 @@ namespace WildWasteland.Modules.Quests
                       .Replace("{radius}", ((int)q.Radius).ToString())
                       .Replace("{place}", q.Place ?? "")
                       .Replace("{minutes}", HoursText(Math.Max(0f, q.TimeLeft) / 3600f));
-        }
-
-        readonly HashSet<string> seenNpcs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        // With [Debug] RecordNpcNames on: logs each NPC you talk to and keeps running lists in npc_names.txt and
-        // npc_locations.txt next to the DLL (use these words in the 'giver' key of quests.txt).
-        void RecordNpcName(string npc)
-        {
-            if (!recordNpcs.Value) return;
-            try
-            {
-                if (string.IsNullOrEmpty(npc)) return;
-                Info("Talking to NPC: \"" + npc + "\"");
-                if (seenNpcs.Add(npc))
-                {
-                    string path = Path.Combine(DataDir, "npc_names.txt");
-                    var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    if (File.Exists(path)) foreach (string l in File.ReadAllLines(path)) known.Add(l.Trim());
-                    if (known.Add(npc)) File.AppendAllText(path, npc + Environment.NewLine);
-                }
-            }
-            catch (Exception e) { Warn("Could not record NPC name: " + e.Message); }
-            try
-            {
-                // which camp / cave / building is this NPC standing at? (helps you fill in factions.txt)
-                Transform t = bridge.Npc;
-                if (t == null || string.IsNullOrEmpty(npc)) return;
-                List<Poi> near = Game.FindPois(t.position, 0f, 150f, "");
-                if (near.Count == 0) return;
-                Poi best = near[0];
-                float bd = Game.HDist(best.Pos, t.position);
-                for (int i = 1; i < near.Count; i++)
-                {
-                    float d = Game.HDist(near[i].Pos, t.position);
-                    if (d < bd) { bd = d; best = near[i]; }
-                }
-                string entry = npc + " @ " + best.Name;
-                Faction nf = Factions.OfObject(t.gameObject.tag, npc, t.position);
-                Info("NPC location: " + entry + " (" + (int)bd + " m)  faction: " + (nf != null ? nf.Name : "none"));
-                string lpath = Path.Combine(DataDir, "npc_locations.txt");
-                var have = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                if (File.Exists(lpath)) foreach (string l in File.ReadAllLines(lpath)) have.Add(l.Trim());
-                if (have.Add(entry)) File.AppendAllText(lpath, entry + Environment.NewLine);
-            }
-            catch (Exception e) { Warn("Could not record NPC name: " + e.Message); }
         }
 
         internal void OnTalkOpen(object inst)
@@ -2018,25 +1958,6 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
-        // ------------------------------------------------------------------
-        // Saving and loading with the game's own save slot (Easy Save)
-        // ------------------------------------------------------------------
-        static bool IsLoadingState(string s)
-        {
-            switch (s)
-            {
-                case "Start":
-                case "setSeed":
-                case "generateTerrain":
-                case "Wait for Terrain Gen":
-                case "LoadGame":
-                case "generateTerrain 2":
-                case "LoadVar":
-                    return true;
-            }
-            return false;
-        }
-
         // Forgets everything that belongs to the world that was just left (offers, who offered what, map markers).
         void ResetSession()
         {
@@ -2056,435 +1977,6 @@ namespace WildWasteland.Modules.Quests
             bridge.ClearButtons();
             MapLink.Reset();
             Hire.Reset();
-        }
-
-        bool ResolveEs3()
-        {
-            if (es3Resolved) return es3Save != null && es3Load != null && es3Exists != null;
-            es3Resolved = true;
-            es3Type = FindType("ES3");
-            if (es3Type == null) es3Type = Type.GetType("ES3, Assembly-CSharp-firstpass", false);
-            if (es3Type == null) { Error("Easy Save (ES3) was not found; quests cannot be saved."); return false; }
-
-            foreach (MethodInfo m in es3Type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            {
-                ParameterInfo[] ps = m.GetParameters();
-                if (m.Name == "Save" && m.IsGenericMethodDefinition && ps.Length == 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.IsGenericParameter)
-                { if (es3Save == null) es3Save = m.MakeGenericMethod(typeof(string)); }
-                else if (m.Name == "Load" && m.IsGenericMethodDefinition && ps.Length == 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.IsGenericParameter)
-                { if (es3Load == null) es3Load = m.MakeGenericMethod(typeof(string)); }
-                else if (m.Name == "KeyExists" && ps.Length == 1 && ps[0].ParameterType == typeof(string))
-                { if (es3Exists == null) es3Exists = m; }
-            }
-            foreach (MethodInfo m in es3Type.GetMethods(BindingFlags.Public | BindingFlags.Static))
-            {
-                ParameterInfo[] ps = m.GetParameters();
-                if (m.Name == "Save" && m.IsGenericMethodDefinition && ps.Length == 3 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.IsGenericParameter && ps[2].ParameterType.Name == "ES3Settings")
-                    es3SaveS = m.MakeGenericMethod(typeof(string));
-                else if (m.Name == "Load" && m.IsGenericMethodDefinition && ps.Length == 3 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.IsGenericParameter && ps[2].ParameterType.Name == "ES3Settings")
-                    es3LoadS = m.MakeGenericMethod(typeof(string));
-                else if (m.Name == "KeyExists" && !m.IsGenericMethodDefinition && ps.Length == 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.Name == "ES3Settings")
-                    es3ExistsS = m;
-            }
-            es3SettingsType = es3Type.Assembly.GetType("ES3Settings", false);
-            Type locType = es3Type.GetNestedType("Location");
-            if (locType != null) { try { es3FileLocation = Enum.Parse(locType, "File"); } catch (Exception) { } }
-            Info("Easy Save: default " + (es3Save != null && es3Load != null) + ", straight-to-file " + (es3SaveS != null && es3LoadS != null && es3SettingsType != null && es3FileLocation != null));
-            if (es3Save == null || es3Load == null || es3Exists == null)
-            {
-                Error("Easy Save has no Save<T>(key,value) / Load<T>(key,default) / KeyExists(key) overloads this mod can use; quests cannot be saved.");
-                return false;
-            }
-            return true;
-        }
-
-        // ---- Easy Save's memory cache ---------------------------------------------------------------
-        // The game saves through Easy Save's cached file and ends with StoreCachedFile, which rewrites the slot file from
-        // memory. A value written only to the file is wiped by that, so it also has to go into the cached copy
-        // (the Immersive Map mod does the same: "disk + memory").
-        static object StaticMember(Type t, string name)
-        {
-            const BindingFlags f = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
-            PropertyInfo pr = t.GetProperty(name, f);
-            if (pr != null) return pr.GetValue(null, null);
-            FieldInfo fi = t.GetField(name, f);
-            return fi != null ? fi.GetValue(null) : null;
-        }
-
-        static object InstMember(object o, string name)
-        {
-            const BindingFlags f = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-            Type t = o.GetType();
-            PropertyInfo pr = t.GetProperty(name, f);
-            if (pr != null) return pr.GetValue(o, null);
-            FieldInfo fi = t.GetField(name, f);
-            return fi != null ? fi.GetValue(o) : null;
-        }
-
-        // the path Easy Save is currently using by default = the slot being played
-        static string DefaultEs3Path()
-        {
-            try
-            {
-                Type st = FindType("ES3Settings");
-                if (st == null) return "";
-                object s = StaticMember(st, "defaultSettings");
-                if (s == null) return "";
-                object path = InstMember(s, "path");
-                return path as string ?? "";
-            }
-            catch (Exception) { return ""; }
-        }
-
-        static List<object> CachedSlotFiles()
-        {
-            var res = new List<object>();
-            try
-            {
-                Type ft = FindType("ES3File");
-                string want = DefaultEs3Path();
-                if (ft == null || want.Length == 0) return res;
-                string wantName = Path.GetFileName(want);
-                System.Collections.IDictionary d = StaticMember(ft, "cachedFiles") as System.Collections.IDictionary;
-                if (d == null) return res;
-                foreach (System.Collections.DictionaryEntry de in d)
-                {
-                    string k = de.Key as string;
-                    if (k != null && de.Value != null && string.Equals(Path.GetFileName(k), wantName, StringComparison.OrdinalIgnoreCase)) res.Add(de.Value);
-                }
-            }
-            catch (Exception) { }
-            return res;
-        }
-
-        static int SaveToCache(string key, string text)
-        {
-            int n = 0;
-            foreach (object file in CachedSlotFiles())
-            {
-                try
-                {
-                    foreach (MethodInfo m in file.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance))
-                    {
-                        ParameterInfo[] ps = m.GetParameters();
-                        if (m.Name == "Save" && m.IsGenericMethodDefinition && ps.Length == 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.IsGenericParameter)
-                        {
-                            m.MakeGenericMethod(typeof(string)).Invoke(file, new object[] { key, text });
-                            n++;
-                            break;
-                        }
-                    }
-                }
-                catch (Exception) { }
-            }
-            return n;
-        }
-
-        static string LoadFromCache(string key)
-        {
-            foreach (object file in CachedSlotFiles())
-            {
-                try
-                {
-                    MethodInfo ex = file.GetType().GetMethod("KeyExists", BindingFlags.Public | BindingFlags.Instance, null, new Type[] { typeof(string) }, null);
-                    if (ex == null || !(bool)ex.Invoke(file, new object[] { key })) continue;
-                    foreach (MethodInfo m in file.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance))
-                    {
-                        ParameterInfo[] ps = m.GetParameters();
-                        if (m.Name == "Load" && m.IsGenericMethodDefinition && ps.Length == 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType.IsGenericParameter)
-                        {
-                            string s = m.MakeGenericMethod(typeof(string)).Invoke(file, new object[] { key, "" }) as string;
-                            if (!string.IsNullOrEmpty(s)) return s;
-                        }
-                    }
-                }
-                catch (Exception) { }
-            }
-            return "";
-        }
-
-        // Settings for one save file, read and written on disk (not Easy Save's in-memory copy). Same approach as Immersive Map.
-        object DiskSettings(string file)
-        {
-            if (es3SettingsType == null || es3FileLocation == null) return null;
-            object st = null;
-            foreach (ConstructorInfo c in es3SettingsType.GetConstructors())
-            {
-                ParameterInfo[] ps = c.GetParameters();
-                if (ps.Length == 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType == typeof(Enum[]))
-                { st = c.Invoke(new object[] { file, new Enum[] { (Enum)es3FileLocation } }); break; }
-            }
-            if (st == null)
-            {
-                foreach (ConstructorInfo c in es3SettingsType.GetConstructors())
-                {
-                    ParameterInfo[] ps = c.GetParameters();
-                    if (ps.Length == 2 && ps[0].ParameterType == typeof(string) && ps[1].ParameterType == es3SettingsType) { st = c.Invoke(new object[] { file, null }); break; }
-                }
-                if (st == null) return null;
-                const BindingFlags I = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-                FieldInfo lf = es3SettingsType.GetField("location", I);
-                if (lf != null) lf.SetValue(st, es3FileLocation);
-                else { PropertyInfo lp = es3SettingsType.GetProperty("location", I); if (lp != null && lp.CanWrite) lp.SetValue(st, es3FileLocation, null); else return null; }
-            }
-            return st;
-        }
-
-        bool SaveToDisk(string key, string value, string file)
-        {
-            object st = es3SaveS == null ? null : DiskSettings(file);
-            if (st == null) return false;
-            es3SaveS.Invoke(null, new object[] { key, value, st });
-            return true;
-        }
-
-        string LoadFromDisk(string key, string file)
-        {
-            object st = es3LoadS == null ? null : DiskSettings(file);
-            if (st == null) return null;
-            if (es3ExistsS != null && !(bool)es3ExistsS.Invoke(null, new object[] { key, st })) return null;
-            return (string)es3LoadS.Invoke(null, new object[] { key, "", st });
-        }
-
-        // the current save slot's file name (SaveGame1.es3 ...), asked from the game's own ES3SettingsMod
-        string SlotId()
-        {
-            string dp = DefaultEs3Path();
-            if (dp.Length > 0) return Path.GetFileName(dp);
-            try
-            {
-                Type t = FindType("ES3SettingsMod");
-                if (t != null)
-                {
-                    const BindingFlags f = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
-                    MethodInfo m = t.GetMethod("GetSavePath", f, null, Type.EmptyTypes, null);
-                    if (m != null) { object r = m.Invoke(null, null); if (r != null) return r.ToString(); }
-                    PropertyInfo pr = t.GetProperty("DefaultSavePath", f);
-                    if (pr != null) { object r = pr.GetValue(null, null); if (r != null) return r.ToString(); }
-                    FieldInfo fi = t.GetField("DefaultSavePath", f);
-                    if (fi != null) { object r = fi.GetValue(null); if (r != null) return r.ToString(); }
-                }
-            }
-            catch (Exception) { }
-            return "unknown";
-        }
-
-        string BackupPath()
-        {
-            string slot = SlotId();
-            var sbn = new StringBuilder();
-            for (int i = 0; i < slot.Length; i++) sbn.Append(char.IsLetterOrDigit(slot[i]) ? slot[i] : '_');
-            string dir = Path.Combine(Paths.ConfigPath, "ApocalypterQuests_saves");
-            return Path.Combine(dir, sbn + ".txt");
-        }
-
-        // Cooldown stamps that have run out are no use any more; dropping them keeps the saved data small over a long game.
-        void PruneStamps()
-        {
-            double now = Game.GameHours();
-            if (now < 0.0 || book.GiverStamp.Count == 0) return;
-            List<string> drop = null;
-            foreach (KeyValuePair<string, long> kv in book.GiverStamp)
-            {
-                double age = now - kv.Value / 1000.0;
-                double keep = kv.Key.StartsWith("camp:", StringComparison.Ordinal) ? Takeover.GarrisonCooldownHours : CooldownHours;
-                if (age < 0.0 || age > keep + 1.0) { if (drop == null) drop = new List<string>(); drop.Add(kv.Key); }
-            }
-            if (drop != null) foreach (string k in drop) book.GiverStamp.Remove(k);
-        }
-
-        void SaveBook()
-        {
-            if (!ready || _sessionSlot == null || _sessionSlot != SaveBus.Slot) return;
-            if (saveBlocked) { SaveBus.ReportFailure("Quest data is unreadable; preserving the previous save."); Warn("Not saving quests: the data in this slot was in a format this version cannot read."); return; }
-            PruneStamps();
-            CaptureBook();
-            string text = book.Serialize();
-            bool es3ok = false, diskOk = false;
-            bool haveEs3 = ResolveEs3();
-            if (haveEs3)
-            {
-                string slotFile = DefaultEs3Path();
-                if (slotFile.Length > 0)
-                {
-                    try { diskOk = SaveToDisk(SaveKey, text, slotFile); }
-                    catch (Exception e) { Warn("Saving quests straight into " + slotFile + " failed: " + (e.InnerException ?? e).Message); }
-                }
-                try
-                {
-                    es3Save.Invoke(null, new object[] { SaveKey, text });
-                    es3ok = true;
-                }
-                catch (Exception e) { LogOnce("SaveBook", e is TargetInvocationException && e.InnerException != null ? e.InnerException : e); }
-            }
-            int mem = SaveToCache(SaveKey, text);
-            // a backup file is only written when Easy Save can't be used at all (the only case in which it is read)
-            string backup = "";
-            if (!haveEs3)
-            {
-                try
-                {
-                    string path = BackupPath();
-                    Directory.CreateDirectory(Path.GetDirectoryName(path));
-                    File.WriteAllText(path, text);
-                    backup = path;
-                }
-                catch (Exception e) { LogOnce("SaveBackup", e); }
-            }
-            if (!es3ok || mem == 0) SaveBus.ReportFailure("Quest data did not reach the world cache.");
-            Core.Log.Always("[Quests] Saved " + book.Active.Count + " quests (slot " + SlotId() + ", " + text.Length + " chars, game save " + (es3ok || diskOk ? "ok" : "FAILED") + (diskOk ? " (disk" + (es3ok ? " + memory)" : ")") : " (memory only)") + ", cache copies " + mem + (backup.Length > 0 ? ", backup file written" : "") + ").");
-        }
-
-        void LoadBook()
-        {
-            book.Clear();
-            saveBlocked = false;
-            string data = "";
-            string from = "";
-            bool readError = false;
-            bool es3ok = ResolveEs3();
-            if (es3ok)
-            {
-                string slotFile = DefaultEs3Path();
-                if (slotFile.Length > 0)
-                {
-                    try { string d = LoadFromDisk(SaveKey, slotFile); if (!string.IsNullOrEmpty(d)) { data = d; from = "game save file " + slotFile; } }
-                    catch (Exception e) { readError = true; LogOnce("LoadDisk", e is TargetInvocationException && e.InnerException != null ? e.InnerException : e); }
-                }
-            }
-            if (es3ok && string.IsNullOrEmpty(data))
-            {
-                try
-                {
-                    bool exists = (bool)es3Exists.Invoke(null, new object[] { SaveKey });
-                    if (exists) { data = (string)es3Load.Invoke(null, new object[] { SaveKey, "" }); from = "game save"; }
-                }
-                catch (Exception e) { readError = true; LogOnce("LoadBook", e is TargetInvocationException && e.InnerException != null ? e.InnerException : e); }
-            }
-            if (string.IsNullOrEmpty(data))
-            {
-                string cached = LoadFromCache(SaveKey);
-                if (!string.IsNullOrEmpty(cached)) { data = cached; from = "game save (memory)"; }
-            }
-            // The backup file is NOT per save: using it when a save simply has no quests would load later quests into an
-            // older save. It is only a fallback for when Easy Save cannot be used at all.
-            if (string.IsNullOrEmpty(data) && !es3ok)
-            {
-                try
-                {
-                    string path = BackupPath();
-                    if (File.Exists(path)) { data = File.ReadAllText(path); from = "backup file"; }
-                }
-                catch (Exception e) { readError = true; LogOnce("LoadBackup", e); }
-            }
-            if (readError) { saveBlocked = true; book.Clear(); Warn("Quest data could not be read; saving is blocked for this session."); return; }
-            if (string.IsNullOrEmpty(data)) { Info("No saved quests found for slot " + SlotId() + "."); return; }
-            if (!book.Deserialize(data))
-            {
-                saveBlocked = true;
-                book.Clear();
-                Warn("Quest data in slot " + SlotId() + " (" + from + ") could not be read; leaving it untouched.");
-                return;
-            }
-            RestoreBook();
-            MapLink.Reset();
-            for (int i = 0; i < book.Active.Count; i++)
-                if (book.Active[i].Type != QType.Deliver && book.Active[i].Deadline <= 0.0) AssignDeadline(book.Active[i]);   // jobs saved by an older version get a fresh time limit
-            Info("Loaded " + book.Active.Count + " quests from the " + from + " (slot " + SlotId() + ").");
-        }
-
-        // ------------------------------------------------------------------
-        // HUD
-        // ------------------------------------------------------------------
-        void EnsureStyles()
-        {
-            if (trackStyle != null) return;
-            trackStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, alignment = TextAnchor.UpperRight, wordWrap = false, richText = false };
-            toastStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, wordWrap = false, richText = false };
-            panelStyle = new GUIStyle(GUI.skin.label) { fontSize = 19, wordWrap = true, richText = true, alignment = TextAnchor.UpperLeft };
-            titleStyle = new GUIStyle(GUI.skin.label) { fontSize = 26, alignment = TextAnchor.UpperLeft, richText = false };
-        }
-
-        GUIStyle windowStyle;
-        float nextSkinTry;
-
-        // the quest log's background: the same image (and 9-slice edge) as Talk's dialogue window, or Talk's own
-        // plain colour when it has no image
-        void DrawWindow(Rect box)
-        {
-            Texture2D tex;
-            RectOffset border;
-            if (windowStyle == null && Time.unscaledTime >= nextSkinTry)
-            {
-                nextSkinTry = Time.unscaledTime + 2f;
-                if (bridge.WindowSkin(out tex, out border))
-                {
-                    windowStyle = new GUIStyle();
-                    windowStyle.normal.background = tex;
-                    windowStyle.border = border;
-                }
-            }
-            Color old = GUI.color;
-            if (windowStyle != null)
-            {
-                GUI.color = Color.white;
-                if (Event.current.type == EventType.Repaint) windowStyle.Draw(box, false, false, false, false);
-            }
-            else
-            {
-                GUI.color = TalkBridge.TalkFallbackColor;
-                GUI.DrawTexture(box, Texture2D.whiteTexture);
-            }
-            GUI.color = old;
-        }
-
-        static void Shadowed(Rect r, string text, GUIStyle st)
-        {
-            Color old = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.85f);
-            GUI.Label(new Rect(r.x + 1.5f, r.y + 1.5f, r.width, r.height), text, st);
-            GUI.color = old;
-            GUI.Label(r, text, st);
-        }
-
-        internal void Draw()
-        {
-            if (!ready) return;
-            EnsureStyles();
-            Matrix4x4 oldMatrix = GUI.matrix;
-            try
-            {
-                float s = Screen.height / 1080f;
-                GUI.matrix = Matrix4x4.Scale(new Vector3(s, s, 1f));
-                float vw = Screen.width / s;
-
-                bool paused = GamePaused();              // the pause menu (and the talk window) stop the clock
-                if (!TrackerStyled && showTracker.Value && trackerLines.Count > 0 && !showLog && !paused)
-                {
-                    float y = 24f;
-                    for (int i = 0; i < trackerLines.Count && i < 5; i++, y += 26f)
-                        Shadowed(new Rect(vw - 760f, y, 740f, 26f), trackerLines[i], trackStyle);
-                }
-
-                if (showLog && !JournalStyled && !paused)
-                {
-                    var box = new Rect(vw / 2f - 400f, 150f, 800f, 620f);
-                    DrawWindow(box);
-                    panelStyle.normal.textColor = Color.white;
-                    titleStyle.normal.textColor = Color.white;
-                    GUI.Label(new Rect(box.x + 36f, box.y + 28f, 730f, 40f), "Quests   (" + book.TotalDone + " completed)", titleStyle);
-                    GUI.Label(new Rect(box.x + 36f, box.y + 78f, 730f, 510f), logText, panelStyle);
-                }
-
-                float ty = 120f;
-                for (int i = toasts.Count - 1; i >= 0; i--)
-                {
-                    if (Time.unscaledTime > toasts[i].Until) { toasts.RemoveAt(i); continue; }
-                }
-                for (int i = 0; i < toasts.Count; i++, ty += 34f)
-                    Shadowed(new Rect(vw / 2f - 500f, ty, 1000f, 34f), toasts[i].Text, toastStyle);
-            }
-            finally { GUI.matrix = oldMatrix; }
         }
     }
 }
