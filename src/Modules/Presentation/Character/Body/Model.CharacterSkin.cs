@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.PlayerBody
     {
         static readonly Dictionary<int, Mesh> CharacterMeshes = new Dictionary<int, Mesh>();
         static readonly Dictionary<int, Texture2D> CharacterTextures = new Dictionary<int, Texture2D>();
+        /// <summary>Mesh and material of a Gungirl/Shoota player choice built from the Women of Wasteland model onto the rig's bones (cached per choice).</summary>
         internal static Material CharacterSkin(SkinnedMeshRenderer skin, int choice)
         {
             string modelPath = PresentationModule.AssetPath(choice == 0 ? CharacterSettings.ModelFile.Value : "Models/Player_male.glb");
@@ -41,6 +42,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (texture != null) material.mainTexture = texture;
             skin.sharedMesh = mesh; skin.sharedMaterial = material; return material;
         }
+        /// <summary>Builds the first-person mesh variants from a native character's own mesh (triangles filtered by their dominant bone).</summary>
         static bool BuildNative(SkinnedMeshRenderer skin)
         {
             var original = skin.sharedMesh; if (original == null) return false;
@@ -68,6 +70,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Body " + CharacterSettings.Character.Value + ": " + vertices.Length + " vertices; first-person meshes ready" + (original.isReadable ? "" : " (native mesh baked)"));
             return true;
         }
+        /// <summary>Readable geometry of a native mesh (a readable copy or a bake when the asset is not readable).</summary>
         static void NativeGeometry(SkinnedMeshRenderer skin, out Vector3[] vertices, out Vector3[] normals, out Vector2[] uv, out int[] tris)
         {
             var original = skin.sharedMesh; Mesh copy = null, baked = null;

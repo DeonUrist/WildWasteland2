@@ -68,8 +68,10 @@ namespace WildWasteland.Modules.PlayerBody
         private string _poseListFor = null; private Props.Kind _poseListKind; private bool _poseListSet;
         private bool _aimingNow, _shootingNow;
 
+        /// <summary>True when the bundle has the clip.</summary>
         private static bool Has(string clip) { return Anims.Get(clip) != null; }
 
+        /// <summary>Builds the Mixamo graph: 42 locomotion slots, the upper-body layer (strikes, punches, throws) and the whole-body action layer.</summary>
         private void BuildMixamo(AnimationPlayableOutput output)
         {
             // the base: 34 slots of the rifle pack, with fallbacks for what the pack lacks
@@ -108,6 +110,7 @@ namespace WildWasteland.Modules.PlayerBody
                 + "; relaxed: " + Have("Idle", "RifleWalkLow", "RifleRunLow", "WalkStrafeLeft", "WalkStrafeRight", "WalkBack", "RifleWalkToStop", "LeftTurn", "RightTurn")
                 + "; actions: " + Have("Kick", "Jump", "PistolJump", "RifleJumpUp", "RifleJumpLoop", "RifleJumpDown", "RifleTurnLeft", "RifleTurnRight", "RifleCrouchTurnLeft", "RifleCrouchTurnRight"));
         }
+        /// <summary>First of the clip names the bundle has, or null.</summary>
         private static string Have(params string[] names)
         {
             var l = new List<string>();
@@ -115,7 +118,7 @@ namespace WildWasteland.Modules.PlayerBody
             return string.Join(", ", l.ToArray());
         }
 
-        // the invisible skeleton copy that plays the upper-body clip (built right after the graph; src = her Anim object)
+        /// <summary>the invisible skeleton copy that plays the upper-body clip (built right after the graph; src = her Anim object)</summary>
         private void BuildUpperRig(GameObject src)
         {
             try
@@ -161,6 +164,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // the upper source's clip: a new clip starts at once, the old pose fades out under it (as SetUpper)
         private float _rigSpeed = 1f, _rigManual = -1f;     // _rigManual >= 0: the upper clip held at that share of it (per-round reloads)
+        /// <summary>Sets the UpperRig's hand clip: a new clip starts at once (or at a share of it) while the old pose fades out under it; hold/sync/speed for the rig tick.</summary>
         private void RigSet(string clip, bool hold, bool sync, float start = 0f, float speed = 1f)
         {
             if (!_rigGraph.IsValid()) return;
@@ -181,6 +185,7 @@ namespace WildWasteland.Modules.PlayerBody
             _rigHold = hold; _rigSync = sync; _rigSpeed = speed;
         }
 
+        /// <summary>Stride phase of a clip, measured once on the UpperRig (-1 when it has none).</summary>
         private float PhaseOf(string clip)
         {
             float p;
@@ -191,13 +196,13 @@ namespace WildWasteland.Modules.PlayerBody
             if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Stride phase of " + clip + ": " + (p < 0f ? "none" : p.ToString("0.00")));
             return p;
         }
-        // samples the clip on the skeleton copy (its own source for a moment) and takes the first harmonic of left-minus-right foot height
+        /// <summary>samples the clip on the skeleton copy (its own source for a moment) and takes the first harmonic of left-minus-right foot height</summary>
         private float MeasurePhase(AnimationClip c)
         {
             var d = SampleFeet(c, 24, false);
             return d == null ? -1f : LocoPlan.PhaseFromHeights(d);
         }
-        // n samples over the clip on the skeleton copy: left minus right foot height
+        /// <summary>n samples over the clip on the skeleton copy: left minus right foot height</summary>
         private float[] SampleFeet(AnimationClip c, int n, bool lower)
         {
             if (c == null || !_rigGraph.IsValid() || !_rigOut.IsOutputValid() || _rigLFoot == null || _rigRFoot == null || _rigAnim == null) return null;
@@ -225,7 +230,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
-        // every frame after the Animator: evaluate the upper source and write it over her upper body with weight w
+        /// <summary>every frame after the Animator: evaluate the upper source and write it over her upper body with weight w</summary>
         private void RigApply(float dt, float w)
         {
             _rigEff = 0f;
@@ -261,7 +266,9 @@ namespace WildWasteland.Modules.PlayerBody
             _rigEff = eff;
         }
 
+        /// <summary>Playback speed of a locomotion clip for the ground speed (0.5x..2x of its native speed).</summary>
         private static float ClipSpeed(float speed, float native) { return Mathf.Clamp(speed / Mathf.Max(0.2f, native), 0.5f, 2f); }
+        /// <summary>Native ground speed of a clip playable (average root speed), or the fallback.</summary>
         private static float Native(AnimationClipPlayable p, float fallback)
         {
             var c = p.GetAnimationClip();
@@ -277,6 +284,7 @@ namespace WildWasteland.Modules.PlayerBody
         // fire clip moves her hands, per weapon and clip; live keys with WeaponAdjustment on
         private float _aimLiftW; private string _aimLiftClip; private bool _aimDirty;
         private bool _aimCrouched;
+        /// <summary>Raises both hands and tilts the head by the weapon's aim-lift entry while an aim / fire clip moves the hands (eased in and out).</summary>
         private void ApplyAimLift(string weapon, Props.Kind kind, float dt)
         {
             string clip = _rigClip;
@@ -295,6 +303,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             if (Mathf.Abs(v[1]) > 0.01f) Turn("mixamorig:Head", Vector3.right, v[1] * w);
         }
+        /// <summary>Moves a hand by <paramref name="d"/> with a two-bone elbow solve, keeping the hand's rotation.</summary>
         private void LiftArm(string upper, string lower, string hand, Vector3 d)
         {
             Transform s, e, h;
@@ -315,6 +324,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly string[] PoseArmUpper = { "mixamorig:LeftArm", "mixamorig:RightArm" };
         private static readonly string[] PoseArmLower = { "mixamorig:LeftForeArm", "mixamorig:RightForeArm" };
         private static readonly string[] PoseArmHand = { "mixamorig:LeftHand", "mixamorig:RightHand" };
+        /// <summary>Applies the weapon's per-clip arm offsets from the aim-lift table, blended by the hand clips' weights.</summary>
         private void ApplyArmPose(string weapon)
         {
             PoseWeights();
@@ -345,12 +355,14 @@ namespace WildWasteland.Modules.PlayerBody
         }
         private float _pumpUntil; private bool _cocking, _pumpStart;
         private int _locoKind;
+        /// <summary>Facing of the line a-b (pointing to her right) about her up axis, degrees.</summary>
         private float YawIn(Transform a, Transform b)   // facing of the line a->b (pointing to her right) about her up axis, + = right
         {
             var s = _anim.InverseTransformDirection(b.position - a.position); s.y = 0f;
             var f = Vector3.Cross(s, Vector3.up);
             return Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
         }
+        /// <summary>Turns the spine so the chest follows the shoulders' facing by <paramref name="follow"/> (LocoPlan.Twist).</summary>
         private void TwistSpine(float follow)
         {
             Transform lh, rh, la, ra;
@@ -364,12 +376,13 @@ namespace WildWasteland.Modules.PlayerBody
             Turn("mixamorig:Neck", Vector3.up, nk);
         }
         private float _actionFade = 6f;                          // how fast an action fades out (1/s)
-        // a jump clip's take-off / apex / touch-down (x, y, z as shares of the clip; -1 = none)
+        /// <summary>a jump clip's take-off / apex / touch-down (x, y, z as shares of the clip; -1 = none)</summary>
         private static Vector3 JumpMarksOf(string clip)
         {
             float l, a, t;
             return LocoPlan.JumpMarks(clip, out l, out a, out t) ? new Vector3(l, a, t) : new Vector3(-1f, -1f, -1f);
         }
+        /// <summary>Sets the 42 base slots' weights and clip times from speed, run/sprint weights, direction, crouch and the relaxed share (and the legs' turn toward the movement).</summary>
         private void DriveBase(float m, float r, float sprint, Vector3 local, float crouch, float speed, int previewSlot, float relax, out float hipTurn)
         {
             var w = _bw;
@@ -405,7 +418,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
-        // the clips the drawn weapon can show, for WeaponAdjustment (numpad 9/3) - every one with its own pose entry
+        /// <summary>the clips the drawn weapon can show, for WeaponAdjustment (numpad 9/3) - every one with its own pose entry</summary>
         private void SetPoseList(Props.Kind kind, string weapon)
         {
             if (_poseListSet && kind == _poseListKind && string.Equals(weapon ?? "", _poseListFor, StringComparison.Ordinal)) return;   // (WW perf) was kind+"|"+weapon per frame
@@ -434,7 +447,7 @@ namespace WildWasteland.Modules.PlayerBody
             GunPose.SetPoseList(l, idle);
         }
 
-        // which clips move her hands this frame, and how much (for the weapon pose blend)
+        /// <summary>which clips move her hands this frame, and how much (for the weapon pose blend)</summary>
         private void PoseWeights()
         {
             _poseWn.Clear();
@@ -448,7 +461,9 @@ namespace WildWasteland.Modules.PlayerBody
             if (wUp > 0.001f && !string.IsNullOrEmpty(_upperClip)) Add(_upperClip, wUp);                       // (2.1.9) above the actions
             if (wAct > 0.001f && !string.IsNullOrEmpty(_actionClip)) Add(_actionClip, wAct * (1f - wUp));
         }
+        /// <summary>Adds weight to a pose clip for this frame's weapon-pose blend.</summary>
         private void Add(string n, float w) { float v; _poseWn.TryGetValue(n, out v); _poseWn[n] = v + w; }
+        /// <summary>The pose clip with the most weight this frame (the editor's preview clip first).</summary>
         private string DominantPose()
         {
             if (_previewName != null) return _previewName;
@@ -457,6 +472,7 @@ namespace WildWasteland.Modules.PlayerBody
             return best ?? "Idle";
         }
 
+        /// <summary>Jump clip of the weapon kind (RifleJumpUp / RifleJump / PistolJump / Jump).</summary>
         private string JumpClip(Props.Kind kind)
         {
             if (kind == Props.Kind.Rifle && Has("RifleJumpUp")) return "RifleJumpUp";
@@ -465,11 +481,7 @@ namespace WildWasteland.Modules.PlayerBody
             return "Jump";
         }
 
-        // standing still and turned a lot: a turn-in-place clip (the rifle pack's, full body; the upper source stays on it for pistols / bare hands)
-        // (2.1.5) standing still and turning: from the first degree the turn clip's feet are driven by the turn itself (LocoPlan.TurnCurve:
-        // each degree she turns advances the clip by the share of it that turns one degree), so the feet step exactly as fast as the camera
-        // turns and never slide; past the clip's end it starts over. When she stops turning the step in progress is finished (past its middle)
-        // or faded out.
+        /// <summary>standing still and turned a lot: a turn-in-place clip (the rifle pack's, full body; the upper source stays on it for pistols / bare hands) (2.1.5) standing still and turning: from the first degree the turn clip's feet are driven by the turn itself (LocoPlan.TurnCurve: each degree she turns advances the clip by the share of it that turns one degree), so the feet step exactly as fast as the camera turns and never slide; past the clip's end it starts over. When she stops turning the step in progress is finished (past its middle) or faded out.</summary>
         private void TurnInPlace(float yawDeg, float m, float crouch, bool relaxed, float dt)
         {
             if (!_turnInit) { _turnInit = true; _turnLastYaw = yawDeg; }
@@ -505,6 +517,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             else if (mine && !_turnSettling && Time.time - _turnMovedAt > 0.12f) EndTurn(true);
         }
+        /// <summary>Ends a turn-in-place clip: the step in progress finishes (past its middle) or fades out.</summary>
         private void EndTurn(bool settle)
         {
             if (_turnClip == null) return;
@@ -524,6 +537,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!settle) _turnClip = null;
         }
 
+        /// <summary>The Mixamo frame on foot: locomotion, hands (UpperRig), actions, strikes, throws, reloads, aim pitch and lift, crouch, weapon prop.</summary>
         private void LateMixamo(View view, float dt, Quaternion yaw, float camPitch)
         {
             Vector3 v = PlayerState.Velocity; v.y = 0f;

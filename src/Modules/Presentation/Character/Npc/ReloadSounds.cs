@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<string, AudioClip[]> _clips = new Dictionary<string, AudioClip[]>(StringComparer.OrdinalIgnoreCase);
         private static readonly AudioClip[] _none = new AudioClip[0];
 
+        /// <summary>The reload clips the player's copy of the weapon plays (its AnimSound FSM), found once per weapon key.</summary>
         private static AudioClip[] ClipsOf(string key)
         {
             AudioClip[] list;
@@ -68,7 +69,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<AudioSource> _pool = new List<AudioSource>();
         private static int _next;
 
-        // called every frame while the NPC reloads: plays clip i at (i + 0.5) / count of the reload time
+        /// <summary>called every frame while the NPC reloads: plays clip i at (i + 0.5) / count of the reload time</summary>
         internal static void Tick(Brain.Npc n, float now)
         {
             if (CharacterSettings.ReloadVolume.Value <= 0f || n.ReloadLen <= 0.05f) return;

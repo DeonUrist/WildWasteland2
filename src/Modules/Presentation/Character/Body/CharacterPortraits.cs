@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.PlayerBody
         // partial files is unspecified
         static readonly Texture2D[] Pictures = new Texture2D[Names.Length];
         static readonly DateTime[] Modified = new DateTime[Names.Length];
+        /// <summary>Maps the legacy Pistoleer / Mechanic choices to Bodyguard / Merchant.</summary>
         internal static int Canonical(int choice) { return choice == 5 ? 3 : choice == 6 ? 2 : choice; }
     }
 }

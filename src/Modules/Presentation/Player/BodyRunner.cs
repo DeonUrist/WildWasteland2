@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static Body _body;
         private static Vector3 _jumpHeadPlayerPosition;
         private static bool _jumpHeadReady;
+        /// <summary>Head position of the body during the player's jump, shifted with the player's movement since the last pose (scene space).</summary>
         internal static bool TryPlayerJumpHead(GameObject player, out Vector3 position)
         {
             position = Vector3.zero;
@@ -20,19 +21,23 @@ namespace WildWasteland.Modules.PlayerBody
             position += player.transform.position - _jumpHeadPlayerPosition;
             return true;
         }
+        /// <summary>The player's body, or null while it is not built.</summary>
         internal static Body PlayerBody { get { return _body; } }
         private static float _nextBuild;
         private static string _lastMode = "";
         private static Vector3 _lastVelocity;
         private static Transform _lastCar;
         internal static bool RagdollVisible { get { return _body != null && _body.IsRagdoll; } }
+        /// <summary>Camera focus point while dead (the ragdoll).</summary>
         internal static Vector3 DeathFocus { get { return _body.DeathFocus; } }
+        /// <summary>Head and feet points of the live body (occlusion cutaway).</summary>
         internal static bool TryOcclusionPoints(out Vector3 head, out Vector3 feet)
         {
             if (_body != null && _body.Alive) return _body.TryOcclusionPoints(out head, out feet);
             head = feet = Vector3.zero; return false;
         }
 
+        /// <summary>Scene load: every player-side cache and the body dropped (crawl, wheel arms, climbing, ladders, NPC traversals, car seat, third person, arms, cave, TAB picture, props).</summary>
         public static void OnSceneLoaded()
         {
             Crawling.Reset();
@@ -50,14 +55,14 @@ namespace WildWasteland.Modules.PlayerBody
             Props.OnSceneLoaded();
         }
 
-        // Init: start from a clean state (also after a runtime off -> on)
+        /// <summary>Init: start from a clean state (also after a runtime off -&gt; on)</summary>
         internal static void ResetAll()
         {
             OnSceneLoaded();
             _nextBuild = 0f; _lastMode = "";
         }
 
-        // Shutdown: everything the old "Enabled = false" branch restored, plus the camera / cutaway components
+        /// <summary>Shutdown: everything the old "Enabled = false" branch restored, plus the camera / cutaway components</summary>
         internal static void TearDown()
         {
             WheelArms.Clear();
@@ -71,7 +76,7 @@ namespace WildWasteland.Modules.PlayerBody
             Core.Log.Main(PresentationModule.Instance, "Disabled: the game's own player is back");
         }
 
-        // Male / Female: rebuild the body from the other model; her arms texture and TAB picture only for her
+        /// <summary>Male / Female: rebuild the body from the other model; her arms texture and TAB picture only for her</summary>
         public static void CharacterChanged()
         {
             ClimbingController.StopInstance();
@@ -87,6 +92,7 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Character switch: " + e); }
         }
 
+        /// <summary>Destroys the body and the cached jump/death references.</summary>
         private static void DestroyBody()
         {
             _jumpHeadReady = false;
@@ -96,6 +102,7 @@ namespace WildWasteland.Modules.PlayerBody
             _lastCar = null;
         }
 
+        /// <summary>Job "Presentation.BodyUpdate" (Update): wheel arms, arm skin, third-person tick, weapon pose editor hint/flush; body dropped in menus.</summary>
         internal static void Tick()
         {
             try
@@ -111,6 +118,7 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Update: " + e); }
         }
 
+        /// <summary>Job "Presentation.BodyLate" (LateUpdate): builds the body (every 2 s while missing) and routes it to the view: dead, car seat (first/third person), on foot (first/third person), arms and equipment.</summary>
         internal static void LateTick()
         {
             try
@@ -188,13 +196,14 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "LateUpdate: " + e); _nextBuild = Time.unscaledTime + 5f; }
         }
 
+        /// <summary>Steering-wheel hands while driving with the body in the seat.</summary>
         internal static void WheelTick()
         {
             if (_body != null && _body.Alive && Game.Ready && PlayerState.InCar && !PlayerState.Dead && CharacterSettings.ReplaceDriver.Value && CarSeat.Seat != null)
                 _body.LateWheelArms();
         }
 
-        // (2.2.0) characters animated through ModAPI, after the Animators (was ModApiRunner.LateUpdate)
+        /// <summary>(2.2.0) characters animated through ModAPI, after the Animators (was ModApiRunner.LateUpdate)</summary>
         internal static void ModApiTick()
         {
             ModAPI.LateTick();

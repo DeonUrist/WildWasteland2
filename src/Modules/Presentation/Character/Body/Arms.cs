@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly Dictionary<Renderer, Material> _orig = new Dictionary<Renderer, Material>();
         private static float _next;
 
+        /// <summary>Every 3 s while the female skin applies: gives the game's first-person arm/leg renderers (material Player2) the character's atlas copy.</summary>
         public static void Tick()
         {
             if (Time.unscaledTime < _next) return;
@@ -50,6 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (added > 0) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Arms: " + added + " first-person arm/leg renderer(s) dressed"); }
         }
 
+        /// <summary>Puts the game's own arm/leg materials back and forgets the copies (the next character builds new ones).</summary>
         public static void Restore()
         {
             foreach (var kv in _orig) if (kv.Key != null) kv.Key.sharedMaterial = kv.Value;
@@ -58,6 +60,7 @@ namespace WildWasteland.Modules.PlayerBody
             _next = 0f;
         }
 
+        /// <summary>Scene load: forgets the dressed renderers.</summary>
         public static void OnSceneLoaded() { _orig.Clear(); _next = 0f; }
     }
 }

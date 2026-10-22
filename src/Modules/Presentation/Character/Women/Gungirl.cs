@@ -38,9 +38,13 @@ namespace WildWasteland.Modules.NPC
             public readonly Dictionary<string, Mesh> Meshes = new Dictionary<string, Mesh>();        // per bone layout
             public readonly Dictionary<string, Material> Mats = new Dictionary<string, Material>(); // by material name
 
+            /// <summary>True for the native prefab name or its clones.</summary>
             public bool IsBase(string n) { return n == Base || n.StartsWith(Base + "(", StringComparison.Ordinal); }
+            /// <summary>True for the native corpse name.</summary>
             public bool IsBaseCorpse(string n) { return n.StartsWith(BaseCorpse, StringComparison.Ordinal); }
+            /// <summary>True for the female name or its clones.</summary>
             public bool IsFemale(string n) { return n == Female || n.StartsWith(Female + "(", StringComparison.Ordinal); }
+            /// <summary>True for the female corpse name.</summary>
             public bool IsFemaleCorpse(string n) { return n.StartsWith(FemaleCorpse, StringComparison.Ordinal); }
         }
         private static Variant[] _variants;
@@ -59,7 +63,7 @@ namespace WildWasteland.Modules.NPC
                 return _variants;
             }
         }
-        // the female variant a root name belongs to (her or her corpse), or null
+        /// <summary>the female variant a root name belongs to (her or her corpse), or null</summary>
         private static Variant FemaleOf(string n) { foreach (var v in Variants) if (v.IsFemale(n) || v.IsFemaleCorpse(n)) return v; return null; }
 
         private static readonly HashSet<Mesh> _ours = new HashSet<Mesh>();
@@ -72,7 +76,9 @@ namespace WildWasteland.Modules.NPC
             internal readonly Dictionary<Renderer, bool> Parts = new Dictionary<Renderer, bool>();
             internal readonly List<KeyValuePair<UiTextSetText, FsmString>> Labels = new List<KeyValuePair<UiTextSetText, FsmString>>();
         }
+        /// <summary>One swapped renderer's original mesh and material.</summary>
         private struct SkinState { internal SkinnedMeshRenderer Renderer; internal Mesh Mesh; internal Material Material; }
+        /// <summary>A root waiting for its body swap.</summary>
         private struct PendingBody { internal GameObject Root; internal Variant Variant; internal int Id; }
         private static readonly Dictionary<int, BodyState> _original = new Dictionary<int, BodyState>();
         private static readonly Queue<PendingBody> _pending = new Queue<PendingBody>();
@@ -88,18 +94,21 @@ namespace WildWasteland.Modules.NPC
         private static bool _wantFull; private static float _lastPass = -1000f;
         private const float SafetyEvery = 60f;
 
+        /// <summary>The restore record of a root (created on first use).</summary>
         private static BodyState State(GameObject root)
         {
             BodyState state; int id = root.GetInstanceID();
             if (!_original.TryGetValue(id, out state)) _original[id] = state = new BodyState { Root = root };
             return state;
         }
+        /// <summary>Queues a root for its body swap (once; dressed roots are skipped).</summary>
         private static void Queue(GameObject root, Variant variant)
         {
             if (root == null || variant == null || _dressed.Contains(root.GetInstanceID()) || !_queued.Add(root.GetInstanceID())) return;
             _pending.Enqueue(new PendingBody { Root = root, Variant = variant, Id = root.GetInstanceID() });
         }
 
+        /// <summary>Module start: decodes the models/textures, warms the meshes for the native skeletons and starts a full scan.</summary>
         internal static void Initialize()
         {
             // Disk decoding and native skeleton warming happen at module startup, before gameplay jobs.
@@ -114,6 +123,7 @@ namespace WildWasteland.Modules.NPC
             BeginScan();
         }
 
+        /// <summary>Prefab name of a spawner's prefab asset (cached per instance id).</summary>
         private static string PrefabOf(GameObject go)
         {
             string name; int id = go.GetInstanceID();
@@ -123,12 +133,16 @@ namespace WildWasteland.Modules.NPC
             _prefabNames[id] = name; return name;
         }
         // ---------- identity = the name ----------
+        /// <summary>True for a Flexa root name.</summary>
         private static bool IsFlexa(string name) { return name == "Flexa" || name.StartsWith("Flexa(", StringComparison.Ordinal); }
+        /// <summary>True for a Flexa corpse name.</summary>
         private static bool IsFlexaCorpse(string name) { return name.StartsWith("Flexa_Dead", StringComparison.Ordinal); }
+        /// <summary>True for a Gungirl root name.</summary>
         private static bool IsGungirlName(string name) { return name == Name || name.StartsWith(Name + "(", StringComparison.Ordinal); }
+        /// <summary>True for a Gungirl corpse name.</summary>
         private static bool IsGungirlCorpse(string name) { return name.StartsWith(CorpseName, StringComparison.Ordinal); }
 
-        // "Flexa(Clone)281" -> "Gungirl(Clone)281", "Flexa_Dead(Clone)" -> "Gungirl_Dead(Clone)"
+        /// <summary>"Flexa(Clone)281" -&gt; "Gungirl(Clone)281", "Flexa_Dead(Clone)" -&gt; "Gungirl_Dead(Clone)"</summary>
         private static Variant Rename(GameObject go)
         {
             string n = go.name;
@@ -141,7 +155,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- public API for other mods (reflection-friendly) ----------
-        // Turns a live Flexa (or a Flexa_Dead corpse) into a Gungirl. Returns false if the model could not be applied.
+        /// <summary>Turns a live Flexa (or a Flexa_Dead corpse) into a Gungirl. Returns false if the model could not be applied.</summary>
         public static bool MakeGungirl(GameObject root)
         {
             if (!WomenFeature.Active || root == null) return false;
@@ -149,8 +163,9 @@ namespace WildWasteland.Modules.NPC
             Queue(root, v); return v != null;
         }
 
-        // a female raider of any kind (Gungirl, Shoota) or her corpse
+        /// <summary>a female raider of any kind (Gungirl, Shoota) or her corpse</summary>
         public static bool IsGungirl(GameObject root) { return root != null && FemaleOf(root.name) != null; }
+        /// <summary>True for any female raider or her corpse (same as IsGungirl).</summary>
         public static bool IsFemale(GameObject root) { return IsGungirl(root); }
         /// <summary>Female identity ("Gungirl", "Shoota") of a root/corpse name, or null for every other name.</summary>
         internal static string IdentityOf(string name) { var v = name != null ? FemaleOf(name) : null; return v != null ? v.Female : null; }
@@ -158,7 +173,7 @@ namespace WildWasteland.Modules.NPC
         internal static string VariantOf(string prefabName) { foreach (var v in Variants) if (prefabName == v.Base) return v.Female; return null; }
 
         // ---------- hooks ----------
-        // Harmony postfix on HutongGames.PlayMaker.Actions.CreateObject.OnEnter
+        /// <summary>Harmony postfix on HutongGames.PlayMaker.Actions.CreateObject.OnEnter</summary>
         public static void AfterCreateObject(CreateObject __instance)
         {
             if (!WomenFeature.Active) return;
@@ -195,6 +210,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "CreateObject hook: " + e); }
         }
 
+        /// <summary>INpcAppearance: dresses a crew member by its own or the requested identity, or by the population roll (FemaleCrew) when randomize.</summary>
         internal static void DressCrew(GameObject root, string identity, bool randomize)
         {
             if (root == null) return;
@@ -204,22 +220,24 @@ namespace WildWasteland.Modules.NPC
             if (variant != null) Queue(root, variant);
         }
 
+        /// <summary>Scene load: walk/queue caches cleared, dead records swept, voices told, a full scan started.</summary>
         public static void OnSceneLoaded()
         {
             _walk.Clear(); _roots.Clear(); _pending.Clear(); _queued.Clear(); _prefabNames.Clear(); _seen.Clear(); _bodies.Clear();
             Sweep(); Voice.OnSceneLoaded(); BeginScan();
         }
 
-        // a full walk (world ready / scene loaded / module start): every object looked at again; no player yet = as soon as there is one
+        /// <summary>a full walk (world ready / scene loaded / module start): every object looked at again; no player yet = as soon as there is one</summary>
         internal static void BeginScan() { _wantFull = true; StartPass(); }
 
-        // "Female discovery" (5 s): a pending full walk, else the safety pass once a minute
+        /// <summary>"Female discovery" (5 s): a pending full walk, else the safety pass once a minute</summary>
         internal static void SafetyScan()
         {
             if (_walk.Count > 0 && !_wantFull) return;
             if (_wantFull || Time.unscaledTime >= _lastPass + SafetyEvery) StartPass();
         }
 
+        /// <summary>Starts a scene walk (all root objects) when none runs; a full walk forgets which objects were seen.</summary>
         private static void StartPass()
         {
             if (!WomenFeature.Active || GameRefs.Player == null) return;
@@ -238,6 +256,7 @@ namespace WildWasteland.Modules.NPC
             _roots.Clear();
         }
 
+        /// <summary>Job "Presentation.FemaleRestoration" (sliced): applies one queued body swap, or visits one object of the scene walk.</summary>
         internal static bool Step()
         {
             if (!WomenFeature.Active) return false;
@@ -264,6 +283,7 @@ namespace WildWasteland.Modules.NPC
             return _pending.Count > 0 || _walk.Count > 0;
         }
 
+        /// <summary>Job "Presentation.FemaleCacheCleanup" (10 s): forgets records of destroyed roots.</summary>
         internal static void Sweep()
         {
             _dead.Clear();
@@ -272,6 +292,7 @@ namespace WildWasteland.Modules.NPC
             _dead.Clear();
         }
 
+        /// <summary>Women of Wasteland stop: every swapped body, hidden part and label restored, our meshes/materials/textures destroyed.</summary>
         internal static void Shutdown()
         {
             foreach (var state in _original.Values)
@@ -294,6 +315,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- the body swap ----------
+        /// <summary>Swaps the root's skinned bodies to the female mesh/material, hides the configured parts, applies the voice and label; true when anything changed.</summary>
         private static bool Apply(GameObject root, Variant v, string why)
         {
             if (v == null) return false;
@@ -316,8 +338,7 @@ namespace WildWasteland.Modules.NPC
             return swapped > 0;
         }
 
-        // The corpse's mouse-over label (ItemName FSM, state "over": UiTextSetText "Flexa") -> "Gungirl". The FSM's actions exist once it
-        // is initialised; Voice's pending list calls this again after the body swap when the FSMs weren't ready yet.
+        /// <summary>The corpse's mouse-over label (ItemName FSM, state "over": UiTextSetText "Flexa") -&gt; "Gungirl". The FSM's actions exist once it is initialised; Voice's pending list calls this again after the body swap when the FSMs weren't ready yet.</summary>
         internal static int Label(GameObject root)
         {
             int n = 0;
@@ -343,6 +364,7 @@ namespace WildWasteland.Modules.NPC
             return n;
         }
 
+        /// <summary>Hides the attachments whose names start with the variant's HideParts prefixes; returns how many.</summary>
         private static int HideParts(GameObject root, Variant v)
         {
             string list = v.HideCfg.Value ?? "";
@@ -365,6 +387,7 @@ namespace WildWasteland.Modules.NPC
             return count;
         }
 
+        /// <summary>The variant's glb model (loaded once).</summary>
         private static SkinModel Model(Variant v)
         {
             if (v.ModelTried) return v.Model;
@@ -379,6 +402,7 @@ namespace WildWasteland.Modules.NPC
             return v.Model;
         }
 
+        /// <summary>The female mesh for a native skinned renderer's bone layout (built once per layout from the model's bind poses).</summary>
         private static Mesh MeshFor(Variant vr, SkinnedMeshRenderer smr)
         {
             var bones = smr.bones;
@@ -476,6 +500,7 @@ namespace WildWasteland.Modules.NPC
             return mesh;
         }
 
+        /// <summary>The female copy of a native material (her texture), cached per material name.</summary>
         private static Material MaterialFor(Variant v, Material orig)
         {
             if (orig == null) return null;
@@ -492,6 +517,7 @@ namespace WildWasteland.Modules.NPC
             return m;
         }
 
+        /// <summary>The variant's texture (loaded once).</summary>
         private static Texture2D Texture(Variant v)
         {
             if (v.TexTried) return v.Tex;
@@ -513,12 +539,14 @@ namespace WildWasteland.Modules.NPC
             return v.Tex;
         }
 
+        /// <summary>A path relative to the Presentation asset folder.</summary>
         internal static string ModPath(string rel)
         {
             return PresentationModule.AssetPath(rel);
         }
 
         // ---------- debug spawn ----------
+        /// <summary>Debug key: spawns a Gungirl six metres in front of the player.</summary>
         internal static void SpawnInFront()
         {
             var cam = GameRefs.MainCamera;
@@ -544,7 +572,7 @@ namespace WildWasteland.Modules.NPC
             if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Gungirl: spawned " + go.name + " at " + at.ToString("F1") + (ok ? "" : " - but the model could not be applied, see the errors above"));
         }
 
-        // distance from the root pivot down to the bottom of its solid capsule collider (world units)
+        /// <summary>distance from the root pivot down to the bottom of its solid capsule collider (world units)</summary>
         private static float FootDepth(GameObject prefab)
         {
             float depth = 0f;
@@ -557,7 +585,7 @@ namespace WildWasteland.Modules.NPC
             return depth > 0f ? depth : 1f;
         }
 
-        // NPC detection registered an NPC: a Gungirl from a save is dressed now
+        /// <summary>NPC detection registered an NPC: a Gungirl from a save is dressed now</summary>
         internal static void Registered(GameObject owner)
         {
             try
@@ -570,6 +598,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Gungirl: " + e); }
         }
 
+        /// <summary>The Flexa prefab asset (cached).</summary>
         internal static GameObject FlexaPrefab()
         {
             if (_prefab != null) return _prefab;
@@ -579,7 +608,7 @@ namespace WildWasteland.Modules.NPC
             return _prefab;
         }
 
-        // the game's spawn recipe (same as Apocatremors/Apocaspawner): itemNameID number in the name + NewGO_ArrayList items list -> saved
+        /// <summary>the game's spawn recipe (same as Apocatremors/Apocaspawner): itemNameID number in the name + NewGO_ArrayList items list -&gt; saved</summary>
         private static void Register(GameObject go, string prefabName)
         {
             int id = -1;

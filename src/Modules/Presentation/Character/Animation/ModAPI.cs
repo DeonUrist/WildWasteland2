@@ -33,6 +33,7 @@ namespace WildWasteland.Modules.PlayerBody
     public static partial class ModAPI
     {
         public const int ApiVersion = 1;
+        /// <summary>The Apocaplayer version this API matches.</summary>
         public static string PluginVersion { get { return PresentationModule.SourceVersion; } }   // (WW) the Apocaplayer version this API matches
 
         // the animation bundle is there with the player's Mixamo set (what the player's body uses)
@@ -50,6 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
         // throws and strikes. The bundle's other clips are left out on purpose.
         private static string[] _names;
         private static HashSet<string> _set;
+        /// <summary>Builds the sorted list of player clips present in the bundle (once the bundle is loaded).</summary>
         private static void BuildNames()
         {
             if (_names != null) return;
@@ -59,18 +61,21 @@ namespace WildWasteland.Modules.PlayerBody
             _names = l.ToArray();
             _set = new HashSet<string>(l, StringComparer.OrdinalIgnoreCase);
         }
+        /// <summary>Every clip the player's body can play (copy).</summary>
         public static string[] ClipNames() { BuildNames(); return _names != null ? (string[])_names.Clone() : new string[0]; }
+        /// <summary>True for a clip the player's body plays.</summary>
         public static bool IsPlayerClip(string name) { BuildNames(); return name != null && _set != null && _set.Contains(name); }
-        // the clip itself (null for anything the player doesn't use)
+        /// <summary>the clip itself (null for anything the player doesn't use)</summary>
         public static AnimationClip GetClip(string name) { return IsPlayerClip(name) ? Anims.Get(name) : null; }
 
         // ---------------------------------------------------------------- weapons
-        // "akm_trash_model (1)" / "9mm_borz_smg(Clone)" -> "akm_trash" / "borz_smg": the key of the weapon-pose and aim-lift tables
+        /// <summary>"akm_trash_model (1)" / "9mm_borz_smg(Clone)" -&gt; "akm_trash" / "borz_smg": the key of the weapon-pose and aim-lift tables</summary>
         public static string WeaponKey(string objectName) { return string.IsNullOrEmpty(objectName) ? "" : Props.Norm(objectName); }
-        // "None", "Rifle" (rifles, shotguns, crossbow), "Pistol" (pistols, revolver, SMGs), "Melee", "Throw"
+        /// <summary>"None", "Rifle" (rifles, shotguns, crossbow), "Pistol" (pistols, revolver, SMGs), "Melee", "Throw"</summary>
         public static string WeaponKind(string weaponKey) { return Props.KindOf(weaponKey).ToString(); }
+        /// <summary>True when the weapon has file or built-in poses.</summary>
         public static bool HasWeaponPoses(string weaponKey) { return !string.IsNullOrEmpty(weaponKey) && GunPose.HasAny(weaponKey); }
-        // where the weapon model sits under the right hand bone in that clip (the player's table: weapon-poses.txt > built in > the kind's idle)
+        /// <summary>where the weapon model sits under the right hand bone in that clip (the player's table: weapon-poses.txt &gt; built in &gt; the kind's idle)</summary>
         public static bool WeaponPose(string weaponKey, string clip, out Vector3 localPosition, out Quaternion localRotation)
         {
             localPosition = Vector3.zero; localRotation = Quaternion.identity;
@@ -80,17 +85,19 @@ namespace WildWasteland.Modules.PlayerBody
             localPosition = new Vector3(v[0], v[1], v[2]) * 0.01f; localRotation = Quaternion.Euler(v[3], v[4], v[5]);
             return true;
         }
+        /// <summary>The kind's idle clip (RifleIdle, PistolIdle, Idle): the fallback pose of untuned clips.</summary>
         internal static string IdleOf(Props.Kind k) { return k == Props.Kind.Rifle ? "RifleIdle" : k == Props.Kind.Pistol ? "PistolIdle" : "Idle"; }
 
-        // the clip the player reloads this weapon with ("RifleReload" / "PistolReload"), null without one
+        /// <summary>the clip the player reloads this weapon with ("RifleReload" / "PistolReload"), null without one</summary>
         public static string ReloadClip(string weaponKey)
         {
             var k = Props.KindOf(weaponKey);
             string c = k == Props.Kind.Rifle ? "RifleReload" : k == Props.Kind.Pistol ? "PistolReload" : null;
             return c != null && Anims.Get(c) != null ? c : null;
         }
+        /// <summary>Length of the weapon's reload clip, seconds (0 without one).</summary>
         public static float ReloadClipSeconds(string weaponKey) { var c = Anims.Get(ReloadClip(weaponKey)); return c != null ? c.length : 0f; }
-        // one round of a one-round-at-a-time reload at the clip's own speed, s (the clip's round part)
+        /// <summary>one round of a one-round-at-a-time reload at the clip's own speed, s (the clip's round part)</summary>
         public static float RoundSeconds(string weaponKey)
         {
             string rc = ReloadClip(weaponKey); float a, b;
@@ -101,8 +108,11 @@ namespace WildWasteland.Modules.PlayerBody
         // the player's copy of the gun (WeaponsArm/Parent/<key>) decides: its Reload FSM loops one round at a time ("checkAmmoInStore") / its
         // Attack FSM cocks after a shot ("pump" / "bolt action"). Weapons the player has no copy of: the known ones by name.
         private static readonly Dictionary<string, bool> _perRound = new Dictionary<string, bool>(), _cocks = new Dictionary<string, bool>();
+        /// <summary>True when the player's copy of the weapon reloads one round at a time (its Reload FSM has "checkAmmoInStore").</summary>
         public static bool ReloadsOneRoundAtATime(string weaponKey) { return FsmFlag(weaponKey, _perRound, "Reload", "checkAmmoInStore"); }
+        /// <summary>True when the player's copy of the weapon cocks after a shot (its Attack FSM has a cocking state).</summary>
         public static bool CocksAfterShot(string weaponKey) { return FsmFlag(weaponKey, _cocks, "Attack", null); }
+        /// <summary>Reads (and caches) a flag from the FSMs of the player's copy of the weapon; known weapons by name while the copy is not found.</summary>
         private static bool FsmFlag(string key, Dictionary<string, bool> cache, string fsmName, string state)
         {
             if (string.IsNullOrEmpty(key)) return false;
@@ -138,7 +148,7 @@ namespace WildWasteland.Modules.PlayerBody
             return r;
         }
 
-        // the clips' native ground speeds (the player's settings): a body moved faster than twice these slides its feet
+        /// <summary>the clips' native ground speeds (the player's settings): a body moved faster than twice these slides its feet</summary>
         public static float NativeSpeed(string tier)
         {
             switch ((tier ?? "").ToLowerInvariant())
@@ -152,9 +162,10 @@ namespace WildWasteland.Modules.PlayerBody
 
         // ---------------------------------------------------------------- characters
         private static readonly List<Character> _chars = new List<Character>();
+        /// <summary>Number of animated characters.</summary>
         public static int Count { get { return _chars.Count; } }
 
-        // starts animating this humanoid Animator with the player's clips (the same object for the same Animator); null when it can't
+        /// <summary>starts animating this humanoid Animator with the player's clips (the same object for the same Animator); null when it can't</summary>
         public static Character Attach(Animator animator)
         {
             if (animator == null) return null;
@@ -172,14 +183,16 @@ namespace WildWasteland.Modules.PlayerBody
             }
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "ModAPI.Attach " + animator.gameObject.name + ": " + e); return null; }
         }
+        /// <summary>The live character driving this Animator, or null.</summary>
         public static Character Find(Animator animator)
         {
             if (animator == null) return null;
             for (int i = 0; i < _chars.Count; i++) if (_chars[i].Animator == animator && _chars[i].Valid) return _chars[i];
             return null;
         }
+        /// <summary>Removes a disposed character from the list.</summary>
         internal static void Forget(Character c) { _chars.Remove(c); }
-        // (WW) F7 "Animation framework" page: the attached characters (read only)
+        /// <summary>(WW) F7 "Animation framework" page: the attached characters (read only)</summary>
         internal static Character CharacterAt(int i) { return i >= 0 && i < _chars.Count ? _chars[i] : null; }
 
         // every LateUpdate (job "ModAPI characters", after the Animators): animate them all; a destroyed Animator ends its character
@@ -188,6 +201,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>True when the player camera was found this LateUpdate.</summary>
         internal static bool CameraKnown;
 
+        /// <summary>Job "Presentation.Characters" (LateUpdate, after the Animators): animates every character; a destroyed Animator ends its character.</summary>
         internal static void LateTick()
         {
             var cam = PlayerState.PlayerCamera;
@@ -200,6 +214,7 @@ namespace WildWasteland.Modules.PlayerBody
                 c.Tick();
             }
         }
+        /// <summary>Scene load / module stop: disposes every character and forgets the weapon FSM flags.</summary>
         internal static void OnSceneLoaded()
         {
             foreach (var c in _chars.ToArray()) if (c != null) c.Dispose();

@@ -22,9 +22,12 @@ namespace WildWasteland.Modules.NPC
         private static float _nextProbe;
         private static IAnimationApi _api;
 
+        /// <summary>True when the animation framework (IAnimationApi) is up and its bundle ready (probed every 5 s until it is).</summary>
         internal static bool Available { get { Init(); return _ok; } }
+        /// <summary>Forgets the framework probe (NPC scene reset).</summary>
         internal static void Reset() { _ok = false; _api = null; _nextProbe = 0f; _logged = false; }
 
+        /// <summary>Probes the IAnimationApi provider after 3 s and then every 5 s until its bundle is ready; logs the state changes.</summary>
         private static void Init()
         {
             var api = ModApi.Get<IAnimationApi>();
@@ -38,6 +41,7 @@ namespace WildWasteland.Modules.NPC
             if (_ok) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "NPC animations: the player animation framework (ModAPI " + api.ApiVersion + ", " + api.ClipNames().Length + " player clips) in use"); }
             else if (!_logged) { _logged = true; Core.Log.Deep(PresentationModule.Instance, "NPC animations: the animation bundle is not ready (yet) - the game's clips"); }
         }
+        /// <summary>True when the framework reports its bundle ready.</summary>
         private static bool Probe(IAnimationApi api) { return api.Ready; }
 
         // ---------------------------------------------------------------- weapon helpers
@@ -47,6 +51,7 @@ namespace WildWasteland.Modules.NPC
         internal static string WeaponKey(Transform weapon) { return weapon == null ? null : Props.Norm(weapon.name); }
 
         // ---------------------------------------------------------------- per NPC (only when Available)
+        /// <summary>Attaches the player animation set to an NPC Animator (turns in place and walk-to-stop on); null when not possible.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static object Attach(Animator a)
         {
@@ -56,35 +61,47 @@ namespace WildWasteland.Modules.NPC
             c.TurnInPlace = true; c.WalkToStop = true;
             return c;
         }
+        /// <summary>Releases an NPC body.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Detach(object body) { var c = body as IAnimatedCharacter; if (c != null) c.Dispose(); }
+        /// <summary>True while the body is valid.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static bool Alive(object body) { var c = body as IAnimatedCharacter; return c != null && c.Valid; }
+        /// <summary>Puts the NPC's weapon model into the body's right hand (null = none).</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void SetWeapon(object body, Transform model, string key) { var c = body as IAnimatedCharacter; if (c != null) c.SetWeapon(model, model != null ? key : null); }
+        /// <summary>Suspends (the game's clips) or resumes the body.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Suspend(object body, bool off) { var c = body as IAnimatedCharacter; if (c != null) c.Suspended = off; }
+        /// <summary>True when there is no body or it is suspended.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static bool Suspended(object body) { var c = body as IAnimatedCharacter; return c == null || c.Suspended; }
-        // this frame's situation
+        /// <summary>this frame's situation</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Frame(object body, bool crouched, bool aiming, bool firing, bool airborne, float aimPitch)
         {
             var c = body as IAnimatedCharacter; if (c == null) return;
             c.Crouched = crouched; c.Aiming = aiming; c.Firing = firing; c.Airborne = airborne; c.AimPitch = aimPitch;
         }
+        /// <summary>Speed cap of the body's current stance, m/s (0 without a body).</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static float SpeedCap(object body) { var c = body as IAnimatedCharacter; return c != null ? c.SpeedCap : 0f; }
+        /// <summary>Plays a reload fitted to the seconds (rounds &gt; 0 = one round at a time).</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Reload(object body, float seconds, int rounds) { var c = body as IAnimatedCharacter; if (c != null) c.Reload(seconds, rounds); }
+        /// <summary>Cancels the body's reload.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void CancelReload(object body) { var c = body as IAnimatedCharacter; if (c != null) c.CancelReload(); }
+        /// <summary>Plays the pump / bolt cocking.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Pump(object body) { var c = body as IAnimatedCharacter; if (c != null) c.Pump(); }
+        /// <summary>Plays the jump take-off.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Jump(object body) { var c = body as IAnimatedCharacter; if (c != null) c.Jump(); }
+        /// <summary>Plays a melee strike lasting the seconds.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static void Strike(object body, float seconds) { var c = body as IAnimatedCharacter; if (c != null) c.Strike(seconds); }
+        /// <summary>Short state text of a body (weapon, hands/action/upper clips) for diagnostics.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static string Describe(object body)
         {
@@ -93,16 +110,22 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------------------------------------------------------------- the player's weapon facts (only when Available)
+        /// <summary>True when the player has poses for the weapon key.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static bool HasPoses(string key) { var api = ModApi.Get<IAnimationApi>(); return api != null && api.HasWeaponPoses(key); }
+        /// <summary>True when the player's copy of the weapon reloads one round at a time.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static bool OneRoundAtATime(string key) { var api = ModApi.Get<IAnimationApi>(); return api != null && api.ReloadsOneRoundAtATime(key); }
+        /// <summary>True when the player's copy of the weapon cocks after a shot.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static bool Cocks(string key) { var api = ModApi.Get<IAnimationApi>(); return api != null && api.CocksAfterShot(key); }
+        /// <summary>Length of the weapon's reload clip, seconds (0 when unknown).</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static float ReloadClipSeconds(string key) { var api = ModApi.Get<IAnimationApi>(); return api != null ? api.ReloadClipSeconds(key) : 0f; }
+        /// <summary>One round of a one-round-at-a-time reload, seconds.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static float RoundSeconds(string key) { var api = ModApi.Get<IAnimationApi>(); return api != null ? api.RoundSeconds(key) : 0f; }
+        /// <summary>Native ground speed of a clip tier, m/s.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         internal static float NativeSpeed(string tier) { var api = ModApi.Get<IAnimationApi>(); return api != null ? api.NativeSpeed(tier) : 0f; }
     }

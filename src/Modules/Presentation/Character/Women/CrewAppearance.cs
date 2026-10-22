@@ -6,7 +6,7 @@ namespace WildWasteland.Modules.Patrols
 {
     internal static class CrewAppearance
     {
-        // Names also resolve with NPC off, so saved female crew still has a native fallback body.
+        /// <summary>Names also resolve with NPC off, so saved female crew still has a native fallback body.</summary>
         internal static string BasePrefab(string name)
         {
             if (string.Equals(name, "Gungirl", StringComparison.OrdinalIgnoreCase)) return "Flexa";
@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Patrols
             return name;
         }
 
+        /// <summary>Female identity of a crew root by its name (Gungirl/Shoota), else the fallback.</summary>
         internal static string Identity(GameObject root, string fallback)
         {
             if (root == null) return fallback;
@@ -24,6 +25,7 @@ namespace WildWasteland.Modules.Patrols
             return BasePrefab(name) != name ? name : fallback;
         }
 
+        /// <summary>Dresses a crew member: alias names (Gungirl, Shoota, their corpses) rename the root, then the Women of Wasteland body applies (randomize = population roll).</summary>
         internal static void Dress(GameObject root, string requested, bool randomize = true)
         {
             if (root == null) return;
@@ -38,6 +40,7 @@ namespace WildWasteland.Modules.Patrols
             if (WomenFeature.Active) Gungirl.DressCrew(root, requested, randomize);   // (B05) same module: the Women of Wasteland body directly
         }
 
+        /// <summary>Carries a female identity over to a replacement object (corpse, bailed-out NPC).</summary>
         internal static void Transfer(GameObject source, GameObject destination)
         {
             string identity = Identity(source, null);

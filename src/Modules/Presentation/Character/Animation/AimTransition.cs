@@ -14,12 +14,14 @@ namespace WildWasteland.Modules.PlayerBody
     // puts the game's own speed and ease back.
     internal static class AimTransition
     {
+        /// <summary>The tween's own speed and ease, restored when the module stops.</summary>
         private struct Orig { public float Speed; public object Ease; }
         // iTween lives in Assembly-CSharp-firstpass: its EaseType is set by reflection (no extra reference)
         private static readonly System.Reflection.FieldInfo EaseField = HarmonyLib.AccessTools.Field(typeof(iTweenMoveTo), "easeType");
         private static object _easeOut;
         private static readonly Dictionary<iTweenMoveTo, Orig> _orig = new Dictionary<iTweenMoveTo, Orig>();
 
+        /// <summary>Patches iTweenMoveTo.OnEnter (prefix) for the AimDownSights FSM.</summary>
         public static void Patch(Core.IModule owner)
         {
             var m = HarmonyLib.AccessTools.Method(typeof(iTweenMoveTo), "OnEnter");
@@ -27,8 +29,7 @@ namespace WildWasteland.Modules.PlayerBody
             Core.Patches.Patch(owner, m, prefix: HarmonyLib.AccessTools.Method(typeof(AimTransition), nameof(BeforeMoveTo)));
         }
 
-        // (WW) module Shutdown: the patch goes away, so the game's own speed / ease is put back on every tween changed so far
-        // (the old mod did it on the tween's next OnEnter while its patch stayed in)
+        /// <summary>(WW) module Shutdown: the patch goes away, so the game's own speed / ease is put back on every tween changed so far (the old mod did it on the tween's next OnEnter while its patch stayed in)</summary>
         internal static void RestoreAll()
         {
             foreach (var kv in _orig)
@@ -41,6 +42,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // scene load: forget the tweens whose FSM is gone
         private static readonly List<iTweenMoveTo> _dead = new List<iTweenMoveTo>();
+        /// <summary>Scene load: forgets the tweens whose FSM is gone.</summary>
         internal static void Sweep()
         {
             _dead.Clear();
@@ -49,6 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
             _dead.Clear();
         }
 
+        /// <summary>iTweenMoveTo.OnEnter prefix (every tween start; filter: FSM "AimDownSights"): the move takes AdsTime seconds with easeOutQuad, or the game's own values when off.</summary>
         public static void BeforeMoveTo(iTweenMoveTo __instance)
         {
             try

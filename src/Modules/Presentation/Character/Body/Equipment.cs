@@ -8,6 +8,7 @@ namespace WildWasteland.Modules.PlayerBody
 {
     internal sealed class Equipment
     {
+        /// <summary>Mount family of a carried item.</summary>
         internal enum Kind { None, LongGun, Sidearm, Blade, Binocular }
         internal sealed class Mount
         {
@@ -43,12 +44,14 @@ namespace WildWasteland.Modules.PlayerBody
         private bool _visible, _shadow;
         private float _packDepth, _packWidth;
 
+        /// <summary>The equipment mounts of one body.</summary>
         public Equipment(Body body)
         {
             _body = body;
             for (int i = 0; i < _mounts.Length; i++) _mounts[i] = new Mount();
         }
 
+        /// <summary>Mount family of an item name (binoculars, blades, sidearms, long guns).</summary>
         internal static Kind Classify(string name)
         {
             string n = (name ?? "").ToLowerInvariant();
@@ -60,8 +63,7 @@ namespace WildWasteland.Modules.PlayerBody
             return Kind.None;
         }
 
-        // Reserve places before hiding the drawn object. Duplicate weapon types in
-        // separate slots retain separate identities and never hide one another.
+        /// <summary>Reserve places before hiding the drawn object. Duplicate weapon types in separate slots retain separate identities and never hide one another.</summary>
         internal static void Select(GameObject[] items, GameObject[] chosen, int[] slots)
         {
             Array.Clear(chosen, 0, chosen.Length);
@@ -87,6 +89,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float _nextRead;
         private string _readDrawn, _readState;
         private Transform _seenCamera, _readCamera, _quick, _quickPack, _quickBino, _quickFlash;
+        /// <summary>Every frame: re-reads the inventory (at most 10 times a second or on a change), updates the mounts and positions/shows them.</summary>
         public void Tick()
         {
             string drawn = Game.DrawnWeapon, state = _inventory.WeaponState;
@@ -119,6 +122,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // (WW perf) each bone's neutral (bind pose) rotation, computed once (was a Matrix4x4 from Bindposes per mount per frame)
         private static readonly System.Collections.Generic.Dictionary<string, Quaternion> _neutral = new System.Collections.Generic.Dictionary<string, Quaternion>();
+        /// <summary>Bind-pose rotation of a bone (cached).</summary>
         private static Quaternion Neutral(string bone)
         {
             Quaternion q;
@@ -129,6 +133,7 @@ namespace WildWasteland.Modules.PlayerBody
             return _neutral[bone] = matrix.rotation;
         }
 
+        /// <summary>Replaces mount i's copy when its item changed (bounds, barrel and magazine axes measured once).</summary>
         private void Update(int i, GameObject item, int slot)
         {
             var mount = _mounts[i]; mount.Slot = slot;
@@ -169,6 +174,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Equipment mount " + i + ": " + item.name + " bounds=" + bounds.size);
         }
 
+        /// <summary>Mounts the flashlight copy (police belt or left chest) with its glow light.</summary>
         private void MountFlashlight(Mount mount, GameObject item)
         {
             _flashPolice = item.name.ToLowerInvariant().Contains("flashlight3");
@@ -206,6 +212,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>Places the flashlight on the belt or chest.</summary>
         private void PositionFlashlight(Mount mount, bool mirror)
         {
             string bone = _flashPolice ? "mixamorig:Hips" : "mixamorig:Spine2";
@@ -221,6 +228,7 @@ namespace WildWasteland.Modules.PlayerBody
             mount.Anchor.localPosition = neutral * offset;
         }
 
+        /// <summary>Places mount i on its bone (back, hip, chest) for the current pose and backpack.</summary>
         private void Position(int i)
         {
             var mount = _mounts[i]; if (mount.Anchor == null) return;
@@ -261,6 +269,7 @@ namespace WildWasteland.Modules.PlayerBody
             mount.Anchor.localPosition = neutral * offset;
         }
 
+        /// <summary>Direction of a gun model's magazine side (for the back mount's orientation).</summary>
         private static Vector3 MagazineDirection(GameObject model, Bounds bounds, Vector3 barrel, Vector3 thin)
         {
             foreach (var node in model.GetComponentsInChildren<Transform>(true))
@@ -279,12 +288,14 @@ namespace WildWasteland.Modules.PlayerBody
             return Vector3.ProjectOnPlane(directionAxis, barrel).normalized;
         }
 
+        /// <summary>Shows the mounts with the body (or only their shadows).</summary>
         public void SetVisible(bool body, bool shadow)
         {
             _visible = body; _shadow = shadow;
             for (int i = 0; i < _mounts.Length; i++) Show(i);
         }
 
+        /// <summary>Shows mount i unless its item is drawn; renderer state written only on change.</summary>
         private void Show(int i)
         {
             var mount = _mounts[i]; if (mount.Visual == null) return;
@@ -309,14 +320,17 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>Longest axis of a size.</summary>
         private static Vector3 MajorAxis(Vector3 size)
         { return size.x >= size.y && size.x >= size.z ? Vector3.right : size.y >= size.z ? Vector3.up : Vector3.forward; }
+        /// <summary>Thinnest axis of a size other than the major one.</summary>
         private static Vector3 ThinAxis(Vector3 size, Vector3 major)
         {
             if (major == Vector3.right) return size.y <= size.z ? Vector3.up : Vector3.forward;
             if (major == Vector3.up) return size.x <= size.z ? Vector3.right : Vector3.forward;
             return size.x <= size.y ? Vector3.right : Vector3.up;
         }
+        /// <summary>Bounds of a model's meshes in its parent's space (the lance shaft only when asked).</summary>
         internal static Bounds LocalBounds(GameObject model, bool lanceShaft = false)
         {
             var bounds = new Bounds(); bool first = true;

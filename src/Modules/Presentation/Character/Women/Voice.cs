@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.NPC
     // clips. A file <clip name>.wav or .ogg in [Gungirl] Voice replaces that clip; clips without a file keep the game's sound.
     internal static class Voice
     {
+        /// <summary>A dressed NPC whose FSMs wait for initialisation before the voice swap.</summary>
         private struct Pending { public VoiceState State; public float Until; }
         private sealed class VoiceState
         {
@@ -40,9 +41,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<Pending> _pending = new List<Pending>();
         private static readonly Dictionary<Type, FieldInfo[]> _fields = new Dictionary<Type, FieldInfo[]>();
 
-        // Loads every .wav and .ogg once per game start. WAV is decoded here (Core Audio.DecodeWav); OGG by Unity's own decoder through a
-        // file:// UnityWebRequest, which needs a coroutine. Same name in both formats: the .ogg wins (the shipped .wav files
-        // are Flexa's originals, a .ogg next to one is the replacement).
+        /// <summary>Loads every .wav and .ogg once per game start. WAV is decoded here (Core Audio.DecodeWav); OGG by Unity's own decoder through a file:// UnityWebRequest, which needs a coroutine. Same name in both formats: the .ogg wins (the shipped .wav files are Flexa's originals, a .ogg next to one is the replacement).</summary>
         public static void EnsureLoading()
         {
             if (_loaded || _loader != null) return;
@@ -53,6 +52,7 @@ namespace WildWasteland.Modules.NPC
             _loader = Scheduler.StartCoroutine(Load());
         }
 
+        /// <summary>Loads the female voice folder (WAV and OGG, OGG wins) as clips keyed by the native clip names.</summary>
         private static IEnumerator Load()
         {
             _ready.Clear();     // clips already read by a load that was cut short (runner destroyed) are kept, not re-created
@@ -117,8 +117,7 @@ namespace WildWasteland.Modules.NPC
             _loaded = true; _loader = null;
         }
 
-        // Called when a body is dressed. FSM actions are only safe to edit once PlayMaker has initialised the FSM,
-        // so a fresh spawn may have to wait a frame or two; and the clips may still be loading at game start.
+        /// <summary>Called when a body is dressed. FSM actions are only safe to edit once PlayMaker has initialised the FSM, so a fresh spawn may have to wait a frame or two; and the clips may still be loading at game start.</summary>
         public static void Apply(GameObject root)
         {
             if (root == null) return;
@@ -127,6 +126,7 @@ namespace WildWasteland.Modules.NPC
             _pending.Add(new Pending { State = state, Until = Time.unscaledTime + 10f });
         }
 
+        /// <summary>Job "Presentation.FemaleVoices" (0.25 s): swaps the voice of one pending NPC whose FSMs are ready (forced after a timeout).</summary>
         public static void Tick()
         {
             if (!WomenFeature.Active || !_loaded) return;
@@ -140,12 +140,14 @@ namespace WildWasteland.Modules.NPC
             for (int i = _states.Count - 1; i >= 0; i--) if (_states[i].Root == null) _states.RemoveAt(i);
         }
 
+        /// <summary>Scene load: forgets pending and swapped NPCs that are gone.</summary>
         internal static void OnSceneLoaded()
         {
             for (int i = _pending.Count - 1; i >= 0; i--) if (_pending[i].State.Root == null) _pending.RemoveAt(i);
             for (int i = _states.Count - 1; i >= 0; i--) if (_states[i].Root == null) _states.RemoveAt(i);
         }
 
+        /// <summary>Women of Wasteland stop: loader stopped, every swapped clip/timer restored, our clips destroyed.</summary>
         internal static void Shutdown()
         {
             if (_loader != null) Scheduler.StopCoroutine(_loader);
@@ -159,6 +161,7 @@ namespace WildWasteland.Modules.NPC
             _clips.Clear(); _ready.Clear(); _native.Clear(); _pending.Clear(); _states.Clear(); _current = null; _loaded = false;
         }
 
+        /// <summary>Replaces the native voice clips and shout timers in every FSM of the NPC; false while its FSMs are not initialised (unless forced).</summary>
         private static bool TrySwap(VoiceState state, bool force)
         {
             var root = state.Root; var fsms = state.Fsms;
@@ -192,8 +195,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // Flexa's Sound FSM (global Animal_Run -> randomWait): attack = play a random shout, wait for its end -> randomWait
-        // (RandomWait 0.1..4 s) -> attack ... for as long as she fights. [Gungirl] VoiceIntervalMin/Max replace that pause.
+        /// <summary>Flexa's Sound FSM (global Animal_Run -&gt; randomWait): attack = play a random shout, wait for its end -&gt; randomWait (RandomWait 0.1..4 s) -&gt; attack ... for as long as she fights. [Gungirl] VoiceIntervalMin/Max replace that pause.</summary>
         private static int SetPause(Fsm fsm)
         {
             float lo = Mathf.Max(0f, CharacterSettings.GungirlVoiceIntervalMin.Value), hi = Mathf.Max(lo, CharacterSettings.GungirlVoiceIntervalMax.Value);
@@ -219,6 +221,7 @@ namespace WildWasteland.Modules.NPC
             return n;
         }
 
+        /// <summary>Swaps the clip references in every action of one FSM; returns how many.</summary>
         private static int SwapFsm(Fsm fsm)
         {
             int n = 0;
@@ -257,6 +260,7 @@ namespace WildWasteland.Modules.NPC
             return n;
         }
 
+        /// <summary>The clip-carrying fields of an FSM action type (cached per type).</summary>
         private static FieldInfo[] FieldsOf(Type t)
         {
             FieldInfo[] f;
@@ -274,6 +278,7 @@ namespace WildWasteland.Modules.NPC
             return f;
         }
 
+        /// <summary>The female replacement of a native clip (loudness-matched once), or null.</summary>
         private static AudioClip Rep(UnityEngine.Object o)
         {
             var ac = o as AudioClip;
@@ -286,9 +291,7 @@ namespace WildWasteland.Modules.NPC
             return r;
         }
 
-        // Once per clip: [Gungirl] VoiceMatchLoudness brings the replacement to the loudness of the game clip it replaces
-        // (the game's voice clips peak at 0 dBFS, home recordings are often 5-15 dB quieter), then [Gungirl] VoiceVolume
-        // scales it; a soft limiter keeps the peaks below full scale. The result is a new clip (the loaded one stays as read).
+        /// <summary>Once per clip: [Gungirl] VoiceMatchLoudness brings the replacement to the loudness of the game clip it replaces (the game's voice clips peak at 0 dBFS, home recordings are often 5-15 dB quieter), then [Gungirl] VoiceVolume scales it; a soft limiter keeps the peaks below full scale. The result is a new clip (the loaded one stays as read).</summary>
         private static AudioClip Leveled(AudioClip original, AudioClip mine)
         {
             try
@@ -325,6 +328,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Swaps the clip in an FsmObject; returns 1 when changed.</summary>
         private static int SwapObj(FsmObject v)
         {
             if (v == null) return 0;
@@ -336,6 +340,7 @@ namespace WildWasteland.Modules.NPC
             return 1;
         }
 
+        /// <summary>Swaps the clips in an FsmArray; returns how many changed.</summary>
         private static int SwapArr(FsmArray a)
         {
             if (a == null) return 0;

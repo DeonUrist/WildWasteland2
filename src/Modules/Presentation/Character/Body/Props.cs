@@ -11,14 +11,14 @@ namespace WildWasteland.Modules.PlayerBody
     // Same skeleton, same animations -> it sits in her hand like in theirs.
     internal static partial class Props
     {
-        // Item = the weapon's own world model (the item you pick up), used when no NPC carries the weapon; Ref = the stand-in NPC prop that
-        // gives it its starting place in the hand
+        /// <summary>Item = the weapon's own world model (the item you pick up), used when no NPC carries the weapon; Ref = the stand-in NPC prop that gives it its starting place in the hand</summary>
         internal sealed class Prop { public string Key; public GameObject Source; public string Hand; public string Owner; public bool Item; public Prop Ref; }
         private static readonly Dictionary<string, Prop> _items = new Dictionary<string, Prop>();
 
         private static readonly Dictionary<string, Prop> _catalog = new Dictionary<string, Prop>();
         private static bool _built;
 
+        /// <summary>Prop catalog key of a weapon object name ("akm_trash_model (1)" -&gt; "akm_trash").</summary>
         internal static string Norm(string n)
         {
             n = n.ToLowerInvariant();
@@ -30,6 +30,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         private static float _nextBuild;
+        /// <summary>Catalogs the weapon models in the hands of NPC prefab assets.</summary>
         private static void Build()
         {
             _built = true;
@@ -51,7 +52,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Props: " + _catalog.Count + " NPC weapon models found (" + string.Join(", ", keys.ToArray()) + ")");
         }
 
-        // NPC prop for the player's weapon (first-person object name), with a stand-in of the same kind when no NPC carries it
+        /// <summary>NPC prop for the player's weapon (first-person object name), with a stand-in of the same kind when no NPC carries it</summary>
         public static Prop Find(string weapon)
         {
             // (B05 perf, README 8 #5) an empty catalog (prefabs not loaded yet) is rescanned at most every 2 s, not on every call
@@ -86,7 +87,7 @@ namespace WildWasteland.Modules.PlayerBody
             return null;
         }
 
-        // the item prefab (a root prefab asset named like the weapon, with a mesh and a Rigidbody/Collider) - not the first-person model
+        /// <summary>the item prefab (a root prefab asset named like the weapon, with a mesh and a Rigidbody/Collider) - not the first-person model</summary>
         private static GameObject ItemModel(string w)
         {
             Prop cached;
@@ -105,7 +106,7 @@ namespace WildWasteland.Modules.PlayerBody
             return best;
         }
 
-        // no prefab asset loaded: a copy of one lying in the world (blastlance_1(Clone)178 ...), not the player's own first-person one
+        /// <summary>no prefab asset loaded: a copy of one lying in the world (blastlance_1(Clone)178 ...), not the player's own first-person one</summary>
         private static GameObject SceneItem(string w)
         {
             foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
@@ -117,7 +118,7 @@ namespace WildWasteland.Modules.PlayerBody
             return null;
         }
 
-        // a render-only copy of the prop, parented to the given hand bone at the NPC's local pose
+        /// <summary>a render-only copy of the prop, parented to the given hand bone at the NPC's local pose</summary>
         public static GameObject Instantiate(Prop p, Transform hand, bool mirrorToRightHand)
         {
             var holder = new GameObject("Apocaplayer.PropHolder");
@@ -178,7 +179,7 @@ namespace WildWasteland.Modules.PlayerBody
             return go;
         }
 
-        // Inventory renderers are hidden by the game; the stripped visual copy is visible.
+        /// <summary>Inventory renderers are hidden by the game; the stripped visual copy is visible.</summary>
         public static GameObject CopyForMount(GameObject item, Transform parent)
         {
             var copy = Instantiate(new Prop { Source = item, Key = Norm(item.name) }, parent, false);
@@ -194,6 +195,7 @@ namespace WildWasteland.Modules.PlayerBody
             return copy;
         }
 
+        /// <summary>The muzzle anchor of a prop and the muzzle point in its space.</summary>
         internal static bool TryMuzzle(GameObject prop, out Transform anchor, out Vector3 local)
         {
             anchor = null; local = Vector3.zero;
@@ -229,7 +231,7 @@ namespace WildWasteland.Modules.PlayerBody
             anchor = prop.transform; local = bounds.center; local[axis] = dir[axis] >= 0f ? bounds.max[axis] : bounds.min[axis]; return true;
         }
 
-        // The muzzle direction, or the longest mesh axis toward the end farther from the grip.
+        /// <summary>The muzzle direction, or the longest mesh axis toward the end farther from the grip.</summary>
         public static Vector3 Barrel(GameObject prop)
         {
             if (prop == null) return Vector3.zero;
@@ -262,7 +264,7 @@ namespace WildWasteland.Modules.PlayerBody
             return dir;
         }
 
-        // (2.2.0, ModAPI) a left-hand local pose reflected across the body's middle plane, expressed under the right hand (as Instantiate does)
+        /// <summary>(2.2.0, ModAPI) a left-hand local pose reflected across the body's middle plane, expressed under the right hand (as Instantiate does)</summary>
         internal static void MirrorToRight(Vector3 lp, Quaternion lr, out Vector3 pos, out Quaternion rot)
         {
             var L = BindWorld("mixamorig:LeftHand"); var R = BindWorld("mixamorig:RightHand");
@@ -272,6 +274,7 @@ namespace WildWasteland.Modules.PlayerBody
             rot = Quaternion.LookRotation(M.GetColumn(2), M.GetColumn(1));
         }
 
+        /// <summary>World bind matrix of a mixamorig bone (identity when unknown).</summary>
         internal static Matrix4x4 BindWorld(string bone)
         {
             float[] v;
@@ -281,6 +284,7 @@ namespace WildWasteland.Modules.PlayerBody
             return m.inverse;
         }
 
+        /// <summary>Scene load: the catalogs are rebuilt on next use.</summary>
         public static void OnSceneLoaded() { _built = false; _catalog.Clear(); _items.Clear(); }
     }
 }

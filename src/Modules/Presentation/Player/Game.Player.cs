@@ -13,7 +13,9 @@ namespace WildWasteland.Modules.PlayerBody
     /// </summary>
     internal static partial class Game
     {
+        /// <summary>True while a tool (repair, adjust or other tool arm) is in the player's hands.</summary>
         public static bool ToolInHand { get { return ToolActive(_toolArm) || ToolActive(_repairArm) || ToolActive(_adjustArm); } }
+        /// <summary>True when the arm is the active child of HandItemUse.</summary>
         private static bool ToolActive(Transform arm) { return arm != null && _handUse != null && arm.parent == _handUse && arm.gameObject.activeSelf; }
         // the drawn first-person weapon (name of the active child of WeaponsArm/Parent), "" when none
         // (WW perf) asked 8-10 times a frame: the answer is kept for the frame (re-read when WeaponsParent changes) and each child's name is read
@@ -59,7 +61,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
-        // the drawn gun really reloads: its [ReloadAnimation] FSM is "on" (akms etc.), or its [Reload] FSM is past idle/checkAmmo
+        /// <summary>the drawn gun really reloads: its [ReloadAnimation] FSM is "on" (akms etc.), or its [Reload] FSM is past idle/checkAmmo</summary>
         public static bool IsReloading(string weapon)
         {
             if (string.IsNullOrEmpty(weapon) || WeaponsParent == null) return false;
@@ -147,6 +149,7 @@ namespace WildWasteland.Modules.PlayerBody
                 return false;
             }
         }
+        /// <summary>True while the drawn gun's first-person arms play a reload state; known = the arms' Animator was found.</summary>
         public static bool ArmsReloading(string weapon, out bool known)
         {
             known = false;
@@ -172,9 +175,9 @@ namespace WildWasteland.Modules.PlayerBody
             return false;
         }
         private static readonly List<AnimatorClipInfo> _clipInfo = new List<AnimatorClipInfo>();
+        /// <summary>True for an arms reload state.</summary>
         private static bool IsReload(AnimatorStateInfo s) { return ReloadPhaseOf(s) != 0; }
-        // (2.1.8) the arms' reload states: "reload" (one magazine / one round), and for the break-action / bolt guns (rochester_m24, redmark_m11)
-        // "reload 1" (open), "reload 2" (one round, again per round), "reload 3" / "reload 4" (close). 1 = opening, 2 = loading, 3 = closing
+        /// <summary>(2.1.8) the arms' reload states: "reload" (one magazine / one round), and for the break-action / bolt guns (rochester_m24, redmark_m11) "reload 1" (open), "reload 2" (one round, again per round), "reload 3" / "reload 4" (close). 1 = opening, 2 = loading, 3 = closing</summary>
         private static int ReloadPhaseOf(AnimatorStateInfo s)
         {
             if (s.IsName("reload") || s.IsName("Reload") || s.IsName("Base Layer.reload") || s.IsName("Base Layer.Reload") || s.IsName("reload 2") || s.IsName("Base Layer.reload 2")) return 2;
@@ -182,7 +185,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (s.IsName("reload 3") || s.IsName("Base Layer.reload 3") || s.IsName("reload 4") || s.IsName("Base Layer.reload 4")) return 3;
             return 0;
         }
-        // the drawn weapon's arms in a reload state: which phase, and how far through it (0..1)
+        /// <summary>the drawn weapon's arms in a reload state: which phase, and how far through it (0..1)</summary>
         public static bool ArmsReloadPhase(string weapon, out int phase, out float norm)
         {
             phase = 0; norm = 0f;
@@ -203,6 +206,7 @@ namespace WildWasteland.Modules.PlayerBody
         // the gun reloads one round at a time: its [Reload] FSM loops reload -> checkAmmoInStore -> the arms' round animation (revolvers,
         // shotguns, the bolt rifle, the double barrel); magazines don't have that loop
         private static readonly Dictionary<string, bool> _perRound = new Dictionary<string, bool>();
+        /// <summary>True when the gun reloads one round at a time (its Reload FSM loops through checkAmmoInStore); cached per weapon.</summary>
         public static bool ReloadsPerRound(string weapon)
         {
             if (string.IsNullOrEmpty(weapon)) return false;
@@ -278,6 +282,7 @@ namespace WildWasteland.Modules.PlayerBody
         // melee / bare hands: the drawn weapon's [Attack] FSM (on -> fire: SphereCast = the hit, at once; then its float "Time" (0.35 hands,
         // 0.4 machete ...) counts down to the next swing; a held Fire button goes straight on to the next one)
         private static readonly Dictionary<string, PlayMakerFSM> _attackFsms = new Dictionary<string, PlayMakerFSM>();
+        /// <summary>State and swing time of the drawn melee weapon's / hands' Attack FSM; false without one.</summary>
         public static bool Attack(string weapon, out string state, out float time)
         {
             state = ""; time = 0f;

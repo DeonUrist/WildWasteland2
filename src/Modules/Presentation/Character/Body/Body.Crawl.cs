@@ -13,8 +13,10 @@ namespace WildWasteland.Modules.PlayerBody
         AnimationPlayableOutput _crawlOutput;
         float _crawlTime, _crawlBlend;
         Vector3 _crawlHips;
+        /// <summary>True while the low-crawl mixer drives the body.</summary>
         internal bool CrawlMotion { get { return _crawlMix.IsValid(); } }
 
+        /// <summary>Low crawl frame: the LowCrawl clip (scrubbed by the forward speed) replaces the locomotion, the body lies under the player, head under the camera in first person; false when not crawling.</summary>
         bool LateCrawl(View view, float dt)
         {
             if (!Crawling.Active || Crawling.Clip == null) { EndCrawl(); return false; }
@@ -54,6 +56,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             return true;
         }
+        /// <summary>Takes the crawl mixer out of the graph and fades back into the standing pose.</summary>
         internal void EndCrawl()
         {
             if (!_graph.IsValid() || !_crawlMix.IsValid()) return;

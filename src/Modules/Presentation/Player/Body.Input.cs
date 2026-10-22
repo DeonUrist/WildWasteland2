@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.PlayerBody
     {
         private string _throwState = "", _throwFor = "";
 
-        // drawn throwing weapon: its [Attack] FSM leaving "on" = the throw has begun (button pressed)
+        /// <summary>drawn throwing weapon: its [Attack] FSM leaving "on" = the throw has begun (button pressed)</summary>
         private void WatchThrow(string weapon, bool click)
         {
             string st; float tv;
@@ -33,7 +33,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float _meleeStart, _meleeLen = 0.5f, _meleeSpeed = 1f;
         private string _meleeFor = "";
         private readonly Dictionary<string, float> _meleeLens = new Dictionary<string, float>();   // measured swing length per weapon (a held button repeats the
-                                                                                                 // swing state, so the next swings can't be measured)
+                                                                                                 /// <summary>swing state, so the next swings can't be measured)</summary>
         private void StartMelee(string weapon)
         {
             float known;
@@ -43,6 +43,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_meleeFp != null && _meleeFp.isActiveAndEnabled) { _meleeHash0 = _meleeFp.GetCurrentAnimatorStateInfo(0).fullPathHash; _meleeMeasuring = true; }
         }
 
+        /// <summary>Plays the current melee swing on the upper layer, timed by the first-person swing; false when no swing runs.</summary>
         private bool UpdateMelee(string clipName)
         {
             if (_meleeStart <= 0f) return false;
@@ -72,7 +73,9 @@ namespace WildWasteland.Modules.PlayerBody
         private sealed class Strike
         {
             public string Clip, Hand; public float From, Hit, To;
+            /// <summary>One blow of a strike clip: clip, start, hit and end times, and the hand.</summary>
             public Strike(string c, float a, float h, float e, string hand = null) { Clip = c; From = a; Hit = h; To = e; Hand = hand; }
+            /// <summary>Per-blow key (clip@hit time).</summary>
             public string Key { get { return Clip + "@" + Hit.ToString("0.00"); } }   // per blow (one clip can hold several)
         }
         // Punch.fbx (1.7.3): one clip with eight blows, left/right - read off its forearm-stretch curves (Punch.anim): peaks at
@@ -91,7 +94,7 @@ namespace WildWasteland.Modules.PlayerBody
         private int _punchN, _chainN, _seqN;
         private string _atkFor = "", _atkState = "";
 
-        // the clip of a strike: "Melee1"/"Melee2" are taken as Punch1/Punch2 too; a missing one = a generic share of whatever clip there is
+        /// <summary>the clip of a strike: "Melee1"/"Melee2" are taken as Punch1/Punch2 too; a missing one = a generic share of whatever clip there is</summary>
         private static Strike Resolve(Strike s, string alias)
         {
             if (Anims.Get(s.Clip) != null) return s;
@@ -99,6 +102,7 @@ namespace WildWasteland.Modules.PlayerBody
             return null;
         }
 
+        /// <summary>Watches the drawn melee weapon's / hands' Attack FSM and starts a strike on each new blow.</summary>
         private void WatchAttack(Props.Kind kind, string weapon, bool click)
         {
             string st; float tv;
@@ -111,6 +115,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (strike) BeginStrike(kind, weapon, Mathf.Clamp(tv + Time.deltaTime, 0.2f, 1.5f));
         }
 
+        /// <summary>Starts the next blow (punch sequence, combo or single swing) fitted to the weapon's swing cycle.</summary>
         private void BeginStrike(Props.Kind kind, string weapon, float cycle)
         {
             bool chained = _striking || _meleeStart > 0f || Time.time - _strikeEnd < 0.25f;   // straight after the last one: held button / fast clicks
@@ -146,6 +151,7 @@ namespace WildWasteland.Modules.PlayerBody
         // the quick grenade leaves from the game's "spawn throw" point (right of her head) straight along the view: her throwing hand (left) is
         // turned (spine yaw, learned per clip like the punches) to be on that line when she lets go
         private Transform _throwSpawn;
+        /// <summary>Quick grenade: turns the spine so the throwing hand releases along the grenade's flight line (measured once per throw).</summary>
         private void ThrowAim()
         {
             if (!_throwAim || Time.time >= _throwUntil || !_upper.IsValid() || _upperClip != _throwClip) return;
@@ -175,9 +181,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Throw aim: hand " + off.ToString("0.0") + " deg off the grenade's line (spawn " + tx.ToString("0.00") + " m) -> spine turn " + _aimYaw[key].ToString("0.0"));
         }
 
-        // 1.7.4: during a strike the chest faces where the game hits (the eye's yaw = the crosshair), whatever the legs / strafe / the clip's own
-        // hip turn do: spine, spine1, spine2 turn (a third each, about the world up) so the shoulder line is square to the aim; for punches a
-        // learned per-blow offset is added on top so the fist lands on the middle line (measured against the aim, not the body)
+        /// <summary>1.7.4: during a strike the chest faces where the game hits (the eye's yaw = the crosshair), whatever the legs / strafe / the clip's own hip turn do: spine, spine1, spine2 turn (a third each, about the world up) so the shoulder line is square to the aim; for punches a learned per-blow offset is added on top so the fist lands on the middle line (measured against the aim, not the body)</summary>
         private void PunchAim()
         {
             if (_strike == null || !_striking || PlayerState.PlayerCamera == null) return;

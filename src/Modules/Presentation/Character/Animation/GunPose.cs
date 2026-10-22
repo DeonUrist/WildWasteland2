@@ -25,6 +25,7 @@ namespace WildWasteland.Modules.PlayerBody
         // the clips the drawn weapon can show (set by Body.SetPoseList): the numpad 9/3 cycle, in that order
         private static readonly List<string> _list = new List<string>();
         private static string _idleName = "Idle";
+        /// <summary>Position of a clip in the numpad cycle (1000 when not listed).</summary>
         private static int PoseIndex(string name) { int i = _list.IndexOf(name); return i >= 0 ? i : 1000; }
 
         private static string _dir, _file, _export;
@@ -50,6 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Weapon poses: " + _user.Count + " in weapon-poses.txt, " + _builtin.Count + " built in");
         }
 
+        /// <summary>Parses "x, y, z, rx, ry, rz" (cm, degrees); null when malformed.</summary>
         private static float[] Parse(string s)
         {
             var parts = (s ?? "").Split(new[] { ',', ';', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
@@ -60,8 +62,10 @@ namespace WildWasteland.Modules.PlayerBody
             return v;
         }
 
+        /// <summary>Formats a pose as "x, y, z, rx, ry, rz" (invariant, 3 decimals).</summary>
         private static string Fmt(float[] v) { return string.Join(", ", Array.ConvertAll(v, x => x.ToString("0.###", CultureInfo.InvariantCulture))); }
 
+        /// <summary>Reads weapon-poses.txt into the user table.</summary>
         private static void LoadUser()
         {
             _user.Clear(); Dirty();
@@ -79,6 +83,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ---------------- values
+        /// <summary>True when the weapon has any file or built-in pose.</summary>
         public static bool HasAny(string weapon)
         {
             string pre = weapon + "|";
@@ -87,12 +92,13 @@ namespace WildWasteland.Modules.PlayerBody
             return false;
         }
 
+        /// <summary>A hand-local pose as table values (cm, degrees).</summary>
         public static float[] Abs(Vector3 p, Quaternion r)
         {
             var e = r.eulerAngles;
             return new[] { p.x * 100f, p.y * 100f, p.z * 100f, Mathf.DeltaAngle(0f, e.x), Mathf.DeltaAngle(0f, e.y), Mathf.DeltaAngle(0f, e.z) };
         }
-        // (WW perf) the same into a caller's reused float[6] (no garbage per frame)
+        /// <summary>(WW perf) the same into a caller's reused float[6] (no garbage per frame)</summary>
         public static float[] Abs(Vector3 p, Quaternion r, float[] into)
         {
             var e = r.eulerAngles;
@@ -105,12 +111,13 @@ namespace WildWasteland.Modules.PlayerBody
         // (WW perf) resolved (weapon, clip) -> file/built-in entry (null = none), so Own doesn't build "weapon|clip" per call per frame;
         // cleared whenever _user/_builtin change (Dirty)
         private static readonly Dictionary<string, Dictionary<string, float[]>> _own = new Dictionary<string, Dictionary<string, float[]>>();
+        /// <summary>Drops the resolved-entry cache (the tables changed).</summary>
         private static void Dirty() { _own.Clear(); }
 
         private static string _liveKey;
         private static float[] _live;
 
-        // the clip's own entry (live edit > file > built in), null when it has none
+        /// <summary>the clip's own entry (live edit &gt; file &gt; built in), null when it has none</summary>
         public static float[] Own(string weapon, string clip)
         {
             if (string.IsNullOrEmpty(clip)) return null;
@@ -127,6 +134,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ---------------- the drawn weapon's clips (set by Body): the numpad cycle, and the kind's idle clip = the fallback for untuned ones
+        /// <summary>The drawn weapon's clips (numpad cycle order) and its kind's idle clip, set by the body.</summary>
         public static void SetPoseList(List<string> names, string idleName)
         {
             string was = _sel >= 0 && _sel < _list.Count ? _list[_sel] : null;
@@ -134,6 +142,7 @@ namespace WildWasteland.Modules.PlayerBody
             _idleName = idleName ?? "Idle";
             _sel = was != null ? _list.IndexOf(was) : -1;   // another weapon: stay on the same clip when it has it (to copy a pose across weapons)
         }
+        /// <summary>Sets or removes (null) the user entry of (weapon, clip).</summary>
         private static void Put(string weapon, string clip, float[] v)
         {
             if (v == null) _user.Remove(weapon + "|" + clip);
@@ -153,18 +162,20 @@ namespace WildWasteland.Modules.PlayerBody
         internal static void PutUser(string weapon, string clip, float[] v) { Flush(); Put(weapon, clip, v); }
         /// <summary>Writes the user file now (IPoseAuthoring.Save), after any live edit.</summary>
         internal static void SaveUser() { Flush(); Save(); }
+        /// <summary>True when the clip has its own entry for the weapon.</summary>
         public static bool HasPose(string weapon, string clip) { return !string.IsNullOrEmpty(weapon) && Own(weapon, clip) != null; }
 
-        // what the clip shows: its own entry, else the kind's idle clip, else the weapon's old Idle entry, else the raider grip (def)
+        /// <summary>what the clip shows: its own entry, else the kind's idle clip, else the weapon's old Idle entry, else the raider grip (def)</summary>
         public static float[] Effective(string weapon, string clip, float[] def)
         {
             return Own(weapon, clip) ?? Own(weapon, _idleName) ?? Own(weapon, "Idle") ?? def;
         }
-        // (2.2.0, ModAPI) the same for a character that is not the player: its own kind's idle clip as the fallback (not the drawn weapon's)
+        /// <summary>(2.2.0, ModAPI) the same for a character that is not the player: its own kind's idle clip as the fallback (not the drawn weapon's)</summary>
         public static float[] EffectiveFor(string weapon, string clip, string idleName, float[] def)
         {
             return Own(weapon, clip) ?? Own(weapon, idleName) ?? Own(weapon, "Idle") ?? def;
         }
+        /// <summary>Blends the clips' poses by weight with the character's own kind idle as fallback (ModAPI characters).</summary>
         public static void BlendFor(string weapon, Dictionary<string, float> w, string idleName, Vector3 defPos, Quaternion defRot, out Vector3 pos, out Quaternion rot)
         {
             var def = Abs(defPos, defRot, _blendDef);
@@ -186,7 +197,7 @@ namespace WildWasteland.Modules.PlayerBody
             rot = new Quaternion(q.x, q.y, q.z, q.w);
         }
 
-        // blend of the clips' poses by weight -> hand-local position (m) and rotation
+        /// <summary>blend of the clips' poses by weight -&gt; hand-local position (m) and rotation</summary>
         public static void Blend(string weapon, Dictionary<string, float> w, Vector3 defPos, Quaternion defRot, out Vector3 pos, out Quaternion rot)
         {
             var def = Abs(defPos, defRot, _blendDef);
@@ -208,6 +219,7 @@ namespace WildWasteland.Modules.PlayerBody
             rot = new Quaternion(q.x, q.y, q.z, q.w);
         }
 
+        /// <summary>Sets the live (being edited) pose of (weapon, clip); a different key flushes the previous edit first.</summary>
         public static void SetLive(string weapon, string clip, float[] v)
         {
             string k = weapon + "|" + clip;
@@ -216,13 +228,14 @@ namespace WildWasteland.Modules.PlayerBody
         }
         private static string _liveWeapon, _livePose;
 
-        // writes the edited pose (once, when the keys are let go / the weapon or animation changes)
+        /// <summary>writes the edited pose (once, when the keys are let go / the weapon or animation changes)</summary>
         public static void Flush()
         {
             if (_live != null && _liveKey != null) { var v = _live; _live = null; _liveKey = null; Put(_liveWeapon, _livePose, v); Save(); }
             _live = null; _liveKey = null;
         }
 
+        /// <summary>Writes the user table to weapon-poses.txt (temp + atomic replace) and the C# export of the built-in table.</summary>
         private static void Save()
         {
             try
@@ -240,7 +253,7 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Weapon poses: saving failed: " + e.Message); }
         }
 
-        // weapon, then animation in clip order
+        /// <summary>weapon, then animation in clip order</summary>
         private static int Compare(string a, string b)
         {
             int ia = a.IndexOf('|'), ib = b.IndexOf('|');

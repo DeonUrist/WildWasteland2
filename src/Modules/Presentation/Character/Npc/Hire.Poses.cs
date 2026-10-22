@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.Quests
     /// <summary>Hired follower, Presentation part (Wave A, from Quests/Hire.cs; B05): seated turn towards the target, muzzle-flash/arm parts scan, recoil applied before rendering, shot animation and the borrowed crew arm-pose template.</summary>
     internal static partial class Hire
     {
-        // the Animator state his Movement FSM plays to shoot on foot ("attack 2", "attack 4"...)
+        /// <summary>the Animator state his Movement FSM plays to shoot on foot ("attack 2", "attack 4"...)</summary>
         static string ShootAnimName()
         {
             try
@@ -41,6 +41,7 @@ namespace WildWasteland.Modules.Quests
         // The game's own Attack FSM does this for most of them, but not for all (Bolter), and not while reloading.
         static Quaternion seatBase = Quaternion.identity;
 
+        /// <summary>Turns the follower's seat toward his target (±150°, yaw only), or back to the seat's front without one.</summary>
         static void TurnToTarget()
         {
             if (npc == null || mountObj == null || mountObj.transform.parent == null) return;
@@ -69,7 +70,7 @@ namespace WildWasteland.Modules.Quests
         // Play the same Animator state ("attack 2") on every shot, then go back to idle.
         static List<GameObject> flashObjs; static float flashOff;
 
-        // his parts, once per ride: the muzzle flash objects, and the bones of the arm that holds the gun (for the recoil)
+        /// <summary>his parts, once per ride: the muzzle flash objects, and the bones of the arm that holds the gun (for the recoil)</summary>
         static void ScanParts()
         {
             try
@@ -132,7 +133,7 @@ namespace WildWasteland.Modules.Quests
 
         static Transform gunArm, gunHand, chestBone; static readonly List<Transform> kickBones = new List<Transform>(); static float recoilAt = -10f, ownDamage;
 
-        // a short kick of the gun arm, drawn after Apocapatrol's pose (onBeforeRender comes after every LateUpdate)
+        /// <summary>a short kick of the gun arm, drawn after Apocapatrol's pose (onBeforeRender comes after every LateUpdate)</summary>
         static void Recoil()
         {
             try
@@ -151,6 +152,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.LogOnce("HireRecoil", e); }
         }
 
+        /// <summary>One shot from the car: muzzle flash parts flicked, recoil started and (ShotAnimation on) the Movement FSM's shooting state played when the ModAPI body does not drive him.</summary>
         static void PlayShotAnim()
         {
             try
@@ -169,7 +171,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.LogOnce("HireShotAnim", e); }
         }
 
-        // Apocapatrol's arm poses (aiming / shooting) exist only for its own humans: lend a follower a copy of one of them
+        /// <summary>Apocapatrol's arm poses (aiming / shooting) exist only for its own humans: lend a follower a copy of one of them</summary>
         static string ArmTemplate(string name)
         {
             string like = "Lugnut";

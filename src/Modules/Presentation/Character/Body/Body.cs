@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.PlayerBody
         private Ragdoll _ragdoll;
         private Equipment _equipment;
 
+        /// <summary>Visible equipment on the body (EquipmentOnBody); off hides the mounts without updating them.</summary>
         public void LateEquipment(bool on)
         {
             // (WW) [PlayerBody] EquipmentOnBody off: the mounts are hidden (and not updated) until it is on again
@@ -30,6 +31,7 @@ namespace WildWasteland.Modules.PlayerBody
             _equipment.SetVisible(_smr.enabled, _shadow.enabled);
         }
         public bool IsRagdoll { get { return _ragdoll != null; } }
+        /// <summary>Head and feet points of the live body (occlusion cutaway).</summary>
         internal bool TryOcclusionPoints(out Vector3 head, out Vector3 feet)
         {
             Transform h, left, right;
@@ -40,6 +42,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
         public Vector3 DeathFocus { get { return _ragdoll != null ? _ragdoll.Focus : Root.transform.position; } }
 
+        /// <summary>Death: the graph stops and a jointed ragdoll takes the bones (first call), then follows physics.</summary>
         public void LateDead(Vector3 velocity, Transform vehicle)
         {
             if (_ragdoll == null)
@@ -63,11 +66,13 @@ namespace WildWasteland.Modules.PlayerBody
         {
             private Animator _a;
             public Vector3 Delta;
+            /// <summary>Collects the Animator's root motion (nothing moves by itself).</summary>
             private void OnAnimatorMove()
             {
                 if (_a == null) _a = GetComponent<Animator>();
                 if (_a != null) Delta += _a.deltaPosition;
             }
+            /// <summary>Returns and clears the collected root motion.</summary>
             public Vector3 Take() { var d = Delta; Delta = Vector3.zero; return d; }
         }
         private Animator _animator;
@@ -90,6 +95,7 @@ namespace WildWasteland.Modules.PlayerBody
         // turns). (2.1.9) In Mixamo mode the upper layer is ABOVE the actions (index 2): a grenade thrown or a punch mid-jump shows on top
         private int _lUpper = 1, _lAction = 2;
 
+        /// <summary>Creates the upper-body layer: a two-input mixer (current clip, fading old clip) connected to the layer mixer at weight 0.</summary>
         private void MakeUpper(AnimationClip c)
         {
             _upperMix = AnimationMixerPlayable.Create(_graph, 2);
@@ -101,7 +107,7 @@ namespace WildWasteland.Modules.PlayerBody
             _upperW = _upperWTarget = 0f; _upperX = 1f;
         }
 
-        // every frame: the upper layer's weight eases toward what SetUpper asked (fast in, a little slower out), the cross-fade advances
+        /// <summary>every frame: the upper layer's weight eases toward what SetUpper asked (fast in, a little slower out), the cross-fade advances</summary>
         private void TickUpper(float dt)
         {
             if (!_layers.IsValid() || !_upperMix.IsValid()) return;
@@ -127,6 +133,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float _actionUntil, _actionW;
 
         private float _jumpAt = -10f;
+        /// <summary>Starts a whole-body action clip (kick, jump, turn) from a share of its length.</summary>
         private void StartAction(string name, float startFraction = 0f)
         {
             var c = Anims.Get(name);
@@ -145,6 +152,7 @@ namespace WildWasteland.Modules.PlayerBody
             _actionUntil = Time.time + c.length - t0;
         }
 
+        /// <summary>Eases the action layer's weight in while the action runs and out after it.</summary>
         private void UpdateAction(float dt)
         {
             if (!_action.IsValid()) return;
@@ -164,6 +172,7 @@ namespace WildWasteland.Modules.PlayerBody
         private const float ThrowRelease = 0.85f, ThrowLead = 0.4f;
         private float _throwAt = -10f;
         private bool _throwAim;          // the quick grenade: aimed at where the game's grenade flies (ThrowAim)
+        /// <summary>Starts a throw (left-hand quick grenade or right-hand weapon), at most one per 1.2 s; timed = the lance's FSM already started.</summary>
         private void StartThrow(bool rightHand = false, bool timed = false)
         {
             if (Time.time - _throwAt < 1.2f) return;   // one throw at a time (the lance's FSM can pass "on" again around its throw)
@@ -178,8 +187,7 @@ namespace WildWasteland.Modules.PlayerBody
             _upperClip = ""; _throwFresh = true;   // restart the clip
             if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Throw: " + n + " from " + _throwFrom.ToString("0.00") + " s");
         }
-        // the throw runs on its own clock (started at _throwAt from _throwFrom): a weapon change during it (the lance leaving her hand, the
-        // grenade holstering the drawn weapon) resets the upper clip, which must not start the throw over
+        /// <summary>the throw runs on its own clock (started at _throwAt from _throwFrom): a weapon change during it (the lance leaving her hand, the grenade holstering the drawn weapon) resets the upper clip, which must not start the throw over</summary>
         private void PlayThrow()
         {
             SetUpper(_throwClip, 1f, 1f);
@@ -197,6 +205,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float _propRetry;
         private GameObject _prop; private string _propFor = ""; private Vector3 _propBarrel, _propPos; private Quaternion _propRot; private Transform _propHand; private float _propSince;
 
+        /// <summary>The view the body is drawn for.</summary>
         public enum View { FirstPerson, ThirdPerson }
 
         // ---------------------------------------------------------------- build
@@ -204,6 +213,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal static bool MixamoReady { get { return Anims.Loaded && Anims.Get("RifleIdle") != null && (Anims.Get("RifleWalk") != null || Anims.Get("RifleWalkLow") != null); } }
         private static bool _noBundleWarned;
 
+        /// <summary>Builds the player's body from the chosen character's rig (Flexa's or a native one): stripped clone, body/shadow/first-person/inside meshes, Mixamo graph and UpperRig; null without a complete bundle or rig.</summary>
         public static Body Create()
         {
             if (!MixamoReady)
@@ -323,6 +333,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         private static GameObject _flexa;
+        /// <summary>The Flexa prefab asset (cached).</summary>
         internal static GameObject FlexaPrefab()
         {
             if (_flexa != null) return _flexa;
@@ -332,6 +343,7 @@ namespace WildWasteland.Modules.PlayerBody
             return _flexa;
         }
 
+        /// <summary>A humanoid clip by name: the bundle first, then the game's clips (cached per name).</summary>
         private AnimationClip Clip(string name)
         {
             AnimationClip c;
@@ -349,6 +361,7 @@ namespace WildWasteland.Modules.PlayerBody
             return c;
         }
 
+        /// <summary>Creates the body's PlayableGraph and builds the Mixamo graph on it.</summary>
         private void BuildGraph(GameObject flexa)
         {
             _graph = PlayableGraph.Create("Apocaplayer");
@@ -362,6 +375,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>The game's raider swing, used when the bundle has no Melee clip (ex [Animation (fallback clips)] MeleeClip default).</summary>
         private const string RaiderMeleeClip = "enemy_1_attack";
 
+        /// <summary>Plays the current melee swing or punch/strike on the upper layer at the strike's timing.</summary>
         private void PlayStrike(float dt)
         {
             if (_meleeStart > 0f)
@@ -389,6 +403,7 @@ namespace WildWasteland.Modules.PlayerBody
             _upper.SetTime(t);
         }
 
+        /// <summary>Sets the upper layer's clip, target weight and speed (a new clip starts at once, the old one cross-fades out).</summary>
         private void SetUpper(string clipName, float weight, float speed)
         {
             if (string.IsNullOrEmpty(clipName)) { _upperWTarget = 0f; return; }   // keep the last clip connected, fading out
@@ -416,6 +431,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_upper.IsValid()) _upper.SetSpeed(speed);
         }
 
+        /// <summary>Measures thigh and shin length for the crouch drop (defaults when the rig is odd).</summary>
         private void MeasureLegs()
         {
             Transform up, leg, foot;
@@ -425,6 +441,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_legShin < 0.1f) _legShin = 0.40f;
         }
 
+        /// <summary>Destroys the body: crawl/traversal ended, ragdoll, graphs and objects removed.</summary>
         public void Destroy()
         {
             EndCrawl();
@@ -439,6 +456,7 @@ namespace WildWasteland.Modules.PlayerBody
         public bool Alive { get { return Root != null && _anim != null; } }
 
         // ---------------------------------------------------------------- per frame
+        /// <summary>Shows/hides the body mesh and its shadow-only copy (and the equipment and inside meshes with them).</summary>
         public void SetVisible(bool body, bool shadow)
         {
             if (_equipment != null) { if (CharacterSettings.EquipmentOnBody.Value) _equipment.SetVisible(body, shadow); else _equipment.SetVisible(false, false); }
@@ -451,6 +469,7 @@ namespace WildWasteland.Modules.PlayerBody
         // the caps closing the first-person cut openings: pure black, no lighting (Unlit/Color if the game ships it, else a black
         // Standard copy without texture, specular or reflections)
         private static Material _capMat;
+        /// <summary>The black unlit material of the first-person cut caps (shared).</summary>
         private static Material CapMaterial(Material body)
         {
             if (_capMat != null) return _capMat;
@@ -473,14 +492,14 @@ namespace WildWasteland.Modules.PlayerBody
             return m;
         }
 
-        // first person: [Debug] camera offsets (view right/up/forward in the given frame) - her body moves the opposite way under the camera
+        /// <summary>first person: [Debug] camera offsets (view right/up/forward in the given frame) - her body moves the opposite way under the camera</summary>
         public void ShiftFirstPerson(Quaternion frame, Vector3 viewOffset)
         {
             if (Root == null || viewOffset.sqrMagnitude < 1e-8f) return;
             Root.transform.position -= frame * viewOffset;
         }
 
-        // the body's own arms in first person (nothing in hand) - drawn on top of whatever mesh the body has (NoArms / hidden)
+        /// <summary>the body's own arms in first person (nothing in hand) - drawn on top of whatever mesh the body has (NoArms / hidden)</summary>
         public void SetFirstPersonArms(bool on)
         {
             var want = Game.ToolInHand ? Model.LeftArmOnly : Model.ArmsOnly;
@@ -494,6 +513,7 @@ namespace WildWasteland.Modules.PlayerBody
         // (WW perf, F9) the shown pose per bone in arrays parallel to Bones (filled once at creation): was ~50 string-keyed dictionary writes a frame
         private Transform[] _boneArr; private int _hipsIdx = -1;
         private Quaternion[] _shownQ, _fadeQ; private bool _shownAny;
+        /// <summary>Fills the bone arrays parallel to Bones once (pose fade without dictionary writes).</summary>
         private void BoneArrays()
         {
             if (_boneArr != null && _boneArr.Length == Bones.Count) return;
@@ -504,6 +524,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float _fadeT, _fadeLen = 0.3f;
         private Quaternion _fadeRoot = Quaternion.identity, _shownRoot = Quaternion.identity;
         private bool _fadeRootOn;
+        /// <summary>Remembers this frame's shown pose (bone rotations, root rotation relative to <paramref name="rel"/>).</summary>
         private void CapturePose(Transform rel)
         {
             BoneArrays();
@@ -511,6 +532,7 @@ namespace WildWasteland.Modules.PlayerBody
             _shownAny = true;
             _shownRoot = rel != null ? Quaternion.Inverse(rel.rotation) * Root.transform.rotation : Root.transform.rotation;
         }
+        /// <summary>Starts a pose fade from the last shown pose over <paramref name="len"/> seconds (root too when asked).</summary>
         private void StartPoseFade(float len, bool root)
         {
             if (!_shownAny) return;
@@ -518,6 +540,7 @@ namespace WildWasteland.Modules.PlayerBody
             _fadeRoot = _shownRoot; _fadeRootOn = root;
             _fadeT = _fadeLen = len;
         }
+        /// <summary>Blends the remembered pose into this frame's pose while a fade runs.</summary>
         private void ApplyPoseFade(float dt, Transform rel)
         {
             if (_fadeT <= 0f) return;
@@ -539,6 +562,7 @@ namespace WildWasteland.Modules.PlayerBody
             _fadeT -= dt;
         }
 
+        /// <summary>On foot: traversal, crawl or the Mixamo frame, then the pose fade.</summary>
         public void LateFoot(View view, float dt)
         {
             if (LateTraversal(view)) return;
@@ -549,6 +573,7 @@ namespace WildWasteland.Modules.PlayerBody
             ApplyPoseFade(dt, null); CapturePose(null);
         }
 
+        /// <summary>Places the body under the player (stance, prone) and runs the Mixamo frame.</summary>
         private void LateFootInner(View view, float dt)
         {
             if (_inCar) { _inCar = false; _animator.enabled = true; }
@@ -582,8 +607,7 @@ namespace WildWasteland.Modules.PlayerBody
             Sway(view, dt); LateMixamo(view, dt, yaw, camPitch); _snap = false; FitFirstPerson(view, yaw, camPitch);
         }
 
-        // first person: after the pose is final, slide her (horizontally) so her head is right under the camera, a little behind it -
-        // looking down you see her whole body up to the collar, wherever the animation puts her head (crouch lean, walk bob)
+        /// <summary>first person: after the pose is final, slide her (horizontally) so her head is right under the camera, a little behind it - looking down you see her whole body up to the collar, wherever the animation puts her head (crouch lean, walk bob)</summary>
         private void FitFirstPerson(View view, Quaternion yaw, float camPitch)
         {
             if (view != View.FirstPerson || _prone > 0.01f || PlayerState.PlayerCamera == null) return;
@@ -609,6 +633,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // first person: no head; her own arms only in a car with nothing drawn (hands on the wheel) - with a gun the game draws its arms
 
+        /// <summary>Chooses the body mesh for the view (full, no head, no arms, no right arm) and the inside mesh.</summary>
         public void SetMesh(bool firstPerson, bool inCar, bool gameArms = false)
         {
             var want = !firstPerson ? Model.Full : inCar && !gameArms && CharacterSettings.ArmsInCar ? Model.NoHead : Model.NoArms;   // arms on the wheel only with FirstPersonArms
@@ -620,6 +645,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_smr.shadowCastingMode != mode) _smr.shadowCastingMode = mode;
         }
 
+        /// <summary>A new upper-body avatar mask (body, head, arms, fingers, hand IK).</summary>
         private static AvatarMask UpperMask()
         {
             var mask = new AvatarMask();
@@ -633,9 +659,7 @@ namespace WildWasteland.Modules.PlayerBody
             return mask;
         }
 
-        // standing still in third person her whole body follows the clip's root motion (the bundle puts a clip's sideways/forward motion in the
-        // root): the Idle's sway moves her hips and body while the feet stay planted. Moving / first person: back to the middle at once.
-        // A slow pull to the middle keeps a clip whose loop doesn't close from drifting away.
+        /// <summary>standing still in third person her whole body follows the clip's root motion (the bundle puts a clip's sideways/forward motion in the root): the Idle's sway moves her hips and body while the feet stay planted. Moving / first person: back to the middle at once. A slow pull to the middle keeps a clip whose loop doesn't close from drifting away.</summary>
         private void Sway(View view, float dt)
         {
             var d = _rootMotion != null ? _rootMotion.Take() : Vector3.zero;
@@ -673,6 +697,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float _weaponSince, _fsmReloadSince;
         private bool _reloadFresh;                                     // the FSM was seen not reloading since the weapon was drawn
         private readonly HashSet<string> _armsShowReload = new HashSet<string>();   // weapons whose FP arms are known to play a recognisable reload
+        /// <summary>True while the drawn gun reloads (its first-person arms' reload when they show one, else its FSM, stale states ignored).</summary>
         private bool ReloadNow(string weapon)
         {
             if (Time.time - _weaponSince < 0.3f) return false;
@@ -692,6 +717,7 @@ namespace WildWasteland.Modules.PlayerBody
         // about the vertical (kept until it clearly points the held way again, so it doesn't flicker when it's sideways)
         private float _lanceSense;   // + = held pointing forward along _propBarrel, - = backward, 0 = unknown
         private bool _lanceFlip;
+        /// <summary>Blast lance thrown: flips the prop end over end when it points against its held direction.</summary>
         private void LanceAlign(Props.Kind kind)
         {
             if (kind != Props.Kind.Throw || _prop == null || _propBarrel == Vector3.zero) { _lanceSense = 0f; _lanceFlip = false; return; }
@@ -709,6 +735,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_lanceFlip) t.rotation = Quaternion.AngleAxis(180f, _anim.up) * t.rotation;
         }
 
+        /// <summary>Places the third-person weapon prop from the weapon-pose table and applies the live editor keys.</summary>
         private void PoseProp(Props.Kind kind, Quaternion yaw)
         {
             if (_prop == null || _propHand == null) return;
@@ -727,6 +754,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         private readonly float[] _shownDef = new float[6];
+        /// <summary>Weapon pose editor: moves/turns the prop by the held keys and stores the result as the clip's live pose.</summary>
         private void Adjust(Transform t, Quaternion yaw, Vector3 move, Vector3 rot, string pose)
         {
             float dt = Time.unscaledDeltaTime;
@@ -743,7 +771,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ---------------------------------------------------------------- procedural helpers
-        // rotate a bone by 'deg' about an axis given in the Anim object's local space (mirror-safe: only local rotations are used)
+        /// <summary>rotate a bone by 'deg' about an axis given in the Anim object's local space (mirror-safe: only local rotations are used)</summary>
         private void Turn(string bone, Vector3 axisAnim, float deg)
         {
             Transform t;
@@ -752,6 +780,7 @@ namespace WildWasteland.Modules.PlayerBody
             t.localRotation = t.localRotation * Quaternion.Inverse(q) * Quaternion.AngleAxis(deg, axisAnim) * q;
         }
 
+        /// <summary>Rotation of a bone in the Anim object's space.</summary>
         private Quaternion AnimSpace(Transform t)
         {
             var q = Quaternion.identity;
@@ -759,6 +788,7 @@ namespace WildWasteland.Modules.PlayerBody
             return q;
         }
 
+        /// <summary>Lowers the hips by the crouch drop (or a jump drop) and bends hips, knees and ankles to keep the feet.</summary>
         private void Crouch(float k, float jumpDrop = -1f)
         {
             float drop = jumpDrop >= 0f ? jumpDrop : CharacterSettings.CrouchDrop.Value * k;
@@ -780,6 +810,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // ---------------------------------------------------------------- weapon in hand (third person)
         private bool _propShown, _propShadow;
+        /// <summary>True while the third-person prop or its shadow shows.</summary>
         internal bool WeaponPropVisible { get { return _propShown || _propShadow; } }
         /// <summary>The third-person weapon/tool model in the body's hand (null when nothing is held). Field name _prop is read by the Weapons Pack bridge.</summary>
         internal Transform HeldProp { get { return _prop != null ? _prop.transform : null; } }
@@ -787,6 +818,7 @@ namespace WildWasteland.Modules.PlayerBody
         private Transform _propMuzzle; private Vector3 _propMuzzleLocal;
         private bool _propIsGun;
         private HutongGames.PlayMaker.FsmInt _propBoltAmmo;
+        /// <summary>Muzzle of the shown third-person gun prop (scene space).</summary>
         internal bool TryWeaponMuzzle(out Vector3 position)
         {
             position = Vector3.zero;
@@ -794,7 +826,7 @@ namespace WildWasteland.Modules.PlayerBody
             position = _propMuzzle.TransformPoint(_propMuzzleLocal);
             return true;
         }
-        // the weapon model: drawn in third person; in first person (the game draws its own gun) only its shadow, next to her body's shadow
+        /// <summary>the weapon model: drawn in third person; in first person (the game draws its own gun) only its shadow, next to her body's shadow</summary>
         private void ShowProp(bool on)
         {
             if (_propBolt != null && _propBoltAmmo != null && _propBolt.gameObject.activeSelf != (_propBoltAmmo.Value > 0)) _propBolt.gameObject.SetActive(_propBoltAmmo.Value > 0);
@@ -805,6 +837,7 @@ namespace WildWasteland.Modules.PlayerBody
             foreach (var r in _prop.GetComponentsInChildren<Renderer>(true)) { r.enabled = on || shadow; r.shadowCastingMode = mode; }
         }
 
+        /// <summary>Rebuilds the third-person prop when the drawn weapon changes (an NPC model or the weapon's world model, retried every 2 s when missing).</summary>
         private void UpdateProp(string weapon)
         {
             if (weapon == _propFor && (_prop != null || weapon == "" || Time.unscaledTime < _propRetry)) return;   // (2.2.8) no model: tried again every 2 s, not every frame

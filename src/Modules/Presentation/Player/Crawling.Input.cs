@@ -30,6 +30,7 @@ namespace WildWasteland.Modules.PlayerBody
         static PlayMakerFSM _weapons, _inHand;
         static bool _holstered;
 
+        /// <summary>Module start: crawl clip, the input/FSM hooks and the EarlyUpdate holster job.</summary>
         internal static void Init(PresentationModule owner)
         {
             Reset();
@@ -42,7 +43,9 @@ namespace WildWasteland.Modules.PlayerBody
             Scheduler.EveryFrame(owner, "Presentation.Crawling", Tick, Phase.EarlyUpdate);
             Log.Always("[PlayerBody] Low Crawl ready: native Y stance, forward/back only, weapons holstered.");
         }
+        /// <summary>Forgets the weapon FSMs and the cached state.</summary>
         internal static void Reset() { _camera = null; _weapons = _inHand = null; _holstered = false; _activeFrame = -1; }
+        /// <summary>Job "Presentation.Crawling" (EarlyUpdate): keeps the weapon holstered while crawling.</summary>
         static void Tick()
         {
             if (!Game.Ready) { Reset(); return; }
@@ -50,6 +53,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!Active) { _holstered = false; return; }
             Holster();
         }
+        /// <summary>Holsters the drawn weapon once per crawl (Weapons FSM Activate, WeaponInHand Deactivate).</summary>
         static void Holster()
         {
             if (_camera != PlayerState.PlayerCamera)
@@ -64,6 +68,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _weapons.SendEvent("Activate"); _inHand.SendEvent("Deactivate"); _holstered = true;
             }
         }
+        /// <summary>FsmState enter postfix (every state entry; filter: the player's Movement FSM): re-evaluates Active and holsters on entering Crawling.</summary>
         static void Stance(Fsm fsm, FsmState state)
         {
             var movement = PlayerState.MovementFsm;
@@ -71,17 +76,20 @@ namespace WildWasteland.Modules.PlayerBody
             _activeFrame = -1;   // the stance changed: Active is evaluated again
             if (state.Name == "Crawling" && Game.Ready && !SaveBus.Busy) Holster();
         }
+        /// <summary>GetButton prefix (every held-button action; filter: Active, "Fire", first-person rig): blocks firing while crawling.</summary>
         static bool HeldButton(GetButton action)
         {
             if (!Active || action.buttonName.Value != "Fire" || action.Owner == null || PlayerState.PlayerCamera == null || !action.Owner.transform.IsChildOf(PlayerState.PlayerCamera)) return true;
             if (action.storeResult != null && !action.storeResult.IsNone) action.storeResult.Value = false;
             return false;
         }
+        /// <summary>SetVelocity prefix (filter: the player's Movement FSM, Active): no strafing while crawling.</summary>
         static bool Velocity(SetVelocity action)
         {
             if (PlayerState.MovementFsm != null && action.Fsm == PlayerState.MovementFsm.Fsm && Active && action.x != null) action.x.Value = 0f;
             return true;
         }
+        /// <summary>GetButtonDown prefix (filter: Active): blocks jump/kick of the player and weapon/fire/reload/grenade buttons of the first-person rig.</summary>
         static bool Button(GetButtonDown action)
         {
             if (!Active) return true;
@@ -90,6 +98,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (name != "Weapon 1" && name != "Weapon 2" && name != "Weapon 3" && name != "Fire" && name != "Reload" && name != "Throw Grenade") return true;
             return action.Owner == null || PlayerState.PlayerCamera == null || !action.Owner.transform.IsChildOf(PlayerState.PlayerCamera);
         }
+        /// <summary>Fsm.ProcessEvent prefix (every FSM event; filter: the two weapon FSMs by reference, then Active): drops weapon activation/switch events while crawling.</summary>
         static bool WeaponEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             // (B05 perf) Fsm.ProcessEvent runs for every FSM event: only the two weapon FSMs matter, compared by reference first

@@ -28,6 +28,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly HashSet<string> RightArmBones = new HashSet<string> { "mixamorig:RightArm", "mixamorig:RightForeArm", "mixamorig:RightHand" };
         private static readonly HashSet<string> LeftArmBones = new HashSet<string> { "mixamorig:LeftArm", "mixamorig:LeftForeArm", "mixamorig:LeftHand" };
 
+        /// <summary>Builds the body mesh variants once (glb model skinned onto Flexa's bind poses, or the native rig's own mesh); false when the model cannot be used.</summary>
         public static bool Build(SkinnedMeshRenderer smr)
         {
             if (Full != null) return true;
@@ -103,7 +104,7 @@ namespace WildWasteland.Modules.PlayerBody
             return true;
         }
 
-        // drops every triangle that has a vertex bound mainly to one of the removed bones
+        /// <summary>drops every triangle that has a vertex bound mainly to one of the removed bones</summary>
         private static int[] Filter(int[] tris, string[] dom, HashSet<string> a, HashSet<string> b)
         {
             var keep = new List<int>(tris.Length);
@@ -120,7 +121,7 @@ namespace WildWasteland.Modules.PlayerBody
             return keep.ToArray();
         }
 
-        // keeps the triangles with a vertex bound mainly to one of the wanted bones and none to an excluded one
+        /// <summary>keeps the triangles with a vertex bound mainly to one of the wanted bones and none to an excluded one</summary>
         private static int[] Only(int[] tris, string[] dom, HashSet<string> want, HashSet<string> not)
         {
             var keep = new List<int>();
@@ -139,6 +140,7 @@ namespace WildWasteland.Modules.PlayerBody
             return keep.ToArray();
         }
 
+        /// <summary>Creates a skinned mesh from arrays (normals recalculated when missing).</summary>
         private static Mesh Make(string name, Vector3[] v, Vector3[] n, Vector2[] uv, BoneWeight[] bw, Matrix4x4[] bp, int[] tris, bool hasN)
         {
             var mesh = new Mesh { name = name };
@@ -157,6 +159,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // the same mesh seen from inside: faces reversed, normals flipped (first person: what the camera cuts open shows her inside)
         private static readonly Dictionary<Mesh, Mesh> _inside = new Dictionary<Mesh, Mesh>();
+        /// <summary>The mesh seen from inside: faces reversed, normals flipped (cached per mesh).</summary>
         public static Mesh Inside(Mesh m)
         {
             if (m == null) return null;
@@ -190,9 +193,7 @@ namespace WildWasteland.Modules.PlayerBody
             return r;
         }
 
-        // the openings the first-person mesh has and the full body doesn't (neck where the head was cut off, shoulders without arms):
-        // each boundary loop is closed with a fan around its centre, both sides, skinned like the loop. The full body's own open edges
-        // (sleeves, hems, separate pieces) are left alone. Vertices at UV seams are welded by position to find the loops.
+        /// <summary>the openings the first-person mesh has and the full body doesn't (neck where the head was cut off, shoulders without arms): each boundary loop is closed with a fan around its centre, both sides, skinned like the loop. The full body's own open edges (sleeves, hems, separate pieces) are left alone. Vertices at UV seams are welded by position to find the loops.</summary>
         private static int Caps(Mesh cut, Mesh full, List<Vector3> verts, List<Vector2> uvs, List<Vector3> nrms, List<BoneWeight> bws, List<int> tris)
         {
             var pos = cut.vertices;
@@ -252,8 +253,10 @@ namespace WildWasteland.Modules.PlayerBody
             return loops;
         }
 
+        /// <summary>Order-independent key of an edge.</summary>
         private static long Key(int a, int b) { int lo = Mathf.Min(a, b), hi = Mathf.Max(a, b); return ((long)lo << 32) | (uint)hi; }
 
+        /// <summary>Counts how many triangles use each welded edge (open edges count 1).</summary>
         private static void CountEdges(int[] t, int[] weld, Dictionary<long, int> count)
         {
             for (int i = 0; i + 2 < t.Length; i += 3)
@@ -266,6 +269,7 @@ namespace WildWasteland.Modules.PlayerBody
                 }
         }
 
+        /// <summary>Closes one open edge loop with a triangle fan (the first-person cut caps).</summary>
         private static void AddCap(List<int> loop, Dictionary<int, int> rep, Vector3[] pos, Vector2[] uv, BoneWeight[] bw,
                                    List<Vector3> verts, List<Vector2> uvs, List<Vector3> nrms, List<BoneWeight> bws, List<int> tris)
         {
@@ -303,23 +307,27 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>Adds a bone weight to a vertex's weight table.</summary>
         private static void AddW(Dictionary<int, float> d, int bone, float w) { if (w <= 0f) return; float o; d.TryGetValue(bone, out o); d[bone] = o + w; }
 
-        // Character switched: the next body is built from the other model
+        /// <summary>Character switched: the next body is built from the other model</summary>
         public static void Reset() { _inside.Clear(); Full = NoHead = NoArms = ArmsOnly = NoHeadRightArm = LeftArmOnly = null; BodyTex = ArmsTex = KickTex = null; _tried = _texTried = _armsTried = _kickTried = false; }
 
+        /// <summary>The body texture of the chosen character (loaded once).</summary>
         public static Texture2D Body()
         {
             if (!_texTried) { _texTried = true; BodyTex = Load(CharacterSettings.BodyTextureFile, CharacterSettings.Female ? "Apocaplayer" : "Apocaplayer_male"); }
             return BodyTex;
         }
 
+        /// <summary>The first-person arms atlas (Player2_female_arms.png by default, loaded once).</summary>
         public static Texture2D Arms()
         {
             if (!_armsTried) { _armsTried = true; ArmsTex = Load(CharacterSettings.ArmsTextureFile.Value, "Apocaplayer_arms"); }
             return ArmsTex;
         }
 
+        /// <summary>The kick-leg atlas (Models/Player2_female_kick.png), or the arms atlas for a custom arms texture.</summary>
         public static Texture2D Kick()
         {
             if (CharacterSettings.ArmsTextureFile.Value != "Models/Player2_female_arms.png") return Arms();
@@ -331,6 +339,7 @@ namespace WildWasteland.Modules.PlayerBody
             return KickTex;
         }
 
+        /// <summary>Loads a PNG/JPG from the Presentation asset folder as a mipmapped, repeat-wrapped texture.</summary>
         private static Texture2D Load(string rel, string name)
         {
             string path = PresentationModule.AssetPath(rel);

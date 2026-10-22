@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // ---------------------------------------------------------------- per body (only when Available)
-        // a riding character: never walks (zero velocity), no turn-in-place / walk-to-stop clips (the body is turned by our code)
+        /// <summary>a riding character: never walks (zero velocity), no turn-in-place / walk-to-stop clips (the body is turned by our code)</summary>
         internal static object Attach(Animator a)
         {
             var api = ModApi.Get<IAnimationApi>();
@@ -42,30 +42,35 @@ namespace WildWasteland.Modules.Patrols
             c.TurnInPlace = false; c.WalkToStop = false;
             return c;
         }
+        /// <summary>Releases a turret rider's body.</summary>
         internal static void Dispose(object body) { var c = body as Core.IAnimatedCharacter; if (c != null) c.Dispose(); }
-        // false as well when the provider went away (PlayerBody switched off): the body falls back to the old crouch
+        /// <summary>false as well when the provider went away (PlayerBody switched off): the body falls back to the old crouch</summary>
         internal static bool Alive(object body) { var c = body as Core.IAnimatedCharacter; return c != null && ModApi.Get<IAnimationApi>() != null && c.Valid && !c.Suspended; }
-        // this frame's situation (call every frame)
+        /// <summary>this frame's situation (call every frame)</summary>
         internal static void Set(object body, bool crouched, bool aiming, bool airborne, float aimPitch)
         {
             var c = body as Core.IAnimatedCharacter; if (c == null) return;
             c.ManualVelocity = true; c.Velocity = Vector3.zero;
             c.Crouched = crouched; c.Aiming = aiming; c.Firing = false; c.Airborne = airborne; c.AimPitch = aimPitch;
         }
+        /// <summary>Plays the right-hand throw (lance).</summary>
         internal static void Throw(object body) { var c = body as Core.IAnimatedCharacter; if (c != null) c.Throw(true); }
+        /// <summary>Plays the jump take-off and marks the rider airborne.</summary>
         internal static void Jump(object body) { var c = body as Core.IAnimatedCharacter; if (c != null) { c.Airborne = true; c.Jump(); } }
-        // the gun model in the right hand (null = none: bare hands)
+        /// <summary>the gun model in the right hand (null = none: bare hands)</summary>
         internal static void SetWeapon(object body, Transform model, string key) { var c = body as Core.IAnimatedCharacter; if (c != null) c.SetWeapon(model, model != null ? key : null); }
+        /// <summary>Weapon-pose key of a weapon object name (null without the framework).</summary>
         internal static string WeaponKey(string objectName) { var api = ModApi.Get<IAnimationApi>(); return api != null ? api.WeaponKey(objectName) : null; }
+        /// <summary>True when the player has poses for the weapon key.</summary>
         internal static bool HasWeaponPoses(string key) { var api = ModApi.Get<IAnimationApi>(); return api != null && api.HasWeaponPoses(key); }
-        // how long the right-hand throw takes on the hands (CharPlan: the clip's length, 0.5..2 s)
+        /// <summary>how long the right-hand throw takes on the hands (CharPlan: the clip's length, 0.5..2 s)</summary>
         internal static float ThrowSeconds()
         {
             var api = ModApi.Get<IAnimationApi>();
             var clip = api == null ? null : (api.GetClip("ThrowRight") ?? api.GetClip("Throw"));
             return clip != null ? Mathf.Clamp(clip.length, 0.5f, 2f) : 0.9f;
         }
-        // the framework's humanoid clips by name (ex reflection on Apocaplayer.Anims.Get) - null without the provider or the clip
+        /// <summary>the framework's humanoid clips by name (ex reflection on Apocaplayer.Anims.Get) - null without the provider or the clip</summary>
         internal static AnimationClip Clip(string name)
         {
             var api = ModApi.Get<IAnimationApi>();

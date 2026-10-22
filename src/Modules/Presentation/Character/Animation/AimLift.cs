@@ -15,10 +15,10 @@ namespace WildWasteland.Modules.PlayerBody
     internal static partial class AimLift
     {
         public static readonly string[] AimClips = { "RifleAim", "RifleCrouchAim", "RifleFire", "RifleCrouchFire", "PistolFire" };
+        /// <summary>True for the aim clips that carry aim lift.</summary>
         public static bool IsAimClip(string clip) { return Array.IndexOf(AimClips, clip) >= 0; }
 
-        // the defaults when there is no entry: rifles lifted most of the way to the eyes (the right hand sits ~32 cm under them in RifleAim,
-        // the sights ~8 cm over the grip), the head tilted onto the stock; pistols as they are (PistolFire holds the gun at eye level)
+        /// <summary>the defaults when there is no entry: rifles lifted most of the way to the eyes (the right hand sits ~32 cm under them in RifleAim, the sights ~8 cm over the grip), the head tilted onto the stock; pistols as they are (PistolFire holds the gun at eye level)</summary>
         public static float[] Default(string clip)
         {
             var v = new float[13];
@@ -64,6 +64,7 @@ namespace WildWasteland.Modules.PlayerBody
             "slamfire_shotgun|RifleCrouchAim@crouch=12, -17.6, 0"
         };
         private static Dictionary<string, float[]> _builtin;
+        /// <summary>Built-in value of a "weapon|clip[@crouch]" key (Denis's tuning), or null.</summary>
         private static float[] Builtin(string key)
         {
             if (_builtin == null)
@@ -82,6 +83,7 @@ namespace WildWasteland.Modules.PlayerBody
             float[] r; return _builtin.TryGetValue(key, out r) ? r : null;
         }
         private static string _file;
+        /// <summary>Loads config/WildWasteland/Presentation/aim-lift.txt (user values over the built-in table).</summary>
         public static void Load(string dir)
         {
             _file = Path.Combine(dir, "aim-lift.txt");
@@ -102,9 +104,13 @@ namespace WildWasteland.Modules.PlayerBody
         }
         // (WW) module Shutdown / F7 save button: write only when something was changed since the last save
         internal static bool Dirty;
+        /// <summary>Writes the file when something changed since the last save.</summary>
         internal static void SaveIfDirty() { if (Dirty) Save(); }
+        /// <summary>Number of user entries.</summary>
         internal static int UserCount { get { return _v.Count; } }
+        /// <summary>Path of aim-lift.txt.</summary>
         internal static string FilePath { get { return _file; } }
+        /// <summary>Writes every user entry to aim-lift.txt (temp file + atomic replace).</summary>
         public static void Save()
         {
             if (_file == null) return;
@@ -132,11 +138,13 @@ namespace WildWasteland.Modules.PlayerBody
         }
         /// <summary>Adds the weapon part of a "weapon|clip" key once.</summary>
         static void AddWeapon(string key, List<string> into) { int bar = key.IndexOf('|'); if (bar > 0) { string w = key.Substring(0, bar); if (!into.Contains(w)) into.Add(w); } }
+        /// <summary>Table key of a clip: "clip@crouch" when crouched.</summary>
         public static string Key(string clip, bool crouched) { return crouched ? clip + "@crouch" : clip; }
         // (WW perf) resolved per (weapon, clip, crouched) until the next Set/Load (Revision): Get ran a few concats per call, every frame.
         // The returned arrays are never written by the callers (edits Clone first); Default(clip) is shared per clip from here on.
         private static readonly Dictionary<string, Dictionary<string, float[]>>[] _got = { new Dictionary<string, Dictionary<string, float[]>>(), new Dictionary<string, Dictionary<string, float[]>>() };
         private static int _gotRevision = int.MinValue;
+        /// <summary>Aim lift values of (weapon, clip, crouched), cached until the table changes (never written by callers).</summary>
         public static float[] Get(string weapon, string clip, bool crouched)
         {
             if (weapon == null || clip == null) return Resolve(weapon, clip, crouched);
@@ -148,6 +156,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!byClip.TryGetValue(clip, out r)) byClip[clip] = r = Resolve(weapon, clip, crouched);
             return r;
         }
+        /// <summary>Resolves a value: user entry, built in, the standing entry for a crouched clip, else the clip's default.</summary>
         private static float[] Resolve(string weapon, string clip, bool crouched)
         {
             float[] v;
@@ -158,13 +167,13 @@ namespace WildWasteland.Modules.PlayerBody
             if (crouched && (v = Builtin(k0)) != null) return v;
             return Default(clip);
         }
+        /// <summary>True when (weapon, clip, crouched) has its own user or built-in entry.</summary>
         public static bool Own(string weapon, string clip, bool crouched) { string k = weapon + "|" + Key(clip, crouched); return _v.ContainsKey(k) || Builtin(k) != null; }
 
         internal static int Revision;
 
         // ---- two-bone IK: the new elbow position so the hand reaches t, the arm bending in the plane it bends in now
-        //   s, e, h = shoulder, elbow, hand positions; returns the elbow (the caller turns the upper arm onto it, then the forearm onto t)
-        // (WW perf) the math on plain doubles, no arrays (WW2: the array version used only by tools/locotest is gone, README 7)
+        /// <summary>s, e, h = shoulder, elbow, hand positions; returns the elbow (the caller turns the upper arm onto it, then the forearm onto t) (WW perf) the math on plain doubles, no arrays (WW2: the array version used only by tools/locotest is gone, README 7)</summary>
         public static void Elbow(double sx, double sy, double sz, double ex, double ey, double ez, double hx, double hy, double hz, double tx, double ty, double tz,
                                  out double rx, out double ry, out double rz)
         {

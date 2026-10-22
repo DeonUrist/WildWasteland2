@@ -16,8 +16,11 @@ namespace WildWasteland.Modules.PlayerBody
         public static readonly string[] RelaxedNames = { "Idle", "RifleWalkLow", "WalkStrafeRight", "WalkBack", "WalkStrafeLeft", "RifleRunLow", "RifleSprint" };
         static readonly string[] DirWord = { "", "ForwardRight", "Right", "BackRight", "Back", "BackLeft", "Left", "ForwardLeft" };   // 0 = forward, clockwise
 
+        /// <summary>Clip name of a direction in a tier (strafes use the strafe word for left/right).</summary>
         static string DirName(string tier, string strafe, int d) { return (d == 2 || d == 6) ? strafe + DirWord[d] : tier + DirWord[d]; }
+        /// <summary>True for every slot except the three idles.</summary>
         public static bool Moving(int i) { return i != B_IDLE && i != B_CIDLE && i != B_RIDLE; }
+        /// <summary>Preferred clip name of a locomotion slot.</summary>
         public static string SlotName(int i)
         {
             if (i == B_IDLE) return "RifleIdle";
@@ -29,10 +32,12 @@ namespace WildWasteland.Modules.PlayerBody
             if (i < B_CIDLE) return "Rifle" + DirName("Sprint", "SprintStrafe", i - B_SPRINT);
             return "Rifle" + DirName("CrouchWalk", "CrouchStrafe", i - B_CWALK);
         }
+        /// <summary>Forward or back direction of a diagonal (others unchanged).</summary>
         static int Cardinal(int d) { return d == 1 || d == 7 ? 0 : d == 3 || d == 5 ? 4 : d; }   // a diagonal's forward / back
+        /// <summary>First of the names the bundle has, or null.</summary>
         static string Pick(Func<string, bool> has, params string[] names) { foreach (var n in names) if (n != null && has(n)) return n; return null; }
 
-        // the clip really used in slot i (stand-ins for what the bundle lacks); reverse = a forward clip played backward
+        /// <summary>the clip really used in slot i (stand-ins for what the bundle lacks); reverse = a forward clip played backward</summary>
         public static string Resolve(int i, Func<string, bool> has, out bool reverse)
         {
             reverse = false;
@@ -72,10 +77,7 @@ namespace WildWasteland.Modules.PlayerBody
             return r;
         }
 
-        // which legs: the relaxed set (natural feet) or the pack's aiming set (bladed stance, the right foot turned out)
-        //   bare hands, throwables: relaxed (the aim of a throw / punch is the chest's, PunchAim / ThrowAim)
-        //   melee weapons: always the aiming stance (a fighting stance - Denis: "good for melee weapons")
-        //   pistol / rifle: relaxed until she aims (right mouse) or shoots
+        /// <summary>which legs: the relaxed set (natural feet) or the pack's aiming set (bladed stance, the right foot turned out) bare hands, throwables: relaxed (the aim of a throw / punch is the chest's, PunchAim / ThrowAim) melee weapons: always the aiming stance (a fighting stance - Denis: "good for melee weapons") pistol / rifle: relaxed until she aims (right mouse) or shoots</summary>
         public static bool Relaxed(int kind, bool aiming, bool shooting)
         {
             if (kind == K_MELEE) return false;
@@ -83,12 +85,12 @@ namespace WildWasteland.Modules.PlayerBody
             return true;
         }
 
+        /// <summary>Clamps to 0..1 (Unity-free).</summary>
         static float Clamp01(float v) { return v < 0f ? 0f : v > 1f ? 1f : v; }
+        /// <summary>Clamps to a..b (Unity-free).</summary>
         static float Clamp(float v, float a, float b) { return v < a ? a : v > b ? b : v; }
 
-        // the base layer's weights. m = moving 0..1, r = running 0..1, sprint 0..1, (lx, lz) = her velocity in her own frame (x right, z forward),
-        // crouch 0..1, relax 0..1 (smoothed Relaxed). hipTurn = degrees the hips turn toward the way she runs (relaxed running only)
-        //   crouchMirror: crouched strafe left = the mirrored strafe right (2.1.3: bare hands only - pistol / rifle keep the pack's aiming strafes)
+        /// <summary>the base layer's weights. m = moving 0..1, r = running 0..1, sprint 0..1, (lx, lz) = her velocity in her own frame (x right, z forward), crouch 0..1, relax 0..1 (smoothed Relaxed). hipTurn = degrees the hips turn toward the way she runs (relaxed running only) crouchMirror: crouched strafe left = the mirrored strafe right (2.1.3: bare hands only - pistol / rifle keep the pack's aiming strafes)</summary>
         public static void Weights(float m, float r, float sprint, float lx, float lz, float crouch, float relax, bool crouchMirror, float legsTurnMax, float[] w, out float hipTurn)
         {
             hipTurn = 0f;
@@ -126,10 +128,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (m > 0.05f) hipTurn = (Clamp(sang, -legsTurnMax, legsTurnMax) * (1f - back) + Clamp(fromBack, -legsTurnMax, legsTurnMax) * back) * (r * relS);
         }
 
-        // the upper source (UpperRig) - which clip moves the hands; null = the legs' own clip moves them too
-        //   hold = its first frame, frozen (aiming without firing); sync = walks / runs in step with the legs
-        //   crouchMirror = weight of the mirrored crouch strafe (its arms are mirrored too: a rifle needs the unmirrored clip's hands)
-        //   pumping (2.1.6): the drawn shotgun / bolt rifle is being cocked (its [Attack] FSM in "pump" / "bolt action") -> ShotgunPump
+        /// <summary>the upper source (UpperRig) - which clip moves the hands; null = the legs' own clip moves them too hold = its first frame, frozen (aiming without firing); sync = walks / runs in step with the legs crouchMirror = weight of the mirrored crouch strafe (its arms are mirrored too: a rifle needs the unmirrored clip's hands) pumping (2.1.6): the drawn shotgun / bolt rifle is being cocked (its [Attack] FSM in "pump" / "bolt action") -&gt; ShotgunPump</summary>
         public static string Upper(int kind, bool relaxed, bool aiming, bool shooting, bool reloading, bool pumping, float crouch, float m, float runW, float lz, float crouchMirror, Func<string, bool> has, out bool hold, out bool sync)
         {
             hold = false; sync = false;
@@ -173,8 +172,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ---- the stride: every moving clip (base and upper) is set to the SAME point of its step cycle. A clip's phase offset is where its
-        // left foot is highest above the right one (the first harmonic of left-minus-right foot height over one loop), so clips from different
-        // sources (the pack, single Mixamo downloads, a mirrored strafe - which leads with the other foot) still step together.
+        /// <summary>left foot is highest above the right one (the first harmonic of left-minus-right foot height over one loop), so clips from different sources (the pack, single Mixamo downloads, a mirrored strafe - which leads with the other foot) still step together.</summary>
         public static float PhaseFromHeights(float[] leftMinusRight)
         {
             int n = leftMinusRight.Length;
@@ -193,18 +191,14 @@ namespace WildWasteland.Modules.PlayerBody
             return (float)ph;
         }
         // ---- (2.1.6) cocking: the [Attack] FSM states in which the game cocks a gun (slamberg_500 pump shotgun: "pump", 0.25 s; redmark_m11 bolt
-        // rifle: "bolt action", until its arms' bolt animation ends). Seen only when the gun really cocks - with the hammer already up the FSM
-        // passes those states within the frame. ShotgunPump.fbx: its rack is 0.15 .. 0.93 of the clip (both hands at the shoulder before / after).
-        // (2.1.8) one round of a one-round-at-a-time reload: the part of the reload clip where the left hand fetches a round and puts it in, and
-        // comes back to where it started (measured on the FBX, tools/locotest: RifleReload's left hand goes to the pouch 0.28..0.40, to the gun
-        // 0.48..0.69, the ends 0.00 / 0.78 differ by 3 cm; PistolReload's goes low 0.17..0.29, back at the gun 0.51, ends 0.05 / 0.57 differ by 5.5 cm)
+        /// <summary>rifle: "bolt action", until its arms' bolt animation ends). Seen only when the gun really cocks - with the hammer already up the FSM passes those states within the frame. ShotgunPump.fbx: its rack is 0.15 .. 0.93 of the clip (both hands at the shoulder before / after). (2.1.8) one round of a one-round-at-a-time reload: the part of the reload clip where the left hand fetches a round and puts it in, and comes back to where it started (measured on the FBX, tools/locotest: RifleReload's left hand goes to the pouch 0.28..0.40, to the gun 0.48..0.69, the ends 0.00 / 0.78 differ by 3 cm; PistolReload's goes low 0.17..0.29, back at the gun 0.51, ends 0.05 / 0.57 differ by 5.5 cm)</summary>
         public static bool RoundSegment(string clip, out float from, out float to)
         {
             if (clip == "RifleReload") { from = 0.00f; to = 0.78f; return true; }
             if (clip == "PistolReload") { from = 0.05f; to = 0.57f; return true; }
             from = 0f; to = 1f; return false;
         }
-        // the reload clip's time for the arms' phase (1 opening / 2 loading a round / 3 closing) and how far through it they are
+        /// <summary>the reload clip's time for the arms' phase (1 opening / 2 loading a round / 3 closing) and how far through it they are</summary>
         public static float RoundTime(string clip, int phase, float norm)
         {
             float a, b;
@@ -213,18 +207,20 @@ namespace WildWasteland.Modules.PlayerBody
             return a;                                                   // opening / closing the gun: the hands on it, ready
         }
 
+        /// <summary>True for the Attack FSM states that cock a pump / bolt gun.</summary>
         public static bool IsCocking(string attackState) { return attackState == "pump" || attackState == "bolt action"; }
         public const float PumpFrom = 0.15f, PumpTo = 0.93f;
 
-        // which kinds crouch-strafe left on the mirrored strafe right
+        /// <summary>which kinds crouch-strafe left on the mirrored strafe right</summary>
         public static bool CrouchMirror(int kind) { return kind == K_NONE; }
 
         // ---- (2.1.3) bare hands, crouched and moving: the crouched strafes turn the pelvis ~75° toward the step while the upper rig (CrouchIdle)
         // keeps the chest to the front - all of that twist sat in the one joint above the hips. Now the chest follows the pelvis by ChestFollow, the twist is shared by Spine / Spine1 / Spine2 (a third each), and the neck turns the head
         // back toward the front by HeadBack of the chest's turn. Angles: degrees about her up axis, + = to her right, relative to her facing.
         public const float ChestFollow = 0.5f, HeadBack = 0.6f;
+        /// <summary>How much the chest follows the pelvis (bare hands, crouched and moving), 0..ChestFollow.</summary>
         public static float ChestFollowOf(int kind, float crouch, float m) { return kind == K_NONE ? ChestFollow * Clamp01((crouch - 0.5f) * 2f) * Clamp01(m) : 0f; }
-        // turns to apply (each about her up axis, in this order: Spine, Spine1, Spine2, Neck) for the measured pelvis / chest facing
+        /// <summary>turns to apply (each about her up axis, in this order: Spine, Spine1, Spine2, Neck) for the measured pelvis / chest facing</summary>
         public static void Twist(float pelvisYaw, float chestYaw, float follow, out float spine, out float spine1, out float spine2, out float neck)
         {
             spine = spine1 = spine2 = neck = 0f;
@@ -237,8 +233,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ---- (2.1.5) turning in place: the turn clip's feet are driven by her turn itself - each degree the camera turns advances the clip by
-        // the part of it that turns one degree (TurnCurve, measured on the FBX: the clips ease in and out), so the feet step exactly as fast as
-        // she turns, from the first degree, and never slide. Past the clip's end it starts over (another step).
+        /// <summary>the part of it that turns one degree (TurnCurve, measured on the FBX: the clips ease in and out), so the feet step exactly as fast as she turns, from the first degree, and never slide. Past the clip's end it starts over (another step).</summary>
         public static bool TurnCurve(string clip, out float degrees, out float[] curve)
         {
             switch (clip)
@@ -256,7 +251,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             degrees = 90f; curve = new[] { 0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f, 0.9f, 1f }; return false;
         }
-        // the normalized clip time at which the clip has turned frac (0..1) of its degrees (the curve inverted)
+        /// <summary>the normalized clip time at which the clip has turned frac (0..1) of its degrees (the curve inverted)</summary>
         public static float TurnTime(float[] curve, float frac)
         {
             int n = curve.Length - 1;
@@ -272,7 +267,7 @@ namespace WildWasteland.Modules.PlayerBody
             return 1f;
         }
 
-        // the share of its degrees the clip has turned at normalized time t (the curve itself)
+        /// <summary>the share of its degrees the clip has turned at normalized time t (the curve itself)</summary>
         public static float TurnFrac(float[] curve, float t)
         {
             int n = curve.Length - 1;
@@ -283,7 +278,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ---- (2.1.5) the direction the legs blend by turns toward the way she moves at degPerSec instead of jumping with the keys, so strafe left ->
-        // forward turns through the diagonal (the shorter way; a reversal goes through forward)
+        /// <summary>forward turns through the diagonal (the shorter way; a reversal goes through forward)</summary>
         public static float SlewAngle(float current, float target, float maxStep)
         {
             float d = target - current;
@@ -298,8 +293,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ---- jumps: where in each jump clip the feet leave the ground (lift), are highest (apex) and touch down again (touch), as shares of the clip
-        // (-1 = not in the clip). Measured on the FBX with the real ground (tools/locotest/check_actions.py re-measures and compares) - in the
-        // game the clips' height goes to the root, so the pose alone can't tell a crouch before the jump from the feet tucked up in the air.
+        /// <summary>(-1 = not in the clip). Measured on the FBX with the real ground (tools/locotest/check_actions.py re-measures and compares) - in the game the clips' height goes to the root, so the pose alone can't tell a crouch before the jump from the feet tucked up in the air.</summary>
         public static bool JumpMarks(string clip, out float lift, out float apex, out float touch)
         {
             switch (clip)
@@ -318,6 +312,7 @@ namespace WildWasteland.Modules.PlayerBody
         public const float StopTo = 0.66f;
         static readonly float[] StopTable = { 0.169f, 0.178f, 0.187f, 0.196f, 0.205f, 0.214f, 0.223f, 0.233f, 0.241f, 0.248f, 0.254f, 0.265f, 0.279f,
                                               0.291f, 0.303f, 0.316f, 0.328f, 0.339f, 0.350f, 0.361f, 0.373f, 0.384f, 0.398f };
+        /// <summary>Start time of RifleWalkToStop that matches the walk stride (-1 when the stride has no match).</summary>
         public static float StopStart(double stride)
         {
             double s = stride - Math.Floor(stride);
@@ -329,7 +324,7 @@ namespace WildWasteland.Modules.PlayerBody
             return (float)(StopTable[i] * (1 - f) + StopTable[i + 1] * f);
         }
 
-        // the normalized time of a clip with phase offset off at the shared stride (off < 0: unknown -> the stride itself)
+        /// <summary>the normalized time of a clip with phase offset off at the shared stride (off &lt; 0: unknown -&gt; the stride itself)</summary>
         public static double Time01(double stride, float off, bool reverse)
         {
             double o = off < 0f ? 0f : off;

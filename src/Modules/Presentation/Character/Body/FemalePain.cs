@@ -16,9 +16,10 @@ namespace WildWasteland.Modules.PlayerBody
         private static FsmFloat[] _weights;
         private static FsmObject _death;
         private static readonly AudioClip[] Shouts = new AudioClip[2];
+        /// <summary>The player's shout clip for the chosen character (female / male).</summary>
         internal static AudioClip PlayerShout { get { return Shouts[CharacterSettings.Female ? 1 : 0]; } }
 
-        // (WW) the clips are decoded once per game session (module Init), the patch is a module patch through Core.Patches
+        /// <summary>(WW) the clips are decoded once per game session (module Init), the patch is a module patch through Core.Patches</summary>
         internal static IEnumerator LoadClips()
         {
             yield return null;
@@ -54,6 +55,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>Patches PlayRandomSound.OnEnter and SetAudioClip.OnEnter (prefix + finalizer) for the female pain and death sounds.</summary>
         public static void Patch(Core.IModule owner)
         {
             Core.Patches.Patch(owner, HarmonyLib.AccessTools.Method(typeof(PlayRandomSound), "OnEnter"),
@@ -64,8 +66,10 @@ namespace WildWasteland.Modules.PlayerBody
                 finalizer: HarmonyLib.AccessTools.Method(typeof(FemalePain), nameof(FinallyDeath)));
         }
 
+        /// <summary>The native clips swapped out for one action call.</summary>
         internal struct SoundState { internal FsmObject[] Clips; internal FsmFloat[] Weights; }
 
+        /// <summary>PlayRandomSound.OnEnter prefix (every random sound; filter: DamageEffectSound FSMs of the player, Female and PainSounds on): plays the female pain clips.</summary>
         internal static void Before(PlayRandomSound __instance, out SoundState __state)
         {
             __state = new SoundState();
@@ -82,12 +86,14 @@ namespace WildWasteland.Modules.PlayerBody
             PresentationEvents.Voice(Entities.Player, "FEMPAIN", owner.transform.position);
         }
 
+        /// <summary>PlayRandomSound.OnEnter finalizer: the native clips back.</summary>
         internal static Exception Finally(PlayRandomSound __instance, SoundState __state, Exception __exception)
         {
             if (__state.Clips != null) { __instance.audioClips = __state.Clips; __instance.weights = __state.Weights; }
             return __exception;
         }
 
+        /// <summary>SetAudioClip.OnEnter prefix (filter: the player's Health FSM in playerDeath): the female death sound.</summary>
         internal static void BeforeDeath(SetAudioClip __instance, out FsmObject __state)
         {
             __state = null;
@@ -100,6 +106,7 @@ namespace WildWasteland.Modules.PlayerBody
             Core.Log.Deep(PresentationModule.Instance, "Female death: FEMDEATH selected");
         }
 
+        /// <summary>SetAudioClip.OnEnter finalizer: the native clip back.</summary>
         internal static Exception FinallyDeath(SetAudioClip __instance, FsmObject __state, Exception __exception)
         {
             if (__state != null) __instance.audioClip = __state;

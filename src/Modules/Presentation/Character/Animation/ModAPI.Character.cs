@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.PlayerBody
         public sealed class Character
         {
             // ---------------------------------------------------------------- inputs (set them in Update; read in LateUpdate)
+            /// <summary>The Animator this character drives.</summary>
             public Animator Animator { get { return _a; } }
             public bool Valid { get { return !_disposed && _a != null; } }
             // the planar velocity: by default the character's Rigidbody's (else its movement since the last frame); ManualVelocity = use Velocity
@@ -27,20 +28,27 @@ namespace WildWasteland.Modules.PlayerBody
             public bool TurnInPlace { get { return _p.TurnInPlace; } set { _p.TurnInPlace = value; } }
             public bool WalkToStop { get { return _p.WalkToStop; } set { _p.WalkToStop = value; } }
             // ---------------------------------------------------------------- state (read)
+            /// <summary>Weapon-pose key of the held weapon ("" unarmed).</summary>
             public string WeaponKey { get { return _wKey ?? ""; } }
+            /// <summary>Hold style of the held weapon (None, Rifle, Pistol, Melee, Throw).</summary>
             public string WeaponKind { get { return _kind.ToString(); } }
+            /// <summary>A reload is playing.</summary>
             public bool Reloading { get { return _p.Reloading; } }
+            /// <summary>A pump / bolt cocking is playing.</summary>
             public bool Pumping { get { return _p.Pumping; } }
+            /// <summary>The clip that moves the hands now through the UpperRig ("" when none).</summary>
             public string HandsClip { get { return _p.RigEff > 0.01f ? _p.RigClip : ""; } }       // what moves the hands now (UpperRig)
+            /// <summary>The whole-body action clip (kick, jump, turn) while it shows ("" when none).</summary>
             public string ActionClip { get { return _p.ActionW > 0.01f ? _p.ActionClip : ""; } }   // the whole-body action (kick, jump, turn)
+            /// <summary>The upper-body one-shot (throw, strike) while it shows ("" when none).</summary>
             public string UpperClip { get { return _p.UpperW > 0.01f ? _p.UpperClip : ""; } }     // a throw / strike
-            // the fastest the body may move without its feet sliding (twice the clips' native speed: crouched / sprinting)
+            /// <summary>the fastest the body may move without its feet sliding (twice the clips' native speed: crouched / sprinting)</summary>
             public float SpeedCap { get { return 2f * (Crouched ? CharacterSettings.ClipCrouchSpeed.Value : Anims.Get("RifleSprint") != null ? CharacterSettings.ClipSprintSpeed.Value : CharacterSettings.ClipRunSpeed.Value); } }
 
             // ---------------------------------------------------------------- commands
+            /// <summary>Moves a weapon model into the right hand (key from its name); null puts the previous one back.</summary>
             public void SetWeapon(Transform model) { SetWeapon(model, null); }
-            // the weapon model it holds (null = bare hands); weaponKey null = from the model's name. The model is moved to the right hand and
-            // posed per clip from the player's weapon-pose table; SetWeapon(null) / Suspended / Dispose put it back where it was.
+            /// <summary>the weapon model it holds (null = bare hands); weaponKey null = from the model's name. The model is moved to the right hand and posed per clip from the player's weapon-pose table; SetWeapon(null) / Suspended / Dispose put it back where it was.</summary>
             public void SetWeapon(Transform model, string weaponKey)
             {
                 string key = weaponKey ?? (model != null ? Props.Norm(model.name) : "");
@@ -52,18 +60,29 @@ namespace WildWasteland.Modules.PlayerBody
                         : _kind == Props.Kind.Throw ? LocoPlan.K_THROW : LocoPlan.K_NONE;
                 if (!Suspended) GrabWeapon();
             }
+            /// <summary>Plays a 0.25 s shot on the hands.</summary>
             public void Shoot() { _p.SetNow(Time.time); _p.Shoot(0.25f); }
+            /// <summary>Plays a shot lasting the given seconds.</summary>
             public void Shoot(float seconds) { _p.SetNow(Time.time); _p.Shoot(seconds); }
+            /// <summary>Plays the whole reload clip fitted to the given seconds.</summary>
             public void Reload(float seconds) { _p.SetNow(Time.time); _p.Reload(seconds, 0); }
-            // rounds > 0: one round at a time (the reload clip's round part, rounds times over the seconds)
+            /// <summary>rounds &gt; 0: one round at a time (the reload clip's round part, rounds times over the seconds)</summary>
             public void Reload(float seconds, int rounds) { _p.SetNow(Time.time); _p.Reload(seconds, rounds); }
+            /// <summary>Cancels a running reload.</summary>
             public void CancelReload() { _p.SetNow(Time.time); _p.CancelReload(); }
+            /// <summary>ShotgunPump on the hands (rifle kind; not while reloading).</summary>
             public void Pump() { _p.SetNow(Time.time); _p.Pump(); }                       // ShotgunPump on the hands (rifle kind; not while reloading)
+            /// <summary>The jump take-off; the caller keeps Airborne true while in the air.</summary>
             public void Jump() { _p.SetNow(Time.time); _p.Jump(); }                       // the take-off; keep Airborne true while in the air
+            /// <summary>Plays a kick.</summary>
             public void Kick() { _p.SetNow(Time.time); _p.Kick(); }
+            /// <summary>The quick grenade throw with the left hand.</summary>
             public void Throw() { _p.SetNow(Time.time); _p.Throw(false); }                // the quick grenade, left hand
+            /// <summary>A throw with the chosen hand.</summary>
             public void Throw(bool rightHand) { _p.SetNow(Time.time); _p.Throw(rightHand); }
+            /// <summary>A 0.5 s punch (bare hands) / melee swing.</summary>
             public void Strike() { _p.SetNow(Time.time); _p.Strike(0.5f); }
+            /// <summary>A punch (bare hands) / melee swing taking the given seconds.</summary>
             public void Strike(float seconds) { _p.SetNow(Time.time); _p.Strike(seconds); }   // a punch (bare hands) / melee swing taking that long
             // the Animator's own controller shows (the graph is taken down, the weapon put back); false = the player's clips again
             public bool Suspended
@@ -81,6 +100,7 @@ namespace WildWasteland.Modules.PlayerBody
             internal Transform HeldWeapon { get { return _w; } }
             /// <summary>Animation update tier (0 = every frame; higher = cheaper, distance LOD).</summary>
             internal int Tier { get { return _tier; } }
+            /// <summary>Ends the character: weapon back, graphs and UpperRig destroyed, Animator settings restored, CharacterDetached published.</summary>
             public void Dispose()
             {
                 if (_disposed) return;
@@ -119,6 +139,7 @@ namespace WildWasteland.Modules.PlayerBody
             private Vector3 _wPos, _wScale, _defPos; private Quaternion _wRot, _defRot; private bool _wMoved;
             private Vector3 _lastPos; private bool _hasLast;
 
+            /// <summary>Maps the humanoid bones, wires CharPlan to the bundle's clips and builds the UpperRig and the main graph (disposed when the rig is not a usable humanoid).</summary>
             internal Character(Animator a)
             {
                 _a = a; _root = a.transform;
@@ -142,6 +163,7 @@ namespace WildWasteland.Modules.PlayerBody
                 BuildGraph();
             }
 
+            /// <summary>Copies the [Presentation / Animation] tuning into the character's CharPlan.</summary>
             private void ReadSettings()
             {
                 _p.RunFrom = CharacterSettings.RunFrom.Value; _p.SprintFrom = CharacterSettings.SprintFrom.Value; _p.DirBlendSpeed = CharacterSettings.DirBlendSpeed.Value; _p.RunLegsTurn = CharacterSettings.RunLegsTurn.Value;
@@ -152,6 +174,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
 
             // ---- the main graph (rebuilt when un-suspended)
+            /// <summary>Builds the main PlayableGraph (42 locomotion slots, action layer, masked upper layer) and switches the Animator to always-animate, no root motion.</summary>
             private void BuildGraph()
             {
                 if (_g.IsValid() || _a == null) return;
@@ -185,10 +208,12 @@ namespace WildWasteland.Modules.PlayerBody
                 _g.Play();
                 _p.Snap();
             }
+            /// <summary>Destroys the main graph and restores the Animator's root motion, culling and update modes.</summary>
             private void DestroyGraph()
             {
                 try { if (_g.IsValid()) { _g.Destroy(); if (_a != null) { _a.applyRootMotion = _rootMotionWas; _a.cullingMode = _cullingWas; _a.updateMode = _updateWas; } } } catch (Exception) { }
             }
+            /// <summary>A paused clip playable without foot IK.</summary>
             private static AnimationClipPlayable Clip(PlayableGraph g, AnimationClip c)
             {
                 var p = AnimationClipPlayable.Create(g, c);
@@ -196,6 +221,7 @@ namespace WildWasteland.Modules.PlayerBody
                 return p;
             }
             private static AvatarMask _mask;
+            /// <summary>The shared upper-body avatar mask (body, head, arms, fingers, hand IK).</summary>
             private static AvatarMask UpperMask()
             {
                 if (_mask != null) return _mask;
@@ -212,6 +238,7 @@ namespace WildWasteland.Modules.PlayerBody
 
             // ---- the UpperRig: an invisible, stripped copy of the character's Animator object (bones + Animator only), on its own manual graph
             private static GameObject _rigRoot;
+            /// <summary>Builds the UpperRig: an invisible skeleton copy with its own manual graph whose upper-body bones are copied onto the character.</summary>
             private void BuildRig()
             {
                 try
@@ -278,6 +305,7 @@ namespace WildWasteland.Modules.PlayerBody
                 return go;
             }
 
+            /// <summary>Slash path of a transform below <paramref name="root"/>.</summary>
             private static string PathOf(Transform t, Transform root)
             {
                 var sb = new System.Text.StringBuilder(t.name);
@@ -287,6 +315,7 @@ namespace WildWasteland.Modules.PlayerBody
 
             // ---- per clip, measured once on a rig (shared by every character): the stride phase, the native ground speed
             private static readonly Dictionary<string, float> _phases = new Dictionary<string, float>(), _natives = new Dictionary<string, float>();
+            /// <summary>Stride phase of a clip, measured once on an UpperRig and shared by every character (-1 = none / not measurable yet).</summary>
             private float PhaseOf(string clip)
             {
                 float p;
@@ -297,6 +326,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _phases[clip] = p;
                 return p;
             }
+            /// <summary>Samples a clip on the UpperRig and derives the stride phase from the feet's height difference.</summary>
             private float Measure(AnimationClip c)
             {
                 if (c == null || !_rigOut.IsOutputValid() || _rigLFoot == null || _rigRFoot == null) return -1f;
@@ -323,6 +353,7 @@ namespace WildWasteland.Modules.PlayerBody
                     if (tmp.IsValid()) tmp.Destroy();
                 }
             }
+            /// <summary>Native ground speed of a clip (its average root speed), or the fallback when the clip has none.</summary>
             private static float NativeOf(string clip, float fallback)
             {
                 float v;
@@ -337,6 +368,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
 
             // ---- the weapon in the right hand
+            /// <summary>Moves the weapon model into the right hand and remembers where it was (a left-hand gun is mirrored into the right hand).</summary>
             private void GrabWeapon()
             {
                 if (_w == null || _wMoved || _kind == Props.Kind.None) return;
@@ -352,6 +384,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _wMoved = true;
                 PoseWeapon();
             }
+            /// <summary>Puts the weapon model back where it was.</summary>
             private void ReleaseWeapon()
             {
                 if (!_wMoved) return;
@@ -360,6 +393,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
 
             private readonly Dictionary<string, float> _idleOnly = new Dictionary<string, float>(1);
+            /// <summary>Places the weapon in the hand from the weapon-pose table, blended by the hand clips' weights.</summary>
             private void PoseWeapon()
             {
                 if (!_wMoved || _w == null) return;
@@ -371,6 +405,7 @@ namespace WildWasteland.Modules.PlayerBody
 
             // ---------------------------------------------------------------- every frame (LateUpdate, after the Animator)
             private int _errors;
+            /// <summary>LateUpdate tick: animates the character (skipped while suspended, inactive or LOD-skipped); three errors suspend it.</summary>
             internal void Tick()
             {
                 if (_disposed) return;
@@ -411,6 +446,7 @@ namespace WildWasteland.Modules.PlayerBody
                 return _renderers.Length == 0;
             }
 
+            /// <summary>One animation step: CharPlan decides from the velocity and stance, the graph is set for the next frame, then this frame's pose gets the hand rig, spine turns, aim pitch, aim lift, arm poses and the weapon pose.</summary>
             private void TickInner(float dt)
             {
                 if (!_g.IsValid()) BuildGraph();
@@ -430,6 +466,7 @@ namespace WildWasteland.Modules.PlayerBody
                 var local = Quaternion.Inverse(yaw) * v;
                 _p.Lx = local.x; _p.Lz = local.z; _p.Yaw = yaw.eulerAngles.y;
                 _p.Crouch = Crouched; _p.Aim = Aiming; _p.Fire = Firing; _p.Airborne = Airborne;
+                _p.Logging = Core.Log.L2;
                 _p.Step(now, dt);
                 if (Core.Log.L2 && _p.Log != "") Core.Log.Deep(PresentationModule.Instance, "ModAPI " + _a.gameObject.name + ": " + _p.Log);   // (B05) ex [PlayerBody / ModAPI] VerboseModApi: Debug level 2
 
@@ -483,8 +520,9 @@ namespace WildWasteland.Modules.PlayerBody
                 PoseWeapon();
             }
 
-            // the two-input mixer to show 'cur' (input 0) with 'old' fading out under it (input 1)
+            /// <summary>the two-input mixer to show 'cur' (input 0) with 'old' fading out under it (input 1)</summary>
             private AnimationClipPlayable Make(PlayableGraph g, string name) { return Clip(g, Anims.Get(name) ?? _fallback); }
+            /// <summary>Shows clip 'cur' on mixer input 0 with 'old' fading out on input 1 (creates/destroys clip playables only when the names change).</summary>
             private void Sync2(PlayableGraph g, AnimationMixerPlayable mix, ref AnimationClipPlayable c0, ref string n0, ref AnimationClipPlayable c1, ref string n1, string cur, string old)
             {
                 if (string.IsNullOrEmpty(cur)) cur = n0;                   // nothing new: keep the last one (fading out by the layer weight)
@@ -507,6 +545,7 @@ namespace WildWasteland.Modules.PlayerBody
                 }
             }
 
+            /// <summary>Evaluates the UpperRig at the hand clip's time and copies its spine and upper-body bones onto the character by the rig weight.</summary>
             private void RigApply()
             {
                 float eff = _p.RigEff;
@@ -524,6 +563,7 @@ namespace WildWasteland.Modules.PlayerBody
                 }
             }
 
+            /// <summary>Lifts both hands (and tilts the head) by the weapon's aim-lift entry while aiming.</summary>
             private void AimLiftApply()
             {
                 if (_p.AimLiftW < 0.001f || _p.AimLiftClip == null || string.IsNullOrEmpty(_wKey)) return;
@@ -538,6 +578,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (Mathf.Abs(v[1]) > 0.01f) Turn(HumanBodyBones.Head, Vector3.right, v[1] * w);
             }
             private readonly float[] _armPose = new float[10];
+            /// <summary>Applies the weapon's per-clip arm offsets (aim-lift table values 3..12) blended by the hand clips' weights.</summary>
             private void ArmPoseApply()
             {
                 Array.Clear(_armPose, 0, _armPose.Length);
@@ -560,6 +601,7 @@ namespace WildWasteland.Modules.PlayerBody
                     if (Mathf.Abs(_armPose[i + 4]) > .01f) Turn(upper, Vector3.forward, _armPose[i + 4]);
                 }
             }
+            /// <summary>Moves a hand by <paramref name="d"/> with a two-bone elbow solve, keeping the hand's rotation.</summary>
             private void LiftArm(HumanBodyBones upper, HumanBodyBones lower, HumanBodyBones hand, Vector3 d)
             {
                 Transform s, e, h;
@@ -574,12 +616,14 @@ namespace WildWasteland.Modules.PlayerBody
                 h.rotation = hr;
             }
 
+            /// <summary>Yaw of the line a-b in the character's frame (hips or shoulders direction), degrees.</summary>
             private float YawIn(Transform a, Transform b)
             {
                 var s = _root.InverseTransformDirection(b.position - a.position); s.y = 0f;
                 var f = Vector3.Cross(s, Vector3.up);
                 return Mathf.Atan2(f.x, f.z) * Mathf.Rad2Deg;
             }
+            /// <summary>Turns the spine so the chest follows the shoulders' facing by <paramref name="follow"/> (LocoPlan.Twist).</summary>
             private void TwistSpine(float follow)
             {
                 Transform lh, rh, la, ra;
@@ -592,7 +636,7 @@ namespace WildWasteland.Modules.PlayerBody
                 Turn(HumanBodyBones.UpperChest, Vector3.up, s2);
                 Turn(HumanBodyBones.Neck, Vector3.up, nk);
             }
-            // a bone turned by deg about an axis given in the character's own space (Body.Turn)
+            /// <summary>a bone turned by deg about an axis given in the character's own space (Body.Turn)</summary>
             private void Turn(HumanBodyBones bone, Vector3 axis, float deg)
             {
                 Transform t;

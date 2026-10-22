@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.PlayerBody
         public static readonly string[] Actions = { "Kick", "Jump", "PistolJump", "RifleJumpUp", "RifleJumpLoop", "RifleJumpDown", "LeftTurn", "RightTurn",
                                                     "RifleTurnLeft", "RifleTurnRight", "RifleCrouchTurnLeft", "RifleCrouchTurnRight", "RifleWalkToStop" };
         public static readonly string[] Hands = { "Throw", "ThrowRight", "Punch", "Punch1", "Punch2", "Melee", "MeleeCombo" };
+        /// <summary>Every clip name the player set uses (locomotion slots, hands, actions, strikes) that the bundle has.</summary>
         public static List<string> PlayerClips(Func<string, bool> has)
         {
             var l = new List<string>();
@@ -67,10 +68,15 @@ namespace WildWasteland.Modules.PlayerBody
         public float AimLiftW; public string AimLiftClip; public bool AimCrouched;
         public readonly Dictionary<string, float> PoseW = new Dictionary<string, float>();   // the clips moving the hands, by weight (weapon poses)
         public float CrouchW, RelaxW, M, RunW, SprintW, SpeedSmooth;
+        /// <summary>A reload is running (at the last step's time).</summary>
         public bool Reloading { get { return _now < _reloadUntil; } }
+        /// <summary>A reload runs at the given time.</summary>
         public bool ReloadingAt(float now) { return now < _reloadUntil; }
+        /// <summary>A pump / bolt cocking is running.</summary>
         public bool Pumping { get { return _now < _pumpUntil; } }
         public string Log = "";                                       // what changed this frame (tests / verbose)
+        /// <summary>(B05 perf) build <see cref="Log"/> only while true (set by the driver from Debug log level 2); no strings otherwise.</summary>
+        public bool Logging;
 
         // ---- state
         private float _now, _stride, _moveAng, _rigSpeed = 1f;
@@ -92,15 +98,22 @@ namespace WildWasteland.Modules.PlayerBody
         public const float RigCross = 0.15f, UpperIn = 0.08f, UpperOut = 0.15f, UpperCross = 0.12f;
         public const float ThrowRelease = 0.85f;
 
+        /// <summary>Clamps to 0..1 (Unity-free).</summary>
         private static float Clamp01(float v) { return v < 0f ? 0f : v > 1f ? 1f : v; }
+        /// <summary>Clamps to a..b (Unity-free).</summary>
         private static float Clamp(float v, float a, float b) { return v < a ? a : v > b ? b : v; }
+        /// <summary>Moves c toward t by at most d (Unity-free).</summary>
         private static float MoveTowards(float c, float t, float d) { return Math.Abs(t - c) <= d ? t : c + Math.Sign(t - c) * d; }
+        /// <summary>Clamped linear interpolation (Unity-free).</summary>
         private static float Lerp(float a, float b, float t) { t = Clamp01(t); return a + (b - a) * t; }
+        /// <summary>Shortest signed angle from a to b, degrees (Unity-free).</summary>
         private static float DeltaAngle(float a, float b) { float d = (b - a) % 360f; if (d > 180f) d -= 360f; if (d < -180f) d += 360f; return d; }
+        /// <summary>Length of a clip, 1 s when unknown.</summary>
         private float Len(string c) { float l = c != null && Has(c) ? Length(c) : 0f; return l > 0.01f ? l : 1f; }
+        /// <summary>True for a looping clip.</summary>
         private bool Loops(string c) { return c != null && Looping != null && Looping(c); }
 
-        // the base slots' clips (with the bundle's stand-ins) - once
+        /// <summary>the base slots' clips (with the bundle's stand-ins) - once</summary>
         public void Build()
         {
             if (_built) return;
@@ -116,20 +129,28 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ---------------------------------------------------------------- commands
+        /// <summary>The next step jumps to its targets without blending (spawn, view switch, resume).</summary>
         public void Snap() { _snap = true; }
+        /// <summary>Advances the plan's clock for a command given between frames.</summary>
         public void SetNow(float now) { if (now > _now) _now = now; }      // a command's time (between frames: the caller's clock)
+        /// <summary>Keeps the firing pose for at least the given seconds.</summary>
         public void Shoot(float seconds) { _fireUntil = Math.Max(_fireUntil, _now + Math.Max(0.05f, seconds)); }
-        // reload over 'seconds'; rounds > 0 = one round at a time (the reload clip's round part, rounds times; RifleReload / PistolReload only)
+        /// <summary>reload over 'seconds'; rounds &gt; 0 = one round at a time (the reload clip's round part, rounds times; RifleReload / PistolReload only)</summary>
         public void Reload(float seconds, int rounds)
         {
             _reloadStart = _now; _reloadLen = Math.Max(0.2f, seconds); _reloadUntil = _now + _reloadLen; _reloadRounds = Math.Max(0, rounds);
             _pumpUntil = 0f;
-            Log += "reload " + _reloadLen.ToString("0.00") + "s/" + _reloadRounds + "; ";
+            if (Logging) Log += "reload " + _reloadLen.ToString("0.00") + "s/" + _reloadRounds + "; ";
         }
+        /// <summary>Cancels the running reload.</summary>
         public void CancelReload() { _reloadUntil = 0f; }
+        /// <summary>Requests the pump / bolt cocking at the next step.</summary>
         public void Pump() { _pumpStart = true; }
+        /// <summary>Requests the jump take-off at the next step.</summary>
         public void Jump() { _wantJump = true; }
+        /// <summary>Requests a kick at the next step.</summary>
         public void Kick() { _wantKick = true; }
+        /// <summary>Starts a throw (left hand quick grenade or right hand), at most one per 1.2 s.</summary>
         public void Throw(bool rightHand)
         {
             if (_now - _throwAt < 1.2f) return;
@@ -137,10 +158,9 @@ namespace WildWasteland.Modules.PlayerBody
             if (!Has(n)) return;
             _throwAt = _now; _throwClip = n; _throwFrom = 0f;
             _throwUntil = _now + Clamp(Len(n) - _throwFrom, 0.5f, 2f);
-            Log += "throw " + n + "; ";
+            if (Logging) Log += "throw " + n + "; ";
         }
-        // one blow: bare hands = the Punch clip's blows in order (Punch1 / Punch2 by turns without it); melee = the Melee clip over the swing,
-        // chained swings MeleeCombo's two blows by turns. cycle = how long the swing takes (s)
+        /// <summary>one blow: bare hands = the Punch clip's blows in order (Punch1 / Punch2 by turns without it); melee = the Melee clip over the swing, chained swings MeleeCombo's two blows by turns. cycle = how long the swing takes (s)</summary>
         public void Strike(float cycle)
         {
             cycle = Clamp(cycle, 0.2f, 1.5f);
@@ -165,22 +185,25 @@ namespace WildWasteland.Modules.PlayerBody
             // the first swing: the whole Melee clip fitted to the swing (as the player's first swing)
             _striking = false; _strikeW = 0f; _strikeClip = null;
             _meleeAt = _now; _meleeUntil = _now + cycle; _meleeSpeed = Clamp(Len("Melee") / cycle, 0.5f, 5f);
-            Log += "melee " + cycle.ToString("0.00") + "s; ";
+            if (Logging) Log += "melee " + cycle.ToString("0.00") + "s; ";
         }
         // the player's strikes (Body.PunchSeq / Combo): clip, from (wind-up), hit (the blow lands), to (back on guard), clip seconds
         private static readonly string[][] PunchSeq = {
             new[] { "Punch", "0.30", "0.47", "0.65" }, new[] { "Punch", "0.65", "0.80", "1.00" }, new[] { "Punch", "0.97", "1.17", "1.32" }, new[] { "Punch", "1.30", "1.47", "1.65" },
             new[] { "Punch", "1.70", "1.87", "2.05" }, new[] { "Punch", "1.93", "2.07", "2.22" }, new[] { "Punch", "2.17", "2.33", "2.47" }, new[] { "Punch", "2.40", "2.53", "2.85" } };
         private static readonly string[][] Combo = { new[] { "MeleeCombo", "1.5", "1.73", "2.3" }, new[] { "MeleeCombo", "0.8", "1.07", "1.5" } };
+        /// <summary>Parses an invariant float.</summary>
         private static float F(string s) { return float.Parse(s, System.Globalization.CultureInfo.InvariantCulture); }
+        /// <summary>Starts one strike of a punch/melee sequence (clip, from, hit, to times) over the given cycle.</summary>
         private void SetStrike(string[] s, float cycle)
         {
             _strikeClip = s[0]; _strikeFrom = F(s[1]); _strikeHit = F(s[2]); _strikeTo = F(s[3]);
             _striking = true; _strikeAt = _now; _strikeCycle = cycle; _strikeW = 1f; _meleeUntil = 0f;
-            Log += "strike " + _strikeClip + "@" + _strikeHit + "; ";
+            if (Logging) Log += "strike " + _strikeClip + "@" + _strikeHit + "; ";
         }
 
         // ---------------------------------------------------------------- one frame
+        /// <summary>One frame of the decision model: stance and velocity in, 42 locomotion weights/times, hand rig, action and upper-body clips, poses and turns out.</summary>
         public void Step(float now, float dt)
         {
             Build();
@@ -248,7 +271,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (Kind == LocoPlan.K_RIFLE && !reloading && Has("ShotgunPump"))
                 {
                     _pumpAt = now; _pumpUntil = now + (LocoPlan.PumpTo - LocoPlan.PumpFrom) * Len("ShotgunPump") / Math.Max(0.1f, PumpSpeed);
-                    Log += "pump; ";
+                    if (Logging) Log += "pump; ";
                     if (RigClip == "ShotgunPump") RigClip = "";             // each cock starts the rack again
                 }
             }
@@ -274,7 +297,7 @@ namespace WildWasteland.Modules.PlayerBody
                         if (jc == "RifleJumpUp") _actionUntil = now + 10f;
                         ActionIsTurn = false; _actionFade = 10f;
                         _jumpPhase = jc == "RifleJumpUp" ? "up" : "single";
-                        Log += "jump " + jc + "; ";
+                        if (Logging) Log += "jump " + jc + "; ";
                     }
                 }
             }
@@ -299,7 +322,7 @@ namespace WildWasteland.Modules.PlayerBody
                     }
                     else _actionUntil = Math.Min(_actionUntil, now + 0.15f);
                     _actionFade = 10f; _jumpPhase = "";
-                    Log += "land; ";
+                    if (Logging) Log += "land; ";
                 }
             }
             _wasAir = air;
@@ -316,7 +339,7 @@ namespace WildWasteland.Modules.PlayerBody
                     StartAction("RifleWalkToStop", from);
                     _actionUntil = now + (LocoPlan.StopTo - from) * Len("RifleWalkToStop") + 0.15f;
                     ActionIsTurn = true; _actionFade = 6f;
-                    Log += "walk-to-stop; ";
+                    if (Logging) Log += "walk-to-stop; ";
                 }
             }
             if (ActionClip == "RifleWalkToStop" && now < _actionUntil && (speed > 0.5f || crouch > 0.5f || !relaxed)) _actionUntil = Math.Min(_actionUntil, now + 0.15f);
@@ -410,9 +433,12 @@ namespace WildWasteland.Modules.PlayerBody
             if (wAct > 0.001f && ActionClip != "") AddPose(ActionClip, wAct * (1f - wUp));
             _snap = false;
         }
+        /// <summary>True when a moving locomotion slot carries weight.</summary>
         private bool _bdom() { for (int i = 0; i < LocoPlan.BN; i++) if (LocoPlan.Moving(i) && W[i] > 0.05f) return true; return false; }
+        /// <summary>Adds weight to a pose clip for the weapon-pose blend.</summary>
         private void AddPose(string n, float w) { float v; PoseW.TryGetValue(n, out v); PoseW[n] = v + w; }
 
+        /// <summary>Starts a whole-body action clip (kick, jump, turn) from a share of its length.</summary>
         private void StartAction(string name, float startFraction)
         {
             if (!Has(name)) return;
@@ -423,6 +449,7 @@ namespace WildWasteland.Modules.PlayerBody
             _actionUntil = _now + len - t0;
         }
 
+        /// <summary>Sets the upper-body clip and its target weight (the previous clip fades out under it unless snapped).</summary>
         private void SetUpper(string clip, float weight, float speed, bool snap)
         {
             if (string.IsNullOrEmpty(clip)) { _upperWTarget = 0f; return; }
@@ -435,6 +462,7 @@ namespace WildWasteland.Modules.PlayerBody
             _upperWTarget = weight;
         }
 
+        /// <summary>Sets the hand-rig clip (held still or synced to the legs) and its speed.</summary>
         private void RigSet(string clip, bool hold, bool sync, bool snap, float speed)
         {
             if (clip != RigClip)
@@ -442,12 +470,12 @@ namespace WildWasteland.Modules.PlayerBody
                 if (RigClip != "" && RigW > 0.01f && !snap) { RigOld = RigClip; RigOldTime = RigTime; RigX = 0f; }
                 else { RigOld = null; RigX = 1f; }
                 RigClip = clip; RigTime = 0f;
-                Log += "hands " + clip + "; ";
+                if (Logging) Log += "hands " + clip + "; ";
             }
             _rigHold = hold; _rigSync = sync; _rigSpeed = speed;
         }
 
-        // standing still and turning: the turn clip's feet are driven by the turn itself (Loco.TurnInPlace)
+        /// <summary>standing still and turning: the turn clip's feet are driven by the turn itself (Loco.TurnInPlace)</summary>
         private void DoTurn(float yawDeg, float m, float crouch, bool relaxed, float dt)
         {
             if (!_turnInit) { _turnInit = true; _turnLastYaw = yawDeg; }
@@ -478,6 +506,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             else if (mine && !_turnSettling && _now - _turnMovedAt > 0.12f) EndTurn(true);
         }
+        /// <summary>Ends a turn-in-place clip, settling the feet when asked.</summary>
         private void EndTurn(bool settle)
         {
             if (_turnClip == null) return;

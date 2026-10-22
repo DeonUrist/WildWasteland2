@@ -16,12 +16,15 @@ namespace WildWasteland.Modules.PlayerBody
         private static bool _tried;
         private static AssetBundle _bundle;
 
+        /// <summary>True once the bundle loaded at least one clip (loads it on first use).</summary>
         public static bool Loaded { get { Load(); return _clips.Count > 0; } }
-        // (WW) F7 "Animation framework" page
+        /// <summary>(WW) F7 "Animation framework" page</summary>
         internal static bool Tried { get { return _tried; } }
+        /// <summary>Number of loaded clips.</summary>
         internal static int Count { get { return _clips.Count; } }
         internal static bool BundleOpen { get { return _bundle != null; } }
 
+        /// <summary>A bundle clip by name (case-insensitive), or null.</summary>
         public static AnimationClip Get(string name)
         {
             Load();
@@ -29,7 +32,7 @@ namespace WildWasteland.Modules.PlayerBody
             return name != null && _clips.TryGetValue(name, out c) ? c : null;
         }
 
-        // first of the names that the bundle has
+        /// <summary>first of the names that the bundle has</summary>
         public static AnimationClip First(params string[] names)
         {
             foreach (var n in names) { var c = Get(n); if (c != null) return c; }
@@ -43,6 +46,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (PresentationModule.Running) Load();
         }
 
+        /// <summary>Opens the animation bundle once per session, keeps its clips (Strafe/Shoot alias names added) and logs what it has.</summary>
         private static void Load()
         {
             if (_tried) return;

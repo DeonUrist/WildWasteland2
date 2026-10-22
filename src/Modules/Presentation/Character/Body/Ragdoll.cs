@@ -12,8 +12,10 @@ namespace WildWasteland.Modules.PlayerBody
         private readonly List<Transform> _bones = new List<Transform>();
         private readonly List<Rigidbody> _bodies = new List<Rigidbody>();
         private readonly List<Collider> _colliders = new List<Collider>();
+        /// <summary>Camera focus point of the ragdoll (hips).</summary>
         public Vector3 Focus { get { return _bodies.Count > 0 ? _bodies[0].position : _root.transform.position; } }
 
+        /// <summary>Builds capsule rigidbodies with character joints on the 11 main bones, ignores collisions with the player and the car, inherits the death velocity.</summary>
         public Ragdoll(Dictionary<string, Transform> bones, Vector3 velocity, Transform car)
         {
             Add(bones, "Hips", "Spine", -1, 0.16f, 12f);
@@ -42,6 +44,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_bodies.Count > 1) _bodies[1].AddForce(Vector3.back * 1.2f, ForceMode.VelocityChange);
         }
 
+        /// <summary>Adds one capsule body for a bone (to its end bone), jointed to a parent body.</summary>
         private void Add(Dictionary<string, Transform> bones, string name, string end, int parent, float radius, float mass)
         {
             var bone = bones["mixamorig:" + name];
@@ -79,6 +82,7 @@ namespace WildWasteland.Modules.PlayerBody
             _bones.Add(bone); _bodies.Add(rb); _colliders.Add(col);
         }
 
+        /// <summary>Copies the bodies' poses onto the bones.</summary>
         public void Apply()
         {
             // Parents first: their transform propagation must finish before placing children.
@@ -86,6 +90,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _bones[i].SetPositionAndRotation(_bodies[i].position, _bodies[i].rotation);
         }
 
+        /// <summary>Destroys the ragdoll objects.</summary>
         public void Destroy() { if (_root != null) Object.Destroy(_root); }
     }
 }

@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.NPC
     // Native FSMs retain sensing, damage amounts and their post-hit cooldown.
     internal static partial class DogAnimations
     {
+        /// <summary>Which clip family a dog plays (locomotion, lying down/resting/getting up, bites, jump attack, sitting).</summary>
         private enum Pose { Locomotion, LieDown, Rest, GetUp, Bite, RunningBite, JumpAttack, SitDown, Sitting }
         private sealed class Dog
         {
@@ -53,7 +54,9 @@ namespace WildWasteland.Modules.NPC
         private static ConfigEntry<float> idleMax { get { return NpcModule.DogIdlePoseMax; } }
         private static ConfigEntry<float> frontLift { get { return CharacterSettings.DogLieFrontLift; } }
         private static AssetBundle bundle; private static bool _loadTried;
+        /// <summary>True when the dog bundle loaded clips (F7 diagnostics).</summary>
         internal static bool BundleLoaded { get { return Clips.Count > 0; } }
+        /// <summary>Number of dogs with a mapped rig.</summary>
         internal static int DogCount { get { return Dogs.Count; } }
         internal static int ClipCount { get { int n = 0; foreach (var c in Clips.Values) n += c.Count; return n; } }
         private static readonly List<int> _dead = new List<int>();      // (WW) reused (was a new List per frame)
@@ -64,8 +67,7 @@ namespace WildWasteland.Modules.NPC
         private const int Floor = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14);
         private static bool On { get { return PresentationModule.Running && enabled != null && enabled.Value && NpcModule.DogBiteEnabled != null && NpcModule.DogBiteEnabled.Value && Senses.On; } }
 
-        // (WW) the bundles load once per session (an AssetBundle cannot be loaded twice; a module restart reuses the clips); the hooks /
-        // patch are installed on every Init, only when clips are there (no bundle = the procedural DogBite only, as before)
+        /// <summary>(WW) the bundles load once per session (an AssetBundle cannot be loaded twice; a module restart reuses the clips); the hooks / patch are installed on every Init, only when clips are there (no bundle = the procedural DogBite only, as before)</summary>
         internal static void Initialize(PresentationModule module)
         {
             if (!_loadTried) { _loadTried = true; LoadBundles(); }
@@ -77,6 +79,7 @@ namespace WildWasteland.Modules.NPC
             module.PatchAction(typeof(Wait), "OnEnter", typeof(DogAnimations), "BeforeDamageWait", true);
         }
 
+        /// <summary>Loads Presentation/Models/npcai_dogs.bundle (clips per creature prefab) and, when present, the native Wild Hound offsets bundle; failures keep the procedural bite.</summary>
         private static void LoadBundles()
         {
             string path = PresentationModule.AssetPath("Models/npcai_dogs.bundle");
@@ -116,8 +119,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { Clips.Clear(); Core.Log.Error(PresentationModule.Instance, "Dog animations unavailable; procedural fallback: " + e); }
         }
 
-        // (WW) module shutdown: every dog (native and companion) released - bones back to the Animator's pose, culling / IK / Damage waits /
-        // drag restored, the brain's hold lifted
+        /// <summary>(WW) module shutdown: every dog (native and companion) released - bones back to the Animator's pose, culling / IK / Damage waits / drag restored, the brain's hold lifted</summary>
         internal static void Shutdown()
         {
             Core.SaveBus.StateChanged -= OnSaveState;
@@ -126,12 +128,15 @@ namespace WildWasteland.Modules.NPC
             DogCompanionCompat.Shutdown();   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
         }
 
+        /// <summary>Maps the rig of a native quadruped NPC (called by NPCAI's dog registry).</summary>
         internal static void Register(Senses.Agent agent)
         { if (agent != null && agent.Owner != null) RegisterRig(agent, Senses.PrefabOf(agent.Owner).Replace(' ', '_'), null); }
 
+        /// <summary>Maps the Dog Companion's rig with the Wild Hound clips; true when the companion is now animated.</summary>
         internal static bool RegisterCompanion(Senses.Agent agent, DogCompanionCompat.Driver driver)   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
         { RegisterRig(agent, "Wild_Hound", driver); return agent != null && agent.Owner != null && Dogs.ContainsKey(agent.Owner.GetInstanceID()); }
 
+        /// <summary>Builds the per-dog record (bones, clips, meshes, IK, waits) when the prefab has the required clips.</summary>
         private static void RegisterRig(Senses.Agent agent, string prefab, DogCompanionCompat.Driver companion)   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
         {
             if (agent == null || agent.Owner == null) return;
@@ -172,6 +177,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Dog animations: " + agent.Owner.name + " mapped " + bones.Length + " bones; " + clips.Count + " clips.");
         }
 
+        /// <summary>True while the dog may be animated: module/feature on, active, free-standing (not blown up, not travelling unless jumping/dashing) and within NPC range; companions by their driver state.</summary>
         private static bool Eligible(Dog d)
         {
             var a = d.Agent;
@@ -179,15 +185,18 @@ namespace WildWasteland.Modules.NPC
             return On && a != null && a.Owner != null && a.Owner.activeInHierarchy && a.T != null && a.T.parent == null && !a.Blown && (!a.Travel || d.Jumping || d.Dashing)
                 && d.Animator != null && d.Animator.enabled && d.Body != null && !d.Body.isKinematic && WithinRange(a);
         }
+        /// <summary>True when the dog is within the NPC module's MaxDistance of the player.</summary>
         private static bool WithinRange(Senses.Agent agent)
         {
             var player = Senses.PlayerObj;
             float distance = NpcModule.MaxDistance != null ? NpcModule.MaxDistance.Value : 120f;
             return player == null || (agent.T.position - player.transform.position).sqrMagnitude <= distance * distance;
         }
+        /// <summary>True when the dog is currently animated by this driver.</summary>
         internal static bool Owns(GameObject owner)
         { Dog d; return owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d) && Eligible(d); }
 
+        /// <summary>Puts the Animator's own bone pose (and the companion's alignment offset) back.</summary>
         private static void Restore(Dog d)
         {
             if (!d.Applied) return;
@@ -196,6 +205,7 @@ namespace WildWasteland.Modules.NPC
             d.Aligned = false;
             d.Applied = false;
         }
+        /// <summary>First use of a dog: always-animate culling, companion mesh bounds, native IK off.</summary>
         private static void Prepare(Dog d)
         {
             if (d.Prepared) return;
@@ -210,6 +220,7 @@ namespace WildWasteland.Modules.NPC
             for (int i = 0; i < d.Ik.Length; i++) if (d.Ik[i] != null) { d.IkEnabled[i] = d.Ik[i].enabled; d.Ik[i].enabled = false; }
             d.Prepared = true;
         }
+        /// <summary>Ends a jump attack: drag and the brain's travel flag restored.</summary>
         private static void ReleaseJump(Dog d)
         {
             if (!d.Jumping) return;
@@ -217,6 +228,7 @@ namespace WildWasteland.Modules.NPC
             if (d.Agent != null && d.Agent.Owner != null) { Brain.SetTravel(d.Agent.Owner, false); d.Agent.Travel = false; }
             d.Jumping = false;
         }
+        /// <summary>Ends a dash: the companion's halt released, or the native dog's drag, planar velocity and travel flag restored.</summary>
         private static void ReleaseDash(Dog d)
         {
             if (!d.Dashing) return;
@@ -228,6 +240,7 @@ namespace WildWasteland.Modules.NPC
             }
             d.Dashing = false;
         }
+        /// <summary>Hands the dog back to the game: pose, jump, dash, hold, Damage waits, culling, mesh bounds and IK restored.</summary>
         private static void Release(Dog d)
         {
             Restore(d); ReleaseJump(d); ReleaseDash(d);
@@ -244,7 +257,7 @@ namespace WildWasteland.Modules.NPC
             for (int i = 0; i < d.Ik.Length; i++) if (d.Ik[i] != null) d.Ik[i].enabled = d.IkEnabled[i];
             d.Prepared = false;
         }
-        // Retargeted clips and paw alignment can move the companion outside its imported animation bounds.
+        /// <summary>Retargeted clips and paw alignment can move the companion outside its imported animation bounds.</summary>
         private static void MeshCulling(Dog d, bool posed)
         {
             if (d.Meshes == null) return;
@@ -254,24 +267,34 @@ namespace WildWasteland.Modules.NPC
                 if (!posed) d.Meshes[i].localBounds = d.MeshBounds[i];
             }
         }
+        /// <summary>SaveBus state change: companion mesh bounds follow whether the world is playing.</summary>
         private static void OnSaveState(string previous, string current)
         { foreach (var d in Dogs.Values) if (d.Prepared) MeshCulling(d, current == "isPlay"); }
+        /// <summary>Holds or releases the dog's movement (companion driver or NPC brain).</summary>
         private static void Hold(Dog d, bool held)
         { if (d.Companion != null) d.Companion.Halt(held); else if (d.Agent != null && d.Agent.Owner != null) Brain.Halt(d.Agent.Owner, held); }
+        /// <summary>Planar speed of the dog, m/s.</summary>
         private static float Speed(Dog d)
         { return d.Companion != null ? d.Companion.Speed : new Vector2(d.Body.velocity.x, d.Body.velocity.z).magnitude; }
+        /// <summary>Run speed of the dog (companion driver or NPC brain), m/s.</summary>
         private static float RunSpeed(Dog d)
         { return d.Companion != null ? d.Companion.RunSpeed : Brain.RunSpeed(d.Agent.Owner); }
+        /// <summary>Reference point 25 cm above the dog's feet (reach and ground probes).</summary>
         private static Vector3 Origin(Dog d)
         { return (d.Companion != null ? d.Companion.Feet : d.Agent.T.position) + Vector3.up * .25f; }
+        /// <summary>Restores the companion's native pose before the companion mod moves it.</summary>
         internal static void RestoreCompanion(GameObject owner)
         { Dog d; if (owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d)) Restore(d); }
+        /// <summary>True while the companion is dashing.</summary>
         internal static bool CompanionDashing(GameObject owner)
         { Dog d; return owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d) && d.Dashing; }
+        /// <summary>Releases and forgets the companion.</summary>
         internal static void RemoveCompanion(GameObject owner)
         { Dog d; if (owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d)) { Release(d); Dogs.Remove(owner.GetInstanceID()); } }
+        /// <summary>Scene load: every dog released and forgotten, the companion bridge told.</summary>
         internal static void OnSceneLoaded() { foreach (var dog in Dogs.Values) Release(dog); Dogs.Clear(); DogCompanionCompat.OnSceneLoaded(); }   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
 
+        /// <summary>Starts a new clip/pose and snapshots the current bones for the cross-fade.</summary>
         private static void Switch(Dog d, Pose pose, string clip)
         {
             for (int i = 0; i < d.Bones.Length; i++) if (d.Bones[i] != null)
@@ -283,6 +306,7 @@ namespace WildWasteland.Modules.NPC
             d.FadeSoleOffset = d.SoleOffset;
             d.AttackRate = 1f;
         }
+        /// <summary>True when the dog's feet are on the floor (short ray down).</summary>
         private static bool Grounded(Dog d)
         {
             if (d.Companion != null) return Physics.Raycast(d.Companion.Feet + Vector3.up * .2f, Vector3.down, .4f, Floor, QueryTriggerInteraction.Ignore);
@@ -290,6 +314,7 @@ namespace WildWasteland.Modules.NPC
             return Physics.Raycast(c.bounds.center, Vector3.down, c.bounds.extents.y + .18f, Floor, QueryTriggerInteraction.Ignore);
         }
 
+        /// <summary>Update (from NPCAI DogBite.Tick): advances every native dog; dogs whose owner is gone are released.</summary>
         internal static void Tick()
         {
             if (Dogs.Count == 0) return;
@@ -302,8 +327,10 @@ namespace WildWasteland.Modules.NPC
             }
             foreach (int id in dead) Dogs.Remove(id);
         }
+        /// <summary>Advances the companion (called by the companion bridge).</summary>
         internal static void TickCompanion(GameObject owner)
         { Dog d; if (owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d)) TickDog(d, Time.deltaTime); }
+        /// <summary>One dog's frame: pose choice (rest, bite, jump, dash, locomotion) and clip time.</summary>
         private static void TickDog(Dog d, float dt)
         {
             // Transition blends start from the prior displayed pose before restoring the native baseline.
@@ -387,8 +414,7 @@ namespace WildWasteland.Modules.NPC
             Restore(d);
         }
 
-        // (1.9.2) front legs by name: a bone with "front" and the side in its name (leg_front_left_top0 / legFront_0Left), the shoulder
-        // being the one nearest the root, the paw its deepest descendant the skin uses
+        /// <summary>(1.9.2) front legs by name: a bone with "front" and the side in its name (leg_front_left_top0 / legFront_0Left), the shoulder being the one nearest the root, the paw its deepest descendant the skin uses</summary>
         private static void FrontLegs(Dog d)
         {
             var skinned = new HashSet<Transform>(d.Bones);
@@ -443,6 +469,7 @@ namespace WildWasteland.Modules.NPC
             if (d.FrontRoot != null) d.ShoulderOverHip = d.Agent.T.InverseTransformPoint(Mid(d.LegTop)).y - d.Agent.T.InverseTransformPoint(Mid(d.HindTop)).y;
         }
 
+        /// <summary>Average position of the transforms.</summary>
         private static Vector3 Mid(Transform[] ts)
         {
             Vector3 m = Vector3.zero; int n = 0;
@@ -450,9 +477,7 @@ namespace WildWasteland.Modules.NPC
             return n > 0 ? m / n : Vector3.zero;
         }
 
-        // (1.9.3) lying, getting down or up: the clips (made for another body) leave the hips above the ground and push the chest into it.
-        // The whole front half is turned up at its root until the shoulders stand over the hips as they do standing (+ DogLieFrontLift);
-        // never down. Faded in over the first 60 % of LieDown, out over the first 70 % of GetUp.
+        /// <summary>(1.9.3) lying, getting down or up: the clips (made for another body) leave the hips above the ground and push the chest into it. The whole front half is turned up at its root until the shoulders stand over the hips as they do standing (+ DogLieFrontLift); never down. Faded in over the first 60 % of LieDown, out over the first 70 % of GetUp.</summary>
         private static void LevelFront(Dog d)
         {
             if (d.FrontRoot == null) return;
@@ -485,8 +510,7 @@ namespace WildWasteland.Modules.NPC
             d.FrontRoot.rotation = Quaternion.AngleAxis(up1 >= up2 ? ang : -ang, axis) * d.FrontRoot.rotation;
         }
 
-        // (1.9.2) lying, getting down or up: a front paw that the clip puts into the ground (the clips were made on flat ground for
-        // another body) is lifted by turning its whole leg at the shoulder, just enough to bring the paw onto the ground
+        /// <summary>(1.9.2) lying, getting down or up: a front paw that the clip puts into the ground (the clips were made on flat ground for another body) is lifted by turning its whole leg at the shoulder, just enough to bring the paw onto the ground</summary>
         private static void PawsOnGround(Dog d)
         {
             if (d.LegTop == null || d.LegTop.Length == 0) return;
@@ -510,10 +534,13 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Job "Presentation.DogBiteLate" via DogBite.LateTick (LateUpdate): samples every native dog's clip onto its bones.</summary>
         internal static void LateTick()
         { foreach (var d in Dogs.Values) if (d.Companion == null) SampleDog(d); }
+        /// <summary>Samples the companion's clip (called by the companion bridge in LateUpdate).</summary>
         internal static void LateCompanion(GameObject owner)
         { Dog d; if (owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d)) SampleDog(d); }
+        /// <summary>Writes the playing clip's pose (cross-faded, front lifted when lying, paws on the ground) onto the dog's bones.</summary>
         private static void SampleDog(Dog d)
         {
             if (!Eligible(d) || string.IsNullOrEmpty(d.Playing)) return;
@@ -534,9 +561,7 @@ namespace WildWasteland.Modules.NPC
             d.Applied = true;
         }
 
-        // The companion positions its pivot pawDepth above the support surface.
-        // Retargeted poses have another paw height. Correct only the visual Rig,
-        // in the dog's frame so the same placement works on a tilted car seat.
+        /// <summary>The companion positions its pivot pawDepth above the support surface. Retargeted poses have another paw height. Correct only the visual Rig, in the dog's frame so the same placement works on a tilted car seat.</summary>
         private static void AlignCompanion(Dog d)
         {
             if (d.SupportPaws == null || d.SupportPaws.Length == 0) return;
