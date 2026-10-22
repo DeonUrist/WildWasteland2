@@ -170,7 +170,7 @@ namespace WildWasteland.Modules.Patrols
                 faction=Faction,explodeChance=ExplodeChance,driverDied=DriverDied,driverBailed=DriverBailed,explodeRolled=ExplodeRolled,explodeSelected=ExplodeSelected,
                 battleId=GetComponent<BattleCar>()?.Battle??"",battleSide=GetComponent<BattleCar>()?.Side??0,battleSlot=GetComponent<BattleCar>()?.Slot??-1,
                 merchantJson=GetComponent<MerchantHost>()?.Snapshot()??"",
-                setupOnly=SetupOnly, riders=PatrolCrewDelta.Capture(this), trailerName=TrailerSupport.Attached(gameObject)?.name??"",
+                setupOnly=SetupOnly, riders=PatrolCrewDelta.Capture(this), trailerName=Core.ModApi.Get<Core.IVehicleAttachments>().Attached(gameObject)?.name??"",
                 ramTargets = _rams.ToString(),
                 positionX = p.x, positionY = p.y, positionZ = p.z,
                 driverPrefab = CrewLooks.Identity(_driver, _driverPrefab),

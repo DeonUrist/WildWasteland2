@@ -97,7 +97,7 @@ namespace WildWasteland.Modules.Patrols
             var car = m.gameObject;
             if (WarRig.PoiEncounter.Protected(car)) return;
             PatrolsModule.Verbose("Cleanup: removed " + car.name + " (" + why + ")");
-            var trailer = TrailerSupport.Attached(car);
+            var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null)
             {
                 if (trailer.GetComponent<WarRig.WarRigUnit>() != null) WarRig.PoiEncounter.DetachTankers(car);

@@ -563,7 +563,7 @@ namespace WildWasteland.Modules.Patrols
             a.Journey = journey.id; a.Slot = slot; a.Truck = journey.vehicles[slot].truck;
             EncounterCar.Attach(car,journey.id,journey.convoy||journey.merchant,car.GetComponent<EncounterCar>()?.Building==true);
             var marker = car.GetComponent<PatrolMarker>(); marker.TrafficId = journey.id; marker.TrafficSlot = slot;
-            var trailer = TrailerSupport.Attached(car);
+            var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null)
             {
                 var platform = trailer.GetComponent<TrafficPlatform>() ?? trailer.AddComponent<TrafficPlatform>();
@@ -584,7 +584,7 @@ namespace WildWasteland.Modules.Patrols
         {
             var marker = car.GetComponent<PatrolMarker>();
             if (marker != null) { marker.TrafficId = ""; marker.TrafficSlot = -1; }
-            var trailer = TrailerSupport.Attached(car);
+            var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null) Destroy(trailer.GetComponent<TrafficPlatform>());
             Destroy(car.GetComponent<TrafficAgent>());
         }
@@ -606,7 +606,7 @@ namespace WildWasteland.Modules.Patrols
                     var vehicleTemplate = i < 3 ? template : template.Trailer;
                     if (vehicleTemplate == null) continue;
                     Rider.Seat(marker.gameObject, marker, i, record.turrets[i], vehicleTemplate.TurretPos[i < 3 ? i : i - 3],
-                        i < 3 ? null : TrailerSupport.Attached(marker.gameObject),vehicleTemplate.TurretStanding[i<3?i:i-3], false);
+                        i < 3 ? null : Core.ModApi.Get<Core.IVehicleAttachments>().Attached(marker.gameObject),vehicleTemplate.TurretStanding[i<3?i:i-3], false);
                 }
                 ApplyState(marker.gameObject, record);
             }

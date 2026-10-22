@@ -770,7 +770,7 @@ namespace WildWasteland.Modules.Patrols
         // ------------------------------------------------------------ collisions (the car's Rigidbody is on the root, so they arrive here)
 
         private void OnCollisionEnter(Collision col)
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null) return;
             if (col.collider == null || col.contactCount == 0) return;
             float rel = col.relativeVelocity.magnitude;
             if (rel < 3f) return;
@@ -799,7 +799,7 @@ namespace WildWasteland.Modules.Patrols
         // A slow, sustained frontal contact with an obstacle (shoving a parked car, leaning on a wall) is tracked here and
         // turned into a recovery by Step() once it lasts a second; a single Enter at speed is handled above.
         private void OnCollisionStay(Collision col)
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null) return;
             if (col.collider == null || col.contactCount == 0) return;
             if (_state != PilotState.Charge && _state != PilotState.Overshoot && _state != PilotState.Turnaround && _state != PilotState.Travel) return;
             if (_throttle < 0.3f) return;

@@ -144,7 +144,7 @@ namespace WildWasteland.Modules.Patrols
                 }
             }
             if (!any) return new Vector3(slot == 1 ? -0.4f : slot == 2 ? 0.4f : 0f, 1.2f, slot > 0 ? -0.6f : 0f);
-            if (TrailerSupport.IsTrailer(car))
+            if (Core.ModApi.Get<Core.IVehicleAttachments>().IsTrailer(car))
             {
                 // Use the bed's footprint, excluding the long tow tongue from the four positions.
                 var bed = car.GetComponentsInChildren<Transform>(true).FirstOrDefault(t => t.name.StartsWith("PhysicsLock", StringComparison.Ordinal));

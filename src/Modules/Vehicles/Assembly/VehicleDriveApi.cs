@@ -30,10 +30,9 @@ namespace WildWasteland.Modules.Vehicles
         public void SetInput(GameObject car, float throttle, float steering, float brakes) { Nwh.SetInput(car, throttle, steering, brakes); }
         /// <summary>Dispatches the typed operation to the actual native driving implementation.</summary>
         public void ForgetInput(GameObject car) { Nwh.ForgetInput(car); }
-        private static readonly System.Collections.Generic.List<InputControl> Leases=new System.Collections.Generic.List<InputControl>();
         /// <summary>Restores every held input lease before Vehicles withdraws its API.</summary>
-        internal static void ReleaseAll() { foreach(var lease in Leases)lease.Release();Leases.Clear(); }
+        internal static void ReleaseAll() { InputControl.ReleaseAll(); }
         /// <summary>Creates a native lease without taking control until explicitly requested.</summary>
-        public IVehicleInputLease InputLease(GameObject car) { var lease=new InputControl(car);Leases.Add(lease);return lease; }
+        public IVehicleInputLease InputLease(GameObject car) { return new InputControl(car); }
     }
 }

@@ -124,6 +124,7 @@ namespace WildWasteland.Modules.Patrols
         // The work is spread over several frames (one Instantiate group per frame) so a build never stalls a single frame for long.
         internal IEnumerator Build(CarTemplate tpl, Vector3? at, Quaternion rot, bool menu, bool hold, Action<GameObject> onDone)
         {
+            while(Core.ModApi.Get<Core.IVehicleAssembly>()==null||Core.ModApi.Get<Core.IVehicleDrive>()==null||Core.ModApi.Get<Core.IVehicleAttachments>()==null)yield return null;
             GameObject car = null;
             GameObject trailer = null;
             int gen = SceneGen;
@@ -157,7 +158,7 @@ namespace WildWasteland.Modules.Patrols
                 if (tpl.Trailer != null)
                 {
                     trailerBody = Prefabs.Exact(tpl.Trailer.Body);
-                    if (trailerBody == null || !TrailerSupport.IsTrailer(trailerBody) || FindChild(body.transform, "hitch") == null || FindChild(trailerBody.transform, "attacher") == null)
+                    if (trailerBody == null || !Core.ModApi.Get<Core.IVehicleAttachments>().IsTrailer(trailerBody) || FindChild(body.transform, "hitch") == null || FindChild(trailerBody.transform, "attacher") == null)
                     { Core.Log.Warn("[Patrols] " + "Cannot build " + tpl.Name + ": trailer prefab or towing hitch is missing"); yield break; }
                     if (WarRig.WorldSpawning.IsTemplate(trailerBody))
                     {
@@ -200,7 +201,7 @@ namespace WildWasteland.Modules.Patrols
                     var attacher = FindChild(trailerBody.transform, "attacher");
                     var trailerPos = hitch.position - car.transform.rotation * trailerBody.transform.InverseTransformPoint(attacher.position);
                     trailer = VehiclePreparation.Spawn(packedTrailer, trailerPos, car.transform.rotation);
-                    TrailerSupport.Connect(car, trailer); // before the first frame: native TrailerLoad must not add a second joint
+                    Core.ModApi.Get<Core.IVehicleAttachments>().Connect(car, trailer); // before the first frame: native TrailerLoad must not add a second joint
                     yield return null;
                     if (car == null || trailer == null) yield break;
                 }
@@ -308,7 +309,7 @@ namespace WildWasteland.Modules.Patrols
                 else Register.Discard(car);
                 if (trailer != null)
                 {
-                    if (car != null && TrailerSupport.Connected(car, trailer)) { if (Register.Pending(trailer)) Register.Commit(trailer); }
+                    if (car != null && Core.ModApi.Get<Core.IVehicleAttachments>().Connected(car, trailer)) { if (Register.Pending(trailer)) Register.Commit(trailer); }
                     else { Register.Discard(trailer); Register.RemoveTree(trailer); UnityEngine.Object.Destroy(trailer); }
                 }
                 else Register.Discard(trailer);
