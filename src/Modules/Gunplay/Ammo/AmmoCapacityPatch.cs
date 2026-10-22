@@ -9,6 +9,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>Harmony patch class: IntClamp.DoClamp prefix (backpack ammo overflow).</summary>
     [HarmonyPatch(typeof(IntClamp), "DoClamp")]
     internal static class AmmoCapacityPatch
     {

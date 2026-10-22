@@ -7,6 +7,7 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>Tracers part: where a crossbow bolt sticks in a creature (skin surface and bone) and its transfer to the corpse.</summary>
     internal static partial class Tracers
     {
         /// <summary>A bolt stuck in something: its visual, owner creature, bone path and lifetime.</summary>

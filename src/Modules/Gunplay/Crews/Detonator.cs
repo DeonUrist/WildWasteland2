@@ -5,6 +5,7 @@ using UnityEngine;
 namespace WildWasteland.Modules.Patrols
 {
     // sets a freshly spawned blast-lance projectile off once its FSMs have started (an event sent before Start is lost)
+    /// <summary>Sets a freshly spawned blast-lance projectile off once its FSMs have started (an event sent before Start is lost).</summary>
     internal sealed class Detonator : MonoBehaviour
     {
         private int _frames;

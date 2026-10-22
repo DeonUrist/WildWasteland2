@@ -6,6 +6,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>First-person handling sounds (empty click, reload) of the drawn gun play at the camera instead of the offset weapon root.</summary>
     internal static class EmptyGunSound
     {
         /// <summary>Patches PlaySound.DoPlaySound with <see cref="Before"/>.</summary>

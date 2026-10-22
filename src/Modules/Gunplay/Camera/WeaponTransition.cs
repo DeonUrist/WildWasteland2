@@ -6,6 +6,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>Smooth weapon switch timing: slot events are held while the drawn weapon lowers (0.14 s) and replayed; the lowering pose is the Presentation part.</summary>
     internal static partial class WeaponTransition
     {
         private static PlayMakerFSM _handler, _switcher;

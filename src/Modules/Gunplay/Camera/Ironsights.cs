@@ -5,6 +5,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>Ironsights: optional toggle aiming and the wheel zoom target while aiming down sights (projection written through Core CameraArbiter).</summary>
     internal static partial class Ironsights
     {
         private static Camera _camera;

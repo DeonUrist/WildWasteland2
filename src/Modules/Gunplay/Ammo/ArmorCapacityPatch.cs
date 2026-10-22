@@ -9,6 +9,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>Harmony patch class: FloatClamp.DoClamp prefix (armor overflow).</summary>
     [HarmonyPatch(typeof(FloatClamp), "DoClamp")]
     internal static class ArmorCapacityPatch
     {

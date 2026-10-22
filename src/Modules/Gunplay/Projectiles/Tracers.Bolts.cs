@@ -5,6 +5,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>Tracers part: the visible crossbow bolt (native arrow mesh) in flight and after landing.</summary>
     internal static partial class Tracers
     {
         private static Mesh _boltMesh;

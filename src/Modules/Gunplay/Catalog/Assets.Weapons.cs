@@ -11,6 +11,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.CleanHUD
 {
+    /// <summary>One row of the HUD weapon table (key, caliber, gun/melee/thrown).</summary>
     internal sealed class WeaponInfo
     {
         internal string Key, Caliber, Kind; // Kind: gun, melee, thrown

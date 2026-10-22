@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.NPC
 {
     // Observe vanilla actions without replacing them. Gunplay sends corresponding events
     // at projectile creation/impact, including its immediate over-cap fallback.
+    /// <summary>Observers of vanilla shots and Bodypart damage (NPC burst rays, the player's Raycast, SetFsmFloat writes) feeding NPC perception and the WeaponFired/Hurt events; never replace vanilla actions.</summary>
     internal static class VanillaEvents
     {
         // (WW) Core.Hooks.SensorRayHitEnter has no __state: the lengthened burst sensor is kept here (prefix) and restored by the

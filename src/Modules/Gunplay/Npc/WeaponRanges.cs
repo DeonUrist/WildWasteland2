@@ -7,6 +7,7 @@ using WildWasteland.Modules.Gunplay;
 namespace WildWasteland.Modules.NPC
 {
     // Small deterministic fallback kept consistent with Gunplay's version-one contract (Core.Services.Guns when the Guns module runs).
+    /// <summary>NPC weapon kind/range queries (Gunplay's IGunsApi when it runs, else a small deterministic fallback).</summary>
     internal static partial class WeaponRanges
     {
         /// <summary>NPC weapon kinds (values match WeaponKind 0..5).</summary>

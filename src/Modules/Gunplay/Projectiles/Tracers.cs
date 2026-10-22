@@ -25,6 +25,7 @@ namespace WildWasteland.Modules.Guns
     // Cost: projectiles are structs in one list; each one costs one short RaycastNonAlloc per frame (the distance it moved); all lines
     // are one camera-facing mesh = one draw call with an unlit material (Sprites/Default: no lighting, same look day and night).
     // Above [Tracers] MaxTracers live projectiles a shot is resolved at once (hitscan) instead, so no damage is ever lost.
+    /// <summary>Projectiles and tracers: bullets of NPC and player guns as simulated projectiles drawn as one mesh (core state, tick, drawing).</summary>
     internal static partial class Tracers
     {
         /// <summary>Gun kinds (values match WeaponKind 0..5).</summary>

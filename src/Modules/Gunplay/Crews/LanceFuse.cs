@@ -6,6 +6,7 @@ namespace WildWasteland.Modules.Patrols
 {
     // A rider's thrown blast lance: the game's lance only goes off when its head's trigger touches something, so one that lands flat or at an
     // angle used to lie there (and blow up later). Any solid hit - or 8 s - now sets it off, unless its own FSM is already exploding.
+    /// <summary>A rider's thrown blast lance goes off on any solid hit or after 8 s, unless its own FSM already explodes.</summary>
     internal sealed class LanceFuse : MonoBehaviour
     {
         private float _born; private bool _done;

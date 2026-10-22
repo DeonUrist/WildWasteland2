@@ -9,6 +9,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>Harmony patch class: FsmState.OnEnter postfix (backpack slot emptied).</summary>
     [HarmonyPatch(typeof(FsmState), "OnEnter")]
     internal static class BackpackSlotPatch
     {

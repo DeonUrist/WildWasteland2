@@ -8,6 +8,7 @@ using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
+    /// <summary>Armor overflow: a smaller body armor no longer deletes armor; the excess drops as plates (one per 50 points).</summary>
     internal static class ArmorOverflow
     {
         // (WW) per FloatClamp action: is it __GameManager__'s ArmorBackpack armor <= armor_capacity clamp (decided once; GameObject.name

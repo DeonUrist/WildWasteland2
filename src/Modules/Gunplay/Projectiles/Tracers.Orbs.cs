@@ -24,6 +24,7 @@ namespace WildWasteland.Modules.Guns
     //   on with the bullet's damage cut. Otherwise the impact effect plays, a car part takes condition damage, and the projectile is gone.
     // - A body comes first (Player / Actor layer): the projectile is moved into it, so the game's own trigger deals the hit.
     // The shooter's own colliders are ignored. Everything else (damage, delete timer, sanity) stays vanilla.
+    /// <summary>Tracers part: monster projectiles (orbs) stop at walls and vehicles.</summary>
     internal static partial class Tracers
     {
         private sealed class Orb
