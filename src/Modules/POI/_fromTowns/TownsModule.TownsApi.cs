@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.Towns
         {
             TownRecord record;
             if (!_records.TryGetValue(key, out record) || lot < 0 || lot >= record.Plan.LotCount || ((int)role & ~63) != 0) return false;
-            record.Plan.Lots[lot].Role = role;
+            record.Plan.Lots[lot].Role = role; _revision++;
             Log.Always("[Towns] lot role " + key + "/" + lot + " = " + role + " (persists with next world save)"); return true;
         }
         public void TravelStops(List<TownTrafficStop> into)
@@ -43,9 +43,9 @@ namespace WildWasteland.Modules.Towns
             }
         }
         public void MerchantSeeded(string key)
-        { TownRecord record; if (_records.TryGetValue(key, out record)) record.Plan.MerchantSeeded = true; }
+        { TownRecord record; if (_records.TryGetValue(key, out record)) { record.Plan.MerchantSeeded = true; _revision++; } }
         public int TravelRevision
-        { get { int count = 0; foreach (var record in _records.Values) if (record.Plan.HasTown) count++; return unchecked(_epoch * 397 ^ count); } }
+        { get { return _revision; } }
         public bool PatrolBase(string id)
         {
             TownRecord record;
@@ -98,7 +98,7 @@ namespace WildWasteland.Modules.Towns
         {
             TownRecord record;
             if (!_records.TryGetValue(key, out record) || !Enum.IsDefined(typeof(TownCondition), condition)) return false;
-            record.Plan.Condition = condition;
+            record.Plan.Condition = condition; _revision++;
             Log.Always("[Towns] condition " + key + " = " + condition + " (persists with next world save)"); return true;
         }
         public bool VehicleWaypoint(Vector3 position, Vector3 goal, out Vector3 waypoint, out bool hold)

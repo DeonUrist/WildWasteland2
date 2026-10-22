@@ -64,12 +64,14 @@ namespace WildWasteland.Modules.Towns
         private Dictionary<string, TownRecord> _records = new Dictionary<string, TownRecord>(StringComparer.Ordinal);
         private bool _running, _blocked, _waitingForTowns, _loading;
         private int _epoch, _next;
+        private int _revision;
         private int _builtFrame = -1;
         private float _buildAfter;
         private GameObject _staging;
         private readonly System.Diagnostics.Stopwatch _burst = new System.Diagnostics.Stopwatch();
         private const int PrepStepLimit = 60000;   // overlay/connection steps per town before preparation is cut short (work, not wall clock)
         internal readonly IModule Owner;
+        /// <summary>Routes every town hook and scheduled job through its sole POI module owner.</summary>
         internal TownRuntime(IModule owner) { Owner = owner; }
         public int SiteCount { get { return _sites.Count; } }
         public TownSite GetSite(int index) { return _sites[index].Site; }
@@ -147,7 +149,7 @@ namespace WildWasteland.Modules.Towns
                 if (!_graphs.TryGetValue(old.Tile.mapMagic.graph, out registration)) registration = Register(old.Tile.mapMagic.graph);
                 var resumed = NewSite(plan, old.Tile.mapMagic.transform, old.Tile.main.terrain, registration.Assets.Specs); resumed.Record = _records[key]; resumed.Record.Plan = resumed.Plan;
                 TownPopulation.Budget(resumed, registration.Assets, _settings);
-                _sites.Add(new Live { Tile = old.Tile, Registration = registration, Site = resumed });
+                _sites.Add(new Live { Tile = old.Tile, Registration = registration, Site = resumed }); _revision++;
             }
             _resume.Clear();
             Log.Always("[Towns] ready: " + _settings.Min.Value + "-" + _settings.Max.Value + " buildings, " + _settings.Chance.Value + "% per main chunk; ensure selected towns=" + _settings.EnsureTown.Value
@@ -289,7 +291,7 @@ namespace WildWasteland.Modules.Towns
                 site.Record = record;
                 TownPopulation.Budget(site, capture.Registration.Assets, _settings);
                 site.Loading = capture.Input.Progress;
-                _sites.Add(new Live { Tile = tile, Registration = capture.Registration, Site = site });
+                _sites.Add(new Live { Tile = tile, Registration = capture.Registration, Site = site }); _revision++;
             }
             catch (Exception e) { Log.Warn("[Towns] stopped applying town; existing objects retained: " + e.Message); }
         }
@@ -438,13 +440,14 @@ namespace WildWasteland.Modules.Towns
             }
             return false;
         }
+        /// <summary>Reads the selected town template wall setting.</summary>
         private bool TemplateWalls(TownPlan plan) { foreach (var template in TemplateStore.Snapshot) if (template.Id == plan.TemplateId) return template.Walls; return false; }
         private bool NeedsWalls(Live live)
         { return !live.WallFailed && _settings.Walls.Value && TemplateWalls(live.Site.Plan) && TownPerimeter.Allegiance(live.Site.Plan) && live.Registration.Assets.WallKit.Available
             && (live.Site.Walls == null || !live.Site.Walls.Prepared); }
-        private static void Finish(Live live, string reason)
+        private void Finish(Live live, string reason)
         {
-            live.Finished = true; live.Site.NavigationStopped = true;
+            _revision++; live.Finished = true; live.Site.NavigationStopped = true;
             if (live.Site.Overlap != null && !live.Site.Overlap.Ready)
                 try { live.Site.Overlap.FinishPartial(); } catch (Exception e) { Log.Warn("[Towns] stopped partial overlap: " + e.Message); }
             if (live.Site.Loading != null) live.Site.Loading.Finish(reason);
@@ -455,11 +458,11 @@ namespace WildWasteland.Modules.Towns
             Capture pending;
             for (int i = 0; i < 4 && _planned.TryDequeue(out pending); i++)
                 if (pending.Epoch == _epoch && pending.Plan != null && pending.Plan.HasTown && !_records.ContainsKey(pending.Plan.Key))
-                { _records.Add(pending.Plan.Key, new TownRecord { Plan = pending.Plan }); _names.Assign(pending.Plan); }
+                { _records.Add(pending.Plan.Key, new TownRecord { Plan = pending.Plan }); _revision++; _names.Assign(pending.Plan); }
             for (int i = _sites.Count - 1; i >= 0; i--)
             {
                 var live = _sites[i];
-                if (live.Tile == null || live.Site.Anchor == null) { TownFactory.Destroy(live.Site); _sites.RemoveAt(i); continue; }
+                if (live.Tile == null || live.Site.Anchor == null) { TownFactory.Destroy(live.Site); _sites.RemoveAt(i); _revision++; continue; }
                 if (GameRefs.InGame) TownFactory.Resume(live.Site);
                 if (!live.Site.MerchantReady && live.Site.Plan.Owned && live.Site.Plan.Faction == TownFaction.Coyotes)
                 {
@@ -542,7 +545,7 @@ namespace WildWasteland.Modules.Towns
                 var live = _sites[i]; TownRecord record;
                 if (capture && _records.TryGetValue(live.Site.Plan.Key, out record)) TownFactory.Capture(live.Site, record, live.Registration.Assets);
                 if (live.Site.Loading != null) live.Site.Loading.Finish("Cancelled — terrain streamed out");
-                TownFactory.Destroy(live.Site); _sites.RemoveAt(i);
+                TownFactory.Destroy(live.Site); _sites.RemoveAt(i); _revision++;
             }
         }
         internal void OnSaveBegin(string slot)
@@ -578,7 +581,7 @@ namespace WildWasteland.Modules.Towns
             // Keep graph registrations until shutdown: the native generator graph can survive scene changes.
         }
         private void ClearSites()
-        { ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); InteriorPopulation.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
+        { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); InteriorPopulation.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
         private void Block(string stage, Exception e)
         { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[Towns] blocked during " + stage + "; no replacement layout will be invented", e); }
         private static void Undo(Registration registration)

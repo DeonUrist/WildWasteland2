@@ -36,7 +36,7 @@ namespace WildWasteland.Modules.Towns
             if (weight == 0) { plan.Decision = "skipped: no enabled faction template"; return plan; }
             int choice = random.Next(weight); TownTemplate template = templates[0];
             foreach (var t in templates) { choice -= t.Weight; if (choice < 0) { template = t; break; } }
-            plan.TemplateId = template.Id; count = random.Next(template.MinLots, template.MaxLots + 1);
+            plan.TemplateId = template.Id; if (!template.UseGlobalLotRange) count = random.Next(template.MinLots, template.MaxLots + 1);
             if (template.AllowedPois.Length > 0) { var allowed = new HashSet<string>(template.AllowedPois, StringComparer.Ordinal); var specs = new List<BuildingSpec>(); foreach (var spec in input.Buildings) if (allowed.Contains(spec.Name)) specs.Add(spec); input.Buildings = specs.ToArray(); }
             for (int attempt = 0; attempt < 2; attempt++)
             {

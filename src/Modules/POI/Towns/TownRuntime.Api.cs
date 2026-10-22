@@ -40,9 +40,9 @@ namespace WildWasteland.Modules.Towns
         /// <summary>Reads editable template JSON.</summary>
         public bool TryGetTemplate(string templateId, out string json) { return TemplateStore.Get(templateId, out json); }
         /// <summary>Saves validated authoring rules for future town decisions.</summary>
-        public bool SaveTemplate(string templateId, string json) { return TemplateStore.Save(templateId, json); }
+        public bool SaveTemplate(string templateId, string json) { bool saved = TemplateStore.Save(templateId, json); if (saved) _revision++; return saved; }
         /// <summary>Projects one private plan to stable public metadata.</summary>
         private TownInfo Info(TownPlan p)
-        { bool built = false; foreach (var live in _sites) if (live.Site.Plan == p && live.Site.Anchor != null) { built = live.Finished; break; } return new TownInfo { Key = p.Key, TemplateId = p.TemplateId, Faction = p.Faction.ToString(), Condition = p.Condition.ToString(), WorldCenter = p.WorldCenter, Yaw = p.Yaw, Radius = p.Radius, HasWalls = TemplateWalls(p) && TownPerimeter.Allegiance(p), Built = built, LotCount = p.LotCount }; }
+        { bool built = false; foreach (var live in _sites) if (live.Site.Plan == p && live.Site.Anchor != null) { built = live.Finished; break; } return new TownInfo { Key = p.Key, TemplateId = p.TemplateId, Faction = p.Faction.ToString(), Condition = p.Condition.ToString(), WorldCenter = p.WorldCenter, Yaw = p.Yaw, Radius = p.Radius, HasWalls = _settings.Walls.Value && TemplateWalls(p) && TownPerimeter.Allegiance(p), Built = built, LotCount = p.LotCount }; }
     }
 }

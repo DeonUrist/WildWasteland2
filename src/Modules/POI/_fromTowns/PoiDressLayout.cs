@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.Towns
         private static PoiDressLayout Parse(string text, string type)
         {
             var root = Json.Parse(text) as Dictionary<string, object>;
-            if (root == null || (Number(root, "version") != 1 && Number(root, "version") != 2) || String(root, "poi") != type) throw new InvalidDataException("Invalid POI layout version/type");
+            if (root == null || Number(root, "version") != 2 || String(root, "poi") != type) throw new InvalidDataException("Invalid POI layout version/type");
             object value; var rows = root.TryGetValue("props", out value) ? value as List<object> : null;
             if (rows == null || rows.Count > PoiDressLayout.Limit) throw new InvalidDataException("Invalid prop list (maximum 512)");
             var layout = new PoiDressLayout { Type = type };

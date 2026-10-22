@@ -62,11 +62,12 @@ namespace WildWasteland.Modules.Towns
                         WorldCenter = V(r), Yaw = F(r), Radius = F(r), Feather = F(r), StreetWidth = F(r),
                         OriginalRelief = F(r), MaximumEarthwork = F(r), Decision = r.ReadString() };
                     if (!Enum.IsDefined(typeof(TownCondition), p.Condition)) throw new InvalidDataException("Town condition");
+                    if (string.IsNullOrEmpty(p.Key) || string.IsNullOrEmpty(p.TemplateId)) throw new InvalidDataException("Town identity/template");
                     p.LayoutVersion = r.ReadInt32();
                     
                     {
                         p.Faction = (TownFaction)r.ReadInt32(); p.Name = r.ReadString(); p.Discovered = r.ReadBoolean(); p.MainNodes = r.ReadInt32();
-                        if (!Enum.IsDefined(typeof(TownFaction), p.Faction) || p.LayoutVersion < 1 || p.LayoutVersion > 8) throw new InvalidDataException("Town population/layout");
+                        if (!Enum.IsDefined(typeof(TownFaction), p.Faction) || p.LayoutVersion != 8) throw new InvalidDataException("Town population/layout");
                         { p.FactionMembers = Count(r, 100000); p.PopulationMeasured = r.ReadBoolean(); p.MerchantSeeded = r.ReadBoolean(); }
                     }
                     p.Lots = new TownLot[Count(r, 32)];
@@ -92,11 +93,11 @@ namespace WildWasteland.Modules.Towns
                     if ((p.StreetEdges.Length & 1) != 0) throw new InvalidDataException("Street edge pairs");
                     
                     {
-                        p.PathsVersion = Count(r, 7); p.PathWidth = F(r); p.AccessWidth = F(r);
+                        p.PathsVersion = Count(r, 7); if (p.HasTown && p.PathsVersion != 7) throw new InvalidDataException("Town paths version"); p.PathWidth = F(r); p.AccessWidth = F(r);
                         p.AccessPath = new Vector3[Count(r, 2048)]; for (int j = 0; j < p.AccessPath.Length; j++) p.AccessPath[j] = V(r);
                         p.GradeAccess = r.ReadBoolean();
-                        if (p.PathsVersion == 1 && (p.PathWidth < 1 || p.PathWidth > 9 || p.AccessWidth < 1 || p.AccessWidth > 12 || p.AccessPath.Length < 2))
-                            throw new InvalidDataException("Town path surface/connection");
+                        if (p.PathWidth < 0 || p.PathWidth > 9 || p.AccessWidth < 0 || p.AccessWidth > 12)
+                            throw new InvalidDataException("Town path surface");
                     }
                     if (p.MainNodes < 0 || p.MainNodes > p.StreetNodes.Length) throw new InvalidDataException("Main street length");
                     foreach (var lot in p.Lots)
