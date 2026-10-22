@@ -8,6 +8,7 @@ using UnityEngine;
 namespace WildWasteland.Core.UI
 {
     // Measured from the selected Salvage ledger prototype, including its game chrome.
+    /// <summary>Provides shared ledger controls and switches their rendering to the settings theme for settings drawing passes.</summary>
     public static class Ledger
     {
         public const float Width = 1028, Height = 755;
@@ -19,16 +20,27 @@ namespace WildWasteland.Core.UI
         private static Texture2D _settingsGradient;
         private static Action<Rect, string, float, Color, TextAnchor> _settingsText, _settingsWrap;
         private static Func<string, float, float, float> _settingsHeight;
+        /// <summary>Reports whether the current drawing pass uses the settings palette and text callbacks.</summary>
         internal static bool SettingsActive { get { return _settings; } }
+        /// <summary>Gets the window background color for the active ledger theme.</summary>
         public static Color Background { get { return _settings ? CleanPalette[0] : Palette[0]; } }
+        /// <summary>Gets the panel fill color for the active ledger theme.</summary>
         public static Color Surface { get { return _settings ? CleanPalette[1] : Palette[1]; } }
+        /// <summary>Gets the raised control fill color for the active ledger theme.</summary>
         public static Color Raised { get { return _settings ? CleanPalette[2] : Palette[2]; } }
+        /// <summary>Gets the input field fill color for the active ledger theme.</summary>
         public static Color Field { get { return _settings ? CleanPalette[3] : Palette[3]; } }
+        /// <summary>Gets the primary text color for the active ledger theme.</summary>
         public static Color Text { get { return _settings ? CleanPalette[4] : Palette[4]; } }
+        /// <summary>Gets the secondary and disabled text color for the active ledger theme.</summary>
         public static Color Muted { get { return _settings ? CleanPalette[5] : Palette[5]; } }
+        /// <summary>Gets the panel border and separator color for the active ledger theme.</summary>
         public static Color Line { get { return _settings ? _settingsBorder : Palette[6]; } }
+        /// <summary>Gets the highlight color supplied by settings or the regular ledger palette.</summary>
         public static Color Accent { get { return _settings ? _settingsAccent : Palette[7]; } }
+        /// <summary>Gets the selected row fill, tinted by the settings accent when settings are active.</summary>
         public static Color Selected { get { return _settings ? Color.Lerp(CleanPalette[1], _settingsAccent, .16f) : Palette[8]; } }
+        /// <summary>Gets the destructive action text color for the active ledger theme.</summary>
         public static Color Danger { get { return _settings ? CleanPalette[6] : Palette[9]; } }
         public static GUIStyle Body, Small, Heading, Brand, GameButton, DialogTitle, Input, Scrollbar;
         private static GUIStyle CloseText, InputRight;
@@ -38,10 +50,12 @@ namespace WildWasteland.Core.UI
         private static readonly Dictionary<string, string> Numbers = new Dictionary<string, string>();
         private static readonly Dictionary<string, Texture2D> Boxes = new Dictionary<string, Texture2D>();
         private static readonly Dictionary<string, float> ButtonOffsets = new Dictionary<string, float>();
+        /// <summary>Parses an RGB or RGBA hexadecimal color through the shared skin helper.</summary>
         public static Color C(string hex) { return Skin.Hex(hex); }
         // the game's menu font when Apocasetter / the MODS button did not provide one: a scan of every loaded Font, so it is cached and
         // retried at most once a second (Begin runs on every IMGUI event while a window is open)
         private static Font _scannedFont; private static float _nextFontScan;
+        /// <summary>Finds the loaded game menu font, caching success and limiting unsuccessful scans to once per second.</summary>
         private static Font ScannedGameFont()
         {
             if (_scannedFont == null && Time.realtimeSinceStartup >= _nextFontScan)
@@ -51,6 +65,7 @@ namespace WildWasteland.Core.UI
             }
             return _scannedFont;
         }
+        /// <summary>Installs the settings colors, plate and text callbacks, then selects its ledger skin and returns the previous GUI skin.</summary>
         internal static GUISkin BeginSettings(Color accent, Color border, Texture2D plate, Texture2D gradient, Action<Rect, string, float, Color, TextAnchor> text,
             Action<Rect, string, float, Color, TextAnchor> wrap, Func<string, float, float, float> height)
         {
@@ -59,8 +74,11 @@ namespace WildWasteland.Core.UI
             _settingsPlate.normal.background = plate;
             return Begin(true);
         }
+        /// <summary>Leaves settings drawing mode and releases the text measurement and drawing callbacks.</summary>
         internal static void EndSettings() { _settings = false; _settingsText = _settingsWrap = null; _settingsHeight = null; }
+        /// <summary>Selects the regular ledger skin and returns the previous GUI skin for the caller to restore.</summary>
         public static GUISkin Begin() { return Begin(false); }
+        /// <summary>Selects or rebuilds the ledger skin for the requested drawing mode and returns the previous GUI skin.</summary>
         private static GUISkin Begin(bool settings)
         {
             _settings = settings;
@@ -97,11 +115,13 @@ namespace WildWasteland.Core.UI
             }
             GUI.skin = _skin; return old;
         }
+        /// <summary>Creates a clipped, left-aligned text style using the current ledger text color.</summary>
         private static GUIStyle Style(Font font, int size)
         {
             var s = new GUIStyle(GUIStyle.none) { font = font, fontSize = size, alignment = TextAnchor.MiddleLeft, clipping = TextClipping.Clip };
             s.normal.textColor = s.hover.textColor = s.active.textColor = s.focused.textColor = Text; return s;
         }
+        /// <summary>Returns a cached eight-pixel square texture with the requested fill and one-pixel border colors.</summary>
         private static Texture2D Box(string fill, string edge)
         {
             string key = fill + edge; Texture2D texture; if (Boxes.TryGetValue(key, out texture)) return texture;
@@ -109,13 +129,16 @@ namespace WildWasteland.Core.UI
             for (int y = 0; y < 8; y++) for (int x = 0; x < 8; x++) texture.SetPixel(x, y, x == 0 || y == 0 || x == 7 || y == 7 ? C(edge) : C(fill));
             texture.Apply(); Boxes[key] = texture; return texture;
         }
+        /// <summary>Fills a rectangle with the shared skin pixel texture and the requested color.</summary>
         public static void Fill(Rect r, Color color) { Skin.Fill(r, color); }
+        /// <summary>Draws a filled panel and theme-scaled border, using the current surface and line colors by default.</summary>
         public static void Panel(Rect r, Color? fill = null, Color? border = null)
         {
             Fill(r, fill ?? Surface); var edge = border ?? Line; float stroke = _settings ? 1.5f : 1;
             Fill(new Rect(r.x, r.y, r.width, stroke), edge); Fill(new Rect(r.x, r.yMax - stroke, r.width, stroke), edge);
             Fill(new Rect(r.x, r.y, stroke, r.height), edge); Fill(new Rect(r.xMax - stroke, r.y, stroke, r.height), edge);
         }
+        /// <summary>Draws text with a temporary alignment, using the settings text renderer when installed.</summary>
         public static void Label(Rect r, string text, GUIStyle font = null, Color? color = null, TextAnchor align = TextAnchor.MiddleLeft)
         {
             var style = font ?? Body; var previous = style.alignment; style.alignment = align;
@@ -123,15 +146,18 @@ namespace WildWasteland.Core.UI
             { var draw = style.wordWrap ? _settingsWrap : _settingsText; draw(r, text, style.fontSize, color ?? Text, align); style.alignment = previous; return; }
             Skin.Label(r, text, style, color ?? Text); style.alignment = previous;
         }
+        /// <summary>Measures wrapped text with the settings callback or the supplied GUI style for the available width.</summary>
         internal static float TextHeight(string text, GUIStyle style, float width)
         { return _settings ? _settingsHeight(text, style.fontSize, width) : style.CalcHeight(new GUIContent(text), width); }
 
+        /// <summary>Draws the settings accent marker beside an enabled selected or hovered row.</summary>
         internal static void RowHighlight(Rect rect, bool selected = false)
         {
             if (!_settings || !GUI.enabled || (!selected && !rect.Contains(Event.current.mousePosition))) return;
             Fill(new Rect(rect.x, rect.center.y - 12, 7, 24), Accent);
         }
 
+        /// <summary>Draws a centered selectable caption with a selection underline and returns whether it was clicked.</summary>
         internal static bool Choice(Rect rect, string text, bool selected)
         {
             bool hit = GUI.Button(rect, GUIContent.none, GUIStyle.none);
@@ -141,6 +167,7 @@ namespace WildWasteland.Core.UI
             return hit;
         }
 
+        /// <summary>Draws a key binding button with the settings outline treatment or the regular ledger button.</summary>
         internal static bool KeyButton(Rect rect, string text)
         {
             if (!_settings) return Button(rect, text);
@@ -151,6 +178,7 @@ namespace WildWasteland.Core.UI
             return hit;
         }
 
+        /// <summary>Edits named text input, using settings text rendering while the control has no keyboard focus.</summary>
         internal static string TextField(Rect rect, string key, string text, bool right = false)
         {
             if (!_settings) return GUI.TextField(rect, text, right ? InputRight : Input);
@@ -162,6 +190,7 @@ namespace WildWasteland.Core.UI
             return next;
         }
 
+        /// <summary>Handles slider mouse capture and draws its clamped value as a bordered gradient fill.</summary>
         internal static float Slider(Rect rect, float value, float min, float max)
         {
             int id = GUIUtility.GetControlID(FocusType.Passive, rect); var e = Event.current;
@@ -182,6 +211,7 @@ namespace WildWasteland.Core.UI
             }
             return value;
         }
+        /// <summary>Draws a themed button with optional primary, font and color treatments, returning whether it was clicked.</summary>
         public static bool Button(Rect r, string text, bool enabled = true, bool primary = false, bool gameFont = false, Color? color = null, bool transparent = false)
         {
             bool previous = GUI.enabled; GUI.enabled = previous && enabled;
@@ -210,6 +240,7 @@ namespace WildWasteland.Core.UI
             else ButtonLabel(r, text, Body, ink, TextAnchor.MiddleCenter);
             GUI.enabled = previous; return hit;
         }
+        /// <summary>Draws a button caption centered on its visible glyph bounds, caching the vertical offset outside settings.</summary>
         public static void ButtonLabel(Rect r, string text, GUIStyle style, Color ink, TextAnchor alignment)
         {
             if (_settings) { Label(r, text, style, ink, alignment); return; }
@@ -226,6 +257,7 @@ namespace WildWasteland.Core.UI
             }
             r.y += shift; Label(r, text, style, ink, alignment);
         }
+        /// <summary>Loads and caches a named ledger PNG, then draws it with a temporary tint when available.</summary>
         public static void IconImage(Rect r, string name, Color color)
         {
             Texture2D icon;
@@ -238,6 +270,7 @@ namespace WildWasteland.Core.UI
             }
             var previous = GUI.color; GUI.color = color; GUI.DrawTexture(r, icon); GUI.color = previous;
         }
+        /// <summary>Draws a centered sixteen-pixel icon button with a hover border and optional disabled tint.</summary>
         public static bool Icon(Rect r, string name, bool enabled = true, Color? color = null)
         {
             bool previous = GUI.enabled; GUI.enabled = previous && enabled;
@@ -248,6 +281,7 @@ namespace WildWasteland.Core.UI
             GUI.enabled = previous; return hit;
         }
         // a small inline text button ("rename", "E"): Small font, muted, accent on hover, boxed when `boxed`; vertically centred in r
+        /// <summary>Draws a small inline text button with hover accent and an optional surrounding box.</summary>
         public static bool TextButton(Rect r, string text, bool boxed = false, bool enabled = true)
         {
             bool previous = GUI.enabled; GUI.enabled = previous && enabled;
@@ -258,9 +292,11 @@ namespace WildWasteland.Core.UI
             ButtonLabel(r, text, Small, ink, TextAnchor.MiddleCenter);
             GUI.enabled = previous; return hit;
         }
+        /// <summary>Measures the horizontal extent of text with the supplied GUI style.</summary>
         public static float TextWidth(string text, GUIStyle style) { return style.CalcSize(new GUIContent(text)).x; }
 
         // two stacked triangles (up over down) in one column; returns -1 (up), +1 (down) or 0
+        /// <summary>Draws stacked move controls and returns minus one for up, one for down, or zero for no click.</summary>
         public static int Reorder(Rect column, bool canUp, bool canDown)
         {
             float half = column.height / 2;
@@ -270,6 +306,7 @@ namespace WildWasteland.Core.UI
             if (TriangleButton(down, false, canDown)) result = 1;
             return result;
         }
+        /// <summary>Draws a tinted directional triangle control and returns whether its enabled hit area was clicked.</summary>
         private static bool TriangleButton(Rect r, bool up, bool enabled)
         {
             bool previous = GUI.enabled; GUI.enabled = previous && enabled;
@@ -280,6 +317,7 @@ namespace WildWasteland.Core.UI
             GUI.enabled = previous; return hit;
         }
         private static Texture2D _triUp, _triDown;
+        /// <summary>Returns the cached antialiased texture for an upward or downward reorder triangle.</summary>
         private static Texture2D Triangle(bool up)
         {
             var t = up ? _triUp : _triDown; if (t != null) return t;
@@ -293,13 +331,16 @@ namespace WildWasteland.Core.UI
             }
             t.Apply(); if (up) _triUp = t; else _triDown = t; return t;
         }
+        /// <summary>Draws a dropdown field with its caption and chevron, returning whether the field was clicked.</summary>
         public static bool Dropdown(Rect r, string text)
         {
             bool hit = GUI.Button(r, GUIContent.none, GUIStyle.none); Panel(r, Field, r.Contains(Event.current.mousePosition) && GUI.enabled ? Accent : Line);
             ButtonLabel(new Rect(r.x + 12, r.y, r.width - 40, r.height), text, Body, Text, TextAnchor.MiddleLeft);
             IconImage(new Rect(r.xMax - 27, r.center.y - 8, 16, 16), "chevron-down", Text); return hit;
         }
+        /// <summary>Draws a one-pixel horizontal separator in the current ledger line color.</summary>
         public static void Rule(float x, float y, float width) { Fill(new Rect(x, y, width, 1), Line); }
+        /// <summary>Draws the settings plate or the regular rust, rebar and rivet window frame.</summary>
         public static void Window(Rect r)
         {
             if (_settings)
@@ -319,13 +360,16 @@ namespace WildWasteland.Core.UI
             }
             if (Skin.Rivet != null) foreach (var at in new[] { new Vector2(r.x + 10, r.y + 10), new Vector2(r.xMax - 18, r.y + 10), new Vector2(r.x + 10, r.yMax - 18), new Vector2(r.xMax - 18, r.yMax - 18) }) GUI.DrawTexture(new Rect(at.x, at.y, 8, 8), Skin.Rivet);
         }
+        /// <summary>Draws the ledger title strip with the default APOCAPATROL caption.</summary>
         public static void Header(float width) { Header(width, "APOCAPATROL"); }
+        /// <summary>Draws the ledger title strip and separator using the supplied caption.</summary>
         public static void Header(float width, string title)
         {
             Fill(new Rect(6, 6, width - 12, 74), new Color(16 / 255f, 13 / 255f, 9 / 255f, .65f));
             Label(new Rect(26, 24, 600, 38), title, Brand, Accent);
             Rule(6, 79, width - 12);
         }
+        /// <summary>Draws a labeled checkbox using the current theme and returns its value after any click.</summary>
         public static bool Toggle(Rect r, bool value, string label)
         {
             if (_settings)
@@ -344,6 +388,7 @@ namespace WildWasteland.Core.UI
             if (value) IconImage(new Rect(r.x + 1, r.center.y - 7, 14, 14), "check", Background);
             Label(new Rect(r.x + 24, r.y, r.width - 24, r.height), label); return hit ? !value : value;
         }
+        /// <summary>Retains partially edited numeric text, accepts finite culture-aware values, clamps them and signals value changes.</summary>
         public static float Number(Rect r, string key, float value, float min, float max, Action changed, bool right = false)
         {
             string text; if (!Numbers.TryGetValue(key, out text)) text = value.ToString("0.####", CultureInfo.InvariantCulture);
@@ -352,12 +397,15 @@ namespace WildWasteland.Core.UI
             var number = Mathf.Clamp(parsed, min, max); if (number != parsed) Numbers[key] = number.ToString("0.####", CultureInfo.InvariantCulture);
             if (number != value) changed(); return number;
         }
+        /// <summary>Clears retained numeric edit strings so fields next display their supplied numeric values.</summary>
         public static void ClearNumbers() { Numbers.Clear(); }
+        /// <summary>Formats a percentage as guaranteed units plus the remaining chance of one additional unit.</summary>
         public static string Quantity(float chance)
         {
             int n = (int)Math.Floor(chance / 100f); float rest = chance % 100;
             return n + " guaranteed" + (rest > 0 ? " + " + rest.ToString("0.##", CultureInfo.InvariantCulture) + "% next" : "");
         }
+        /// <summary>Draws a vertical scroll view, passes its usable content width to the callback and returns the resulting offset.</summary>
         public static Vector2 Scroll(Rect r, Vector2 scroll, float height, Action<float> draw)
         {
             bool overflow = height > r.height; float width = r.width - (overflow ? 10 : 0);
@@ -367,8 +415,10 @@ namespace WildWasteland.Core.UI
     }
 
     // One popup implementation for spawning configuration and template creation.
+    /// <summary>Owns a ledger option popup with input capture and deferred actions to avoid activating controls beneath it.</summary>
     public sealed class LedgerDropdown
     {
+        /// <summary>Reports whether the popup currently has an active option list.</summary>
         public bool IsOpen { get { return _options != null; } }
         private Rect _anchor, _box;
         private string _selected;
@@ -376,6 +426,7 @@ namespace WildWasteland.Core.UI
         private Action<string> _setter;
         private Action _pending;
         private Vector2 _scroll;
+        /// <summary>Queues a sorted option list for opening below its anchor, or above it when the lower boundary would be exceeded.</summary>
         public void Open(Rect anchor, List<KeyValuePair<string, string>> options, string selected, Action<string> setter, float bottom)
         {
             var first = options.Where(o => string.IsNullOrEmpty(o.Key) || string.Equals(o.Value, "None", StringComparison.OrdinalIgnoreCase) || o.Value.StartsWith("Convoy cargo", StringComparison.OrdinalIgnoreCase)).ToList();
@@ -391,6 +442,7 @@ namespace WildWasteland.Core.UI
         // Called first thing in the window: while the list is open every mouse event belongs to it. IMGUI gives a click to the first control
         // drawn under the mouse, and the list is drawn last (on top) - so a click on one of its rows used to land on whatever row of the
         // dialog lay beneath it (2.3.2). The rows are hit-tested here and the event is used up; Draw() only paints.
+        /// <summary>Consumes popup mouse input before underlying controls run and queues selection or dismissal for flushing.</summary>
         public void Before()
         {
             if (!IsOpen) return;
@@ -413,6 +465,7 @@ namespace WildWasteland.Core.UI
                 e.Use();
             }
         }
+        /// <summary>Paints the open popup and its selected or hovered rows without performing selection hit tests.</summary>
         public void Draw()
         {
             if (!IsOpen) return;
@@ -428,13 +481,16 @@ namespace WildWasteland.Core.UI
                 }
             });
         }
+        /// <summary>Hit-tests a popup row at the supplied mouse position and queues its setter followed by dismissal.</summary>
         public bool SelectAt(Vector2 mouse)
         {
             if(!IsOpen||!_box.Contains(mouse))return false;
             int i=Mathf.FloorToInt((mouse.y-(_box.y+4)+_scroll.y)/34f);if(i<0||i>=_options.Count)return false;
             string key=_options[i].Key;var setter=_setter;_pending=()=>{setter(key);Close();};return true;
         }
+        /// <summary>Executes the pending popup open, selection or dismissal after the current control traversal.</summary>
         public void Flush() { if (_pending != null) { var action = _pending; _pending = null; action(); } }
+        /// <summary>Closes the popup and discards any pending popup action.</summary>
         public void Close() { _options = null; _pending = null; }
     }
 }
