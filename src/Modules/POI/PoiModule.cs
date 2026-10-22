@@ -242,7 +242,7 @@ namespace WildWasteland.Modules.POI
             if (string.IsNullOrEmpty(slot)) return;
             string path = Path.Combine(_saves, Path.GetFileName(slot) + ".poi.txt");
             File.WriteAllLines(path + ".tmp", snapshot);
-            if (File.Exists(path)) File.Replace(path + ".tmp", path, null); else File.Move(path + ".tmp", path);
+            AtomicFile.Replace(path + ".tmp", path);   // D17: no Mono File.Replace (Win32 1175); same directory, target may be missing
         }
         private void Load(string slot)
         {

@@ -18,7 +18,12 @@ using Log = WildWasteland.Core.Log;
 
 namespace WildWasteland.Modules.Towns
 {
-    public sealed class TownsModule : ModuleBase
+    /// <summary>
+    /// Towns module entry (POI target, B13): terrain tile capture/plan/apply, sliced town construction, load handoff hold,
+    /// world save/load of town records. Wave A (A6): parts owned by other targets are partial files in their folders
+    /// (POI/_fromTowns/TownsModule.TownsApi.cs, NPCAI/Navigation|Population/_fromTowns, HUD/_fromTowns, Tools/_fromTowns, Debug/_fromTowns).
+    /// </summary>
+    public sealed partial class TownsModule : ModuleBase
     {
         private sealed class Registration
         {
@@ -49,13 +54,11 @@ namespace WildWasteland.Modules.Towns
         private readonly TownNames _names = new TownNames();
         private TownGasStation _gasStation;
         private PoiDressing _dressing;
-        private PoiDresser _dresser;
         private readonly Dictionary<Graph, Registration> _graphs = new Dictionary<Graph, Registration>();
         private readonly ConcurrentDictionary<TileData, Capture> _captures = new ConcurrentDictionary<TileData, Capture>();
         private readonly ConcurrentQueue<Capture> _planned = new ConcurrentQueue<Capture>();
         private readonly List<Live> _sites = new List<Live>();
         private readonly List<Live> _resume = new List<Live>();
-        private string _startingTerrainState;
 
         private Dictionary<string, TownRecord> _records = new Dictionary<string, TownRecord>(StringComparer.Ordinal);
         private bool _running, _blocked, _waitingForTowns, _loading;
@@ -82,18 +85,38 @@ namespace WildWasteland.Modules.Towns
             return null;
         }
         public override void BindConfig(ModuleConfig cfg) { _settings.Bind(cfg); }
-        public void BindStandalone(ConfigFile file) { _settings.Bind(file); }
+        // Wave A (A6) entry split: lifecycle parts owned by other target modules live in partial files in their folders.
+        /// <summary>NPCAI/Navigation part: installs the Nav bridge (TownBakeBridge: Nav.Next waypoints, instance overlays).</summary>
+        partial void InitNavigation();
+        /// <summary>NPCAI/Navigation part: removes the Nav bridge and its patches.</summary>
+        partial void ShutdownNavigation();
+        /// <summary>NPCAI/Population part: installs interior and native-POI population rules.</summary>
+        partial void InitPopulation();
+        /// <summary>NPCAI/Population part: releases deferred native spawn events before the module stops.</summary>
+        partial void ShutdownPopulation();
+        /// <summary>HUD part: installs the town map label/icon patches on CleanHUD.</summary>
+        partial void InitHud();
+        /// <summary>Tools part: creates the POI dresser (editor) on top of the POI dressing runtime.</summary>
+        partial void InitTools();
+        /// <summary>Tools part: drops the POI dresser reference after the dressing runtime was disposed.</summary>
+        partial void ShutdownTools();
+        /// <summary>Tools part: shifts the editor's cached scene positions on a floating-origin jump.</summary>
+        partial void ShiftTools(Vector3 delta);
+        /// <summary>Debug part: Vistas starting-terrain seam trace for applied tiles next to the origin.</summary>
+        partial void TraceStartingTerrain(TerrainTile applied, string source);
+        /// <summary>Debug part: forgets the last starting-terrain trace (world changed).</summary>
+        partial void ClearDebug();
         public override void Init()
         {
             if (_running) return;
             _running = true; TownsApi.Provider = this;
             _gasStation = new TownGasStation(_settings);
             _names.Load(); _names.Begin(_records);
-            TownBakeBridge.Install(this);
+            InitNavigation();
             _dressing = new PoiDressing(); _dressing.Install(this);
-            _dresser = new PoiDresser(_dressing); _dresser.Install(this, _settings);
-            InteriorPopulation.Install(this);
-            TownMarkers.Install(this);
+            InitTools();
+            InitPopulation();
+            InitHud();
 
 
             TownPoiSettings.Install(this, _settings);
@@ -213,7 +236,6 @@ namespace WildWasteland.Modules.Towns
                 capture.Plan = TownPlanner.Make(capture.Input, data, data.heights, avoid, roads, stop);
                 if (capture.Plan == null || !capture.Plan.HasTown || (stop != null && stop.stop))
                 { if (capture.Input.Progress != null) capture.Input.Progress.Finish(capture.Plan == null ? "Cancelled" : capture.Plan.Decision == "chance" ? "No town selected for this block" : capture.Plan.Decision); return; }
-                if (capture.Input.Progress != null) capture.Input.Progress.Report(.58f, "Shaping town ground and access track");
                 TownLateTerrain.Apply(data, capture.Plan, assets, stop);
                 if (!data.isDraft)
                 {
@@ -265,7 +287,6 @@ namespace WildWasteland.Modules.Towns
                 site.Record = record;
                 TownPopulation.Budget(site, capture.Registration.Assets, _settings);
                 site.Loading = capture.Input.Progress;
-                if (site.Loading != null) site.Loading.Report(.7f, "Placing 0/" + plan.LotCount + " buildings");
                 _sites.Add(new Live { Tile = tile, Registration = capture.Registration, Site = site });
             }
             catch (Exception e) { Log.Warn("[Towns] stopped applying town; existing objects retained: " + e.Message); }
@@ -467,42 +488,6 @@ namespace WildWasteland.Modules.Towns
             if (tile.main != null) ForgetMoved(tile.main.data, key);
             if (tile.draft != null) ForgetMoved(tile.draft.data, key);
         }
-        private void TraceStartingTerrain(TerrainTile applied, string source)
-        {
-            if (!VistasWorldGen.Present || applied == null || applied.mapMagic == null || Mathf.Abs(applied.coord.x) + Mathf.Abs(applied.coord.z) > 1) return;
-            try
-            {
-                var map = applied.mapMagic; var start = map.tiles[new Coord(0, 0)];
-                var terrain = start == null ? null : start.ActiveTerrain;
-                if (terrain == null || terrain.terrainData == null) return;
-                var data = terrain.terrainData; int res = data.holesResolution;
-                string state = "seed=" + map.graph.random.Seed + "; active=" + (start.main != null && terrain == start.main.terrain ? "main" : "draft")
-                    + "; size=" + data.size.ToString("F1") + "; heightRes=" + data.heightmapResolution + "; globalsHeight=" + map.globals.height
-                    + "; terrainWrites=off; tests=" + _settings.TestGasStation.Value + "/" + _settings.TestCamp10.Value + "/" + Services.PoiNavSetup;
-                int[] dx = { -1, 1, 0, 0 }, dz = { 0, 0, -1, 1 };
-                for (int side = 0; side < 4; side++)
-                {
-                    var holes = data.GetHoles(side == 1 ? res - 1 : 0, side == 3 ? res - 1 : 0, side < 2 ? 1 : res, side < 2 ? res : 1);
-                    int missing = 0; foreach (bool solid in holes) if (!solid) missing++;
-                    state += "; edge" + side + " holes=" + missing + "/" + res;
-                    var neighbour = map.tiles[new Coord(dx[side], dz[side])]; var other = neighbour == null ? null : neighbour.ActiveTerrain;
-                    if (other == null || other.terrainData == null) { state += " neighbour=absent"; continue; }
-                    var next = other.terrainData; float step = 0;
-                    for (int s = 0; s <= 8; s++)
-                    {
-                        float u = side == 0 ? 0 : side == 1 ? 1 : s / 8f, v = side == 2 ? 0 : side == 3 ? 1 : s / 8f;
-                        var p = terrain.transform.position + new Vector3(u * data.size.x, 0, v * data.size.z);
-                        float a = data.GetInterpolatedHeight(u, v) + terrain.transform.position.y;
-                        float b = next.GetInterpolatedHeight((p.x - other.transform.position.x) / next.size.x, (p.z - other.transform.position.z) / next.size.z) + other.transform.position.y;
-                        step = Mathf.Max(step, Mathf.Abs(a - b));
-                    }
-                    state += " neighbourHeight=" + next.size.y.ToString("F1", CultureInfo.InvariantCulture) + " maxStep=" + step.ToString("F1", CultureInfo.InvariantCulture) + "m";
-                }
-                if (state == _startingTerrainState) return;
-                _startingTerrainState = state; Log.Always("[Towns] Starting terrain (" + source + "): " + state);
-            }
-            catch (Exception e) { Log.Warn("[Towns] Starting terrain trace failed: " + e.Message); }
-        }
         private void ForgetMoved(TileData data, string key)
         {
             if (data == null) return;
@@ -556,141 +541,6 @@ namespace WildWasteland.Modules.Towns
                 TownFactory.Destroy(live.Site); _sites.RemoveAt(i);
             }
         }
-        public bool SetRole(string key, int lot, TownRole role)
-        {
-            TownRecord record;
-            if (!_records.TryGetValue(key, out record) || lot < 0 || lot >= record.Plan.LotCount || ((int)role & ~63) != 0) return false;
-            record.Plan.Lots[lot].Role = role;
-            Log.Always("[Towns] lot role " + key + "/" + lot + " = " + role + " (persists with next world save)"); return true;
-        }
-        internal void TravelStops(List<Patrols.TownStop> into)
-        {
-            foreach (var record in _records.Values)
-            {
-                var plan = record.Plan;
-                // (WW) a Coyotes town always takes part (its merchant bus must be there), others once their faction holds it
-                if (!plan.HasTown || plan.PathsVersion < 3) continue;
-                if (plan.Faction != TownFaction.Coyotes && (!plan.Owned || plan.Condition != TownCondition.Inhabited)) continue;
-                foreach (var lot in plan.Lots) if (lot.IsParking && !lot.Skipped)
-                {
-                    into.Add(new Patrols.TownStop { Id = plan.Key, Name = plan.Name, Faction = plan.Faction.ToString(),
-                        Parking = plan.World(lot.LocalPosition), Heading = Quaternion.Euler(0, plan.Yaw + lot.Yaw, 0) * Vector3.forward,
-                        Center = plan.WorldCenter, Radius = plan.Radius, MerchantSeeded = plan.MerchantSeeded, CanTravel = plan.AccessPath.Length > 1, Lane = false,
-                        RoadApproach = plan.AccessPath.Length > 1 ? (Vector3?)plan.World(plan.AccessPath[plan.AccessPath.Length - 1]) : null }); break;
-                }
-            }
-        }
-        internal void MerchantSeeded(string key)
-        { TownRecord record; if (_records.TryGetValue(key, out record)) record.Plan.MerchantSeeded = true; }
-        internal int TravelRevision
-        { get { int count = 0; foreach (var record in _records.Values) if (record.Plan.HasTown) count++; return unchecked(_epoch * 397 ^ count); } }
-        internal bool PatrolBase(string id)
-        {
-            TownRecord record;
-            if (id == null || !_records.TryGetValue(id, out record) || !record.Plan.HasTown || record.Plan.Condition != TownCondition.Inhabited) return false;
-            foreach (var lot in record.Plan.Lots) if (lot.IsParking && !lot.Skipped) return true;
-            return false;
-        }
-        internal int PatrolCount(Vector3 player, float range)
-        {
-            int count = 0;
-            foreach (var record in _records.Values)
-            {
-                var plan = record.Plan; if (!plan.HasTown || plan.Condition != TownCondition.Inhabited) continue;
-                foreach (var lot in plan.Lots) if (lot.IsParking && !lot.Skipped)
-                { var d = plan.World(lot.LocalPosition) - player; d.y = 0; if (d.sqrMagnitude <= range * range) count++; break; }
-            }
-            return count;
-        }
-        internal void PatrolBases(List<Patrols.TrafficBase> into)
-        {
-            foreach (var record in _records.Values)
-            {
-                var plan = record.Plan;
-                if (!plan.HasTown || plan.Condition != TownCondition.Inhabited) continue;
-                foreach (var lot in plan.Lots) if (lot.IsParking && !lot.Skipped)
-                { into.Add(new Patrols.TrafficBase { id = plan.Key, name = plan.Name, faction = plan.Faction.ToString(),
-                    center = plan.World(lot.LocalPosition), apron = plan.World(lot.LocalPosition), gate = plan.World(lot.LocalPosition), size = new Vector3(24, 0, 40) }); break; }
-            }
-        }
-        internal bool ParkingOutside(Vector3 world, out Vector3 parking)
-        {
-            parking = world;
-            foreach (var record in _records.Values) if (record.Plan.HasTown)
-            {
-                var plan = record.Plan; var p = world - plan.WorldCenter; p.y = 0;
-                if (p.sqrMagnitude > plan.Radius * plan.Radius) continue;
-                var frame = TownPerimeter.Frame(plan);
-                if (!frame.Contains(p)) continue;
-                foreach (var lot in plan.Lots) if (lot.IsParking && !lot.Skipped) { parking = plan.World(lot.LocalPosition); return true; }
-            }
-            return false;
-        }
-        internal void TravelBlocks(List<Bounds> into)
-        {
-            foreach (var record in _records.Values) if (record.Plan.HasTown)
-            { var plan = record.Plan; var frame = TownPerimeter.Frame(plan); frame.center += new Vector3(plan.WorldCenter.x, 0, plan.WorldCenter.z);
-                var size = frame.size; size.y = 10000; frame.size = size; frame.Expand(new Vector3(28, 0, 28)); into.Add(frame); }
-        }
-        public bool SetCondition(string key, TownCondition condition)
-        {
-            TownRecord record;
-            if (!_records.TryGetValue(key, out record) || !Enum.IsDefined(typeof(TownCondition), condition)) return false;
-            record.Plan.Condition = condition;
-            Log.Always("[Towns] condition " + key + " = " + condition + " (persists with next world save)"); return true;
-        }
-        internal bool Waypoint(GameObject owner, Vector3 position, Vector3 goal, out Vector3 waypoint, out bool approach)
-        {
-            waypoint = goal; approach = false;
-            for (int i = 0; i < _sites.Count; i++)
-            {
-                var site = _sites[i].Site;
-                if (site.Anchor == null || site.Approach == null) continue;
-                var center = site.Anchor.TransformPoint(site.Plan.WorldCenter);
-                float radius = site.Plan.Radius + site.Plan.Feather + 30f;
-                float px = position.x - center.x, pz = position.z - center.z, gx = goal.x - center.x, gz = goal.z - center.z;
-                if (px * px + pz * pz > radius * radius && gx * gx + gz * gz > radius * radius)
-                {
-                    float dx = gx - px, dz = gz - pz, t = Mathf.Clamp01(-(px * dx + pz * dz) / Mathf.Max(.0001f, dx * dx + dz * dz));
-                    float x = px + dx * t, z = pz + dz * t; if (x * x + z * z > radius * radius) continue;
-                }
-                var local = site.Anchor.InverseTransformPoint(position) - site.Plan.WorldCenter;
-                if (!site.Approach.Inside(local))
-                {
-                    var target = site.Anchor.InverseTransformPoint(goal) - site.Plan.WorldCenter;
-                    if (!site.Approach.Inside(target))
-                    {
-                        Vector3 detour; if (site.Walls == null || !site.Approach.Around(owner, local, target, out detour)) continue;
-                        waypoint = site.Ground(site.Anchor.TransformPoint(site.Plan.WorldCenter + detour));
-                        approach = true; return true;
-                    }
-                    waypoint = site.Ground(site.Anchor.TransformPoint(site.Plan.WorldCenter + site.Approach.Entrance(local)));
-                    approach = true; return true;
-                }
-                if (site.Navigation != null && site.Navigation.Ready && site.Navigation.Waypoint(position, goal, out waypoint)) return true;
-                bool hold; Vector3 next;
-                if (site.Walls != null && TownBakeBridge.Root(position) == null && site.Walls.Walkers.Waypoint(site.Anchor.InverseTransformPoint(position) - site.Plan.WorldCenter,
-                    site.Anchor.InverseTransformPoint(goal) - site.Plan.WorldCenter, out next, out hold))
-                { waypoint = site.Ground(site.Anchor.TransformPoint(site.Plan.WorldCenter + next)); return true; }
-            }
-            return false;
-        }
-        internal bool VehicleWaypoint(Vector3 position, Vector3 goal, out Vector3 waypoint, out bool hold)
-        {
-            Vector3 parking;
-            bool redirected = ParkingOutside(Patrols.TrafficSpace.World(goal), out parking);
-            if (redirected) goal = Patrols.TrafficSpace.Scene(parking);
-            waypoint = goal; hold = false;
-            foreach (var live in _sites)
-            {
-                var site = live.Site; if (site.Anchor == null || site.Walls == null) continue;
-                Vector3 next;
-                if (!site.Walls.Vehicles.Waypoint(site.Anchor.InverseTransformPoint(position) - site.Plan.WorldCenter,
-                    site.Anchor.InverseTransformPoint(goal) - site.Plan.WorldCenter, out next, out hold)) continue;
-                waypoint = site.Ground(site.Anchor.TransformPoint(site.Plan.WorldCenter + next)); return true;
-            }
-            return redirected;
-        }
         public override void OnSaveBegin(string slot)
         {
             if (!_running || string.IsNullOrEmpty(slot)) return;
@@ -704,12 +554,11 @@ namespace WildWasteland.Modules.Towns
             }
             catch (Exception e) { SaveBus.ReportFailure("Towns save failed: " + e.Message); Block("saving", e); }
         }
-        private string SavePath(string slot) { return Path.Combine(Assets.ModuleConfigDir(Id), "Saves", Path.GetFileName(slot) + ".towns.bin"); }
         public override void OnLoadBegin(string slot)
         {
             ClearSites(); _resume.Clear(); _epoch++; _blocked = false;
             if (_gasStation != null) _gasStation.Load(slot);
-            try { if (_dressing != null) _dressing.Markers.Load(slot); _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot, SavePath(slot)); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
+            try { if (_dressing != null) _dressing.Markers.Load(slot); _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
             catch (Exception e) { _records.Clear(); Block("loading (saved data retained on disk)", e); }
         }
         public void NewWorld()
@@ -725,7 +574,7 @@ namespace WildWasteland.Modules.Towns
             // Keep graph registrations until shutdown: the native generator graph can survive scene changes.
         }
         private void ClearSites()
-        { _startingTerrainState = null; if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); InteriorPopulation.Clear(); _next = 0; _waitingForTowns = false; TownRoadBridge.Clear(); TownLoading.Clear("World changed"); }
+        { ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); InteriorPopulation.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
         private void Block(string stage, Exception e)
         { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[Towns] blocked during " + stage + "; no replacement layout will be invented", e); }
         private static void Undo(Registration registration)
@@ -736,7 +585,7 @@ namespace WildWasteland.Modules.Towns
         {
             if (!_running) return;
             _running = false; _epoch++;
-            InteriorPopulation.ReleaseDeferred();
+            ShutdownPopulation();
             LoadingProgress.Remove(this);
             Patrols.WorldTraffic.TownsStopped();
             SaveBus.StateChanged -= StateChanged;
@@ -753,30 +602,13 @@ namespace WildWasteland.Modules.Towns
                 _resume.Add(live);
             }
             ClearSites(); _captures.Clear();
-            if (_dressing != null) _dressing.Dispose(); _dressing = null; _dresser = null;
+            if (_dressing != null) _dressing.Dispose(); _dressing = null; ShutdownTools();
 
             foreach (var r in _graphs.Values) Undo(r); _graphs.Clear();
             if (_staging != null) UnityEngine.Object.Destroy(_staging); _staging = null;
-            Scheduler.RemoveAll(this); Hotkeys.RemoveAll(this); Hooks.RemoveAll(this); TownBakeBridge.Uninstall(this);
+            Scheduler.RemoveAll(this); Hotkeys.RemoveAll(this); Hooks.RemoveAll(this); ShutdownNavigation();
             if (ReferenceEquals(TownsApi.Provider, this)) TownsApi.Provider = null;
         }
-        public override IEnumerable<ToolPage> ToolPages()
-        { return new ToolPage[] { new ActionPage(this, ToolGroups.Debug, "Gas stations", DrawGasStation) { DebugOnly = true, IsTool = true },
-            new ActionPage(this, ToolGroups.Debug, "POI dresser", DrawDresser) { DebugOnly = true, IsTool = true } }; }
-        private void DrawDresser(ToolLayout l)
-        { if (_dresser != null) _dresser.DrawPage(l, _settings); else l.Entry(_settings.PoiDresserKey); }
-        private void DrawGasStation(ToolLayout l)
-        {
-            if (_gasStation != null) _gasStation.Draw(l);
-            else { l.Entry(_settings.DesertGasStationChance); l.Entry(_settings.TestGasStation); l.Entry(_settings.GasStationScale); }
-        }
-        public override void OnOriginShift(Vector3 delta) { if (_gasStation != null) _gasStation.Shift(delta); if (_dresser != null) _dresser.Shift(delta); }
-        internal void Draw(ToolLayout layout)
-        {
-            layout.Value("Towns", _sites.Count.ToString()); layout.Value("Saved chunk decisions", _records.Count.ToString());
-            layout.Value("Generation", _blocked ? "BLOCKED - see [Towns] log" : "ready");
-            foreach (var live in _sites) layout.Value(live.Site.Plan.Key,
-                live.Site.Plan.Condition + ", " + live.Site.NextLot + "/" + live.Site.Plan.LotCount + " lots, " + (live.Site.Navigation != null && live.Site.Navigation.Ready ? "connected" : "waiting for bakes"));
-        }
+        public override void OnOriginShift(Vector3 delta) { if (_gasStation != null) _gasStation.Shift(delta); ShiftTools(delta); }
     }
 }
