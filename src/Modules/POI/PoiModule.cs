@@ -299,7 +299,7 @@ namespace WildWasteland.Modules.POI
             _running = false;
             _towns.Shutdown();
             PoiEncounter.Reset(); EncounterNotices.Clear(); TownPrefabCatalog.Clear();
-            _locations.Reset();
+            _locations.Stop();
             TerrainTile.OnBeforeTilePrepare -= Prepare; TerrainTile.OnTileApplied -= Applied;
             TerrainTile.OnTileFinalized -= Finalized;
             TerrainTile.OnTileMoved -= Moved;

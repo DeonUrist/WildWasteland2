@@ -54,6 +54,8 @@ namespace WildWasteland.Modules.POI
         public void Remove(string key){if(_custom.Remove(key)){_owners.Remove(key);_revision++;}}
         /// <summary>Drops per-world observations and invalidates cached query revisions.</summary>
         internal void Reset(){TrafficLocations.Reset();TrafficCamps.Reset();_custom.Clear();_owners.Clear();_revision++;}
+        /// <summary>Releases live watchers without forgetting unsaved persistent location decisions on a module restart.</summary>
+        internal void Stop(){TrafficLocations.Stop();TrafficCamps.Reset();_revision++;}
         /// <summary>Writes the current validated state through its owning persistence transaction.</summary>
         internal void Save(IModule owner,string slot)
         {var rows=new List<object>();foreach(var c in TrafficLocations.Known.Values)rows.Add(new Dictionary<string,object>{{"id",c.id},{"name",c.name},{"faction",c.faction},{"center",V(c.center)},{"size",V(c.size)},{"gate",V(c.gate)},{"apron",V(c.apron)},{"mapped",c.mappedEntrance},{"cleared",c.cleared}});var pois=new List<object>();foreach(var p in TrafficLocations.Points.Values)pois.Add(new Dictionary<string,object>{{"id",p.id},{"name",p.name},{"position",V(p.position)}});SaveBus.Key("WildWasteland.POI.Locations.v1").Write(owner,slot,Json.Write(new Dictionary<string,object>{{"camps",rows},{"pois",pois}}));}

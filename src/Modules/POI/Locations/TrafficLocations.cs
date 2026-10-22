@@ -37,8 +37,10 @@ namespace WildWasteland.Modules.POI
 
         /// <summary>Drops per-world observations and invalidates cached query revisions.</summary>
         internal static void Reset()
-        { Known.Clear(); Points.Clear(); ExaminedPoints.Clear(); Roots.Clear(); Mapped.Clear(); Scan.Clear(); MapQueue.Clear();QueuedMaps.Clear();_nextBake = 0f; _structures.Clear();_discoveryReady=false; Revision++; }
+        { Known.Clear(); Points.Clear(); Stop(); }
 
+        /// <summary>Releases live observations while retaining committed world-location geometry and cleared state for a module restart.</summary>
+        internal static void Stop(){ExaminedPoints.Clear();Roots.Clear();Mapped.Clear();Scan.Clear();MapQueue.Clear();QueuedMaps.Clear();_nextBake=0;_structures.Clear();_discoveryReady=false;Revision++;}
         private static WorldWatch _watch;
         private static readonly System.Diagnostics.Stopwatch Budget = new System.Diagnostics.Stopwatch();
         private static readonly long BudgetTicks = (long)(System.Diagnostics.Stopwatch.Frequency * .0003);

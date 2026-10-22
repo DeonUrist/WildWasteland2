@@ -35,9 +35,11 @@ namespace WildWasteland.Modules.POI
         /// <summary>Refreshes live state within the existing bounded update cadence.</summary>
         internal static void Refresh()
         {
+            var visibility=ModApi.Get<ILocationVisibility>();
             foreach (var marker in Markers)
             {
                 if (marker.Site.Anchor == null) continue;
+                var locations=ModApi.Get<ILocationMarkers>();if(locations!=null)foreach(var building in marker.Site.Buildings)if(building!=null)locations.Exclude(building.transform,true);
                 var plan = marker.Site.Plan;
                 var player = GameRefs.Player;
                 if (GameRefs.InGame && !SaveBus.Busy && !plan.Discovered && player != null)
@@ -59,7 +61,7 @@ namespace WildWasteland.Modules.POI
                 if (marker.Map != null && GameRefs.InGame && !SaveBus.Busy)
                     foreach (var building in marker.Site.Buildings)
                         if (building != null) marker.Map.Observe(building.transform, named ? plan.Name : "Town", color);
-                if (marker.Map != null && marker.Map.Markers != MapDetail.Off)
+                if (marker.Map != null && (visibility==null||visibility.Locations) && marker.Map.Markers != MapDetail.Off)
                 {
                     if (!marker.Map.Exists(marker.MapId))
                     {
@@ -72,7 +74,7 @@ namespace WildWasteland.Modules.POI
                 else RemoveMap(marker);
                 if (marker.Compass != ModApi.Get<ICompassMarkers>()) { RemoveCompass(marker); marker.Compass = ModApi.Get<ICompassMarkers>(); }
                 bool near = player != null && (player.transform.position - marker.Position()).sqrMagnitude < 1000000;
-                if (marker.Compass != null && near)
+                if (marker.Compass != null && (visibility==null||visibility.Locations&&visibility.Compass) && near)
                 {
                     if (!marker.Compass.Exists(marker.CompassId)) marker.CompassId = marker.Compass.Add(Owner, marker.Position, glyph, color);
                 }

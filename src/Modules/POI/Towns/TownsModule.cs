@@ -578,11 +578,11 @@ namespace WildWasteland.Modules.POI
             if (mode == LoadSceneMode.Additive) return;
             ClearSites(); _resume.Clear(); _epoch++; _captures.Clear();
 
-            // Keep graph registrations until shutdown: the native generator graph can survive scene changes.
+            // Asset catalogs are recaptured for the next world; numeric saved plans retain their exact intent.
         }
         /// <summary>Releases live sites and derived construction state before a world change.</summary>
         private void ClearSites()
-        { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
+        { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); foreach(var r in _graphs.Values)Undo(r);_graphs.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
         /// <summary>Latches a stage failure so corrupt or unavailable state cannot be silently overwritten.</summary>
         private void Block(string stage, Exception e)
         { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[POI] blocked during " + stage + "; no replacement layout will be invented", e); }
