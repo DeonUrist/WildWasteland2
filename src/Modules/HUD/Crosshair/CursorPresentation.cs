@@ -10,6 +10,18 @@ namespace WildWasteland.Modules.HUD
     /// </summary>
     internal sealed class CursorPresentation : WildWasteland.Core.ICursorPresentation
     {
+        private bool _aimZoom;
+        private GameObject _weaponCrosshair;
+        /// <summary>Retains the camera aim-zoom intent and keeps its previously observed weapon cursor visible.</summary>
+        public void SetAimZoom(bool active) { _aimZoom = active; if (active && _weaponCrosshair != null && !_weaponCrosshair.activeSelf) _weaponCrosshair.SetActive(true); }
+        /// <summary>Owns the native cursor activation override while the presentation camera requests aim zoom.</summary>
+        internal bool BeforeActivateGameObject(HutongGames.PlayMaker.Actions.ActivateGameObject action)
+        {
+            if (!_aimZoom || action.activate == null || action.activate.Value || action.Fsm == null) return true;
+            var target = action.Fsm.GetOwnerDefaultTarget(action.gameObject);
+            if (target == null || target.name != "MouseCrosshair") return true;
+            _weaponCrosshair = target; if (!target.activeSelf) target.SetActive(true); return false;
+        }
         private RectTransform _xhair;
         private bool _xhairMoved;
         private float _xhairFind;

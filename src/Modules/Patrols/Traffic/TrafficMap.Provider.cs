@@ -15,9 +15,9 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Copies current simulation metadata without handing live patrol actors to HUD.</summary>
         public void Capture(TrafficMapSnapshot target)
         {
-            target.Journeys.Clear(); target.Points.Clear(); target.Battles.Clear();
+            target.Points.Clear(); target.Battles.Clear();
             target.Enabled = false;
-            if (_traffic != null) _traffic.CaptureMap(target);
+            if (_traffic != null) _traffic.CaptureMap(target); else target.Journeys.Clear();
         }
     }
     /// <summary>Converts simulation-owned route and recognition state into presentation records.</summary>
@@ -29,7 +29,16 @@ namespace WildWasteland.Modules.Patrols
             target.Enabled = PatrolsModule.ConvoyEnabled.Value;
             target.Routes = RoutesOn; target.Markers = MarkersOn; target.Names = MapNames;
             target.HideRoutes = InkUnknown; target.HideMarkers = MapUnknown;
-            foreach (var journey in _journeys) target.Journeys.Add(new TrafficMapJourney { Position = journey.position, Route = journey.route, Foot = journey.foot, Name = MapName(journey), RouteColor = RouteColor(journey, InkUnknown), MarkerColor = RouteColor(journey, MapUnknown && !TrafficCompass.Known(journey)) });
+            int index = 0;
+            foreach (var journey in _journeys)
+            {
+                if (index == target.Journeys.Count) target.Journeys.Add(new TrafficMapJourney());
+                var row = target.Journeys[index++];
+                row.Position = journey.position; row.Route = journey.route; row.Foot = journey.foot;
+                row.Name = MapName(journey); row.RouteColor = RouteColor(journey, InkUnknown);
+                row.MarkerColor = RouteColor(journey, MapUnknown && !TrafficCompass.Known(journey));
+            }
+            if (index < target.Journeys.Count) target.Journeys.RemoveRange(index, target.Journeys.Count - index);
             var map = ModApi.Get<IMapMarkers>();
             if (map == null) foreach (var camp in TrafficLocations.Known.Values) if (camp.cleared) target.Points.Add(new TrafficMapPoint { Position = camp.center, Color = Color.gray, Name = camp.name + " [Cleared]" });
             foreach (var battle in _battles) target.Battles.Add(battle.position);

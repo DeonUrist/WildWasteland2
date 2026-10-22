@@ -294,9 +294,10 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Lists WW key settings from the registry instead of scanning its own assembly or configuration fields.</summary>
         private static void AddRegisteredKeys(List<KeyBind> all, ref int order)
         {
+            var seen = new HashSet<ConfigEntryBase>();
             foreach (var binding in WildWasteland.Core.Hotkeys.Snapshot())
             {
-                var entry = binding.Entry;
+                var entry = binding.Entry; if (!seen.Add(entry)) continue;
                 var row = new KeyBind { Tab = "MODS", Group = "WILD WASTELAND", Mod = true, Ctx = "global", Order = 20000 + order++, Label = Pretty(entry.Definition.Key), Mirror = Norm(entry.Definition.Key) };
                 KeyCode key; FromKeyName(entry.Value.ToString(), out key);
                 row.Slots.Add(new KeySlot { Key = key, Set = (k, modifiers) => { UnityEngine.InputSystem.Key parsed; if (!Enum.TryParse(ToKeyName(k), true, out parsed)) return "Unsupported key"; entry.Value = parsed; return null; } });

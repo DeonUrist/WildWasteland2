@@ -88,6 +88,7 @@ namespace WildWasteland.Modules.HUD
             _portraitBank = new CharacterPortraitBank();
             ModApi.Provide<ICharacterPortraits>(this, _portraitBank);
             _cursors = new CursorPresentation(); ModApi.Provide<ICursorPresentation>(this, _cursors);
+            Hooks.ActivateGameObjectDo.Prefix(this, _cursors.BeforeActivateGameObject);
             Scheduler.EveryFrame(this, "TAB portrait", InventoryModel.Tick, Phase.LateUpdate);
             _trafficMap = new TrafficMapView();
             Scheduler.Gui(this, "Traffic map", _trafficMap.Gui, _trafficMap.GuiWanted);
@@ -129,7 +130,7 @@ namespace WildWasteland.Modules.HUD
         {
             SavingPresentation.Clear();
             InventoryModel.Reset();
-            if (_cursors != null) _cursors.Restore();
+            if (_cursors != null) { _cursors.SetAimZoom(false); _cursors.Restore(); }
             SceneLoadedClean(scene, mode);
             if (_trafficMap != null) _trafficMap.Reset();
             HitFeedbackOverlay.OnSceneLoaded(); CrosshairController.OnSceneLoaded(); HeadshotAudio.Stop();

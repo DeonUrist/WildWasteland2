@@ -17,6 +17,8 @@ namespace WildWasteland.Core
     /// <summary>HUD-owned native cursor positioning requested by the presentation camera.</summary>
     public interface ICursorPresentation
     {
+        /// <summary>Requests native weapon-crosshair visibility during camera aim zoom.</summary>
+        void SetAimZoom(bool active);
         void Move(Vector2 screen);
         void Restore();
     }
