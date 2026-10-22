@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.POI
             "decor/fence_small_4 (1)", "decor/fence_small_3", "decor/ladder_L" };
         internal GameObject Prefab;
         internal bool Available { get { return Prefab != null; } }
+        /// <summary>Restores the current data format and rejects incompatible or corrupt input.</summary>
         internal void Load(List<GameObject> prefabs)
         {
             foreach (var camp in prefabs) if (camp.name == "Camp_9")
@@ -38,6 +39,7 @@ namespace WildWasteland.Modules.POI
                 return;
             }
         }
+        /// <summary>Releases owned resources and restores original native state.</summary>
         public void Dispose() { ReleaseBake(); if (Prefab != null) UnityEngine.Object.Destroy(Prefab); Prefab = null; }
     }
 }

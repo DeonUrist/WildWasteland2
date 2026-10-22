@@ -18,11 +18,13 @@ namespace WildWasteland.Modules.POI
     // Positions and boxes use the town-centred world-axis frame (the frame of TownOutline and the cached gate graphs).
     internal sealed class TownDressingPlan
     {
+        /// <summary>Describes the item data used by this owner.</summary>
         internal struct Item { internal int Kind, Index; internal Vector3 Position; internal float Yaw, Scale; internal Bounds Box; } // Kind: 0 tower, 1 tree, 2 car shell
         internal Item[] Towers = new Item[0], Props = new Item[0], Garden = new Item[0];
         internal int TowerTarget;
         internal readonly List<Bounds> Blockers = new List<Bounds>();   // towers + border props: cached gate graphs and tower spacing
         internal readonly List<Bounds> GardenBoxes = new List<Bounds>(); // wreck garden: always built with the streets root
+        /// <summary>Computes the axis-aligned bounds of a rotated placement box.</summary>
         internal static Bounds Rotated(Bounds local, float yaw, float scale, Vector3 pivot)
         {
             var rotation = Quaternion.Euler(0, yaw, 0); var result = new Bounds(); bool any = false;
@@ -33,6 +35,7 @@ namespace WildWasteland.Modules.POI
             }
             return result;
         }
+        /// <summary>Builds deterministic numeric planning data from the supplied geometry and seed.</summary>
         internal static TownDressingPlan Make(TownPlan plan, TownDressingKit kit, List<Bounds> shells)
         {
             var result = new TownDressingPlan();

@@ -36,11 +36,13 @@ namespace WildWasteland.Modules.POI
         internal TerrainLayer RoadLayer;
         internal readonly List<GameObject> NativePoiPrefabs = new List<GameObject>();
         internal readonly TownWallKit WallKit = new TownWallKit();
+        /// <summary>Describes the car shell data used by this owner.</summary>
         internal sealed class CarShell { internal Mesh Mesh; internal Material[] Materials; }
         internal readonly List<CarShell> CarShells = new List<CarShell>();
         internal readonly List<Bounds> ShellBounds = new List<Bounds>(); // CarShells order; numeric copy for worker-side dressing/overlay plans
         internal float NavMaxStep = .45f;
         // Root-local AABB of every enabled non-trigger collider under root (inactive prefabs included), composed like Measure.
+        /// <summary>Measures enabled non-trigger static collider bounds in the root frame.</summary>
         internal static bool ColliderBox(Transform root, out Bounds bounds)
         {
             bounds = new Bounds(); bool any = false;
@@ -69,8 +71,10 @@ namespace WildWasteland.Modules.POI
             }
             return any;
         }
+        /// <summary>Snapshots native and explicitly registered custom prefab inputs for town generation.</summary>
         private static List<GameObject> CatalogPrefabs(Graph graph)
         {TownPrefabCatalog.Captured=true;var result=new List<GameObject>();foreach(var generator in graph.generators){var output=generator as ObjectsOutput;if(output!=null)foreach(var prefab in output.prefabs)if(prefab!=null&&!result.Contains(prefab))result.Add(prefab);}foreach(var prefab in TownPrefabCatalog.Prefabs.Values)if(prefab!=null&&!result.Contains(prefab))result.Add(prefab);var station=TownGasStation.Current?.CatalogPrefab;if(station!=null)result.Add(station);return result;}
+        /// <summary>Restores the current data format and rejects incompatible or corrupt input.</summary>
         internal void Load(Graph graph, TownSettings settings)
         {
             var allowed = new HashSet<string>(StringComparer.Ordinal);
@@ -175,6 +179,7 @@ namespace WildWasteland.Modules.POI
             TextureSize = road.tileSize; RoadName = road.name;
         }
         // (WW) a camp with a merchant (a merchant NPC among its spawn lists or a node named after one)
+        /// <summary>Detects an authored merchant group without spawning it.</summary>
         private static bool HasMerchant(GameObject camp)
         {
             foreach (var proxy in camp.GetComponentsInChildren<PlayMakerArrayListProxy>(true))
@@ -183,6 +188,7 @@ namespace WildWasteland.Modules.POI
             foreach (var t in camp.GetComponentsInChildren<Transform>(true)) if (t.name.IndexOf("merchant", StringComparison.OrdinalIgnoreCase) >= 0) return true;
             return false;
         }
+        /// <summary>Rejects native camp assets containing boss progression logic.</summary>
         private bool BossCamp(GameObject camp)
         {
             if (IsBoss(camp)) return true;
@@ -193,6 +199,7 @@ namespace WildWasteland.Modules.POI
         }
         // The perimeter of a camp: long thin fence / wall / gate / barricade pieces standing on the ground in the outer band of its
         // footprint (railings on platforms and anything in the middle stay). Topmost matching nodes only, as paths from the root.
+        /// <summary>Finds perimeter pieces to strip from a native camp used as a town lot.</summary>
         private static string[] Walls(GameObject camp, BuildingSpec spec)
         {
             var root = camp.transform; var found = new List<Transform>();
@@ -224,6 +231,7 @@ namespace WildWasteland.Modules.POI
             return paths;
         }
         // root-local bounds of a node's own renderer mesh and solid colliders
+        /// <summary>Transforms one static collider footprint into the requested root frame.</summary>
         private static bool Box(Transform root, Transform t, out Bounds bounds)
         {
             bounds = new Bounds(); bool any = false;
@@ -247,6 +255,7 @@ namespace WildWasteland.Modules.POI
                 }
             return any;
         }
+        /// <summary>Recognizes the graph input that supplies authored road geometry.</summary>
         private static bool RoadInput(Generator generator)
         {
             var exit = generator as MatrixPortalExit;
@@ -254,6 +263,7 @@ namespace WildWasteland.Modules.POI
             var enter = generator as MatrixPortalEnter;
             return enter != null && string.Equals(enter.name, "roadStroke", StringComparison.OrdinalIgnoreCase);
         }
+        /// <summary>Follows the graph links to the native road spline output.</summary>
         private static IOutlet<SplineSys> FindRoads(Graph graph, Generator start)
         {
             var queue = new Queue<Generator>(); var seen = new HashSet<Generator>(); queue.Enqueue(start);
@@ -270,6 +280,7 @@ namespace WildWasteland.Modules.POI
             }
             return null;
         }
+        /// <summary>Measures numeric geometry without passing Unity objects to terrain workers.</summary>
         private static BuildingSpec Measure(GameObject prefab)
         {
             Bounds bounds = new Bounds(); bool any = false; int count = 0;
@@ -307,6 +318,7 @@ namespace WildWasteland.Modules.POI
             bounds.SetMinMax(min, max);
             return !any ? null : new BuildingSpec { Name = prefab.name, Center = bounds.center, HalfX = bounds.extents.x, HalfZ = bounds.extents.z, ColliderCount = count };
         }
+        /// <summary>Builds a stable child path relative to its prefab root.</summary>
         internal static string Path(Transform root, Transform node)
         {
             if (node == root) return "";
@@ -314,6 +326,7 @@ namespace WildWasteland.Modules.POI
             for (var t = node.parent; t != root; t = t.parent) path = t.name + "/" + path;
             return path;
         }
+        /// <summary>Releases owned resources and restores original native state.</summary>
         internal void Dispose()
         { WallKit.Dispose(); if (StreetMaterial != null) UnityEngine.Object.Destroy(StreetMaterial); if (PavementMaterial != null) UnityEngine.Object.Destroy(PavementMaterial); Buildings.Clear(); }
     }

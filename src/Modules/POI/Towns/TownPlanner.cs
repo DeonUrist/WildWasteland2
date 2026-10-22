@@ -8,10 +8,13 @@ namespace WildWasteland.Modules.POI
 {
     internal static class TownPlanner
     {
+        /// <summary>Hashes a stable identity for deterministic placement and progress draws.</summary>
         internal static int Hash(string s)
         { uint h = 2166136261; foreach (char c in s) h = unchecked((h ^ c) * 16777619); return (int)(h & 0x7fffffff); }
+        /// <summary>Draws a reproducible floating-point value between the supplied limits.</summary>
         private static float Range(System.Random r, float min, float max) { return min + (float)r.NextDouble() * (max - min); }
 
+        /// <summary>Builds deterministic numeric planning data from the supplied geometry and seed.</summary>
         internal static TownPlan Make(GenerationInput input, TileData data, MatrixWorld heights,
             List<Vector3> avoid, TownWorldRoads roads, StopToken stop)
         {
@@ -19,8 +22,6 @@ namespace WildWasteland.Modules.POI
             {
                 var saved = input.Saved;
                 if (WorldGeneration.Present) { saved = saved.CopyPaths(); saved.AccessPath = new Vector3[0]; saved.GradeAccess = false; saved.Feather = 0; saved.MaximumEarthwork = 0; }
-                if (saved.HasTown && saved.PathsVersion < 7)
-                { saved = saved.CopyPaths(); TownParking.Outside(saved); TownWalkGraph.Build(saved, input.Buildings, stop); TownParking.Access(saved, heights, data.globals.height, avoid); }
                 return saved;
             }
             var plan = new TownPlan { Key = input.Key, Decision = "chance", Feather = WorldGeneration.Present ? 0 : input.Feather, StreetWidth = 1.5f };
@@ -37,6 +38,7 @@ namespace WildWasteland.Modules.POI
             int choice = random.Next(weight); TownTemplate template = templates[0];
             foreach (var t in templates) { choice -= t.Weight; if (choice < 0) { template = t; break; } }
             plan.TemplateId = template.Id; plan.TemplateJson = Core.Json.Write(template.Data); plan.Rules = TownTemplate.Parse(template.Id, plan.TemplateJson); if (!template.UseGlobalLotRange) count = random.Next(template.MinLots, template.MaxLots + 1);
+            if (input.ParkingCompanions) count = Math.Min(count, 32 - template.ExternalParkingPois.Length);
             if (template.AllowedPois.Length > 0) { var allowed = new HashSet<string>(template.AllowedPois, StringComparer.Ordinal); var specs = new List<BuildingSpec>(); foreach (var spec in input.Buildings) if (allowed.Contains(spec.Name) || Array.IndexOf(template.ExternalParkingPois,spec.Name)>=0) specs.Add(spec); input.Buildings = specs.ToArray(); }
             for (int attempt = 0; attempt < 2; attempt++)
             {
@@ -58,6 +60,7 @@ namespace WildWasteland.Modules.POI
             plan.Decision = "skipped: no compact site after two attempts";
             return plan;
         }
+        /// <summary>Builds the compact lot layout from measured frontages and template rules.</summary>
         private static void BuildLayout(TownPlan plan, GenerationInput input, System.Random random, int count)
         {
             var lots = new List<TownLot>(); var specs = new List<BuildingSpec>(); var sides = new List<int>();
@@ -134,11 +137,15 @@ namespace WildWasteland.Modules.POI
             plan.Lots = lots.ToArray();
             TownParking.Outside(plan);
         }
+        /// <summary>Appends independently persisted exterior companion lots from the saved template rules.</summary>
         private static void AddParkingCompanions(TownPlan plan,GenerationInput input)
         {if(!input.ParkingCompanions||plan.Rules.ExternalParkingPois.Length==0)return;TownLot parking=null;foreach(var l in plan.Lots)if(l.IsParking){parking=l;break;}if(parking==null)return;var lots=new List<TownLot>(plan.Lots);float advance=0;var facing=Quaternion.Euler(0,parking.Yaw,0);foreach(string name in plan.Rules.ExternalParkingPois){BuildingSpec spec=null;foreach(var b in input.Buildings)if(b.Name==name){spec=b;break;}if(spec==null)throw new InvalidOperationException("External parking POI unavailable: "+name);if(lots.Count>=32)throw new InvalidOperationException("Town template exceeds 32 lots including parking companions");float yaw=parking.Yaw+180;var rot=Quaternion.Euler(0,yaw,0);var center=parking.LocalPosition+facing*(Vector3.left*(parking.HalfX+2+spec.HalfX)+Vector3.forward*advance);var lot=new TownLot{Prefab=name,External=true,Yaw=yaw,LocalPosition=center-rot*new Vector3(spec.Center.x,0,spec.Center.z),BoundsCenter=spec.Center,HalfX=spec.HalfX,HalfZ=spec.HalfZ,Entry=spec.Entry,HasEntry=true,Role=TownRole.GasStation};lots.Add(lot);advance+=spec.HalfZ*2+4;plan.Radius=Mathf.Max(plan.Radius,lot.LocalPosition.magnitude+Mathf.Sqrt(spec.HalfX*spec.HalfX+spec.HalfZ*spec.HalfZ)+3);}plan.Lots=lots.ToArray();}
+        /// <summary>Checks the large-building and camp-count constraints of a candidate.</summary>
         private static bool Fits(BuildingSpec c, bool big, int camps) { return !c.Camp || camps < 2 && (!big || !c.Big); }
+        /// <summary>Computes the measured lot entrance in the town-local frame.</summary>
         internal static Vector3 Entrance(TownLot lot)
         { return lot.LocalPosition + Quaternion.Euler(0, lot.Yaw, 0) * lot.Entry; }
+        /// <summary>Measures numeric geometry without passing Unity objects to terrain workers.</summary>
         internal static void Measure(MatrixWorld h, float scale, float x, float z, float radius,
             out float lo, out float hi, out float grade)
         {

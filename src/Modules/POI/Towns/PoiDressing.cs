@@ -40,6 +40,7 @@ namespace WildWasteland.Modules.POI
         private readonly List<NavStructure> _structures = new List<NavStructure>();
         private int _frame = -1;
         internal PoiAuthoringApi Authoring;
+        /// <summary>Registers owner-scoped hooks, services and scheduled work.</summary>
         internal void Install(TownRuntime owner)
         {
             _current = this;
@@ -47,8 +48,11 @@ namespace WildWasteland.Modules.POI
             Authoring = new PoiAuthoringApi(this); ModApi.Provide<IPoiAuthoring>(owner.Owner,Authoring);
             Scheduler.Sliced(owner.Owner, "POI static dressing", 500, Step);
             Scheduler.Interval(owner.Owner, "POI dressing cleanup", 5f, Sweep, Phase.Update, false);
-            Scheduler.Sliced(owner.Owner, "POI marker catalog", 500, Markers.Catalog.Step);
+            Scheduler.Sliced(owner.Owner, "POI marker catalog", 500, StepMarkerCatalog);
         }
+        /// <summary>Defers optional spawn-profile discovery until the actual Loot provider is available.</summary>
+        private bool StepMarkerCatalog(){return ModApi.Get<INativeSpawners>()!=null&&Markers.Catalog.Step();}
+        /// <summary>Recognizes static custom POIs eligible for reusable dressing.</summary>
         private static bool Custom(Transform root)
         {
             if (root == null || !root.CompareTag("SpawnerStatic") || root.GetComponent<Rigidbody>() != null) return false;
@@ -56,14 +60,17 @@ namespace WildWasteland.Modules.POI
             return name != "Starter_Area" && !NativeNumber(name, "Camp_") && !NativeNumber(name, "Building_")
                 && !NativeNumber(name, "Cave_") && !NativeNumber(name, "Wreck_") && !name.StartsWith("TownsTower", StringComparison.Ordinal);
         }
+        /// <summary>Recognizes a numbered native prefab family.</summary>
         private static bool NativeNumber(string name, string prefix)
         {
             if (!name.StartsWith(prefix, StringComparison.Ordinal) || name.Length == prefix.Length) return false;
             for (int i = prefix.Length; i < name.Length; i++) if (!char.IsDigit(name[i])) return false;
             return true;
         }
+        /// <summary>Extracts the stable reusable POI type from an instance name.</summary>
         private static string TypeName(Transform root)
         { string name = root.name; int end = name.IndexOf(' '), clone = name.IndexOf('('); if (end < 0 || clone >= 0 && clone < end) end = clone; return end < 0 ? name : name.Substring(0, end); }
+        /// <summary>Offers already loaded roots to the owning discovery provider.</summary>
         internal void DiscoverExisting()
         {
             if (Services.Npc == null) return;
@@ -75,6 +82,7 @@ namespace WildWasteland.Modules.POI
             }
             _structures.Clear();
         }
+        /// <summary>Registers a live custom POI and validates its reusable layout.</summary>
         internal Site Attach(Transform root)
         {
             if (root == null) return null;
@@ -93,6 +101,7 @@ namespace WildWasteland.Modules.POI
             catch (Exception e) { site.Error = e.Message; site.Ready = true; Log.Warn("[POI] POI layout rejected for " + site.Type + ": " + e.Message); }
             _roots.Add(root.GetInstanceID(), site); Sites.Add(site); if (!site.Ready) _pending.Enqueue(site); return site;
         }
+        /// <summary>Advances one bounded construction or preparation step.</summary>
         private bool Step()
         {
             // Catalog enumeration is cheap and may use the rest of the scheduler slice. Object activation is capped separately.
@@ -110,6 +119,7 @@ namespace WildWasteland.Modules.POI
             }
             return Catalog.Step();
         }
+        /// <summary>Constructs the next admitted geometry item from the committed plan.</summary>
         private void Build(Site site)
         {
             try
@@ -136,6 +146,7 @@ namespace WildWasteland.Modules.POI
                 TownBakeBridge.Discover(site.Root.gameObject);
             }
         }
+        /// <summary>Writes the current validated state through its owning persistence transaction.</summary>
         internal void Save(Site site, PoiDressLayout layout)
         {
             // Resolve every reference before publication: never silently replace an existing layout with missing props.
@@ -154,12 +165,14 @@ namespace WildWasteland.Modules.POI
                 if (!queued) _pending.Enqueue(row);
             }
         }
+        /// <summary>Prunes destroyed live roots from the runtime registry.</summary>
         private void Sweep()
         {
             for (int i = Sites.Count - 1; i >= 0; i--)
                 if (Sites[i].Root == null) { if(Sites[i].PopulationArea!=null)ModApi.Get<INativePopulation>()?.Forget(Sites[i].PopulationArea); Sites.RemoveAt(i); }
             _roots.Clear(); foreach (var site in Sites) if (site.Root != null) _roots[site.Root.GetInstanceID()] = site;
         }
+        /// <summary>Releases current resources and resets the associated world or catalog state.</summary>
         internal void Clear()
         {
             Authoring?.Close();
@@ -169,6 +182,7 @@ namespace WildWasteland.Modules.POI
             foreach(var site in Sites) if(site.PopulationArea!=null)ModApi.Get<INativePopulation>()?.Forget(site.PopulationArea);
             Sites.Clear(); _roots.Clear(); _layouts.Clear(); _pending.Clear(); _structures.Clear(); Catalog.Dispose();
         }
+        /// <summary>Releases owned resources and restores original native state.</summary>
         public void Dispose() { Clear(); if (ReferenceEquals(_current, this)) _current = null; }
     }
 }

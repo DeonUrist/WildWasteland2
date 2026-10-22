@@ -17,7 +17,9 @@ namespace WildWasteland.Modules.POI
     /// </summary>
     internal sealed partial class TownRuntime : ITownTraffic
     {
+        /// <summary>Returns the authored town parking-lane spacing.</summary>
         public float LaneSpread { get { return TownGasStation.LaneSpread; } }
+        /// <summary>Changes one valid committed lot role for the next ES3 save.</summary>
         public bool SetRole(string key, int lot, TownRole role)
         {
             TownRecord record;
@@ -25,6 +27,7 @@ namespace WildWasteland.Modules.POI
             record.Plan.Lots[lot].Role = role; _revision++;
             Log.Main(null, "[POI] lot role " + key + "/" + lot + " = " + role + " (persists with next world save)"); return true;
         }
+        /// <summary>Copies committed exterior parking stops for Patrols journey planning.</summary>
         public void TravelStops(List<TownTrafficStop> into)
         {
             foreach (var record in _records.Values)
@@ -42,10 +45,12 @@ namespace WildWasteland.Modules.POI
                 }
             }
         }
+        /// <summary>Commits the one-shot initial merchant-bus decision.</summary>
         public void MerchantSeeded(string key)
         { TownRecord record; if (_records.TryGetValue(key, out record)) { record.Plan.MerchantSeeded = true; _revision++; } }
         public int TravelRevision
         { get { return _revision; } }
+        /// <summary>Tests whether the town offers an inhabited exterior patrol origin.</summary>
         public bool PatrolBase(string id)
         {
             TownRecord record;
@@ -53,6 +58,7 @@ namespace WildWasteland.Modules.POI
             foreach (var lot in record.Plan.Lots) if (lot.IsParking && !lot.Skipped) return true;
             return false;
         }
+        /// <summary>Counts eligible town patrol origins near a stable world position.</summary>
         public int PatrolCount(Vector3 player, float range)
         {
             int count = 0;
@@ -64,6 +70,7 @@ namespace WildWasteland.Modules.POI
             }
             return count;
         }
+        /// <summary>Copies detached town patrol origins for the journey owner.</summary>
         public void PatrolBases(List<TownPatrolBase> into)
         {
             foreach (var record in _records.Values)
@@ -75,6 +82,7 @@ namespace WildWasteland.Modules.POI
                     Center = plan.World(lot.LocalPosition), Apron = plan.World(lot.LocalPosition), Gate = plan.World(lot.LocalPosition), Size = new Vector3(24, 0, 40) }); break; }
             }
         }
+        /// <summary>Redirects an interior destination to its committed exterior parking lot.</summary>
         public bool ParkingOutside(Vector3 world, out Vector3 parking)
         {
             parking = world;
@@ -88,12 +96,14 @@ namespace WildWasteland.Modules.POI
             }
             return false;
         }
+        /// <summary>Copies padded town-interior blocks for road-route planning.</summary>
         public void TravelBlocks(List<Bounds> into)
         {
             foreach (var record in _records.Values) if (record.Plan.HasTown)
             { var plan = record.Plan; var frame = TownPerimeter.Frame(plan); frame.center += new Vector3(plan.WorldCenter.x, 0, plan.WorldCenter.z);
                 var size = frame.size; size.y = 10000; frame.size = size; frame.Expand(new Vector3(28, 0, 28)); into.Add(frame); }
         }
+        /// <summary>Changes a valid committed town condition for the next ES3 save.</summary>
         public bool SetCondition(string key, TownCondition condition)
         {
             TownRecord record;
@@ -101,6 +111,7 @@ namespace WildWasteland.Modules.POI
             record.Plan.Condition = condition; _revision++;
             Log.Main(null, "[POI] condition " + key + " = " + condition + " (persists with next world save)"); return true;
         }
+        /// <summary>Queries perimeter geometry while retaining exterior-only parking goals.</summary>
         public bool VehicleWaypoint(Vector3 position, Vector3 goal, out Vector3 waypoint, out bool hold)
         {
             Vector3 parking;

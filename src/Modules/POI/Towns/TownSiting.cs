@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.POI
             internal float Relief, Cost;
             internal bool Preferred;
         }
+        /// <summary>Finds the requested numeric site or prefab specification.</summary>
         internal static List<Site> Find(TownPlan plan, GenerationInput input, TileData data, MatrixWorld heights,
             List<Vector3> avoid, TownWorldRoads roads, System.Random random, StopToken stop)
         {

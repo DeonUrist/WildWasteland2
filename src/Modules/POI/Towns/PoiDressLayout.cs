@@ -16,7 +16,9 @@ namespace WildWasteland.Modules.POI
         internal bool Collision;
         internal string Kind, Id, Profile;
         internal int Minimum = 1, Maximum = 3, Chance = 100;
+        /// <summary>Tests whether this prop describes a gameplay marker instead of scenery.</summary>
         internal bool Marker { get { return !string.IsNullOrEmpty(Kind); } }
+        /// <summary>Returns an independent editable copy of the current data.</summary>
         internal PoiDressProp Copy() { return (PoiDressProp)MemberwiseClone(); }
     }
     internal sealed class PoiDressLayout
@@ -24,19 +26,23 @@ namespace WildWasteland.Modules.POI
         internal const int Limit = 512;
         internal string Type;
         internal readonly List<PoiDressProp> Props = new List<PoiDressProp>();
+        /// <summary>Returns an independent editable copy of the current data.</summary>
         internal PoiDressLayout Copy()
         { var copy = new PoiDressLayout { Type = Type }; foreach (var prop in Props) copy.Props.Add(prop.Copy()); return copy; }
     }
     // These are portable POI authoring assets, shared by every instance; never world/save-slot sidecars.
     internal static class PoiDressStore
     {
+        /// <summary>Returns combine for the current owner state.</summary>
         internal static string DirectoryPath { get { return Path.Combine(Assets.ModuleDir("POI"), "Layouts"); } }
+        /// <summary>Builds a sanitized stable filename for the reusable authoring record.</summary>
         internal static string FilePath(string type)
         {
             var name = new StringBuilder();
             foreach (char c in type) if (name.Length < 64) name.Append(char.IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_');
             return Path.Combine(DirectoryPath, name + "-" + TownPlanner.Hash(type).ToString("X8") + ".json");
         }
+        /// <summary>Restores the current data format and rejects incompatible or corrupt input.</summary>
         internal static PoiDressLayout Load(string type)
         {
             string path = FilePath(type);
@@ -44,6 +50,7 @@ namespace WildWasteland.Modules.POI
             if (new FileInfo(path).Length > 2 * 1024 * 1024) throw new InvalidDataException("POI layout exceeds 2 MB");
             return Parse(File.ReadAllText(path), type);
         }
+        /// <summary>Validates the current JSON schema and rejects unsafe field values.</summary>
         internal static PoiDressLayout Parse(string text, string type)
         {
             var root = Json.Parse(text) as Dictionary<string, object>;
@@ -75,12 +82,16 @@ namespace WildWasteland.Modules.POI
             }
             return layout;
         }
+        /// <summary>Reads an optional textual JSON field.</summary>
         private static string String(Dictionary<string, object> data, string key)
         { object value; return data.TryGetValue(key, out value) ? value as string : null; }
+        /// <summary>Reads a required numeric JSON field without coercing other types.</summary>
         private static double Number(Dictionary<string, object> data, string key)
         { object value; if (!data.TryGetValue(key, out value) || !(value is double)) throw new InvalidDataException("Invalid " + key); return (double)value; }
+        /// <summary>Reads a bounded integral JSON value without truncation.</summary>
         private static int Integer(Dictionary<string, object> data, string key, int min, int max)
         { double value = Number(data, key); if (value < min || value > max || value != Math.Floor(value)) throw new InvalidDataException("Invalid marker " + key); return (int)value; }
+        /// <summary>Reads three finite bounded coordinates from JSON.</summary>
         private static Vector3 Vector(Dictionary<string, object> data, string key, float min, float max)
         {
             object value; var array = data.TryGetValue(key, out value) ? value as List<object> : null;
@@ -95,6 +106,7 @@ namespace WildWasteland.Modules.POI
             }
             return vector;
         }
+        /// <summary>Escapes a string for the reusable JSON authoring format.</summary>
         private static void Quote(StringBuilder text, string value)
         {
             text.Append('"');
@@ -104,8 +116,10 @@ namespace WildWasteland.Modules.POI
                 else text.Append(c);
             text.Append('"');
         }
+        /// <summary>Writes invariant round-trip vector components to JSON.</summary>
         private static void WriteVector(StringBuilder text, Vector3 value)
         { text.Append('[').Append(value.x.ToString("R", CultureInfo.InvariantCulture)).Append(',').Append(value.y.ToString("R", CultureInfo.InvariantCulture)).Append(',').Append(value.z.ToString("R", CultureInfo.InvariantCulture)).Append(']'); }
+        /// <summary>Serializes the complete current record while validating the output schema.</summary>
         internal static string Serialize(PoiDressLayout layout)
         {
             var text = new StringBuilder("{\n  \"version\":2,\n  \"poi\":"); Quote(text, layout.Type); text.Append(",\n  \"props\":[\n");
@@ -126,6 +140,7 @@ namespace WildWasteland.Modules.POI
             string content = text.Append("\n  ]\n}\n").ToString(); Parse(content, layout.Type);
             return content;
         }
+        /// <summary>Writes the current validated state through its owning persistence transaction.</summary>
         internal static void Save(PoiDressLayout layout)
         {
             string content = Serialize(layout);

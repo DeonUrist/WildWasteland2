@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.POI
     /// </summary>
     internal sealed partial class TownGasStation
     {
+        /// <summary>Resolves the current Loot-owned native spawner service.</summary>
         private static INativeSpawners Spawners { get { return SpawnerControl.Required; } }
 
         private static readonly Vector3[] LootPoints = { new Vector3(7f, .05f, 6.5f), new Vector3(7f, .05f, -3f), new Vector3(8.5f, .05f, 11f), new Vector3(6.5f, .05f, -6.5f) };

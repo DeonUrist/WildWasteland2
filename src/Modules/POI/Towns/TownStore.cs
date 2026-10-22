@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.POI
     internal static class TownStore
     {
         private const int Magic = 0x5757544E, Version = 9;
+        /// <summary>Serializes the complete current record while validating the output schema.</summary>
         internal static byte[] Serialize(Dictionary<string, TownRecord> records)
         {
             using (var stream = new MemoryStream())
@@ -47,6 +48,7 @@ namespace WildWasteland.Modules.POI
                 w.Flush(); return stream.ToArray();
             }
         }
+        /// <summary>Reads the current format with bounded lengths, valid enums and complete consumption.</summary>
         internal static Dictionary<string, TownRecord> Deserialize(byte[] bytes)
         {
             var records = new Dictionary<string, TownRecord>(StringComparer.Ordinal);
@@ -64,6 +66,7 @@ namespace WildWasteland.Modules.POI
                     if (!Enum.IsDefined(typeof(TownCondition), p.Condition)) throw new InvalidDataException("Town condition");
                     if (string.IsNullOrEmpty(p.Key) || string.IsNullOrEmpty(p.TemplateId)) throw new InvalidDataException("Town identity/template");
                     if (p.HasTown) { p.Rules = TownTemplate.Parse(p.TemplateId, p.TemplateJson); }
+                    if (p.Radius < 0 || p.Feather < 0 || p.StreetWidth < 0 || p.OriginalRelief < 0 || p.MaximumEarthwork < 0) throw new InvalidDataException("Town geometry range");
                     p.LayoutVersion = r.ReadInt32();
                     
                     {
@@ -83,6 +86,7 @@ namespace WildWasteland.Modules.POI
                             lot.Hounds = r.ReadBoolean();
                             lot.Skipped = r.ReadBoolean(); lot.External = r.ReadBoolean();
                         }
+                        if (((int)lot.Role & ~63) != 0 || string.IsNullOrEmpty(lot.Prefab) || lot.HalfX < 0 || lot.HalfZ < 0) throw new InvalidDataException("Town lot role/geometry");
                         p.Lots[j] = lot;
                     }
                     
@@ -118,11 +122,15 @@ namespace WildWasteland.Modules.POI
             }
             return records;
         }
+        /// <summary>Reads a bounded collection length from the binary record.</summary>
         private static int Count(BinaryReader r, int max)
         { int n = r.ReadInt32(); if (n < 0 || n > max) throw new InvalidDataException("Invalid Towns record length"); return n; }
+        /// <summary>Reads a finite floating-point coordinate from the binary record.</summary>
         private static float F(BinaryReader r)
         { float f = r.ReadSingle(); if (float.IsNaN(f) || float.IsInfinity(f)) throw new InvalidDataException("Non-finite Towns value"); return f; }
+        /// <summary>Encodes or decodes a three-component vector in the current record.</summary>
         private static void V(BinaryWriter w, Vector3 v) { w.Write(v.x); w.Write(v.y); w.Write(v.z); }
+        /// <summary>Encodes or decodes a three-component vector in the current record.</summary>
         private static Vector3 V(BinaryReader r) { return new Vector3(F(r), F(r), F(r)); }
     }
 }

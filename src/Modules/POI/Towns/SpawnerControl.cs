@@ -5,6 +5,7 @@ namespace WildWasteland.Modules.POI
     /// <summary>Resolves the actual Loot provider at each operation, including module toggles.</summary>
     internal static class SpawnerControl
     {
+        /// <summary>Returns the real Loot provider or rejects spawning while that required service is unavailable.</summary>
         internal static INativeSpawners Required { get { var api=ModApi.Get<INativeSpawners>(); if(api==null) throw new InvalidOperationException("POI spawning requires the enabled Loot module."); return api; } }
     }
 }

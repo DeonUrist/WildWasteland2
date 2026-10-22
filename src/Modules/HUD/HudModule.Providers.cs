@@ -3,7 +3,7 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.HUD
 {
     /// <summary>Registers HUD-owned presentation services under the unified lifecycle.</summary>
-    public sealed partial class HudModule : INotifications, ILocationMarkers, IPlaceBannerDisplay
+    public sealed partial class HudModule : INotifications, ILocationMarkers, IPlaceBannerDisplay, ILocationVisibility
     {
         /// <summary>Publishes typed providers; Core removes all of them when this HUD stops.</summary>
         public override void ProvideApis()
@@ -17,7 +17,12 @@ namespace WildWasteland.Modules.HUD
             ModApi.Provide<IQuestPresentation>(this, Services.QuestUi);
             ModApi.Provide<INotifications>(this, this);
             ModApi.Provide<ILocationMarkers>(this, this);
+            ModApi.Provide<ILocationVisibility>(this,this);
         }
+        /// <summary>Respects the existing location-marker switch for external POI markers.</summary>
+        bool ILocationVisibility.Locations=>Running&&CleanHudEnabled.Value&&ShowLocations.Value;
+        /// <summary>Respects the existing master compass switch for external markers.</summary>
+        bool ILocationVisibility.Compass=>Running&&CleanHudEnabled.Value&&ShowCompass.Value;
         /// <summary>Whether the replacement generator banner is enabled.</summary>
         bool IPlaceBannerDisplay.Enabled { get { return Running && CleanHudEnabled.Value; } }
         /// <summary>Queues a notice only while the clean HUD can present it.</summary>

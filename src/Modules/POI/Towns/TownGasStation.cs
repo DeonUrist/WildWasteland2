@@ -42,6 +42,7 @@ namespace WildWasteland.Modules.POI
             internal GameObject Root; internal TerrainTile Tile; internal Request Request;
             internal readonly List<PlayMakerFSM> Spawners = new List<PlayMakerFSM>();
             internal int MapId, CompassId; internal string Label;
+            /// <summary>Returns the live marker scene position.</summary>
             internal Vector3 Position() { return Root == null ? Vector3.zero : Root.transform.position; }
         }
         private const string MarkerOwner = "WildWasteland.Towns.GasStation";
@@ -59,12 +60,16 @@ namespace WildWasteland.Modules.POI
         private ICompassMarkers _compass;
         private bool _failed;
         private string _status = "Off (reload after enabling)";
+        /// <summary>Initializes town gas station with the supplied owning state and immutable inputs.</summary>
         internal TownGasStation(TownSettings settings) { _settings = settings; Current = this; }
         private GameObject _catalogPrefab;
+        /// <summary>Returns the inactive measured gas-station shell for the town prefab catalog.</summary>
         internal GameObject CatalogPrefab {get{if(!Available)return null;if(_catalogPrefab==null)_catalogPrefab=Shell(null,"TownsGasStation");return _catalogPrefab;}}
+        /// <summary>Loads required station assets once and reports successful initialization.</summary>
         internal bool Available { get { if (_model == null && !_failed) { try { LoadModel(); } catch (Exception e) { Fail("model setup", e); } } return _model != null && _materials != null; } }
 
         // ------------------------------------------------------------------ requests (main thread, before the tile is generated)
+        /// <summary>Captures immutable generation inputs or the current native progress.</summary>
         internal List<Request> Capture(TerrainTile tile, TileData data, string key, bool startingChunk, TownAssets assets)
         {
             if (data.isDraft || _failed) return null;
@@ -79,6 +84,7 @@ namespace WildWasteland.Modules.POI
             catch (Exception e) { Fail("model setup", e); }
             return list;
         }
+        /// <summary>Computes the required footprint radius from the authored model bounds.</summary>
         private float Radius(float scale)
         {
             var bounds = _model.Bounds;
@@ -88,6 +94,7 @@ namespace WildWasteland.Modules.POI
         }
 
         // Worker: only numeric snapshots and the existing terrain-apply buffers, never scene queries.
+        /// <summary>Builds a numeric terrain-placement request without touching scene objects.</summary>
         internal static void Plan(List<Request> requests, TileData data, List<Vector3> avoid, TownAssets assets, TownPlan saved, TownWorldRoads roads, StopToken stop)
         {
             if (requests == null) return;
@@ -104,6 +111,7 @@ namespace WildWasteland.Modules.POI
                 { float yaw = i * Mathf.PI * .25f; avoid.Add(best + new Vector3(Mathf.Sin(yaw) * outer, 0, Mathf.Cos(yaw) * outer)); }
             }
         }
+        /// <summary>Chooses an eligible roadside station site from numeric height and road inputs.</summary>
         private static void PlanDesert(Request request, TileData data, List<Vector3> avoid, TownPlan saved, TownWorldRoads roads, StopToken stop)
         {
             var area = data.area.active; float outer = request.Radius + 8, border = outer + 24;
@@ -141,9 +149,11 @@ namespace WildWasteland.Modules.POI
             request.Yaw = Mathf.Atan2(toRoad.z, -toRoad.x) * Mathf.Rad2Deg;
             request.Pad = new TownPlan { WorldCenter = best, Radius = request.Radius, Feather = 10 };
         }
+        /// <summary>Measures the horizontal length of the supplied vector.</summary>
         private static float Flat(Vector3 delta) { return Mathf.Sqrt(delta.x * delta.x + delta.z * delta.z); }
 
         // ------------------------------------------------------------------ placement (main thread, tile applied)
+        /// <summary>Publishes the completed numeric plan on the main thread.</summary>
         internal void Applied(List<Request> requests, TerrainTile tile, TownAssets assets, PoiDressing dressing)
         {
             if (requests == null || _failed) return;
@@ -198,6 +208,7 @@ namespace WildWasteland.Modules.POI
 
 
         // ------------------------------------------------------------------ saving (spawner progress of the desert stations)
+        /// <summary>Snapshots live native spawner counters before streaming or saving.</summary>
         private void CaptureStates(Station station)
         {
             if (!station.Desert || station.Spawners.Count == 0) return;
@@ -209,6 +220,7 @@ namespace WildWasteland.Modules.POI
             }
             _saved[station.Key] = states;
         }
+        /// <summary>Writes the current validated state through its owning persistence transaction.</summary>
         internal void Save(string slot)
         {
             foreach (var station in _stations) CaptureStates(station);
@@ -222,6 +234,7 @@ namespace WildWasteland.Modules.POI
             string value = sb.ToString();
             SaveBus.Key(SaveKey).Write(null, slot, value);
         }
+        /// <summary>Restores the current data format and rejects incompatible or corrupt input.</summary>
         internal void Load(string slot)
         {
             _saved.Clear();
@@ -246,9 +259,11 @@ namespace WildWasteland.Modules.POI
             }
         }
 
+        /// <summary>Releases prior world records before starting a fresh world.</summary>
         internal void NewWorld() { Clear(false); _saved.Clear(); }
 
         // ------------------------------------------------------------------ per tick: markers, the test pad's raiders
+        /// <summary>Advances the bounded runtime work admitted by its own cadence.</summary>
         internal void Tick()
         {
             if (_stations.Count == 0 || !GameRefs.InGame || SaveBus.Busy || _failed) return;
@@ -268,6 +283,7 @@ namespace WildWasteland.Modules.POI
             if (_test != null) TestTick(player);
         }
 
+        /// <summary>Loads and validates the authored render/collision meshes and native materials.</summary>
         private void LoadModel()
         {
             if (_model != null) return;
@@ -337,6 +353,7 @@ namespace WildWasteland.Modules.POI
                 Log.Main(null, "[POI] Gas station material: " + _model.NodeNames[i] + " -> " + key);
             }
         }
+        /// <summary>Tests whether a native material references the requested texture.</summary>
         private static bool UsesTexture(Material material, string name)
         {
             // Loaded materials include internal shaders without a _MainTex texture property.
@@ -344,12 +361,14 @@ namespace WildWasteland.Modules.POI
             var texture = material.GetTexture("_MainTex");
             return texture != null && texture.name == name;
         }
+        /// <summary>Offsets render and collision vertices consistently in local space.</summary>
         private static void ShiftMesh(GlbModel model, Vector3 offset)
         {
             var vertices = model.Mesh.vertices;
             for (int i = 0; i < vertices.Length; i++) vertices[i] += offset;
             model.Mesh.vertices = vertices; model.Mesh.RecalculateBounds(); model.Bounds = model.Mesh.bounds;
         }
+        /// <summary>Loads a module-owned mesh and hashes its bytes for navigation identity.</summary>
         private static GlbModel LoadMesh(string file, bool collider)
         {
             string path = Path.Combine(Assets.ModuleDir("POI"), "Models", file);
@@ -360,8 +379,10 @@ namespace WildWasteland.Modules.POI
             Log.Main(null, "[POI] Gas station mesh loaded: " + path + "; " + model.Mesh.vertexCount + " vertices, " + model.Mesh.subMeshCount + " submeshes; scale-1 size " + model.Bounds.size);
             return model;
         }
+        /// <summary>Records an initialization failure without silently replacing valid world data.</summary>
         private void Fail(string stage, Exception e)
         { _failed = true; _status = "Failed " + stage + ": " + e.Message; Log.Warn("[POI] Gas station " + _status); }
+        /// <summary>Removes the matching registration and releases its live presentation state.</summary>
         private void Remove(string key, bool capture)
         {
             for (int i = _stations.Count - 1; i >= 0; i--)
@@ -370,6 +391,7 @@ namespace WildWasteland.Modules.POI
                 Destroy(s, capture); _stations.RemoveAt(i);
             }
         }
+        /// <summary>Releases the site population/navigation contexts before destroying its owned geometry.</summary>
         private void Destroy(Station s, bool capture)
         {
             if (capture) CaptureStates(s);
@@ -381,10 +403,12 @@ namespace WildWasteland.Modules.POI
             }
             if (s.Root != null) { s.Root.SetActive(false); Object.Destroy(s.Root); }
         }
+        /// <summary>Releases live geometry belonging to a streamed terrain tile.</summary>
         internal void Moved(TerrainTile tile)
         {
             for (int i = _stations.Count - 1; i >= 0; i--) if (_stations[i].Tile == tile) { Destroy(_stations[i], true); _stations.RemoveAt(i); }
         }
+        /// <summary>Releases current resources and resets the associated world or catalog state.</summary>
         internal void Clear(bool model)
         {
             foreach (var s in _stations) Destroy(s, false);
@@ -400,6 +424,7 @@ namespace WildWasteland.Modules.POI
                 _status = _settings.TestGasStation.Value ? "Reload world to prepare test site" : "Off (reload after enabling)";
             }
         }
+        /// <summary>Releases owned resources and restores original native state.</summary>
         public void Dispose() { Clear(true); if (ReferenceEquals(Current, this)) Current = null; }
     }
 }

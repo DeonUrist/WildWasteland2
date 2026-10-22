@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.POI
         private readonly Dictionary<TownFaction, string[]> _pools = new Dictionary<TownFaction, string[]>();
         private readonly HashSet<string> _used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly Random _random = new Random(Guid.NewGuid().GetHashCode());
+        /// <summary>Restores the current data format and rejects incompatible or corrupt input.</summary>
         internal void Load()
         {
             string directory = Path.Combine(Assets.ModuleConfigDir("POI"), "Names"); Directory.CreateDirectory(directory);
@@ -29,6 +30,7 @@ namespace WildWasteland.Modules.POI
             }
             Log.Main(null, "[POI] editable name lists: " + directory + " (Animals/Mutants/Scrapyard/Coyotes.txt)");
         }
+        /// <summary>Starts a tracked generation or loading record.</summary>
         internal void Begin(Dictionary<string, TownRecord> records)
         {
             _used.Clear();
@@ -37,6 +39,7 @@ namespace WildWasteland.Modules.POI
             { var p = records[key].Plan; if (p.HasTown && !string.IsNullOrEmpty(p.Name) && !_used.Add(p.Name)) throw new InvalidDataException("Repeated saved town name: " + p.Name); }
             foreach (string key in keys) if (records[key].Plan.HasTown && string.IsNullOrEmpty(records[key].Plan.Name)) Assign(records[key].Plan);
         }
+        /// <summary>Assigns deterministic town population or naming intent from the committed plan.</summary>
         internal void Assign(TownPlan plan)
         {
             if (!plan.HasTown || !string.IsNullOrEmpty(plan.Name)) return;
