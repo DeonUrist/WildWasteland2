@@ -7,6 +7,8 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 
 Denis authorized proceeding through Shared implementation and source cleanup in one session **without subagents**. All work remains local in `refactor/main`. In-game acceptance is deferred until all refactor work is merged; no game, harness, deployment, push or release is part of this iteration.
 
+**Current scope correction:** Denis does not want Apocasaver. Its integration, takeover, soft dependency and fallback UI are removed; old Apocasaver requirements/reports below are historical. WW2 Saves owns saving directly.
+
 **D20 remains authoritative:** persistent world state, save descriptions and thumbnails live inside ES3. No module world-state sidecars or external fallback readers. Authored data/settings/derived geometry caches and recovery journals remain external. See `reports/save-file-only.md`.
 
 B01–B09, B12, B15 and B17 have prior package passes. Current owned-package progress (**completed, ready for Shared integrations**):

@@ -81,7 +81,7 @@ namespace WildWasteland.Core.Events
         public bool Ok;
     }
 
-    /// <summary>Loading/saving screen state (Saves -> HUD, Compatibility Apocasaver). Local only.</summary>
+    /// <summary>Loading/saving screen state (Saves -> HUD). Local only.</summary>
     public struct SavePresentation : IModEvent
     {
         /// <summary>Begin/progress/end.</summary>

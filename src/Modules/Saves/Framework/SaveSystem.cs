@@ -106,7 +106,7 @@ namespace WildWasteland.Modules.Saves
             SaveCleanup.Install(owner);
             SaveCombat.Install(owner);
             SinglePlayerSaving.Install(owner);
-            WorldHistory.Install(owner); SaveCompatibility.Install(owner);
+            WorldHistory.Install(owner); HingePersistence.Install(owner);
             SaveBus.StateChanged += StateChanged;
             Scheduler.Interval(owner, "Singleplayer autosave warning", .25f, Tick);
             Log.Main(owner, "Autosave warnings: game-font compass countdown, 30/15-second notices, combat deferral and 3-second final warning");
@@ -121,7 +121,7 @@ namespace WildWasteland.Modules.Saves
             Warning.SettingChanged -= ScheduleChanged; WhileDriving.SettingChanged -= ScheduleChanged;
             SaveBus.StateChanged -= StateChanged;
             SinglePlayerSaving.Shutdown(); SaveTerrain.Release(); SaveCombat.Shutdown();
-            WorldHistory.Shutdown(); SaveCompatibility.Shutdown(); SaveCleanup.Shutdown();
+            WorldHistory.Shutdown(); SaveCleanup.Shutdown();
             SaveWarning.Show(0);
             if (Busy || _requested) Abort(new IOException("Saves stopped before the save completed; previous files retained"));
             _requested = _automatic = _scheduled = _quitting = false;
@@ -292,7 +292,7 @@ namespace WildWasteland.Modules.Saves
             WorldHistory.Merge(); var settings = new ES3Settings(ActiveFile) { location = ES3.Location.Cache };
             ES3.Save<string>(CommitKey, _stamp, settings);
 
-            SaveCleanup.SaveProtection(); SaveCompatibility.SavePoses();
+            SaveCleanup.SaveProtection();
         }
         /// <summary>Captures the existing thumbnail size and restores camera/render targets in all paths.</summary>
         static void CapturePicture()

@@ -11,7 +11,6 @@ namespace WildWasteland.Core
         /// <summary>Adds every module to <see cref="ModuleHost"/>. Providers before consumers.</summary>
         internal static void RegisterAll()
         {
-            SessionIntegrations.Register("Compatibility.Apocasaver", Modules.Compatibility.Apocasaver.ApocasaverSession.Install);
             ModuleHost.Add(new Modules.Debug.DebugModule());
             ModuleHost.Add(new Modules.Compatibility.CompatibilityModule());
             ModuleHost.Add(new Modules.Saves.SavesModule());

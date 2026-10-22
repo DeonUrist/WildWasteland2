@@ -37,7 +37,7 @@ namespace WildWasteland.Core
         internal static string Latest() { return Modules.Saves.SaveRuntime.Latest(); }
     }
 
-    /// <summary>Deprecated serializer state for the Clean HUD loading screen and Apocasaver loading presentation.</summary>
+    /// <summary>Deprecated serializer state for the HUD loading screen.</summary>
     [Obsolete("refactor: use ISaves.Phase == SavePhase.Saving / SavePresentation events")]
     internal static class SinglePlayerSaving
     {

@@ -94,7 +94,6 @@ namespace WildWasteland.Modules.HUD
             LocationMarkers.Init();
             MapFog.Init();
             _loadingScreen = new LoadingScreen();
-            ModApi.Provide<IExternalSavePresentation>(this,new ExternalSavePresentation(_loadingScreen));
             ModEvents.Subscribe<Core.Events.SavePresentation>(this, SavePresented);
 
             _menu = new Menu(_loadingScreen);

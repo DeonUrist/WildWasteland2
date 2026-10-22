@@ -9,22 +9,16 @@ using HutongGames.PlayMaker;
 
 namespace WildWasteland.Modules.Saves
 {
-    // Preserve Apocasaver's stable hinge keys when its standalone save engine is disabled.
-    // Compatibility owns the external HandPose adapter; Core transports its metadata with the original full ES3 keys.
-    internal static class SaveCompatibility
+    /// <summary>Saves native hinge rotations under stable object identities inside the selected world file.</summary>
+    internal static class HingePersistence
     {
-        /// <summary>Patches ES3PlayMaker Save/Load.Enter (prefix + finalizer) and clears the pose table on load/new game.</summary>
+        /// <summary>Patches ES3PlayMaker Save/Load.Enter with reversible stable-key substitutions.</summary>
         internal static void Install(IModule owner)
         {
-            if (!Patches.Patch(owner, AccessTools.Method(typeof(ES3PlayMaker.Save), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeSave"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterSave"))
-                || !Patches.Patch(owner, AccessTools.Method(typeof(ES3PlayMaker.Load), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeLoad"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterLoad"))) throw new InvalidOperationException("Stable hinge compatibility hooks failed");
-            SaveBus.StateChanged += StateChanged;
+            if (!Patches.Patch(owner, AccessTools.Method(typeof(ES3PlayMaker.Save), "Enter"), prefix: AccessTools.Method(typeof(HingePersistence), "BeforeSave"), finalizer: AccessTools.Method(typeof(HingePersistence), "AfterSave"))
+                || !Patches.Patch(owner, AccessTools.Method(typeof(ES3PlayMaker.Load), "Enter"), prefix: AccessTools.Method(typeof(HingePersistence), "BeforeLoad"), finalizer: AccessTools.Method(typeof(HingePersistence), "AfterLoad"))) throw new InvalidOperationException("Stable hinge persistence hooks failed");
         }
-        /// <summary>Detaches load resets; the current world's pose values remain valid across a toggle.</summary>
-        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; }
-        /// <summary>Clears the session pose table on LoadGame/Start/setSeed.</summary>
-        static void StateChanged(string previous, string current) { if (current == "LoadGame" || current == "Start" || current == "setSeed") SessionMetadata.Clear(); }
-        /// <summary>Apocasaver stable ES3 key for a hinge saveItemVar FSM on a saved prefab, or null.</summary>
+        /// <summary>Returns a stable rotation key for a saved native hinge, retaining the existing persistence identifier.</summary>
         static string Stable(Fsm fsm)
         {
             if (fsm == null || fsm.Name != "saveItemVar" || fsm.GameObject == null || !fsm.GameObject.name.StartsWith("hinge_", StringComparison.Ordinal) || fsm.GameObject.GetComponentInParent<ES3Prefab>() == null) return null;
@@ -32,7 +26,7 @@ namespace WildWasteland.Modules.Saves
             long id = manager.Get(fsm.GameObject); if (id < 0) id = manager.Add(fsm.GameObject);
             return "apocasaver.object." + id + ".hinge-rotation";
         }
-        /// <summary>Swaps a hinge rotation key for its stable Apocasaver key during a local save.</summary>
+        /// <summary>Swaps a hinge rotation key for its stable object key during a local save.</summary>
         static void BeforeSave(ES3PlayMaker.Save __instance, out FsmString __state)
         {
             __state = null; if (!SaveSystem.LocalWorld || __instance.value.Type != VariableType.Vector3) return;
@@ -52,8 +46,5 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Restores the original key and lets VehicleLoadPlacement see the loaded stance.</summary>
         static Exception AfterLoad(ES3PlayMaker.Load __instance, FsmString __state, Exception __exception)
         { if (__state != null) __instance.key = __state; if (__exception == null) VehicleLoadPlacement.LoadedStance(__instance); return __exception; }
-        /// <summary>Writes the session HandPose table into the active file's ES3 cache.</summary>
-        internal static void SavePoses()
-        { SessionMetadata.Save(SaveSystem.ActiveFile); }
     }
 }

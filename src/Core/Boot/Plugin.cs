@@ -13,7 +13,6 @@ namespace WildWasteland
     /// The soft dependencies on the standalone mods only force them to load first, so the conflict check (5.8) sees them.
     /// </summary>
     [BepInPlugin(GUID, NAME, VERSION)]
-    [BepInDependency("com.denis.apocalypter.apocasaver", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.denis.apocalypter.apocasetter", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.denis.apocalypter.apocaplayer", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.denis.apocalypter.apocaclimber", BepInDependency.DependencyFlags.SoftDependency)]
@@ -93,7 +92,6 @@ namespace WildWasteland
                 Core.VehicleOwnership.Install();
                 Core.ReplacementGuard.Prepare();
                 Core.Fixes.Install();
-                Core.SessionIntegrations.InstallAll();
                 Core.UI.ToolWindow.Init();
                 SceneManager.sceneLoaded += OnSceneLoaded;
 
