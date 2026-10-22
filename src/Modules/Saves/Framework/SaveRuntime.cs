@@ -22,8 +22,18 @@ namespace WildWasteland.Modules.Saves
         static bool _leaving;
         static int _latestVersion = -1;
         static string _latestFile;
-        /// <summary>True in the MainMenu scene.</summary>
-        internal static bool InMainMenu { get { return SceneManager.GetActiveScene().name == "MainMenu"; } }
+        static int _menuFrame = -1;
+        static bool _inMenu;
+        /// <summary>True in the MainMenu scene; the scene name (an allocating native call) is read at most once per frame.</summary>
+        internal static bool InMainMenu
+        {
+            get
+            {
+                int frame = Time.frameCount;
+                if (frame != _menuFrame) { _menuFrame = frame; _inMenu = SceneManager.GetActiveScene().name == "MainMenu"; }
+                return _inMenu;
+            }
+        }
         /// <summary>True for WW save identities (SaveGame1..10.es3, WW_live/save/auto-<32 hex>.es3).</summary>
         internal static bool IsSaveFile(string file) { return file != null && FileName.IsMatch(file); }
         /// <summary>Native player in-vehicle transition state (canonical Core PlayerState).</summary>
@@ -47,7 +57,7 @@ namespace WildWasteland.Modules.Saves
         internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; SceneManager.sceneLoaded -= SceneLoaded; SelectedFile = null; _leaving = false; _latestVersion = -1; }
         /// <summary>Clears cached player FSMs; the main menu clears the active file and bumps the save catalogue.</summary>
         static void SceneLoaded(Scene scene, LoadSceneMode mode)
-        { if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }
+        { _menuFrame = -1; if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }
         /// <summary>LoadGame makes the selected (or native slot) file active; isPlay clears the selection.</summary>
         static void StateChanged(string previous, string current)
         {

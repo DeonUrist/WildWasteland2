@@ -41,7 +41,8 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Registers a native Detection FSM once for ongoing target observation.</summary>
         static void Track(PlayMakerFSM fsm)
         {
-            if (!SaveSystem.LocalWorld || fsm == null || fsm.FsmName != "Detection" || Actors.ContainsKey(fsm)) return;
+            // Cheap name filter first: FsmEnable fires for every FSM; LocalWorld reads scene state.
+            if (fsm == null || fsm.FsmName != "Detection" || !SaveSystem.LocalWorld || Actors.ContainsKey(fsm)) return;
             Actors.Add(fsm, new Actor { Fsm = fsm });
         }
         /// <summary>Inspects one native FSM per scheduler slice while the current world is ready.</summary>
@@ -55,15 +56,18 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Observes cached native damage and animal attack events without consuming them.</summary>
         static bool Event(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
-            if (!SaveSystem.LocalWorld || ev == null || fsm == null) return true;
-            if (ReferenceEquals(ev, Damage) || ReferenceEquals(ev, AnimalAttack) || ReferenceEquals(ev, AnimalRangedAttack)) Activity();
+            // Runs for every FSM event: cached FsmEvent reference compares first, world state only on a match.
+            if (ev == null || fsm == null || !(ReferenceEquals(ev, Damage) || ReferenceEquals(ev, AnimalAttack) || ReferenceEquals(ev, AnimalRangedAttack))) return true;
+            if (SaveSystem.LocalWorld) Activity();
             return true;
         }
         /// <summary>Observes native attack-state transitions even when the NPC feature module is disabled.</summary>
         static void Attack(Fsm fsm, FsmState state)
         {
-            if (!SaveSystem.LocalWorld || fsm == null || fsm.Name != "Attack" || state == null) return;
-            if (state.Name == "fire" || state.Name == "attack" || state.Name == "attack_ranged" || state.Name == "throw") Activity();
+            // Runs for every state entry: FSM name filter first, world state only for a matching attack state.
+            if (fsm == null || state == null || fsm.Name != "Attack") return;
+            string name = state.Name;
+            if ((name == "fire" || name == "attack" || name == "attack_ranged" || name == "throw") && SaveSystem.LocalWorld) Activity();
         }
         /// <summary>Updates autosave safety from native targets, discovery completion and the combat quiet period.</summary>
         internal static bool Check()
