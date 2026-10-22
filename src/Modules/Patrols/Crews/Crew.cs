@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.Patrols
             for (int i = 0; i < marker.Riders.Length; i++)
             {
                 var rider = marker.Riders[i]; if (rider == null || Patrol.GetHealth(rider) <= 0f) continue;
-                string identity = CrewAppearance.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", "")));
+                string identity = CrewLooks.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", "")));
                 marker.DropRider(rider);
                 var mob = Patrol.BailOut(_car, rider, identity, i % 2 == 0 ? -1f : 1f, false);
                 if (mob != null) WorldTraffic.TownDismounted(_car, mob);

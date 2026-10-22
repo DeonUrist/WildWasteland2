@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Patrols
                 var guard = rider != null ? rider.GetComponent<RiderGuard>() : null;
                 if (rider == null || anchor == null || guard == null || !guard.Mounted || Patrol.GetHealth(rider) == 0f) continue;
                 var p = anchor.localPosition;
-                result[i] = new PatrolRiderData { prefab = CrewAppearance.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", ""))),
+                result[i] = new PatrolRiderData { prefab = CrewLooks.Identity(rider, TemplateExporter.PrefabName(rider.name.Replace("(Rider)", ""))),
                     health = Patrol.GetHealth(rider), position = new[] { p.x, p.y, p.z }, standing = guard.StandingPose };
             }
             return result;

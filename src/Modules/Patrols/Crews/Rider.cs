@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.Patrols
         internal const float BikeArc = 55f;   // 2.2.1: on a motorcycle a turret sits straight and turns only its upper body this far left / right
         // what the editors offer: a Warboy (blast lances, "Witness me!") or a ranged crew human (a gunner); "None" first, the rest A-Z
         internal static readonly string[] TurretChoices = { "None", "Boltjaw", "Flexa", "Gungirl", "Lugnut", "Scrud", "Shoota", "Sprokka", Warboy, "Bodyguard", "Bolter", "Gunnar", "Lugger", "Mechanic", "Merchant", "Organic_Mechanic", "Pistoleer", "Pup" };
-        internal static bool IsGunner(string who) { return !string.IsNullOrEmpty(who) && Array.Exists(PassengerGuard.RangedHumans, n => string.Equals(n, CrewAppearance.BasePrefab(who.Trim()), StringComparison.OrdinalIgnoreCase)); }
+        internal static bool IsGunner(string who) { return !string.IsNullOrEmpty(who) && Array.Exists(PassengerGuard.RangedHumans, n => string.Equals(n, CrewLooks.BasePrefab(who.Trim()), StringComparison.OrdinalIgnoreCase)); }
         // a stored value as the editors show it: "" = None, a ranged human as is, anything else (Warboy, the 2.1.x "Scraffa") = Warboy
         internal static bool IsWarboy(string who)=>string.Equals(who,Warboy,StringComparison.OrdinalIgnoreCase)||string.Equals(who,"Scraffa",StringComparison.OrdinalIgnoreCase);
         internal static string Display(string stored) { return string.IsNullOrEmpty(stored) ? "None" : IsWarboy(stored)?Warboy:stored.Trim(); }
@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.Patrols
             else Crew.MuteAi(go);                  // no mover / detection / attack FSMs: the guard does the throwing
             PassengerGuard.NeutralizeContact(go);  // melee / fire-contact damage FSMs and hitbox off (a passive body that can be shot)
             go.name = prefab.name + "(Rider)";
-            CrewAppearance.Dress(go, prefabName, randomize);
+            CrewLooks.Dress(go, prefabName, randomize);
             // no per-pair IgnoreCollision with the car (thousands of PhysX pair rebuilds per seat): the body is all triggers (NoContacts)
             var root = go.GetComponent<Rigidbody>() ?? go.AddComponent<Rigidbody>();
             root.isKinematic = true;

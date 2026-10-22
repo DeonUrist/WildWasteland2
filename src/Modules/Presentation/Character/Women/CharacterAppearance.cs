@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.Presentation
     internal sealed class CharacterAppearance : ICharacterAppearance
     {
         /// <summary>Applies the identity's look to <paramref name="root"/> (alias names rename the root first; randomize = population roll).</summary>
-        public void Dress(GameObject root, string identity, bool randomize) { CrewAppearance.Dress(root, identity, randomize); }
+        public void Dress(GameObject root, string identity, bool randomize) { new CrewAppearance().Dress(root, identity, randomize); }
 
         /// <summary>Model and texture file paths of a female identity (Gungirl, Shoota).</summary>
         public bool TryPaths(string identity, out string model, out string texture) { return WomenFeature.Paths(identity, out model, out texture); }

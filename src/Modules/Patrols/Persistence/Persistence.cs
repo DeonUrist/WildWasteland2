@@ -99,8 +99,8 @@ namespace WildWasteland.Modules.Patrols
             if (car.GetComponent<Ram.Sensor>() == null) car.AddComponent<Ram.Sensor>();
             marker._rams = rams;
             marker._bodyPrefab = bodyPrefab ?? "";
-            marker._driverPrefab = CrewAppearance.Identity(driver, driverPrefab) ?? "";
-            marker._passengerPrefab = CrewAppearance.Identity(passenger, passengerPrefab) ?? "";
+            marker._driverPrefab = CrewLooks.Identity(driver, driverPrefab) ?? "";
+            marker._passengerPrefab = CrewLooks.Identity(passenger, passengerPrefab) ?? "";
             marker._driver = driver;
             marker._passenger = passenger;
             return marker;
@@ -173,12 +173,12 @@ namespace WildWasteland.Modules.Patrols
                 setupOnly=SetupOnly, riders=PatrolCrewDelta.Capture(this), trailerName=TrailerSupport.Attached(gameObject)?.name??"",
                 ramTargets = _rams.ToString(),
                 positionX = p.x, positionY = p.y, positionZ = p.z,
-                driverPrefab = CrewAppearance.Identity(_driver, _driverPrefab),
+                driverPrefab = CrewLooks.Identity(_driver, _driverPrefab),
                 driverPresent = driverPresent,
                 driverHealth = driverHealth,
                 driverPhase = phase.ToString(),
                 seatedSeconds = crew != null ? crew.SeatedSeconds : 0f,
-                passengerPrefab = CrewAppearance.Identity(_passenger, _passengerPrefab),
+                passengerPrefab = CrewLooks.Identity(_passenger, _passengerPrefab),
                 passengerPresent = passengerPresent,
                 passengerHealth = passengerHealth,
                 playerEntered = PlayerEntered,
