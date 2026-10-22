@@ -18,8 +18,8 @@ namespace WildWasteland.Modules.NPC
         {
             if (!Tracing || n.Trail.Count < 2 || Time.time < n.NextTraceDump) return;
             n.NextTraceDump = Time.time + 15f;
-            NpcModule.Log.LogInfo("Trace: " + n.Owner.name + " picture (" + why + ")");
-            try { Nav.TraceDump(n.Owner.name, n.Trail, n.TrailKind, n.TraceGoal); } catch (Exception e) { NpcModule.Log.LogError("Trace: " + e.Message); }
+            NpcaiRuntime.Deep("Trace: " + n.Owner.name + " picture (" + why + ")");
+            try { Nav.TraceDump(n.Owner.name, n.Trail, n.TrailKind, n.TraceGoal); } catch (Exception e) { NpcaiRuntime.Error("Trace: " + e.Message); }
         }
 
         // [Debug] BrainLog, at a stuck: what is in front of the body (any layer, triggers too) - names the thing the feelers missed
@@ -37,7 +37,7 @@ namespace WildWasteland.Modules.NPC
                     sb.Append(h.collider.name).Append(" [").Append(LayerMask.LayerToName(h.collider.gameObject.layer)).Append(h.collider.isTrigger ? ", trigger" : "")
                       .Append(", ").Append(h.distance.ToString("0.0")).Append(" m] ");
                 }
-                NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " ahead at ankle height: " + (sb.Length > 0 ? sb.ToString() : "nothing"));
+                NpcaiRuntime.Deep("Brain: " + n.Owner.name + " ahead at ankle height: " + (sb.Length > 0 ? sb.ToString() : "nothing"));
                 // what touches the body right now (the body capsule grown by 0.15 m, any layer, triggers too)
                 if (n.Col != null)
                 {
@@ -53,7 +53,7 @@ namespace WildWasteland.Modules.NPC
                         sb.Append(c.name).Append(" [").Append(LayerMask.LayerToName(c.gameObject.layer)).Append(c.isTrigger ? ", trigger" : "").Append(", ")
                           .Append(c.GetType().Name).Append(", at ").Append(rel.x.ToString("0.0")).Append("/").Append(rel.y.ToString("0.0")).Append("/").Append(rel.z.ToString("0.0")).Append("] ");
                     }
-                    NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " touching: " + (sb.Length > 0 ? sb.ToString() : "nothing") + " | vel " + (n.Rb != null ? n.Rb.velocity.magnitude.ToString("0.0") : "?") + " | fan free L " + n.FreeLeft.ToString("0.0") + " R " + n.FreeRight.ToString("0.0") + " side " + n.Side);
+                    NpcaiRuntime.Deep("Brain: " + n.Owner.name + " touching: " + (sb.Length > 0 ? sb.ToString() : "nothing") + " | vel " + (n.Rb != null ? n.Rb.velocity.magnitude.ToString("0.0") : "?") + " | fan free L " + n.FreeLeft.ToString("0.0") + " R " + n.FreeRight.ToString("0.0") + " side " + n.Side);
                 }
             }
             catch (Exception) { }

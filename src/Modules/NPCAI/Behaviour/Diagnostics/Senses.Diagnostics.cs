@@ -21,7 +21,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Per-agent verbose log line (callers build the text; Wave B guards it by level).</summary>
         private static void Log(Agent a, string s)
         {
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Senses: " + a.Owner.name + " " + s);
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: " + a.Owner.name + " " + s);
         }
 
         /// <summary>Status line for the Debug page and the log.</summary>

@@ -1,10 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using BepInEx;
 using HarmonyLib;
-using HutongGames.PlayMaker;
-using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
@@ -12,269 +9,154 @@ using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.NPC
 {
-    // NPC Overhaul (NPCAI 1.9.15) as a Wild Wasteland module: senses / detection, structure navigation (map bakes + routing), the brain,
-    // idle behaviour, animals (burrowing scorpions, pouncing spiders, dogs, Dog Companion compatibility), hazards (spider nests and webs,
-    // sandstorms) and the debug overlay. Every subsystem is still a static class with its own registry; the old NPCAI.Runner's Update /
-    // LateUpdate / OnGUI are scheduler jobs registered in the old order (Senses -> Nav -> Brain -> Idle -> Passthrough -> Burrow -> Pounce ->
-    // Webs -> Nests -> Ambush -> DogBite; late: Burrow -> Pounce -> DogBite), and the old Harmony patches are Core hooks or module patches.
+    /// <summary>
+    /// Old NPC entry, now a shell (B07): the NPC AI (senses, brain, idle, animals, hazards) moved to NPCAIModule ([NPCAI] config). What
+    /// remains are the partial parts other packages still own inside this entry: Presentation (dog animation bundle, Women of Wasteland,
+    /// rig / visual LateUpdate jobs, Pounce carcass hook, taunt audio patch, their [NPC / ...] config and pages), Tools (POI navigation
+    /// setup / view / editor jobs and page), and the emptied Compatibility / Gunplay / Core parts. Each owner moves its part to its own
+    /// entry and empties the partial method; Wave C deletes the shell.
+    /// </summary>
     public sealed partial class NpcModule : ModuleBase
     {
-        public const string GUID = "com.denis.apocalypter.npcai";      // the standalone mod this module replaces
+        /// <summary>GUID of the standalone NPCAI plugin (the shell stays off while it is installed, as before).</summary>
+        public const string GUID = "com.denis.apocalypter.npcai";
+        /// <summary>Module id (config section prefix and asset folder of the remaining parts: plugins/WildWasteland/NPC).</summary>
         public override string Id { get { return "NPC"; } }
-        public override string DisplayName { get { return "NPC AI & navigation"; } }
+        /// <summary>Name shown on the Modules page.</summary>
+        public override string DisplayName { get { return "NPC (legacy parts: visuals, Women of Wasteland, POI nav editor)"; } }
+        /// <summary>The standalone NPCAI plugin replaces this entry as before.</summary>
         public override string[] ConflictsWith { get { return new[] { GUID }; } }
 
+        /// <summary>The running shell instance (owner of the remaining parts; Presentation reads its asset folder).</summary>
         internal static NpcModule Instance;
-        /// <summary>The module runs (Init done, Shutdown not yet). Every hook / patch handler and every On property checks it first.</summary>
-        internal static bool Running;
-        internal static string ModelDir;       // ex Plugin.Dir + "Models": BepInEx\plugins\WildWasteland\NPC\Models
-        internal static string DataDir;        // BepInEx\config\WildWasteland\NPC
-
-        bool _subscribed;
+        /// <summary>[Obsolete] The NPC AI runs: forwards to the NPCAI module's running flag (Presentation/Gunplay/Compatibility readers).</summary>
+        [Obsolete("refactor: NPCAI runtime state; use INpcApi/INpcControl through ModApi")]
+        internal static bool Running { get { return NpcaiRuntime.Running; } }   // refs-ok: [Obsolete] forwarder to NPCAI (Wave C deletes the NPC shell)
+        /// <summary>BepInEx\plugins\WildWasteland\NPC\Models (dog animation bundle, Presentation).</summary>
+        internal static string ModelDir;
+        /// <summary>[Obsolete] NPCAI config folder (config/WildWasteland/NPCAI): custom nav maps, exports (Navigation/Tools readers).</summary>
+        [Obsolete("refactor: NPCAI data folder")]
+        internal static string DataDir { get { return NpcaiRuntime.DataDir ?? Assets.ModuleConfigDir("NPCAI"); } }   // refs-ok: [Obsolete] forwarder to NPCAI (Wave C deletes the NPC shell)
 
         // ------------------------------------------------------------------ parts owned by other target modules (Wave A split)
-        // Each partial method below is implemented in a NpcModule.<Target>.cs file inside that target's _fromNPC folder; the calls sit
-        // exactly where the moved lines were, so job / hook / patch / config order is unchanged. A Wave B owner takes over its part by
-        // moving the body into its own module and leaving the partial method empty.
+        // Each partial method below is implemented in a NpcModule.<Target>.cs file inside that target's folder. Empty ones stay until Wave C.
 
         /// <summary>Presentation: dog animation bundle, its hooks and patch (DogAnimations.Initialize).</summary>
         partial void InitPresentationDogs();
-        /// <summary>Compatibility: Dog Companion bridge (DogCompanionCompat.Initialize).</summary>
+        /// <summary>Compatibility: Dog Companion bridge (empty since B17).</summary>
         partial void InitCompatibilityDogCompanion();
         /// <summary>Presentation: Women of Wasteland (female bodies, voices, appearance providers, their jobs).</summary>
         partial void InitPresentationWomen();
-        /// <summary>Compatibility: the Weapons Pack bridge job (registered between Brain and NPC.Rigs, as before).</summary>
+        /// <summary>Compatibility: the Weapons Pack bridge job (empty since B17).</summary>
         partial void InitCompatibilityJobs();
         /// <summary>Presentation: the NPC.Rigs sliced job and the LateUpdate visual ticks of Burrow / Pounce / DogBite.</summary>
         partial void InitPresentationJobs();
-        /// <summary>Gunplay: the WeaponRanges.Sweep job (after Aim.Sweep, as before).</summary>
+        /// <summary>Gunplay: the WeaponRanges.Sweep job (empty since B09).</summary>
         partial void InitGunplayJobs();
-        /// <summary>Core (Hotkeys): the player's shout key.</summary>
+        /// <summary>Core (Hotkeys): the player's shout key (empty since B07: NPCAIModule registers it).</summary>
         partial void InitCoreShout();
-        /// <summary>Tools: the POI pathfinding setup job (before PoiNav.Build, as before).</summary>
+        /// <summary>Tools: the POI pathfinding setup job.</summary>
         partial void InitToolsPoiNavSetup();
-        /// <summary>Tools: the POI navigation data view, its editor jobs and the editor hotkey (after PoiNav.Traverse, as before).</summary>
+        /// <summary>Tools: the POI navigation data view, its editor jobs and the editor hotkey.</summary>
         partial void InitToolsPoiNavEditor();
         /// <summary>Presentation: Women of Wasteland shutdown step.</summary>
         static partial void ShutdownPresentationWomen();
-        /// <summary>Compatibility: Weapons Pack shutdown step.</summary>
+        /// <summary>Compatibility: Weapons Pack shutdown step (empty since B17).</summary>
         static partial void ShutdownCompatibility();
-        /// <summary>Gunplay: VanillaEvents shutdown step.</summary>
+        /// <summary>Gunplay: VanillaEvents shutdown step (empty since B09).</summary>
         static partial void ShutdownGunplay();
         /// <summary>Tools: closes the POI navigation editor, unhooks the data view and resets the setup mode.</summary>
         static partial void ShutdownTools();
-        /// <summary>Compatibility: Weapons Pack reset (first step of ResetAll).</summary>
+        /// <summary>Compatibility: Weapons Pack reset (empty since B17).</summary>
         static partial void ResetCompatibility();
-        /// <summary>Gunplay: WeaponRanges / VanillaEvents scene caches (after Aim, as before).</summary>
+        /// <summary>Gunplay: WeaponRanges / VanillaEvents scene caches (empty since B09).</summary>
         static partial void ResetGunplay();
-        /// <summary>Tools: POI navigation editor close + setup reset (before PoiNav.Reset, as before).</summary>
+        /// <summary>Tools: POI navigation editor close + setup reset.</summary>
         static partial void ResetTools();
-        /// <summary>Presentation: Gungirl scene caches (after ResetAll on scene load).</summary>
+        /// <summary>Presentation: Gungirl scene caches.</summary>
         static partial void SceneLoadedPresentation();
         /// <summary>Presentation: Gungirl world scan when the world is ready.</summary>
         static partial void WorldReadyPresentation();
-        /// <summary>Compatibility: Weapons Pack reset when a save starts loading.</summary>
+        /// <summary>Compatibility: Weapons Pack reset when a save starts loading (empty since B17).</summary>
         static partial void LoadBeginCompatibility();
         /// <summary>Tools: origin shift of the POI navigation setup copies and the editor.</summary>
         static partial void ShiftTools(Vector3 delta);
-        /// <summary>Gunplay: vanilla shot / damage observers (SetFsmFloat first: before DogBite's subscriber, as before).</summary>
+        /// <summary>Gunplay: vanilla shot / damage observers (empty since B09).</summary>
         partial void InstallHooksGunplay();
-        /// <summary>Presentation: CreateObject postfix of Pounce (after Senses / Idle, as before).</summary>
+        /// <summary>Presentation: CreateObject postfix of Pounce.</summary>
         partial void InstallHooksPresentation();
-        /// <summary>Compatibility: CreateObject postfix of the Weapons Pack bridge (after Pounce, as before).</summary>
+        /// <summary>Compatibility: CreateObject postfix of the Weapons Pack bridge (empty since B17).</summary>
         partial void InstallHooksCompatibility();
-        /// <summary>Core (Hotkeys): the shout modifier blocks the game's buttons (GetButton* prefixes).</summary>
+        /// <summary>Core (Hotkeys): button blocking while the shout modifier is held (empty: PlayerShoutInput does it).</summary>
         partial void InstallHooksCore();
         /// <summary>Presentation: the AudioPlay prefix that swaps NPC combat taunts.</summary>
         partial void InstallPatchesPresentation();
 
         // ------------------------------------------------------------------ lifecycle
 
+        /// <summary>Starts the remaining parts in their old relative order; a failed start is undone by Shutdown.</summary>
         public override void Init()
         {
-            try { Start(); }
+            try
+            {
+                Instance = this;
+                ModelDir = Path.Combine(Dir, "Models");
+                ResetAll();
+                InstallHooksGunplay();
+                InstallHooksPresentation();     // CreateObject postfix: Pounce's airborne carcass
+                InstallHooksCompatibility();
+                InstallHooksCore();
+                InstallPatchesPresentation();   // AudioPlay.OnEnter -> Senses.BeforeAudioPlay (taunt audio)
+                InitPresentationDogs();         // bundle + its own hooks / patch (only when the bundle loads)
+                InitCompatibilityDogCompanion();
+                InitPresentationWomen();
+                InitCompatibilityJobs();
+                InitPresentationJobs();         // "NPC.Rigs" + the LateUpdate visual ticks
+                InitGunplayJobs();
+                InitCoreShout();
+                InitToolsPoiNavSetup();         // "PoiNav.Setup"
+                InitToolsPoiNavEditor();        // "PoiNav.View", "PoiNav.Editor", "PoiNav.EditorCamera", "PoiNav.EditorGui", editor key
+            }
             catch (Exception)
             {
-                // a half-started module must not leave Services.Npc / event handlers / changed NPCs behind (Core only removes patches, jobs, hooks)
                 try { Shutdown(); } catch (Exception) { }
                 throw;
             }
         }
 
-        /// <summary>Init body: services, events, hooks, patches, feature parts and every job in the old NPCAI.Runner order.</summary>
-        void Start()
-        {
-            Instance = this;
-            ModelDir = Path.Combine(Dir, "Models");
-            DataDir = Assets.ModuleConfigDir(Id);
-            ResetAll();                                    // re-runnable after Shutdown: every registry starts empty
-
-            Services.Npc = new NpcApi();
-            Services.CrewBailedOut += OnCrewBailedOut;     // ex Senses.HookApocapatrol (Harmony on Apocapatrol.Patrol.BailOut / Explode.Blast)
-            Services.VehicleExploded += OnVehicleExploded;
-            SaveBus.StateChanged += Senses.OnSaveLoadState;   // ex Senses.Persist.Tick polling the SaveLoadGame FSM
-            _subscribed = true;
-
-            InstallHooks();
-            InstallPatches();
-            InitPresentationDogs();                        // bundle + its own hooks / patch (only when the bundle loads)
-            InitCompatibilityDogCompanion();               // only when Dog Companion is installed; [NPC] DogCompanionCompat switches it live
-            InitPresentationWomen();
-
-            // the old NPCAI.Runner, in its order (load-bearing: Brain/Idle body hand-over, DogAnimations restore in Update / sample in LateUpdate)
-            Scheduler.EveryFrame(this, "Senses", Senses.Tick);
-            Scheduler.EveryFrame(this, "Nav", Nav.Tick);
-            Scheduler.EveryFrame(this, "Brain", Brain.Tick);
-            InitCompatibilityJobs();                       // "Weapons Pack compatibility"
-            InitPresentationJobs();                        // "NPC.Rigs" + the LateUpdate visual ticks (only LateUpdate jobs: order within the phase kept)
-            Scheduler.EveryFrame(this, "Idle", Idle.Tick);
-            Scheduler.Interval(this, "Passthrough", 0.25f, Passthrough.Tick, Phase.Update, true);
-            Scheduler.EveryFrame(this, "Burrow", Burrow.Tick);
-            Scheduler.EveryFrame(this, "Pounce", Pounce.Tick);
-            Scheduler.EveryFrame(this, "Webs", Webs.Tick);
-            Scheduler.EveryFrame(this, "Nests", Nests.Tick);
-            Scheduler.Interval(this, "Ambush", 0.5f, Ambush.Tick, Phase.Update, true);
-            Scheduler.EveryFrame(this, "DogBite", DogBite.Tick);
-            Scheduler.Interval(this, "Aim.Sweep", 10f, Aim.Sweep);
-            InitGunplayJobs();                             // "WeaponRanges.Sweep"
-
-
-            InitCoreShout();                               // [Keys] Shout
-
-            // (WW) POI navigation: setup mode + bake queue, link traversals, the data view and its editor
-            InitToolsPoiNavSetup();                        // "PoiNav.Setup"
-            Scheduler.Sliced(this, "PoiNav.Build", 500, PoiNav.BuildStep);
-            Scheduler.EveryFrame(this, "PoiNav.Traverse", PoiNavTraverse.Tick, Phase.EarlyFixedUpdate);
-            // (A3) the runtime walker sweep ran inside the "PoiNav.View" job (Tools); now its own NPCAI job, registered right before it
-            Scheduler.EveryFrame(this, "PoiNav.Walkers", PoiNav.WalkerTick);
-            InitToolsPoiNavEditor();                       // "PoiNav.View", "PoiNav.Editor", "PoiNav.EditorCamera", "PoiNav.EditorGui", editor key
-
-            Running = true;
-            Log.LogInfo("NPC Overhaul 1.9.15 port started");
-        }
-
+        /// <summary>Stops the remaining parts (Tools editor first, then Women of Wasteland, then the emptied parts).</summary>
         public override void Shutdown()
         {
-            // first: every handler / On property sees the module off (FSM events sent below re-enter our hooks synchronously)
-            Running = false;
-
-            if (_subscribed)
-            {
-                Services.CrewBailedOut -= OnCrewBailedOut;
-                Services.VehicleExploded -= OnVehicleExploded;
-                SaveBus.StateChanged -= Senses.OnSaveLoadState;
-                _subscribed = false;
-            }
-            if (Services.Npc is NpcApi) Services.Npc = null;
-            Step("POI navigation", PoiNavShutdown);
+            Step("POI navigation tools", ShutdownToolsStep);
             ShutdownPresentationWomen();
-            // hand every NPC back to the game, in reverse dependency order
-            Step("Pounce", Pounce.Shutdown);
-            Step("Burrow", Burrow.Shutdown);
-            Step("DogBite", DogBite.Shutdown);          // + DogAnimations + Dog Companion drivers
-            Step("Nests", Nests.Shutdown);
-            Step("Webs", Webs.Shutdown);
-            Step("Passthrough", Passthrough.Shutdown);
-            Step("Idle", Idle.Shutdown);
-            Step("Brain", Brain.Shutdown);
             ShutdownCompatibility();
-            Step("Aim", Aim.Shutdown);
             ShutdownGunplay();
-            Step("Senses", Senses.Shutdown);
             ResetAll();
-
             Instance = null;
         }
 
-        /// <summary>The "POI navigation" shutdown step: the Tools part (editor, view, setup) then the runtime graph.</summary>
-        static void PoiNavShutdown() { ShutdownTools(); PoiNav.Reset(); }
+        /// <summary>The "POI navigation tools" shutdown step (editor, view, setup).</summary>
+        static void ShutdownToolsStep() { ShutdownTools(); }
 
-        /// <summary>Runs one shutdown step; an exception is logged and the next step still runs.</summary>
+        /// <summary>Runs one shutdown step; an exception is logged and the next step still runs (also used by the Presentation part).</summary>
         static void Step(string what, Action a)
         {
-            try { a(); } catch (Exception e) { Core.Log.Error("[NPC] shutdown " + what, e); }
+            try { a(); } catch (Exception e) { Core.Log.Error(Instance, "shutdown " + what, e); }
         }
 
-        /// <summary>Clears every registry / cache (the old Plugin.SceneLoaded chain). Init and Shutdown call it too.</summary>
-        static void ResetAll()
-        {
-            ResetCompatibility();
-            Aim.OnSceneLoaded(); ResetGunplay(); Brain.OnSceneLoaded(); Senses.OnSceneLoaded(); Nav.OnSceneLoaded(); Idle.OnSceneLoaded();
-            Passthrough.OnSceneLoaded(); Burrow.OnSceneLoaded(); Pounce.OnSceneLoaded(); Webs.OnSceneLoaded(); Nests.OnSceneLoaded(); Ambush.OnSceneLoaded(); DogBite.OnSceneLoaded();
-            ResetTools(); PoiNav.Reset();
-        }
+        /// <summary>Clears the remaining parts' caches (Init, Shutdown, scene load).</summary>
+        static void ResetAll() { ResetCompatibility(); ResetGunplay(); ResetTools(); }
 
-        /// <summary>Scene load: every registry reset, then the Presentation (Gungirl) caches.</summary>
+        /// <summary>Scene load: caches reset, then the Presentation (Gungirl) caches.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { ResetAll(); SceneLoadedPresentation(); }
         /// <summary>World ready: the Presentation (Gungirl) world scan starts.</summary>
         public override void OnWorldReady() { WorldReadyPresentation(); }
-        /// <summary>A save starts loading: the Compatibility (Weapons Pack) state is reset.</summary>
+        /// <summary>A save starts loading: the Compatibility part is reset.</summary>
         public override void OnLoadBegin(string slot) { LoadBeginCompatibility(); }
+        /// <summary>Floating origin: the Tools part's cached positions.</summary>
+        public override void OnOriginShift(Vector3 delta) { ShiftTools(delta); }
 
-        // ------------------------------------------------------------------ floating origin
-        // The game's FloatingOrigin moves the root objects of every loaded scene by delta (not DontDestroyOnLoad). NPCAI kept scene-space
-        // positions across frames; they are translated here (plain Vector3 / Bounds / float data) or dropped where a rebuild is cheap
-        // (route caches). See notes/port-NPC.md "Origin shift".
-        public override void OnOriginShift(Vector3 delta)
-        {
-            Step("Senses.Shift", () => Senses.Shift(delta));
-            Step("Nav.Shift", () => Nav.Shift(delta));
-            Step("Brain.Shift", () => Brain.Shift(delta));
-            Step("Idle.Shift", () => Idle.Shift(delta));
-            Step("Burrow.Shift", () => Burrow.Shift(delta));
-            Step("Pounce.Shift", () => Pounce.Shift(delta));
-            Step("Nests.Shift", () => Nests.Shift(delta));
-            Step("Webs.Shift", () => Webs.Shift(delta));
-            Step("PoiNav.Shift", () => { PoiNav.Shift(delta); ShiftTools(delta); });
-        }
-
-        // ------------------------------------------------------------------ Patrols events (ex Apocapatrol postfixes)
-        static void OnCrewBailedOut(GameObject car, GameObject pax, GameObject npc) { if (Running) Senses.AfterBailOut(car, pax, npc); }
-        static void OnVehicleExploded(GameObject car) { if (Running) Senses.AfterBlast(car); }
-
-        // ------------------------------------------------------------------ Harmony
-        /// <summary>Core.Hooks subscriptions; per dispatcher the subscriber order is the old one (target parts are called so it stays).</summary>
-        void InstallHooks()
-        {
-            InstallHooksGunplay();     // SetFsmFloat (VanillaEvents.AfterDamage before DogBite), Raycast.OnEnter, the NPC burst ray prefix + finalizer
-            // SendEvent.OnEnter: Brain (Animal_Run while holding / Animal_rotateRandom) then Aim (Activate = the burst) - NPCAI's patch order
-            Hooks.SendEventEnter.Prefix(this, Brain.BeforeSendEvent);
-            Hooks.SendEventEnter.Prefix(this, Aim.BeforeSendEvent);
-            // SetVelocity.DoSetVelocity: Brain (the pedal; registers NPCs) then DogAnimations (held / dashing dogs; only with the bundle, see DogAnimations.Initialize)
-            Hooks.SetVelocityDo.Prefix(this, Brain.BeforeSetVelocity);
-            // CreateObject.OnEnter postfixes: Senses (structures, pending rigs, blasts), Idle (camp spawn points); Pounce + Weapons Pack below
-            Hooks.CreateObjectEnter.Postfix(this, Senses.AfterCreateObject);
-            Hooks.CreateObjectEnter.Postfix(this, Idle.AfterCreateObject);
-            // SetFsmFloat.OnEnter postfixes: vanilla hits -> Senses.Hurt (Gunplay part, subscribed first), then a real dog bite -> DogBite's lunge
-            Hooks.SetFsmFloatEnter.Postfix(this, DogBite.AfterSetFsmFloat);
-            // Raycast: DoRaycast = the Attack FSM's bumper rays (Brain), OnEnter = the player's vanilla shot (VanillaEvents, Gunplay part)
-            Hooks.RaycastDo.Prefix(this, Brain.BeforeRaycast);
-            Hooks.SmoothLookAtDo.Prefix(this, Brain.BeforeSmoothLookAt);
-            Hooks.ProcessEvent.Prefix(this, Brain.BeforeDrivingHide);
-            Hooks.ActivateGameObjectEnter.Postfix(this, Brain.AfterActivate);
-            // SensorToolkit: the Detection FSM (registers agents), the burst LOS, the NPC burst ray (prefix + finalizer restores the ray length)
-            Hooks.SensorDetectionsDo.Prefix(this, Senses.BeforeGetDetections);
-            Hooks.LosEnter3D.Prefix(this, Senses.BeforeLosResult);
-            Hooks.LosUpdate3D.Prefix(this, Senses.BeforeLosResult);
-            InstallHooksPresentation();   // CreateObject postfix: Pounce's airborne carcass (after Senses / Idle)
-            InstallHooksCompatibility();  // CreateObject postfix: Weapons Pack chainsaw corpse (after Pounce)
-            InstallHooksCore();           // the shout modifier blocks the game's Kick / ShiftDown buttons
-        }
-
-        /// <summary>Module-only patches (targets no other module patches).</summary>
-        void InstallPatches()
-        {
-            // targets only NPC patches: module patches (listed in the F7 "Harmony patches" page)
-            Patch(typeof(Rotate), "DoRotate", typeof(Brain), "BeforeRotate", true);
-            Patch(typeof(LookAt), "DoLookAt", typeof(Brain), "BeforeLookAt", true);
-            Patch(typeof(AddForce), "DoAddForce", typeof(Brain), "BeforeAddForce", true);
-            InstallPatchesPresentation();   // AudioPlay.OnEnter -> Senses.BeforeAudioPlay (taunt audio)
-            Patch(typeof(RandomWait), "OnEnter", typeof(Aim), "BeforeRandomWait", true);
-            var multi = AccessTools.TypeByName("HutongGames.PlayMaker.Actions.ActivateGameObjects");      // optional (not in every PlayMaker build)
-            if (multi != null) Patch(multi, "OnEnter", typeof(Brain), "AfterActivate", false);
-        }
-
-        /// <summary>Patches target.method with patchType.patchMethod as a prefix or postfix through Core.Patches (recorded per module).</summary>
+        /// <summary>Patches target.method with patchType.patchMethod as a prefix or postfix through Core.Patches (used by the Presentation part).</summary>
         internal bool Patch(Type target, string method, Type patchType, string patchMethod, bool prefix)
         {
             var original = AccessTools.Method(target, method);
@@ -282,7 +164,7 @@ namespace WildWasteland.Modules.NPC
             return Core.Patches.Patch(this, original, prefix: prefix ? mi : null, postfix: prefix ? null : mi);
         }
 
-        // ------------------------------------------------------------------ F7
-        public override IEnumerable<ToolPage> ToolPages() { return NpcPages.Build(this); }
+        /// <summary>F7 pages of the remaining parts (NPC population, female appearance, POI pathfinding).</summary>
+        public override IEnumerable<ToolPage> ToolPages() { return NpcPages.BuildShell(this); }
     }
 }
