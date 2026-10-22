@@ -26,7 +26,6 @@ namespace WildWasteland.Modules.PlayerBody
         private static float _zoomK;
         private static bool _deathView;
         private static Quaternion _deathRotation;
-        private static bool _fovSet;
         private static GameObject _crosshair;
         public const float ZoomFov = 0.55f, ZoomDistance = 0.7f;
 
@@ -186,10 +185,10 @@ namespace WildWasteland.Modules.PlayerBody
             bool cullingWanted = On && !Peek && PlayerBodyModule.OcclusionPrototype.Value && (!Game.InCar || PlayerBodyModule.OcclusionInVehicle.Value);
             Cave.Tick(cullingWanted);
             if (!cullingWanted || Cave.Inside) OcclusionCutaway.Stop();
-            if (want && !_hooked) { Camera.onPreCull += PreCull; _hooked = true; }
+            if (want && !_hooked) { Core.CameraArbiter.AddView(PlayerBodyModule.Instance, "Presentation.ThirdPerson", 200, WriteView, true); Core.CameraArbiter.AddProjection(PlayerBodyModule.Instance, "Presentation.ThirdPerson", 200, WriteProjection); _hooked = true; }
             if (On && !Peek) HideViewModel();
             else if (_hidden.Count > 0) ShowViewModel();
-            if (!want && _hooked) { if (Game.Cam != null) { Game.Cam.ResetWorldToCameraMatrix(); Game.Cam.ResetCullingMatrix(); } Camera.onPreCull -= PreCull; _hooked = false; }
+            if (!want && _hooked) { if (Game.Cam != null) { Game.Cam.ResetWorldToCameraMatrix(); Game.Cam.ResetCullingMatrix(); } Core.CameraArbiter.Remove(PlayerBodyModule.Instance, "Presentation.ThirdPerson"); _hooked = false; }
         }
 
         // mouse wheel: closer / further, one distance on foot and one in cars, both kept in the config. Not while she carries an item
@@ -235,9 +234,8 @@ namespace WildWasteland.Modules.PlayerBody
         private static int _viewFrame = -1;
         private static Vector3 _vPos, _vEye; private static Quaternion _vRot = Quaternion.identity; private static float _vFov = 60f, _gameFov = 60f;
         private static Transform _vCar; private static bool _vCutaway;
-        private static bool _projSet; private static int _zoomLogs; private static Collider _xhairCol;
+        private static int _zoomLogs; private static Collider _xhairCol;
         private static string XhairWhat { get { return _xhairCol != null ? _xhairCol.name + " (layer " + _xhairCol.gameObject.layer + ")" : "nothing"; } } private static float _xhairDist;
-        private static bool _transparentProjection;
         public static Matrix4x4 Projection(Camera cam, float fov) { return Matrix4x4.Perspective(fov, cam.aspect, cam.nearClipPlane, cam.farClipPlane); }
         private static void ComputeView(Camera cam)
         {
@@ -252,7 +250,7 @@ namespace WildWasteland.Modules.PlayerBody
                 return;
             }
             _viewFrame = Time.frameCount;
-            if (!_fovSet) _gameFov = cam.fieldOfView;
+            _gameFov = cam.fieldOfView;
             bool dead = Game.Dead;
             if (dead && !_deathView) _deathRotation = HasView ? ViewRot : Quaternion.Euler(10f, t.eulerAngles.y, 0f);
             _deathView = dead;
@@ -316,54 +314,42 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         private static readonly RaycastHit[] _hits = new RaycastHit[128];
-        private static void PreCull(Camera cam)
+        /// <summary>Contributes the current body/traversal eye to Core's camera view channel.</summary>
+        private static bool WriteView(Camera cam, ref Matrix4x4 view)
         {
-            if (cam == null || cam != Game.Cam) return;
-            PreCullInner(cam);
-        }
-        private static void PreCullInner(Camera cam)
-        {
-            if (cam == null || cam != Game.Cam) return;
+            if (cam == null || cam != Game.Cam) return false;
+            if (Peek) { HasView = false; return false; }
             var t = cam.transform;
-            if (Peek) { HasView = false; cam.ResetWorldToCameraMatrix(); cam.ResetCullingMatrix(); return; }   // binoculars: the game's own view
             if (!On)
             {
-                Vector3 climbEye;
-                if (ModAPI.TryPlayerTraversalEye(out climbEye))
+                Vector3 eye;
+                if (!ModAPI.TryPlayerTraversalEye(out eye))
                 {
-                    cam.worldToCameraMatrix = Matrix4x4.Scale(new Vector3(1f, 1f, -1f))
-                        * Matrix4x4.TRS(climbEye, t.rotation, Vector3.one).inverse;
-                    cam.cullingMatrix = cam.projectionMatrix * cam.worldToCameraMatrix;
-                    return;
+                    if (!CarShift || Game.Player == null) return false;
+                    eye = CarShiftEye(t);
                 }
-                if (!CarShift || Game.Player == null) { cam.ResetWorldToCameraMatrix(); cam.ResetCullingMatrix(); return; }
-                // driving, first person: the eye a few cm forward along her (the seat's) facing, so her own head/chest don't fill the view
-                Vector3 p = CarShiftEye(t);
-                cam.worldToCameraMatrix = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(p, t.rotation, Vector3.one).inverse;
-                return;
+                view = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(eye, t.rotation, Vector3.one).inverse;
+                return true;
             }
-            // (2.1.9) the view is worked out ONCE per frame (ComputeView, also used by the dynamic crosshair in LateUpdate), so the crosshair is
-            // projected with exactly the view and field of view drawn - before, the zoomed FOV could be applied on top of an already zoomed one
             ComputeView(cam);
-            // (2.1.10) the zoom goes in as our own projection matrix - the very one the dynamic crosshair projects with - not through the
-            // camera's field of view (the right-click zoom's FOV didn't reach the picture, the crosshair assumed it did and drifted toward her)
-            if (Mathf.Abs(_vFov - _gameFov) > 1e-3f)
+            ViewFov = _vFov; ViewPos = _vPos; ViewRot = _vRot; HasView = true;
+            view = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(_vPos, _vRot, Vector3.one).inverse;
+            if (_vCutaway) OcclusionCutaway.Prepare(cam, _vPos, _vRot, _vCar);
+            return true;
+        }
+        /// <summary>Contributes the same zoom projection used to place the dynamic crosshair.</summary>
+        private static bool WriteProjection(Camera cam, ref Matrix4x4 projection)
+        {
+            if (cam == null || cam != Game.Cam || !On || Peek) return false;
+            ComputeView(cam);
+            if (Mathf.Abs(_vFov - _gameFov) <= 1e-3f) return false;
+            projection = Projection(cam, _vFov);
+            if (_zoomLogs < 3 && AimZoom && _zoomK >= 1f && Core.Log.L2)
             {
-                if (!_projSet) _transparentProjection = cam.useJitteredProjectionMatrixForTransparentRendering;
-                // Transparent fire must use this zoom projection too, rather than the game's non-jittered projection.
-                cam.useJitteredProjectionMatrixForTransparentRendering = true;
-                cam.projectionMatrix = Projection(cam, _vFov); _projSet = true;
-                if (_zoomLogs < 3 && AimZoom && _zoomK >= 1f) PlayerBodyModule.Info("Aim transparent projection: original=" + _transparentProjection + ", zoom projection=" + cam.useJitteredProjectionMatrixForTransparentRendering + ", raw m11=" + cam.nonJitteredProjectionMatrix.m11.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture) + ", zoom m11=" + cam.projectionMatrix.m11.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture));
-                if (_zoomLogs < 3 && AimZoom && _zoomK >= 1f) { _zoomLogs++; PlayerBodyModule.Info("Aim zoom check: game FOV " + _gameFov.ToString("0.0") + " -> view FOV " + _vFov.ToString("0.0") + ", camera FOV now " + cam.fieldOfView.ToString("0.0") + ", physical camera " + cam.usePhysicalProperties + ", crosshair on " + XhairWhat + " at " + _xhairDist.ToString("0.0") + " m, screen " + CrosshairScreen.ToString("F0")); }
+                _zoomLogs++;
+                Core.Log.Deep(PlayerBodyModule.Instance, "Aim zoom check: game FOV " + _gameFov.ToString("0.0") + " -> view FOV " + _vFov.ToString("0.0") + ", crosshair on " + XhairWhat + " at " + _xhairDist.ToString("0.0") + " m");
             }
-            else if (_projSet) { cam.useJitteredProjectionMatrixForTransparentRendering = _transparentProjection; cam.ResetProjectionMatrix(); _projSet = false; }
-            ViewFov = _vFov;
-            Vector3 pos = _vPos; var viewRot = _vRot; Transform car = _vCar; bool cutaway = _vCutaway;
-            ViewPos = pos; ViewRot = viewRot; HasView = true;
-            var view = Matrix4x4.TRS(pos, viewRot, Vector3.one).inverse;
-            cam.worldToCameraMatrix = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * view;
-            cam.cullingMatrix = cam.projectionMatrix * cam.worldToCameraMatrix;
-            if (cutaway) OcclusionCutaway.Prepare(cam, pos, viewRot, car);
+            return true;
         }
 
         // ------------------------------------------------------------ dynamic crosshair (1.7.1)
@@ -454,12 +440,8 @@ namespace WildWasteland.Modules.PlayerBody
 
         // after the frame is drawn: the camera's real view matrix back, so the game's MousePick / ScreenPointToRay (grab, use, enter the car,
         // vehicle parts, save points) cast from the first-person eye as always - not from the third-person view 2.4 m behind her
-        public static void EndOfFrame()
-        {
-            if (_hooked && Game.Cam != null) { Game.Cam.ResetWorldToCameraMatrix(); Game.Cam.ResetCullingMatrix(); }
-            if (_fovSet && Game.Cam != null) { Game.Cam.fieldOfView = _gameFov; _fovSet = false; }   // the game's own FOV back for the next frame
-            if (_projSet && Game.Cam != null) { Game.Cam.useJitteredProjectionMatrixForTransparentRendering = _transparentProjection; Game.Cam.ResetProjectionMatrix(); _projSet = false; }
-        }
+        /// <summary>Restores the real native eye before next-frame gameplay queries.</summary>
+        public static void EndOfFrame() { Core.CameraArbiter.Restore(PlayerBodyModule.Instance, "Presentation.ThirdPerson"); }
 
         private static void HideViewModel()
         {
@@ -494,10 +476,8 @@ namespace WildWasteland.Modules.PlayerBody
             OcclusionCutaway.Stop();
             On = false; Peek = false; Orbiting = false; _orbitOn = false; CarShift = false; HasView = false; AimZoom = false; _zoomK = 0f;
             _deathView = false;
-            if (_fovSet && Game.Cam != null) { Game.Cam.fieldOfView = _gameFov; _fovSet = false; }
-            if (_projSet && Game.Cam != null) { Game.Cam.useJitteredProjectionMatrixForTransparentRendering = _transparentProjection; Game.Cam.ResetProjectionMatrix(); _projSet = false; }
             ShowViewModel();
-            if (_hooked) { Camera.onPreCull -= PreCull; _hooked = false; if (Game.Cam != null) Game.Cam.ResetCullingMatrix(); }
+            if (_hooked) { Core.CameraArbiter.Remove(PlayerBodyModule.Instance, "Presentation.ThirdPerson"); _hooked = false; if (Game.Cam != null) Game.Cam.ResetCullingMatrix(); }
             if (Game.Cam != null) Game.Cam.ResetWorldToCameraMatrix();
         }
     }

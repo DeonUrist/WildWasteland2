@@ -74,6 +74,7 @@ namespace WildWasteland.Modules.HUD
 
         public override void Init()
         {
+            StandaloneNotices.Install(this);
             Instance = this;
             Dir = Assets.ModuleDir(Id);
             _running = true;

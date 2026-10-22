@@ -15,14 +15,14 @@ namespace WildWasteland.Modules.Patrols
         internal static float GetHealth(GameObject who)
         {
             if (who == null) return -1f;
-            var f = who.GetComponents<PlayMakerFSM>().FirstOrDefault(x => x.FsmName == "Health");
+            var f = Core.FsmUtil.Find(who, "Health");
             var h = f != null ? f.FsmVariables.GetFsmFloat("Health") : null;
             return h != null ? h.Value : -1f;
         }
 
         internal static void SetHealth(GameObject who, float value)
         {
-            var f = who.GetComponents<PlayMakerFSM>().FirstOrDefault(x => x.FsmName == "Health");
+            var f = Core.FsmUtil.Find(who, "Health");
             var h = f != null ? f.FsmVariables.GetFsmFloat("Health") : null;
             if (h != null) h.Value = value;
         }
@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.Patrols
 
         private static bool PlayerPose(out Vector3 p, out Vector3 fwd)
         {
-            var pl = PlayerRef.Player;
+            var pl = Core.PlayerState.Player;
             var cam = Core.GameRefs.MainCamera;
             if (pl == null && cam == null) { p = Vector3.zero; fwd = Vector3.forward; return false; }
             p = pl != null ? pl.transform.position : cam.transform.position;

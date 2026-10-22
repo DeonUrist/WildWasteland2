@@ -28,12 +28,12 @@ namespace WildWasteland.Core
             if (g == null || g.Variables == null || g.Variables.IntVariables == null) return null;
             FsmInt[] ints = g.Variables.IntVariables;
 
-            if (!listedGlobals)
+            if (!listedGlobals && Log.L2)
             {
                 listedGlobals = true;
                 var names = new List<string>();
                 for (int i = 0; i < ints.Length; i++) if (ints[i] != null) names.Add(ints[i].Name + "=" + ints[i].Value);
-                Log.Main(null, "PlayMaker global ints: " + string.Join(", ", names.ToArray()));
+                Log.Deep(null, "PlayMaker global ints: " + string.Join(", ", names.ToArray()));
             }
 
             if (configured.Length > 0)
@@ -55,8 +55,8 @@ namespace WildWasteland.Core
                     for (int i = 0; i < ints.Length; i++)
                         if (ints[i] != null && ints[i].Name != null && ints[i].Name.ToLowerInvariant().Contains(part[e])) { money = ints[i]; break; }
             }
-            if (money != null) Log.Main(null, "Using money variable: " + money.Name);
-            else Log.Warn(null, "Could not find the money variable among the PlayMaker globals (see the list above). Set MoneyVariable in the config.");
+            if (money != null && Log.L1) Log.Main(null, "Using money variable: " + money.Name);
+            else if (money == null) Log.Warn(null, "Could not find the money variable among the PlayMaker globals (enable level-2 diagnostics to list globals). Set MoneyVariable in the config.");
             return money;
         }
 

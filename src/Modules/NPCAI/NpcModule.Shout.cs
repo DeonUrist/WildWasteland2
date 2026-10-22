@@ -11,15 +11,14 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Registers [Keys] Shout (fires Senses.ShoutPressed when ShoutAllowed: module on and the modifier held).</summary>
         partial void InitCoreShout()
         {
-            Hotkeys.Register(this, ShoutKey, Senses.ShoutPressed, Senses.ShoutAllowed);
+            new PlayerShoutInput(this, ShoutKey, ShoutModifier, ShoutBlocksButtons, ShoutCooldown, PlayerShoutRange, () => Running);
+            Core.ModEvents.Subscribe<Core.Events.PlayerShout>(this, Senses.OnPlayerShout);
         }
 
         /// <summary>GetButtonDown / GetButton / GetButtonUp prefixes: the shout modifier blocks the game's Kick / ShiftDown buttons.</summary>
         partial void InstallHooksCore()
         {
-            Hooks.GetButtonDownUpdate.Prefix(this, Senses.BeforeGetButtonDown);
-            Hooks.GetButtonDo.Prefix(this, Senses.BeforeGetButton);
-            Hooks.GetButtonUpUpdate.Prefix(this, Senses.BeforeGetButtonUp);
+            // Input ownership and button guards are installed together by PlayerShoutInput.
         }
     }
 }

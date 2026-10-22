@@ -95,6 +95,8 @@ namespace WildWasteland
                 Core.ColorGrading.Init();
                 Core.ITweenGuard.Init();
                 Core.QuietFsm.Install();
+                Core.InventorySupplies.Install();
+                Core.VehicleLoadPlacement.Install();
                 Core.SessionIntegrations.InstallAll();
                 Core.UI.ToolWindow.Init();
                 SceneManager.sceneLoaded += OnSceneLoaded;
@@ -153,7 +155,7 @@ namespace WildWasteland
             Core.Entities.OnSceneLoaded();
             Core.Origin.Reset();
             Core.SceneLookup.Reset();
-            Core.ActorQuery.Reset();
+            Core.ActorQuery.Reset(); Core.Money.Reset(); Core.PlayerInventory.Reset(); Core.VehicleEngine.Reset(); Core.NativeFactionRelations.Reset();
             Core.ItemSpawner.ResetRegistrations();
             Core.SaveBus.OnSceneLoaded();
             Core.UI.EditorSession.CancelAll();

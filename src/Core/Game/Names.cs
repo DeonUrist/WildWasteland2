@@ -13,6 +13,10 @@ namespace WildWasteland.Core
     /// </summary>
     public static class Names
     {
+        static readonly System.Text.RegularExpressions.Regex InstanceSuffix = new System.Text.RegularExpressions.Regex(@"(\(Clone\)\d*|\s\(\d+\))+$");
+        /// <summary>Prefab label used by vehicle templates: removes trailing clone numbers and Unity numbered-copy suffixes, then trims.</summary>
+        public static string Prefab(string instance) { return InstanceSuffix.Replace(instance ?? "", "").Trim(); }
+
         /// <summary>The Unity instantiate suffix.</summary>
         public const string Clone = "(Clone)";
 
