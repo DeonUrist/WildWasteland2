@@ -15,6 +15,18 @@ namespace WildWasteland.Core
         /// <summary>Tracing master switch (set by the Debug module: "Trace hooks" or log level 2).</summary>
         public static bool On;
 
+        /// <summary>Local lifecycle markers consumed by Debug captures; the subscribing module owns its subscription lifetime.</summary>
+        public static event Action<string> Marked;
+
+        /// <summary>Publishes a lifecycle marker without creating a timing scope or enabling tracing.</summary>
+        public static void Mark(string tag)
+        {
+            var marked = Marked;
+            if (marked == null || string.IsNullOrEmpty(tag)) return;
+            try { marked(tag); }
+            catch (Exception e) { Log.Error(null, "Trace marker subscriber failed", e); }
+        }
+
         /// <summary>Accumulated timing of one registered scope.</summary>
         public sealed class Scope
         {

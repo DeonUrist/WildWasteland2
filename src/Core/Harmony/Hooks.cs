@@ -62,6 +62,17 @@ namespace WildWasteland.Core
         /// <summary>Every dispatcher, in declaration order (= summary order).</summary>
         public static IList<HookBase> All { get { return _all; } }
 
+        /// <summary>Resets dispatcher and subscriber counters without changing registrations or active patches.</summary>
+        public static void ResetStats()
+        {
+            var handlers = new List<HandlerStat>();
+            for (int i = 0; i < _all.Count; i++) { _all[i].Calls = 0; _all[i].Stats(handlers); }
+            for (int i = 0; i < handlers.Count; i++)
+            {
+                var stat = handlers[i]; stat.Calls = 0; stat.Ticks = 0; stat.Errors = 0;
+            }
+        }
+
         /// <summary>Base of every dispatcher: identity, patch class, counters and the table hooks.</summary>
         public abstract class HookBase
         {

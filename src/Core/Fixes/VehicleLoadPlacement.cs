@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace WildWasteland.Core
 {
-    // Native ES3 restores a seat parent, not the live InCar/Drive lifecycle. Hand control back on clear ground.
+    /// <summary>Restores native seated saves onto safe standing ground before the shared load handoff opens.</summary>
     internal static class VehicleLoadPlacement
     {
         static bool _loading, _seated, _collisions;
@@ -16,10 +16,11 @@ namespace WildWasteland.Core
         static float _retry;
         static readonly List<Rigidbody> Bodies = new List<Rigidbody>();
         static readonly List<Collider> Colliders = new List<Collider>();
+        /// <summary>Observes load state and joins the common handoff barrier.</summary>
         internal static void Install()
         {
             SaveBus.StateChanged += StateChanged;
-            Hooks.WaitUpdate.Prefix(null, BeforeHandoff);
+            LoadingProgress.RegisterHold(null, "Player vehicle placement", ReadyForHandoff);
         }
         static void StateChanged(string previous, string current)
         {
@@ -49,9 +50,10 @@ namespace WildWasteland.Core
             if (action.value.intValue > 0) { _seated = true; action.value.SetValue(0); }
             Loaded();
         }
-        static bool BeforeHandoff(Wait action)
+        /// <summary>Parks a restored vehicle and releases the player only after valid main-terrain standing clearance exists.</summary>
+        static bool ReadyForHandoff()
         {
-            if (!_loading || !_seated || action.State.Name != "Wait for Terrain Gen" || action.Fsm.Name != "SaveLoadGame") return true;
+            if (!_loading || !_seated) return true;
             if (Time.unscaledTime < _retry) return false;
             _retry = Time.unscaledTime + .25f; Loaded();
             var player = GameRefs.Player;
