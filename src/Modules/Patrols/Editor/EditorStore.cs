@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace WildWasteland.Modules.Patrols
 {
-    internal static class EditorStore
+    internal static partial class EditorStore
     {
         internal static EditorData Data;
         internal static string Root, StatePath;
@@ -25,60 +25,16 @@ namespace WildWasteland.Modules.Patrols
             Root = Path.GetFullPath(root); StatePath = Path.Combine(Root, "PatrolsAndLoot.json");
             Directory.CreateDirectory(Root);
             Data = Defaults();
-            if (!File.Exists(StatePath)) { Save();File.WriteAllText(Path.Combine(Root,".coyote-traffic-v1"),"1");File.WriteAllText(Path.Combine(Root,".merchant-traffic-v1"),"1"); return; }
+            if (!File.Exists(StatePath)) { Save(); return; }
             try { Data = EditorData.FromJson(File.ReadAllText(StatePath)); }
             catch (Exception e)
             {
                 File.Copy(StatePath, UniquePath(Root, "PatrolsAndLoot.invalid-" + DateTime.Now.ToString("yyyyMMddHHmmss"), ".json"));
                 Core.Log.Warn("[Patrols] " + "Editor settings invalid; preserved a copy and loaded defaults: " + e.Message);
             }
-            // Upgrade old all-Scrapyard presets once. A deliberately removed/disabled group stays removed.
-            if(!File.Exists(Path.Combine(Root,".coyote-traffic-v1")))
-            {if(!Data.Patrols.Any(g=>g.Id=="coyote-patrol")){Data.Patrols.Add(CoyoteGroup());Save();}File.WriteAllText(Path.Combine(Root,".coyote-traffic-v1"),"1");}
-            // Give existing merchant setups a roster for each native type once; later deletions stay deleted.
-            if(!File.Exists(Path.Combine(Root,".merchant-traffic-v1")))
-            {
-                if(Data.Merchants.Count>0){foreach(var group in MerchantCatalog.DefaultGroups())if(!Data.Merchants.Any(g=>MerchantCatalog.Selected(g.MerchantTypes)==MerchantCatalog.Selected(group.MerchantTypes))){while(Data.Merchants.Any(g=>g.Id==group.Id))group.Id+="-new";Data.Merchants.Add(group);}Save();}
-                File.WriteAllText(Path.Combine(Root,".merchant-traffic-v1"),"1");
-            }
         }
-        internal static SpawnGroup CoyoteGroup()=>new SpawnGroup{Id="coyote-patrol",Name="Coyote patrol",Faction="Coyotes",Chance=10,Templates=new List<string>{"Coyote_PipeRat","Coyote_PipeRat","Coyote_Bike"}};
 
         internal static void Save() { AtomicWrite(StatePath, Data.ToJson()); }
-        internal static void AtomicWrite(string path, string text)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
-            string temp = path + ".tmp";
-            File.WriteAllText(temp, text);
-            if (File.Exists(path)) File.Replace(temp, path, null);
-            else File.Move(temp, path);
-        }
-        internal static string UniquePath(string dir, string stem, string extension)
-        {
-            stem = SafeName(stem);
-            if (stem.Length == 0) throw new ArgumentException("Empty filename");
-            string path = SafePath(dir, stem + extension);
-            for (int i = 1; File.Exists(path); i++) path = SafePath(dir, stem + "_" + i + extension);
-            return path;
-        }
-        internal static string SafeName(string name) { return new string((name ?? "").Trim().Select(c => char.IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_').ToArray()); }
-        internal static string SafePath(string dir, string name)
-        {
-            string root = Path.GetFullPath(dir).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-            string path = Path.GetFullPath(Path.Combine(root, name));
-            if (!path.StartsWith(root, StringComparison.OrdinalIgnoreCase) || Path.GetFileName(name) != name) throw new ArgumentException("Path outside template folder");
-            return path;
-        }
-        internal static LootProfile Loot(bool truck, string id) { return (truck ? Data.TruckLoot : Data.CarLoot).FirstOrDefault(p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase)); }
-        internal static LootProfile RollTruckLoot(Func<double> random, IEnumerable<string> allowed = null)
-        {
-            var filter = allowed != null ? new HashSet<string>(allowed, StringComparer.OrdinalIgnoreCase) : null;
-            var eligible = Data.TruckLoot.Where(p => p.SpawnChance > 0 && (filter == null || filter.Contains(p.Id))).ToList(); double total = eligible.Sum(p => (double)p.SpawnChance);
-            if (total <= 0) return null;
-            double roll = Math.Min(.999999999999, Math.Max(0, random())) * total;
-            foreach (var p in eligible) { roll -= p.SpawnChance; if (roll < 0) return p; }
-            return eligible.LastOrDefault();
-        }
 
         // avoid = the group id of the previous spawn: left out of the roll when at least one other group of that list is eligible
         internal static SpawnGroup Roll(float km, int bosses, float patrolPercent, Func<double> random, out bool convoy, string avoid = null)
@@ -135,11 +91,6 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
-        internal static string CargoTexture(Dictionary<string, int> items, string hint)
-        {
-            return string.IsNullOrWhiteSpace(hint) ? "none" : hint;
-
-        }
 
         internal static void Reset(bool recycleCustom)
         {

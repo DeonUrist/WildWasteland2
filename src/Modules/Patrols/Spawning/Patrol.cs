@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.Patrols
     // Runner on the hidden plugin object: the car builder (template spawner + convoy), the in-game check, the persistence tick.
     internal class Patrol : MonoBehaviour
     {
-        internal static void ResetForScene() { BuildQueue.Reset(); VehicleBuildCache.Reset(); PatrolLoadPreparation.Reset(); Prefabs.Invalidate(); Register.Invalidate(); MeleeWheels.Reset(); DayLight.Reset(); _lightState = -1; SceneGen++; WorldTraffic.ResetForScene(); }
+        internal static void ResetForScene() { BuildQueue.Reset(); VehicleBuildCache.Reset(); PatrolLoadPreparation.Reset(); Prefabs.Invalidate(); Register.Invalidate(); DayLight.Reset(); _lightState = -1; SceneGen++; WorldTraffic.ResetForScene(); }
 
         // bumped on every scene load: a build or a convoy that waited through a load does not continue in the new world
         internal static int SceneGen;
@@ -24,7 +24,6 @@ namespace WildWasteland.Modules.Patrols
             if (!InGame()) return;
             Ram.Tick();
             ExitSpeed.Tick();
-            MeleeWheels.Tick();
             if (Time.unscaledTime >= _nextLights) { _nextLights = Time.unscaledTime + 5f; LightsTick(); }
             if (Time.unscaledTime >= _nextPrune) { _nextPrune = Time.unscaledTime + 30f; PruneIgnoreSignatures(); }
         }

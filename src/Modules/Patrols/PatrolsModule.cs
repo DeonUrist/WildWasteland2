@@ -93,14 +93,11 @@ namespace WildWasteland.Modules.Patrols
             Instance = this;
             DataDir = Dir;
             try { Directory.CreateDirectory(DataDir); } catch (Exception e) { Log.Warn("[Patrols] data folder: " + e.Message); }
-            MigrateData();
 
-            // sidecars: BepInEx\config\WildWasteland\Patrols\Saves (+ the old BepInEx\config\Apocapatrol\Saves as a read fallback), road cache
+            // sidecars: BepInEx\config\WildWasteland\Patrols\Saves, road cache
             var cfgDir = Assets.ModuleConfigDir(Id);
             PatrolPersistence.SavesDir = Path.Combine(cfgDir, "Saves");
-            PatrolPersistence.LegacySavesDir = Path.Combine(Path.Combine(Paths.ConfigPath, "Apocapatrol"), "Saves");
             TrafficRoads.CacheDir = Path.Combine(cfgDir, "roads");
-            TrafficRoads.LegacyCacheDir = Path.Combine(Paths.ConfigPath, "Apocapatrol.roads");
 
             // hooks (Core dispatchers) and module patches, each in its own try like the old Awake
             Try("Traffic roads", TrafficRoads.Install);

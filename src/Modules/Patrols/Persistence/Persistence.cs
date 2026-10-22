@@ -210,7 +210,7 @@ namespace WildWasteland.Modules.Patrols
         private static bool _quitHooked;
 
         // WW: the module's sidecar folder (BepInEx\config\WildWasteland\Patrols\Saves); the standalone mod's folder is read as a fallback
-        internal static string SavesDir, LegacySavesDir;
+        internal static string SavesDir;
         internal static MonoBehaviour Runner;   // the Patrol runner component: restores run as its coroutines
 
         // WW: every frame from the Patrol runner (was the whole SaveLoadGame watcher; the state changes now come from Core.SaveBus)
@@ -519,8 +519,7 @@ namespace WildWasteland.Modules.Patrols
             embedded = false;
             string path;
             if (!TryPath(slot, out path)) return null;
-            string legacy = LegacySavesDir != null ? Path.Combine(LegacySavesDir, Path.GetFileName(path)) : path;
-            foreach (string candidate in new[] { path, path + ".bak", legacy, legacy + ".bak" })
+            foreach (string candidate in new[] { path, path + ".bak" })
             {
                 try
                 {
