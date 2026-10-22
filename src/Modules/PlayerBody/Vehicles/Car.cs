@@ -5,6 +5,7 @@ using System.Text;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.UI;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {

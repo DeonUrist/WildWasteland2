@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Rendering;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {

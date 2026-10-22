@@ -6,6 +6,7 @@ using System.Text;
 using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {

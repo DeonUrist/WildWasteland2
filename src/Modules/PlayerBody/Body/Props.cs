@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {

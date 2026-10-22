@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -34,7 +35,7 @@ namespace WildWasteland.Modules.PlayerBody
             _tried = true;
             string path = PlayerBodyModule.ModPath(PlayerBodyModule.BodyModelFile);
             SkinModel model;
-            try { model = Gltf.Load(path); }
+            try { model = Gltf.Load(path, "PlayerBody"); }
             catch (Exception e) { PlayerBodyModule.Error("Model " + path + " could not be read: " + e.Message); return false; }
 
             var bones = smr.bones;

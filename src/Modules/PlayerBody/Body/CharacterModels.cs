@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.PlayerBody
             Mesh mesh;
             if (!CharacterMeshes.TryGetValue(choice, out mesh) || mesh == null)
             {
-                var model = Gltf.Load(modelPath);
+                var model = Gltf.Load(modelPath, "PlayerBody");
                 var bones = skin.bones; var names = new string[bones.Length]; int root = 0;
                 for (int i = 0; i < bones.Length; i++) { names[i] = bones[i] != null ? bones[i].name : null; if (bones[i] == skin.rootBone) root = i; }
                 int[] indices; float[] weights; List<string> missing; Gltf.Weights(model, names, root, out indices, out weights, out missing);

@@ -6,6 +6,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {
