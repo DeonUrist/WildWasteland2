@@ -78,7 +78,7 @@ namespace WildWasteland
                 EnableDebug = Core.TunedSettings.Bind(Main, "General", "Enable Debug", false,
                     "Show Debug in Wild Wasteland settings: logging, switches, patrol editor access and the optional Developer menu.");
 
-                RegisterModules();
+                Core.ModuleRegistry.RegisterAll();
                 Core.ModuleHost.BindAll(Settings, Tools);
 
                 VerboseLog = Core.TunedSettings.Bind(Settings, "Debug", "VerboseLog", false, "Detailed info logging for every module (off for normal play).");
@@ -107,7 +107,7 @@ namespace WildWasteland
                 SceneManager.sceneLoaded += OnSceneLoaded;
 
                 // Reset audio before any module creates clips.
-                var audioVoices = Modules.Patrols.PatrolsModule.AudioVoices;
+                var audioVoices = Core.ModuleRegistry.AudioVoicesSetting();
                 if (audioVoices != null) ApplyAudioVoices(audioVoices.Value);
                 Core.ModuleHost.StartAll();
                 Core.Log.Always(Core.ModuleHost.Summary());
@@ -128,24 +128,6 @@ namespace WildWasteland
 
         /// <summary>SettingChanged handler of both log entries: re-applies the level live.</summary>
         static void OnLogSettingChanged(object sender, EventArgs args) { ApplyLogLevel(); }
-
-        /// <summary>Module order = init order = config display order. Providers before consumers.</summary>
-        static void RegisterModules()
-        {
-            Core.ModuleHost.Add(new Modules.PlayerBody.PlayerBodyModule());
-            Core.ModuleHost.Add(new Modules.NPC.NpcModule());
-            Core.ModuleHost.Add(new Modules.Guns.GunsModule());
-            Core.ModuleHost.Add(new Modules.HUD.HudModule());
-            Core.ModuleHost.Add(new Modules.CleanHUD.CleanHudModule());
-            Core.ModuleHost.Add(new Modules.Patrols.PatrolsModule());
-            Core.ModuleHost.Add(new Modules.POI.PoiModule());
-            Core.ModuleHost.Add(new Modules.Weather.WeatherModule());
-            Core.ModuleHost.Add(new Modules.Quests.QuestsModule());
-            Core.ModuleHost.Add(new Modules.EngineSimCompat.EngineSimCompatModule());
-            Core.ModuleHost.Add(new Modules.Survival.SurvivalModule());
-            Core.ModuleHost.Add(new Modules.Towns.TownsModule());
-            Core.ModuleHost.Add(new Modules.Performance.PerformanceModule());   // last: its PlayMaker hooks run after every gameplay module's
-        }
 
         static void ApplyAudioVoices(int want)
         {
