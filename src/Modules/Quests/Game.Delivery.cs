@@ -152,11 +152,6 @@ namespace WildWasteland.Modules.Quests
             return made;
         }
 
-
-
-
-
-
         internal static void ResetWorld()
         {
             dayFsm = null; ammoFsm = null; money = null;

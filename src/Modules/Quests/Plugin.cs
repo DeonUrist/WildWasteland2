@@ -75,7 +75,6 @@ namespace WildWasteland.Modules.Quests
 
         // ------------------------------------------------------------------
 
-
         void ApplyTakeoverSettings()
         {
             Takeover.SpawnDistance = takeoverSpawnDist.Value;
@@ -133,8 +132,6 @@ namespace WildWasteland.Modules.Quests
             return null;
         }
 
-
-
         // ------------------------------------------------------------------
         // Per-frame work
         // ------------------------------------------------------------------
@@ -153,8 +150,6 @@ namespace WildWasteland.Modules.Quests
                     Action a = deferred.Dequeue();
                     try { a(); } catch (Exception e) { LogOnce("action", e); }
                 }
-
-                try { Hire.EarlyTeach(); } catch (Exception e) { LogOnce("HireTeach", e); }   // before any Apocapatrol crew spawns
 
                 if (!ready) return;
                 float dt = Time.deltaTime;                    // stops while paused
@@ -215,11 +210,6 @@ namespace WildWasteland.Modules.Quests
             Transform pl = Game.Player();
             if (pl == null) return;
             Vector3 pp = pl.position;
-
-
-
-
-
 
             Quest[] snapshot = book.Active.ToArray();
             double nowH = Game.GameHours();
@@ -2067,8 +2057,6 @@ namespace WildWasteland.Modules.Quests
             MapLink.Reset();
             Hire.Reset();
         }
-
-
 
         bool ResolveEs3()
         {

@@ -27,8 +27,6 @@ namespace WildWasteland.Modules.Quests
         public static Action<string> Log = delegate { };
         public static bool PatrolAtCamp = true;     // [Takeover] PatrolAtCamp: walk around the camp after arriving
 
-
-
         // one line per walker for the F7 dump: where it is, how far from the camp and the player
         public static List<string> DescribeWalkers(Vector3 playerWorld)
         {
@@ -43,7 +41,6 @@ namespace WildWasteland.Modules.Quests
             }
             return res;
         }
-
 
         // ---- choosing and describing the target -----------------------------------------------
 
@@ -134,7 +131,6 @@ namespace WildWasteland.Modules.Quests
             return SpawnGroup(winner, campWorld, Game.Rel(campWorld), rng, campKey);
         }
 
-
         // ---- a garrison for the new owner -----------------------------------------------------------
         public static int GarrisonSize = 4;
         public static float GarrisonTrigger = 500f;
@@ -142,7 +138,6 @@ namespace WildWasteland.Modules.Quests
         public static Dictionary<string, long> Stamps;      // shared with the quest book (saved): "camp:<key>" -> game hours * 1000
         static readonly System.Random prng = new System.Random();
         static bool warnedNoNames;
-
 
         // ---- quest givers come back ------------------------------------------------------------------
 
