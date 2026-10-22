@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.Patrols
         internal static IPreparedVehicle Require(CarTemplate t,string bumper,bool trailer)
         {
             var api=ModApi.Get<IVehicleAssembly>(); if(api==null)throw new System.InvalidOperationException("Vehicles assembly provider is unavailable");
-            var s=new VehicleStructure { Name=t.Name,Body=t.Body,Wheel=t.Wheel,RearWheel=t.RearWheel,Engine=t.Engine,Radiator=t.Radiator,SteeringWheel=t.SteeringWheel,Exhaust=t.Exhaust,Seat=t.Seat,PassengerSeat=t.PassengerSeat,Parts=t.Parts };
+            var s=new VehicleStructure { Name=t.Name,Body=t.Body,Wheel=t.Wheel,RearWheel=t.RearWheel,Engine=t.Engine,Radiator=t.Radiator,SteeringWheel=t.SteeringWheel,Exhaust=t.Exhaust,Seat=t.Seat,PassengerSeat=t.PassengerSeat,Parts=CopyParts(t.Parts) };
             s.Prefabs["|"+t.Body]=Prefabs.Exact(t.Body);
             if(t.Parts!=null)foreach(var part in t.Parts)s.Prefabs["|"+part.prefab]=Prefabs.Exact(part.prefab);
             string[] names={t.Wheel,t.RearWheel,t.Engine,t.Radiator,t.SteeringWheel,t.Exhaust,t.Seat,t.PassengerSeat,"Headlight"};
@@ -19,6 +19,13 @@ namespace WildWasteland.Modules.Patrols
             s.Prefabs["bumper|"+bumper]=Prefabs.FindAny(bumper);
             return api.Require(s,bumper,trailer);
         }
+        /// <summary>Detaches every authored part and pose array before sliced mechanical preparation observes it.</summary>
+        private static TemplatePart[] CopyParts(TemplatePart[] parts)
+        {
+            if(parts==null)return null;var copy=new TemplatePart[parts.Length];for(int i=0;i<parts.Length;i++){var p=parts[i];copy[i]=new TemplatePart {parent=p.parent,hinge=p.hinge,prefab=p.prefab,hingePos=Copy(p.hingePos),hingeRot=Copy(p.hingeRot),pos=Copy(p.pos),rot=Copy(p.rot)};}return copy;
+        }
+        /// <summary>Detaches authored pose coordinates from mutable editor arrays.</summary>
+        private static float[] Copy(float[] values) {return values!=null?(float[])values.Clone():null;}
         /// <summary>Consumes the exact preprocessed dormant instance through its owning provider.</summary>
         internal static GameObject Spawn(IPreparedVehicle entry,Vector3 position,Quaternion rotation) { return ModApi.Get<IVehicleAssembly>().Consume(entry,position,rotation); }
         /// <summary>Warms every available authored structural variant, including trailer variants.</summary>

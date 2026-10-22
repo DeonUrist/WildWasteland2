@@ -3,10 +3,10 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Core
 {
     // Native IFileOperation avoids managed COM wrappers (Unity/Mono). RECYCLEONDELETE never falls back to File.Delete.
-    internal static class ShellRecycle
+    public static class ShellRecycle
     {
         [DllImport("ole32.dll")] private static extern int CoInitializeEx(IntPtr reserved, uint flags);
         [DllImport("ole32.dll")] private static extern void CoUninitialize();
@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.Patrols
             return (T)(object)Marshal.GetDelegateForFunctionPointer(method, typeof(T));
         }
         private static void Check(int result) { if (result < 0) Marshal.ThrowExceptionForHR(result); }
-        internal static void Move(string path)
+        public static void Move(string path)
         {
             string file = Path.GetFullPath(path); Exception failure = null;
             var thread = new Thread(() =>

@@ -2,19 +2,21 @@ using System;
 using Den.Tools.Matrices;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Core
 {
     /// <summary>
     /// Foot long-route planner over an ElevationGrid (worker thread); NPCAI foot planning (Wave A split of Patrols Traffic/TrafficElevation.cs).
     /// </summary>
     internal static class TerrainWaypoints
     {
+        /// <summary>Measures horizontal distances from numeric route snapshots.</summary>
+        private static float FlatDistance(Vector3 a,Vector3 b) {float x=a.x-b.x,z=a.z-b.z;return Mathf.Sqrt(x*x+z*z);}
         private static readonly float[] Sides={-1400f,-1000f,-650f,-350f,-150f,0f,150f,350f,650f,1000f,1400f};
-        /// <summary>Long foot route from a to b over the elevation grids: a dynamic-programming pick among lateral offsets and road hints per step (slopes, climbs and blocked boxes cost); falls back to RoadPlanner.Build without grids or route. roads flags the points taken from road hints.</summary>
-        internal static Vector3[] Build(Vector3 a,Vector3 b,Vector3[][] hints,Bounds[] blocks,float influence,int seed,ElevationGrid[] grids,out bool[] roads)   // refs-ok: REFACTOR-REQUEST B08-3
+        /// <summary>Long foot route from a to b over the elevation grids: a dynamic-programming pick among lateral offsets and road hints per step (slopes, climbs and blocked boxes cost); falls back to RouteGeometry.Build without grids or route. roads flags the points taken from road hints.</summary>
+        internal static Vector3[] Build(Vector3 a,Vector3 b,Vector3[][] hints,Bounds[] blocks,float influence,int seed,ElevationGrid[] grids,out bool[] roads)
         {
-            if(grids.Length==0)return RoadPlanner.Build(a,b,hints,blocks,influence,seed,out roads);   // refs-ok: REFACTOR-REQUEST B08-3
-            float length=TrafficLocations.FlatDistance(a,b);int steps=Mathf.Clamp(Mathf.CeilToInt(length/350f),6,16);
+            if(grids.Length==0)return RouteGeometry.Build(a,b,hints,blocks,influence,seed,out roads);
+            float length=FlatDistance(a,b);int steps=Mathf.Clamp(Mathf.CeilToInt(length/350f),6,16);
             var forward=b-a;forward.y=0f;forward.Normalize();var right=Vector3.Cross(Vector3.up,forward);
             const int choices=12;
             var points=new Vector3[steps+1,choices];var valid=new bool[steps+1,choices];var onRoad=new bool[steps+1,choices];
@@ -26,18 +28,18 @@ namespace WildWasteland.Modules.Patrols
                 for(int j=0;j<Sides.Length;j++)
                 {
                     var p=center+right*(Sides[j]*Mathf.Min(1f,length/1600f));
-                    if(ElevationGrid.Sample(grids,p,out float height,out _))p.y=height;   // refs-ok: REFACTOR-REQUEST B08-3
+                    if(ElevationGrid.Sample(grids,p,out float height,out _))p.y=height;
                     points[i,j]=p;valid[i,j]=!Inside(blocks,p);
                 }
                 float best=influence*influence;Vector3 nearest=center;bool found=false;
                 foreach(var tile in hints)foreach(var p in tile)
                 {
                     if(Mathf.Abs(Vector3.Dot(p-a,forward)-length*t)>length/steps*0.7f)continue;
-                    float distance=TrafficLocations.FlatDistance(p,center);if(distance*distance>=best||Inside(blocks,p))continue;
+                    float distance=FlatDistance(p,center);if(distance*distance>=best||Inside(blocks,p))continue;
                     best=distance*distance;nearest=p;found=true;
                 }
                 if(found)
-                {if(ElevationGrid.Sample(grids,nearest,out float height,out _))nearest.y=height;points[i,11]=nearest;valid[i,11]=true;onRoad[i,11]=true;}   // refs-ok: REFACTOR-REQUEST B08-3
+                {if(ElevationGrid.Sample(grids,nearest,out float height,out _))nearest.y=height;points[i,11]=nearest;valid[i,11]=true;onRoad[i,11]=true;}
             }
             var costs=new float[steps+1,choices];var parent=new int[steps+1,choices];
             for(int i=0;i<=steps;i++)for(int j=0;j<choices;j++){costs[i,j]=float.PositiveInfinity;parent[i,j]=-1;}costs[0,0]=0f;
@@ -53,7 +55,7 @@ namespace WildWasteland.Modules.Patrols
                     if(cost<costs[i,j]){costs[i,j]=cost;parent[i,j]=previous;}
                 }
             }
-            if(parent[steps,0]<0)return RoadPlanner.Build(a,b,hints,blocks,influence,seed,out roads);   // refs-ok: REFACTOR-REQUEST B08-3
+            if(parent[steps,0]<0)return RouteGeometry.Build(a,b,hints,blocks,influence,seed,out roads);
             var route=new Vector3[steps+1];roads=new bool[steps+1];int pick=0;
             for(int i=steps;i>=0;i--){route[i]=points[i,pick];roads[i]=onRoad[i,pick];pick=parent[i,pick];}
             return route;
@@ -62,7 +64,7 @@ namespace WildWasteland.Modules.Patrols
         private static bool Inside(Bounds[] blocks,Vector3 p)
         {p.y=0f;foreach(var box in blocks)if(box.Contains(p))return true;return false;}
         /// <summary>Cost of one leg: its length, crossing blocked boxes (infinite), climbing above the a-b baseline, height changes and slope samples.</summary>
-        private static float Leg(Vector3 a,Vector3 b,Vector3 origin,Vector3 destination,ElevationGrid[] grids,Bounds[] blocks)   // refs-ok: REFACTOR-REQUEST B08-3
+        private static float Leg(Vector3 a,Vector3 b,Vector3 origin,Vector3 destination,ElevationGrid[] grids,Bounds[] blocks)
         {
             var aa=a;var bb=b;aa.y=bb.y=0f;var delta=bb-aa;float length=delta.magnitude;
             foreach(var box in blocks)
@@ -72,7 +74,7 @@ namespace WildWasteland.Modules.Patrols
             for(int sample=1;sample<=8;sample++)
             {
                 var p=Vector3.Lerp(a,b,sample/8f);
-                if(!ElevationGrid.Sample(grids,p,out float height,out float slope)){cost+=30f;continue;}   // refs-ok: REFACTOR-REQUEST B08-3
+                if(!ElevationGrid.Sample(grids,p,out float height,out float slope)){cost+=30f;continue;}
                 float t=span>0f?Mathf.Clamp01(Vector3.Dot(p-origin,along)/span):0f;
                 float baseline=Mathf.Lerp(origin.y,destination.y,t);
                 cost+=Mathf.Max(0f,height-baseline-15f)*1.5f+Mathf.Abs(height-last)*3f+slope*slope*600f;

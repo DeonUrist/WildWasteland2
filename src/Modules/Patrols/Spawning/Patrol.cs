@@ -172,11 +172,17 @@ namespace WildWasteland.Modules.Patrols
                     }
                 }
 
-                var packed = VehiclePreparation.Require(tpl, tpl.RollBumper(), false);
+                string bumper=tpl.RollBumper();
+                var assemblyProvider=Core.ModApi.Get<Core.IVehicleAssembly>();
+                var packed = VehiclePreparation.Require(tpl, bumper, false);
                 var packedTrailer = tpl.Trailer != null ? VehiclePreparation.Require(tpl.Trailer, "", true) : null;
                 while (!packed.Ready || (packedTrailer != null && !packedTrailer.Ready))
                 {
-                    if (gen != SceneGen || packed.Failed || (packedTrailer != null && packedTrailer.Failed)) yield break;
+                    if (gen != SceneGen) yield break;
+                    var currentProvider=Core.ModApi.Get<Core.IVehicleAssembly>();
+                    if(currentProvider==null){yield return null;continue;}
+                    if(!ReferenceEquals(currentProvider,assemblyProvider)){assemblyProvider=currentProvider;packed=VehiclePreparation.Require(tpl,bumper,false);packedTrailer=tpl.Trailer!=null?VehiclePreparation.Require(tpl.Trailer,"",true):null;}
+                    if(packed.Failed||(packedTrailer!=null&&packedTrailer.Failed))yield break;
                     yield return null;
                 }
                 yield return WaitForSave(gen, saveOk);
