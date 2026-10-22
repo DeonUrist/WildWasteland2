@@ -10,6 +10,7 @@ namespace WildWasteland.Core
     /// <summary>Restores native seated saves onto safe standing ground before the shared load handoff opens.</summary>
     internal static class VehicleLoadPlacement
     {
+        static bool _installed;
         static bool _loading, _seated, _collisions;
         static VehicleController _car;
         static Rigidbody _playerBody;
@@ -19,8 +20,15 @@ namespace WildWasteland.Core
         /// <summary>Observes load state and joins the common handoff barrier.</summary>
         internal static void Install()
         {
+            if (_installed) return; _installed = true;
             SaveBus.StateChanged += StateChanged;
             LoadingProgress.RegisterHold(null, "Player vehicle placement", ReadyForHandoff);
+        }
+        /// <summary>Releases a held native body and removes the exact load handoff observer.</summary>
+        internal static void Remove()
+        {
+            SaveBus.StateChanged -= StateChanged; LoadingProgress.RemoveHold(null, "Player vehicle placement");
+            Release(); _installed = _loading = _seated = false; _car = null; Bodies.Clear(); Colliders.Clear();
         }
         static void StateChanged(string previous, string current)
         {
@@ -67,7 +75,7 @@ namespace WildWasteland.Core
             {
                 float angle = i * Mathf.PI / 6f; Vector3 place;
                 var target = bounds.center + new Vector3(Mathf.Cos(angle) * radius, 0, Mathf.Sin(angle) * radius);
-                if (!SaveRuntime.Surface(target, player.transform, out place)) continue;
+                if (!StandingSurface.TryFind(target, player.transform, out place)) continue;
                 if (place.x > bounds.min.x - .5f && place.x < bounds.max.x + .5f && place.z > bounds.min.z - .5f && place.z < bounds.max.z + .5f) continue;
                 player.transform.SetParent(null, true); player.transform.SetPositionAndRotation(place, Quaternion.Euler(0, _car.transform.eulerAngles.y, 0));
                 Stand(player); Release(); var body = player.GetComponent<Rigidbody>();
@@ -90,7 +98,7 @@ namespace WildWasteland.Core
         }
         internal static void Stand(GameObject player)
         {
-            if (player == null || SaveRuntime.Health() < 1) return;
+            if (player == null || PlayerState.Health < 1) return;
             var inCar = FsmUtil.Find(player, "InCar");
             if (inCar != null && inCar.Fsm.Initialized && (inCar.ActiveStateName != "OnFoot" || player.GetComponent<Rigidbody>() == null)) inCar.Fsm.SetState("OnFoot");
             var movement = FsmUtil.Find(player, "Movement");

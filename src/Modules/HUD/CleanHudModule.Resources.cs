@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.CleanHUD
         partial void InitCoreUpdateCheck() { _updateCheck = Scheduler.StartCoroutine(Menu.CheckUpdates()); }
 
         /// <summary>Subscribes PauseCursorFix to Core.Hooks.EnterState (postfix).</summary>
-        partial void InitCoreHooks() { Hooks.EnterState.Postfix(this, PauseCursorFix.AfterEnterState); }
+        partial void InitCoreHooks() { }
 
         /// <summary>Registers the sliced "Scene key discovery" job (500 us).</summary>
         partial void InitCoreSceneJob() { Scheduler.Sliced(this, "Scene key discovery", 500, SceneCache.Step); }

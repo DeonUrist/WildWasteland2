@@ -282,6 +282,7 @@ namespace WildWasteland.Core
             _quitting = true;
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "Shutdown", () => en.Module.Shutdown()); }
             Optimization.OptimizationRuntime.Instance.Shutdown();
+            Fixes.Remove();
             UI.UiTheme.Shutdown();
             WorldTiles.Uninstall();
             Textures.ReleaseAll();

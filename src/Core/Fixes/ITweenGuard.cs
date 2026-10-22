@@ -14,13 +14,19 @@ namespace WildWasteland.Core
     // Fix: before each tween update, if the body is gone, switch the tween to non-physics mode (iTween's Update then drives it).
     internal static class ITweenGuard
     {
+        static readonly FixOwner Owner = new FixOwner("ITweenGuard");
+        static bool _installed;
         internal const string GUID = "com.denis.apocalypter.itweenguard";
         static int _fixed;
 
-        internal static void Init()
+        /// <summary>Removes this fix's hooks and patches so installation can be repeated safely.</summary>
+        internal static void Remove() { Owner.Remove(); _installed = false; _fixed = 0; }
+
+        internal static void Install()
         {
+            if (_installed) return; _installed = true;
             var stop = AccessTools.Method(typeof(iTween), "Stop", new[] { typeof(GameObject), typeof(string) });
-            if (Patches.Patch(null, stop, transpiler: AccessTools.Method(typeof(ITweenGuard), nameof(StopTranspiler))))
+            if (Patches.Patch(Owner, stop, transpiler: AccessTools.Method(typeof(ITweenGuard), nameof(StopTranspiler))))
                 Log.Always("[Core] iTween stop guard ready (always on)");
             BepInEx.PluginInfo info;
             if (Chainloader.PluginInfos.TryGetValue(GUID, out info) && !ReferenceEquals(info.Instance, null))
@@ -30,7 +36,7 @@ namespace WildWasteland.Core
             }
             var target = AccessTools.Method(typeof(iTween), "TweenUpdate");
             if (target == null) { Log.Warn("[Core] iTween guard: iTween.TweenUpdate not found; nothing patched"); return; }
-            if (Patches.Patch(null, target, prefix: AccessTools.Method(typeof(ITweenGuard), nameof(Prefix))))
+            if (Patches.Patch(Owner, target, prefix: AccessTools.Method(typeof(ITweenGuard), nameof(Prefix))))
                 Log.Always("[Core] iTween guard ready (always on)");
         }
 

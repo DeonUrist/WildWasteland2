@@ -76,6 +76,7 @@ namespace WildWasteland
                 EnableDebug = Core.TunedSettings.Bind(Main, "General", "Enable Debug", false,
                     "Show Debug in Wild Wasteland settings: logging, switches, patrol editor access and the optional Developer menu.");
 
+                Core.CoreSettings.Bind(Tools);
                 Core.UI.UiTheme.Bind(Settings);
                 Core.Optimization.OptimizationRuntime.Bind(Settings, Tools);
                 Core.ModuleRegistry.RegisterAll();
@@ -91,12 +92,7 @@ namespace WildWasteland
                 Core.UI.UiTheme.Init();
                 Core.VehicleOwnership.Install();
                 Core.ReplacementGuard.Prepare();
-                Core.HealthStacks.Init();
-                Core.ColorGrading.Init();
-                Core.ITweenGuard.Init();
-                Core.QuietFsm.Install();
-                Core.InventorySupplies.Install();
-                Core.VehicleLoadPlacement.Install();
+                Core.Fixes.Install();
                 Core.SessionIntegrations.InstallAll();
                 Core.UI.ToolWindow.Init();
                 SceneManager.sceneLoaded += OnSceneLoaded;

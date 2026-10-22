@@ -31,26 +31,47 @@ namespace WildWasteland.Core
 
         static readonly Dictionary<Fsm, int> _bits = new Dictionary<Fsm, int>(RefComparer.Instance);
         static readonly List<Fsm> _tmp = new List<Fsm>();
-        static readonly Dictionary<string, int> _named = new Dictionary<string, int>(StringComparer.Ordinal);
-        static readonly Dictionary<IModule, int> _ownerBits = new Dictionary<IModule, int>();
+        /// <summary>Identity-scoped dynamic pause reason; equal module ids do not share claims.</summary>
+        readonly struct Reason : IEquatable<Reason>
+        {
+            readonly IModule _owner; readonly string _name;
+            /// <summary>Stores the exact owner instance and ordinal reason text.</summary>
+            internal Reason(IModule owner, string name) { _owner = owner; _name = name ?? ""; }
+            /// <summary>Compares module instances and reason text without module-defined equality.</summary>
+            public bool Equals(Reason other) { return ReferenceEquals(_owner, other._owner) && string.Equals(_name, other._name, StringComparison.Ordinal); }
+            /// <summary>Compares another boxed reason key.</summary>
+            public override bool Equals(object other) { return other is Reason && Equals((Reason)other); }
+            /// <summary>Hashes the reference identity and ordinal reason string.</summary>
+            public override int GetHashCode() { return (_owner == null ? 0 : RuntimeHelpers.GetHashCode(_owner)) * 397 ^ StringComparer.Ordinal.GetHashCode(_name); }
+        }
+        /// <summary>Identity comparer for module-owned masks.</summary>
+        sealed class OwnerComparer : IEqualityComparer<IModule>
+        {
+            /// <summary>Uses module instance identity.</summary>
+            public bool Equals(IModule first, IModule second) { return ReferenceEquals(first, second); }
+            /// <summary>Hashes a module by identity.</summary>
+            public int GetHashCode(IModule owner) { return RuntimeHelpers.GetHashCode(owner); }
+        }
+        static readonly Dictionary<Reason, int> _named = new Dictionary<Reason, int>();
+        static readonly Dictionary<IModule, int> _ownerBits = new Dictionary<IModule, int>(new OwnerComparer());
         static int _nextBit = FirstDynamic;
 
         /// <summary>FSMs currently paused by any of our bits.</summary>
         public static int Count { get { return _bits.Count; } }
 
         /// <summary>
-        /// A stable bit for (owner, reason): the same reason string always gets the same bit; the bit is remembered as owned by
+        /// A stable bit for (owner, reason): the same owner instance and reason text always get the same bit; the bit is remembered as owned by
         /// owner so <see cref="ReleaseAll"/> frees its pauses. Returns 0 when all 32 bits are used (then Set always fails).
         /// </summary>
         public static int Bit(IModule owner, string reason)
         {
-            int b;
-            if (!_named.TryGetValue(reason ?? "", out b))
+            int b; var key = new Reason(owner, reason);
+            if (!_named.TryGetValue(key, out b))
             {
                 if (_nextBit == 0) return 0;
                 b = _nextBit;
                 _nextBit = _nextBit == int.MinValue ? 0 : _nextBit << 1;
-                _named[reason ?? ""] = b;
+                _named[key] = b;
             }
             if (owner != null) { int o; _ownerBits.TryGetValue(owner, out o); _ownerBits[owner] = o | b; }
             return b;

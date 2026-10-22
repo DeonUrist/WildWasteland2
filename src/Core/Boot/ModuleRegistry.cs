@@ -13,6 +13,9 @@ namespace WildWasteland.Core
         internal static void RegisterAll()
         {
             SessionIntegrations.Register("Compatibility.Apocasaver", Modules.Compatibility.Apocasaver.ApocasaverSession.Install);
+            ModuleHost.Add(new Modules.Debug.DebugModule());
+            ModuleHost.Add(new Modules.Compatibility.CompatibilityModule());
+            ModuleHost.Add(new Modules.Saves.SavesModule());
             ModuleHost.Add(new Modules.PlayerBody.PlayerBodyModule());
             ModuleHost.Add(new Modules.NPC.NpcModule());
             ModuleHost.Add(new Modules.Guns.GunsModule());
@@ -25,10 +28,7 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.EngineSimCompat.EngineSimCompatModule());
             ModuleHost.Add(new Modules.Survival.SurvivalModule());
             ModuleHost.Add(new Modules.Towns.TownsModule());
-            // W0 skeletons (empty until Wave B)
-            ModuleHost.Add(new Modules.Debug.DebugModule());
-            ModuleHost.Add(new Modules.Compatibility.CompatibilityModule());
-            ModuleHost.Add(new Modules.Saves.SavesModule());
+            // Remaining target module entries are completed by their Wave B owners.
             ModuleHost.Add(new Modules.Presentation.PresentationModule());
             ModuleHost.Add(new Modules.NPCAI.NPCAIModule());
             ModuleHost.Add(new Modules.Gunplay.GunplayModule());
@@ -39,6 +39,6 @@ namespace WildWasteland.Core
         }
 
         /// <summary>The audio real-voice count setting (today bound by Patrols as [Patrols] AudioVoices; Core audio setting in Wave B), or null.</summary>
-        internal static ConfigEntry<int> AudioVoicesSetting() { return Modules.Patrols.PatrolsModule.AudioVoices; }
+        internal static ConfigEntry<int> AudioVoicesSetting() { return CoreSettings.AudioVoices; }
     }
 }
