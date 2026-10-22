@@ -50,6 +50,8 @@ namespace WildWasteland.Core
         /// <summary>Third-person camera obstruction mask: everything but Player, IgnoreRaycast, UI, Item, MapIcons.</summary>
         public const int CameraObstruction = ~((1 << Player) | (1 << IgnoreRaycast) | (1 << UI) | (1 << Item) | (1 << MapIcons));
 
+        /// <summary>Static navigation geometry shared by the grid baker and POI floor placement.</summary>
+        public const int NavSolid = ~((1 << 1) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 12) | (1 << 13) | (1 << 15) | (1 << 17) | (1 << 19) | (1 << 22));
         /// <summary>Bit mask of one layer.</summary>
         public static int Mask(int layer) { return 1 << layer; }
 

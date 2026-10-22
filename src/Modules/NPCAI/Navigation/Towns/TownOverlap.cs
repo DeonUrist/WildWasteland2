@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.POI
+
+namespace WildWasteland.Modules.NPC
 {
     /// <summary>
     /// Instance overlays only: a town never edits or writes a prefab's reusable .wwnav map.
@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.POI
             internal bool Applied;
             internal bool Props, Changed;
             internal int Lot;
-            internal TownOverlayPlan.LotPatch Patch;   // worker-computed overlay for this lot; null = runtime projection fallback
+            internal TownNavPatch Patch;   // worker-computed overlay for this lot; null = runtime projection fallback
             internal Grid[] Neighbours;
             internal Vector4 Bounds;
             /// <summary>Anchor-relative centre of cell i.</summary>
@@ -61,7 +61,7 @@ namespace WildWasteland.Modules.POI
         private static readonly Dictionary<Transform, Nav.Structure> Native = new Dictionary<Transform, Nav.Structure>();
         private static readonly Dictionary<Nav.Structure, TownOverlap> Owners = new Dictionary<Nav.Structure, TownOverlap>();
         private static float _step;
-        private readonly TownSite _site;   // refs-ok: REFACTOR-REQUEST B08-6
+        private readonly TownNavContext _site;
         private Grid[] _grids;
         private int _grid, _cell, _phase, _blocked, _edges;
         private float _retry;
@@ -72,7 +72,7 @@ namespace WildWasteland.Modules.POI
         internal float Progress { get { return _grids == null ? 0 : _grid >= _grids.Length ? 1
             : (_grid + (_phase + (_phase == 2 ? _grids[_grid].Scan : _cell) / (float)_grids[_grid].Floor.Length) / 3) / _grids.Length; } }
         /// <summary>Overlay of one town (dressing = wall/tower dressing boxes count too).</summary>
-        internal TownOverlap(TownSite site, bool dressing) { _site = site; _dressing = dressing; }   // refs-ok: REFACTOR-REQUEST B08-6
+        internal TownOverlap(TownNavContext site, bool dressing) { _site = site; _dressing = dressing; }
         /// <summary>Walls/towers/props arrived after the first overlay (ownership confirmed later): redo it with the dressing boxes.</summary>
         internal void Reapply(bool dressing)
         { Restore(); _grids = null; _grid = _cell = _phase = _blocked = _edges = 0; _dressing = dressing; _warming = false; _retry = 0; Ready = false; }
@@ -93,14 +93,14 @@ namespace WildWasteland.Modules.POI
         /// <summary>A town instance's rebake must never replace a reusable standalone building template on disk.</summary>
         private static bool Writable(Nav.Structure s)
         {
-            if (!TownMarkers.Owns(s.Root)) return true;   // refs-ok: REFACTOR-REQUEST B08-6 (POI town ownership query)
+            if (!(ModApi.Get<ITownsApi>()?.IsTownBuilding(s.Root)??false)) return true;
             // A manual rebake here sees neighbouring town geometry through physics. It may be used
             // for this instance, but must never replace a reusable standalone building template.
             Log.Main(NavRuntime.Owner, "instance bake kept in memory; reusable template file preserved."); return false;
         }
 
         /// <summary>Remembers the structure made for a town building (the overlay grids read it).</summary>
-        private static void Made(Transform root, Nav.Structure s) { if (s != null && TownMarkers.Owns(root)) Native[root] = s; }   // refs-ok: REFACTOR-REQUEST B08-6
+        private static void Made(Transform root, Nav.Structure s) { if (s != null && (ModApi.Get<ITownsApi>()?.IsTownBuilding(root)??false)) Native[root] = s; }
         /// <summary>Forgets the structure remembered for a removed town building.</summary>
         internal static void Forget(Transform root)
         {
@@ -112,7 +112,7 @@ namespace WildWasteland.Modules.POI
         {
             TownOverlap owner;
             if (Owners.TryGetValue(s, out owner))
-            { owner.Restore(); owner._grids = null; owner._grid = owner._cell = owner._phase = 0; owner.Ready = false; owner._site.Navigation = new TownNavigation(owner._site); }
+            { owner.Restore(); owner._grids = null; owner._grid = owner._cell = owner._phase = 0; owner.Ready = false; TownNavigationApi.ResetRouting(owner._site); }
         }
         /// <summary>Captures every building's baked map as an overlay grid (warming unbaked templates first); false = not ready yet.</summary>
         private bool Capture()
@@ -137,7 +137,7 @@ namespace WildWasteland.Modules.POI
             var lots = new List<int>(); for (int lot = 0; lot < _site.Buildings.Length; lot++)
                 if (!_site.Plan.Lots[lot].IsParking && !_site.Plan.Lots[lot].Skipped && _site.Buildings[lot] != null) lots.Add(lot);
             // Parking shells have their own navigation; publish only a completely captured overlay.
-            var grids = new Grid[lots.Count]; var overlay = _site.Plan.Overlay; _planned = overlay != null && overlay.Lots != null && overlay.Lots.Length == _site.Plan.LotCount;
+            var grids = new Grid[lots.Count]; var overlay = _site.Plan.Overlay; _planned = overlay != null && overlay != null && overlay.Length == _site.Plan.LotCount;
             for (int i = 0; i < grids.Length; i++)
             {
                 var g = new Grid { Native = Native[_site.Buildings[lots[i]].transform], AnchorY = _site.Anchor.position.y, Lot = lots[i] };
@@ -168,7 +168,7 @@ namespace WildWasteland.Modules.POI
                 foreach (var prop in _site.DebrisBlockers)
                     if (prop.min.x <= g.Bounds.z && prop.max.x >= g.Bounds.x && prop.min.z <= g.Bounds.w && prop.max.z >= g.Bounds.y) { g.Props = true; break; }
                 g.Changed = g.Neighbours.Length > 0 || g.Props;
-                var patch = _planned ? overlay.Lots[g.Lot] : null;
+                var patch = _planned ? overlay[g.Lot] : null;
                 if (patch != null && patch.W == g.W && patch.H == g.H && Mathf.Abs(patch.Cell - g.Cell) < .0001f) { g.Patch = patch; g.Changed = patch.Any(_dressing); }
                 else if (patch != null) Log.Warn(NavRuntime.Owner, "Towns: overlay plan mismatch for " + _site.Plan.Lots[g.Lot].Prefab + " (" + patch.W + "x" + patch.H + " vs " + g.W + "x" + g.H + "); runtime projection used.");
             }

@@ -93,10 +93,6 @@ namespace WildWasteland.Modules.POI
         partial void InitNavigation();
         /// <summary>NPCAI/Navigation part: removes the Nav bridge and its patches.</summary>
         partial void ShutdownNavigation();
-        /// <summary>NPCAI/Population part: installs interior and native-POI population rules.</summary>
-        partial void InitPopulation();
-        /// <summary>NPCAI/Population part: releases deferred native spawn events before the module stops.</summary>
-        partial void ShutdownPopulation();
         /// <summary>Tools part: creates the POI dresser (editor) on top of the POI dressing runtime.</summary>
         partial void InitTools();
         /// <summary>Tools part: drops the POI dresser reference after the dressing runtime was disposed.</summary>
@@ -116,7 +112,6 @@ namespace WildWasteland.Modules.POI
             InitNavigation();
             _dressing = new PoiDressing(); _dressing.Install(this);
             InitTools();
-            InitPopulation();
 
 
             
@@ -310,7 +305,7 @@ namespace WildWasteland.Modules.POI
                 TownWalkGraph.Build(plan, specs, null);
                 site.GroundPad = TownGroundPad.Prepare(site, terrain);
             }
-            site.Approach = new TownApproach(plan);
+
             TownMarkers.Add(site); return site;
         }
         private void TownTerrainEdited(TerrainTile tile)
@@ -397,14 +392,14 @@ namespace WildWasteland.Modules.POI
                         bool spawned;
                         site.Walls.Step(out spawned);
                         if (spawned) { _builtFrame = Time.frameCount; _buildAfter = Time.unscaledTime + spacing; }
-                        if (site.Walls.Prepared) { site.Navigation = new TownNavigation(site); live.PreparedAt = Time.unscaledTime; site.PrepSteps = 0; }
+                        if (site.Walls.Prepared) { site.Navigation = ModApi.Get<ITownNavigation>()?.CreateRouting(TownNavSnapshot.Of(site)); live.PreparedAt = Time.unscaledTime; site.PrepSteps = 0; }
                         return true;
                     }
                     if (site.Streets == null)
                     {
                         live.PreparedAt = Time.unscaledTime; site.PrepSteps = 0;
                         site.Streets = TownFactory.Streets(site, live.Registration.Assets, live.Tile.objectsPool.transform);
-                        site.Overlap = new TownOverlap(site, site.Walls != null); site.Navigation = new TownNavigation(site);
+                        site.Overlap = ModApi.Get<ITownNavigation>()?.CreateOverlay(TownNavSnapshot.Of(site), site.Walls != null); site.Navigation = ModApi.Get<ITownNavigation>()?.CreateRouting(TownNavSnapshot.Of(site));
                         return true;
                     }
                     if (!TownBakeBridge.Enabled) { Finish(live, "NPC navigation off; placed objects and individual maps retained"); return true; }
@@ -577,7 +572,7 @@ namespace WildWasteland.Modules.POI
             // Keep graph registrations until shutdown: the native generator graph can survive scene changes.
         }
         private void ClearSites()
-        { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); InteriorPopulation.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
+        { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
         private void Block(string stage, Exception e)
         { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[Towns] blocked during " + stage + "; no replacement layout will be invented", e); }
         private static void Undo(Registration registration)
@@ -588,7 +583,6 @@ namespace WildWasteland.Modules.POI
         {
             if (!_running) return;
             _running = false; _epoch++;
-            ShutdownPopulation();
             LoadingProgress.Remove(Owner);
             Patrols.WorldTraffic.TownsStopped();
             SaveBus.StateChanged -= StateChanged;

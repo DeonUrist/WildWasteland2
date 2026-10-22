@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.POI
+namespace WildWasteland.Modules.NPC
 {
     // Applies to native interior groups throughout the world while the addon is loaded.
     // Native FSMs still own creation, registration, names and one-shot progress.
@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.POI
     {
         private sealed class Location { internal Transform Root; internal readonly List<Group> Groups = new List<Group>(); internal bool Arrived; }
         /// <summary>A native interior spawn group (ItemSpawner FSM): its town / dressing site, location, start attempts, suspension and the deferred native event.</summary>
-        private sealed class Group { internal PlayMakerFSM Fsm; internal TownSite Town; internal PoiDressing.Site Dressing; internal Location Location; internal bool Started, Suspended; internal int Attempts; internal float StartedAt; internal FsmEvent Deferred; internal FsmState DeferredState; }   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
+        private sealed class Group { internal PlayMakerFSM Fsm; internal PopulationArea Town; internal Func<bool> Dressing; internal Location Location; internal bool Started, Suspended; internal int Attempts; internal float StartedAt; internal FsmEvent Deferred; internal FsmState DeferredState; }   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         private static readonly Dictionary<object, Location> Locations = new Dictionary<object, Location>();
         /// <summary>A population member: the spawned NPC, its health, its senses agent and saved name.</summary>
         private sealed class Member { internal GameObject Owner; internal FsmFloat Health; internal Senses.Agent Agent; internal string Name; }
@@ -58,7 +58,7 @@ namespace WildWasteland.Modules.POI
             Add(f, null);
         }
         /// <summary>Adds a spawner group to its location (town, dressing marker root or the enclosing native structure) and queues it for the arrival pre-spawn.</summary>
-        private static void Add(PlayMakerFSM f, TownSite town, Transform markerRoot = null)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
+        private static void Add(PlayMakerFSM f, PopulationArea town, Transform markerRoot = null)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
             Transform root = town == null ? f.transform : town.Anchor;
             if (town == null) for (var t = f.transform.parent; t != null; t = t.parent)
@@ -106,27 +106,10 @@ namespace WildWasteland.Modules.POI
             return true;
         }
 
-        /// <summary>A POI dressing marker spawner joins the population (suspended until the dressing is ready).</summary>
-        internal static void OwnMarker(PlayMakerFSM f, PoiDressing.Site site)
-        { Add(f, site.Town, site.Town == null ? site.Root : null); Groups[f].Dressing = site; Groups[f].Suspended = true; f.enabled = false; }
-        /// <summary>The enemy spawners of a town lot join the population (suspended when the lot's saved count is already spawned; Coyote shopkeepers too).</summary>
-        internal static void OwnTown(TownSite site, int lot)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
-        {
-            for (int n = 0; n < site.Spawners[lot].Length; n++)
-            {
-                var f = site.Spawners[lot][n];
-                if (f != null && site.Plan.Lots[lot].IsMerchant && site.Plan.Faction == TownFaction.Coyotes   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
-                    && f.gameObject.name.StartsWith("CoyotesMerchantSpawn", StringComparison.Ordinal))
-                { Add(f, site); continue; } // Shopkeepers use the same native trigger sequence as town enemies.
-                if (f != null && f.gameObject.name.StartsWith("EnemySpawn", StringComparison.Ordinal)
-                    && (f.gameObject.name.IndexOf("boss", StringComparison.OrdinalIgnoreCase) < 0 || f.gameObject.name.IndexOf("bodyguard", StringComparison.OrdinalIgnoreCase) >= 0))
-                {
-                    Add(f, site); var group = Groups[f];
-                    group.Suspended = Value(f, "OnOff") == 0 && site.PopulationCounts[lot][n] > Value(f, "number");
-                    if (group.Suspended) f.enabled = false;
-                }
-            }
-        }
+        internal static void Own(PlayMakerFSM f,PopulationArea area,bool suspended,Func<bool> ready)
+        {Add(f,area,area?.Anchor);Groups[f].Dressing=ready;Groups[f].Suspended=suspended;if(suspended)f.enabled=false;}
+        internal static void Forget(PopulationArea area)
+        {Location location;if(area==null||!Locations.TryGetValue(area,out location))return;foreach(var group in location.Groups){Groups.Remove(group.Fsm);Pending.Remove(group);if(group.Suspended&&group.Fsm!=null)group.Fsm.enabled=true;}Locations.Remove(area);}
         /// <summary>Integer FSM variable value (0 when missing).</summary>
         private static int Value(PlayMakerFSM f, string name)
         { var value = f.FsmVariables.FindFsmInt(name); return value == null ? 0 : value.Value; }
@@ -138,8 +121,8 @@ namespace WildWasteland.Modules.POI
             bool near;
             if (group != null && group.Town != null)
             {
-                var d = group.Town.Scene(Vector3.zero) - player.transform.position; d.y = 0;
-                float radius = group.Town.Plan.Radius + 50f; near = d.sqrMagnitude <= radius * radius;
+                var d = group.Town.Anchor.TransformPoint(group.Town.Center) - player.transform.position; d.y = 0;
+                float radius = group.Town.Radius + 50f; near = d.sqrMagnitude <= radius * radius;
             }
             else near = (f.transform.position - player.transform.position).sqrMagnitude <= 2500f;
             if (near && group != null) group.Location.Arrived = true;
@@ -161,7 +144,7 @@ namespace WildWasteland.Modules.POI
             return true;
         }
         /// <summary>True when none of the town's tracked spawner groups is still waiting near the player.</summary>
-        internal static bool TownReady(TownSite site)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
+        internal static bool TownReady(PopulationArea site)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
             foreach (var group in Pending) if (group.Town == site && group.Fsm != null && Near(group.Fsm) && group.Fsm.gameObject.activeInHierarchy && (group.Fsm.enabled || group.Suspended) && Value(group.Fsm, "OnOff") == 0) return false;
             return true;
@@ -185,8 +168,8 @@ namespace WildWasteland.Modules.POI
                 int at = _next++ % Pending.Count; var group = Pending[at]; var f = group.Fsm;
                 if (f == null || !f.gameObject.activeInHierarchy || !f.enabled && !group.Suspended || Value(f, "OnOff") > 0) { Pending.RemoveAt(at); return true; }
                 if (!Near(f)) continue;
-                if (group.Town != null && group.Town.NextLot < group.Town.Plan.LotCount) continue;
-                if (group.Dressing != null && !group.Dressing.Ready) continue;
+                if (group.Town != null && group.Town.Ready != null && !group.Town.Ready()) continue;
+                if (group.Dressing != null && !group.Dressing()) continue;
                 if (!WorldWork.Try(WorldWork.Population)) return false;
                 if (group.Suspended) { group.Suspended = false; f.enabled = true; }
                 if (group.Deferred != null)
@@ -234,7 +217,7 @@ namespace WildWasteland.Modules.POI
             if (f == null || !Groups.TryGetValue(f, out group)) return;
             var made = action.storeObject.Value; if (made == null || FsmUtil.Find(made, "Health") == null || FsmUtil.Find(made, "Detection") == null) return;
             Fresh.Add(made.GetInstanceID());
-            if (group.Town != null) TownPopulation.Created(group.Town, made);
+            if (group.Town != null) group.Town.Spawned?.Invoke(made);
             var health = FsmUtil.Find(made, "Health"); var agent = Senses.AgentFor(made);
             Members[made.GetInstanceID()] = new Member { Owner = made, Health = health.FsmVariables.FindFsmFloat("Health"), Agent = agent };
             if (agent != null) { agent.Interior = true; agent.AmbushDist = 0f; agent.Deaf = !_havePlayer || _near >= 3 || (made.transform.position - _player).sqrMagnitude > 2500f; }

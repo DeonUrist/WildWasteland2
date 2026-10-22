@@ -116,11 +116,13 @@ namespace WildWasteland.Modules.POI
         }
         internal static void Destroy(TownSite site)
         {
+            if(site.NavContext!=null)ModApi.Get<ITownNavigation>()?.Release(site.NavContext);
+            if(site.PopulationArea!=null)ModApi.Get<INativePopulation>()?.Forget(site.PopulationArea);
             if (site.Staged != null) { UnityEngine.Object.Destroy(site.Staged); site.Staged = null; }
             if (site.Walls != null) site.Walls.Dispose();
             if (site.Overlap != null) site.Overlap.Dispose();
             TownMarkers.Remove(site);
-            foreach (var building in site.Buildings) if (building != null) { TownOverlap.Forget(building.transform); UnityEngine.Object.Destroy(building); }
+            foreach (var building in site.Buildings) if (building != null) { ModApi.Get<ITownNavigation>()?.Forget(building.transform); UnityEngine.Object.Destroy(building); }
             if (site.Streets != null)
                 UnityEngine.Object.Destroy(site.Streets);
         }

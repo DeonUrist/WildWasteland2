@@ -118,7 +118,7 @@ namespace WildWasteland.Modules.POI
                     {
                         var cell = _cells[i]; var local = root.transform.InverseTransformPoint(cell); RaycastHit hit;
                         if (local.y < -.05f || local.y > .15f
-                            || !Physics.Raycast(cell + Vector3.up * .08f, Vector3.down, out hit, .16f, TownNavigation.Mask, QueryTriggerInteraction.Ignore)
+                            || !Physics.Raycast(cell + Vector3.up * .08f, Vector3.down, out hit, .16f, Core.Layers.NavSolid, QueryTriggerInteraction.Ignore)
                             || hit.collider.gameObject != root) _cells.RemoveAt(i);
                     }
                     while (_spawnPoints.Count < 3 && _cells.Count > 0)

@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.POI
+namespace WildWasteland.Modules.NPC
 {
     // Native non-town POIs only; shares the interior population's lifecycle and native spawn sequence.
     internal static class NativePoiPopulation
@@ -111,7 +111,7 @@ namespace WildWasteland.Modules.POI
         internal static bool TownBuilding(Transform t)
         {
             var towns = ModApi.Get<ITownsApi>();
-            return towns != null ? towns.IsTownBuilding(t) : TownMarkers.Owns(t);   // refs-ok: REFACTOR-REQUEST B07-9 (fallback until B13 provides ITownsApi)
+            return towns != null && towns.IsTownBuilding(t);   // refs-ok: REFACTOR-REQUEST B07-9 (fallback until B13 provides ITownsApi)
         }
 
         /// <summary>Integer FSM variable value (0 when missing).</summary>

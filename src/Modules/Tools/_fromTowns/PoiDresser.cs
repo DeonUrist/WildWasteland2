@@ -119,7 +119,7 @@ namespace WildWasteland.Modules.POI
             {
                 CameraTick();
                 var ray = _camera.ScreenPointToRay(screen); RaycastHit hit;
-                _validHit = Physics.Raycast(ray, out hit, 300, TownNavigation.Mask, QueryTriggerInteraction.Ignore);
+                _validHit = Physics.Raycast(ray, out hit, 300, Core.Layers.NavSolid, QueryTriggerInteraction.Ignore);
                 if (_validHit)
                 {
                     var p = _moving ? _draft.Props[_selected] : _placing;

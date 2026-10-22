@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.POI
+namespace WildWasteland.Modules.NPC
 {
     /// <summary>
     /// IPopulation provider (README 6.2 population rules): interior roots registered by other modules join the interior population

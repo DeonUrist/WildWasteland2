@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.POI
     /// Wave A (A6): split out of Towns/TownPerimeter.cs. One class, two instances per walled town: TownWalls.Walkers (NPC walkers,
     /// B08) and TownWalls.Vehicles (Patrols driving, B11 needs its own copy reading the outline through ITownsApi).
     /// </summary>
-    internal sealed class TownVehicleGates
+    internal sealed class TownVehicleGates : Core.ITownBoundary
     {
         private readonly Bounds _frame;
         private readonly TownOutline _outline;   // refs-ok: REFACTOR-REQUEST B08-6
@@ -105,7 +105,7 @@ namespace WildWasteland.Modules.POI
             _ready = ++_row >= _nodes.Length * 2; return true;
         }
         /// <summary>Next node from a toward b when the straight way is blocked; hold = wait (not ready / no clear node).</summary>
-        internal bool Waypoint(Vector3 a, Vector3 b, out Vector3 point, out bool hold)
+        public bool Waypoint(Vector3 a, Vector3 b, out Vector3 point, out bool hold)
         {
             point = b; hold = false;
             if (Clear(a, b)) return false;
