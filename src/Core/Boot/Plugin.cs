@@ -98,7 +98,7 @@ namespace WildWasteland
                 Core.SaveRuntime.Install();
                 Core.SaveSystem.Install();
                 Core.SaveSystem.RecoverFiles();
-                Core.ApocasaverExclusion.Install();
+                Core.SessionIntegrations.InstallAll();
                 Core.UI.ToolWindow.Init();
                 SceneManager.sceneLoaded += OnSceneLoaded;
 
