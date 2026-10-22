@@ -143,9 +143,9 @@ namespace WildWasteland.Modules.Survival
         static void LoadModels()
         {
             if (potMesh != null) return;
-            potMesh = Glb.Load(Path.Combine(SurvivalModule.Assets, "stewpot.glb")).Mesh;
-            liquidMesh = Glb.Load(Path.Combine(SurvivalModule.Assets, "liquid.glb")).Mesh;
-            ColliderMesh = Glb.Load(Path.Combine(SurvivalModule.Assets, "stewpot_collider.glb")).Mesh;
+            potMesh = Core.Glb.Load(Path.Combine(SurvivalModule.Assets, "stewpot.glb")).Mesh;
+            liquidMesh = Core.Glb.Load(Path.Combine(SurvivalModule.Assets, "liquid.glb")).Mesh;
+            ColliderMesh = Core.Glb.Load(Path.Combine(SurvivalModule.Assets, "stewpot_collider.glb")).Mesh;
             // The supplied liquid is centred at y=.523; its upper face becomes the fill-level anchor.
             var verts = liquidMesh.vertices;
             float top = liquidMesh.bounds.max.y;
