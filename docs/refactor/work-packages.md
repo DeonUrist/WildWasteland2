@@ -9,6 +9,12 @@ On Denis's PC agents build with `dotnet build WildWasteland.csproj -c Release -p
 
 ## Execution environment (D11-D16, overrides the Windows notes above)
 
+### Claude takeover (2026-10-22 evening; overrides "Local continuation" for the remaining packages)
+
+Denis stopped Codex and asked Claude to complete the plan. State at takeover: B01, B02, B03 merged into `refactor/main` (cloud merge 25b90be + Presentation/NPCAI partial entries); Codex WIP of B04 (`refactor/save-bootstrap`, `refactor/session-compat`) and B17 (`refactor/B17`) captured as WIP commits and continued on `claude/B04`, `claude/B17`.
+- Claude agents work in the Claude cloud workspace (`/home/claude/ww2`, worktrees `/home/claude/wt/<package>`, compile with `sh tools/refactor/compile.sh`).
+- **Dumps to the local repo (Denis's resume path):** after every committed step each agent writes a git bundle of its branch to `V:\Repos\Apocalypter\WildWasteland2\.sync\claude-<package>.bundle`. The coordinator also fast-forwards local `refactor/main` and `claude/*` branches after each batch with `.sync/apply.sh`. To resume a package with Codex: `git fetch .sync/claude-<package>.bundle refactor/<package>:claude/<package>`, check out `claude/<package>` in a worktree, read `docs/refactor/state/<package>.md`, continue from "Next action".
+
 ### Local continuation (2026-10-22; overrides cloud-only execution instructions)
 
 Denis authorized continued work in `V:\Repos\Apocalypter\WildWasteland2` after Wave A. The local coordinator uses `refactor/main`; implementation packages use their own `refactor/<package>` branch/worktree. Preserve these local commits when synchronizing with cloud work.
