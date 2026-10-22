@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.Towns
         /// <summary>Installs the native-POI population hooks (EnterState prefix, CreateObject prefix/postfix) and the cache sweep job (owner NPCAI).</summary>
         internal static void Install(IModule module)
         {
-            Clear(); Creatures.Clear(); Pools.Clear();
+            Clear();      // (B07) the creature catalog is kept: it is filled by the POI catalog pass (TownAssets) once per prefab and survives an NPCAI off/on
             Hooks.EnterState.Prefix(module, Enter);
             Hooks.CreateObjectEnter.Prefix(module, Creating); Hooks.CreateObjectEnter.Postfix(module, Created);
             Scheduler.Interval(module, "NPCAI.Native POI spawn cache", 30f, Sweep);
