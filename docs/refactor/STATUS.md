@@ -3,6 +3,15 @@
 Repo: local `V:\Repos\Apocalypter\WildWasteland2` (branch `refactor/main`), continued from the cloud Wave A checkpoint. Plan: `docs/refactor/README.md` (section 0 amendments first), `work-packages.md` (local execution override first).
 Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline compile: OK (39 warnings).
 
+## Current local execution (2026-10-22, resumed after Claude)
+
+Denis authorized completing the remaining refactor locally. This section supersedes historical execution/status rows below. Base `ea39ee4` contains Claude batches 1 and 2. B01-B09, B12, B15 and B17 have completed package passes, with outstanding integration requests still to close; green `refs-ok` exemptions are not final dependency acceptance.
+
+- Active parallel packages: B10 HUD (`../WW2-B10`, `codex/b10-hud`), B11 Patrols (`../WW2-B11`, `codex/b11-patrols`), B13 POI (`../WW2-B13`, `codex/b13-poi`). Coordinator handles Core extensions, B14 Survival and merges. B16 Tools/Developer and B18 Quests follow as slots free up.
+- All remaining handoffs, shared-driver work and Wave C cleanup must finish and merge into `refactor/main` before in-game acceptance. No intermediate deployment/game/harness. Windows build/static/asset checks only.
+- Preserve completed work and actual behavior; resolve dependencies through real typed APIs/events, with exact approved cross-owner edits where necessary. Do not replace work with stubs or blanket `refs-ok` exceptions.
+- Last independently reviewed base: Windows Release/Deploy=false succeeded with 0 errors and 1 duplicate-using warning in Presentation/Character/Animation/ModAPI.cs; 183 partial declarations, none missing.
+
 ## How to resume
 1. Read this file and `state/pre-B-cleanup.md`, then the state of any package marked in progress. Read the package's brief, relevant inventories and all requests/reports addressed to it before implementation.
 2. Active wave: **Wave B**, with package agents running in parallel as Denis clarified. B01, B02 and B03 use isolated worktrees `V:\Repos\Apocalypter\WW2-B01`, `WW2-B02`, `WW2-B03` on `refactor/B01`, `refactor/B02`, `refactor/B03`. Read each worktree's state file and commits to resume; do not recreate/reset them. Keep D15 step commits and each report/request file up to date.
