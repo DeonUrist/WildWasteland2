@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // Her in the driver's seat. Every car has a "PlayerModel_Sit" (shown by the car's Camera FSM in third person): the game's 27-bone
@@ -48,7 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static Transform _failedCar; private static float _failedRetry;
         private static void Fail(Transform car, string why)
         {
-            if (car != _failedCar) PlayerBodyModule.Warn("Car " + car.name + ": " + why);   // once per car, not every frame
+            if (car != _failedCar) Log.Warn(PresentationModule.WorldOwner, "Car " + car.name + ": " + why);   // once per car, not every frame
             _failedCar = car; _failedRetry = Time.unscaledTime + 5f;
         }
 
@@ -69,11 +72,11 @@ namespace WildWasteland.Modules.PlayerBody
                 if (src[i] == null) { Fail(car, "seat bone " + Pairs[i].Src + " missing - the game's driver stays"); return false; }
             }
             _seat = seat; _src = src; _failedCar = null;
-            PlayerBodyModule.Info("Car " + car.name + ": driver seat found");
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Car " + car.name + ": driver seat found");
             if (PlayerBodyModule.ReplaceDriver.Value)
                 foreach (var r in seat.GetComponentsInChildren<Renderer>(true))
                     if (r.enabled) { r.enabled = false; _hidden.Add(r); }
-            PlayerBodyModule.Verbose("Sitting in " + car.name + ", driver model hidden (" + _hidden.Count + " renderers)");
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Sitting in " + car.name + ", driver model hidden (" + _hidden.Count + " renderers)");
             return true;
         }
 
@@ -91,7 +94,7 @@ namespace WildWasteland.Modules.PlayerBody
             PoseFrom(_src, bones, bindLocal);
             // a little lower than the game's man: his seat pose put her a bit high for the steering wheel
             Transform hips;
-            if (PlayerBodyModule.SeatDrop.Value != 0f && bones.TryGetValue("mixamorig:Hips", out hips)) hips.position -= _seat.root.up * PlayerBodyModule.SeatDrop.Value;
+            if (CarSeatSettings.SeatDrop.Value != 0f && bones.TryGetValue("mixamorig:Hips", out hips)) hips.position -= _seat.root.up * CarSeatSettings.SeatDrop.Value;
         }
 
         public static void PoseFrom(Transform[] src, Dictionary<string, Transform> bones, Dictionary<string, Quaternion> bindLocal)

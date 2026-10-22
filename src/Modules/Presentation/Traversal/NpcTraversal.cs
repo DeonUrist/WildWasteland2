@@ -5,6 +5,8 @@ using UnityEngine.Animations;
 using UnityEngine.Playables;
 using WildWasteland.Core;
 
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // (WW) Core.Services.Animation.BeginNpcTraversal: ladder and ledge-climb animations on humanoid NPC rigs, for the NPC module's POI
@@ -40,7 +42,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         internal static INpcTraversalAnimation Begin(Animator animator, string kind)
         {
-            if (!PlayerBodyModule.Running || animator == null || animator.avatar == null || !animator.avatar.isHuman) return null;
+            if (!PresentationModule.WorldRunning || animator == null || animator.avatar == null || !animator.avatar.isHuman) return null;
             try
             {
                 if (kind == "Ladder")
@@ -66,7 +68,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _live.Add(c);
                 return c;
             }
-            catch (Exception e) { PlayerBodyModule.Error("NPC traversal animation: " + e.Message); return null; }
+            catch (Exception e) { Log.Error(PresentationModule.WorldOwner, "NPC traversal animation: " + e.Message); return null; }
         }
 
         // LateUpdateLast: the ladder pose over whatever the Animator evaluated; climb clips follow Phase
@@ -77,7 +79,7 @@ namespace WildWasteland.Modules.PlayerBody
                 var t = _live[i];
                 if (t._disposed || t._animator == null || !t._animator.gameObject.activeInHierarchy) { t.Dispose(); continue; }
                 try { t.Late(); }
-                catch (Exception e) { PlayerBodyModule.Error("NPC traversal animation: " + e.Message); t.Dispose(); }
+                catch (Exception e) { Log.Error(PresentationModule.WorldOwner, "NPC traversal animation: " + e.Message); t.Dispose(); }
             }
         }
 

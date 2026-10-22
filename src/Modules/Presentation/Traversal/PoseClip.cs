@@ -2,6 +2,9 @@ using System;
 using System.IO;
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // A looping humanoid animation baked from a Mixamo FBX into embedded per-bone world poses (tools/ladder-assets/export.py, no Unity
@@ -122,10 +125,10 @@ namespace WildWasteland.Modules.PlayerBody
                     var turn = Quaternion.Inverse(Quaternion.LookRotation(fwd.sqrMagnitude > 1e-4f ? fwd : Vector3.forward, Vector3.up));
                     for (int f = 0; f < frames; f++) { clip._bodyRot[f] = turn * clip._bodyRot[f]; clip._bodyPos[f] = turn * clip._bodyPos[f]; }
                 }
-                PlayerBodyModule.Info("Pose animation " + name + " ready: " + clip._muscles.Length + " frames, " + clip.Seconds.ToString("0.00") + " s, " + clip.Rise.ToString("0.00") + " m per cycle");
+                if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Pose animation " + name + " ready: " + clip._muscles.Length + " frames, " + clip.Seconds.ToString("0.00") + " s, " + clip.Rise.ToString("0.00") + " m per cycle");
                 return clip;
             }
-            catch (Exception e) { PlayerBodyModule.Error("Pose animation " + name + ": " + e.Message); return null; }
+            catch (Exception e) { Log.Error(PresentationModule.WorldOwner, "Pose animation " + name + ": " + e.Message); return null; }
             finally
             {
                 if (root != null) UnityEngine.Object.DestroyImmediate(root);

@@ -4,6 +4,8 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // (WW) Ladders: the game's Player/UseLadder FSM still detects the ladder (its trigger tag "Ladder", state "input"); while it holds the
@@ -44,6 +46,15 @@ namespace WildWasteland.Modules.PlayerBody
         internal static void StopInstance() { if (Instance != null) Instance.Finish(Exit.Cancel, "stopped"); }
         internal static void ResetInstance() { if (Instance != null) { Instance.Finish(Exit.Cancel, "reset"); Instance.body = null; Instance.useLadder = null; Instance.fsmOwner = null; } }
         internal static bool Active { get { return Instance != null && Instance.active; } }
+
+        /// <summary>The ladder trigger the player climbs and his climbing side (horizontal, from the rung line to the player); false when not on a ladder.</summary>
+        internal static bool TryPlayerLadder(out Collider ladder, out Vector3 side)
+        {
+            var c = Instance;
+            if (c == null || !c.active || c.ladder == null) { ladder = null; side = Vector3.zero; return false; }
+            ladder = c.ladder; side = c.side;
+            return true;
+        }
         internal static void ShiftInstance(Vector3 delta)
         {
             var c = Instance;
@@ -53,9 +64,9 @@ namespace WildWasteland.Modules.PlayerBody
             c.axisPoint += delta; c.snapFrom += delta; c.bottomY += delta.y; c.topY += delta.y; c.platformY += delta.y; c.feetY += delta.y;
         }
 
-        static float Speed { get { return PlayerBodyModule.LadderSpeed.Value; } }
+        static float Speed { get { return TraversalSettings.LadderSpeed.Value; } }
         bool sliding; float slideV;
-        static float Distance { get { return (clip != null ? clip.ToeDepth : .4f) + PlayerBodyModule.LadderOffset.Value; } }
+        static float Distance { get { return (clip != null ? clip.ToeDepth : .4f) + TraversalSettings.LadderOffset.Value; } }
         const float Snap = .2f, MantleBelow = .95f;
 
         enum Exit { Cancel, Bottom, Top, Mantle, Jump }
@@ -64,10 +75,10 @@ namespace WildWasteland.Modules.PlayerBody
         {
             try
             {
-                if (!PlayerBodyModule.Running) return;
+                if (!PresentationModule.WorldRunning) return;
                 if (active)
                 {
-                    if (!PlayerBodyModule.Ladders.Value || animation == null || !animation.Active || body == null || body.gameObject != ModAPI.PlayerRoot
+                    if (!TraversalSettings.Ladders.Value || animation == null || !animation.Active || body == null || body.gameObject != ModAPI.PlayerRoot
                         || ladder == null || !ladder.enabled || !ladder.gameObject.activeInHierarchy)
                     { Finish(Exit.Cancel, "player or ladder unavailable"); return; }
                     if (Time.timeScale < .01f) return;
@@ -75,13 +86,13 @@ namespace WildWasteland.Modules.PlayerBody
                     if (!Cursor.visible && !Core.ApocasetterBridge.InputBlocked && GameBindings.Down("Jump", KeyCode.Space)) { Finish(Exit.Jump, "jumped off"); return; }
                     animation.Facing = facing;
                     // the cycle follows the rendered (interpolated) height every frame, not the 50 Hz physics steps
-                    Services.LadderSlidePhase = PlayerBodyModule.LadderSlidePose.Value; Services.LadderSlideSpeed = PlayerBodyModule.LadderSlideSpeed.Value;
+                    Services.LadderSlidePhase = TraversalSettings.LadderSlidePose.Value; Services.LadderSlideSpeed = TraversalSettings.LadderSlideSpeed.Value;
                     // sliding down: one held pose (hands and feet on the rails, no rung steps); climbing: the cycle on the rungs
                     animation.Rungs = sliding || rungSource == "animation spacing" ? null : rungs;
-                    animation.Phase = sliding ? PlayerBodyModule.LadderSlidePose.Value : PhaseAt(body.transform.position.y - Game.StandingHeight * .5f);
+                    animation.Phase = sliding ? TraversalSettings.LadderSlidePose.Value : PhaseAt(body.transform.position.y - Game.StandingHeight * .5f);
                     return;
                 }
-                if (!PlayerBodyModule.Ladders.Value || Time.unscaledTime < cooldown) return;
+                if (!TraversalSettings.Ladders.Value || Time.unscaledTime < cooldown) return;
                 var player = ModAPI.PlayerRoot;
                 if (player == null) return;
                 if (fsmOwner != player)
@@ -97,7 +108,7 @@ namespace WildWasteland.Modules.PlayerBody
                 var go = ladderVar != null ? ladderVar.Value : null;
                 if (go != null) Begin(player, go);
             }
-            catch (Exception e) { Finish(Exit.Cancel, "exception"); PlayerBodyModule.Error(e); }
+            catch (Exception e) { Finish(Exit.Cancel, "exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
         }
 
         void Begin(GameObject player, GameObject ladderGo)
@@ -166,12 +177,13 @@ namespace WildWasteland.Modules.PlayerBody
             if (animation == null) { LastResult = "the body animation is busy"; return; }
             animation.StowWeapon = true;
             animation.FollowHeadInFirstPerson = true;
-            animation.EyeForward = PlayerBodyModule.LadderEyeForward.Value;
-            animation.NeckBack = PlayerBodyModule.LadderNeckBack.Value;
+            animation.EyeForward = TraversalSettings.LadderEyeForward.Value;
+            animation.NeckBack = TraversalSettings.LadderNeckBack.Value;
             FindRungs(t, center);
             animation.Phase = PhaseAt(feetY);
             active = true;   // from here every change is restored by Finish
-            Services.PlayerLadderSide = side; Services.PlayerLadder = ladder;
+            Services.PlayerLadderSide = side; Services.PlayerLadder = ladder;   // obsolete raw fields, still read by NPCAI PoiNav until it uses ITraversal
+            TraversalApi.PublishStarted(TraversalKind.Ladder, body.position, OnLine(side, platformY));
             oldKinematic = body.isKinematic; oldGravity = body.useGravity; oldInterpolation = body.interpolation;
             // the game's own ladder FSM sets the velocity every frame: paused here, sent "back" when the player lets go
             Suspend(useLadder);
@@ -190,7 +202,7 @@ namespace WildWasteland.Modules.PlayerBody
             body.useGravity = false; body.isKinematic = true; body.interpolation = RigidbodyInterpolation.Interpolate;   // MovePosition: smooth between physics steps
             snapFrom = body.position; snap = 0f; mantleChecked = false;
             LastResult = "climbing " + ladder.name;
-            if (PlayerBodyModule.VerboseOn) PlayerBodyModule.Info("Ladder " + ladder.transform.parent?.name + "/" + ladder.name + ": " + bottomY.ToString("0.00") + ".." + topY.ToString("0.00")
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Ladder " + ladder.transform.parent?.name + "/" + ladder.name + ": " + bottomY.ToString("0.00") + ".." + topY.ToString("0.00")
                 + " m, platform " + (hasPlatform ? platformY.ToString("0.00") : "none") + ", feet " + feetY.ToString("0.00") + ", " + rungs.Length + " rungs (" + rungSource + ") every " + rungStep.ToString("0.000") + " m from " + rung0.ToString("0.00"));
         }
 
@@ -291,7 +303,7 @@ namespace WildWasteland.Modules.PlayerBody
                 float dt = Time.fixedDeltaTime;
                 float v = Cursor.visible || Core.ApocasetterBridge.InputBlocked ? 0f : Mathf.Clamp(Input.GetAxisRaw("Vertical"), -1f, 1f);
                 // up: climbs at LadderSpeed; down: a slide that speeds up to LadderSlideSpeed
-                if (v < 0f) { slideV = Mathf.Min(slideV + 14f * dt, PlayerBodyModule.LadderSlideSpeed.Value); sliding = true; }
+                if (v < 0f) { slideV = Mathf.Min(slideV + 14f * dt, TraversalSettings.LadderSlideSpeed.Value); sliding = true; }
                 else { slideV = 0f; sliding = false; }
                 float dy = v < 0f ? -slideV * dt : v * Speed * dt;
                 float maxFeet = hasPlatform ? platformY + .02f : topY - Game.StandingHeight * .6f;
@@ -305,27 +317,31 @@ namespace WildWasteland.Modules.PlayerBody
                 if (dy > 0f && hasPlatform)
                 {
                     // with climbing on, a waist mantle onto the platform once it is in reach (checked once; refused = climb on and step off)
-                    if (!mantleChecked && feetY >= platformY - MantleBelow && PlayerBodyModule.ClimbingOn.Value && ClimbingController.ClipsLoaded)
+                    if (!mantleChecked && feetY >= platformY - MantleBelow && TraversalSettings.ClimbingOn.Value && ClimbingController.ClipsLoaded)
                     {
                         mantleChecked = true;
                         ClimbTarget probe;
                         body.isKinematic = false; body.useGravity = false;
-                        bool ok = geometry.Find(-side, PlayerBodyModule.ClimbMinHeight.Value, Mathf.Max(PlayerBodyModule.ClimbMinHeight.Value, PlayerBodyModule.ClimbMaxHeight.Value),
-                            PlayerBodyModule.ClimbReach.Value, true, out probe);
+                        bool ok = geometry.Find(-side, TraversalSettings.ClimbMinHeight.Value, Mathf.Max(TraversalSettings.ClimbMinHeight.Value, TraversalSettings.ClimbMaxHeight.Value),
+                            TraversalSettings.ClimbReach.Value, true, out probe);
                         body.velocity = Vector3.zero; body.isKinematic = true;
                         if (ok) { Finish(Exit.Mantle, "mantle at the top"); return; }
-                        if (PlayerBodyModule.VerboseOn) PlayerBodyModule.Info("Ladder: no mantle at the top (" + geometry.Rejection + "), climbing on to step off");
+                        if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Ladder: no mantle at the top (" + geometry.Rejection + "), climbing on to step off");
                     }
                     if (feetY >= platformY) { Finish(Exit.Top, "stepped onto the platform"); return; }
                 }
             }
-            catch (Exception e) { Finish(Exit.Cancel, "physics exception"); PlayerBodyModule.Error(e); }
+            catch (Exception e) { Finish(Exit.Cancel, "physics exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
         }
 
         // NPCs on this ladder (POI navigation) cannot be climbed through: stop a body length short of them
+        readonly List<Vector3> occupants = new List<Vector3>();
         float Blocked(float feet, float next)
         {
-            var list = Services.LadderClimbers; if (list.Count == 0 || next == feet) return next;
+            if (next == feet) return next;
+            var list = occupants; var api = PresentationModule.Traversal;
+            if (api != null) api.LadderOccupants(list); else { list.Clear(); list.AddRange(Services.LadderClimbers); }
+            if (list.Count == 0) return next;
             Vector3 me = OnLine(side, feet);
             for (int i = 0; i < list.Count; i++)
             {
@@ -386,11 +402,12 @@ namespace WildWasteland.Modules.PlayerBody
             // the ladder FSM leaves "input" (it restores Movement / GroundTest); it grabs again only on a new trigger entry
             if (useLadder != null && useLadder.enabled && useLadder.ActiveStateName == "input") useLadder.SendEvent("back");
             if (how == Exit.Jump && body != null && !body.isKinematic) body.velocity = side * 2.2f + Vector3.up * 2.5f;   // push off backwards
+            TraversalApi.PublishEnded(TraversalKind.Ladder, body != null ? body.position : Vector3.zero, how == Exit.Top || how == Exit.Bottom || how == Exit.Mantle);
             cooldown = Time.unscaledTime + .3f;
             LastResult = why;
-            if (PlayerBodyModule.VerboseOn) PlayerBodyModule.Info("Ladder: " + why);
-            if (how == Exit.Mantle && ClimbingController.Instance != null && !ClimbingController.Instance.TryMantle(-side) && PlayerBodyModule.VerboseOn)
-                PlayerBodyModule.Info("Ladder: the mantle was refused (" + ClimbingController.LastReject + ")");
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Ladder: " + why);
+            if (how == Exit.Mantle && ClimbingController.Instance != null && !ClimbingController.Instance.TryMantle(-side) && Log.L1)
+                if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Ladder: the mantle was refused (" + ClimbingController.LastReject + ")");
         }
     }
 }

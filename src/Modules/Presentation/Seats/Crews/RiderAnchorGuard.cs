@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         private void LateUpdate()
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             if (_rider == null || !_rider.Mounted || _anchor == null) return;
             if (transform.parent != _anchor) transform.SetParent(_anchor, true);
             // Every turret's sitting/standing height is owned by Pose, including lance throwers.

@@ -11,8 +11,8 @@ namespace WildWasteland.Modules.Patrols
         public Component SeatPose(GameObject npc, Transform seat, string name, string armLike)
         {
             ArmPoseProfile profile;
-            if (!PatrolsModule.HumanArmPoses.ContainsKey(name) && PatrolsModule.HumanArmPoses.TryGetValue(armLike, out profile))
-                PatrolsModule.HumanArmPoses[name] = profile;
+            if (!SeatPoseSettings.HumanArmPoses.ContainsKey(name) && SeatPoseSettings.HumanArmPoses.TryGetValue(armLike, out profile))
+                SeatPoseSettings.HumanArmPoses[name] = profile;
             Hired.Add(npc.GetInstanceID());
             return Pose.Apply(npc, seat, name);
         }

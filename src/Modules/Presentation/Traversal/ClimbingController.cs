@@ -8,6 +8,8 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     internal sealed class ClimbingController
@@ -19,13 +21,13 @@ namespace WildWasteland.Modules.PlayerBody
         float jumpProbeUntil, nextJumpProbe;
         // (WW) the settings are PlayerBodyModule entries: [PlayerBody / Climbing] Climbing, JumpTriggersClimbing (F6), [Keys] Climb,
         // and the tuning in F7 (tools.cfg [PlayerBody / Climbing]); migrated from Apocaplayer [climbing]/[Debug] and Apocaclimber's cfg
-        static ConfigEntry<bool> enabledMod { get { return PlayerBodyModule.ClimbingOn; } }
-        static ConfigEntry<bool> jumpTriggers { get { return PlayerBodyModule.JumpTriggersClimbing; } }
-        static ConfigEntry<float> minHeight { get { return PlayerBodyModule.ClimbMinHeight; } }
-        static ConfigEntry<float> maxHeight { get { return PlayerBodyModule.ClimbMaxHeight; } }
-        static ConfigEntry<float> reach { get { return PlayerBodyModule.ClimbReach; } }
-        static ConfigEntry<float> waistLimit { get { return PlayerBodyModule.ClimbWaistLimit; } }
-        static ConfigEntry<float> speed { get { return PlayerBodyModule.ClimbSpeed; } }
+        static ConfigEntry<bool> enabledMod { get { return TraversalSettings.ClimbingOn; } }
+        static ConfigEntry<bool> jumpTriggers { get { return TraversalSettings.JumpTriggersClimbing; } }
+        static ConfigEntry<float> minHeight { get { return TraversalSettings.ClimbMinHeight; } }
+        static ConfigEntry<float> maxHeight { get { return TraversalSettings.ClimbMaxHeight; } }
+        static ConfigEntry<float> reach { get { return TraversalSettings.ClimbReach; } }
+        static ConfigEntry<float> waistLimit { get { return TraversalSettings.ClimbWaistLimit; } }
+        static ConfigEntry<float> speed { get { return TraversalSettings.ClimbSpeed; } }
         // the climbing bundle stays loaded for the whole game session (loading the same AssetBundle twice fails after a module restart)
         static AssetBundle bundle;
         static AnimationClip waist, high;
@@ -62,9 +64,9 @@ namespace WildWasteland.Modules.PlayerBody
                 }
                 if (waist == null || high == null || !waist.humanMotion || !high.humanMotion)
                     throw new InvalidDataException("Missing Humanoid ClimbWaist/ClimbHigh clips");
-                PlayerBodyModule.Info("Integrated climbing ready; waist " + waist.length.ToString("0.00") + "s, high " + high.length.ToString("0.00") + "s.");
+                if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Integrated climbing ready; waist " + waist.length.ToString("0.00") + "s, high " + high.length.ToString("0.00") + "s.");
             }
-            catch (Exception e) { PlayerBodyModule.Error("Climbing animation bundle: " + e.Message); waist = high = null; }
+            catch (Exception e) { Log.Error(PresentationModule.WorldOwner, "Climbing animation bundle: " + e.Message); waist = high = null; }
         }
         internal static bool ClipsLoaded { get { return waist != null && high != null; } }
         internal static AnimationClip Clip(bool highClimb) { return highClimb ? high : waist; }
@@ -108,7 +110,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         bool TryStart(bool allowAirborne)
         {
-            if (climbing || !PlayerBodyModule.Running || !enabledMod.Value || waist == null || high == null
+            if (climbing || !PresentationModule.WorldRunning || !enabledMod.Value || waist == null || high == null
                 || Time.unscaledTime < cooldown || !ModAPI.PlayerCanTraverse || Cursor.visible) return false;
             var player = ModAPI.PlayerRoot;
             var rb = player != null ? player.GetComponent<Rigidbody>() : null;
@@ -128,7 +130,7 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 if (climbing)
                 {
-                    if (!PlayerBodyModule.Running || !enabledMod.Value || animation == null || !animation.Active || !body || body.gameObject != ModAPI.PlayerRoot
+                    if (!PresentationModule.WorldRunning || !enabledMod.Value || animation == null || !animation.Active || !body || body.gameObject != ModAPI.PlayerRoot
                         || target.Surface == null || !target.Surface.enabled || !target.Surface.gameObject.activeInHierarchy)
                     { Finish(false, "Player or surface unavailable"); return; }
                     if (Time.timeScale < .01f) return;
@@ -146,9 +148,9 @@ namespace WildWasteland.Modules.PlayerBody
                 if (!climbing && jumpTriggers.Value && Time.time < jumpProbeUntil && Time.time >= nextJumpProbe && body != null
                     && (Game.JumpState == "Jump" || Game.JumpState == "Falling" || Mathf.Abs(body.velocity.y) > .6f))
                 { nextJumpProbe = Time.time + .05f; TryStart(true); }
-                if (!climbing && GameBindings.KeyDown(PlayerBodyModule.ClimbKeyCode)) TryStart(false);
+                if (!climbing && GameBindings.KeyDown(TraversalSettings.ClimbKeyCode)) TryStart(false);
             }
-            catch (Exception e) { Finish(false, "Exception"); PlayerBodyModule.Error(e); }
+            catch (Exception e) { Finish(false, "Exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
         }
 
         void Begin()
@@ -183,7 +185,8 @@ namespace WildWasteland.Modules.PlayerBody
             body.velocity = Vector3.zero; body.angularVelocity = Vector3.zero;
             body.useGravity = false; body.isKinematic = true; body.interpolation = RigidbodyInterpolation.None;
             animation.Sample(0, target.Facing);
-            if (PlayerBodyModule.VerboseOn) PlayerBodyModule.Info("Climb " + clip.name + " onto " + target.Surface.name + ", height " + target.Rise.ToString("0.00") + "m");
+            TraversalApi.PublishStarted(highClimb ? TraversalKind.ClimbHigh : TraversalKind.ClimbWaist, target.Start, target.End);
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Climb " + clip.name + " onto " + target.Surface.name + ", height " + target.Rise.ToString("0.00") + "m");
         }
 
         static bool Under(Transform t, string name)
@@ -204,12 +207,13 @@ namespace WildWasteland.Modules.PlayerBody
                 animation.Sample(elapsed * playbackSpeed, target.Facing);
                 if (elapsed >= duration) Finish(true, "Complete");
             }
-            catch (Exception e) { Finish(false, "Physics exception"); PlayerBodyModule.Error(e); }
+            catch (Exception e) { Finish(false, "Physics exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
         }
 
         void Finish(bool completed, string why)
         {
             if (!climbing && animation == null) return;
+            bool wasClimbing = climbing;
             climbing = false;
             // Restore physics before restarting FSMs: their OnEnable can apply forces.
             if (body != null)
@@ -225,7 +229,8 @@ namespace WildWasteland.Modules.PlayerBody
             suspended.Clear();
             cooldown = Time.unscaledTime + .15f;
             LastResult = completed ? "finished" : why;
-            if (PlayerBodyModule.VerboseOn) PlayerBodyModule.Info("Climb " + (completed ? "finished" : "cancelled") + ": " + why);
+            if (wasClimbing) TraversalApi.PublishEnded(highClimb ? TraversalKind.ClimbHigh : TraversalKind.ClimbWaist, body != null ? body.position : Vector3.zero, completed);
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Climb " + (completed ? "finished" : "cancelled") + ": " + why);
         }
 
         internal void Stop() { Finish(false, "Runner disabled"); }

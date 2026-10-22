@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // Third person on foot. The game only has a third-person camera in cars (DriveTrigger/3rdCamera, "Change Camera" button).
@@ -118,7 +121,7 @@ namespace WildWasteland.Modules.PlayerBody
                 {
                     if (ModAPI.PlayerTraversalActive || ClimbingController.Instance != null && ClimbingController.Instance.TryJumpClimb()) return false;
                 }
-                if (kind == BtnCarCamera && PlayerBodyModule.Running && PlayerBodyModule.ThirdPersonOnFoot.Value
+                if (kind == BtnCarCamera && PresentationModule.WorldRunning && CameraSettings.ThirdPersonOnFoot.Value
                     && __instance.buttonName != null && __instance.buttonName.Value == "Change Camera")
                     return false;   // the car's DriveTrigger [Camera] toggle: our Tick handles Change Camera in the car too
             }
@@ -128,7 +131,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         public static void Tick()
         {
-            bool allowed = PlayerBodyModule.Running && PlayerBodyModule.ThirdPersonOnFoot.Value && Game.Ready && Game.FirstPersonCameraOn;
+            bool allowed = PresentationModule.WorldRunning && CameraSettings.ThirdPersonOnFoot.Value && Game.Ready && Game.FirstPersonCameraOn;
             bool pressed = false;
             if (allowed && !Game.Paused && !Game.Dead)
             {
@@ -140,7 +143,7 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 On = !On;
                 _dist = 0.3f;
-                PlayerBodyModule.Verbose("Third person: " + (On ? "on" : "off"));
+                if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Third person: " + (On ? "on" : "off"));
             }
             if (!allowed && On) On = false;
             bool peek = On && !Game.Dead && (Game.Binoculars || ScopedAds());
@@ -152,12 +155,12 @@ namespace WildWasteland.Modules.PlayerBody
             if (On && !Game.Paused && !Game.Dead)
                 try
                 {
-                    var key = PlayerBodyModule.ObserveKeyCode;
+                    var key = CameraSettings.ObserveKeyCode;
                     if (key != KeyCode.None) { click = Input.GetKeyDown(key); held = Input.GetKey(key); }
-                    if (PlayerBodyModule.EnableMMB.Value) { click |= Input.GetMouseButtonDown(2); held |= Input.GetMouseButton(2); }
+                    if (CameraSettings.EnableMMB.Value) { click |= Input.GetMouseButtonDown(2); held |= Input.GetMouseButton(2); }
                 }
                 catch (System.Exception) { }
-            if (PlayerBodyModule.ToggleMiddleMouse.Value) { if (click) _orbitOn = !_orbitOn; }
+            if (CameraSettings.ToggleMiddleMouse.Value) { if (click) _orbitOn = !_orbitOn; }
             else _orbitOn = held;
             if (!On || Peek) _orbitOn = false;
             Zoom();
@@ -170,8 +173,8 @@ namespace WildWasteland.Modules.PlayerBody
                 if (_orbitOn)
                 {
                     Orbiting = true;
-                    _orbitYaw += mx * PlayerBodyModule.OrbitSpeed.Value;
-                    _orbitPitch = Mathf.Clamp(_orbitPitch - my * PlayerBodyModule.OrbitSpeed.Value, -70f, 70f);
+                    _orbitYaw += mx * CameraSettings.OrbitSpeed.Value;
+                    _orbitPitch = Mathf.Clamp(_orbitPitch - my * CameraSettings.OrbitSpeed.Value, -70f, 70f);
                 }
             }
             if (!Orbiting)   // released: swing back behind her
@@ -182,24 +185,36 @@ namespace WildWasteland.Modules.PlayerBody
             }
             if (!On) { _orbitYaw = _orbitPitch = 0f; }
             bool want = On || CarShift || ModAPI.PlayerTraversalCameraActive;
-            bool cullingWanted = On && !Peek && PlayerBodyModule.OcclusionPrototype.Value && (!Game.InCar || PlayerBodyModule.OcclusionInVehicle.Value);
+            bool cullingWanted = On && !Peek && CameraSettings.OcclusionPrototype.Value && (!Game.InCar || CameraSettings.OcclusionInVehicle.Value);
             Cave.Tick(cullingWanted);
             if (!cullingWanted || Cave.Inside) OcclusionCutaway.Stop();
-            if (want && !_hooked) { Core.CameraArbiter.AddView(PlayerBodyModule.Instance, "Presentation.ThirdPerson", 200, WriteView, true); Core.CameraArbiter.AddProjection(PlayerBodyModule.Instance, "Presentation.ThirdPerson", 200, WriteProjection); _hooked = true; }
+            if (want && !_hooked) { Core.CameraArbiter.AddView(PresentationModule.WorldOwner, "Presentation.ThirdPerson", 200, WriteView, true); Core.CameraArbiter.AddProjection(PresentationModule.WorldOwner, "Presentation.ThirdPerson", 200, WriteProjection); _hooked = true; }
             if (On && !Peek) HideViewModel();
             else if (_hidden.Count > 0) ShowViewModel();
-            if (!want && _hooked) { if (Game.Cam != null) { Game.Cam.ResetWorldToCameraMatrix(); Game.Cam.ResetCullingMatrix(); } Core.CameraArbiter.Remove(PlayerBodyModule.Instance, "Presentation.ThirdPerson"); _hooked = false; }
+            if (!want && _hooked) { if (Game.Cam != null) { Game.Cam.ResetWorldToCameraMatrix(); Game.Cam.ResetCullingMatrix(); } Core.CameraArbiter.Remove(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); _hooked = false; }
+            CameraRigApi.Publish();
         }
 
         // mouse wheel: closer / further, one distance on foot and one in cars, both kept in the config. Not while she carries an item
         // on foot (the wheel moves the item then).
+        /// <summary>True while the HUD map is open (it zooms with the wheel); false without the HUD provider.</summary>
+        private static bool MapOpen() { var map = Core.ModApi.Get<Core.IMapMarkers>(); return map != null && map.Open; }
+
+        /// <summary>Muzzle of the player's held weapon through the animation service (null provider = none).</summary>
+        private static bool TryMuzzle(out Vector3 muzzle)
+        {
+            var anim = Core.ModApi.Get<Core.IAnimationApi>();
+            if (anim != null) return anim.TryPlayerWeaponMuzzle(out muzzle);
+            muzzle = Vector3.zero; return false;
+        }
+
         private static float _saveAt;
         private static void Zoom()
         {
             if (!On || Peek || Game.Paused) { Save(); return; }
             float w = 0f;
             try { w = Input.mouseScrollDelta.y; } catch (System.Exception) { }
-            if (WildWasteland.Core.Services.Map != null && WildWasteland.Core.Services.Map.Open) w = 0f;   // the map zooms with the wheel
+            if (MapOpen()) w = 0f;   // the map zooms with the wheel
             bool car = Game.InCar;
             if (w != 0f && !car)
             {
@@ -208,7 +223,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             if (w != 0f)
             {
-                var e = car ? PlayerBodyModule.ThirdCarDistance : PlayerBodyModule.ThirdDistance;
+                var e = car ? CameraSettings.ThirdCarDistance : CameraSettings.ThirdDistance;
                 float lo = car ? 2.5f : 0.8f, hi = car ? 15f : 6f;
                 _zoomTo[car ? 1 : 0] = Mathf.Clamp((_zoomTo[car ? 1 : 0] > 0f ? _zoomTo[car ? 1 : 0] : e.Value) * Mathf.Pow(0.88f, w), lo, hi);
                 _saveAt = Time.unscaledTime + 1f;
@@ -220,14 +235,14 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (_saveAt <= 0f || Time.unscaledTime < _saveAt) return;
             _saveAt = 0f;
-            if (_zoomTo[0] > 0f) PlayerBodyModule.ThirdDistance.Value = (float)System.Math.Round(_zoomTo[0], 2);   // written to the config once the wheel rests
-            if (_zoomTo[1] > 0f) PlayerBodyModule.ThirdCarDistance.Value = (float)System.Math.Round(_zoomTo[1], 2);
+            if (_zoomTo[0] > 0f) CameraSettings.ThirdDistance.Value = (float)System.Math.Round(_zoomTo[0], 2);   // written to the config once the wheel rests
+            if (_zoomTo[1] > 0f) CameraSettings.ThirdCarDistance.Value = (float)System.Math.Round(_zoomTo[1], 2);
             _zoomTo[0] = _zoomTo[1] = 0f;   // the config is the source again (also edited from the Mods menu)
         }
         private static float Distance(bool car)
         {
             float z = _zoomTo[car ? 1 : 0];
-            return z > 0f ? z : (car ? PlayerBodyModule.ThirdCarDistance.Value : PlayerBodyModule.ThirdDistance.Value);
+            return z > 0f ? z : (car ? CameraSettings.ThirdCarDistance.Value : CameraSettings.ThirdDistance.Value);
         }
 
         // the third-person view of this frame: position, rotation, field of view (the game's own FOV, read before we change it, x the aim zoom)
@@ -261,15 +276,15 @@ namespace WildWasteland.Modules.PlayerBody
             Vector3 fwd = viewRot * Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, fwd); if (right.sqrMagnitude < 1e-4f) right = viewRot * Vector3.right; right.Normalize();
             Transform car = Game.InCar ? Game.CarRoot : null;
-            Vector3 pivot = t.position + Vector3.up * (car != null ? PlayerBodyModule.ThirdCarHeight.Value : PlayerBodyModule.ThirdHeight.Value);
+            Vector3 pivot = t.position + Vector3.up * (car != null ? CameraSettings.ThirdCarHeight.Value : CameraSettings.ThirdHeight.Value);
             if (dead && BodyRunner.RagdollVisible) pivot = BodyRunner.DeathFocus + Vector3.up * 0.35f;
             float zk = ZoomEase;
             _vFov = _gameFov * Mathf.Lerp(1f, ZoomFov, zk);
-            Vector3 want = pivot - fwd * (Distance(car != null) * Mathf.Lerp(1f, ZoomDistance, zk)) + right * (car != null ? 0f : PlayerBodyModule.ThirdShoulder.Value);
+            Vector3 want = pivot - fwd * (Distance(car != null) * Mathf.Lerp(1f, ZoomDistance, zk)) + right * (car != null ? 0f : CameraSettings.ThirdShoulder.Value);
             Vector3 d = want - pivot;
             float max = d.magnitude;
             float dist = max;
-            bool cutaway = Game.Ready && PlayerBodyModule.OcclusionPrototype.Value && (!Game.InCar || PlayerBodyModule.OcclusionInVehicle.Value) && !Cave.Inside && OcclusionCutaway.Available;   // (2.2.9) not in caves   // (2.2.6) the same test as Tick's Stop   // driving: culling only with its own setting
+            bool cutaway = Game.Ready && CameraSettings.OcclusionPrototype.Value && (!Game.InCar || CameraSettings.OcclusionInVehicle.Value) && !Cave.Inside && OcclusionCutaway.Available;   // (2.2.9) not in caves   // (2.2.6) the same test as Tick's Stop   // driving: culling only with its own setting
             if (!cutaway)
             {
                 int n = Physics.SphereCastNonAlloc(pivot, 0.2f, d / Mathf.Max(max, 1e-4f), _hits, max, Mask, QueryTriggerInteraction.Ignore);   // (2.2.6) no array per frame
@@ -347,7 +362,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_zoomLogs < 3 && AimZoom && _zoomK >= 1f && Core.Log.L2)
             {
                 _zoomLogs++;
-                Core.Log.Deep(PlayerBodyModule.Instance, "Aim zoom check: game FOV " + _gameFov.ToString("0.0") + " -> view FOV " + _vFov.ToString("0.0") + ", crosshair on " + XhairWhat + " at " + _xhairDist.ToString("0.0") + " m");
+                Core.Log.Deep(PresentationModule.WorldOwner, "Aim zoom check: game FOV " + _gameFov.ToString("0.0") + " -> view FOV " + _vFov.ToString("0.0") + ", crosshair on " + XhairWhat + " at " + _xhairDist.ToString("0.0") + " m");
             }
             return true;
         }
@@ -366,22 +381,22 @@ namespace WildWasteland.Modules.PlayerBody
         private const int GunMask = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 14);   // the player guns' Raycast mask
 
         private static float _dynK;
-        private static bool DynamicWanted { get { return PlayerBodyModule.DynamicCrosshair.Value && !string.IsNullOrEmpty(Game.DrawnWeapon); } }
+        private static bool DynamicWanted { get { return CameraSettings.DynamicCrosshair.Value && !string.IsNullOrEmpty(Game.DrawnWeapon); } }
 
         public static void LateCrosshair()
         {
             HasCrosshair = false;
             var cam = Game.Cam;
-            if (!PlayerBodyModule.DynamicCrosshair.Value || !On || Peek || cam == null || Game.Dead || Game.Paused) { _dynK = 0f; RestoreCrosshair(); return; }
+            if (!CameraSettings.DynamicCrosshair.Value || !On || Peek || cam == null || Game.Dead || Game.Paused) { _dynK = 0f; RestoreCrosshair(); return; }
             // no weapon drawn: centred crosshair once the view has turned back to the aim point (placed with the drawn view until then)
             if (!DynamicWanted && _dynK <= 0f) { RestoreCrosshair(); return; }
             var t = cam.transform;
             // the third-person view exactly as PreCull will draw it this frame
             ComputeView(cam);
             Vector3 pos = _vPos; var viewRot = _vRot; float fov = _vFov;
-            var guns = Core.Services.Guns;
+            var guns = Core.ModApi.Get<Core.IGunsApi>();
             Vector3 muzzle = Vector3.zero;
-            bool muzzleRay = guns != null && guns.PlayerProjectilesEnabled && Core.Services.Animation != null && Core.Services.Animation.TryPlayerWeaponMuzzle(out muzzle);
+            bool muzzleRay = guns != null && guns.PlayerProjectilesEnabled && TryMuzzle(out muzzle);
 
             // where the eye ray lands
             Vector3 hitPoint = t.position + t.forward * 1000f;
@@ -435,13 +450,13 @@ namespace WildWasteland.Modules.PlayerBody
             Vector3 f = Game.Player != null ? Game.Player.transform.forward : cam.forward; f.y = 0f;
             if (f.sqrMagnitude < 1e-4f) { f = cam.forward; f.y = 0f; }
             if (f.sqrMagnitude < 1e-4f) return cam.position;
-            return cam.position + f.normalized * PlayerBodyModule.CarCameraForward.Value;
+            return cam.position + f.normalized * CarSeatSettings.CarCameraForward.Value;
         }
 
         // after the frame is drawn: the camera's real view matrix back, so the game's MousePick / ScreenPointToRay (grab, use, enter the car,
         // vehicle parts, save points) cast from the first-person eye as always - not from the third-person view 2.4 m behind her
         /// <summary>Restores the real native eye before next-frame gameplay queries.</summary>
-        public static void EndOfFrame() { Core.CameraArbiter.Restore(PlayerBodyModule.Instance, "Presentation.ThirdPerson"); }
+        public static void EndOfFrame() { Core.CameraArbiter.Restore(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); }
 
         private static void HideViewModel()
         {
@@ -477,8 +492,9 @@ namespace WildWasteland.Modules.PlayerBody
             On = false; Peek = false; Orbiting = false; _orbitOn = false; CarShift = false; HasView = false; AimZoom = false; _zoomK = 0f;
             _deathView = false;
             ShowViewModel();
-            if (_hooked) { Core.CameraArbiter.Remove(PlayerBodyModule.Instance, "Presentation.ThirdPerson"); _hooked = false; if (Game.Cam != null) Game.Cam.ResetCullingMatrix(); }
+            if (_hooked) { Core.CameraArbiter.Remove(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); _hooked = false; if (Game.Cam != null) Game.Cam.ResetCullingMatrix(); }
             if (Game.Cam != null) Game.Cam.ResetWorldToCameraMatrix();
+            CameraRigApi.Publish();
         }
     }
 }

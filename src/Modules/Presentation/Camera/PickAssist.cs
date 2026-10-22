@@ -2,6 +2,9 @@ using System;
 using System.Reflection;
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // Third person: picking what is under the crosshair. The game's picks (grab / carry items, use, vehicle parts, doors ...) all go through
@@ -16,33 +19,35 @@ namespace WildWasteland.Modules.PlayerBody
     // every zoom level. A ray from the eye to that point then becomes the pick result, exactly as if the game's own ray had hit it.
     internal static class PickAssist
     {
-        private static FieldInfo _info;
         private static readonly Collider[] _near = new Collider[128];
         private static readonly RaycastHit[] _hits = new RaycastHit[32];
 
-        public static void Patch(Core.IModule owner)
+        /// <summary>
+        /// Core.Hooks.DoMousePick postfix (every DoMousePick call of every FSM, i.e. a few per frame; Optimization PM7 may have replaced the raycast
+        /// before it). Early-out: World part not running or the player not in third person / car shift. Reads and writes the game's public
+        /// ActionHelpers.mousePickInfo directly (no reflection or boxing per call, README 8#7).
+        /// </summary>
+        public static void AfterDoMousePick(ref Core.Hooks.MousePickArgs args)
         {
-            var t = typeof(HutongGames.PlayMaker.ActionHelpers);
-            _info = HarmonyLib.AccessTools.Field(t, "mousePickInfo");
-            var m = HarmonyLib.AccessTools.Method(t, "DoMousePick");
-            if (_info == null || m == null) { PlayerBodyModule.Warn("Pick assist: ActionHelpers.DoMousePick / mousePickInfo not found - off"); return; }
-            Core.Patches.Patch(owner, m, postfix: HarmonyLib.AccessTools.Method(typeof(PickAssist), nameof(AfterDoMousePick)));
+            if (!PresentationModule.WorldRunning || !ThirdPerson.On && !ThirdPerson.CarShift) return;
+            AfterDoMousePick(args.Distance, args.LayerMask);
         }
 
-        public static void AfterDoMousePick(float distance, int layerMask)
+        /// <summary>The pick correction of one DoMousePick call (see the class comment).</summary>
+        static void AfterDoMousePick(float distance, int layerMask)
         {
             try
             {
-                if (PlayerBodyModule.Running && ThirdPerson.On && Game.InCar && Game.CarRoot != null)
+                if (PresentationModule.WorldRunning && ThirdPerson.On && Game.InCar && Game.CarRoot != null)
                 {
                     // Dashboard/parts must never capture fire or wheel input in third person.
                     // Keep the DriveTrigger pick for the game's F-to-exit action.
-                    var picked = (RaycastHit)_info.GetValue(null);
+                    var picked = HutongGames.PlayMaker.ActionHelpers.mousePickInfo;
                     if (picked.collider != null && BlockedVehiclePart(picked.collider.transform))
-                        _info.SetValue(null, default(RaycastHit));
+                        HutongGames.PlayMaker.ActionHelpers.mousePickInfo = default(RaycastHit);
                     return; // no screen-space assist inside a vehicle
                 }
-                if (PlayerBodyModule.Running && ThirdPerson.CarShift && !ThirdPerson.On && Game.Cam != null && Core.GameRefs.MainCamera == Game.Cam && !Game.Paused)
+                if (PresentationModule.WorldRunning && ThirdPerson.CarShift && !ThirdPerson.On && Game.Cam != null && Core.GameRefs.MainCamera == Game.Cam && !Game.Paused)
                 {   // first person in the car with her body: the picture is drawn from a bit in front of the eye, so the game's eye ray (from
                     // behind that) ends on what is in front - the cassette player instead of the ignition / light switches under the cursor.
                     // The pick is cast again from the drawn eye, through the same cursor direction.
@@ -50,16 +55,16 @@ namespace WildWasteland.Modules.PlayerBody
                     RaycastHit h;
                     Vector3 eye = ThirdPerson.CarShiftEye(Game.Cam.transform);
                     float d = Mathf.Max(0.01f, distance - Vector3.Dot(eye - ray.origin, ray.direction));   // the same reach from the real eye
-                    _info.SetValue(null, Physics.Raycast(eye, ray.direction, out h, d, layerMask) ? h : default(RaycastHit));
+                    HutongGames.PlayMaker.ActionHelpers.mousePickInfo = Physics.Raycast(eye, ray.direction, out h, d, layerMask) ? h : default(RaycastHit);
                     return;
                 }
-                if (!PlayerBodyModule.Running || !PlayerBodyModule.PickAssistOn.Value || !ThirdPerson.On || !ThirdPerson.HasView || Game.Cam == null || Core.GameRefs.MainCamera != Game.Cam || Game.Paused) return;
-                var cur = (RaycastHit)_info.GetValue(null);
+                if (!PresentationModule.WorldRunning || !CameraSettings.PickAssistOn.Value || !ThirdPerson.On || !ThirdPerson.HasView || Game.Cam == null || Core.GameRefs.MainCamera != Game.Cam || Game.Paused) return;
+                var cur = HutongGames.PlayMaker.ActionHelpers.mousePickInfo;
                 if (cur.collider != null && Usable(cur.collider)) return;   // the game's own ray already has something
                 RaycastHit hit;
-                if (Find(distance, layerMask, out hit)) _info.SetValue(null, hit);
+                if (Find(distance, layerMask, out hit)) HutongGames.PlayMaker.ActionHelpers.mousePickInfo = hit;
             }
-            catch (Exception e) { PlayerBodyModule.Verbose("Pick assist: " + e.Message); }
+            catch (Exception e) { if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pick assist: " + e.Message); }
         }
 
         // things a pick is for: items and parts (a Rigidbody) or anything with its own FSM (switches, doors, ignition, cassette ...)
@@ -96,7 +101,7 @@ namespace WildWasteland.Modules.PlayerBody
             Vector3 rdir = (rrot * new Vector3(nx * tan * cam.aspect, ny * tan, 1f)).normalized;
             var viewM = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(rpos, rrot, Vector3.one).inverse;
             var vp = Matrix4x4.Perspective(ThirdPerson.ViewFov, cam.aspect, cam.nearClipPlane, cam.farClipPlane) * viewM;
-            float radius = Mathf.Max(16f, PlayerBodyModule.PickAssistRadius.Value * H);
+            float radius = Mathf.Max(16f, CameraSettings.PickAssistRadius.Value * H);
 
             int n = Physics.OverlapSphereNonAlloc(eye, distance, _near, layerMask, QueryTriggerInteraction.UseGlobal);
             Collider best = null; Vector3 bestPoint = Vector3.zero; float bestScore = float.MaxValue;

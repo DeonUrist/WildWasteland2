@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.Patrols
 {
     // One fixed seated limb pose for every live occupant. A ranged passenger may rotate that fixed pose through the
@@ -40,18 +43,21 @@ namespace WildWasteland.Modules.Patrols
             p._root = occupant.transform;
             p._anchor = anchor;
             p._bike = IsBike(anchor);
-            PatrolsModule.HumanArmPoses.TryGetValue(humanType ?? "", out p._armPose);
+            SeatPoseSettings.HumanArmPoses.TryGetValue(humanType ?? "", out p._armPose);
             p.FindBones();
             return p;
         }
+
+        /// <summary>Body prefab name of the true motorcycle (same value as the Vehicles module's MotorcycleIntegration.Body).</summary>
+        private const string MotorcycleBody = "Motorcycle";
 
         // the vehicle the seat belongs to is a motorcycle body (Motorcycle = the true bike, Halfbreed)
         private static bool IsBike(Transform anchor)
         {
             var root = anchor != null ? anchor.root : null;
             if (root == null) return false;
-            string body = TemplateExporter.PrefabName(root.name);
-            return MotorcycleIntegration.IsBody(body) || string.Equals(body, "Halfbreed", System.StringComparison.OrdinalIgnoreCase);
+            string body = Core.Names.Prefab(root.name);
+            return string.Equals(body, MotorcycleBody, System.StringComparison.OrdinalIgnoreCase) || string.Equals(body, "Halfbreed", System.StringComparison.OrdinalIgnoreCase);
         }
 
         private void FindBones()
@@ -70,7 +76,7 @@ namespace WildWasteland.Modules.Patrols
             if (_spine == null || _spine1 == null || _spine2 == null) missing.Add("spine");
             if (_lUpLeg == null || _lLeg == null || _rUpLeg == null || _rLeg == null) missing.Add("legs");
             if (_lArm == null || _lForeArm == null || _lHand == null || _rArm == null || _rForeArm == null || _rHand == null) missing.Add("arms/hands");
-            PatrolsModule.Verbose("Pose: bones " + (missing.Count == 0 ? "all found" : "missing " + string.Join(", ", missing.ToArray())));
+            if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: bones " + (missing.Count == 0 ? "all found" : "missing " + string.Join(", ", missing.ToArray())));
         }
 
         private void FindWeapons()
@@ -83,7 +89,7 @@ namespace WildWasteland.Modules.Patrols
                 // of LeftHand, so storing every rendered child also covers variants enabled later by WeaponType.
                 if (child.GetComponentInChildren<Renderer>(true) == null) continue;
                 _weapons.Add(new WeaponRoot(child, child.localPosition, child.localRotation));
-                PatrolsModule.Verbose("Pose: weapon root " + child.name + " found under LeftHand");
+                if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: weapon root " + child.name + " found under LeftHand");
             }
         }
 
@@ -112,7 +118,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 var anim = _root != null ? _root.GetComponentInChildren<Animator>() : null;
                 if (anim != null && anim.isHuman) _body = PlayerAnims.Attach(anim);
-                if (_body != null) { PlayerAnims.Set(_body, !standing, false, false, 0f); PatrolsModule.Verbose("Pose: human turret " + _root.name + " animated by Apocaplayer's ModAPI ("+(standing?"standing":"crouched")+")"); }
+                if (_body != null) { PlayerAnims.Set(_body, !standing, false, false, 0f); if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + _root.name + " animated by Apocaplayer's ModAPI ("+(standing?"standing":"crouched")+")"); }
             }
         }
 
@@ -142,7 +148,16 @@ namespace WildWasteland.Modules.Patrols
             if (gun == _bodyGun) return;
             _bodyGun = gun;
             PlayerAnims.SetWeapon(_body, gun, key);
-            PatrolsModule.Verbose("Pose: human turret " + _root.name + " holds " + (gun != null ? key : "nothing the player's poses know"));
+            if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + _root.name + " holds " + (gun != null ? key : "nothing the player's poses know"));
+        }
+
+        /// <summary>Seat anchor and seat kind of this pose (ISeatPoses); false once the anchor or the body is gone.</summary>
+        internal bool TryGetSeat(out Transform seat, out SeatKind kind)
+        {
+            seat = _anchor;
+            kind = _turret ? (_turretWarboy || _turretBike ? SeatKind.Rider : SeatKind.Turret) : _busPassenger ? SeatKind.BusPassenger : AnimatedFollower ? SeatKind.Follower
+                : _bike ? SeatKind.Bike : _lockSeatRotation ? SeatKind.Passenger : SeatKind.Driver;
+            return _anchor != null && _root != null;
         }
 
         // the occupant changed seats (passenger promoted to driver): follow the new anchor, no passenger aiming any more
@@ -185,7 +200,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         private void LateUpdate()
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             if (_root == null || _anchor == null) return;
             // Far from the camera the pose is refreshed less often: every 4th frame beyond 120 m, every 16th beyond 300 m (a convoy
             // spawning 350 m away is fourteen occupants; ~40 bone rotations each). The animator keeps the body in a sane idle in between.
@@ -202,7 +217,7 @@ namespace WildWasteland.Modules.Patrols
             var up = _anchor.up;
 
             var bus=_busPassenger?BusPassengerPoseStore.Current:null;
-            bool editing=BusPassengerPoseEditor.Editing(this);
+            bool editing=BusPassengerPoseEditor.Editing(this);   // refs-ok: REFACTOR-REQUEST B06-5 (Developer editor target; no authoring query)
             if(bus!=null)
             {
                 BusJoint(_lUpLeg,_lLeg,bus.left[0],right,up);BusJoint(_lLeg,_lFoot,bus.left[1],right,up);
@@ -210,9 +225,9 @@ namespace WildWasteland.Modules.Patrols
             }
             else
             {
-                float thigh = PatrolsModule.PoseThigh.Value, knee = PatrolsModule.PoseKnee.Value;
-                Swing(_lUpLeg, -thigh, right); Swing(_lUpLeg, PatrolsModule.PoseLeftLegCloser.Value, up); Swing(_lLeg, knee, right);
-                Swing(_rUpLeg, -thigh, right); Swing(_rUpLeg, -PatrolsModule.PoseRightLegCloser.Value, up); Swing(_rLeg, knee, right);
+                float thigh = SeatPoseSettings.PoseThigh.Value, knee = SeatPoseSettings.PoseKnee.Value;
+                Swing(_lUpLeg, -thigh, right); Swing(_lUpLeg, SeatPoseSettings.PoseLeftLegCloser.Value, up); Swing(_lLeg, knee, right);
+                Swing(_rUpLeg, -thigh, right); Swing(_rUpLeg, -SeatPoseSettings.PoseRightLegCloser.Value, up); Swing(_rLeg, knee, right);
             }
 
             if (AnimatedFollower) goto AimFollower;
@@ -233,9 +248,9 @@ namespace WildWasteland.Modules.Patrols
             }
             else
             {
-                float arm = PatrolsModule.PoseArm.Value, elbow = PatrolsModule.PoseElbow.Value;
-                float lIn = PatrolsModule.PoseLeftArmCloser.Value, rIn = PatrolsModule.PoseRightArmCloser.Value;
-                if (_bike) { arm = PatrolsModule.PoseBikeArm.Value; lIn = rIn = -PatrolsModule.PoseBikeArmSpread.Value; }   // hands apart on the grips
+                float arm = SeatPoseSettings.PoseArm.Value, elbow = SeatPoseSettings.PoseElbow.Value;
+                float lIn = SeatPoseSettings.PoseLeftArmCloser.Value, rIn = SeatPoseSettings.PoseRightArmCloser.Value;
+                if (_bike) { arm = SeatPoseSettings.PoseBikeArm.Value; lIn = rIn = -SeatPoseSettings.PoseBikeArmSpread.Value; }   // hands apart on the grips
                 Swing(_lArm, -arm, right); Swing(_lArm, lIn, up); Swing(_lForeArm, -elbow, right);
                 Swing(_rArm, -arm, right); Swing(_rArm, -rIn, up); Swing(_rForeArm, -elbow, right);
             }
@@ -262,13 +277,13 @@ namespace WildWasteland.Modules.Patrols
             AimSpine(_spine1, 0.35f, up, right);
             AimSpine(_spine2, 0.40f, up, right);
 
-            var target = _anchor.position + _anchor.right * PatrolsModule.DriverOffsetX.Value + _anchor.up * PatrolsModule.DriverOffsetY.Value
-                       + _anchor.forward * PatrolsModule.DriverOffsetZ.Value;
+            var target = _anchor.position + _anchor.right * SeatPoseSettings.DriverOffsetX.Value + _anchor.up * SeatPoseSettings.DriverOffsetY.Value
+                       + _anchor.forward * SeatPoseSettings.DriverOffsetZ.Value;
             if(bus!=null)target+=_anchor.right*bus.seatOffset.x+_anchor.up*bus.seatOffset.y+_anchor.forward*bus.seatOffset.z;
             var pivot = _hips != null ? _hips.position : _root.position;
             _root.position += target - pivot;
 
-            if (!_logged) { _logged = true; PatrolsModule.Verbose("Pose: applied, hips at " + target + " root at " + _root.position); }
+            if (!_logged) { _logged = true; if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: applied, hips at " + target + " root at " + _root.position); }
         }
 
         private void TurretPose()
@@ -310,7 +325,7 @@ namespace WildWasteland.Modules.Patrols
                 BodyWeapon();
                 PlayerAnims.Set(_body, _turretSeated, _aimActive, false, -_aimPitch);
                 _root.position = _anchor.position;
-                if (!_logged) { _logged = true; PatrolsModule.Verbose("Pose: human turret " + (_turretSeated?"crouched":"standing") + " (Apocaplayer), feet at " + _anchor.position); }
+                if (!_logged) { _logged = true; if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + (_turretSeated?"crouched":"standing") + " (Apocaplayer), feet at " + _anchor.position); }
                 return;
             }
             var right = _root.right; var up = _root.up;
@@ -334,17 +349,17 @@ namespace WildWasteland.Modules.Patrols
             AimSpine(_spine1, 0.35f, up, right);
             AimSpine(_spine2, 0.40f, up, right);
 
-            if (!_logged) { _logged = true; PatrolsModule.Verbose("Pose: human turret " + (_turretSeated ? (_turretBike?"seated":"crouched") : "standing")); }
+            if (!_logged) { _logged = true; if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + (_turretSeated ? (_turretBike?"seated":"crouched") : "standing")); }
         }
 
         private void TurretLegs(bool standing,bool forceCrouch=false)
         {
             if(standing){_root.position=_anchor.position;return;}
             var right=_root.right;var up=_root.up;bool seat=_turretBike&&!forceCrouch;
-            float thigh=seat?PatrolsModule.PoseThigh.Value:PatrolsModule.TurretThigh.Value,knee=seat?PatrolsModule.PoseKnee.Value:PatrolsModule.TurretKnee.Value,spread=seat?0f:10f;
+            float thigh=seat?SeatPoseSettings.PoseThigh.Value:SeatPoseSettings.TurretThigh.Value,knee=seat?SeatPoseSettings.PoseKnee.Value:SeatPoseSettings.TurretKnee.Value,spread=seat?0f:10f;
             Swing(_lUpLeg,-thigh,right);Swing(_lUpLeg,-spread,up);Swing(_lLeg,knee,right);
             Swing(_rUpLeg,-thigh,right);Swing(_rUpLeg,spread,up);Swing(_rLeg,knee,right);
-            var target=_anchor.position+_anchor.up*(seat?.08f:PatrolsModule.TurretHipHeight.Value);
+            var target=_anchor.position+_anchor.up*(seat?.08f:SeatPoseSettings.TurretHipHeight.Value);
             _root.position+=target-(_hips!=null?_hips.position:_root.position);
         }
 

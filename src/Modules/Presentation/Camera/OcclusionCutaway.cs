@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // Prototype: a second view omits only blockers; a depth-tested, feathered
@@ -75,8 +78,8 @@ namespace WildWasteland.Modules.PlayerBody
                     var bundle = AssetBundle.LoadFromFile(PlayerBodyModule.ModPath("Models/apocaplayer_camera.bundle"));
                     if (bundle != null) { _shader = bundle.LoadAsset<Shader>("Assets/OcclusionComposite.shader"); bundle.Unload(false); }
                 }
-                catch (Exception e) { PlayerBodyModule.Warn("Camera cutaway shader: " + e.Message); }
-                if (_shader == null || !_shader.isSupported) PlayerBodyModule.Warn("Camera cutaway shader unavailable; original collision camera remains active.");
+                catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Camera cutaway shader: " + e.Message); }
+                if (_shader == null || !_shader.isSupported) Log.Warn(PresentationModule.WorldOwner, "Camera cutaway shader unavailable; original collision camera remains active.");
                 return _shader != null && _shader.isSupported;
             }
         }
@@ -91,7 +94,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _active._main = main;
             }
             try { _active.RenderClear(pos, rotation, vehicle); }
-            catch (Exception e) { _active.Restore(); _active._prepared = false; PlayerBodyModule.Warn("Camera cutaway: " + e.Message); }
+            catch (Exception e) { _active.Restore(); _active._prepared = false; Log.Warn(PresentationModule.WorldOwner, "Camera cutaway: " + e.Message); }
         }
 
         private void FindBlockers(Vector3 camera, Vector3 head, Vector3 feet, Transform vehicle)
@@ -120,7 +123,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             Vector3 delta = to - from; float distance = delta.magnitude;
             if (distance < .01f) return;
-            float radius = Mathf.Clamp(PlayerBodyModule.OcclusionRadius.Value, .2f, .9f);
+            float radius = Mathf.Clamp(CameraSettings.OcclusionRadius.Value, .2f, .9f);
             int count = Physics.SphereCastNonAlloc(from, radius, delta / distance, _hits, Mathf.Max(0, distance - radius - .075f), Mask, QueryTriggerInteraction.Ignore);
             for (int i = 0; i < count; i++)
             {
@@ -199,7 +202,7 @@ namespace WildWasteland.Modules.PlayerBody
                         if (near.Count >= 256) break;     // sanity limit only
                     }
                     b.Renderers = near.ToArray();
-                    PlayerBodyModule.Verbose("Camera cutaway: " + collider.name + " belongs to " + owner.name + " (" + all.Length + " meshes) - only the " + b.Renderers.Length + " touching the collider are cut away");
+                    if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Camera cutaway: " + collider.name + " belongs to " + owner.name + " (" + all.Length + " meshes) - only the " + b.Renderers.Length + " touching the collider are cut away");
                 }
             }
             _blockers[collider] = b;
@@ -275,10 +278,10 @@ namespace WildWasteland.Modules.PlayerBody
                 var a = _clearCamera.WorldToViewportPoint(head); var b = _clearCamera.WorldToViewportPoint(feet);
                 float focusDepth = Mathf.Max(a.z, b.z);
                 if (focusDepth <= .05f) return;
-                float radius = Mathf.Clamp(PlayerBodyModule.OcclusionRadius.Value * _main.projectionMatrix.m11 / (2f * Mathf.Max(.3f, (a.z + b.z) * .5f)), .02f, .45f) * _windowScale;
+                float radius = Mathf.Clamp(CameraSettings.OcclusionRadius.Value * _main.projectionMatrix.m11 / (2f * Mathf.Max(.3f, (a.z + b.z) * .5f)), .02f, .45f) * _windowScale;
                 _composite.SetVector(IdEnds, new Vector4(a.x, a.y, b.x, b.y));
                 _composite.SetFloat(IdRadius, radius); _composite.SetFloat(IdAspect, _main.aspect);
-                _composite.SetFloat(IdStrength, _strength * (1f - PlayerBodyModule.OcclusionOpacity.Value));
+                _composite.SetFloat(IdStrength, _strength * (1f - CameraSettings.OcclusionOpacity.Value));
                 Vector3 character = Game.Player != null && !Game.Dead ? Game.Player.transform.position : (head + feet) * .5f;
                 float stopDepth = Mathf.Max(_main.nearClipPlane + .01f, Vector3.Dot(character - pos, rotation * Vector3.forward) - .075f);
                 // Restore blockers, then render only the scene beyond the character
@@ -349,7 +352,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            if (_prepared && ThirdPerson.On && !ThirdPerson.Peek && PlayerBodyModule.OcclusionPrototype.Value && (!Game.InCar || PlayerBodyModule.OcclusionInVehicle.Value)) Graphics.Blit(source, destination, _composite, 0);
+            if (_prepared && ThirdPerson.On && !ThirdPerson.Peek && CameraSettings.OcclusionPrototype.Value && (!Game.InCar || CameraSettings.OcclusionInVehicle.Value)) Graphics.Blit(source, destination, _composite, 0);
             else Graphics.Blit(source, destination);
             _prepared = false;
         }

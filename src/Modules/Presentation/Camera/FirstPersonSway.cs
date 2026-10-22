@@ -4,6 +4,9 @@ using System.Reflection;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // (2.3.3) Smooth first-person weapon / item sway. The game's [Sway] FSMs under the PlayerCamera (WeaponsArm/Parent, ItemAnim,
@@ -105,7 +108,7 @@ namespace WildWasteland.Modules.PlayerBody
                     __instance.Fsm.Event(__instance.finishEvent);
                 return false;
             }
-            catch (Exception e) { PlayerBodyModule.Verbose("First-person sway: " + e.Message); return true; }
+            catch (Exception e) { if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "First-person sway: " + e.Message); return true; }
         }
     }
 }

@@ -7,6 +7,9 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.Patrols
 {
     /// <summary>Visual part of a human turret: PlayableGraph/animation-service clips (crouch, throw, jump, stand), lance prop offset, own weapons hidden, body facing; Presentation (Wave A split of Crews/Rider.cs).</summary>
@@ -23,7 +26,7 @@ namespace WildWasteland.Modules.Patrols
                 {
                     _throwLen = PlayerAnims.ThrowSeconds();
                     PlayerAnims.Set(_body, !StandingPose, false, false, 0f);
-                    PatrolsModule.Verbose("Rider: " + name + " animated by Apocaplayer's ModAPI ("+(StandingPose?"standing":"crouched")+", throw " + _throwLen.ToString("0.00") + " s)");
+                    if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Rider: " + name + " animated by Apocaplayer's ModAPI ("+(StandingPose?"standing":"crouched")+", throw " + _throwLen.ToString("0.00") + " s)");
                     return;
                 }
             }
@@ -33,8 +36,8 @@ namespace WildWasteland.Modules.Patrols
                 var thr = Rider.Clip("Throw");
                 var jump = Rider.Clip("Jump");
                 var stand = Rider.Clip("Idle");
-                if (_anim == null || idle == null) { if (_anim == null) PatrolsModule.Verbose("Rider: no Animator on " + name); return; }
-                if (!_anim.isHuman) { PatrolsModule.Verbose("Rider: " + name + "'s Animator is not humanoid - Apocaplayer clips cannot drive it"); return; }
+                if (_anim == null || idle == null) { if (_anim == null && Log.L2) Log.Deep(PresentationModule.WorldOwner, "Rider: no Animator on " + name); return; }
+                if (!_anim.isHuman) { if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Rider: " + name + "'s Animator is not humanoid - Apocaplayer clips cannot drive it"); return; }
                 _anim.applyRootMotion = false;
                 _graph = PlayableGraph.Create("Apocapatrol.Rider");
                 _graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
@@ -52,9 +55,9 @@ namespace WildWasteland.Modules.Patrols
                 output.SetSourcePlayable(_mixer);
                 _graph.Play();
                 _graphOk = true;
-                PatrolsModule.Verbose("Rider: " + name + " animated with " + idle.name + (thr != null ? " + " + thr.name : " (no Throw)") + (jump != null ? " + " + jump.name : " (no Jump)"));
+                if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Rider: " + name + " animated with " + idle.name + (thr != null ? " + " + thr.name : " (no Throw)") + (jump != null ? " + " + jump.name : " (no Jump)"));
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Rider: animation graph: " + e.Message); _graphOk = false; }
+            catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Rider: animation graph: " + e.Message); _graphOk = false; }
         }
 
         // 0 = crouch idle, 1 = throw, 2 = jump (one-shots restart from 0), 3 = standing idle
@@ -78,8 +81,8 @@ namespace WildWasteland.Modules.Patrols
         internal void ApplyLanceOffset()
         {
             if (Lance == null) return;
-            Lance.localPosition = Rider.ParseV3(PatrolsModule.RiderLanceOffset.Value, Vector3.zero);
-            Lance.localRotation = Quaternion.Euler(Rider.ParseV3(PatrolsModule.RiderLanceRotation.Value, Vector3.zero));
+            Lance.localPosition = Rider.ParseV3(SeatPoseSettings.RiderLanceOffset.Value, Vector3.zero);
+            Lance.localRotation = Quaternion.Euler(Rider.ParseV3(SeatPoseSettings.RiderLanceRotation.Value, Vector3.zero));
         }
 
         private void HideOwnWeapons()

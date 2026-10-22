@@ -5,6 +5,8 @@ using UnityEngine.Animations;
 using UnityEngine.Playables;
 using WildWasteland.Core;
 
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     /// <summary>
@@ -250,7 +252,7 @@ namespace WildWasteland.Modules.PlayerBody
             string key = "throw:" + _throwClip;
             float corr; _carYawFix.TryGetValue(key, out corr);
             _carYawFix[key] = Mathf.Clamp(corr - err, -90f, 90f);
-            PlayerBodyModule.Verbose("Car throw aim: " + _throwClip + " hand " + err.ToString("0.0") + " deg off -> chest turn " + _carYawFix[key].ToString("0.0"));
+            if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Car throw aim: " + _throwClip + " hand " + err.ToString("0.0") + " deg off -> chest turn " + _carYawFix[key].ToString("0.0"));
         }
     }
 }

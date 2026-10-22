@@ -1,5 +1,8 @@
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.PlayerBody
 {
     // (2.2.9) no camera culling inside caves: there the cut-away views lose the rock's shadows and light leaks in as bright patches.
@@ -33,7 +36,7 @@ namespace WildWasteland.Modules.PlayerBody
                     inside = b != null && b.Value;
                 }
             }
-            if (inside != Inside) { Inside = inside; PlayerBodyModule.Verbose(inside ? "Camera culling: off in the cave" : "Camera culling: out of the cave, back on"); }
+            if (inside != Inside) { Inside = inside; if (Log.L1) Log.Main(PresentationModule.WorldOwner, inside ? "Camera culling: off in the cave" : "Camera culling: out of the cave, back on"); }
         }
 
         public static void Reset() { Inside = false; _fsm = null; _for = null; }

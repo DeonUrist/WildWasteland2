@@ -4,6 +4,9 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
 namespace WildWasteland.Modules.Patrols
 {
     // Custom paint for the mod's own cars: BepInEx/plugins/Apocapatrol/Textures/<texture name>.png replaces the frame texture of that name
@@ -18,9 +21,20 @@ namespace WildWasteland.Modules.Patrols
         private static string _dir;
         private static readonly Dictionary<string, Texture2D> _tex = new Dictionary<string, Texture2D>(StringComparer.OrdinalIgnoreCase);   // null = no file
         
-        // WW: dataDir = BepInEx\plugins\WildWasteland\Patrols
+        private static bool _configured, _preloaded;
+
+        /// <summary>Sets the texture folder (Presentation World part Init: <see cref="VehicleSkinSettings.TextureDir"/>); a new folder drops the decoded cache.</summary>
+        internal static void Configure(string dir)
+        {
+            if (_dir != dir) { _tex.Clear(); _preloaded = false; }
+            _dir = dir; _configured = true;
+        }
+
+        /// <summary>Old Patrols call (dataDir = plugins/WildWasteland/Patrols): ignored once Presentation configured the folder, else the old Textures folder.</summary>
+        [Obsolete("refactor: Presentation configures the folder (VehicleSkinSettings.TextureDir)")]
         internal static void Init(string dataDir)
         {
+            if (_configured) return;
             _dir = Path.Combine(dataDir ?? ".", Folder);   // called early in Init: no logging here
         }
 
@@ -60,11 +74,13 @@ namespace WildWasteland.Modules.Patrols
         // thread and froze the first spawn that needed it. Layout guides (*_uv_layout / *_uv_over_texture) are skipped.
         // [Debug] CustomPaintjobs: off = raider cars keep the game's textures (and nothing is preloaded). Switched on mid-game, a texture
         // loads when the first car needs it.
-        private static bool Enabled { get { return PatrolsModule.CustomPaintjobs == null || PatrolsModule.CustomPaintjobs.Value; } }
+        private static bool Enabled { get { return VehicleSkinSettings.CustomPaintjobs == null || VehicleSkinSettings.CustomPaintjobs.Value; } }
 
         internal static void Preload()
         {
-            if (!Enabled) { Core.Log.Info("[Patrols] " + "Paint: CustomPaintjobs off, no textures loaded"); return; }
+            if (_preloaded) return;   // Presentation preloads at its Init; the old Patrols call is then a no-op
+            _preloaded = true;
+            if (!Enabled) { if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Paint: CustomPaintjobs off, no textures loaded"); return; }
             if (_dir == null || !Directory.Exists(_dir)) return;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             int n = 0;
@@ -79,14 +95,14 @@ namespace WildWasteland.Modules.Patrols
                     if (Load(name) != null) n++;
                 }
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Paint: preload: " + e.Message); }
-            Core.Log.Info("[Patrols] " + "Paint: " + n + " texture(s) preloaded in " + sw.ElapsedMilliseconds + " ms");
+            catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Paint: preload: " + e.Message); }
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Paint: " + n + " texture(s) preloaded in " + sw.ElapsedMilliseconds + " ms");
         }
 
         internal static void Apply(GameObject car, string body,string faction=null)
         {
             if (car == null || !Enabled || _dir == null || !Directory.Exists(_dir)) return;
-            faction=faction??car.GetComponent<PatrolMarker>()?.Faction??"Scrapyard";
+            faction=faction??car.GetComponent<PatrolMarker>()?.Faction??"Scrapyard";   // refs-ok: REFACTOR-REQUEST B06-3 (no IPatrols faction query; Patrols should pass the faction)
             int n = 0;
             string bodyTexName = null, bodyFile = null; Texture2D bodyTex = null;
             if (!string.IsNullOrEmpty(body) && BodyTexture.TryGetValue(body, out bodyTexName))
@@ -124,8 +140,43 @@ namespace WildWasteland.Modules.Patrols
                     }
                 }
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Paint: " + e.Message); }
-            if (n > 0) PatrolsModule.Verbose("Paint: " + car.name + " repainted (" + n + " material(s))");
+            catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Paint: " + e.Message); }
+            if (n > 0 && Log.L2) Log.Deep(PresentationModule.WorldOwner, "Paint: " + car.name + " repainted (" + n + " material(s))");
+        }
+
+        /// <summary>Removes the paint property blocks and the cargo panels from a car's frame (IVehicleSkins.Clear): the game's own look again.</summary>
+        internal static void Clear(GameObject car)
+        {
+            if (car == null) return;
+            try
+            {
+                foreach (var r in car.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (r == null) continue;
+                    if (r.name.StartsWith(PanelName, StringComparison.Ordinal)) { UnityEngine.Object.Destroy(r.gameObject); continue; }
+                    if (r.GetType().Name == "ParticleSystemRenderer" || !OnFrame(car, r.transform) || !r.HasPropertyBlock()) continue;
+                    var mats = r.sharedMaterials;
+                    for (int i = 0; i < mats.Length; i++)
+                    {
+                        r.GetPropertyBlock(Block, i);
+                        if (Block.isEmpty) continue;
+                        Block.Clear();
+                        r.SetPropertyBlock(Block, i);
+                    }
+                }
+            }
+            catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Paint: clear: " + e.Message); }
+        }
+
+        /// <summary>True when paintjobs are on and a texture set exists for the faction (its own folder, or the shared unscoped textures).</summary>
+        internal static bool HasSkin(string faction)
+        {
+            if (!Enabled || _dir == null || !Directory.Exists(_dir)) return false;
+            string key = VehicleTextureKey("x", faction);
+            int slash = key.IndexOf('/');
+            if (slash > 0) return Directory.Exists(Path.Combine(_dir, key.Substring(0, slash)));
+            foreach (var t in _tex.Values) if (t != null) return true;
+            return Directory.GetFiles(_dir, "*.png").Length > 0;
         }
 
         // Cargo trucks: the container's two long sides show its load. The game's container mesh maps its sides, top and ends onto the same
@@ -197,10 +248,10 @@ namespace WildWasteland.Modules.Patrols
                         n++;
                     }
                 }
-                if (n > 0) PatrolsModule.Verbose("Paint: " + car.name + " container sides = " + file + " (" + (string.IsNullOrEmpty(lootKey) ? "no cargo" : lootKey) + "), "
+                if (n > 0 && Log.L2) Log.Deep(PresentationModule.WorldOwner, "Paint: " + car.name + " container sides = " + file + " (" + (string.IsNullOrEmpty(lootKey) ? "no cargo" : lootKey) + "), "
                     + n + " panel(s)" + (Load(InsideFile) != null ? ", inside = " + InsideFile : ""));
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Paint: cargo: " + e.Message); }
+            catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Paint: cargo: " + e.Message); }
         }
 
         private static Material CargoMaterial(Material container, string file, Texture2D tex)
@@ -334,7 +385,8 @@ namespace WildWasteland.Modules.Patrols
         private static bool OnFrame(GameObject car, Transform t)
         {
             for (var a = t; a != null && a != car.transform; a = a.parent)
-                if (a.CompareTag("vehPart") || a.GetComponent<Crew>() != null || a.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0
+                if (a.CompareTag("vehPart") || a.GetComponent<Crew>() != null ||   // refs-ok: REFACTOR-REQUEST B06-3 (crew root marker)
+                     a.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0
                     || a.name.IndexOf("(Passenger)", StringComparison.Ordinal) >= 0 || a.name.IndexOf("_Dead", StringComparison.Ordinal) >= 0
                     || a.name == "PhysicsLock"||a.name=="Apocapatrol.Merchant") return false;
             return true;
@@ -366,8 +418,8 @@ namespace WildWasteland.Modules.Patrols
                     r.sharedMaterials = mats;
                 }
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Paint: repair: " + e.Message); }
-            if (n > 0) Core.Log.Info("[Patrols] " + "Paint: " + car.name + ": " + n + " broken material slot(s) from an older save restored");
+            catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Paint: repair: " + e.Message); }
+            if (n > 0 && Log.L1) Log.Main(PresentationModule.WorldOwner, "Paint: " + car.name + ": " + n + " broken material slot(s) from an older save restored");
             return n;
         }
 
@@ -383,7 +435,7 @@ namespace WildWasteland.Modules.Patrols
         internal static string VehicleTextureKey(string name,string faction)
         {
             if(name.StartsWith("cargo",StringComparison.OrdinalIgnoreCase))return name;
-            string folder=TrafficFactions.Normalize(faction)=="Coyotes"?"coyotes":"scrapyard";
+            string folder=string.Equals(faction,"Coyotes",StringComparison.OrdinalIgnoreCase)?"coyotes":"scrapyard";   // = TrafficFactions.Normalize (Patrols)
             if(folder=="scrapyard"&&!Directory.Exists(Path.Combine(_dir,folder))&&Directory.Exists(Path.Combine(_dir,"scapyard")))folder="scapyard";
             bool scoped=Directory.Exists(Path.Combine(_dir,"coyotes"))||Directory.Exists(Path.Combine(_dir,"scrapyard"))||Directory.Exists(Path.Combine(_dir,"scapyard"));
             return scoped?folder+"/"+name:name;
@@ -405,11 +457,11 @@ namespace WildWasteland.Modules.Patrols
                     if (ImageConversion.LoadImage(t, File.ReadAllBytes(path), true))
                     {
                         t.wrapMode = TextureWrapMode.Repeat; t.filterMode = FilterMode.Trilinear; t.anisoLevel = 4;
-                        PatrolsModule.Verbose("Paint: loaded " + path + " (" + t.width + "x" + t.height + ")");
+                        if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Paint: loaded " + path + " (" + t.width + "x" + t.height + ")");
                     }
-                    else { Core.Log.Warn("[Patrols] " + "Paint: could not decode " + path); UnityEngine.Object.Destroy(t); t = null; }
+                    else { Log.Warn(PresentationModule.WorldOwner, "Paint: could not decode " + path); UnityEngine.Object.Destroy(t); t = null; }
                 }
-                catch (Exception e) { Core.Log.Warn("[Patrols] " + "Paint: " + path + ": " + e.Message); t = null; }
+                catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Paint: " + path + ": " + e.Message); t = null; }
             }
             _tex[name] = t;
             return t;

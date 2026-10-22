@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         private void LateUpdate()
-        { if (!PatrolsModule.Running) return;
+        { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             // Attack can activate the right-hand blade after Update when its close-range state runs. Apply this after
             // PlayMaker so no melee prop is ever displayed, while leaving left-hand firearms and their effects alone.
             if (_rangedPrefab && Time.time >= _nextWeaponCheck) { _nextWeaponCheck = Time.time + 0.5f; HideMeleeWeapons(); }
