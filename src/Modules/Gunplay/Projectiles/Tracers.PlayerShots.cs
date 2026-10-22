@@ -1,0 +1,201 @@
+using System;
+using System.Collections.Generic;
+using HutongGames.PlayMaker;
+using HutongGames.PlayMaker.Actions;
+using Micosmo.SensorToolkit.PlayMaker;
+using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Core.Events;
+using WildWasteland.Modules.Gunplay;
+
+namespace WildWasteland.Modules.Guns
+{
+    /// <summary>Player shots (Wave A split of Tracers.cs, B09): the Raycast prefix of first-person guns, the per-gun stats (MakeGun), pellet spread and the camera-ray first hit.</summary>
+    internal static partial class Tracers
+    {
+        // ---------- the player's guns ----------
+        private static readonly Dictionary<Fsm, PlayerGun> _guns = new Dictionary<Fsm, PlayerGun>();
+        private static readonly Dictionary<Fsm, bool> _notGun = new Dictionary<Fsm, bool>();
+        private static GameObject _player;
+        private static int _statsRevision;
+
+        // Unit disk: 50% is uniform by area; 0% weights the rim, 100% weights the centre.
+        /// <summary>A point in the unit disk: 50 % uniform, 0 % favours the rim, 100 % the centre.</summary>
+        internal static Vector2 SpreadOffset(float accuracy)
+        {
+            float exponent = 0.5f * Mathf.Pow(2f, (Mathf.Clamp(accuracy, 0f, 100f) - 50f) / 50f);
+            float radius = Mathf.Pow(UnityEngine.Random.value, exponent);
+            float angle = UnityEngine.Random.value * Mathf.PI * 2f;
+            return new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+        }
+
+
+        // Harmony prefix on HutongGames.PlayMaker.Actions.Raycast.OnEnter. Only the "fire" Raycast of a first-person gun's Attack FSM
+        // (an FSM named Attack whose GameObject also has a Reload FSM; melee weapons have none). false = vanilla skipped.
+        /// <summary>Core.Hooks.RaycastEnter prefix (every Raycast.OnEnter): the "fire" Raycast of the player's gun fires projectiles (camera aim, muzzle origin, pellets) and finishes; false = vanilla skipped.</summary>
+        public static bool BeforeRaycast(Raycast __instance)
+        {
+            try
+            {
+                if (!GunplaySettings.TracersEnabled.Value || !GunplaySettings.PlayerTracers.Value) return true;
+                var fsm = __instance.Fsm;
+                if (fsm == null || fsm.Name != "Attack" || __instance.repeatInterval == null || __instance.repeatInterval.Value != 0) return true;
+                if (_statsRevision != WeaponStats.Instance.Revision) { _statsRevision = WeaponStats.Instance.Revision; _guns.Clear(); _notGun.Clear(); }
+                bool no;
+                if (_notGun.TryGetValue(fsm, out no)) return true;
+                PlayerGun gun;
+                if (!_guns.TryGetValue(fsm, out gun))
+                {
+                    gun = MakeGun(fsm, __instance);
+                    if (gun == null) { _notGun[fsm] = true; return true; }
+                    _guns[fsm] = gun;
+                }
+
+                var from = fsm.GetOwnerDefaultTarget(__instance.fromGameObject);
+                if (from == null) return true;
+                Transform ft = from.transform;
+                Vector3 origin = ft.position + (__instance.fromPosition != null && !__instance.fromPosition.IsNone ? __instance.fromPosition.Value : Vector3.zero);
+                Vector3 local = __instance.direction != null && !__instance.direction.IsNone ? __instance.direction.Value : Vector3.forward;
+                float range = RangeOf(gun.Kind) * gun.RangeMultiplier;
+                float speed = gun.Kind == Kind.Crossbow ? GunplaySettings.BoltSpeed.Value : GunplaySettings.BulletSpeed.Value;
+                int pellets = gun.Pellets; float dmgMult = 1f;
+                var stats = WeaponStats.Instance;
+                if (stats.HasModifiers)
+                {
+                    // attachments / addon modifiers (none registered in the shipped game: these lines are skipped)
+                    string item = PerGunAmmo.ItemOfModel(fsm.GameObject);
+                    range = stats.Modify(gun.Handle, item, WeaponStat.Range, range);
+                    speed = stats.Modify(gun.Handle, item, WeaponStat.ProjectileSpeed, speed);
+                    pellets = Mathf.Clamp(Mathf.RoundToInt(stats.Modify(gun.Handle, item, WeaponStat.Pellets, pellets)), 1, 32);
+                    if (gun.DamageMultiplier > 0f) dmgMult = stats.Modify(gun.Handle, item, WeaponStat.DamageMultiplier, gun.DamageMultiplier) / gun.DamageMultiplier;
+                }
+                if (_player == null) _player = GameRefs.Player;
+
+                Vector3 muzzle = gun.Muzzle != null && gun.Muzzle.gameObject.activeInHierarchy ? gun.Muzzle.position
+                               : origin + ft.forward * 0.4f - ft.up * 0.15f;
+                Vector3 bodyMuzzle;
+                if (Services.Animation != null && Services.Animation.TryPlayerWeaponMuzzle(out bodyMuzzle))
+                {
+                    muzzle = bodyMuzzle;
+                    if (Log.L2 && _playerMuzzleLogs++ < 3) GunplayLog.Deep("Player shot origin: visible body muzzle " + muzzle);
+                }
+                for (int p = 0; p < pellets; p++)
+                {
+                    Vector3 l = local;
+                    if (gun.Kind == Kind.Shotgun)
+                    {
+                        Vector2 offset = SpreadOffset(GunplaySettings.Accuracy(true)) * gun.PelletSpread;
+                        l = new Vector3(offset.x, offset.y, 1f);
+                    }
+                    Vector3 dir = __instance.space == Space.Self ? ft.TransformDirection(l) : l;
+                    dir.Normalize();
+                    // aim where the camera ray points, fly from the muzzle
+                    RaycastHit aimHit;
+                    Vector3 aim = FirstHit(origin, dir, range, gun.Layers, ft.root, out aimHit) ? aimHit.point : origin + dir * range;
+                    Vector3 d = aim - muzzle;
+                    if (d.sqrMagnitude < 0.01f) d = dir;
+                    var s = new Shot
+                    {
+                        Pos = muzzle, Start = muzzle, Dir = d.normalized,
+                        Speed = speed,
+                        Range = range, Bolt = gun.Kind == Kind.Crossbow, Shotgun = gun.Kind == Kind.Shotgun, Alive = true, Kind = gun.Kind, DmgMult = dmgMult,
+                        Layers = gun.Layers, Gun = gun, Player = _player,
+                        ShooterRoot = ft.root.gameObject,
+                    };
+                    s.Id = CombatEvents.NextProjectileId();
+                    CombatEvents.Spawned(s.Id, s.ShooterRoot, s.Bolt ? ProjectileKind.Bolt : s.Shotgun ? ProjectileKind.Pellet : ProjectileKind.Bullet, s.Pos, s.Dir * s.Speed, s.Range);
+                    LaunchBolt(ref s);
+                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); }
+                    else _shots.Add(s);
+                }
+                if (gun.Kind == Kind.Shotgun && Log.L2)
+                    if (Log.L2) GunplayLog.Deep("Shotgun spread: circular, " + pellets + " pellets, player accuracy " + GunplaySettings.Accuracy(true).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%");
+                Bridge.Shot(_player, muzzle, (int)gun.Kind, true);
+                CombatEvents.Fired(_player, gun.Handle, (WeaponKind)(int)gun.Kind, muzzle, ft.forward, pellets, true);
+                __instance.Finish();         // vanilla: no hit -> FINISHED -> wait -> next shot, same rhythm
+                return false;
+            }
+            catch (Exception e)
+            {
+                GunplayLog.Error("Tracers (player)", e);
+                return true;
+            }
+        }
+
+        /// <summary>Player gun data from its Attack FSM: hit states, damage value, muzzle, layers, pellets and catalog multipliers; null = not a gun.</summary>
+        private static PlayerGun MakeGun(Fsm fsm, Raycast ray)
+        {
+            var go = fsm.GameObject;
+            if (go == null) return null;
+            bool reload = false;
+            foreach (var f in go.GetComponents<PlayMakerFSM>()) if (f.FsmName == "Reload") { reload = true; break; }
+            if (!reload) return null;
+            var hit = fsm.GetState("hit");
+            if (hit == null) return null;
+            var gun = new PlayerGun { Fsm = fsm, Hit = hit.Actions };
+            foreach (var a in gun.Hit) { var sf = a as SetFsmFloat; if (sf != null && sf.fsmName != null && sf.fsmName.Value == "Bodypart") gun.Damage = sf.setValue; }
+            var gl = fsm.GetState("getLayer"); if (gl != null) gun.GetLayer = gl.Actions;
+            var ah = fsm.GetState("actorHitSound"); if (ah != null) gun.ActorHit = ah.Actions;
+            foreach (var t in go.GetComponentsInChildren<Transform>(true))
+                if (t.name.StartsWith("muzzle_flesh_effect", StringComparison.Ordinal) || t.name.StartsWith("muzzle_flash", StringComparison.Ordinal)) { gun.Muzzle = t; break; }
+            // layers: the Raycast's own mask
+            int mask = 0;
+            if (ray.layerMask != null) foreach (var l in ray.layerMask) if (l != null) mask |= 1 << l.Value;
+            if (mask == 0) mask = ~0;
+            if (ray.invertMask != null && ray.invertMask.Value) mask = ~mask;
+            gun.Layers = mask;
+            // shotguns: a "pellets" counter; the hit state loops until pellets > N
+            // (FsmVariables.GetFsmInt returns a placeholder for a missing variable, so the variable's presence proves nothing:
+            // only the loop itself - IntCompare on {pellets} in the hit state - makes a shotgun. 0.4.3 and earlier fired 9 bullets per shot from every gun.)
+            bool shotgun = false;
+            foreach (var a in gun.Hit)
+            {
+                var ic = a as IntCompare;
+                if (ic != null && ic.integer1 != null && ic.integer1.Name == "pellets" && ic.integer2 != null)
+                { shotgun = true; gun.Pellets = Mathf.Clamp(ic.integer2.Value + 1, 1, 32); }
+            }
+            // per-name multipliers from the weapon catalog (chopped / full-length pump shotguns, crossbow, redmark: README 6.3)
+            gun.Handle = WeaponCatalog.Instance.Handle(go.name);
+            var entry = WeaponCatalog.Instance.EntryOf(gun.Handle);
+            if (shotgun)
+            {
+                var fire = fsm.GetState("fire");
+                gun.PelletSpread = 0.02f;
+                if (fire != null) foreach (var a in fire.Actions) { var rf = a as RandomFloat; if (rf != null && rf.max != null) { gun.PelletSpread = Mathf.Abs(rf.max.Value); break; } }
+                if (entry != null)
+                {
+                    if (entry.ShotgunPellets > 0) gun.Pellets = entry.ShotgunPellets;
+                    if (entry.ShotgunSpread >= 0f) gun.PelletSpread = entry.ShotgunSpread;
+                    gun.DamageMultiplier = entry.ShotgunDamageMultiplier;
+                    gun.RangeMultiplier = entry.ShotgunRangeMultiplier;
+                }
+            }
+            gun.Kind = shotgun ? Kind.Shotgun : Classify(go.name);
+            bool crossbowName = WeaponCatalog.GunKindOfName(go.name) == WeaponKind.Crossbow;
+            if (entry != null && (gun.Kind == Kind.Crossbow || (!crossbowName && entry.DamageMultiplier != 1f))) gun.DamageMultiplier = entry.DamageMultiplier;
+            if (gun.Kind == Kind.Crossbow) CacheBoltModel(go.transform);
+            if (gun.Kind == Kind.Shotgun && !shotgun) gun.Kind = Kind.Rifle;      // a "rochester" without pellets is not a shotgun
+            if (Log.L2) GunplayLog.Deep("Tracers: player gun " + go.name + " = " + gun.Kind + (shotgun ? ", " + gun.Pellets + " pellets" : "") + (gun.Muzzle != null ? "" : ", no muzzle point"));
+            return gun;
+        }
+
+        // the nearest thing the camera ray meets, as the vanilla Raycast sees it (QueriesHitTriggers is on in this game: head
+        // triggers with a Bodypart FSM count, other triggers don't), skipping the player and their car
+        /// <summary>The nearest collider the camera ray meets as the vanilla Raycast sees it, skipping the player and the car.</summary>
+        private static bool FirstHit(Vector3 origin, Vector3 dir, float range, int mask, Transform shooterRoot, out RaycastHit hit)
+        {
+            int n = Physics.RaycastNonAlloc(origin, dir, _hits, range, mask, QueryTriggerInteraction.Collide);
+            if (n >= _hits.Length) { return Physics.Raycast(origin, dir, out hit, range, mask, QueryTriggerInteraction.Ignore); }
+            if (n > 1) Array.Sort(_hits, 0, n, HitDistance.Instance);
+            for (int k = 0; k < n; k++)
+            {
+                var c = _hits[k].collider;
+                if (c == null || Ignored(c.transform, shooterRoot, _player) || !Counts(c)) continue;
+                hit = _hits[k];
+                return true;
+            }
+            hit = default(RaycastHit);
+            return false;
+        }
+    }
+}
