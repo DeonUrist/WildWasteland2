@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Generic helpers of Patrol (Health FSM get/set, player pose, child/FSM lookup); Core utilities (FsmUtil) in Wave B (Wave A split of Patrols Spawning/Patrol.cs).</summary>
     internal partial class Patrol
     {
+        /// <summary>Reads the exact native actor Health variable, returning minus one when unavailable.</summary>
         internal static float GetHealth(GameObject who)
         {
             if (who == null) return -1f;
@@ -20,6 +21,7 @@ namespace WildWasteland.Modules.Patrols
             return h != null ? h.Value : -1f;
         }
 
+        /// <summary>Writes an existing native actor Health variable without creating a replacement.</summary>
         internal static void SetHealth(GameObject who, float value)
         {
             var f = Core.FsmUtil.Find(who, "Health");
@@ -29,6 +31,7 @@ namespace WildWasteland.Modules.Patrols
 
     // =============================================================== helpers
 
+        /// <summary>Reads shared player position and flattens the current view direction for patrol placement.</summary>
         private static bool PlayerPose(out Vector3 p, out Vector3 fwd)
         {
             var pl = Core.PlayerState.Player;
@@ -42,6 +45,7 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>Finds a named descendant using the existing direct-child-first traversal order.</summary>
         internal static Transform FindChild(Transform root, string name)
         {
             for (int i = 0; i < root.childCount; i++) { var c = root.GetChild(i); if (c.name == name) return c; }
@@ -49,6 +53,7 @@ namespace WildWasteland.Modules.Patrols
             return null;
         }
 
+        /// <summary>Finds an exact object/FSM pair in a supplied or native descendant snapshot.</summary>
         internal static PlayMakerFSM FindFsm(GameObject car, string objectName, string fsmName, PlayMakerFSM[] snapshot = null)
         {
             foreach (var f in snapshot ?? car.GetComponentsInChildren<PlayMakerFSM>(true))
@@ -56,6 +61,7 @@ namespace WildWasteland.Modules.Patrols
             return null;
         }
 
+        /// <summary>Tests whether a native FSM and its owning object still exist.</summary>
         private static bool Alive(PlayMakerFSM f) { return f != null && f.gameObject != null; }
     }
 }
