@@ -12,16 +12,11 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Game progression query: boss kills counted from the game's Boss_* global flags; Core progression query in Wave B (Wave A split of Patrols Spawning/Convoy.cs).</summary>
     internal partial class Convoy
     {
+        /// <summary>Existing convoy difficulty input forwarding to native Core progression.</summary>
+        [Obsolete("refactor: use Core.Progression.BossKills")]
         internal static int BossKills()
         {
-            int n = 0;
-            try
-            {
-                foreach (var b in FsmVariables.GlobalVariables.BoolVariables)
-                    if (b != null && b.Name != null && b.Name.StartsWith("Boss_") && b.Value) n++;
-            }
-            catch (Exception) { }
-            return n;
+            return Core.Progression.BossKills();
         }
     }
 }

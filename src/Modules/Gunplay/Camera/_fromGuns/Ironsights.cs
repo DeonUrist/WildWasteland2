@@ -6,24 +6,23 @@ namespace WildWasteland.Modules.Guns
 {
     internal static partial class Ironsights
     {
-        private static Camera _camera, _renderCamera;
+        private static Camera _camera;
         private static PlayMakerFSM _ads;
         private static HutongGames.PlayMaker.Fsm _adsFsm;   // (WW perf) _ads.Fsm, refreshed once a frame in Tick: the GetButton hook compares by reference first
         private static float _nextFind, _target = 1f, _zoom = 1f;
         private static int _buttonFrame = -1;
-        private static bool _buttonValue, _transparentProjection, _resetAim;
+        private static bool _buttonValue, _resetAim;
         private static readonly System.Collections.Generic.Dictionary<Transform, PlayMakerFSM> _weaponSights = new System.Collections.Generic.Dictionary<Transform, PlayMakerFSM>();
 
         internal static void Init(GunsModule owner)
         {
             Hooks.GetButtonDo.Prefix(owner, BeforeGetButton);
             Scheduler.EveryFrame(owner, "Ironsights", Tick, Phase.EarlyUpdate);
-            Camera.onPreCull += PreCull;
-            Camera.onPostRender += PostRender;
+            _projectionOwner = owner; CameraArbiter.AddProjection(owner, "Gunplay.Ironsights", 100, WriteProjection);
         }
         internal static void Shutdown()
         {
-            Camera.onPreCull -= PreCull; Camera.onPostRender -= PostRender;
+            CameraArbiter.Remove(_projectionOwner, "Gunplay.Ironsights");
             Reset();
         }
         internal static void Reset()

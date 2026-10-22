@@ -138,7 +138,7 @@ namespace WildWasteland.Core.UI
             }
             if (!_open) return;
             if (_current != null && !Visible(_current))
-            { _current = Plugin.EnableDebug.Value ? CorePages.DebugPage : CorePages.GamePage; _scroll = Vector2.zero; Ledger.ClearNumbers(); ToolLayout.CancelRebind(); _current.OnShow(); }
+            { _current.OnHide(); _current = Plugin.EnableDebug.Value ? CorePages.DebugPage : CorePages.GamePage; _scroll = Vector2.zero; Ledger.ClearNumbers(); ToolLayout.CancelRebind(); _current.OnShow(); }
             if (Event.current.type == EventType.Layout)
             {
                 _session.Maintain();

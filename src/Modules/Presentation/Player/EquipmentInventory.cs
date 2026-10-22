@@ -16,27 +16,17 @@ namespace WildWasteland.Modules.PlayerBody
     {
         public readonly GameObject[] Items = new GameObject[6];
         // (2.2.6) read every frame: the names and the invoke argument made once
-        private static readonly string[] SlotNames = { "Slot 1", "Slot 2", "Slot 3", "Slot 4", "Slot 5", "Slot 6" };
         public int Drawn = -1;
-        private Transform _camera, _weapons;
-        private PlayMakerFSM _weaponFsm;
+        private Transform _camera;
         // (WW perf) the vanilla Weapons FSM's state (its state's name: the same string object until it changes), a cheap per-frame change signal
-        public string WeaponState { get { return _weaponFsm != null ? _weaponFsm.ActiveStateName : null; } }
+        public string WeaponState { get { return Core.PlayerInventory.WeaponState; } }
         // False preserves previous mount assignments during transactions and saves.
         public bool Read()
         {
             if (_camera != Game.PlayerCamera)
             {
                 _camera = Game.PlayerCamera;
-                _weapons = null;
-                _weaponFsm = null;
                 Array.Clear(Items, 0, Items.Length); Drawn = -1;
-            }
-            if (_weapons == null && _camera != null)
-            {
-                _weapons = _camera.Find("Weapons") ?? _camera.Find("HandItemUse/Weapons");
-                _weaponFsm = null;
-                if (_weapons != null) foreach (var f in _weapons.GetComponents<PlayMakerFSM>()) if (f.FsmName == "Weapons") _weaponFsm = f;
             }
             Resolve();
             if (_instance != null)
@@ -66,26 +56,13 @@ namespace WildWasteland.Modules.PlayerBody
                     return true;
                 }
             }
-            Array.Clear(Items, 0, Items.Length); Drawn = -1;
-            for (int i = 0; i < Items.Length; i++)
-            {
-                var holder = _weapons != null ? _weapons.Find(SlotNames[i]) : null;
-                if (holder == null && i >= 3 && _camera != null)
-                    holder = _camera.Find(PocketNames[i]) ?? _camera.Find(InvNames[i]);
-                Items[i] = FirstItem(holder);
-                if (_weaponFsm != null && _weaponFsm.ActiveStateName == SlotNames[i]) Drawn = i;
-            }
+            Core.PlayerInventory.Read(Items, out Drawn);
+            for (int i = 3; i < Items.Length; i++)
+                if (Items[i] == null && _camera != null) Items[i] = FirstItem(_camera.Find(PocketNames[i]) ?? _camera.Find(InvNames[i]));
             return true;
         }
-        public static GameObject FirstItem(Transform holder)
-        {
-            if (holder == null) return null;
-            for (int i = 0; i < holder.childCount; i++)
-            {
-                var child = holder.GetChild(i);
-                if (child.GetComponent<Rigidbody>() != null || child.GetComponentInChildren<MeshRenderer>(true) != null) return child.gameObject;
-            }
-            return null;
-        }
+        /// <summary>Existing physical-holder query forwarding to Core.</summary>
+        [Obsolete("refactor: use Core.PlayerInventory.FirstItem")]
+        public static GameObject FirstItem(Transform holder) { return Core.PlayerInventory.FirstItem(holder); }
     }
 }
