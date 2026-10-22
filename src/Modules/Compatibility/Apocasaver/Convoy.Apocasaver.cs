@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Patrols
                     var iv = plugin.GetField("IntervalMinutes", S); _asInterval = iv != null ? iv.GetValue(null) as BepInEx.Configuration.ConfigEntry<float> : null;
                     var en = plugin.GetField("Enabled", S); _asEnabled = en != null ? en.GetValue(null) as BepInEx.Configuration.ConfigEntry<bool> : null;
                     _asLast = runner.GetField("_lastSave", I); _asArmed = runner.GetField("_armed", I); _asSaving = runner.GetProperty("IsAutosaving", I);
-                    PatrolsModule.Verbose("Convoy: Apocasaver found, spawns wait for its autosaves" + (_asCurrent != null && _asLast != null && _asInterval != null ? "" : " (timer not readable)"));
+                    if (Core.Log.L1) Core.Log.Main(Compatibility.CompatibilityModule.Instance, "Convoy: Apocasaver found, spawns wait for its autosaves" + (_asCurrent != null && _asLast != null && _asInterval != null ? "" : " (timer not readable)"));
                 }
                 if (_asCurrent == null) return false;
                 var r = _asCurrent.GetValue(null) as UnityEngine.Object;
@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.Patrols
                 float remaining = _asInterval.Value * 60f - (Time.realtimeSinceStartup - (float)_asLast.GetValue(r));
                 return remaining > -3f && remaining < within;
             }
-            catch (Exception e) { PatrolsModule.Verbose("Convoy: Apocasaver timer: " + e.Message); _asCurrent = null; return false; }
+            catch (Exception e) { if (Core.Log.L1) Core.Log.Main(Compatibility.CompatibilityModule.Instance, "Convoy: Apocasaver timer: " + e.Message); _asCurrent = null; return false; }
         }
     }
 }

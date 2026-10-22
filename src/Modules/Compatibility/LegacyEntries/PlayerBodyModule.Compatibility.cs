@@ -3,8 +3,8 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.PlayerBody
 {
     /// <summary>
-    /// PlayerBodyModule part (split from PlayerBody/PlayerBodyModule.cs in Wave A): the third-party bridges that ride on the player body -
-    /// ChaseCamera's Apocaplayer type adapter and the Weapons Pack first-person shadow patch. Target: Compatibility (B17).
+    /// PlayerBodyModule part (split from PlayerBody/PlayerBodyModule.cs in Wave A). Empty since B17: the ChaseCamera type adapter and the
+    /// Weapons Pack shadows live in the Compatibility module. Wave C deletes it.
     /// </summary>
     public sealed partial class PlayerBodyModule
     {

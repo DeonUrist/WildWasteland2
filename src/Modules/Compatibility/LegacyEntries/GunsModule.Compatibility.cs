@@ -1,6 +1,7 @@
 namespace WildWasteland.Modules.Guns
 {
-    /// <summary>Compatibility part of the Guns entry (Wave A split, B17): Apocaspawner damage, Weapons Pack stab sound bridges.</summary>
+    /// <summary>Compatibility part of the old Guns entry (Wave A split). Empty since B17 (Apocaspawner/Weapons Pack bridges live in the
+    /// Compatibility module); Wave C deletes it.</summary>
     public sealed partial class GunsModule
     {
         /// <summary>Empty (B17): the Apocaspawner damage postfix is installed by the Compatibility Apocaspawner bridge.</summary>

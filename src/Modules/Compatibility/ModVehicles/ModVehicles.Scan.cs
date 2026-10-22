@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Patrols
                     var n = nameField.GetValue(null) as string;
                     if (string.IsNullOrEmpty(n) || _byName.ContainsKey(n) || _registered.ContainsKey(n)) continue;
                     _byName[n] = template;
-                    Core.Log.Info("[Patrols] " + "Mod vehicle available for templates: " + n + " (" + an + ")");
+                    if (Core.Log.L1) Core.Log.Main(Compatibility.CompatibilityModule.Instance, "Mod vehicle available for templates: " + n + " (" + an + ")");
                 }
             }
             bool changed = previous == null ? _byName.Count > 0 : previous.Count != _byName.Count;

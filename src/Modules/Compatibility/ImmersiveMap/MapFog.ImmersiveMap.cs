@@ -20,7 +20,7 @@ namespace WildWasteland.Modules.CleanHUD
         {
             PluginInfo info;
             bool loaded = Chainloader.PluginInfos.TryGetValue(SourceGuid, out info) && !ReferenceEquals(info.Instance, null);
-            if (loaded) CleanHudModule.Warn("Immersive Map: " + ReplacementGuard.Status(SourceGuid) + ". Wild Wasteland fog waits until restart.");
+            if (loaded) Log.Warn(Compatibility.CompatibilityModule.Instance, "Immersive Map: " + ReplacementGuard.Status(SourceGuid) + ". Wild Wasteland fog waits until restart.");
             return loaded;
         }
     }

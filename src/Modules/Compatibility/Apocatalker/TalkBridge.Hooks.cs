@@ -24,7 +24,7 @@ namespace WildWasteland.Modules.Quests
                 || !Patches.Patch(owner, AccessTools.Method(TalkType, "Close"), postfix: AccessTools.Method(typeof(TalkBridge), "Closed")))
                 throw new InvalidOperationException("Optional Talk conversation hooks unavailable.");
             TalkApiLink.Init(info.Instance.GetType().Assembly, Plugin.I, "OnTalkAction");
-            Core.Log.Always("[Quests] Optional Apocatalker content adapter ready.");
+            Core.Log.Main(Compatibility.CompatibilityModule.Instance, "Optional Apocatalker content adapter ready.");
         }
 
         /// <summary>Postfix of Talk.Open: tells Quests a Talk conversation opened.</summary>

@@ -3,8 +3,8 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.CleanHUD
 {
     /// <summary>
-    /// Compatibility part of the CleanHUD entry (Wave A split, B17): ChaseCamera, Apocapocket, Vistas World Gen engine heat,
-    /// Apocasaver, Apocatalker and Weapons Pack bridges. Each method runs at the exact position of the original call.
+    /// Compatibility part of the old CleanHUD entry (Wave A split). Since B17 the bridges belong to the Compatibility module and these
+    /// methods are empty, except the Apocasaver presentation install that needs the HUD's own loading screen. Wave C deletes them.
     /// </summary>
     public sealed partial class CleanHudModule
     {

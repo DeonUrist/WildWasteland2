@@ -1,8 +1,8 @@
 namespace WildWasteland.Modules.Survival
 {
     /// <summary>
-    /// Compatibility part of the Survival entry (Wave A split, owner B17): the Apocaspawner catalog bridge that lists the
-    /// Stew Pot under Camp &amp; Farming. Wave B merges it with the Patrols SpawnerIntegration into one Apocaspawner bridge.
+    /// Compatibility part of the Survival entry (Wave A split). Empty since B17: the single Compatibility Apocaspawner bridge lists the
+    /// Stew Pot while Survival runs. Wave C deletes it.
     /// </summary>
     public sealed partial class SurvivalModule
     {

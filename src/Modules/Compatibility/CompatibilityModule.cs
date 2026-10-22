@@ -31,9 +31,13 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>True between Init and Shutdown (bridge switches react live only then).</summary>
         internal bool IsRunning { get { return _running; } }
 
+        /// <summary>The registered module (log owner of the bridge parts that live inside other modules' types).</summary>
+        internal static CompatibilityModule Instance { get; private set; }
+
         /// <summary>Declares the per-mod bridges in start order (README 6.12: one folder and one switch per third-party mod).</summary>
         public CompatibilityModule()
         {
+            Instance = this;
             _bridges.Add(new OptionalBridge(this, "SigmaMod", "SigmaMod", "Prepare native FSM states before SigmaMod reads inactive FSMs (only patched when SigmaMod is loaded).", SigmaFsmStates.Install, SigmaFsmStates.Clear));
             _bridges.Add(new OptionalBridge(this, "VistasWorldGen", "Vistas World Gen", "Use Vistas World Gen roads, places and terrain with Wild Wasteland towns, traffic, HUD banners and weather.", VistasBridge.Start, VistasBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "BloodFX", "BloodFX", "Recover the optional BloodFX updater after scene destruction and suppress its F8 debug hit.", BloodFxCompat.Start, BloodFxCompat.Shutdown));

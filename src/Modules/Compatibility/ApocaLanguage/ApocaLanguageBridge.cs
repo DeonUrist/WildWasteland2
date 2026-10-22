@@ -82,7 +82,7 @@ namespace WildWasteland.Modules.Compatibility
         private void Fail(Exception error)
         {
             _failed = true; _language = null; _languages = null; _code = null; _select = null; _codes.Clear();
-            Log.Warn("[Compatibility] ApocaLanguage menu bridge unavailable: " + error.GetBaseException().Message);
+            Log.Warn(CompatibilityModule.Instance, "ApocaLanguage menu bridge unavailable: " + error.GetBaseException().Message);
         }
     }
 }
