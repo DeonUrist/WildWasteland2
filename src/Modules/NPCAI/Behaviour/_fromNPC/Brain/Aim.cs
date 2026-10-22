@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.NPC
     //   DelayPer5m for every 5 m the target is beyond BaseDistance ("takes longer to aim").
     // Gunplay widens the vanilla aim jitter by SpreadPer5m % for every 5 m beyond BaseDistance (Api.SpreadFactor).
     // (1.1.0) These are fixed values now; the two settings left are [NpcAim] AimTimeScale and EngagePercent.
-    internal static class Aim
+    internal static partial class Aim
     {
         internal const float BaseDistance = 5f, DelayPer5m = 0.25f, SpreadPer5m = 10f, EngagePatience = 5f, HoldRecheckMin = 1f, HoldRecheckMax = 4f;
         private sealed class State
@@ -68,18 +68,6 @@ namespace WildWasteland.Modules.NPC
                 foreach (var kv in _targets) if (kv.Value.Owner == null) _deadStates.Add(kv.Key);
                 foreach (var k in _deadStates) _targets.Remove(k);
             }
-        }
-
-        // Steps of 5 m beyond the base distance (0 at or below it).
-        internal static int Steps(float distance)
-        {
-            float beyond = distance - BaseDistance;
-            return beyond <= 0f ? 0 : (int)(beyond / 5f);
-        }
-
-        internal static float SpreadFactor(float distance)
-        {
-            return 1f + Steps(distance) * SpreadPer5m / 100f;
         }
 
         // Harmony prefix on HutongGames.PlayMaker.Actions.SendEvent.OnEnter. false = the Activate is not sent (no burst this cycle).

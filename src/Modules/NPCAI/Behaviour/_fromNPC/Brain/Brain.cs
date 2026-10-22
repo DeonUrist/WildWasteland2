@@ -103,8 +103,6 @@ namespace WildWasteland.Modules.NPC
         }
 
         private static readonly Dictionary<int, Npc> _npcs = new Dictionary<int, Npc>();
-        private static readonly Queue<Npc> _rigs = new Queue<Npc>();
-        private static int _rigFrame = -1;
         internal static void SetFollowerDriven(GameObject npc, bool enabled, float reloadUntil)
         {
             Npc n;
@@ -129,7 +127,6 @@ namespace WildWasteland.Modules.NPC
         private static readonly float[] _blocks = new float[32];
 
         public static void OnSceneLoaded() { ClearRigs(); foreach (var kv in _npcs) if (kv.Value.Body != null) ApBody.Detach(kv.Value.Body); _npcs.Clear(); _ignored.Clear(); _arrive.Clear(); _active = 0; ReloadSounds.Clear(); _pending.Clear(); _pendingAt.Clear(); ApBody.Reset(); }
-        private static void ClearRigs() { while (_rigs.Count > 0) _rigs.Dequeue().RigQueued = false; _rigFrame = -1; }
 
         // (WW) module shutdown: every brain lets go (the game's pedal, facing, Unstuck and animation again), kneeling gunmen stand up, frozen
         // aim poses play on, bodies animated by the player animation framework are handed back
@@ -773,16 +770,6 @@ namespace WildWasteland.Modules.NPC
             else if (stall >= 2.5f * R) TryHop(n, now, true);
         }
 
-        // [Debug] NavTrace (NavDump + VerboseLog): a line per moving NPC per second and a picture of its trail when a chase ends / it rests
-        private static bool Tracing { get { return NpcModule.NavDump.Value && NpcModule.BrainLog.Value; } }
-        private static void TraceDump(Npc n, string why)
-        {
-            if (!Tracing || n.Trail.Count < 2 || Time.time < n.NextTraceDump) return;
-            n.NextTraceDump = Time.time + 15f;
-            NpcModule.Log.LogInfo("Trace: " + n.Owner.name + " picture (" + why + ")");
-            try { Nav.TraceDump(n.Owner.name, n.Trail, n.TrailKind, n.TraceGoal); } catch (Exception e) { NpcModule.Log.LogError("Trace: " + e.Message); }
-        }
-
         // ---------- feelers ----------
         // Pathing (everyone, 1.1.0; the plain rays of 0.7.0 are gone): FeelerCount capsule sweeps (radius ~0.3 m, knee to chest, so a
         // post, a tyre, a rock or a fence bar anywhere across the body counts) over +-FeelerAngle around the direction to the target, on the
@@ -1196,177 +1183,6 @@ namespace WildWasteland.Modules.NPC
             n.Movement.SendEvent(run ? "Animal_Run" : "Animal_Idle");
         }
 
-        // A holding gunman keeps the gun up: the Movement FSM's shooting animation (attack 2 / attack 4: a 0.2-0.6 s clip that starts with the gun
-        // raised) is put on its first frame and the Animator frozen there. The burst plays it from the start again (Unfreeze in Tick), and after
-        // the burst the Attack FSM's Animal_Run comes back as Animal_Idle (BeforeSendEvent) followed by this pose again.
-        // (1.2.0) With Apocaplayer (2.2.0+) the body is animated by its ModAPI - the player's third-person body for an NPC: this tells it every frame
-        // what the gunman does (crouched, aiming, firing, in the air, where the target is) and when he reloads / cocks his gun; the legs follow
-        // the Rigidbody's real motion by themselves (8 directions, walk / run / sprint, crouched, turns in place, the stop). Aiming = squared up to
-        // the target (Hold / Rest / in cover / backing up / the hit sidestep) or in a burst; moving after the target = the relaxed low-ready set.
-        // Dead, seated (Apocapatrol) or in a melee swing the body is suspended: the game's own clips and the gun back in its own hand.
-        private static readonly int GroundProbeMask = ~((1 << 2) | (1 << 4) | (1 << 5) | (1 << 12) | (1 << 13) | (1 << 22));
-        private static void Drive(Npc n, string state, float now, float dt)
-        {
-            var body = n.Body;
-            if (!ApBody.Alive(body)) { n.Body = null; n.RigTried = now; n.SpeedCap = 0f; return; }      // destroyed with its Animator: TryRig may make a new one
-            // the gun: the WeaponType FSM picks one of the hand's gun models a frame after the spawn (and the game may toggle them later):
-            // whenever the game toggled an object of this NPC (AfterActivate) or the held model went inactive, find the active one again
-            if (n.WeaponDirty || (n.Weapon == null ? now >= n.RigTried + 0.5f : !n.Weapon.gameObject.activeInHierarchy))
-            {
-                n.WeaponDirty = false; n.RigTried = now;      // (nothing held: looked again twice a second at most)
-                var w = HeldWeapon(n);
-                if (w != n.Weapon)
-                {
-                    n.Weapon = w; n.WeaponKey = ApBody.WeaponKey(w);
-                    n.Shots = 0; n.Reloading = false; n.ReloadShown = false; n.Magazine = MagazineOf(n.WeaponKey);
-                    n.Cocks = w != null && ApBody.Cocks(n.WeaponKey);
-                    if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " now holds " + (w != null ? n.WeaponKey + (n.Cocks ? " (cocked after each burst)" : "") : "nothing"));
-                }
-                ApBody.SetWeapon(body, w != null && w.gameObject.activeInHierarchy && GunPoses(n, now) ? w : null, n.WeaponKey);   // a gun goes to the right hand; anything else stays where it is
-            }
-            bool gun = n.Weapon != null && GunPoses(n, now);     // a gun the player's table knows (a machete out: the game's clips)
-            bool dead = n.HpVar != null && n.HpMax > 0f && n.HpVar.Value <= 0f;
-            bool melee = state == "attack_melee";
-            bool off = !gun || dead || melee || n.T.parent != null || !NpcModule.ApocaplayerClips.Value;
-            ApBody.Suspend(body, off);
-            if (off) { n.Strafing = false; n.SpeedCap = 0f; n.WasBurst = false; return; }
-            if (n.Strafing && now >= n.MakeWayUntil) n.Strafing = false;
-            if (n.Anim != null && n.Anim.speed != 1f) n.Anim.speed = 1f;          // a vanilla aim freeze from before the body was attached
-            n.Frozen = false;
-            bool cover = n.Mode == Mode.Cover, coverHold = cover && n.CoverArrived;
-            bool burst = state == "attack_ranged";
-            bool facing = n.Mode == Mode.Hold || n.Mode == Mode.Rest || coverHold || n.Mode == Mode.BackUp || n.Strafing || now < n.FaceTargetUntil;   // squared up to the target
-            bool aiming = burst || facing;
-            // the reload (NeedsReload starts it): the player's reload clip on the hands over whatever the legs do - the whole clip fitted to the
-            // reload time, or one round at a time (the clip's round part once per round)
-            bool reloading = n.Reloading && now < n.ReloadUntil;                      // (NeedsReload clears the flag only at the next burst)
-            if (reloading && !n.ReloadShown) { ApBody.Reload(body, Mathf.Max(0.3f, n.ReloadUntil - now), n.ReloadRounds); n.ReloadShown = true; }
-            else if (!reloading && n.ReloadShown)
-            {
-                n.ReloadShown = false; ApBody.CancelReload(body);
-                if (n.Cocks) ApBody.Pump(body);                                                   // a pump / bolt gun is racked after loading
-            }
-            // a pump shotgun / bolt rifle is cocked after each burst (unless it is empty: the reload comes first)
-            if (n.WasBurst && !burst && n.Cocks && !reloading && (n.Magazine <= 0 || n.Shots < n.Magazine)) ApBody.Pump(body);
-            n.WasBurst = burst;
-            // in the air (a hop over a lip): nothing under the feet
-            bool air = false;
-            if (n.Col != null && n.Rb != null && Mathf.Abs(n.Rb.velocity.y) > 0.5f)
-            {
-                var b = n.Col.bounds;
-                air = !Physics.Raycast(new Vector3(b.center.x, b.min.y + 0.2f, b.center.z), Vector3.down, 0.45f, GroundProbeMask, QueryTriggerInteraction.Ignore);
-            }
-            // aiming at the target: the spine bends toward its height (the player's aim pitch)
-            float pitch = 0f;
-            var tgo = n.Target != null ? n.Target.Value : null;
-            if (aiming && tgo != null)
-            {
-                Vector3 from = n.T.position + Vector3.up * 1.45f, to = tgo.transform.position + Vector3.up * (n.Crouched ? 1.0f : 1.2f);
-                Vector3 d = to - from; float flat = new Vector2(d.x, d.z).magnitude;
-                if (flat > 0.5f) pitch = Mathf.Clamp(-Mathf.Atan2(d.y, flat) * Mathf.Rad2Deg, -40f, 40f);
-            }
-            ApBody.Frame(body, n.Crouched, aiming, burst, air, pitch);
-            n.SpeedCap = ApBody.SpeedCap(body);                                                  // no faster than the clips carry the feet
-        }
-
-        // (perf) WeaponOf over the NPC's cached hand bones (scanned again if the skeleton went away)
-        private static Transform HeldWeapon(Npc n)
-        {
-            var c = n.Hands;
-            if (c == null || (c.Hands.Length > 0 && c.Hands[0] == null)) n.Hands = c = WeaponRanges.ScanHands(n.Owner);
-            return WeaponRanges.WeaponOf(n.Owner, c);
-        }
-        // (perf) ApBody.HasPoses(WeaponKey), cached per key and re-read once a second (a pose table edited live is seen within 1 s)
-        private static bool GunPoses(Npc n, float now)
-        {
-            if (now >= n.GunPosesAt || !ReferenceEquals(n.GunPosesKey, n.WeaponKey)) { n.GunPosesKey = n.WeaponKey; n.GunPoses = ApBody.HasPoses(n.WeaponKey); n.GunPosesAt = now + 1f; }
-            return n.GunPoses;
-        }
-
-        // ---------- (1.1.2) magazines ----------
-        private static Dictionary<string, int> _mags; private static string _magSrc;
-        internal static int MagazineOf(string weaponKey)
-        {
-            if (weaponKey == null) return 0;
-            string src = NpcModule.MagazineTable.Value ?? "";
-            if (_mags == null || _magSrc != src)
-            {
-                _mags = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase); _magSrc = src;
-                foreach (var part in src.Split(',', ';', '\n'))
-                {
-                    int eq = part.IndexOf('='); int v;
-                    if (eq > 0 && int.TryParse(part.Substring(eq + 1).Trim(), out v)) _mags[part.Substring(0, eq).Trim().ToLowerInvariant()] = v;
-                }
-            }
-            int m;
-            return _mags.TryGetValue(weaponKey, out m) ? m : 0;
-        }
-
-        // VanillaEvents: one ray of the Damage Ranged burst = one shot; a burst never fires past the magazine (the FSM's own loop counter
-        // "multyAttack" is pushed past its limit, so the loop ends after this ray: a single-shot gun fires one ray per burst)
-        internal static void Shot(GameObject owner, Fsm damageRanged)
-        {
-            var n = Get(owner);
-            if (n == null || !NpcModule.Magazines.Value) return;
-            n.Shots++;
-            if (n.Magazine <= 0 && n.Weapon == null)
-            {
-                n.Weapon = HeldWeapon(n); n.WeaponKey = ApBody.WeaponKey(n.Weapon); n.Magazine = MagazineOf(n.WeaponKey);
-            }
-            if (n.Magazine > 0 && n.Shots >= n.Magazine && damageRanged != null)
-            {
-                if (!ReferenceEquals(n.MultyFsm, damageRanged)) { n.MultyFsm = damageRanged; n.MultyVar = damageRanged.Variables.GetFsmInt("multyAttack"); }
-                var cnt = n.MultyVar;
-                if (cnt != null) cnt.Value = 1000;
-            }
-        }
-
-        // Aim, before a burst: true = hold fire (reloading, or empty and not yet standing still enough to reload)
-        internal static bool NeedsReload(GameObject owner)
-        {
-            var n = Get(owner);
-            if (n != null && n.FollowerDriven) return Time.time < n.FollowerReloadUntil;
-            if (!NpcModule.Magazines.Value || n == null) return false;
-            if (n.Weapon == null)
-            {
-                // no rig (Apocaplayer absent): the gun is looked up here, once per burst until found
-                n.Weapon = HeldWeapon(n); n.WeaponKey = ApBody.WeaponKey(n.Weapon);
-                n.Shots = 0; n.Magazine = MagazineOf(n.WeaponKey);
-            }
-            if (n.Magazine <= 0) return false;
-            float now = Time.time;
-            if (n.Reloading)
-            {
-                if (now < n.ReloadUntil) return true;
-                n.Reloading = false; n.Shots = 0;
-                return false;
-            }
-            if (n.Shots < n.Magazine) return false;
-            // empty: reload once he stands (the burst itself only happens standing; a runner keeps running with an empty gun)
-            bool standing = n.Mode == Mode.Hold || n.Mode == Mode.Rest || (n.Mode == Mode.Cover && n.CoverArrived) || n.Mode == Mode.BackUp || n.Mode == Mode.Off;
-            if (!standing) return true;
-            // (1.2.0) the reload's length: one round at a time (the revolver, the shotguns, the bolt rifle, the double barrel - the player's copy of the
-            // gun reloads that way) = the rounds fired x RoundSeconds; else the player's reload clip (Apocaplayer) or ReloadSeconds; a magazine of
-            // 1-2 that isn't loaded round by round: SingleShotReload
-            int rounds = 0; float len = 0f;
-            bool ap = n.Body != null && ApBody.Available;
-            if (ap && ApBody.OneRoundAtATime(n.WeaponKey))
-            {
-                rounds = Mathf.Clamp(n.Shots, 1, n.Magazine);
-                len = rounds * NpcModule.RoundSeconds.Value + 0.3f;
-            }
-            else
-            {
-                if (ap) len = ApBody.ReloadClipSeconds(n.WeaponKey);
-                if (len <= 0f) len = NpcModule.ReloadSeconds.Value;
-                if (n.Magazine <= 2) len = Mathf.Min(len, NpcModule.SingleShotReload.Value);     // a break-action / single shot: a quick one, the clip sped up to it
-            }
-            n.ReloadRounds = rounds; n.ReloadShown = false;
-            n.Reloading = true; n.ReloadUntil = now + len; n.ReloadLen = len; n.ReloadSoundsPlayed = 0;
-            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " reloads " + n.WeaponKey + " (" + n.Shots + " shots, " + len.ToString("0.0") + " s" + (rounds > 0 ? ", " + rounds + " rounds one at a time" : "") + ")");
-            return true;
-        }
-
         // ActivateGameObject(s).OnEnter postfix: the game toggled an object of this NPC (the WeaponType FSM's gun models, the melee
         // machete ...): the rig re-finds the held weapon on its next frame. One dictionary lookup, only when the game toggles something.
         public static void AfterActivate(FsmStateAction __instance)
@@ -1396,97 +1212,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
         }
 
-        private static void Aim(Npc n)
-        {
-            if (n.Body != null) return;     // Drive() tells the body every frame
-            if (!NpcModule.AimPose.Value || n.Anim == null || string.IsNullOrEmpty(n.AimState)) return;
-            try
-            {
-                n.Anim.Play(n.AimState, 0, 0f);
-                n.Anim.speed = 0f;
-                n.Frozen = true;
-            }
-            catch (Exception) { n.AimState = null; }
-        }
-
-        private static void Unfreeze(Npc n)
-        {
-            if (!n.Frozen) return;
-            n.Frozen = false;
-            if (n.Body != null) return;     // Drive() suspends the body when the mode / state calls for it
-            if (n.Anim != null) n.Anim.speed = 1f;
-        }
-
-        // (1.1.1) the sidestep clip for Hit(): left = toward -right
-        private static void StrafeClip(Npc n, bool left)
-        {
-            if (n.Body == null) return;
-            n.MakeWayLeft = left; n.Strafing = true;      // Drive() plays the (Fire)Strafe clip while MakeWayUntil lasts
-        }
-
         // ---------- crouch ----------
-        private static void Crouch(Npc n, bool on)
-        {
-            if (on == n.Crouched) return;
-            if (on)
-            {
-                // (1.1.2) only with Apocaplayer's crouch clips: the clip and a shorter capsule (about 0.45 m lower) so bullets aimed at the empty air
-                // above him miss. (1.2.0) Pistolmen kneel again: ModAPI puts the pistol's hands over the crouched legs, as on the player.
-                if (n.Body == null || !n.Ranged) return;
-                if (n.Capsule == null) { n.Capsule = n.Owner.GetComponent<CapsuleCollider>(); if (n.Capsule != null) { n.CapHeight = n.Capsule.height; n.CapCenter = n.Capsule.center; } }
-                n.Crouched = true; n.Drop = 0.45f;
-                if (n.Capsule != null && n.CapHeight > 0f)
-                {
-                    float bottom = n.CapCenter.y - n.CapHeight * 0.5f;
-                    float h = Mathf.Max(n.Capsule.radius * 2f, n.CapHeight - n.Drop);
-                    n.Capsule.height = h; n.Capsule.center = new Vector3(n.CapCenter.x, bottom + h * 0.5f, n.CapCenter.z);
-                }
-                if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " crouches");
-            }
-            else
-            {
-                n.Crouched = false;
-                if (n.Capsule != null && n.CapHeight > 0f) { n.Capsule.height = n.CapHeight; n.Capsule.center = n.CapCenter; }
-            }
-        }
-
-        public static void LateTick() { }      // (1.1.2) nothing left to do after the Animator: the bone-bent kneel is gone
-
-        // [Debug] BrainLog, at a stuck: what is in front of the body (any layer, triggers too) - names the thing the feelers missed
-        private static void LogAhead(Npc n)
-        {
-            try
-            {
-                Vector3 origin = n.Col != null ? new Vector3(n.Col.bounds.center.x, n.Col.bounds.min.y + 0.1f, n.Col.bounds.center.z) : n.T.position;
-                var hits = Physics.RaycastAll(origin, n.T.forward, 1.5f, ~0, QueryTriggerInteraction.Collide);
-                var sb = new System.Text.StringBuilder();
-                foreach (var h in hits)
-                {
-                    if (h.collider == null || h.collider.transform.root == n.T) continue;
-                    sb.Append(h.collider.name).Append(" [").Append(LayerMask.LayerToName(h.collider.gameObject.layer)).Append(h.collider.isTrigger ? ", trigger" : "")
-                      .Append(", ").Append(h.distance.ToString("0.0")).Append(" m] ");
-                }
-                NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " ahead at ankle height: " + (sb.Length > 0 ? sb.ToString() : "nothing"));
-                // what touches the body right now (the body capsule grown by 0.15 m, any layer, triggers too)
-                if (n.Col != null)
-                {
-                    var b = n.Col.bounds;
-                    float r = Mathf.Max(b.extents.x, b.extents.z) + 0.15f;
-                    var touching = Physics.OverlapCapsule(new Vector3(b.center.x, b.min.y + r, b.center.z), new Vector3(b.center.x, b.max.y - r, b.center.z), r, ~0, QueryTriggerInteraction.Collide);
-                    sb.Length = 0;
-                    foreach (var c in touching)
-                    {
-                        if (c == null || c.transform.root == n.T) continue;
-                        Vector3 cp = c.ClosestPoint(b.center);
-                        Vector3 rel = n.T.InverseTransformPoint(cp);
-                        sb.Append(c.name).Append(" [").Append(LayerMask.LayerToName(c.gameObject.layer)).Append(c.isTrigger ? ", trigger" : "").Append(", ")
-                          .Append(c.GetType().Name).Append(", at ").Append(rel.x.ToString("0.0")).Append("/").Append(rel.y.ToString("0.0")).Append("/").Append(rel.z.ToString("0.0")).Append("] ");
-                    }
-                    NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " touching: " + (sb.Length > 0 ? sb.ToString() : "nothing") + " | vel " + (n.Rb != null ? n.Rb.velocity.magnitude.ToString("0.0") : "?") + " | fan free L " + n.FreeLeft.ToString("0.0") + " R " + n.FreeRight.ToString("0.0") + " side " + n.Side);
-                }
-            }
-            catch (Exception) { }
-        }
 
         // a map waypoint is taken only when the first metre toward it is free for the body (walls, rock, baked props - not loose items or cars,
         // the feelers steer round those); otherwise this look runs without the map, as before maps existed
@@ -1761,39 +1487,6 @@ namespace WildWasteland.Modules.NPC
         
         }
 
-        // (1.2.0) Apocaplayer's ModAPI for this gunman: its Animator (humanoid avatar) animated with the player's clips, its gun in the right hand
-        private static void TryRig(Npc n)
-        {
-            if (n.Body != null || n.Anim == null || !n.Ranged || Time.time < n.RigTried + 2f) return;
-            if (!ApBody.Available || !NpcModule.ApocaplayerClips.Value) return;
-            if (n.RigQueued) return;
-            n.RigQueued = true; _rigs.Enqueue(n);
-        }
-        internal static bool BuildRig()
-        {
-            if (!NpcModule.Running || _rigFrame == Time.frameCount || _rigs.Count == 0 || Core.Scheduler.FrameMs >= Core.Scheduler.FrameBudgetMs) return false;
-            var n = _rigs.Dequeue(); n.RigQueued = false;
-            if (n.Owner == null || n.T.parent != null || !n.Owner.activeInHierarchy || n.Body != null || n.Anim == null || !n.Ranged
-                || !ApBody.Available || !NpcModule.ApocaplayerClips.Value) return _rigs.Count > 0;
-            _rigFrame = Time.frameCount; n.RigTried = Time.time;
-            try
-            {
-                n.Body = ApBody.Attach(n.Anim);
-                if (n.Body == null) { n.RigTried = Time.time + 30f; return false; }      // not a humanoid: the game's clips (asked again much later)
-                n.WeaponDirty = true;      // Drive() finds the held gun model (and follows the game's swaps of it)
-                if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " animated by Apocaplayer's ModAPI");
-            }
-            catch (Exception e) { n.Body = null; NpcModule.Warn("Brain: Apocaplayer's ModAPI for " + n.Owner.name + ": " + e.Message); }
-            return false;
-        }
-
-        // (1.2.0) a hop over a low lip (the brain's or Idle's): the player's jump on the body (ModAPI: the take-off, held in the air, the landing)
-        internal static void HopAnim(GameObject owner)
-        {
-            var n = Get(owner);
-            if (n != null && n.Body != null && !ApBody.Suspended(n.Body)) ApBody.Jump(n.Body);
-        }
-
         private static Npc NpcOf(Fsm fsm, string fsmName)
         {
             if (fsm == null || fsm.Name != fsmName) return null;
@@ -1977,7 +1670,5 @@ namespace WildWasteland.Modules.NPC
             if (to.sqrMagnitude < 0.01f) return 0f;
             return Vector3.Angle(n.T.forward, to);
         }
-
-        internal static string Status() { return _npcs.Count + " NPCs, " + _active + " engaged, tick " + _interval + " s"; }
     }
 }
