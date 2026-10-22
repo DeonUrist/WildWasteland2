@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +7,7 @@ using UnityEngine.InputSystem;
 
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Tools
 {
     internal sealed partial class TemplateMenu : MonoBehaviour
     {
@@ -17,8 +18,6 @@ namespace WildWasteland.Modules.Patrols
         private string _selectedGroup = "", _selectedTemplate = "", _status = "Select a patrol or convoy, then choose a template.";
         private Vector2 _leftScroll, _carScroll, _truckScroll, _lootScroll, _modalScroll;
         private Rect _rect;
-        private Patrol _patrol;
-        private Convoy _convoy;
         private Action _mutation, _afterClose;
         private int _spawnNotBefore;
         private int _spawnGeneration;
@@ -27,25 +26,25 @@ namespace WildWasteland.Modules.Patrols
         private float _itemChance = 100;
         private object _target;
         internal bool IsOpen { get { return _session.Open; } }
-        private List<SpawnGroup> Groups { get { return _tab == 2?EditorStore.Data.Merchants:_tab == 1 ? EditorStore.Data.Convoys : EditorStore.Data.Patrols; } }
-        private SpawnGroup Selected { get { return Groups.FirstOrDefault(g => g.Id == _selectedGroup); } }
+        private List<AuthoringGroup> Groups { get { return _tab == 2?PatrolEditor.Data.Merchants:_tab == 1 ? PatrolEditor.Data.Convoys : PatrolEditor.Data.Patrols; } }
+        private AuthoringGroup Selected { get { return Groups.FirstOrDefault(g => g.Id == _selectedGroup); } }
 
         // WW: was Update (Update job). EditorSession.Tick runs in Core; the open key is a Core hotkey ([Keys] Patrol editor) -> TryOpen.
         internal void Tick()
         {
             if (_afterClose != null && _spawnGeneration != EditorSession.Generation) _afterClose = null;
             if (_afterClose != null && !EditorSession.Busy && Time.frameCount >= _spawnNotBefore) { var action = _afterClose; _afterClose = null; action(); }
+            if (_session.Open && (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay)) { Close(); return; }
             if (_session.Open) { if (Core.Hotkeys.Pressed(Key.Escape)) { if (_dropdown.IsOpen) _dropdown.Close(); else if (_modal.Length > 0) _modal = ""; else Close(); } }
         }
         // the hotkey or the F7 "Patrol editor" page; false when another editor is open or the game is not in play
         internal bool TryOpen()
         {
             if (_session.Open || EditorSession.Busy || !Application.isFocused) return false;
-            if (_patrol == null) _patrol = GetComponent<Patrol>();
-            if (_patrol == null || !_patrol.InGame()) return false;
+            if (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay) return false;
             if (!_session.Acquire()) return false;
-            PatrolsModule.EnsureGameFont();
-            _convoy = GetComponent<Convoy>(); CarTemplates.Refresh(false); _modal = ""; _dropdown.Close();
+            Skin.EnsureGameFont();
+            PatrolEditor.Load(); _modal = ""; _dropdown.Close();
             _selectedGroup = _selectedTemplate = ""; _expanded.Clear();
             _leftScroll = _carScroll = _truckScroll = Vector2.zero;
             return true;
@@ -54,9 +53,9 @@ namespace WildWasteland.Modules.Patrols
         {
             if (Selected == null) _selectedGroup = "";
             _selectedGroup = EditorSelection.Select(_expanded, _selectedGroup, _selectedGroup.Length > 0);
-            if (CarTemplate.Find(_selectedTemplate) == null) _selectedTemplate = "";
+            if (PatrolEditor.Find(_selectedTemplate) == null) _selectedTemplate = "";
         }
-        private void Close() { _session.Close(); _modal = ""; _dropdown.Close(); }
+        internal void Close() { _session.Close(); _modal = ""; _dropdown.Close(); }
         private void OnDestroy() { _session.Close(true); }
         internal void LateTick() { _session.Maintain(); }
         private void Queue(Action action, bool save = true)
@@ -77,7 +76,7 @@ namespace WildWasteland.Modules.Patrols
             try
             {
                 if (_mutation != null) { var action = _mutation; _mutation = null; action(); }
-                if (_dirty) { EditorStore.Save(); _dirty = false; }
+                if (_dirty) { PatrolEditor.Save(); _dirty = false; }
             }
             catch (Exception e) { _mutation = null; _dirty = false; _status = e.Message; Core.Log.Error("[Patrols] " + "Editor operation: " + e); }
         }

@@ -6,7 +6,7 @@ using UnityEngine;
 
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Tools
 {
     internal sealed partial class TemplateMenu
     {
@@ -24,19 +24,19 @@ namespace WildWasteland.Modules.Patrols
         private string _hoverMissing = "";
         private Vector2 _groupScrollOrigin;
         private Rect _lastFactionAnchor;
-        private string ListFaction=>TrafficFactions.Normalize(Selected?.Faction??(_tab==2?"Coyotes":"Scrapyard"));
-        internal static CarTemplate[] VisibleTemplates(bool truck,string faction)=>CarTemplate.Park.Where(t=>t.IsTruck==truck&&CrewFactions.Compatible(t,faction)).OrderBy(t=>t.Name,StringComparer.OrdinalIgnoreCase).ToArray();
-        private static string TemplateCaption(CarTemplate t)=>t.Name=="Coyote_Trader"?"Coyote Trader bus":t.Name.Replace('_',' ');
-        private void OpenFaction(SpawnGroup group,Rect anchor)
-        {_dropdown.Open(anchor,Options(new[]{"Scrapyard","Coyotes"}),group.Faction,v=>{group.Faction=v;group.Templates.RemoveAll(n=>{var t=CarTemplate.Find(n);return t!=null&&!CrewFactions.Compatible(t,v);});_selectedTemplate="";Dirty();},_rect.height-84);}
-        private void SelectMerchantType(SpawnGroup group,string type)
-        {if(MerchantCatalog.Known(type))Queue(()=>group.MerchantTypes=new List<string>{type});}
+        private string ListFaction=>PatrolEditor.Source.NormalizeFaction(Selected?.Faction??(_tab==2?"Coyotes":"Scrapyard"));
+        internal static PatrolTemplateInfo[] VisibleTemplates(bool truck,string faction)=>PatrolEditor.Park.Where(t=>t.IsTruck==truck&&PatrolEditor.Source.Compatible(t.Name,faction)).OrderBy(t=>t.Name,StringComparer.OrdinalIgnoreCase).ToArray();
+        private static string TemplateCaption(PatrolTemplateInfo t)=>t.Name=="Coyote_Trader"?"Coyote Trader bus":t.Name.Replace('_',' ');
+        private void OpenFaction(AuthoringGroup group,Rect anchor)
+        {_dropdown.Open(anchor,Options(new[]{"Scrapyard","Coyotes"}),group.Faction,v=>{group.Faction=v;group.Templates.RemoveAll(n=>{var t=PatrolEditor.Find(n);return t!=null&&!PatrolEditor.Source.Compatible(t.Name,v);});_selectedTemplate="";Dirty();},_rect.height-84);}
+        private void SelectMerchantType(AuthoringGroup group,string type)
+        {if(EditorMerchants.Known(type))Queue(()=>group.MerchantTypes=new List<string>{type});}
 
         // the editor's template order: EditorData.TemplateOrder first, then the unlisted ones (defaults first, by name)
-        private static CarTemplate[] Ordered(bool truck)
+        private static PatrolTemplateInfo[] Ordered(bool truck)
         {
-            var order = EditorStore.Data.TemplateOrder;
-            return CarTemplate.Park.Where(t => t.IsTruck == truck)
+            var order = PatrolEditor.Data.TemplateOrder;
+            return PatrolEditor.Park.Where(t => t.IsTruck == truck)
                 .Select(t => new { t, i = order.FindIndex(n => n.Equals(t.Name, StringComparison.OrdinalIgnoreCase)) })
                 .OrderBy(x => x.i < 0 ? 1 : 0).ThenBy(x => x.i).ThenBy(x => x.t.IsDefault ? 0 : 1).ThenBy(x => x.t.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.t).ToArray();
@@ -49,26 +49,14 @@ namespace WildWasteland.Modules.Patrols
         private static List<KeyValuePair<string, string>> Options(IEnumerable<string> values) { return values.Select(v => new KeyValuePair<string, string>(v, v)).ToList(); }
 
         // writes driver / passenger / loot option into the template's file (BaseTemplates or PlayerTemplates) and reloads the park
-        private static void SaveTemplateEdit(CarTemplate t, string driver, string passenger, string loot, string[] turrets, string[] trailerTurrets = null,float explodeChance=50f,string faction=null,bool[] standing=null,bool[] trailerStanding=null)
+        private static void SaveTemplateEdit(PatrolTemplateInfo t, string driver, string passenger, string loot, string[] turrets, string[] trailerTurrets = null,float explodeChance=50f,string faction=null,bool[] standing=null,bool[] trailerStanding=null)
         {
-            if (string.IsNullOrEmpty(t.SourcePath) || !System.IO.File.Exists(t.SourcePath)) throw new InvalidOperationException("The template file was not found");
-            var file = TemplateFile.FromJson(System.IO.File.ReadAllText(t.SourcePath));
-            faction=TrafficFactions.Normalize(faction??t.Faction);
-            if(new[]{driver,passenger}.Concat(turrets).Concat(trailerTurrets??new string[0]).Any(p=>!CrewFactions.Allowed(p,faction)))throw new ArgumentException("A template cannot mix Coyote and Scrapyard crew");
-            file.faction=faction;if(file.trailer!=null)file.trailer.faction=faction;
-            file.explodeChance=Mathf.Clamp(explodeChance,0f,100f);
-            file.driver = driver == "None" ? "" : driver; file.passenger = passenger == "None" ? "" : passenger; file.lootPreset = loot ?? "";
-            for (int i = 0; i < 3; i++) file.SetTurret(i, i < turrets.Length ? Rider.Stored(turrets[i]) : "");
-            if(standing!=null)for(int i=0;i<3;i++)file.SetTurretStanding(i,i<standing.Length&&standing[i]&&!string.IsNullOrEmpty(file.Turret(i)));
-            if (file.trailer != null && trailerTurrets != null)
-                for (int i = 0; i < 4; i++) file.trailer.SetTurret(i, i < trailerTurrets.Length ? Rider.Stored(trailerTurrets[i]) : "");
-            if(file.trailer!=null&&trailerStanding!=null)for(int i=0;i<4;i++)file.trailer.SetTurretStanding(i,i<trailerStanding.Length&&trailerStanding[i]&&!string.IsNullOrEmpty(file.trailer.Turret(i)));
-            EditorStore.AtomicWrite(t.SourcePath, file.ToJson());
-            CarTemplates.Refresh(true);
+            PatrolEditor.Source.Edit(new PatrolTemplateEdit { Name=t.Name,Driver=driver,Passenger=passenger,Loot=loot,Turrets=turrets,TrailerTurrets=trailerTurrets,ExplodeChance=explodeChance,Faction=faction,Standing=standing,TrailerStanding=trailerStanding });
+            PatrolEditor.Refresh(true);
         }
-        private static string TurretSummary(CarTemplate t)
+        private static string TurretSummary(PatrolTemplateInfo t)
         {
-            var on = t.Turrets.Where(v => !string.IsNullOrEmpty(v)).Select(Rider.Display).ToArray();
+            var on = t.Turrets.Where(v => !string.IsNullOrEmpty(v)).Select(PatrolEditor.Source.TurretDisplay).ToArray();
             return (on.Length > 0 ? " ● turrets " + string.Join(", ", on) : "") + (t.Trailer != null ? " ● trailer " + t.Trailer.Body + " (" + t.Trailer.Turrets.Count(v => !string.IsNullOrEmpty(v)) + "/4 turrets)" : "");
         }
         private void ShowModal(string kind, object target = null)
@@ -96,10 +84,10 @@ namespace WildWasteland.Modules.Patrols
             _hoverMissing = "";
             if (_tab == 3) DrawLootLedger(); else DrawGroupsLedger();
             float footer = _rect.height - 70; Ledger.Rule(6, footer, _rect.width - 12);
-            var detail = CarTemplate.Find(_selectedTemplate);
+            var detail = PatrolEditor.Find(_selectedTemplate);
             if (_hoverMissing.Length > 0) Ledger.Label(new Rect(26, footer + 12, _rect.width - 308, 40), "Unavailable: prefab not loaded: " + _hoverMissing + ". Load its source mod to use this template.", Ledger.Small, Color.gray);
-            else if (detail != null) Ledger.Label(new Rect(26, footer + 12, _rect.width - 308, 40), detail.Body + " ● " + (string.IsNullOrEmpty(detail.Driver) ? "None" : detail.Driver) + " ● " + (string.IsNullOrEmpty(detail.Passenger) ? "None" : detail.Passenger) + " ● " + (detail.IsTruck ? (EditorStore.Loot(true, detail.LootPreset)?.Name ?? "Convoy Cargo") : EditorStore.Loot(false, detail.LootPreset)?.Name ?? "None") + TurretSummary(detail), Ledger.Small, Ledger.Muted);
-            if (_tab<3 && PatrolsModule.AllowDebugSpawns.Value && Ledger.Button(new Rect(_rect.width - 270, footer + 15, 118, 34), "SPAWN", gameFont: true)){var group=Selected??Groups.FirstOrDefault();int role=_tab;Queue(()=>Schedule(()=>WorldTraffic.DebugDeparture(group,role)),false);}
+            else if (detail != null) Ledger.Label(new Rect(26, footer + 12, _rect.width - 308, 40), detail.Body + " ● " + (string.IsNullOrEmpty(detail.Driver) ? "None" : detail.Driver) + " ● " + (string.IsNullOrEmpty(detail.Passenger) ? "None" : detail.Passenger) + " ● " + (detail.IsTruck ? (PatrolEditor.Loot(true, detail.LootPreset)?.Name ?? "Convoy Cargo") : PatrolEditor.Loot(false, detail.LootPreset)?.Name ?? "None") + TurretSummary(detail), Ledger.Small, Ledger.Muted);
+            if (_tab<3 && ToolsModule.AllowDebugSpawns.Value && Ledger.Button(new Rect(_rect.width - 270, footer + 15, 118, 34), "SPAWN", gameFont: true)){var group=Selected??Groups.FirstOrDefault();int role=_tab;Queue(()=>Schedule(()=>PatrolEditor.Source.SpawnGroup(group.Id,role)),false);}
             if (Ledger.Button(new Rect(_rect.width - 144, footer + 15, 118, 34), "RESET", gameFont: true, color: Ledger.Danger, transparent: true)) ShowModal("reset");
             GUI.enabled = enabled;
             if (modal) DrawLedgerModal();
@@ -130,26 +118,26 @@ namespace WildWasteland.Modules.Patrols
             Ledger.Label(new Rect(rx, top + 225, rw, 20), "Convoy truck templates", Ledger.Heading);
             DrawTemplateLedger(true, new Rect(rx, top + 253, rw, 158), ref _truckScroll);
             float actions = right.yMax - 99; Ledger.Rule(rx, actions, rw);
-            var chosen = CarTemplate.Find(_selectedTemplate); var selected = Selected;
-            if(chosen!=null&&!CrewFactions.Compatible(chosen,ListFaction))chosen=null;
-            bool canAdd = chosen != null && chosen.Available && selected != null && CrewFactions.Compatible(chosen,selected.Faction);
+            var chosen = PatrolEditor.Find(_selectedTemplate); var selected = Selected;
+            if(chosen!=null&&!PatrolEditor.Source.Compatible(chosen.Name,ListFaction))chosen=null;
+            bool canAdd = chosen != null && chosen.Available && selected != null && PatrolEditor.Source.Compatible(chosen.Name,selected.Faction);
             if (Ledger.Button(new Rect(rx, actions + 13, rw, 34), _tab==2?"+  Add template to merchant":_tab == 1 ? "+  Add template to convoy" : "+  Add template to patrol", canAdd, true)) Queue(() => { selected.Templates.Add(chosen.Name); _status = "Added one copy of " + chosen.Name; });
-            if (PatrolsModule.AllowDebugSpawns.Value && Ledger.Button(new Rect(rx, actions + 54, rw, 34), "Spawn template", chosen != null && chosen.Available)) Queue(() => { var spawn = chosen.CloneForSpawn();spawn.SetupOnly=true;spawn.ReleaseHandbrake=false;if (spawn.IsTruck && _tab == 1 && selected != null) spawn.SpawnCargoOptions = selected.AllowedCargo.ToArray(); Schedule(() => {if(_tab==2)MerchantRuntime.SpawnTemplate(_patrol,spawn,selected);else _patrol.Spawn(spawn);}); }, false);
+            if (ToolsModule.AllowDebugSpawns.Value && Ledger.Button(new Rect(rx, actions + 54, rw, 34), "Spawn template", chosen != null && chosen.Available)) Queue(() => { Schedule(() => PatrolEditor.Source.SpawnTemplate(chosen.Name,_tab,selected?.Id,chosen.IsTruck && _tab==1 ? selected?.AllowedCargo.ToArray() : null)); }, false);
         }
-        private float GroupHeight(SpawnGroup group)
+        private float GroupHeight(AuthoringGroup group)
         {
             if (!_expanded.Contains(group.Id)) return 73;
-            int rows = group.Templates.Count; bool fallback = !group.Templates.Any(n => { var t = CarTemplate.Find(n); return t != null && t.Available && (_tab != 1 || t.IsTruck); });
+            int rows = group.Templates.Count; bool fallback = !group.Templates.Any(n => { var t = PatrolEditor.Find(n); return t != null && t.Available && (_tab != 1 || t.IsTruck); });
             return 73 + 12 + 63 + 14 + 56 + 22 + (rows + (fallback&&_tab!=2 ? 1 : 0)) * 36 + (_tab == 1 ? 79 : _tab==2?126:0) + 36 + 12;
         }
-        private static int VehicleCount(SpawnGroup group, bool convoy)
+        private static int VehicleCount(AuthoringGroup group, bool convoy)
         {
-            var list = group.Templates.Select(CarTemplate.Find).Where(t => t != null && t.Available && CrewFactions.Compatible(t,group.Faction)).ToList();
+            var list = group.Templates.Select(PatrolEditor.Find).Where(t => t != null && t.Available && PatrolEditor.Source.Compatible(t.Name,group.Faction)).ToList();
             return list.Count + ((convoy && !list.Any(t => t.IsTruck)) || (!convoy && list.Count == 0) ? 1 : 0);
         }
-        private void DrawLedgerGroup(SpawnGroup group, int index, Rect r)
+        private void DrawLedgerGroup(AuthoringGroup group, int index, Rect r)
         {
-            bool open = _expanded.Contains(group.Id); int count = _tab==2?group.Templates.Count(n=>CarTemplate.Find(n)?.Available==true):VehicleCount(group, _tab == 1);
+            bool open = _expanded.Contains(group.Id); int count = _tab==2?group.Templates.Count(n=>PatrolEditor.Find(n)?.Available==true):VehicleCount(group, _tab == 1);
             Ledger.Fill(r, Ledger.Surface); Ledger.Rule(r.x, r.yMax - 1, r.width);
             float headerY = open ? Mathf.Clamp(_leftScroll.y, r.y, r.yMax - 73) : r.y;
             bool wasEnabled = GUI.enabled;
@@ -171,7 +159,7 @@ namespace WildWasteland.Modules.Patrols
                 int found = 0, trucks = 0;
                 for (int i = 0; i < group.Templates.Count; i++)
                 {
-                    int slot = i; var t = CarTemplate.Find(group.Templates[i]); bool available = t != null && t.Available; if (available) { found++; if (t.IsTruck) trucks++; }
+                    int slot = i; var t = PatrolEditor.Find(group.Templates[i]); bool available = t != null && t.Available; if (available) { found++; if (t.IsTruck) trucks++; }
                     Ledger.Label(new Rect(x, y, 19, 36), (i + 1).ToString(), Ledger.Small, Ledger.Muted);
                     Ledger.Label(new Rect(x + 27, y, w - 65, 36), t != null ? TemplateCaption(t) + (available ? "" : " [unavailable]") : group.Templates[i] + " [missing]", null, available ? Ledger.Text : Color.gray);
                     if (Ledger.Icon(new Rect(x + w - 30, y + 3, 30, 30), "circle-minus")) Queue(() => group.Templates.RemoveAt(slot));
@@ -184,12 +172,12 @@ namespace WildWasteland.Modules.Patrols
                     y += 42;
                     bool uniform = Ledger.Toggle(new Rect(x, y + 7, w, 30), group.UniformCargo, "Uniform cargo"); if (uniform != group.UniformCargo) { group.UniformCargo = uniform; Dirty(); } y += 37;
                 }
-                if(_tab==2){Ledger.Label(new Rect(x,y+5,w,24),"MERCHANT TYPE · CHOOSE ONE",Ledger.Small,Ledger.Muted);y+=30;var selected=MerchantCatalog.Selected(group.MerchantTypes);foreach(var type in MerchantCatalog.Types){if(Ledger.Button(new Rect(x,y,w,28),MerchantCatalog.Label(type),primary:selected==type))SelectMerchantType(group,type);y+=30;}}
+                if(_tab==2){Ledger.Label(new Rect(x,y+5,w,24),"MERCHANT TYPE · CHOOSE ONE",Ledger.Small,Ledger.Muted);y+=30;var selected=EditorMerchants.Selected(group.MerchantTypes);foreach(var type in EditorMerchants.Types){if(Ledger.Button(new Rect(x,y,w,28),EditorMerchants.Label(type),primary:selected==type))SelectMerchantType(group,type);y+=30;}}
                 Ledger.Label(new Rect(x, y + 8, w, 24), count + " vehicles · each entry spawns one vehicle", Ledger.Small, Ledger.Muted);
                 GUI.enabled = wasEnabled;
             }
             Ledger.Fill(new Rect(r.x, headerY, r.width, 72), open ? Ledger.Selected : Ledger.Surface);
-            float tools = PatrolsModule.AllowDebugSpawns.Value ? 108 : 78;   // trash [+ S] + the reorder column
+            float tools = ToolsModule.AllowDebugSpawns.Value ? 108 : 78;   // trash [+ S] + the reorder column
             var select = new Rect(r.x + 9, headerY + 9, r.width - tools - 30, 54);
             // the small controls first: the header's own button covers them and would take the click otherwise
             float nameWidth = Mathf.Min(Ledger.TextWidth(group.Name, Ledger.Body) + 4, select.width - 29 - 62);
@@ -201,11 +189,11 @@ namespace WildWasteland.Modules.Patrols
             Ledger.Label(new Rect(select.x + 29, headerY + 15, nameWidth, 23), group.Name, null, open ? Ledger.Accent : Ledger.Text);
             Ledger.Label(new Rect(select.x + 29, headerY + 40, select.width - 29, 20), group.MinKm.ToString("0.#") + " km · " + group.MinBosses + " bosses · " + group.Chance.ToString("0.#") + "% · " + count + " vehicles", Ledger.Small, Ledger.Muted);
             if (hit) Queue(() => _selectedGroup = EditorSelection.Select(_expanded, group.Id, !open), false);
-            if (PatrolsModule.AllowDebugSpawns.Value)
+            if (ToolsModule.AllowDebugSpawns.Value)
             {
                 var spawn = new Rect(r.xMax - 65, headerY + 21, 30, 30); bool spawnHit = GUI.Button(spawn, GUIContent.none, GUIStyle.none);
                 Ledger.Label(spawn, "S", null, null, TextAnchor.MiddleCenter);
-                if (spawnHit) {int role=_tab;Queue(()=>Schedule(()=>WorldTraffic.DebugDeparture(group,role)),false);}
+                if (spawnHit) {int role=_tab;Queue(()=>Schedule(()=>PatrolEditor.Source.SpawnGroup(group.Id,role)),false);}
             }
             if (Ledger.Icon(new Rect(r.xMax - 35, headerY + 21, 30, 30), "trash-2", color: Ledger.Danger)) ShowModal("deleteGroup", group);
         }
@@ -221,14 +209,14 @@ namespace WildWasteland.Modules.Patrols
                     string caption = TemplateCaption(t) + (available ? "" : " [unavailable]");
                     float nameWidth = Mathf.Min(Ledger.TextWidth(caption, Ledger.Body) + 4, width - 91 - 9 - 30);
                     // the small controls first (the row's own button covers them)
-                    if (Ledger.TextButton(new Rect(9 + nameWidth + 6, y + 9, 21, 21), "E", available)) Queue(() => { _target = t; _modal = "editTemplate";_editExplodeChance=t.ExplodeChance;_editFaction=t.Faction; _editDriver = t.Driver.Length > 0 ? t.Driver : "None"; _editPassenger = t.Passenger.Length > 0 ? t.Passenger : "None"; _editLoot = t.LootPreset; for (int k = 0; k < 3; k++){_editTurrets[k] = Rider.Display(t.Turrets[k]);_editTurretStanding[k]=t.TurretStanding[k];} for (int k = 0; k < 4; k++){_editTrailerTurrets[k] = t.Trailer != null ? Rider.Display(t.Trailer.Turrets[k]) : "None";_editTrailerTurretStanding[k]=t.Trailer!=null&&t.Trailer.TurretStanding[k];} _editTrailerPage = false; _dropdown.Close(); }, false);
+                    if (Ledger.TextButton(new Rect(9 + nameWidth + 6, y + 9, 21, 21), "E", available)) Queue(() => { _target = t; _modal = "editTemplate";_editExplodeChance=t.ExplodeChance;_editFaction=t.Faction; _editDriver = t.Driver.Length > 0 ? t.Driver : "None"; _editPassenger = t.Passenger.Length > 0 ? t.Passenger : "None"; _editLoot = t.LootPreset; for (int k = 0; k < 3; k++){_editTurrets[k] = PatrolEditor.Source.TurretDisplay(t.Turrets[k]);_editTurretStanding[k]=t.TurretStanding[k];} for (int k = 0; k < 4; k++){_editTrailerTurrets[k] = t.Trailer != null ? PatrolEditor.Source.TurretDisplay(t.Trailer.Turrets[k]) : "None";_editTrailerTurretStanding[k]=t.Trailer!=null&&t.Trailer.TurretStanding[k];} _editTrailerPage = false; _dropdown.Close(); }, false);
                     var name = new Rect(0, y, width - 91, 39); bool enabled = GUI.enabled; GUI.enabled = enabled && available;
                     bool hit = GUI.Button(name, GUIContent.none, GUIStyle.none);
                     GUI.enabled = enabled;
                     if (!available && name.Contains(Event.current.mousePosition)) _hoverMissing = t.MissingPrefab;
                     Ledger.Label(new Rect(9, y, nameWidth, 39), caption, null, available ? (selected ? Ledger.Accent : Ledger.Text) : Color.gray);
                     if (hit) Queue(() => _selectedTemplate = t.Name, false);
-                    if (Ledger.Icon(new Rect(width - 61, y + 4, 30, 30), t.Favorite ? "star-filled" : "star", !t.IsDefault, t.Favorite ? Ledger.Muted : Ledger.Text)) Queue(() => { CarTemplates.Favorite(t); _status = t.Name + " moved to " + (t.Favorite ? "PlayerTemplates" : "BaseTemplates"); }, false);
+                    if (Ledger.Icon(new Rect(width - 61, y + 4, 30, 30), t.Favorite ? "star-filled" : "star", !t.IsDefault, t.Favorite ? Ledger.Muted : Ledger.Text)) Queue(() => { PatrolEditor.Favorite(t); _status = t.Name + " moved to " + (t.Favorite ? "PlayerTemplates" : "BaseTemplates"); }, false);
                     if (Ledger.Icon(new Rect(width - 31, y + 4, 30, 30), "trash-2", !t.Favorite && !t.IsDefault, Ledger.Danger)) ShowModal("deleteTemplate", t);
                     Ledger.Rule(0, y + 38, width);
                 }
@@ -245,14 +233,14 @@ namespace WildWasteland.Modules.Patrols
         }
         private LootProfile CurrentLoot(bool truck)
         {
-            int i = truck ? 1 : 0; var profiles = truck ? EditorStore.Data.TruckLoot : EditorStore.Data.CarLoot;
+            int i = truck ? 1 : 0; var profiles = truck ? PatrolEditor.Data.TruckLoot : PatrolEditor.Data.CarLoot;
             var selected = profiles.FirstOrDefault(p => p.Id == _lootSelected[i]) ?? profiles.FirstOrDefault();
             _lootSelected[i] = selected != null ? selected.Id : ""; return selected;
         }
         private float LootHeight(bool truck) { var p = CurrentLoot(truck); return 14 + 34 + 12 + 34 + 10 + (truck ? 96 : 0) + Mathf.Max(1, p == null ? 0 : p.Items.Count) * 46 + 34 + 10 + 20 + 14; }
         private void DrawLootLedgerSection(bool truck, Rect r)
         {
-            var profiles = truck ? EditorStore.Data.TruckLoot : EditorStore.Data.CarLoot; var profile = CurrentLoot(truck); int category = truck ? 1 : 0;
+            var profiles = truck ? PatrolEditor.Data.TruckLoot : PatrolEditor.Data.CarLoot; var profile = CurrentLoot(truck); int category = truck ? 1 : 0;
             Ledger.Panel(r); float x = r.x + 14, width = r.width - 28, y = r.y + 14;
             Ledger.Label(new Rect(x, y, width - 165, 34), truck ? "Loot for convoy trucks" : "Loot for patrol cars", Ledger.Heading);
             if (Ledger.Button(new Rect(x + width - 157, y, 157, 34), "+  New loot option")) ShowModal("newLoot", profiles);
@@ -273,24 +261,24 @@ namespace WildWasteland.Modules.Patrols
                 Ledger.Label(new Rect(x + width - 56, y, 14, 40), "%"); y += 48;
                 Ledger.Label(new Rect(x + 9, y, 185, 34), "Truck bed texture", Ledger.Small, Ledger.Muted);
                 var texture = new Rect(x + 204, y, width - 204, 34);
-                if (Ledger.Dropdown(texture, string.IsNullOrEmpty(profile.TextureKey) ? "None" : (profile.TextureKey.StartsWith("cargo_", StringComparison.OrdinalIgnoreCase) ? profile.TextureKey : Paint.CargoFile(profile.TextureKey)) + ".png"))
+                if (Ledger.Dropdown(texture, string.IsNullOrEmpty(profile.TextureKey) ? "None" : (profile.TextureKey.StartsWith("cargo_", StringComparison.OrdinalIgnoreCase) ? profile.TextureKey : ModApi.Get<ICargoArtwork>().File(profile.TextureKey)) + ".png"))
                 {
                     var global = texture; global.position += new Vector2(26, 143 - _lootScroll.y);
-                    _dropdown.Open(global, new[] { new KeyValuePair<string, string>("", "None") }.Concat(Paint.CargoTextures().Select(name => new KeyValuePair<string, string>(name, name + ".png"))).ToList(), string.IsNullOrEmpty(profile.TextureKey) ? "" : Paint.CargoFile(profile.TextureKey), value => { profile.TextureKey = value; Dirty(); }, _rect.height - 84);
+                    _dropdown.Open(global, new[] { new KeyValuePair<string, string>("", "None") }.Concat((ModApi.Get<ICargoArtwork>()?.Textures() ?? new string[0]).Select(name => new KeyValuePair<string, string>(name, name + ".png"))).ToList(), string.IsNullOrEmpty(profile.TextureKey) ? "" : ModApi.Get<ICargoArtwork>().File(profile.TextureKey), value => { profile.TextureKey = value; Dirty(); }, _rect.height - 84);
                 }
                 y += 48;
             }
             if (profile != null) foreach (var item in profile.Items)
             {
                 Ledger.Rule(x, y + 45, width);
-                Ledger.Label(new Rect(x + 9, y, width - 335, 46), PickupCatalog.Name(item.Id));
+                Ledger.Label(new Rect(x + 9, y, width - 335, 46), EditorItems.Name(item.Id));
                 Ledger.Label(new Rect(x + width - 323, y, 175, 46), Ledger.Quantity(item.Chance), Ledger.Small, Ledger.Muted, TextAnchor.MiddleRight);
                 item.Chance = Ledger.Number(new Rect(x + width - 139, y + 6, 74, 34), profile.Id + "." + item.Id, item.Chance, 0, 100000, Dirty, true);
                 Ledger.Label(new Rect(x + width - 56, y, 14, 46), "%");
                 if (Ledger.Icon(new Rect(x + width - 30, y + 8, 30, 30), "circle-minus")) Queue(() => profile.Items.Remove(item)); y += 46;
             }
             if (profile == null || profile.Items.Count == 0) { Ledger.Label(new Rect(x, y, width, 46), "No items. This option spawns no loot.", Ledger.Small, Ledger.Muted); y += 46; }
-            if (Ledger.Button(new Rect(x, y, 157, 34), "+  Add game item", profile != null)) Queue(() => { _target = profile; _search = _item = ""; _itemChance = 100; _modalScroll = Vector2.zero; Ledger.ClearNumbers(); _modal = "items"; PickupCatalog.All(); }, false);
+            if (Ledger.Button(new Rect(x, y, 157, 34), "+  Add game item", profile != null)) Queue(() => { _target = profile; _search = _item = ""; _itemChance = 100; _modalScroll = Vector2.zero; Ledger.ClearNumbers(); _modal = "items"; EditorItems.All(); }, false);
             Ledger.Label(new Rect(x, y + 44, width, 20), "Absolute chance per item: 100% = 1 · 150% = 1 + 50% for a second · 200% = 2", Ledger.Small, Ledger.Muted);
         }
         private void DrawLedgerModal()
@@ -310,7 +298,7 @@ namespace WildWasteland.Modules.Patrols
                 Ledger.Label(new Rect(x, box.y + 96, w, 24), "BaseTemplates are backed up to OldTemplatesFolder.", Ledger.Small, Ledger.Muted);
                 _deleteCustom = Ledger.Toggle(new Rect(x, box.y + 146, w, 34), _deleteCustom, "Do you want to delete your custom templates?");
                 Ledger.Label(new Rect(x, box.y + 186, w, 40), _deleteCustom ? "Custom templates, including favourites, move to the Recycle Bin." : "Your custom templates and favourites will be kept.", Ledger.Small, Ledger.Muted);
-                ModalButtons(box, "Reset", () => { EditorStore.Reset(_deleteCustom); Ledger.ClearNumbers(); EnsureSelection(); _status = "Defaults restored; BaseTemplates backed up."; });
+                ModalButtons(box, "Reset", () => { PatrolEditor.Reset(_deleteCustom); Ledger.ClearNumbers(); EnsureSelection(); _status = "Defaults restored; BaseTemplates backed up."; });
             }
             else if (_modal == "rename")
             {
@@ -320,8 +308,8 @@ namespace WildWasteland.Modules.Patrols
                 ModalButtons(box, "Rename", () =>
                 {
                     string name = _name.Trim(); if (name.Length == 0) throw new ArgumentException("Enter a name");
-                    var lp = _target as LootProfile; var sg = _target as SpawnGroup;
-                    if (lp != null) { var list = EditorStore.Data.TruckLoot.Contains(lp) ? EditorStore.Data.TruckLoot : EditorStore.Data.CarLoot; if (list.Any(o => o != lp && o.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("That loot name exists"); lp.Name = name; }
+                    var lp = _target as LootProfile; var sg = _target as AuthoringGroup;
+                    if (lp != null) { var list = PatrolEditor.Data.TruckLoot.Contains(lp) ? PatrolEditor.Data.TruckLoot : PatrolEditor.Data.CarLoot; if (list.Any(o => o != lp && o.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("That loot name exists"); lp.Name = name; }
                     else if (sg != null) { if (Groups.Any(o => o != sg && o.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("That group name exists"); sg.Name = name; }
                 }, _name.Trim().Length > 0);
             }
@@ -333,22 +321,22 @@ namespace WildWasteland.Modules.Patrols
                 ModalButtons(box, "Create", () =>
                 {
                     string name = _name.Trim(); if (name.Length == 0) throw new ArgumentException("Enter a name");
-                    if (_target is List<LootProfile>) { var list = (List<LootProfile>)_target; if (list.Any(lp => lp.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("That loot name exists"); var p = new LootProfile { Id = Guid.NewGuid().ToString("N"), Name = name }; list.Add(p); _lootSelected[ReferenceEquals(list, EditorStore.Data.TruckLoot) ? 1 : 0] = p.Id; }
-                    else { if (Groups.Any(sg => sg.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("That group name exists"); var g = new SpawnGroup { Id = Guid.NewGuid().ToString("N"), Name = name, Chance = 10,Faction=_tab==2?"Coyotes":"Scrapyard" };if(_tab==2)g.MerchantTypes.Add("general"); Groups.Add(g); _selectedGroup = EditorSelection.Select(_expanded, g.Id, true); }
+                    if (_target is List<LootProfile>) { var list = (List<LootProfile>)_target; if (list.Any(lp => lp.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("That loot name exists"); var p = new LootProfile { Id = Guid.NewGuid().ToString("N"), Name = name }; list.Add(p); _lootSelected[ReferenceEquals(list, PatrolEditor.Data.TruckLoot) ? 1 : 0] = p.Id; }
+                    else { if (Groups.Any(sg => sg.Name.Equals(name, StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("That group name exists"); var g = new AuthoringGroup { Id = Guid.NewGuid().ToString("N"), Name = name, Chance = 10,Faction=_tab==2?"Coyotes":"Scrapyard" };if(_tab==2)g.MerchantTypes.Add("general"); Groups.Add(g); _selectedGroup = EditorSelection.Select(_expanded, g.Id, true); }
                 }, _name.Trim().Length > 0);
             }
             else
             {
-                Ledger.Label(new Rect(x, box.y + 68, w, 44), _target is CarTemplate ? "Move this custom template to the Recycle Bin?" : _target is LootProfile ? "Delete this loot option? Referencing templates will use no loot." : "Delete this group and its roster? Template files are kept.", Ledger.Small);
+                Ledger.Label(new Rect(x, box.y + 68, w, 44), _target is PatrolTemplateInfo ? "Move this custom template to the Recycle Bin?" : _target is LootProfile ? "Delete this loot option? Referencing templates will use no loot." : "Delete this group and its roster? Template files are kept.", Ledger.Small);
                 ModalButtons(box, "Delete", () =>
                 {
-                    if (_target is CarTemplate) CarTemplates.Delete((CarTemplate)_target);
-                    else if (_target is SpawnGroup) { Groups.Remove((SpawnGroup)_target); EnsureSelection(); }
+                    if (_target is PatrolTemplateInfo) PatrolEditor.Delete((PatrolTemplateInfo)_target);
+                    else if (_target is AuthoringGroup) { Groups.Remove((AuthoringGroup)_target); EnsureSelection(); }
                     else if (_target is LootProfile)
                     {
-                        var p = (LootProfile)_target; EditorStore.Data.CarLoot.Remove(p); EditorStore.Data.TruckLoot.Remove(p);
-                        foreach (var group in EditorStore.Data.Convoys) group.AllowedCargo.RemoveAll(id => id.Equals(p.Id, StringComparison.OrdinalIgnoreCase));
-                        foreach (var t in CarTemplate.Park.Where(t => string.Equals(t.LootPreset, p.Id, StringComparison.OrdinalIgnoreCase))) { t.LootPreset = ""; if (System.IO.File.Exists(t.SourcePath)) { var file = TemplateFile.FromJson(System.IO.File.ReadAllText(t.SourcePath)); file.lootPreset = ""; EditorStore.AtomicWrite(t.SourcePath, file.ToJson()); } }
+                        var p = (LootProfile)_target; PatrolEditor.Data.CarLoot.Remove(p); PatrolEditor.Data.TruckLoot.Remove(p);
+                        foreach (var group in PatrolEditor.Data.Convoys) group.AllowedCargo.RemoveAll(id => id.Equals(p.Id, StringComparison.OrdinalIgnoreCase));
+                        PatrolEditor.Source.RemoveLootPreset(p.Id); PatrolEditor.Refresh(true);
                     }
                 });
             }
@@ -356,35 +344,35 @@ namespace WildWasteland.Modules.Patrols
         // the "E" of a template row: driver, passenger and the loot option (cars) / a fixed cargo option (trucks); written into the template file
         private void DrawEditTemplate(Rect box)
         {
-            var t = (CarTemplate)_target; float x = box.x + 22, w = box.width - 44, input = x + 150, iw = w - 150, bottom = _rect.height - 84;
+            var t = (PatrolTemplateInfo)_target; float x = box.x + 22, w = box.width - 44, input = x + 150, iw = w - 150, bottom = _rect.height - 84;
             Ledger.Label(new Rect(x, box.y + 22, t.Trailer != null ? w - 162 : w, 26), "Edit template · " + t.Name.Replace('_', ' '), Ledger.DialogTitle);
             if (t.Trailer != null && Ledger.Button(new Rect(box.xMax - 175, box.y + 22, 153, 26), _editTrailerPage ? "Vehicle turrets" : "Trailer turrets")) Queue(() => _editTrailerPage = !_editTrailerPage, false);
             Ledger.Label(new Rect(x,box.y+65,140,34),"Faction");var factionAnchor=new Rect(input,box.y+65,iw,34);
-            if(Ledger.Dropdown(factionAnchor,_editFaction))_dropdown.Open(factionAnchor,Options(new[]{"Scrapyard","Coyotes"}),_editFaction,v=>{_editFaction=v;if(!CrewFactions.Allowed(_editDriver,v))_editDriver="None";if(!CrewFactions.Allowed(_editPassenger,v))_editPassenger="None";for(int i=0;i<3;i++)if(!CrewFactions.Allowed(_editTurrets[i],v))_editTurrets[i]="None";for(int i=0;i<4;i++)if(!CrewFactions.Allowed(_editTrailerTurrets[i],v))_editTrailerTurrets[i]="None";},bottom);
+            if(Ledger.Dropdown(factionAnchor,_editFaction))_dropdown.Open(factionAnchor,Options(new[]{"Scrapyard","Coyotes"}),_editFaction,v=>{_editFaction=v;if(!PatrolEditor.Source.CrewAllowed(_editDriver,v))_editDriver="None";if(!PatrolEditor.Source.CrewAllowed(_editPassenger,v))_editPassenger="None";for(int i=0;i<3;i++)if(!PatrolEditor.Source.CrewAllowed(_editTurrets[i],v))_editTurrets[i]="None";for(int i=0;i<4;i++)if(!PatrolEditor.Source.CrewAllowed(_editTrailerTurrets[i],v))_editTrailerTurrets[i]="None";},bottom);
             Ledger.Label(new Rect(x, box.y + 105, 140, 34), "Driver");
             var a = new Rect(input, box.y + 105, iw, 34);
-            if (Ledger.Dropdown(a, _editDriver)) _dropdown.Open(a, Options(People.Where(p=>CrewFactions.Allowed(p,_editFaction))), _editDriver, v => _editDriver = v, bottom);
+            if (Ledger.Dropdown(a, _editDriver)) _dropdown.Open(a, Options(People.Where(p=>PatrolEditor.Source.CrewAllowed(p,_editFaction))), _editDriver, v => _editDriver = v, bottom);
             Ledger.Label(new Rect(x, box.y + 152, 140, 34), "Passenger");
             a = new Rect(input, box.y + 152, iw, 34);
-            if (Ledger.Dropdown(a, _editPassenger)) _dropdown.Open(a, Options(People.Where(p=>CrewFactions.Allowed(p,_editFaction))), _editPassenger, v => _editPassenger = v, bottom);
-            bool bike = MotorcycleIntegration.IsBody(t.Body);
+            if (Ledger.Dropdown(a, _editPassenger)) _dropdown.Open(a, Options(People.Where(p=>PatrolEditor.Source.CrewAllowed(p,_editFaction))), _editPassenger, v => _editPassenger = v, bottom);
+            bool bike = ModApi.Get<IVehicleAuthoring>().IsMotorcycleBody(t.Body);
             Ledger.Label(new Rect(x, box.y + 199, 140, 34), t.IsTruck ? "Truck cargo" : "Car loot");
             a = new Rect(input, box.y + 199, iw, 34);
             if (bike) Ledger.Label(a, "None - a motorcycle carries no loot", null, Ledger.Muted);
             else if (t.IsTruck)
             {
-                var current = EditorStore.Loot(true, _editLoot);
+                var current = PatrolEditor.Loot(true, _editLoot);
                 if (Ledger.Dropdown(a, current != null ? current.Name : "Convoy cargo (rolled per convoy)"))
-                    _dropdown.Open(a, new[] { new KeyValuePair<string, string>("", "Convoy cargo (rolled per convoy)") }.Concat(EditorStore.Data.TruckLoot.Select(p => new KeyValuePair<string, string>(p.Id, p.Name))).ToList(), current != null ? current.Id : "", v => _editLoot = v, bottom);
+                    _dropdown.Open(a, new[] { new KeyValuePair<string, string>("", "Convoy cargo (rolled per convoy)") }.Concat(PatrolEditor.Data.TruckLoot.Select(p => new KeyValuePair<string, string>(p.Id, p.Name))).ToList(), current != null ? current.Id : "", v => _editLoot = v, bottom);
             }
             else
             {
-                var current = EditorStore.Loot(false, _editLoot);
+                var current = PatrolEditor.Loot(false, _editLoot);
                 if (Ledger.Dropdown(a, current != null ? current.Name : "None"))
-                    _dropdown.Open(a, new[] { new KeyValuePair<string, string>("", "None") }.Concat(EditorStore.Data.CarLoot.Select(p => new KeyValuePair<string, string>(p.Id, p.Name))).ToList(), current != null ? current.Id : "", v => _editLoot = v, bottom);
+                    _dropdown.Open(a, new[] { new KeyValuePair<string, string>("", "None") }.Concat(PatrolEditor.Data.CarLoot.Select(p => new KeyValuePair<string, string>(p.Id, p.Name))).ToList(), current != null ? current.Id : "", v => _editLoot = v, bottom);
             }
             // human turrets: 3 on a car's roof, 1 on a motorcycle, none on a truck
-            int slots = Rider.Slots(t.Body, t.IsTruck, t.IsMotorcycle);
+            int slots = PatrolEditor.Source.TurretSlots(t.Body, t.IsTruck, t.IsMotorcycle);
             var choices = _editTrailerPage ? _editTrailerTurrets : _editTurrets;
             var poses=_editTrailerPage?_editTrailerTurretStanding:_editTurretStanding;
             int shownSlots = _editTrailerPage ? 4 : slots;
@@ -397,8 +385,8 @@ namespace WildWasteland.Modules.Patrols
                 else
                 {
                     a.width-=120;
-                    if (Ledger.Dropdown(a, choices[i])) _dropdown.Open(a, Options(Rider.TurretChoices.Where(p=>CrewFactions.Allowed(p,_editFaction))), choices[i], v => choices[k] = v, bottom);
-                    bool enabled=GUI.enabled;GUI.enabled=enabled&&!string.IsNullOrEmpty(Rider.Stored(choices[i]));
+                    if (Ledger.Dropdown(a, choices[i])) _dropdown.Open(a, Options(PatrolEditor.Source.TurretChoices.Where(p=>PatrolEditor.Source.CrewAllowed(p,_editFaction))), choices[i], v => choices[k] = v, bottom);
+                    bool enabled=GUI.enabled;GUI.enabled=enabled&&!string.IsNullOrEmpty(PatrolEditor.Source.TurretStored(choices[i]));
                     poses[i]=Ledger.Toggle(new Rect(input+iw-110,yt,110,34),poses[i],"Standing");GUI.enabled=enabled;
                 }
             }
@@ -418,7 +406,7 @@ namespace WildWasteland.Modules.Patrols
             Ledger.Label(new Rect(x, box.y + 22, w, 26), "Add game pickup item", Ledger.DialogTitle);
             Ledger.Label(new Rect(x, box.y + 63, w, 20), "Find item", Ledger.Small, Ledger.Muted);
             _search = GUI.TextField(new Rect(x, box.y + 87, w, 34), _search, Ledger.Input);
-            var items = PickupCatalog.All().Where(i => !profile.Items.Any(row => string.Equals(row.Id, i.Id, StringComparison.OrdinalIgnoreCase)) && (i.Name.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0 || i.Id.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0)).ToArray();
+            var items = EditorItems.All().Where(i => !profile.Items.Any(row => string.Equals(row.Id, i.Id, StringComparison.OrdinalIgnoreCase)) && (i.Name.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0 || i.Id.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0)).ToArray();
             var list = new Rect(x, box.y + 133, w, 180); Ledger.Panel(list);
             _modalScroll = Ledger.Scroll(new Rect(list.x + 4, list.y + 4, list.width - 8, list.height - 8), _modalScroll, items.Length * 34, width =>
             {
@@ -437,7 +425,7 @@ namespace WildWasteland.Modules.Patrols
         }
         private void DrawAllowedCargo()
         {
-            var group = (SpawnGroup)_target; var box = new Rect((_rect.width - 850) / 2, 135, 850, 474); Ledger.Panel(box);
+            var group = (AuthoringGroup)_target; var box = new Rect((_rect.width - 850) / 2, 135, 850, 474); Ledger.Panel(box);
             Ledger.Label(new Rect(box.x + 22, box.y + 20, box.width - 44, 26), "Allowed cargo · " + group.Name, Ledger.DialogTitle);
             float x = box.x + 22, right = box.center.x + 8, width = box.width / 2 - 38;
             Ledger.Label(new Rect(x, box.y + 68, width, 24), "Allowed cargo", Ledger.Heading);
@@ -447,17 +435,17 @@ namespace WildWasteland.Modules.Patrols
             {
                 for (int i = 0; i < group.AllowedCargo.Count; i++)
                 {
-                    string id = group.AllowedCargo[i]; var profile = EditorStore.Loot(true, id); float y = i * 39;
+                    string id = group.AllowedCargo[i]; var profile = PatrolEditor.Loot(true, id); float y = i * 39;
                     Ledger.ButtonLabel(new Rect(10, y, w - 50, 39), profile != null ? profile.Name : id, Ledger.Body, Ledger.Text, TextAnchor.MiddleLeft);
                     if (Ledger.Icon(new Rect(w - 31, y + 4, 30, 30), "circle-minus")) Queue(() => group.AllowedCargo.Remove(id));
                     Ledger.Rule(0, y + 38, w);
                 }
             });
-            _cargoLibraryScroll = Ledger.Scroll(new Rect(rightBox.x + 1, rightBox.y + 1, width - 2, 274), _cargoLibraryScroll, EditorStore.Data.TruckLoot.Count * 39, w =>
+            _cargoLibraryScroll = Ledger.Scroll(new Rect(rightBox.x + 1, rightBox.y + 1, width - 2, 274), _cargoLibraryScroll, PatrolEditor.Data.TruckLoot.Count * 39, w =>
             {
-                for (int i = 0; i < EditorStore.Data.TruckLoot.Count; i++)
+                for (int i = 0; i < PatrolEditor.Data.TruckLoot.Count; i++)
                 {
-                    var profile = EditorStore.Data.TruckLoot[i]; var row = new Rect(0, i * 39, w, 39); if (_cargoChoice == profile.Id) Ledger.Fill(row, Ledger.Selected);
+                    var profile = PatrolEditor.Data.TruckLoot[i]; var row = new Rect(0, i * 39, w, 39); if (_cargoChoice == profile.Id) Ledger.Fill(row, Ledger.Selected);
                     bool hit = GUI.Button(row, GUIContent.none, GUIStyle.none); Ledger.ButtonLabel(new Rect(10, row.y, w - 20, 39), profile.Name, Ledger.Body, _cargoChoice == profile.Id ? Ledger.Accent : Ledger.Text, TextAnchor.MiddleLeft);
                     if (hit) Queue(() => _cargoChoice = profile.Id, false); Ledger.Rule(0, row.yMax - 1, w);
                 }

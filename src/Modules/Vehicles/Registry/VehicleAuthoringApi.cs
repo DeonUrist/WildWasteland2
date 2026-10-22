@@ -11,6 +11,8 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Finds the actual native attached trailer.</summary>
         public GameObject AttachedTrailer(GameObject car) {return TrailerSupport.Attached(car);}
         /// <summary>Recognizes the native trailer frame.</summary>
+        public bool IsPart(Transform part) { return VehicleAttachments.IsPart(part); }
+        public bool IsFreeAttachment(GameObject part) { return VehicleAttachments.IsFreeAttachment(part); }
         public bool IsTrailer(GameObject car) {return TrailerSupport.IsTrailer(car);}
         /// <summary>Reads the actual native suspension values.</summary>
         public void ReadSuspension(GameObject car,out float width,out float height) {Suspension.Read(car,out width,out height);}

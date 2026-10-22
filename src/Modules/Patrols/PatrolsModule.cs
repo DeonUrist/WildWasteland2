@@ -163,7 +163,6 @@ namespace WildWasteland.Modules.Patrols
             // debug-map textures; its coroutines (builds, restores, traffic materialisation) stop with it
             if (_host != null) UnityEngine.Object.Destroy(_host);
             _host = null; _patrol = null; _convoy = null; _traffic = null; _cleanup = null;
-            ShutdownTools();
             ShutdownDeveloper();
             ModVehicles.Clear();
             Prefabs.Invalidate();
@@ -199,7 +198,6 @@ namespace WildWasteland.Modules.Patrols
             _host = new GameObject("WW.Patrols") { hideFlags = HideFlags.HideAndDontSave };
             if (parent != null) _host.transform.SetParent(parent.transform, false); else UnityEngine.Object.DontDestroyOnLoad(_host);
             _patrol = _host.AddComponent<Patrol>();
-            AddToolsComponents();
             AddDeveloperSeatComponents();
             _convoy = _host.AddComponent<Convoy>();
             _traffic = _host.AddComponent<WorldTraffic>();
@@ -221,7 +219,6 @@ namespace WildWasteland.Modules.Patrols
             Scheduler.EveryFrame(this, "Patrols.Road publication", RoadPlanner.PublishCompleted);
             Scheduler.EveryFrame(this, "Patrols.Runtime", TickPatrol);
             Scheduler.Interval(this, "Patrols.CombatActivity", .25f, PublishCombatActivity);
-            RegisterToolsTicks();
             RegisterDeveloperSeatTicks();
             Scheduler.Interval(this, "Patrols.Progression", .25f, TickConvoy);
             Scheduler.EveryFrame(this, "Patrols.Traffic", TickTraffic);
@@ -231,10 +228,8 @@ namespace WildWasteland.Modules.Patrols
             Scheduler.Interval(this, "Patrols.Cleanup", .25f, TickCleanup);
             RegisterDeveloperMerchantTick();
 
-            RegisterToolsLateTicks();
 
             // (WW perf) each with a predicate (built once here): IMGUI stops when none of them (and no other module) has anything to draw
-            RegisterToolsGui();
             RegisterDeveloperSeatGui();
             Core.ModApi.Provide<Core.ITrafficMapSource>(this, this);
             RegisterDeveloperMerchantGui();
@@ -243,7 +238,6 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Registers hotkeys for the current patrols module.</summary>
         void RegisterHotkeys()
         {
-            RegisterToolsHotkeys();
             RegisterDeveloperHotkeys();
         }
 
@@ -273,32 +267,20 @@ namespace WildWasteland.Modules.Patrols
         internal static void Verbose(string msg) { if (Log.Verbose) Log.Info("[Patrols] " + msg); }
 
         // ---------------------------------------------------------------- per-target parts (Wave A split; implemented in the target module folders)
-        /// <summary>Drops the patrol editor / template recorder component references on Shutdown (the runner object owning them is destroyed). Implemented in Tools.</summary>
-        partial void ShutdownTools();
         /// <summary>Drops the numpad editor component references and the bus pose target on Shutdown. Implemented in Developer.</summary>
         partial void ShutdownDeveloper();
-        /// <summary>Adds the patrol editor and template recorder components to the runner object (after Patrol, old component order). Implemented in Tools.</summary>
-        partial void AddToolsComponents();
         /// <summary>Adds the turret spot and bus passenger pose editors to the runner object (old component order). Implemented in Developer.</summary>
         partial void AddDeveloperSeatComponents();
         /// <summary>Adds the merchant item editor to the runner object (last, old component order). Implemented in Developer.</summary>
         partial void AddDeveloperMerchantComponent();
-        /// <summary>Registers the editor/recorder Update jobs right after Patrol.Tick (old job order). Implemented in Tools.</summary>
-        partial void RegisterToolsTicks();
         /// <summary>Registers the turret spot / bus pose editor Update jobs before Convoy.Tick (old job order). Implemented in Developer.</summary>
         partial void RegisterDeveloperSeatTicks();
         /// <summary>Registers the merchant editor Update job after Cleanup.Tick (old job order). Implemented in Developer.</summary>
         partial void RegisterDeveloperMerchantTick();
-        /// <summary>Registers the editor/recorder LateUpdate jobs. Implemented in Tools.</summary>
-        partial void RegisterToolsLateTicks();
-        /// <summary>Registers the editor/recorder Gui jobs after Patrol.Gui (old order). Implemented in Tools.</summary>
-        partial void RegisterToolsGui();
         /// <summary>Registers the turret spot / bus pose editor Gui jobs before WorldTraffic.Gui (old order). Implemented in Developer.</summary>
         partial void RegisterDeveloperSeatGui();
         /// <summary>Registers the merchant editor Gui job last (old order). Implemented in Developer.</summary>
         partial void RegisterDeveloperMerchantGui();
-        /// <summary>Registers the patrol editor and template recorder hotkeys. Implemented in Tools.</summary>
-        partial void RegisterToolsHotkeys();
         /// <summary>Registers the bus passenger pose and merchant item editor hotkeys. Implemented in Developer.</summary>
         partial void RegisterDeveloperHotkeys();
     }

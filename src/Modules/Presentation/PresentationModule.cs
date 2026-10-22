@@ -88,6 +88,7 @@ namespace WildWasteland.Modules.Presentation
         {
             Instance = this;
             _running = true;
+            ModApi.Provide<ICargoArtwork>(this,new CargoArtwork());
             ModApi.Provide<ICharacterHudData>(this, new CharacterHudData());
             InitCharacterData();
             InitWorld();

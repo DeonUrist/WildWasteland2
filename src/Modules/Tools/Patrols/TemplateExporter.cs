@@ -12,11 +12,11 @@ using UnityEngine.InputSystem;
 
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Tools
 {
     // Apocatemplater's vehicle recorder, hosted by Apocapatrol's persistent runner.
-    // Uses the same TemplateFile schema as the loader; no separate plugin or hotkey by default.
-    internal sealed partial class TemplateExporter : MonoBehaviour
+    // Uses the same RecordedTemplate schema as the loader; no separate plugin or hotkey by default.
+    internal sealed class TemplateExporter : MonoBehaviour
     {
         private string _toast = "";
         private float _toastUntil;
@@ -61,21 +61,22 @@ namespace WildWasteland.Modules.Patrols
         internal bool TryOpen()
         {
             if (_session.Open || EditorSession.Busy || !Application.isFocused) return false;
-            var patrol = GetComponent<Patrol>(); if (patrol == null || !patrol.InGame()) return false;
+            if (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay) return false;
             string how; var car = FindCar(out how); if (car == null) return false;
             if (!_session.Acquire()) return false;
-            PatrolsModule.EnsureGameFont();
+            Skin.EnsureGameFont();
+            PatrolEditor.Load();
             _draftCar = car; _truck = PrefabName(car.name).Equals("Rustcargo", StringComparison.OrdinalIgnoreCase) && FrameChildren(car, "PhysicsLock").Any();
             _templateName = ""; _driverName = "Scraffa"; _passengerName = "None"; _turrets[0] = _turrets[1] = _turrets[2] = "None"; _ledgerDropdown.Close();
-            _faction=TrafficFactions.Normalize(car.GetComponent<PatrolMarker>()?.Faction);if(_faction=="Coyotes")_driverName="Bodyguard";
-            _bike = MotorcycleIntegration.IsBody(PrefabName(car.name));
-            _draftTrailer = TrailerSupport.Attached(car.gameObject); _trailerPage = false;
+            _faction="Scrapyard";if(_faction=="Coyotes")_driverName="Bodyguard";
+            _bike = ModApi.Get<IVehicleAuthoring>().IsMotorcycleBody(PrefabName(car.name));
+            _draftTrailer = ModApi.Get<IVehicleAuthoring>().AttachedTrailer(car.gameObject); _trailerPage = false;
             for (int i = 0; i < 4; i++) _trailerTurrets[i] = "None";
             Array.Clear(_turretStanding,0,_turretStanding.Length);Array.Clear(_trailerTurretStanding,0,_trailerTurretStanding.Length);
-            var profiles = _truck ? EditorStore.Data.TruckLoot : EditorStore.Data.CarLoot; _lootId = _bike ? "" : !_truck && profiles.Any(p => p.Id == "car-empty") ? "car-empty" : profiles.Count > 0 ? profiles[0].Id : "";
+            var profiles = _truck ? PatrolEditor.Data.TruckLoot : PatrolEditor.Data.CarLoot; _lootId = _bike ? "" : !_truck && profiles.Any(p => p.Id == "car-empty") ? "car-empty" : profiles.Count > 0 ? profiles[0].Id : "";
             return true;
         }
-        private void Close() { _session.Close(); _draftCar = null; _draftTrailer = null; _ledgerDropdown.Close(); }
+        internal void Close() { _session.Close(); _draftCar = null; _draftTrailer = null; _ledgerDropdown.Close(); }
         private void OnDestroy() { _session.Close(true); }
         internal void LateTick() { _session.Maintain(); }
         // the Gui job's predicate: the recorder window (and its queued _afterDraw, run in the same call) or a toast still up
@@ -112,11 +113,11 @@ namespace WildWasteland.Modules.Patrols
             Ledger.Label(new Rect(x, y0, 144, 34), "Template name");
             _templateName = GUI.TextField(new Rect(input, y0, w, 34), _templateName, Ledger.Input);
             if (_templateName.Length == 0 && GUI.GetNameOfFocusedControl() == "") Ledger.Label(new Rect(input + 10, y0, w - 20, 34), "Automatic name", null, Ledger.Muted);
-            DraftLedgerDropdown(new Rect(input,y0+Row,w,34),"Faction",_faction,new[]{"Scrapyard","Coyotes"}.Select(n=>new KeyValuePair<string,string>(n,n)).ToList(),value=>{_faction=value;if(!CrewFactions.Allowed(_driverName,value))_driverName="None";if(!CrewFactions.Allowed(_passengerName,value))_passengerName="None";for(int i=0;i<3;i++)if(!CrewFactions.Allowed(_turrets[i],value))_turrets[i]="None";for(int i=0;i<4;i++)if(!CrewFactions.Allowed(_trailerTurrets[i],value))_trailerTurrets[i]="None";},box.yMax-84);
-            var people = new[] { "None", "Scraffa", "Spanna", "Sprokka", "Boltjaw", "Flexa", "Gungirl", "Shoota", "Lugnut", "Scrud" }.Concat(CrewFactions.Coyotes).Where(n=>CrewFactions.Allowed(n,_faction)).Select(n => new KeyValuePair<string, string>(n, n)).ToList();
+            DraftLedgerDropdown(new Rect(input,y0+Row,w,34),"Faction",_faction,new[]{"Scrapyard","Coyotes"}.Select(n=>new KeyValuePair<string,string>(n,n)).ToList(),value=>{_faction=value;if(!PatrolEditor.Source.CrewAllowed(_driverName,value))_driverName="None";if(!PatrolEditor.Source.CrewAllowed(_passengerName,value))_passengerName="None";for(int i=0;i<3;i++)if(!PatrolEditor.Source.CrewAllowed(_turrets[i],value))_turrets[i]="None";for(int i=0;i<4;i++)if(!PatrolEditor.Source.CrewAllowed(_trailerTurrets[i],value))_trailerTurrets[i]="None";},box.yMax-84);
+            var people = new[] { "None", "Scraffa", "Spanna", "Sprokka", "Boltjaw", "Flexa", "Gungirl", "Shoota", "Lugnut", "Scrud" }.Concat(PatrolEditor.Source.CoyoteCrew).Where(n=>PatrolEditor.Source.CrewAllowed(n,_faction)).Select(n => new KeyValuePair<string, string>(n, n)).ToList();
             DraftLedgerDropdown(new Rect(input, y0 + Row * 2, w, 34), "Driver", _driverName, people, value => _driverName = value, box.yMax - 84);
             DraftLedgerDropdown(new Rect(input, y0 + Row * 3, w, 34), "Passenger", _passengerName, people, value => _passengerName = value, box.yMax - 84);
-            var profiles = _truck ? EditorStore.Data.TruckLoot : EditorStore.Data.CarLoot;
+            var profiles = _truck ? PatrolEditor.Data.TruckLoot : PatrolEditor.Data.CarLoot;
             var profile = profiles.FirstOrDefault(p => p.Id == _lootId);
             float yl = y0 + Row * 4;
             if (_bike)
@@ -131,11 +132,11 @@ namespace WildWasteland.Modules.Patrols
                 if (Ledger.Dropdown(anchor, profile != null ? profile.Name : "None")) _ledgerDropdown.Open(anchor, new[] { new KeyValuePair<string, string>("", "None") }.Concat(profiles.Select(p => new KeyValuePair<string, string>(p.Id, p.Name))).ToList(), _lootId, value => _lootId = value, box.yMax - 84);
             }
             // human turrets: 3 on a car's roof, 1 on a motorcycle, none on a truck
-            int slots = Rider.Slots(PrefabName(_draftCar.name), _truck, false);
+            int slots = PatrolEditor.Source.TurretSlots(PrefabName(_draftCar.name), _truck, false);
             var choices = _trailerPage ? _trailerTurrets : _turrets;
             var poses=_trailerPage?_trailerTurretStanding:_turretStanding;
             if (_trailerPage) slots = 4;
-            var turretChoices = Rider.TurretChoices.Where(n=>CrewFactions.Allowed(n,_faction)).Select(n => new KeyValuePair<string, string>(n, n)).ToList();
+            var turretChoices = PatrolEditor.Source.TurretChoices.Where(n=>PatrolEditor.Source.CrewAllowed(n,_faction)).Select(n => new KeyValuePair<string, string>(n, n)).ToList();
             for (int i = 0; i < choices.Length; i++)
             {
                 float yt = y0 + Row * (5 + i); int k = i;
@@ -143,7 +144,7 @@ namespace WildWasteland.Modules.Patrols
                 if (i < slots)
                 {
                     DraftLedgerDropdown(new Rect(input, yt, w-120, 34), label, choices[i], turretChoices, value => choices[k] = value, box.yMax - 84);
-                    bool usable=GUI.enabled;GUI.enabled=usable&&!string.IsNullOrEmpty(Rider.Stored(choices[i]));
+                    bool usable=GUI.enabled;GUI.enabled=usable&&!string.IsNullOrEmpty(PatrolEditor.Source.TurretStored(choices[i]));
                     poses[i]=Ledger.Toggle(new Rect(input+w-110,yt,110,34),poses[i],"Standing");GUI.enabled=usable;
                 }
                 else { Ledger.Label(new Rect(x, yt, 144, 34), label); Ledger.Label(new Rect(input, yt, w, 34), _truck ? "None - not on trucks" : "None - a motorcycle takes one", null, Ledger.Muted); }
@@ -158,7 +159,7 @@ namespace WildWasteland.Modules.Patrols
             Ledger.Rule(6, 634, _rect.width - 12);
             GUI.enabled = enabled; _ledgerDropdown.Draw();
         }
-        private string TurretFor(int i, string body) { return i < Rider.Slots(body, _truck, false) ? Rider.Stored(_turrets[i]) : ""; }
+        private string TurretFor(int i, string body) { return i < PatrolEditor.Source.TurretSlots(body, _truck, false) ? PatrolEditor.Source.TurretStored(_turrets[i]) : ""; }
 
         private void DraftLedgerDropdown(Rect r, string label, string value, List<KeyValuePair<string, string>> people, Action<string> setter, float bottom)
         {
@@ -179,6 +180,7 @@ namespace WildWasteland.Modules.Patrols
 
         // =============================================================== which car
 
+        private static string PrefabName(string instance) { return Names.Prefab(instance); }
         private static bool IsVehicle(Transform t)
         {
             if (t == null) return false;
@@ -203,12 +205,12 @@ namespace WildWasteland.Modules.Patrols
 
         private GameObject Asset(string name)
         {
-            return Prefabs.Exact(name);
+            return PrefabCatalog.Exact(name);
         }
 
         private static bool IsPart(Transform t)
         {
-            try { return VehicleAttachments.IsPart(t); } catch (Exception) { return false; }
+            try { return ModApi.Get<IVehicleAuthoring>().IsPart(t); } catch (Exception) { return false; }
         }
 
         private static bool IsMoving(string name) { return Has(name, Moving); }
@@ -277,7 +279,7 @@ namespace WildWasteland.Modules.Patrols
                 {
                     var c = t.GetChild(i);
                     if (Player != null && c == Player) continue;
-                    if (TrailerSupport.IsTrailer(c.gameObject) || c.name.StartsWith("Apocapatrol.RiderPos", StringComparison.Ordinal)) continue;
+                    if (ModApi.Get<IVehicleAuthoring>().IsTrailer(c.gameObject) || c.name.StartsWith("Apocapatrol.RiderPos", StringComparison.Ordinal)) continue;
                     if (c.name.StartsWith("PhysicsLock", StringComparison.Ordinal)) continue; // includes Scrapwagon's PhysicsLock (1)
                     if (!IsPart(c)) { Walk(c, container, prefabRoot, parentIdx); continue; }
 
@@ -287,7 +289,7 @@ namespace WildWasteland.Modules.Patrols
                     if (asset == null) Notes.Add("no asset named \"" + p.prefab + "\" (from " + c.name + ") - check the name in the file");
                     // a real hinge (hinge_*): the hinge pose is recorded when it was moved with the adjust tool (engine / exhaust / radiator);
                     // anything else (a collider, the part itself) = an attachable placed freely (metal plates, spikes).
-                    bool realHinge = hinge.name.StartsWith("hinge", StringComparison.OrdinalIgnoreCase) && !VehicleAttachments.IsFreeAttachment(c.gameObject);
+                    bool realHinge = hinge.name.StartsWith("hinge", StringComparison.OrdinalIgnoreCase) && !ModApi.Get<IVehicleAuthoring>().IsFreeAttachment(c.gameObject);
                     bool opening = Has(p.hinge, Opening) || Has(c.name, Opening);
                     if (Offsets && realHinge && prefabRoot != null && !IsMoving(p.hinge) && !opening)
                     {
@@ -331,7 +333,7 @@ namespace WildWasteland.Modules.Patrols
             string how;
             var car = FindCar(out how);
             if (car == null || car != _draftCar) throw new InvalidOperationException("You are no longer seated in the captured vehicle");
-            Prefabs.Invalidate();   // include prefabs loaded since the last dump
+            PrefabCatalog.Invalidate();   // include prefabs loaded since the last dump
             string body = PrefabName(car.name);
             var bodyAsset = Asset(body);
 
@@ -345,21 +347,21 @@ namespace WildWasteland.Modules.Patrols
             bool hasPassengerSeat = bus || w.Parts.Any(p => p.parent < 0 && p.hinge.EndsWith("hinge_seat_passenger", StringComparison.Ordinal));
             bool hasDriverSeat = bus || w.Parts.Any(p => p.parent < 0 && p.hinge.EndsWith("hinge_seat_driver", StringComparison.Ordinal));
             string kind = _truck ? "truck"
-                        : string.Equals(body, "Junker", StringComparison.OrdinalIgnoreCase) ? "junker" : (string.Equals(body, "Halfbreed", StringComparison.OrdinalIgnoreCase) || MotorcycleIntegration.IsBody(body)) ? "motorcycle" : "small";
+                        : string.Equals(body, "Junker", StringComparison.OrdinalIgnoreCase) ? "junker" : (string.Equals(body, "Halfbreed", StringComparison.OrdinalIgnoreCase) || ModApi.Get<IVehicleAuthoring>().IsMotorcycleBody(body)) ? "motorcycle" : "small";
 
             if (w.Parts.Count == 0) throw new InvalidOperationException("No attached parts found on this vehicle");
 
             string name = Sanitize(_templateName);
-            string dir = CarTemplates.PlayerFolder;
+            string dir = PatrolEditor.Source.PlayerDirectory;
             Directory.CreateDirectory(dir);
             if (name.Length == 0)
             {
                 name = Sanitize(body) + "_Custom";
-                for (int i = 2; CarTemplate.Find(name) != null || File.Exists(Path.Combine(dir, name + ".json")); i++) name = Sanitize(body) + "_Custom_" + i;
+                for (int i = 2; PatrolEditor.Find(name) != null || File.Exists(Path.Combine(dir, name + ".json")); i++) name = Sanitize(body) + "_Custom_" + i;
             }
 
-            if (CarTemplate.Find(name) != null || File.Exists(EditorStore.SafePath(dir, name + ".json"))) throw new IOException("A template with that name already exists");
-            var file = new TemplateFile
+            if (PatrolEditor.Find(name) != null || File.Exists(Path.Combine(dir, name + ".json"))) throw new IOException("A template with that name already exists");
+            var file = new RecordedTemplate
             {
                 name = name, body = body, kind = kind, lootPreset = _truck || _bike ? "" : _lootId,
                 faction=_faction,
@@ -368,13 +370,13 @@ namespace WildWasteland.Modules.Patrols
                 passenger = hasPassengerSeat ? (_passengerName == "None" ? "" : _passengerName) : "",
                 parts = w.Parts.ToArray(),
                 rider = TurretFor(0, body), rider2 = TurretFor(1, body), rider3 = TurretFor(2, body),
-                source = "Apocatemplater (" + PatrolsModule.NAME + ") " + PatrolsModule.VERSION + ", " + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + ", from " + car.name,
+                source = "Apocatemplater (" + global::WildWasteland.Plugin.NAME + ") " + global::WildWasteland.Plugin.VERSION + ", " + DateTime.Now.ToString("yyyy-MM-dd HH:mm") + ", from " + car.name,
             };
             for(int i=0;i<3;i++)file.SetTurretStanding(i,_turretStanding[i]&&!string.IsNullOrEmpty(file.Turret(i)));
             // the lift kit's adjustment (only with a kit on the car; Part Adjustment's values when that mod is loaded)
-            float sw, sh; Suspension.Read(car.gameObject, out sw, out sh);
+            float sw, sh; ModApi.Get<IVehicleAuthoring>().ReadSuspension(car.gameObject, out sw, out sh);
             file.suspensionWidth = sw; file.suspensionHeight = sh;
-            var trailer = TrailerSupport.Attached(car.gameObject);
+            var trailer = ModApi.Get<IVehicleAuthoring>().AttachedTrailer(car.gameObject);
             if (trailer != _draftTrailer) throw new InvalidOperationException("The attached trailer changed. Reopen template creation");
             if (trailer != null)
             {
@@ -384,13 +386,13 @@ namespace WildWasteland.Modules.Patrols
                 var tw = new Walker { Owner = this, Offsets = true, Player = w.Player };
                 tw.Walk(trailer.transform, trailer.transform, trailerAsset, -1);
                 file.schema = 3;
-                file.trailer = new TemplateFile { schema = 3, body = trailerBody, parts = tw.Parts.ToArray(),faction=_faction };
-                for (int i = 0; i < 4; i++){file.trailer.SetTurret(i, Rider.Stored(_trailerTurrets[i]));file.trailer.SetTurretStanding(i,_trailerTurretStanding[i]&&!string.IsNullOrEmpty(file.trailer.Turret(i)));}
+                file.trailer = new RecordedTemplate { schema = 3, body = trailerBody, parts = tw.Parts.ToArray(),faction=_faction };
+                for (int i = 0; i < 4; i++){file.trailer.SetTurret(i, PatrolEditor.Source.TurretStored(_trailerTurrets[i]));file.trailer.SetTurretStanding(i,_trailerTurretStanding[i]&&!string.IsNullOrEmpty(file.trailer.Turret(i)));}
                 w.Notes.AddRange(tw.Notes);
             }
             string path = Path.Combine(dir, name + ".json");
-            EditorStore.AtomicWrite(path, file.ToJson());
-            CarTemplates.Refresh(true);
+            path = PatrolEditor.Source.SaveRecorded(name, file.ToJson());
+            PatrolEditor.Refresh(true);
 
             var log = new StringBuilder();
             log.Append("Template ").Append(name).Append(" <- ").Append(how).Append(" ").Append(car.name).Append(": ").Append(w.Parts.Count).Append(" part(s)");

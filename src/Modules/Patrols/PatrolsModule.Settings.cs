@@ -36,13 +36,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Debug page, Patrols category: editor hotkeys and the open-editor button.</summary>
         private static void DebugSectionPatrols(ToolLayout l, IModule owner)
         {
-            if (owner != null && owner.Id == "Patrols")
-            {
-                l.Heading("Patrol editor");
-                l.Entry(PatrolSettings.MenuKey); l.Entry(PatrolSettings.TemplateDumpKey);
-                if (l.Button("Open the patrol editor", PatrolSettings.Running && GameRefs.InPlay, true, 320))
-                    ToolWindow.CloseThen(() => { if (PatrolSettings.Instance != null && !PatrolSettings.Instance.OpenEditor()) Log.Warn("[Patrols] the patrol editor opens only in play (not in a menu or while another editor is open)"); });
-            }
+
         }
 
         /// <summary>Debug page, Patrols switches: War Rig ground recovery first.</summary>

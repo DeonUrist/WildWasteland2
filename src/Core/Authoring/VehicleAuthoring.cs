@@ -10,6 +10,8 @@ namespace WildWasteland.Core
         GameObject AttachedTrailer(GameObject vehicle);
         /// <summary>Recognizes a native trailer frame.</summary>
         bool IsTrailer(GameObject vehicle);
+        bool IsPart(Transform part);
+        bool IsFreeAttachment(GameObject part);
         /// <summary>Reads current native suspension adjustment without changing it.</summary>
         void ReadSuspension(GameObject vehicle,out float width,out float height);
     }
