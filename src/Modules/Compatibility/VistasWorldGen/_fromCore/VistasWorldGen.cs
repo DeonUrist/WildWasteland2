@@ -40,6 +40,7 @@ namespace WildWasteland.Core
             PluginInfo info;
             if (!Chainloader.PluginInfos.TryGetValue("apocalypter.worldamp", out info) || info.Instance == null) return;
             Present = true;
+            TerrainEdited += WorldTiles.EditedSource;   // W0B-3: Core WorldTiles "Edited" channel (no subscribers until Wave B)
             var assembly = info.Instance.GetType().Assembly;
             _config = info.Instance.Config; _assemblyId = assembly.ManifestModule.ModuleVersionId.ToString();
             SettingsChanged(null, null); _config.SettingChanged += SettingsChanged;

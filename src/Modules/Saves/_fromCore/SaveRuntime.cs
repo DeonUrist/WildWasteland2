@@ -10,26 +10,20 @@ using UnityEngine.SceneManagement;
 namespace WildWasteland.Core
 {
     // Standalone native-menu adapters. No multiplayer assembly, player identity or redirected save root.
-    internal static class SaveRuntime
+    // Wave A split (refactor): the "SAVING" overlay lives in src/Modules/HUD/_fromCore/SaveRuntime.HUD.cs; the player
+    // queries (Health, InCar), the placement probe (Surface) and the InventorySupplies install live in
+    // src/Core/Fixes/SaveRuntime.Fixes.cs. Install order is unchanged.
+    internal static partial class SaveRuntime
     {
+        static partial void InstallFixes();
+        static partial void InstallHud();
         static readonly Regex FileName = new Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", RegexOptions.IgnoreCase);
         internal static string ActiveFile, SelectedFile;
-        static PlayMakerFSM _health, _inCar;
         static bool _leaving;
         static int _latestVersion = -1;
         static string _latestFile;
         internal static bool InMainMenu { get { return SceneManager.GetActiveScene().name == "MainMenu"; } }
-        internal static bool InCar
-        {
-            get { if (_inCar == null && GameRefs.Player != null) _inCar = FsmUtil.Find(GameRefs.Player, "InCar"); return _inCar != null && _inCar.ActiveStateName != "OnFoot"; }
-        }
         internal static bool IsSaveFile(string file) { return file != null && FileName.IsMatch(file); }
-        internal static float Health()
-        {
-            if (_health == null && GameRefs.Player != null) _health = FsmUtil.Find(GameRefs.Player, "Health");
-            var value = _health != null ? _health.FsmVariables.FindFsmFloat("Health") : null;
-            return value != null ? value.Value : 0;
-        }
         internal static float PlayerDistance(Vector3 position, Transform player) { return player != null ? Vector3.Distance(position, player.position) : float.PositiveInfinity; }
         internal static void SetActive(string file) { if (!IsSaveFile(file)) throw new IOException("Invalid save identity"); ActiveFile = file; }
         internal static void Install()
@@ -37,8 +31,8 @@ namespace WildWasteland.Core
             Hooks.ProcessEvent.Prefix(null, NativeMenuEvent);
             SaveBus.StateChanged += StateChanged;
             SceneManager.sceneLoaded += SceneLoaded;
-            InventorySupplies.Install();
-            Scheduler.Gui(null, "Native saving fallback", DrawSaving, WantsSaving);
+            InstallFixes();
+            InstallHud();
         }
         static void SceneLoaded(Scene scene, LoadSceneMode mode)
         { _health = _inCar = null; if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }
@@ -104,46 +98,5 @@ namespace WildWasteland.Core
             { var file = Latest(); if (file != null) Launch(file); return false; }
             return true;
         }
-        static bool WantsSaving() { return SinglePlayerSaving.Serializing; }
-        static void DrawSaving()
-        {
-            if (LoadingProgress.ScreenVisible || Event.current.type != EventType.Repaint) return;
-            int depth = GUI.depth; GUI.depth = -10000; var color = GUI.color;
-            GUI.color = Color.black; GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture); GUI.color = color;
-            Modules.CleanHUD.GlyphFont.DrawGame(new Rect(0, Screen.height * .42f, Screen.width, 90), SaveSystem.AutomaticSaving ? "AUTOSAVING" : "SAVING", 48 * Mathf.Min(Screen.width / 1920f, Screen.height / 1080f), new Color(.886f, .749f, .424f), TextAnchor.MiddleCenter);
-            GUI.depth = depth;
-        }
-        internal static bool Surface(Vector3 center, Transform player, out Vector3 position)
-        {
-            // Main terrain must have replaced the draft before any object/floor is used as support.
-            RaycastHit terrain;
-            if (!Physics.Raycast(center + Vector3.up * 1500f, Vector3.down, out terrain, 3000f, 1 << 14, QueryTriggerInteraction.Ignore) || terrain.collider.name == "Draft Terrain")
-            { position = Vector3.zero; return false; }
-            var tile = terrain.collider.GetComponentInParent<MapMagic.Terrains.TerrainTile>();
-            if (!(terrain.collider is TerrainCollider) || !terrain.collider.enabled || !terrain.collider.gameObject.activeInHierarchy
-                || tile != null && (tile.main == null || !tile.main.applyReady || tile.main.terrain == null || terrain.collider.gameObject != tile.main.terrain.gameObject))
-            { position = Vector3.zero; return false; }
-            for (int ring = 0; ring < 5; ring++) for (int step = 0; step < 12; step++)
-            {
-                float angle = step * Mathf.PI / 6f, radius = ring == 0 ? 0 : ring * 1.5f;
-                var probe = center + new Vector3(Mathf.Cos(angle) * radius, 4f, Mathf.Sin(angle) * radius);
-                int count = Physics.RaycastNonAlloc(probe, Vector3.down, SurfaceHits, 40f, SurfaceMask, QueryTriggerInteraction.Ignore);
-                if (count >= SurfaceHits.Length) continue;
-                for (int i = 0; i < count; i++)
-                {
-                    var hit = SurfaceHits[i]; if (hit.normal.y < .7f || hit.collider.name == "Draft Terrain" || hit.collider.transform.IsChildOf(player) || hit.point.y < terrain.point.y - .5f) continue;
-                    var feet = hit.point + Vector3.up * .08f;
-                    int blocked = Physics.OverlapCapsuleNonAlloc(feet + Vector3.up * .35f, feet + Vector3.up * 1.55f, .32f, Capsule, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-                    bool free = blocked < Capsule.Length;
-                    for (int j = 0; j < blocked && j < Capsule.Length; j++) if (!Capsule[j].transform.IsChildOf(player)) { free = false; break; }
-                    if (!free) continue;
-                    position = hit.point + Vector3.up * 1.05f; return true;
-                }
-            }
-            position = Vector3.zero; return false;
-        }
-        const int SurfaceMask = (1 << 0) | (1 << 8) | (1 << 14) | (1 << 16);
-        static readonly Collider[] Capsule = new Collider[32];
-        static readonly RaycastHit[] SurfaceHits = new RaycastHit[32];
     }
 }

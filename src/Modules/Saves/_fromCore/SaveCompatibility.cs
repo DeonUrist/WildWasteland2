@@ -7,7 +7,9 @@ using HutongGames.PlayMaker;
 namespace WildWasteland.Core
 {
     // Preserve Apocasaver's stable hinge keys when its standalone save engine is disabled.
-    internal static class SaveCompatibility
+    // Wave A split (refactor): the Apocasaver HandPose API takeover (SetPose/GetPose) lives in
+    // src/Modules/Compatibility/Apocasaver/_fromCore/SaveCompatibility.Apocasaver.cs; the pose store (Poses/SavePoses) stays here.
+    internal static partial class SaveCompatibility
     {
         static readonly Dictionary<string, string> Poses = new Dictionary<string, string>();
         internal static void Install()
@@ -40,21 +42,6 @@ namespace WildWasteland.Core
         }
         static Exception AfterLoad(ES3PlayMaker.Load __instance, FsmString __state, Exception __exception)
         { if (__state != null) __instance.key = __state; if (__exception == null) VehicleLoadPlacement.LoadedStance(__instance); return __exception; }
-        internal static bool SetPose(string itemName, string pose)
-        { if (!string.IsNullOrEmpty(itemName)) Poses["apocasaver.pose." + itemName] = pose ?? ""; return false; }
-        internal static bool GetPose(string itemName, ref string __result)
-        {
-            __result = null; if (string.IsNullOrEmpty(itemName)) return false;
-            string key = "apocasaver.pose." + itemName;
-            if (Poses.TryGetValue(key, out __result)) return false;
-            string file = SaveBus.Slot; if (file == null) return false;
-            foreach (var location in new[] { ES3.Location.Cache, ES3.Location.File })
-            {
-                var settings = new ES3Settings(file) { location = location };
-                if (ES3.KeyExists(key, settings)) { __result = ES3.Load<string>(key, settings); break; }
-            }
-            return false;
-        }
         internal static void SavePoses()
         { foreach (var pair in Poses) ES3.Save<string>(pair.Key, pair.Value, new ES3Settings(SaveSystem.ActiveFile) { location = ES3.Location.Cache }); }
     }

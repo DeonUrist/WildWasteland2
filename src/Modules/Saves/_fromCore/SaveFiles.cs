@@ -102,7 +102,8 @@ namespace WildWasteland.Core
             // The journal becomes recoverable last. A failed preparation never rolls back a later successful save.
             File.Move(Path.Combine(DirectoryPath, "undo.bin.tmp"), Path.Combine(DirectoryPath, "undo.bin"));
         }
-        static void Mark(string path) { WriteDurable(path + ".tmp", new byte[] { 1 }); if (File.Exists(path)) File.Delete(path); File.Move(path + ".tmp", path); }
+        // D17: replace through AtomicFile (Mono File.Delete+File.Move over an existing marker can fail with Win32 1175).
+        static void Mark(string path) { WriteDurable(path + ".tmp", new byte[] { 1 }); AtomicFile.Replace(path + ".tmp", path); }
         internal static bool Marked(string path) { return File.Exists(path) && new FileInfo(path).Length == 1 && File.ReadAllBytes(path)[0] == 1; }
         internal void Commit()
         {
@@ -165,9 +166,8 @@ namespace WildWasteland.Core
             if (name.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".ww-publish", StringComparison.OrdinalIgnoreCase)) return false;
             string stem = Path.GetFileNameWithoutExtension(file);
             return name == file || name.StartsWith(file + ".", StringComparison.OrdinalIgnoreCase) || name.StartsWith(stem + ".", StringComparison.OrdinalIgnoreCase)
-                || name == LegacyQuestName(file) + ".txt" || name.StartsWith(stem + "_seed", StringComparison.OrdinalIgnoreCase);
+                || name.StartsWith(stem + "_seed", StringComparison.OrdinalIgnoreCase);
         }
-        static string LegacyQuestName(string file) { var name = file.ToCharArray(); for (int i = 0; i < name.Length; i++) if (!char.IsLetterOrDigit(name[i])) name[i] = '_'; return new string(name); }
         static void Discover(string directory, string file, bool recurse, List<string> files)
         {
             if (!Directory.Exists(directory)) return;
@@ -180,10 +180,8 @@ namespace WildWasteland.Core
             WorldPath(file); var result = new List<string> { WorldPath(file), MetaPath(file), ImagePath(file) };
             Discover(WorldRoot, file, false, result);
             Discover(Assets.ConfigDir, file, true, result);
-            Discover(Path.Combine(Assets.ModuleDir("NPC"), "Saves"), file, false, result);
-            result.Add(Path.Combine(Path.Combine(Assets.ModuleDir("NPC"), "Saves"), file + ".senses.txt"));
-            foreach (string directory in new[] { "Apocapatrol/Saves", "NPCAI/Saves", "Apocaraider/Saves", "Apocaunloader/Saves", "Apocapocket", "ApocalypterQuests_saves", "ImmersiveMap/slots" })
-                Discover(Path.Combine(Paths.ConfigPath, directory.Replace('/', Path.DirectorySeparatorChar)), file, true, result);
+            // D12 (fresh start): the WW1/standalone sidecar folders (plugins/WildWasteland/NPC/Saves, config/Apocapatrol, NPCAI,
+            // Apocaraider, Apocaunloader, Apocapocket, ApocalypterQuests_saves, ImmersiveMap/slots) are no longer save participants.
             string stem = Path.GetFileNameWithoutExtension(file);
             for (int i = 1; i <= 10; i++) result.Add(WorldPath(file) + ".bak" + i);
             foreach (string part in new[] { "NPC/Saves/" + file + ".senses.txt", "Patrols/Saves/" + file + ".bin", "Patrols/Saves/" + file + ".bin.bak", "POI/Saves/" + file + ".poi.txt", "CleanHUD/Saves/" + file + ".fog.bin", "CleanHUD/Saves/" + file + ".locations.txt", "Quests/Saves/" + file + ".crew.txt" })
@@ -195,7 +193,6 @@ namespace WildWasteland.Core
             string name = Path.GetFileName(path), stem = Path.GetFileNameWithoutExtension(from);
             if (name.StartsWith(from, StringComparison.OrdinalIgnoreCase)) name = to + name.Substring(from.Length);
             else if (name.StartsWith(stem + ".", StringComparison.OrdinalIgnoreCase)) name = Path.GetFileNameWithoutExtension(to) + name.Substring(stem.Length);
-            else if (name == LegacyQuestName(from) + ".txt") name = LegacyQuestName(to) + ".txt";
             else if (name.StartsWith(stem + "_seed", StringComparison.OrdinalIgnoreCase)) name = Path.GetFileNameWithoutExtension(to) + name.Substring(stem.Length);
             else throw new IOException("Unknown save companion filename");
             return Path.Combine(Path.GetDirectoryName(path), name);

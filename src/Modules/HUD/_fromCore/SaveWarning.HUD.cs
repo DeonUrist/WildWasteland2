@@ -1,23 +1,18 @@
-using System.IO;
 using UnityEngine;
 using CleanHud = WildWasteland.Modules.CleanHUD;
 
 namespace WildWasteland.Core
 {
-    internal static class SaveWarning
+    /// <summary>
+    /// HUD part of <see cref="SaveWarning"/> (Wave A split): draws the autosave countdown under the CleanHUD compass with the
+    /// glyph font. B10 takes this over (Saves presentation events).
+    /// </summary>
+    internal static partial class SaveWarning
     {
-        static byte _phase;
-        static int _seconds;
-        static string _text;
-        internal static void Install() { Scheduler.Gui(null, "Autosave compass countdown", Draw, Wants); }
-        static void Clear() { _phase = 0; _text = null; }
-        internal static void Show(byte phase, int seconds = 0) { if (phase != _phase || seconds != _seconds) Set(phase, seconds); }
-        static void Set(byte phase, int seconds)
-        {
-            _phase = phase; _seconds = seconds;
-            _text = phase == 1 ? "AUTOSAVE IN " + (seconds / 60).ToString("00") + ":" + (seconds % 60).ToString("00") : phase == 2 ? "AUTOSAVE DELAYED - WAITING FOR SAFETY" : phase == 3 ? "The game will save now" : null;
-        }
-        static bool Wants() { return _phase != 0; }
+        /// <summary>Registers the predicate-gated GUI job (only while a phase is shown).</summary>
+        static partial void InstallHud() { Scheduler.Gui(null, "Autosave compass countdown", Draw, Wants); }
+
+        /// <summary>Repaint-only countdown text under the compass (hidden in menus, loading, editors).</summary>
         static void Draw()
         {
             if (!SaveSystem.LocalWorld) { Clear(); return; }
