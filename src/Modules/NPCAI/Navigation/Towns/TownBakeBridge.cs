@@ -47,6 +47,7 @@ namespace WildWasteland.Modules.Towns
         }
 
         /// <summary>Discovers a placed town building / custom POI at once (no-op while the NPC module is off).</summary>
+        [System.Obsolete("refactor: use ModApi.Get<INavApi>().Discover(root)")]
         internal static void Discover(GameObject building) { if (building != null && ModApi.Get<INpcApi>() != null) Nav.Discover(building.transform); }
 
         /// <summary>Registers a spawned town actor with the NPC brain (no-op while the NPC module is off).</summary>

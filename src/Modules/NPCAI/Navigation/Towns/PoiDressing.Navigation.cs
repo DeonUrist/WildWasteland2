@@ -50,6 +50,7 @@ namespace WildWasteland.Modules.Towns
     internal static class PoiDressNavigation
     {
         /// <summary>Drops root's structure; the sweep / Discover maps it again once the dressing is ready.</summary>
+        [System.Obsolete("refactor: use ModApi.Get<INavApi>().ForgetStructure(root)")]
         internal static void Forget(Transform root) { Nav.Forget(root); }
     }
 }
