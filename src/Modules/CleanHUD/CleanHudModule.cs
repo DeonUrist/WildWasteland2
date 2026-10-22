@@ -12,7 +12,7 @@ using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.CleanHUD
 {
-    public sealed class CleanHudModule : ModuleBase, IVehicleStatusDisplay, ICompassMarkers
+    public sealed partial class CleanHudModule : ModuleBase, IVehicleStatusDisplay, ICompassMarkers
     {
         internal const string GUID = "com.denis.apocalypter.cleanhud";
         internal static ConfigEntry<bool> Enabled, ShowNeeds, ShowHealthNumbers, ShowInsanity, MenuEnabled, CleanFont, EnableCheats;
@@ -28,7 +28,6 @@ namespace WildWasteland.Modules.CleanHUD
         internal static LayoutFile Layout;
         private Hud _hud;
         private Menu _menu;
-        private Coroutine _updateCheck;
         private LoadingScreen _loadingScreen;
         private QuestMap _questMap;
         private float _retry;
@@ -42,10 +41,10 @@ namespace WildWasteland.Modules.CleanHUD
 
         public override void BindConfig(ModuleConfig cfg)
         {
-            Enabled = Bind(cfg, "HUD", "Enabled", true, "Replace the native HUD. Off restores it immediately.", "HUD", "General");
-            ShowNeeds = Bind(cfg, "HUD", "ShowNeeds", true, "Show water, food and sleep beneath HP and armor.");
-            ShowHealthNumbers = Bind(cfg, "HUD", "ShowHealthNumbers", true, "Show HP and armor values inside their bars.");
-            ShowInsanity = Bind(cfg, "HUD", "ShowInsanity", true, "Show insanity in the top right while above zero.");
+            Enabled = cfg.Player("HUD", "HUD", true, "Replace the native HUD. Off restores it immediately.");
+            ShowNeeds = cfg.Player("HUD", "ShowNeeds", true, "Show water, food and sleep beneath HP and armor.");
+            ShowHealthNumbers = cfg.Player("HUD", "ShowHealthNumbers", true, "Show HP and armor values inside their bars.");
+            ShowInsanity = cfg.Player("HUD", "ShowInsanity", true, "Show insanity in the top right while above zero.");
             DamageDirection = cfg.Player("HUD", "DamageDirection", true, "Show an opaque red arrow toward each attacker for two seconds after a hit. Repeated hits refresh one arrow. Requires NPC AI and Clean HUD.");
             ShowConvoys = cfg.Player("HUD", "ShowConvoys", true, "Compass icons and distances for vehicle groups: merchants yellow, Coyotes green, patrols red and convoys orange.");
             ShowLocations = cfg.Player("HUD", "ShowLocations", true, "Compass icons and distances for native locations within 1 km.");
@@ -57,107 +56,60 @@ namespace WildWasteland.Modules.CleanHUD
             DrivingHudOnlyThirdPerson = cfg.Player("HUD", "DrivingHudOnlyThirdPerson", true, "Show the gear/RPM/speed HUD only while driving in third person. Off allows either camera view; the source HUD enable switch still applies.");
             MapEnabled = cfg.Player("Map", "Enabled", true, "Enable the native debug map on the game's Map key.");
             MapMarkers = cfg.Player("Map", "Markers", MapDetail.Ambiguous, "Off hides map markers; Ambiguous shows question marks until locations are discovered within 100 m or spotted through binoculars; On shows their icons and colors. Discoveries are saved. Map icons have no name labels.");
-            bool savedTrafficMode = Legacy.Get(cfg.Main.ConfigFilePath, cfg.Section("Map"), "TrafficMarkersMode") != null;
             MapTrafficMarkers = cfg.Player("Map", "TrafficMarkersMode", MapDetail.Ambiguous, "World traffic markers: moving dots and names of patrols, convoys, merchants and foot travelers. Off hides them; Ambiguous shows gray Unknown; On shows their colors and names. Independent of location markers; fog of war still applies.");
-            if (!savedTrafficMode)
-            {
-                string traffic = Legacy.Get(cfg.Main.ConfigFilePath, cfg.Section("Map"), "TrafficMarkers");
-                if (traffic == "false") MapTrafficMarkers.Value = MapDetail.Off;
-                else if (traffic == "true") MapTrafficMarkers.Value = MapMarkers.Value == MapDetail.Ambiguous ? MapDetail.Ambiguous : MapDetail.On;
-            }
-            bool savedRoutes = Legacy.Get(cfg.Main.ConfigFilePath, cfg.Section("Map"), "Routes") != null;
             MapRoutes = cfg.Player("Map", "Routes", MapDetail.Off, "Route lines of world traffic only (the moving markers are World traffic markers). Off hides them; Ambiguous draws them gray; On in faction colors.");
-            if (!savedRoutes)
-            {
-                string section = "Patrols / Traffic tuning";
-                if (Legacy.Get(cfg.Tools.ConfigFilePath, section, "DebugMap") == "false") MapRoutes.Value = MapDetail.Off;
-                else if (Legacy.Get(cfg.Tools.ConfigFilePath, section, "hide route type") == "true") MapRoutes.Value = MapDetail.Ambiguous;
-            }
             FogOfWar = cfg.Player("Map", "FogOfWar", true, "Hide the parts of the map you have not explored yet. Exploring is recorded while this is off.");
-            cfg.Migrate(FogOfWar, "local.immersivemap.cfg", "Fog", "Enabled");
             FogRadius = cfg.Player("Map", "FogRevealRadius", 500f, "Base range in meters. Exploration reveals twice this radius; high ground extends it up to threefold (4 km radial cap), with raised binoculars doubling the viewed cone again.", new AcceptableValueRange<float>(50f, 2000f));
-            cfg.Migrate(FogRadius, "local.immersivemap.cfg", "Fog", "RevealRadius");
             FogEdge = cfg.Player("Map", "FogEdgeFade", 200f, "Width in meters of the soft edge, measured inward from the reveal radius. 0 = hard edge.", new AcceptableValueRange<float>(0f, 1000f));
-            cfg.Migrate(FogEdge, "local.immersivemap.cfg", "Fog", "EdgeFadeDistance");
             FogOpacity = cfg.Player("Map", "FogOpacity", 1f, "1 hides unexplored areas completely; lower values leave them faintly visible.", new AcceptableValueRange<float>(0f, 1f));
-            cfg.Migrate(FogOpacity, "local.immersivemap.cfg", "Fog", "FogOpacity");
-            // 1.0 captured this unintended transparent default; retain all other custom opacity values.
-            if (FogOpacity.Value == .463468f) FogOpacity.Value = 1f;
             BinocularZoom = cfg.Player("Map", "BinocularZoom", 1f, "Remembered additional binocular magnification. Scroll while binoculars are raised to change it from 1x to 2x.", new AcceptableValueRange<float>(1f, 2f));
-            MenuEnabled = Bind(cfg, "Menu", "Enabled", true, "Replace the title and pause menus with CleanHUD's menus.");
+            MenuEnabled = cfg.Player("Menu", "Enabled", true, "Replace the title and pause menus with CleanHUD's menus.");
             CleanFont = cfg.Player("Menu", "CleanFont", false, "Use CleanHUD's forcedSquare font instead of the game's Helveticrap font. Applies to CleanHUD and its settings text.");
             CleanFont.SettingChanged += (sender, args) => GlyphText.RefreshFont();
             AccentTheme.Setting = cfg.Player("Menu", "Accent", "Yellow", "CleanHUD text and border accent; also selectable at the bottom of the title and pause menus.", new AcceptableValueList<string>(AccentTheme.Names));
-            EnableCheats = Bind(cfg, "Menu", "EnableCheats", false, "Add the game's cheat controls to the menu settings.");
-            bool saved = Legacy.Get(cfg.Main.ConfigFilePath, cfg.Section("HUD"), "Scale") != null;
+            EnableCheats = cfg.Player("Menu", "EnableCheats", false, "Add the game's cheat controls to the menu settings.");
             Scale = cfg.Player("HUD", "Scale", 1f, "HUD scale; each panel grows away from its screen edge.", new AcceptableValueRange<float>(0.5f, 1.5f));
-            cfg.Migrate(Scale, GUID + ".cfg", "HUD", "Scale");
-            if (!saved) Import(Scale, "HUD", "Scale");
             Enabled.SettingChanged += HudChanged;
             MenuEnabled.SettingChanged += MenuChanged;
             MapEnabled.SettingChanged += MapChanged;
         }
 
-        // Newly absorbed settings migrate even when Wild Wasteland was already installed.
-        private static ConfigEntry<bool> Bind(ModuleConfig cfg, string section, string oldKey, bool def, string desc, string key = null, string oldSection = null)
-        {
-            string currentKey = key ?? oldKey;
-            bool saved = Legacy.Get(cfg.Main.ConfigFilePath, cfg.Section(section), currentKey) != null;
-            var entry = cfg.Player(section, currentKey, def, desc);
-            cfg.Migrate(entry, GUID + ".cfg", oldSection ?? section, oldKey);
-            if (!saved) Import(entry, oldSection ?? section, oldKey);
-            return entry;
-        }
-
-        private static void Import(ConfigEntryBase entry, string section, string key)
-        {
-            string raw = Legacy.Get(GUID + ".cfg", section, key);
-            if (raw != null) try { entry.SetSerializedValue(raw); } catch (Exception e) { Warn("Could not migrate " + key + ": " + e.Message); }
-        }
-
         public override void Init()
         {
             Running = true; _retry = 0; _throttle.Clear();
-            AccentTheme.Init();
-            ChaseCameraHud.Clear(); ChaseCameraHud.Install(this);
-            ApocapocketInventory.Install(this);
+            InitCoreTheme();
+            InitCompatibilityEarly();
             MessageHook.Clear(); Bindings.Clear(); Menu.BlockCancelFrame = -1;
             var dir = Core.Assets.ModuleConfigDir(Id);
-            foreach (string name in new[] { "layout.json", "game_keys.txt" })
-            {
-                string dest = Path.Combine(dir, name), old = Path.Combine(Path.Combine(Paths.ConfigPath, "CleanHUD"), name);
-                if (!File.Exists(dest) && File.Exists(old)) File.Copy(old, dest);
-            }
             Core.TunedSettings.InstallProfiles("CleanHUD");
             Layout = new LayoutFile(Path.Combine(dir, "layout.json"));
             Layout.Poll(true);
-            Assets.Preload();
-            SceneCache.Reset();
+            InitCoreAssets();
             Binoculars.Init(this);
             VistasBanners.Init(this);
-            VistasEngineHud.Install(this);
+            InitCompatibilityVistas();
             Scheduler.Interval(this, "Vantage terrain", .2f, VantageDiscovery.Tick);
             LocationMarkers.Init();
             MapFog.Init();
             _loadingScreen = new LoadingScreen();
-            ApocasaverLoading.Install(this, _loadingScreen);
+            InitCompatibilityApocasaver();
             _menu = new Menu(_loadingScreen);
-            _updateCheck = Scheduler.StartCoroutine(Menu.CheckUpdates());
+            InitCoreUpdateCheck();
             SaveBus.StateChanged += _loadingScreen.StateChanged;
             Services.VehicleStatus = this;
             Services.Compass = this;
             _questMap = new QuestMap(); Services.Map = _questMap;
-            TalkDialogue.Install(this);
+            InitCompatibilityTalk();
             QuestNotifications.Install(this);
             QuestTracker.Install(this);
             QuestJournal.Install(this);
             Core.Patches.Patch(this, AccessTools.Method(typeof(UiTextSetText), "OnEnter"), postfix: AccessTools.Method(typeof(MessageHook), "Postfix"));
             Hooks.GetButtonDownUpdate.Prefix(this, CancelHook.Prefix);
-            Hooks.EnterState.Postfix(this, PauseCursorFix.AfterEnterState);
+            InitCoreHooks();
             Hooks.EnterState.Postfix(this, _loadingScreen.AfterEnterState);
-            Scheduler.Sliced(this, "Scene key discovery", 500, SceneCache.Step);
+            InitCoreSceneJob();
             Scheduler.Sliced(this, "Weapon icons", 500, Assets.RenderStep);
-            Scheduler.Sliced(this, "Accent panels", 500, AccentTheme.Step);
+            InitCoreAccentJob();
             Scheduler.Interval(this, "Layout reload", 2f, PollLayout);
             Scheduler.EveryFrame(this, "Inventory window", InventoryStyle.Tick, Phase.LateUpdateLast);
             Scheduler.Interval(this, "Location markers", .5f, LocationMarkers.Tick);
@@ -167,7 +119,7 @@ namespace WildWasteland.Modules.CleanHUD
             Scheduler.Gui(this, "Player map marker", _questMap.DrawPlayer, _questMap.PlayerShown);
             Scheduler.Interval(this, "Map fog exploration", .2f, MapFog.Paint);
             Scheduler.Sliced(this, "Map fog painting", 500, MapFog.PaintStep);
-            Scheduler.EveryFrame(this, "Dialogue window", TalkDialogue.Tick, Phase.LateUpdateLast);
+            InitCompatibilityDialogueJob();
             Scheduler.EveryFrame(this, "Quest journal", QuestJournal.Tick, Phase.LateUpdateLast);
             Scheduler.EveryFrame(this, "Quest dialogue", QuestDialogue.Tick, Phase.LateUpdateLast);
             _attach = Scheduler.Interval(this, "HUD attachment", 1f, AttachHud, Phase.LateUpdateLast);
@@ -185,8 +137,7 @@ namespace WildWasteland.Modules.CleanHUD
         private void SimpleIconsChanged(object sender, EventArgs args) { if (Running) LocationMarkers.RefreshIcons(); }
         private void AttachHud()
         {
-            WeaponsPackIcons.Ensure(this);
-            ChaseCameraHud.Install(this);
+            AttachCompatibility();
             if (!KeyCatalog.ScanStarted) KeyCatalog.StartScan();
             if (!Enabled.Value || Time.unscaledTime < _retry) return;
             if (_hud != null && !_hud.Valid) Release();
@@ -233,27 +184,26 @@ namespace WildWasteland.Modules.CleanHUD
             VantageDiscovery.Reset(); VistasBanners.Reset();
             InventoryStyle.Restore();
             LocationMarkers.Begin(false);
-            if (_questMap != null) _questMap.SceneLoaded(); TalkDialogue.Hide(); QuestJournal.Hide(); QuestDialogue.Hide();
-            Release(); _menu.Teardown(); SceneCache.Reset(); MessageHook.Clear(); Bindings.Clear(); Assets.SceneLoaded();
+            if (_questMap != null) _questMap.SceneLoaded(); SceneLoadedCompatibility(); QuestJournal.Hide(); QuestDialogue.Hide();
+            Release(); _menu.Teardown(); SceneResetCore(); MessageHook.Clear(); Bindings.Clear(); Assets.SceneLoaded();
             _loadingScreen.SceneLoaded();
             _retry = 0; _attach.RunNow();
         }
         public override void OnLoadBegin(string slot) { VantageDiscovery.Reset(); VistasBanners.Reset(); InventoryStyle.Restore(); LocationMarkers.Begin(false); MapFog.Reset(); QuestJournal.Hide(); _loadingScreen.Begin(); Release(); Bindings.Clear(); MessageHook.Clear(); Assets.SceneLoaded(); }
         public override void OnSaveEnd(string slot) { LocationMarkers.SaveEnded(slot); }
         public override void OnOriginShift(Vector3 delta) { MapFog.OriginShifted(); VantageDiscovery.OriginShifted(delta); }
-        public override void OnWorldReady() { LocationMarkers.WorldReady(SaveBus.Slot); MapFog.WorldReady(SaveBus.Slot); SceneCache.Reset(); SceneCache.BeginKeys(); _attach.RunNow(); }
+        public override void OnWorldReady() { LocationMarkers.WorldReady(SaveBus.Slot); WorldReadySaves(); WorldReadyCore(); _attach.RunNow(); }
         public override void Shutdown()
         {
-            WeaponsPackIcons.Shutdown();
+            ShutdownCompatibilityEarly();
             _weatherMap.Clear();
             Binoculars.Shutdown();
             VantageDiscovery.Reset(); VistasBanners.Shutdown();
-            VistasEngineHud.Clear();
+            ShutdownCompatibilityVistas();
             InventoryStyle.Restore();
             Running = false; Release();
-            Scheduler.StopCoroutine(_updateCheck); _updateCheck = null;
-            ChaseCameraHud.Clear();
-            TalkDialogue.Dispose();
+            ShutdownCoreUpdateCheck();
+            ShutdownCompatibilityChase();
             QuestTracker.Clear();
             QuestJournal.Clear(); QuestDialogue.Dispose(); QuestNotifications.Clear();
             if (ReferenceEquals(Services.Map, _questMap)) Services.Map = null;
@@ -263,14 +213,60 @@ namespace WildWasteland.Modules.CleanHUD
             LocationMarkers.Shutdown();
             MapFrame.Restore(); MapFog.Shutdown();
             if (_menu != null) _menu.Teardown(); _menu = null;
-            ApocasaverLoading.Clear();
-            ApocapocketInventory.Clear();
+            ShutdownCompatibilityLate();
             if (_loadingScreen != null) { SaveBus.StateChanged -= _loadingScreen.StateChanged; _loadingScreen.Dispose(); _loadingScreen = null; }
             MessageHook.Clear(); Bindings.Clear(); Menu.BlockCancelFrame = -1;
-            SceneCache.Clear(); Assets.Dispose(); Menu.DisposeAssets(); GlyphFont.Reset();
-            AccentTheme.Clear();
+            ShutdownCoreAssets(); Menu.DisposeAssets(); ShutdownCoreTheme();
             Api.Compass.Entries.Clear(); Api.Compass.CustomIcons.Clear(); Api.Compass.IconRevision++; _attach = null;
         }
+        // ---------------------------------------------------------------- Wave A partial parts (implemented in the target module folders)
+        /// <summary>Core/UI theme: accent theme setting subscription.</summary>
+        partial void InitCoreTheme();
+        /// <summary>Core/UI theme + scene index: embedded textures/font preload, scene cache reset.</summary>
+        partial void InitCoreAssets();
+        /// <summary>Core: the GitHub release check coroutine.</summary>
+        partial void InitCoreUpdateCheck();
+        /// <summary>Core/Fixes: PauseCursorFix EnterState postfix.</summary>
+        partial void InitCoreHooks();
+        /// <summary>Core scene index: sliced key discovery job.</summary>
+        partial void InitCoreSceneJob();
+        /// <summary>Core/UI theme: sliced accent panel recolor job.</summary>
+        partial void InitCoreAccentJob();
+        /// <summary>Core scene index: reset on scene load.</summary>
+        partial void SceneResetCore();
+        /// <summary>Core scene index: reset and key discovery at world ready.</summary>
+        partial void WorldReadyCore();
+        /// <summary>Core: stops the release check coroutine.</summary>
+        partial void ShutdownCoreUpdateCheck();
+        /// <summary>Core: scene index and theme texture teardown.</summary>
+        partial void ShutdownCoreAssets();
+        /// <summary>Core/UI theme: glyph font and accent theme teardown.</summary>
+        partial void ShutdownCoreTheme();
+        /// <summary>Compatibility: ChaseCamera HUD bridge and Apocapocket slots.</summary>
+        partial void InitCompatibilityEarly();
+        /// <summary>Compatibility: Vistas World Gen engine heat overlay.</summary>
+        partial void InitCompatibilityVistas();
+        /// <summary>Compatibility: Apocasaver autosave screen and naming popup.</summary>
+        partial void InitCompatibilityApocasaver();
+        /// <summary>Compatibility: Apocatalker dialogue mirror.</summary>
+        partial void InitCompatibilityTalk();
+        /// <summary>Compatibility: the Apocatalker "Dialogue window" job.</summary>
+        partial void InitCompatibilityDialogueJob();
+        /// <summary>Compatibility: lazy Weapons Pack icons and ChaseCamera install (HUD attachment job).</summary>
+        partial void AttachCompatibility();
+        /// <summary>Compatibility: hides the Apocatalker window on scene load.</summary>
+        partial void SceneLoadedCompatibility();
+        /// <summary>Compatibility: Weapons Pack icon teardown.</summary>
+        partial void ShutdownCompatibilityEarly();
+        /// <summary>Compatibility: Vistas engine overlay teardown.</summary>
+        partial void ShutdownCompatibilityVistas();
+        /// <summary>Compatibility: ChaseCamera and Apocatalker teardown.</summary>
+        partial void ShutdownCompatibilityChase();
+        /// <summary>Compatibility: Apocasaver and Apocapocket teardown.</summary>
+        partial void ShutdownCompatibilityLate();
+        /// <summary>Saves: fog-of-war sidecar read at world ready.</summary>
+        partial void WorldReadySaves();
+
         public override IEnumerable<ToolPage> ToolPages()
         {
             yield return new ConfigPage(this, ToolGroups.Weapons, "Clean HUD & menus", Config.Main, "CleanHUD / HUD", "CleanHUD / Menu");
