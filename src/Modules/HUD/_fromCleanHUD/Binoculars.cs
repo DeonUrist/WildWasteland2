@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
@@ -6,10 +7,9 @@ namespace WildWasteland.Modules.CleanHUD
 {
     internal static partial class Binoculars
     {
-        private static Camera _camera, _renderCamera;
+        private static Camera _camera;
         private static Transform _overlay, _scope;
         private static float _nextFind, _scopeSlope, _zoom = 1f;
-        private static bool _transparentProjection;
         private static GlyphText _caption;
         private static Transform _subject;
         private static string _name;
@@ -27,7 +27,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static void Init(CleanHudModule owner)
         {
             Reset();
-            Camera.onPreCull += PreCull; Camera.onPostRender += PostRender;
+            _projectionOwner = owner; CameraArbiter.AddProjection(owner, "HUD.Binoculars", 300, WriteProjection);
             Scheduler.EveryFrame(owner, "Binocular zoom", Tick, Phase.LateUpdateLast);
         }
         internal static void Reset()
@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.CleanHUD
         }
         internal static void Shutdown()
         {
-            Camera.onPreCull -= PreCull; Camera.onPostRender -= PostRender; Reset();
+            CameraArbiter.Remove(_projectionOwner, "HUD.Binoculars"); Reset();
         }
         private static void Tick()
         {

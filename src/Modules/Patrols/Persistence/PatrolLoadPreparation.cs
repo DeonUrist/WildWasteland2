@@ -1,22 +1,19 @@
-using System;
-using HutongGames.PlayMaker;
-using HutongGames.PlayMaker.Actions;
-
 namespace WildWasteland.Modules.Patrols
 {
-    // Hold the native final terrain wait, before Menu.Activate / ScaleTime 1 give control back to the player.
+    /// <summary>Contributes patrol preparation to Core's native final-load handoff barrier.</summary>
     internal static class PatrolLoadPreparation
     {
-        private static Fsm _save;
         private static bool _loading;
+        /// <summary>Registers readiness under the patrol module so Core withdraws it on shutdown.</summary>
         internal static void Install(Core.IModule owner)
         {
-            Core.Hooks.WaitUpdate.Prefix(owner, BeforeWait);
+            Core.LoadingProgress.RegisterHold(owner, "Patrols", ReadyForHandoff);
         }
-        internal static void StateChanged(string state, PlayMakerFSM save)
+        /// <summary>Warms required vehicle assets during native loading and clears preparation state at handoff.</summary>
+        internal static void StateChanged(string state)
         {
             if (state == "LoadGame" || state == "setSeed")
-            { _loading = true; _save = save.Fsm; VehicleBuildCache.WarmPark(); }
+            { _loading = true; VehicleBuildCache.WarmPark(); }
             if (_loading && state == "Wait for Terrain Gen")
             { Prefabs.Refresh(); VehicleBuildCache.WarmPark(); WarRig.PoiEncounter.Prepare(); }
             if (state == "isPlay")
@@ -25,12 +22,13 @@ namespace WildWasteland.Modules.Patrols
                 _loading = false;
             }
         }
-        private static bool BeforeWait(Wait __instance)
+        /// <summary>Allows handoff once vehicle warming and saved patrol restoration have completed.</summary>
+        private static bool ReadyForHandoff()
         {
-            if (!_loading || !PatrolsModule.Running || !ReferenceEquals(__instance.Fsm, _save)) return true;
-            if (__instance.State.Name != "Wait for Terrain Gen") return true;
+            if (!_loading || !PatrolsModule.Running) return true;
             return !VehicleBuildCache.Warming && !PatrolPersistence.Restoring;
         }
-        internal static void Reset() { _save = null; _loading = false; }
+        /// <summary>Clears pending work when a scene or patrol session ends.</summary>
+        internal static void Reset() { _loading = false; }
     }
 }

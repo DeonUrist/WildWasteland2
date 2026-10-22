@@ -14,15 +14,18 @@ namespace WildWasteland.Core
         static bool _scanning;
         static float _quietUntil;
         internal static bool Unsafe { get; private set; }
-        internal static void Install()
+        /// <summary>Observes native combat and discovers detection FSMs under Saves lifetime ownership.</summary>
+        internal static void Install(IModule owner)
         {
-            Hooks.FsmEnable.Postfix(null, Track);
-            Hooks.ProcessEvent.Prefix(null, Event);
-            Hooks.EnterState.Postfix(null, Attack);
+            Hooks.FsmEnable.Postfix(owner, Track);
+            Hooks.ProcessEvent.Prefix(owner, Event);
+            Hooks.EnterState.Postfix(owner, Attack);
             SaveBus.StateChanged += State;
-            Scheduler.Sliced(null, "Autosave combat discovery", 500, Discover);
+            Scheduler.Sliced(owner, "Autosave combat discovery", 500, Discover);
             Reset();
         }
+        /// <summary>Detaches native state observation and clears tracked actors when Saves stops.</summary>
+        internal static void Shutdown() { SaveBus.StateChanged -= State; Actors.Clear(); Dead.Clear(); _scan = 0; _scanning = false; _quietUntil = 0; Unsafe = false; }
         static void State(string previous, string current) { if (current == "LoadGame" || current == "setSeed") Reset(); }
         static void Reset() { Actors.Clear(); Dead.Clear(); _scan = 0; _scanning = true; _quietUntil = 0; Unsafe = true; }
         internal static void Activity()

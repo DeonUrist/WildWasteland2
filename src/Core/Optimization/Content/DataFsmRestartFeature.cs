@@ -5,7 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT9b (research B §1.3 "Item data FSMs", §0 RestartOnEnable): ~6 of every item's 7.5 FSMs are pure data (ID, Value, imageUI,

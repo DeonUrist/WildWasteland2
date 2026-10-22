@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.CleanHUD
 {
     public sealed partial class CleanHudModule : ModuleBase, IVehicleStatusDisplay, ICompassMarkers
     {
+        internal static CleanHudModule Instance;
         internal const string GUID = "com.denis.apocalypter.cleanhud";
         internal static ConfigEntry<bool> Enabled, ShowNeeds, ShowHealthNumbers, ShowInsanity, MenuEnabled, CleanFont, EnableCheats;
         internal static ConfigEntry<float> Scale;
@@ -41,6 +42,7 @@ namespace WildWasteland.Modules.CleanHUD
 
         public override void BindConfig(ModuleConfig cfg)
         {
+            Instance = this;
             Enabled = cfg.Player("HUD", "HUD", true, "Replace the native HUD. Off restores it immediately.");
             ShowNeeds = cfg.Player("HUD", "ShowNeeds", true, "Show water, food and sleep beneath HP and armor.");
             ShowHealthNumbers = cfg.Player("HUD", "ShowHealthNumbers", true, "Show HP and armor values inside their bars.");
@@ -64,9 +66,8 @@ namespace WildWasteland.Modules.CleanHUD
             FogOpacity = cfg.Player("Map", "FogOpacity", 1f, "1 hides unexplored areas completely; lower values leave them faintly visible.", new AcceptableValueRange<float>(0f, 1f));
             BinocularZoom = cfg.Player("Map", "BinocularZoom", 1f, "Remembered additional binocular magnification. Scroll while binoculars are raised to change it from 1x to 2x.", new AcceptableValueRange<float>(1f, 2f));
             MenuEnabled = cfg.Player("Menu", "Enabled", true, "Replace the title and pause menus with CleanHUD's menus.");
-            CleanFont = cfg.Player("Menu", "CleanFont", false, "Use CleanHUD's forcedSquare font instead of the game's Helveticrap font. Applies to CleanHUD and its settings text.");
-            CleanFont.SettingChanged += (sender, args) => GlyphText.RefreshFont();
-            AccentTheme.Setting = cfg.Player("Menu", "Accent", "Yellow", "CleanHUD text and border accent; also selectable at the bottom of the title and pause menus.", new AcceptableValueList<string>(AccentTheme.Names));
+            CleanFont = UiTheme.CleanFont;
+            // Shared accent/font entries are bound once by Core UI before module binding.
             EnableCheats = cfg.Player("Menu", "EnableCheats", false, "Add the game's cheat controls to the menu settings.");
             Scale = cfg.Player("HUD", "Scale", 1f, "HUD scale; each panel grows away from its screen edge.", new AcceptableValueRange<float>(0.5f, 1.5f));
             Enabled.SettingChanged += HudChanged;

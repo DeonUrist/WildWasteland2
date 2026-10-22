@@ -5,10 +5,11 @@ using BepInEx.Configuration;
 
 namespace WildWasteland.Core
 {
-    // Captured 2026-10-19 tuning supplies Bind defaults. BepInEx still owns stored values and legacy migration.
+    // Captured 2026-10-19 tuning supplies Bind defaults. BepInEx still owns stored values; WW2 does not migrate legacy settings.
     internal static class TunedSettings
     {
         static readonly Dictionary<string, Dictionary<string, string>> Files = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        /// <summary>Reads an embedded tuning default for the exact new config section and key without migrating player files.</summary>
         internal static T Default<T>(ConfigFile file, string section, string key, T fallback)
         {
             string name = Path.GetFileName(file.ConfigFilePath);
@@ -17,7 +18,7 @@ namespace WildWasteland.Core
             if (!Files.TryGetValue(name, out values))
             {
                 values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); Files[name] = values;
-                using (var stream = WildWasteland.Core.DiskResources.Open("CleanHUD.DefaultSettings." + name + ".txt"))
+                using (var stream = WildWasteland.Core.DiskResources.Open("Core.DefaultSettings." + name + ".txt"))
                     if (stream != null) using (var reader = new StreamReader(stream))
                     {
                         string group = "", line;
@@ -33,12 +34,15 @@ namespace WildWasteland.Core
             try { return (T)TomlTypeConverter.ConvertToValue(raw, typeof(T)); }
             catch (Exception error) { Log.Warn("[Settings] Retaining built-in default for " + section + "/" + key + ": " + error.Message); return fallback; }
         }
+        /// <summary>Binds a config entry with its packaged tuning default, retaining the supplied description and constraints.</summary>
         internal static ConfigEntry<T> Bind<T>(ConfigFile file, string section, string key, T fallback, string description)
         { return file.Bind(section, key, Default(file, section, key, fallback), description); }
+        /// <summary>Binds a config entry with its packaged tuning default, retaining the supplied description and constraints.</summary>
         internal static ConfigEntry<T> Bind<T>(ConfigFile file, string section, string key, T fallback, ConfigDescription description)
         { return file.Bind(section, key, Default(file, section, key, fallback), description); }
 
-        // Called after the original sidecar migration, so existing/legacy tuning wins over these missing-only defaults.
+        // Existing authored profiles take precedence over these missing-only installation defaults.
+        /// <summary>Copies packaged module tuning profiles only when an installation does not already contain the target file.</summary>
         internal static void InstallProfiles(string owner)
         {
             var assembly = typeof(Plugin).Assembly; string prefix = "CleanHUD.DefaultProfiles." + owner + ".";

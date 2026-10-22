@@ -29,10 +29,10 @@ namespace WildWasteland.Core
         /// logs the cause itself; this only forwards it to the save framework.</summary>
         public static void ReportFailure(IModule owner, string message)
         {
-            // REFACTOR-REQUEST W0-A: B04 (Saves) subscribes to FailureReported and this direct call into the Core save framework goes away.
-            SaveSystem.Fail(message);
             var h = FailureReported;
-            if (h != null) try { h(owner, message); } catch (Exception e) { Log.Error(null, "SaveBus.FailureReported handler", e); }
+            if (h == null) return;
+            foreach (Action<IModule, string> handler in h.GetInvocationList())
+                try { handler(owner, message); } catch (Exception e) { Log.Error(null, "SaveBus.FailureReported handler", e); }
         }
 
         /// <summary>Old owner-less form of <see cref="ReportFailure(IModule,string)"/>.</summary>
@@ -63,9 +63,9 @@ namespace WildWasteland.Core
         static bool _pendingWorldReady = true;
         static string _saveSlot;
         static readonly List<KeyValuePair<float, Action>> _after = new List<KeyValuePair<float, Action>>();
-        static readonly Regex SlotRx = new Regex(@"^SaveGame([1-9]|10)\.es3$", RegexOptions.IgnoreCase);
+        static readonly Regex WorldSlotRx = new Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", RegexOptions.IgnoreCase);
 
-        /// <summary>Current save slot file name ("SaveGame3.es3") or null.</summary>
+        /// <summary>Current validated native or WW save identity, or null.</summary>
         public static string Slot
         {
             get
@@ -74,7 +74,7 @@ namespace WildWasteland.Core
                 {
                     var p = ES3Settings.defaultSettings.path;
                     var n = string.IsNullOrEmpty(p) ? null : Path.GetFileName(p);
-                    return n != null && (SlotRx.IsMatch(n) || SaveRuntime.IsSaveFile(n)) ? n : null;
+                    return n != null && WorldSlotRx.IsMatch(n) ? n : null;
                 }
                 catch { return null; }
             }
@@ -129,6 +129,7 @@ namespace WildWasteland.Core
         /// <summary>Handles a SaveLoadGame state change: StateChanged handlers, module hooks and typed save events.</summary>
         static void Changed(string prev, string now)
         {
+            Trace.Mark("SaveLoadGame." + now);
             if (Log.L1) Log.Main(null, "SaveLoadGame: " + (prev ?? "-") + " -> " + now);
             var h = StateChanged;
             if (h != null) foreach (StateChange d in h.GetInvocationList()) { try { d(prev, now); } catch (Exception e) { Log.Error("SaveBus.StateChanged handler " + d.Method.DeclaringType + "." + d.Method.Name, e); } }

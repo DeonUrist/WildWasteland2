@@ -6,7 +6,7 @@ using HutongGames.PlayMaker;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS4 (plan §4, research A §1.6 / R9): every Instantiate of an object with FSMs deserializes all their actions
@@ -21,16 +21,23 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class FastActionLoadFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "FS4"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Fast action loading"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Faster FSM loading on spawn"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 14; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Spawning objects with FSMs (vehicles, items, camps) creates their actions with compiled constructors and field setters instead of reflection. Same values."; } }
 
         internal static bool On;
         public static long Created, FieldsSet, Fallbacks;
 
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             // 0.1.26c transpiled ActionData.LoadActionField in place, which broke field loading in game ("ActionData: Missing
@@ -40,15 +47,18 @@ namespace WildWasteland.Modules.Performance
             StartBatch();
             On = true;
         }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; }
         static bool _logged;
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded()
         {
             if (_logged || _batchState < 2) return;
             _logged = true;
-            if (_batchState == 2) WildWasteland.Core.Log.Always("[Performance] FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
-            else WildWasteland.Core.Log.Warn("[Performance] FS4: batch compile failed, reflection stays (" + _batchError + ")");
+            if (_batchState == 2) { if (Log.L1) Log.Main(OptimizationRuntime.Instance, "FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)"); }
+            else WildWasteland.Core.Log.Warn(OptimizationRuntime.Instance, "FS4: batch compile failed, reflection stays (" + _batchError + ")");
         }
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Compiled accessors", _batchState == 2 ? _batchCtors + " constructors, " + _batchSetters + " field setters (" + _batchMs + " ms, background)" : _batchState == 1 ? "compiling..." : _batchState == 3 ? "failed: " + _batchError : "-");
@@ -66,6 +76,7 @@ namespace WildWasteland.Modules.Performance
         static readonly Dictionary<Type, int> _ctorIndex = new Dictionary<Type, int>();
         static readonly Dictionary<IntPtr, int> _fieldIndex = new Dictionary<IntPtr, int>();
 
+        /// <summary>Schedules construction of the action-field accessor batch outside gameplay's main-thread hot path.</summary>
         static void StartBatch()
         {
             if (_batchState != 0) return;
@@ -75,6 +86,7 @@ namespace WildWasteland.Modules.Performance
             t.Start();
         }
 
+        /// <summary>Builds constructors and field setters for supported action data types from the captured assembly list.</summary>
         static void BuildBatch(System.Reflection.Assembly[] asms)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -115,6 +127,7 @@ namespace WildWasteland.Modules.Performance
             }
         }
 
+        /// <summary>Adds one constructible action/value type and its fields to the compiled accessor batch once.</summary>
         static void AddType(Access.FieldBatch b, Type t, Dictionary<Type, int> ctorIdx, Dictionary<IntPtr, int> fieldIdx, HashSet<Type> seen, Queue<Type> queue)
         {
             if (Ctorable(t)) { var c = t.GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, Type.EmptyTypes, null); if (c != null) ctorIdx[t] = b.AddCtor(c); }
@@ -135,6 +148,7 @@ namespace WildWasteland.Modules.Performance
             }
         }
 
+        /// <summary>Rejects abstract/interface/open-generic types before generating a parameterless constructor delegate.</summary>
         static bool Ctorable(Type t)
         {
             return t != null && t.IsClass && !t.IsAbstract && !t.ContainsGenericParameters && !t.IsArray && !t.IsCOMObject
@@ -204,6 +218,7 @@ namespace WildWasteland.Modules.Performance
             }
         }
 
+        /// <summary>Checks receiver/value types before using a compiled field setter in place of reflection.</summary>
         static bool Exact(Setter s, object obj, object value)
         {
             if (obj == null) return false;
@@ -227,6 +242,7 @@ namespace WildWasteland.Modules.Performance
         static class Patch
         {
             // Always replaces the original once installed (the copy uses plain reflection while FS4 is off).
+            /// <summary>ActionData load prefix: runs the verified native-equivalent field loader while retaining reflection fallbacks.</summary>
             [HarmonyPatch(typeof(ActionData), "LoadActionField"), HarmonyPrefix]
             static bool Pre(ActionData __instance, Fsm fsm, object obj, FieldInfo field, int paramIndex)
             {

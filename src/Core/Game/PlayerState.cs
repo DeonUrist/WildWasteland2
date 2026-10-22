@@ -10,7 +10,7 @@ namespace WildWasteland.Core
     /// Player queries shared by every module (README 4.2), superset of PlayerBody Game.cs (rig, InCar/Movement/Jump FSMs, Dead,
     /// MoveState, StandingHeight, Velocity, CarRoot, CarFsm, DriveUse), Patrols PlayerRef (Car from InCar.Car with the
     /// DriveTrigger/VehicleController fallbacks, GodMode, ram Target per physics step, Kind) and Quests Game.cs (Player
-    /// transform, UnderPlayer). Weapon/arms/reload queries stay with Gunplay/Presentation.
+    /// transform, UnderPlayer). Feature-specific arm animation and reload behavior stay with Gunplay/Presentation.
     /// Every answer is cached (per frame, per physics step or per owning object) and nothing allocates after the first lookup;
     /// references come from GameRefs and are re-resolved at most once per second while missing and cleared on scene load.
     /// </summary>
@@ -20,7 +20,7 @@ namespace WildWasteland.Core
         static PlayMakerFSM _inCar, _movement, _jump, _health, _driveUse;
         static FsmGameObject _inCarVar;
         static FsmFloat _healthVar, _standingVar;
-        static Transform _holder, _camera;
+        static Transform _holder, _camera, _weaponsArm, _weaponsParent;
         static Camera _cam;
         static Rigidbody _rb;
         static float _nextFind;
@@ -32,7 +32,7 @@ namespace WildWasteland.Core
         public static void Reset()
         {
             _player = null; _inCar = _movement = _jump = _health = _driveUse = null; _inCarVar = null; _healthVar = _standingVar = null;
-            _holder = _camera = null; _cam = null; _rb = null; _nextFind = 0f;
+            _holder = _camera = _weaponsArm = _weaponsParent = null; _cam = null; _rb = null; _nextFind = 0f;
             _car = null; _carRb = null; _carDrive = null; _deadFrame = -1; _carRootFrame = -1; _godStamp = -1f; _targetStamp = -1f; _lastStamp = -1f;
         }
 
@@ -40,13 +40,20 @@ namespace WildWasteland.Core
         static void Resolve()
         {
             if (!_installed) { _installed = true; SceneManager.sceneLoaded += SceneLoaded; }
-            if (_player != null && _inCar != null && _camera != null) return;
+            if (_player != null && _inCar != null && _movement != null && _jump != null && _health != null && _camera != null && _cam != null
+                && _weaponsArm != null && _weaponsParent != null && _driveUse != null) return;
             if (Time.unscaledTime < _nextFind) return;
             _nextFind = Time.unscaledTime + 1f;
-            if (_player == null || _inCar == null)
+            if (_player == null || _inCar == null || _movement == null || _jump == null || _health == null)
             {
-                _player = null; _inCar = _movement = _jump = _health = null; _inCarVar = null; _healthVar = _standingVar = null; _rb = null;
                 var go = GameRefs.Player;
+                if (!ReferenceEquals(go, _player))
+                {
+                    _player = null; _inCar = _movement = _jump = _health = null; _inCarVar = null; _healthVar = _standingVar = null; _rb = null;
+                    _deadFrame = -1; _carRootFrame = -1;
+                }
+                if (_health == null) _healthVar = null;
+                if (_movement == null) _standingVar = null;
                 if (go != null)
                 {
                     _fsms.Clear(); go.GetComponents(_fsms);
@@ -65,7 +72,7 @@ namespace WildWasteland.Core
                     if (_inCar != null) { _player = go; _rb = go.GetComponent<Rigidbody>(); }
                 }
             }
-            if (_camera == null)
+            if (_camera == null || _cam == null)
             {
                 var holder = GameRefs.PlayerCameraHolder;
                 if (holder != null)
@@ -73,8 +80,15 @@ namespace WildWasteland.Core
                     _holder = holder.transform;
                     _camera = _holder.Find("PlayerCamera");
                     _cam = _camera != null ? _camera.GetComponent<Camera>() : null;
-                    _driveUse = _camera != null ? FsmUtil.Find(_camera.gameObject, "DriveUse") : null;
+                    _weaponsArm = _weaponsParent = null; _driveUse = null;
                 }
+            }
+            // Native rig children/FSMs can appear after the camera; retry only missing paths on this same throttle.
+            if (_camera != null)
+            {
+                if (_weaponsArm == null) _weaponsArm = _camera.Find("WeaponsArm");
+                if (_weaponsParent == null && _weaponsArm != null) _weaponsParent = _weaponsArm.Find("Parent");
+                if (_driveUse == null) _driveUse = FsmUtil.Find(_camera.gameObject, "DriveUse");
             }
         }
 
@@ -91,6 +105,10 @@ namespace WildWasteland.Core
         public static Transform PlayerCamera { get { Resolve(); return _camera; } }
         /// <summary>The first-person Camera component.</summary>
         public static Camera Camera { get { Resolve(); return _cam; } }
+        /// <summary>Native first-person weapons arm, resolved with the camera rig.</summary>
+        public static Transform WeaponsArm { get { Resolve(); return _weaponsArm; } }
+        /// <summary>Native first-person weapon models parent.</summary>
+        public static Transform WeaponsParent { get { Resolve(); return _weaponsParent; } }
         /// <summary>Player [InCar] FSM.</summary>
         public static PlayMakerFSM InCarFsm { get { Resolve(); return _inCar; } }
         /// <summary>Player [Movement] FSM.</summary>
@@ -101,6 +119,9 @@ namespace WildWasteland.Core
         /// <summary>Player, InCar FSM and PlayerCamera are all present (PlayerBody Game.Ready).</summary>
         public static bool Ready { get { Resolve(); return _player != null && _inCar != null && _camera != null; } }
 
+        /// <summary>Whether native simulation time is stopped.</summary>
+        public static bool Paused { get { return Time.timeScale < .01f; } }
+
         /// <summary>InCar FSM is in "InCar" (PlayerBody Game.InCar).</summary>
         public static bool InCar
         {
@@ -109,6 +130,21 @@ namespace WildWasteland.Core
                 Resolve();
                 try { return _inCar != null && _inCar.ActiveStateName == "InCar"; }
                 catch (Exception) { return false; }
+            }
+        }
+
+        /// <summary>Whether the native InCar FSM is in any transitional or seated state other than OnFoot (save eligibility).</summary>
+        public static bool InVehicleTransition { get { Resolve(); return _inCar != null && _inCar.ActiveStateName != "OnFoot"; } }
+
+        /// <summary>Current player health, or zero until the native Health variable is available.</summary>
+        public static float Health
+        {
+            get
+            {
+                Resolve();
+                if (_health == null) return 0f;
+                if (_healthVar == null) _healthVar = FsmIndex.Float(_health, "Health");
+                return _healthVar != null ? _healthVar.Value : 0f;
             }
         }
 

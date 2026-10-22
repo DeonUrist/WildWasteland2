@@ -29,6 +29,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="src\**\*.cs" />
+    <Content Include="src\Core\Embedded\**\*" Exclude="src\Core\Embedded\**\*.md">
+      <ResourceName>$([System.String]::Copy('%(Identity)').Replace('/','\').Replace('src\Core\Embedded\','Core.').Replace('\','.'))</ResourceName>
+      <RuntimePath>$([System.String]::Copy('%(Identity)').Replace('/','\').Replace('src\Core\Embedded\','Core\'))</RuntimePath>
+      <Link>RuntimeAssets\%(RuntimePath)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <!-- Source folders retain their authoring paths; all payloads ship as external files, never DLL resources. -->
     <Content Include="src\Modules\*\Embedded\**\*" Exclude="src\Modules\*\Embedded\**\*.md">
       <ResourceName>$([System.String]::Copy('%(Identity)').Replace('/','\').Replace('src\Modules\','').Replace('\Embedded\','.').Replace('\','.'))</ResourceName>

@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.Survival
             }
             // Native CreateObject overwrites the shared Item variable with the clone, then names and saves it.
             action.gameObject.Value = template;
-            if (SurvivalModule.Verbose.Value) Core.Log.Always("[Survival] Natural Stew Pot selected: " + owner.name);
+            if (WildWasteland.Core.Log.L2) Core.Log.Deep(null, "[Survival] Natural Stew Pot selected: " + owner.name);
             return true;
         }
     }

@@ -9,15 +9,8 @@ using UnityEngine.SceneManagement;
 namespace WildWasteland.Core
 {
     // Loaded plugins keep runners/coroutines/patches: disable through the installer's pre-load operation.
-    internal static partial class ReplacementGuard
+    internal static class ReplacementGuard
     {
-        // Wave A split (refactor): the title notice (GUI job, text, drawing with the CleanHUD theme) lives in the HUD part
-        // src/Modules/HUD/_fromCore/ReplacementGuard.HUD.cs; detection and disabling stay in Core.
-        /// <summary>HUD part: registers the title-notice GUI job.</summary>
-        static partial void InstallNotice();
-        /// <summary>HUD part: rebuilds the restart notice text from the replaced-mod list.</summary>
-        static partial void RebuildNotice();
-
         static readonly Dictionary<string, string> _status = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         static readonly List<string> _names = new List<string>();
         static bool _title;
@@ -48,9 +41,33 @@ namespace WildWasteland.Core
             Disable(HealthStacks.GUID);
             Disable(ITweenGuard.GUID);
             Scheduler.Interval(null, "Core.Replacement notice", .5f, Tick).RunNow();
-            InstallNotice();
             RebuildNotice();
         }
+        /// <summary>Restart text for the HUD title notice; null when no standalone conflicts were found.</summary>
+        internal static string NoticeText { get; private set; }
+        /// <summary>Whether the title scene can show the notice.</summary>
+        internal static bool TitleActive { get { return _title; } }
+        /// <summary>Whether optional title recommendations are enabled.</summary>
+        internal static bool ShowRecommendations { get { return _showRecommended != null && _showRecommended.Value; } }
+        /// <summary>Number of optional recommendations missing after chainloading.</summary>
+        internal static int MissingCount { get { return _missing.Count; } }
+        /// <summary>Display name of one missing optional recommendation.</summary>
+        internal static string MissingName(int index) { return Recommended[_missing[index], 1]; }
+        /// <summary>Nexus page of one missing optional recommendation.</summary>
+        internal static string MissingUrl(int index) { return "https://www.nexusmods.com/apocalypter/mods/" + Recommended[_missing[index], 2]; }
+        /// <summary>Builds display data after detection; the HUD owns all title rendering.</summary>
+        static void RebuildNotice()
+        {
+            if (_names.Count == 0) { NoticeText = null; return; }
+            var text = new System.Text.StringBuilder();
+            text.Append(_names.Count).Append(_names.Count == 1 ? " standalone mod should be removed" : " standalone mods should be removed");
+            text.Append(" from your active mods because Wild Wasteland replaces them:\n\n");
+            for (int i = 0; i < _names.Count; i++) text.Append("- ").Append(_names[i]).Append('\n');
+            if (_failed < _names.Count) text.Append("\nRestart the game. Apocasetter will disable the queued mods. Their files and configs are kept.");
+            if (_failed != 0) text.Append("\n\nDisable the mods marked 'disable manually' before restarting. Automatic disabling was unavailable for them; see LogOutput.log for details.");
+            NoticeText = text.ToString();
+        }
+
         /// <summary>A conflict found after Prepare (late-loaded plugin): disable it and refresh the notice.</summary>
         internal static void LateConflict(string guid) { Disable(guid); RebuildNotice(); }
 

@@ -52,35 +52,67 @@ namespace WildWasteland.Core
         static Func<float> _health;
         static readonly HashSet<string> ProtectedSlots = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         static string _pendingNotice;
-        internal static void Install()
+        static IModule _owner;
+        /// <summary>Binds save policy before modules start, using the Saves settings sections.</summary>
+        internal static void Bind(ModuleConfig cfg)
         {
-            var cfg = Plugin.Settings;
-            Autosave = TunedSettings.Bind(cfg, "System / Saving", "Autosave", true, "Create separate autosaves for singleplayer worlds. Manual saves are never replaced by autosaving.");
-            ExitSave = TunedSettings.Bind(cfg, "System / Saving", "Exit save", false, "Create a separate autosave when quitting to the main menu. Independent of timed autosaves; disabled by default.");
-            Interval = TunedSettings.Bind(cfg, "System / Saving", "Autosave minutes", 10, new ConfigDescription("Real minutes between autosaves.", new AcceptableValueRange<int>(1, 120)));
-            Warning = TunedSettings.Bind(cfg, "System / Saving", "Warning seconds", 30, new ConfigDescription("Visible autosave countdown. At least 30 seconds, with notices at 30 and 15 seconds and a final warning before saving.", new AcceptableValueRange<int>(30, 120)));
-            WhileDriving = TunedSettings.Bind(cfg, "System / Saving", "Autosave while driving", false, "Allow autosaves while the player is driving or riding in any vehicle. Manual and exit saves are always available in vehicles.");
-            AutoKeep = TunedSettings.Bind(cfg, "System / Saving", "Autosaves to keep", 5, new ConfigDescription("Number of separate autosaves per world lineage. Manual saves are not pruned.", new AcceptableValueRange<int>(1, 100)));
-            BackupKeep = TunedSettings.Bind(cfg, "System / Saving", "Backups to keep", 5, new ConfigDescription("Verified previous versions per save. Interrupted recovery and deleted-save backups are always retained.", new AcceptableValueRange<int>(1, 100)));
-            Screenshots = TunedSettings.Bind(cfg, "System / Saving", "Save screenshots", true, "Capture a gameplay thumbnail for each save.");
+            Autosave = cfg.Player("Saving", "Autosave", true, "Create separate autosaves for singleplayer worlds. Manual saves are never replaced by autosaving.");
+            ExitSave = cfg.Player("Saving", "Exit save", false, "Create a separate autosave when quitting to the main menu. Independent of timed autosaves; disabled by default.");
+            Interval = cfg.Player("Saving", "Autosave minutes", 10, "Real minutes between autosaves.", new AcceptableValueRange<int>(1, 120));
+            Warning = cfg.Player("Saving", "Warning seconds", 30, "Visible autosave countdown. At least 30 seconds, with notices at 30 and 15 seconds and a final warning before saving.", new AcceptableValueRange<int>(30, 120));
+            WhileDriving = cfg.Player("Saving", "Autosave while driving", false, "Allow autosaves while the player is driving or riding in any vehicle. Manual and exit saves are always available in vehicles.");
+            AutoKeep = cfg.Player("Saving", "Autosaves to keep", 5, "Number of separate autosaves per world lineage. Manual saves are not pruned.", new AcceptableValueRange<int>(1, 100));
+            BackupKeep = cfg.Player("Saving", "Backups to keep", 5, "Verified previous versions per save. Interrupted recovery and deleted-save backups are always retained.", new AcceptableValueRange<int>(1, 100));
+            Screenshots = cfg.Player("Saving", "Save screenshots", true, "Capture a gameplay thumbnail for each save.");
+            SaveCleanup.Bind(cfg);
+        }
+        /// <summary>Installs save protection and observations owned by the running Saves module.</summary>
+        internal static void Install(IModule owner)
+        {
+            _owner = owner;
             Autosave.SettingChanged += ScheduleChanged; Interval.SettingChanged += ScheduleChanged; Warning.SettingChanged += ScheduleChanged; WhileDriving.SettingChanged += ScheduleChanged;
             _health = SaveRuntime.Health;
-            Hooks.ActivateGameObjectDo.Prefix(null, VehicleSaveButton);
+            Hooks.ActivateGameObjectDo.Prefix(owner, VehicleSaveButton);
             Require(typeof(ES3PlayMaker.ActionBase), "HandleError", "NativeError");
-            if (!Patches.Patch(null, AccessTools.Method(typeof(ES3File), "Sync", new[] { typeof(ES3Settings) }), prefix: AccessTools.Method(typeof(SaveSystem), "BeforeSync"))) throw new InvalidOperationException("Native end-of-frame world-write guard failed");
-            if (!Patches.Patch(null, AccessTools.Method(typeof(ES3Internal.ES3IO), "CommitBackup"), finalizer: AccessTools.Method(typeof(SaveSystem), "StorageError"))) throw new InvalidOperationException("Native disk failure observation hook failed");
-            if (!Patches.Patch(null, AccessTools.Method(typeof(ES3PlayMaker.PMDataWrapper), "ApplyVariables"), postfix: AccessTools.Method(typeof(SaveSystem), "LoadedPath"))) throw new InvalidOperationException("Save identity hook failed");
-            SaveCleanup.Install();
-            SaveCombat.Install(); SaveWarning.Install();
-            SinglePlayerSaving.Install();
-            WorldHistory.Install(); SaveCompatibility.Install();
-            VehicleLoadPlacement.Install();
+            if (!Patches.Patch(_owner, AccessTools.Method(typeof(ES3File), "Sync", new[] { typeof(ES3Settings) }), prefix: AccessTools.Method(typeof(SaveSystem), "BeforeSync"))) throw new InvalidOperationException("Native end-of-frame world-write guard failed");
+            if (!Patches.Patch(_owner, AccessTools.Method(typeof(ES3Internal.ES3IO), "CommitBackup"), finalizer: AccessTools.Method(typeof(SaveSystem), "StorageError"))) throw new InvalidOperationException("Native disk failure observation hook failed");
+            if (!Patches.Patch(_owner, AccessTools.Method(typeof(ES3PlayMaker.PMDataWrapper), "ApplyVariables"), postfix: AccessTools.Method(typeof(SaveSystem), "LoadedPath"))) throw new InvalidOperationException("Save identity hook failed");
+            SaveCleanup.Install(owner);
+            SaveCombat.Install(owner); SaveWarning.Install(owner);
+            SinglePlayerSaving.Install(owner);
+            WorldHistory.Install(owner); SaveCompatibility.Install(owner);
             SaveBus.StateChanged += StateChanged;
-            Scheduler.Interval(null, "Singleplayer autosave warning", .25f, Tick);
+            Scheduler.Interval(owner, "Singleplayer autosave warning", .25f, Tick);
             Log.Always("[System] Autosave warnings: game-font compass countdown, 30/15-second notices, combat deferral and 3-second final warning");
             Installed = true;
             Log.Always("[System] Singleplayer saves ready: separate manual/autosaves, complete backups and interrupted-write recovery");
         }
+        /// <summary>Releases save event/config listeners after owned coroutines have been disposed.</summary>
+        internal static void Shutdown()
+        {
+            Installed = Ready = false;
+            Autosave.SettingChanged -= ScheduleChanged; Interval.SettingChanged -= ScheduleChanged;
+            Warning.SettingChanged -= ScheduleChanged; WhileDriving.SettingChanged -= ScheduleChanged;
+            SaveBus.StateChanged -= StateChanged;
+            SinglePlayerSaving.Shutdown(); SaveTerrain.Release(); SaveCombat.Shutdown();
+            WorldHistory.Shutdown(); SaveCompatibility.Shutdown(); SaveCleanup.Shutdown();
+            SaveWarning.Show(0);
+            if (Busy || _requested) Abort(new IOException("Saves stopped before the save completed; previous files retained"));
+            _requested = _automatic = _scheduled = _quitting = false;
+            _countdown = _lastWarning = _saveNow = -1; _session = _pendingNotice = null; _owner = null;
+        }
+        /// <summary>Real remaining scheduled delay, including the visible warning; negative while autosave is off.</summary>
+        internal static float AutosaveDueIn { get { return !Installed || !Autosave.Value || !LocalWorld ? -1 : Mathf.Max(0, (_countdown >= 0 ? _countdown : _nextAuto) - Time.unscaledTime); } }
+        /// <summary>Moves the next warning window earlier without bypassing combat, input or driving checks.</summary>
+        internal static void RequestAutosaveSoon()
+        {
+            if (!Installed || !Autosave.Value || !LocalReady || Busy || _requested || _quitting) return;
+            if (_session != ActiveFile) { _session = ActiveFile; Schedule(); }
+            _nextAuto = Mathf.Min(_nextAuto, Time.unscaledTime + Mathf.Min(Mathf.Max(30, Warning.Value), Interval.Value * 60));
+        }
+        /// <summary>Checks manual-save admission without mutating countdowns or combat state.</summary>
+        internal static bool CanSaveNow { get { return Installed && Ready && LocalReady && !Busy && !_requested && !_quitting && !SinglePlayerSaving.Serializing && RecoveryError == null && !ReloadRequired && _health() >= 1; } }
+        /// <summary>Recovers interrupted transactions before the save provider accepts writes.</summary>
         internal static void RecoverFiles()
         {
             if (Autosave == null) return;
@@ -100,7 +132,7 @@ namespace WildWasteland.Core
         static void StateChanged(string previous, string current)
         { if (current == "LoadGame" || current == "setSeed") { ReloadRequired = false; _session = null; _pendingNotice = null; } }
         static void Require(Type type, string method, string prefix)
-        { if (!Patches.Patch(null, AccessTools.Method(type, method), prefix: AccessTools.Method(typeof(SaveSystem), prefix))) throw new InvalidOperationException("System save hook failed: " + method); }
+        { if (!Patches.Patch(_owner, AccessTools.Method(type, method), prefix: AccessTools.Method(typeof(SaveSystem), prefix))) throw new InvalidOperationException("System save hook failed: " + method); }
         static void LoadedPath(Fsm fsm)
         {
             VehicleLoadPlacement.Loaded();
@@ -158,7 +190,7 @@ namespace WildWasteland.Core
         }
         internal static bool Request(string name, string overwrite = null, bool automatic = false, bool scheduled = false, string worldName = null)
         {
-            if (!LocalReady || Busy || _requested || _quitting) return false;
+            if (!Installed || !LocalReady || Busy || _requested || _quitting) return false;
             if (!Ready || RecoveryError != null || ReloadRequired) { Notify(RecoveryError ?? "Reload a save before saving again after a failed write."); return false; }
             if (_health() < 1) { Notify("Saving deferred while the player is dead."); return false; }
             if (string.IsNullOrEmpty(name) || name.Trim().Length == 0) { Notify("Enter a save name."); return false; }
@@ -411,8 +443,9 @@ namespace WildWasteland.Core
             target.SetActive(target.name == "Save_Game_slots"); return false;
         }
         
+        /// <summary>Uses the exit-save policy while enabled; disabled Saves leaves the caller's native exit untouched.</summary>
         internal static void SaveBeforeExit(Action then)
-        { if (!_quitting) { _quitting = true; Scheduler.StartCoroutine(Quit(then)); } }
+        { if (!Installed) { then(); return; } if (!_quitting) { _quitting = true; SaveRoutines.Start(Quit(then)); } }
         static IEnumerator Quit(Action leave)
         {
             try

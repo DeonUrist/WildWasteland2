@@ -1,0 +1,15 @@
+# Session compatibility bootstrap review (2026-10-22)
+
+Reviewed implementation `d55e941` together with real Saves consumer `fc10e4d` on coordinator `293efaa`. This is narrowly scoped bootstrap support, not completion of B17.
+
+The composition root registers the Apocasaver integration independently of ordinary Compatibility and Saves switches. Plugin bootstrap invokes it before starting modules. Its patches use the Core/session Harmony id; module cleanup unpatches only GUID.ModuleId. Therefore turning either module off cannot accidentally revive the standalone save engine.
+
+The takeover resolves all required plugin/runner methods, optional HandPose methods and current runner behaviours before applying guards. Guards install before removal of either foreign Harmony owner. Patch failure before that irreversible boundary removes each exact attempted guard in reverse order; failed rollback is explicitly logged. Once foreign removal starts, failure retains guards and aborts remaining bootstrap with a latched failure requiring restart. It never retries a partial destructive takeover. Unknown required standalone layouts fail before foreign patches are removed. An absent standalone plugin is a successful no-op.
+
+The pose store keeps the exact apocasaver.pose.<item> key, null semantics and cache-before-file lookup. Writes normalize null values, and the save transaction explicitly persists them. SaveBus.Generation fences the store even while Saves is disabled, so data cannot leak between scenes/world loads; same-world disable/re-enable retains valid pending writes. The Saves consumer clears at load/new-world boundaries and serializes into the active cache.
+
+Native menu interception is owned by Saves, checks installation and is removed with the module. With Saves disabled, native SaveGame1..10 entries remain available; permanent standalone suppression does not depend on a custom save menu being enabled. The reviewed follow-up also rejects disabling Saves during pending native save/load/recovery work. These guarantees preserve the base game's save path, not accessibility of WW named snapshots through native slots.
+
+Validation: targeted summary checker reports zero missing summaries in the three new implementation files. The B17 reference checker still reports 33 pre-existing cross-module references elsewhere; none is introduced in ApocasaverSession. Coordinator Release/Deploy=false build at 293efaa was independently run by save_review: zero warnings/errors; partial checker 178 declarations, zero missing implementations. Review found no blocking defect in the seven-path session takeover change. No game, harness, deployment or runtime takeover test was run. Runtime behavior of unknown third-party versions remains unverified.
+
+Ownership exception: Core/Boot/SessionIntegrations.cs, Core/Persistence/SessionMetadata.cs, Core/Boot/ModuleRegistry.cs and Core/Boot/Plugin.cs are composition/persistence infrastructure; implementation remains under Compatibility/Apocasaver. The deleted exclusion and split pose partial were replaced rather than retained as duplicate installers.

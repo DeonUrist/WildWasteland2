@@ -4,7 +4,7 @@ using System.Reflection;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS4: exact C# copy of PlayMaker's private ActionData.LoadActionField (PlayMaker.dll, Sources
@@ -19,6 +19,7 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     internal static class ActionDataPort
     {
+        /// <summary>Creates a typed delegate for one private ActionData helper retained by the vanilla-equivalent loader.</summary>
         static T M<T>(string name) where T : class
         {
             var mi = typeof(ActionData).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
@@ -66,9 +67,12 @@ namespace WildWasteland.Modules.Performance
         /// <summary>Touches the static initializer (all delegates/getters resolve or throw here, before patching).</summary>
         internal static void Check() { if (_setNext == null || _LoadArrayElement == null) throw new Exception("ActionData members missing"); }
 
+        /// <summary>Uses the shared compiled field setter with its safe reflection fallback.</summary>
         static void Set(FieldInfo field, object obj, object value) { FastActionLoadFeature.SetField(field, obj, value); }
+        /// <summary>Creates a serialized action value through the shared compiled constructor cache.</summary>
         static object New(Type t) { return FastActionLoadFeature.Create(t); }
 
+        /// <summary>Loads one serialized PlayMaker action field with the native type/index rules and compiled access helpers.</summary>
         internal static void Load(ActionData self, Fsm fsm, object obj, FieldInfo field, int paramIndex)
         {
             Type fieldType = field.FieldType;

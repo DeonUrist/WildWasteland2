@@ -185,7 +185,7 @@ namespace WildWasteland.Modules.NPC
                 }
             }
             int labels = Gungirl.Label(root);
-            if (NpcModule.VerboseLog.Value || Core.Log.Verbose)
+            if (WildWasteland.Core.Log.L2 || Core.Log.Verbose)
                 NpcModule.Verbose("Female voice: " + root.name + " - " + n + " sound reference(s) replaced, " + timers + " shout timer(s) set" + (labels > 0 ? ", label set" : ""));
             _current = null;
             return true;

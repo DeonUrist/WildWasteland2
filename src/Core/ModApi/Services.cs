@@ -58,7 +58,7 @@ namespace WildWasteland.Core
 
         /// <summary>(Guns) reports combat activity to the autosave deferral.</summary>
         [Obsolete("refactor: publish the CombatActivity event")]
-        internal static void ReportCombat() { SaveCombat.Activity(); }
+        internal static void ReportCombat() { var activity = new Events.CombatActivity { Actor = EntityId.None, Kind = Events.CombatActivityKind.Attack }; ModEvents.Publish(ref activity); }
 
         /// <summary>Guns (Guns / Gunplay). Null when the provider is off.</summary>
         [Obsolete("refactor: use ModApi.Get<IGunsApi>() / IWeaponCatalog / IWeaponStats")]

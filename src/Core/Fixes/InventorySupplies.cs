@@ -8,16 +8,31 @@ namespace WildWasteland.Core
     // Native local supply counts and save-registered partial drops.
     internal static class InventorySupplies
     {
+        static readonly FixOwner Owner = new FixOwner("InventorySupplies");
+        static bool _installed;
         internal static readonly string[] Keys = { "arrow", "22caliber", "9mm", "20gauge", "12gauge", "556", "762", "3006", "grenade", "battery", "nuts", "bandage", "first_aid" };
         static readonly string[] Prefabs = { "ammo_arrow", "ammo_box_22", "ammo_box_9mm", "ammo_box_20gauge", "ammo_box_12gauge", "ammo_box_556mm", "ammo_box_762mm", "ammo_box_3006", "grenade", "flashlight_batteries", "tin_can_nuts", "bandage_1", "first_aid_1" };
+        /// <summary>Cached native quick-slot, source-item and quantity handles for one medical supply.</summary>
         sealed class MedicalSupply { internal PlayMakerFSM Slot, QuantityFsm; internal FsmGameObject Item; internal GameObject Source; internal FsmInt Quantity; }
         static readonly MedicalSupply[] Medical = { new MedicalSupply(), new MedicalSupply() };
         static PlayMakerFSM _ammo;
         static readonly Dictionary<string, GameObject> PrefabCache = new Dictionary<string, GameObject>();
         static ES3Internal.ES3ReferenceMgrBase _manager;
         static int _scan;
-        internal static bool Ready { get { return SaveSystem.LocalReady && !SinglePlayerSaving.Serializing && SaveRuntime.Health() >= 1; } }
-        internal static void Install() { Scheduler.Sliced(null, "Inventory supply prefabs", 500, Discover); }
+        internal static bool Ready { get { var saves = ModApi.Get<ISaves>(); return GameRefs.Player != null && GameRefs.SaveLoadGame != null && SaveBus.State == "isPlay" && (saves == null || !saves.Busy) && PlayerState.Health >= 1; } }
+        /// <summary>Starts bounded native supply-prefab discovery once.</summary>
+        internal static void Install()
+        {
+            if (_installed) return; _installed = true;
+            Scheduler.Sliced(Owner, "Core.Fixes.InventorySupplies.Discover", 500, Discover);
+        }
+        /// <summary>Stops prefab discovery and releases native scene references.</summary>
+        internal static void Remove()
+        {
+            Owner.Remove(); _installed = false; _manager = null; _scan = 0; _ammo = null; PrefabCache.Clear();
+            foreach (var supply in Medical) { supply.Slot = supply.QuantityFsm = null; supply.Item = null; supply.Source = null; supply.Quantity = null; }
+        }
+        /// <summary>Indexes one native prefab per slice and restarts discovery when the reference manager changes.</summary>
         static bool Discover()
         {
             var manager = ES3Internal.ES3ReferenceMgrBase.Current;
@@ -28,6 +43,7 @@ namespace WildWasteland.Core
             if (prefab != null && Array.IndexOf(Prefabs, prefab.name) >= 0) PrefabCache[prefab.name] = prefab.gameObject;
             return true;
         }
+        /// <summary>Returns the native supply counter for an ammo, currency or medical kind.</summary>
         internal static FsmInt Count(int kind)
         {
             if (kind < 0 || kind >= Keys.Length) return null;
@@ -36,6 +52,7 @@ namespace WildWasteland.Core
             if (_ammo == null && GameRefs.GameManager != null) _ammo = FsmUtil.Find(GameRefs.GameManager, "Ammo");
             return _ammo != null ? _ammo.FsmVariables.FindFsmInt("ammo_" + Keys[kind]) : null;
         }
+        /// <summary>Resolves and caches the selected native medical quick-slot and its held item.</summary>
         static MedicalSupply ReadMedical(int kind)
         {
             var supply = Medical[kind - 11];
@@ -55,6 +72,7 @@ namespace WildWasteland.Core
             }
             return supply;
         }
+        /// <summary>Creates save-registered native supply items transactionally, subtracting held supplies only after successful creation.</summary>
         internal static bool Drop(int kind, int quantity)
         {
             var count = Count(kind);

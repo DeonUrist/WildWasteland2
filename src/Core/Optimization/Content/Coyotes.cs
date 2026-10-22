@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT8 (plan §7, research B §3.7): every hit on a Coyote sends FactionCoyotesEnemy to __GameManager__ (weapon CheckFriendly,
@@ -22,11 +22,17 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class CoyoteBroadcastFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT8"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Coyote broadcast"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Coyote faction broadcast"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 8; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Repeated hits on Coyotes no longer re-broadcast the hostility event to every FSM in the game, only to those still friendly."; } }
 
         internal static bool On;
@@ -36,16 +42,21 @@ namespace WildWasteland.Modules.Performance
         internal static long Repeats, Delivered, Firsts;
         const string EventName = "FactionCoyotesEnemy";
 
+        /// <summary>Registers the feature's shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { Hooks.ProcessEvent.Prefix(Module, BeforeEvent); }
 
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
             FsmEdits.Watch(this, "FactionRelation_Coyotes", "__GameManager__", Ready);
         }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; _coyote = null; FsmEdits.Unwatch(this); _undo.RevertAll(); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _coyote = null; _undo.Prune(); }
 
+        /// <summary>Validates and replaces only the authored hostile-state broadcast action in the Coyote faction FSM.</summary>
         void Ready(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -61,6 +72,7 @@ namespace WildWasteland.Modules.Performance
         }
 
         // Hooks.ProcessEvent prefix (never skips): remember that FactionCoyotesEnemy reached the faction FSM while already hostile.
+        /// <summary>ProcessEvent prefix: records repeat hostility only for the active Coyote faction FSM; always allows native processing.</summary>
         static bool BeforeEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             if (!On || !ReferenceEquals(fsm, _coyote) || ev == null) return true;
@@ -75,7 +87,9 @@ namespace WildWasteland.Modules.Performance
         sealed class RepeatBroadcast : ProxyAction
         {
             readonly SendEvent _se;
+            /// <summary>Retains the original SendEvent action for the targeted repeat-broadcast wrapper.</summary>
             public RepeatBroadcast(SendEvent se) : base(se) { _se = se; }
+            /// <summary>Keeps the first native broadcast; repeat hostile hits target only receivers that still need the transition.</summary>
             protected override void Enter()
             {
                 var fsm = Fsm;
@@ -119,6 +133,7 @@ namespace WildWasteland.Modules.Performance
             _targets.Clear();
         }
 
+        /// <summary>Checks whether the event can change this receiver's state, preserving initial native startup handling.</summary>
         static bool WouldMove(Fsm fsm, string name)
         {
             if (!fsm.Started) return HasHandler(fsm, name);         // vanilla's ProcessEvent would also Start() it
@@ -131,6 +146,7 @@ namespace WildWasteland.Modules.Performance
             return false;
         }
 
+        /// <summary>Checks global transitions on an unstarted receiver before targeting a repeat broadcast.</summary>
         static bool HasHandler(Fsm fsm, string name)
         {
             var g = fsm.GlobalTransitions;
@@ -138,6 +154,7 @@ namespace WildWasteland.Modules.Performance
             return false;
         }
 
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("First broadcasts (vanilla) / repeats targeted", Firsts + " / " + Repeats);

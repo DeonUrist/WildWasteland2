@@ -5,7 +5,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// RC2 (research C §1 "Renderers", §2 Tier 1.4, §3). Only 60 prefab + 24 scene LODGroups exist for 11k renderers, so most props
@@ -21,15 +21,23 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class CullLods : Feature, IScanClient
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "RC2"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Size culling"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Cull-only LOD groups and LOD bias"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 8; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Props and buildings without LODs stop rendering when they are only a few pixels tall; LOD bias follows the preset."; } }
 
         Knob _bias, _scale;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _bias = NewKnob(cfg, "LOD bias", "QualitySettings.lodBias cap (vanilla Ultra 2).", 0.8f, 1.2f, 2f, 2f);
@@ -38,6 +46,7 @@ namespace WildWasteland.Modules.Performance
 
         // exact marker heights: vanilla groups use 0.004-0.018 but never these values
         const float H1 = 0.0120123f, H2 = 0.0060123f, H3 = 0.0030123f;
+        /// <summary>Recognizes only the exact preset heights previously authored by this optimization.</summary>
         static bool IsInjectedHeight(float h, float scale) { return h == H1 * scale || h == H2 * scale || h == H3 * scale; }
 
         readonly List<LODGroup> _assetGroups = new List<LODGroup>();
@@ -49,8 +58,10 @@ namespace WildWasteland.Modules.Performance
         readonly List<PlayMakerFSM> _fbuf = new List<PlayMakerFSM>();
         float _usedScale = 1f;
         public static int Failed;
+        /// <summary>Requests root geometry from the shared render scan for bounded LOD-group authoring.</summary>
         public ScanTypes Types { get { return ScanTypes.Roots; } }
 
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             _usedScale = Mathf.Clamp(_scale.Value, 0.1f, 10f);
@@ -58,6 +69,7 @@ namespace WildWasteland.Modules.Performance
             RenderScan.Register(this);
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             RenderScan.Unregister(this);
@@ -66,10 +78,11 @@ namespace WildWasteland.Modules.Performance
             // instances that inherited a group from an edited asset
             var all = Resources.FindObjectsOfTypeAll<LODGroup>();
             for (int i = 0; i < all.Length; i++) if (all[i] != null && all[i].gameObject.scene.IsValid() && Injected(all[i])) UnityEngine.Object.Destroy(all[i]);
-            for (int i = 0; i < _assetGroups.Count; i++) if (_assetGroups[i] != null) { try { UnityEngine.Object.DestroyImmediate(_assetGroups[i], true); } catch (Exception e) { Log.Warn("[Performance] RC2 asset restore: " + e.Message); } }
+            for (int i = 0; i < _assetGroups.Count; i++) if (_assetGroups[i] != null) { try { UnityEngine.Object.DestroyImmediate(_assetGroups[i], true); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "RC2 asset restore: " + e.Message); } }
             _assetGroups.Clear(); _instGroups.Clear(); _done.Clear();
         }
 
+        /// <summary>Recognizes only single-level cull groups matching this feature's authored heights.</summary>
         bool Injected(LODGroup g)
         {
             if (g.lodCount != 1 || g.fadeMode != LODFadeMode.None) return false;
@@ -77,25 +90,30 @@ namespace WildWasteland.Modules.Performance
             return lods.Length == 1 && IsInjectedHeight(lods[0].screenRelativeTransitionHeight, _usedScale);
         }
 
+        /// <summary>Checks whether a LODGroup belongs to the active cull-only optimization.</summary>
         internal static bool Owns(LODGroup group)
         {
-            var module = PerformanceModule.Instance;
+            var module = OptimizationRuntime.Instance;
             if (module != null) foreach (var feature in module.Features)
             { var cull = feature as CullLods; if (cull != null && cull.Injected(group)) return true; }
             return false;
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged() { QualityGuard.Set(QualityGuard.Q.LodBias, _bias.Value); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _done.Clear(); RenderScan.RequestFull(); }
+        /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { RenderScan.RequestFull(); }
 
+        /// <summary>Shared root scan: adds simple cull-only LOD groups only to eligible static geometry without authored native LODs.</summary>
         public void OnRoot(Transform root, ref ScanCtx c)
         {
             if (c.Player || c.Saved || c.Vehicle) return;
             var go = root.gameObject;
             // RC9 supplies persistent flat wall panels; a cull-only parent would hide those as well.
             if (go.name.StartsWith("Towns perimeter ", StringComparison.Ordinal))
-                foreach (var feature in PerformanceModule.Instance.Features) if (feature is GeneratedLods && feature.IsOn) return;
+                foreach (var feature in OptimizationRuntime.Instance.Features) if (feature is GeneratedLods && feature.IsOn) return;
             if (!_done.Add(root.GetInstanceID())) return;
             if (!c.Asset && go.scene.buildIndex < 0) return;          // DontDestroyOnLoad / mod objects
             if (go.layer == 12) return;
@@ -135,7 +153,7 @@ namespace WildWasteland.Modules.Performance
             float h = (worldSize < 1f ? H1 : worldSize < 5f ? H2 : H3) * _usedScale;
             LODGroup g;
             try { g = go.AddComponent<LODGroup>(); }
-            catch (Exception e) { Failed++; Log.Warn("[Performance] RC2 AddComponent: " + e.Message); _keep.Clear(); return; }
+            catch (Exception e) { Failed++; Log.Warn(OptimizationRuntime.Instance, "RC2 AddComponent: " + e.Message); _keep.Clear(); return; }
             if (g == null) { Failed++; _keep.Clear(); return; }
             g.fadeMode = LODFadeMode.None;
             g.animateCrossFading = false;
@@ -145,6 +163,7 @@ namespace WildWasteland.Modules.Performance
             _keep.Clear();
         }
 
+        /// <summary>Rejects saved/interactive roots identified by native ID FSMs before injecting a static cull group.</summary>
         bool HasIdFsm(Transform t)
         {
             t.GetComponents(_fbuf);
@@ -168,16 +187,22 @@ namespace WildWasteland.Modules.Performance
             return rr != null && !rr.isKinematic;
         }
 
+        /// <summary>This scan client does not modify lights.</summary>
         public void OnLight(Light l, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify mesh renderers.</summary>
         public void OnRenderer(MeshRenderer r, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify particle systems.</summary>
         public void OnParticles(ParticleSystem p, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify animators.</summary>
         public void OnAnimator(Animator a, ref ScanCtx c) { }
+        /// <summary>Prunes references to destroyed injected groups after a shared scan pass.</summary>
         public void OnPassDone()
         {
             for (int i = _instGroups.Count - 1; i >= 0; i--) if (_instGroups[i] == null) _instGroups.RemoveAt(i);
             if (_done.Count > 50000) _done.Clear();
         }
 
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Injected LOD groups", _assetGroups.Count + " prefabs, " + _instGroups.Count + " live objects" + (Failed > 0 ? ", " + Failed + " failed" : ""));

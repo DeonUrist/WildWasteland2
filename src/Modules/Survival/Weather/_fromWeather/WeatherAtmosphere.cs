@@ -90,7 +90,7 @@ namespace WildWasteland.Modules.Weather
         private void BeforeCamera(Camera camera)
         {
             if (camera != _camera) return;
-            if (WeatherDiagnostics.PendingCamera) WeatherDiagnostics.CameraRecord(camera,Shader.GetGlobalFloat("_WWWeatherClock"));
+            if (WeatherDiagnosticState.PendingCamera) WeatherDiagnosticState.CameraRecord(camera,Shader.GetGlobalFloat("_WWWeatherClock"));
             Matrix4x4 view = camera.worldToCameraMatrix.inverse;
             Vector3 eye = view.MultiplyPoint3x4(Vector3.zero);
             Shader.SetGlobalMatrix(Projection, camera.projectionMatrix.inverse); Shader.SetGlobalMatrix(View, view); Shader.SetGlobalVector(Eye, eye);
@@ -115,7 +115,7 @@ namespace WildWasteland.Modules.Weather
             }
             _inside = Mathf.Lerp(_inside, target, 1 - Mathf.Exp(-Time.deltaTime * 1.5f));
             Shader.SetGlobalFloat(Inside, _inside); Shader.SetGlobalVector(Wind, wind);
-            float darkness = WeatherDiagnostics.Atmosphere ? WeatherPalette.Darkening*(_inside > .995f ? 1 : _inside) : 0;
+            float darkness = WeatherDiagnosticState.Atmosphere ? WeatherPalette.Darkening*(_inside > .995f ? 1 : _inside) : 0;
             Shader.SetGlobalFloat("_WWStormDarkening",darkness);
             bool dark = darkness > .0001f;
             if (dark != _darkAttached)
@@ -124,7 +124,7 @@ namespace WildWasteland.Modules.Weather
                 else camera.RemoveCommandBuffer(CameraEvent.AfterImageEffects,_darkCommands);
                 _darkAttached = dark;
             }
-            _wind = wind; _sky.SetAmount(WeatherDiagnostics.SkyScope ? Mathf.Max(_inside,approach*.85f) : 0);
+            _wind = wind; _sky.SetAmount(WeatherDiagnosticState.SkyScope ? Mathf.Max(_inside,approach*.85f) : 0);
             _dustStrength = Mathf.Lerp(_dustStrength,Mathf.Max(_inside,dust*.5f),1-Mathf.Exp(-Time.deltaTime*1.5f));
             Shader.SetGlobalFloat("_WWWeatherApproach",approach);
             int state = _inside < .02f ? 0 : _inside > .9f ? 2 : 1;

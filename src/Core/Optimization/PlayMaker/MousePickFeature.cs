@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// PM7 (plan §4, research B: 22 camera MousePick pairs with 13 masks, ~40 raycasts/frame). Vanilla
@@ -25,12 +25,19 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class MousePickFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "PM7"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Shared camera pick"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "One camera pick raycast per frame"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 7; } }
+        /// <summary>Whether this feature can compare optimized answers while leaving the native path active.</summary>
         public override bool SupportsShadow { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "The ~40 cursor raycasts the game's FSMs make every frame (one per layer mask) share one raycast. Same hits."; } }
 
         internal static bool On, Shadow;
@@ -52,28 +59,34 @@ namespace WildWasteland.Modules.Performance
         static int _unionMask;
         static float _maxDist;
 
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("ActionHelpers.DoMousePick patch failed");
             _inst = this; _valid = false; _unionMask = 0; _maxDist = 0;
             Shadow = mode == FeatureMode.Shadow; On = mode == FeatureMode.On;
         }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = Shadow = false; _valid = false; _cam = null; Array.Clear(_hits, 0, _hits.Length); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _valid = false; _cam = null; _unionMask = 0; _maxDist = 0; Array.Clear(_hits, 0, _hits.Length); }
 
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Union mask / distance", "0x" + _unionMask.ToString("X8") + " / " + _maxDist.ToString("0.#"));
         }
 
+        /// <summary>Separates cached ray answers for physics steps from rendered-frame input queries.</summary>
         static float PhaseKey() { return Time.inFixedTimeStep ? Time.fixedTime : -1f; }
 
+        /// <summary>Fills the reusable union-mask ray buffer, expanding only if native results were truncated.</summary>
         static void Cast(Camera cam, Ray ray)
         {
             for (;;)
             {
                 _n = Physics.RaycastNonAlloc(ray, _hits, _maxDist, _unionMask, QueryTriggerInteraction.UseGlobal);
-                Telemetry.PickCasts++;
+                OptimizationMetrics.PickCasts++;
                 if (_n < _hits.Length) break;
                 _hits = new RaycastHit[_hits.Length * 2];   // full buffer = results truncated arbitrarily: cast again
             }
@@ -102,9 +115,10 @@ namespace WildWasteland.Modules.Performance
             return best;
         }
 
+        /// <summary>Reuses a ray answer only when camera, phase, ray, layer mask and distance coverage still match.</summary>
         static bool Answer(Camera cam, Ray ray, float distance, int layerMask, out RaycastHit hit)
         {
-            Telemetry.PickQueries++;
+            OptimizationMetrics.PickQueries++;
             hit = default(RaycastHit);
             bool fresh = _valid && _frame == Time.frameCount && _phase == PhaseKey() && ReferenceEquals(_cam, cam)
                 && (layerMask & ~_castMask) == 0 && distance <= _castDist;
@@ -128,6 +142,7 @@ namespace WildWasteland.Modules.Performance
             return true;
         }
 
+        /// <summary>Checks collider identity and hit geometry for native-versus-optimized Shadow comparison.</summary>
         static bool SameHit(RaycastHit a, RaycastHit b)
         {
             // PhysX's single-hit and multi-hit terrain queries can differ in the last float bits. Require the same
@@ -140,6 +155,7 @@ namespace WildWasteland.Modules.Performance
         [HarmonyPatch]
         static class Patch
         {
+            /// <summary>Native mouse-pick prefix: yields while disabled and preserves the helper's native result fields and Shadow behavior.</summary>
             [HarmonyPatch(typeof(ActionHelpers), "DoMousePick"), HarmonyPrefix]
             static bool DoMousePickPre(float distance, int layerMask)
             {

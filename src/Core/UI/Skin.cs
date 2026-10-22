@@ -12,9 +12,18 @@ namespace WildWasteland.Core.UI
     //  Everything is sized by S (1 = a 1280x720 screen) so text stays sharp.
     //  The older Theme class stays as it is for Apocaspawner / Apocasaver.
     // =====================================================================
+    /// <summary>Loads the game-themed Mods window assets and supplies scaled styles and drawing helpers.</summary>
     public static class Skin
     {
         public static string Dir;
+        static float _nextFontAsk;
+        /// <summary>Requests the optional native menu font at most once per second until captured.</summary>
+        public static void EnsureGameFont()
+        {
+            if (GameFont != null || Time.unscaledTime < _nextFontAsk) return;
+            _nextFontAsk = Time.unscaledTime + 1f;
+            var font = ApocasetterBridge.GameFont; if (font != null) SetGameFont(font);
+        }
         public static Font GameFont;           // picked up from the cloned MODS button, if it uses a legacy Font
         public static float S { get; private set; }
 
@@ -31,18 +40,20 @@ namespace WildWasteland.Core.UI
         private static float _builtFor = -1;
         private static readonly List<UnityEngine.Object> _keep = new List<UnityEngine.Object>();
 
+        /// <summary>Resolves the game theme directory beside the supplied plugin DLL.</summary>
         public static void Init(string pluginDll)
         {
             Dir = Path.Combine(Path.Combine(Path.GetDirectoryName(pluginDll) ?? ".", "theme"), "game");
         }
 
-        /// Call at the top of OnGUI.
+        /// <summary>Loads assets and rebuilds styles for the requested scale; call before drawing each OnGUI pass.</summary>
         public static void Ensure(float s)
         {
             if (!_loaded) Load();
             if (Mathf.Abs(s - _builtFor) > 0.001f) Build(s);
         }
 
+        /// <summary>Loads theme images, generated control textures and fallback fonts once, retaining their Unity objects.</summary>
         private static void Load()
         {
             _loaded = true;
@@ -72,7 +83,7 @@ namespace WildWasteland.Core.UI
             foreach (var f in new[] { _body, _bold, _display }) if (f != null) _keep.Add(f);
         }
 
-        /// The game font may only be found after the menu exists; rebuild the styles then.
+        /// <summary>Adopts a newly discovered game menu font and invalidates loaded styles for the next drawing pass.</summary>
         public static void SetGameFont(Font f)
         {
             if (f == null || f == GameFont) return;
@@ -80,8 +91,10 @@ namespace WildWasteland.Core.UI
             if (_loaded) { _display = f; _builtFor = -1; WildWasteland.Core.Log.Info("Mods window: switched to the game's menu font '" + f.name + "'"); }
         }
 
+        /// <summary>Scales a font size by the current UI scale and rounds it to at least eight pixels.</summary>
         private static int F(float px) { return Mathf.Max(8, Mathf.RoundToInt(px * S)); }
 
+        /// <summary>Creates a scaled white text style with the requested font, alignment and wrapping.</summary>
         private static GUIStyle Text(Font f, float size, TextAnchor a = TextAnchor.MiddleLeft, bool wrap = false)
         {
             var st = new GUIStyle(GUIStyle.none) { font = f, fontSize = F(size), alignment = a, wordWrap = wrap, richText = false, clipping = TextClipping.Clip };
@@ -89,6 +102,7 @@ namespace WildWasteland.Core.UI
             return st;
         }
 
+        /// <summary>Rebuilds the shared control styles for the requested scale using the loaded textures and fonts.</summary>
         private static void Build(float s)
         {
             S = s; _builtFor = s;
@@ -129,12 +143,13 @@ namespace WildWasteland.Core.UI
         }
 
         // ---------------------------------------------------------------- drawing helpers
+        /// <summary>Draws a solid rectangle with the shared pixel texture and restores the previous GUI tint.</summary>
         public static void Fill(Rect r, Color c)
         {
             var old = GUI.color; GUI.color = c; GUI.DrawTexture(r, Px); GUI.color = old;
         }
 
-        /// White-on-black outlined text, the way the game draws its menu labels.
+        /// <summary>Draws text over a black outline scaled to the UI, restoring the previous GUI content color.</summary>
         public static void Out(Rect r, string text, GUIStyle st, Color c, float t = 1f)
         {
             var old = GUI.contentColor;
@@ -150,20 +165,23 @@ namespace WildWasteland.Core.UI
             GUI.contentColor = old;
         }
 
+        /// <summary>Draws a label with a temporary content color and restores the previous GUI content color.</summary>
         public static void Label(Rect r, string text, GUIStyle st, Color c)
         {
             var old = GUI.contentColor; GUI.contentColor = c; GUI.Label(r, text, st); GUI.contentColor = old;
         }
 
+        /// <summary>Draws the dark window background and overlays the rust texture when it is available.</summary>
         public static void RustBack(Rect r)
         {
             Fill(r, Hex("141110"));
             if (Rust != null) GUI.DrawTexture(r, Rust, ScaleMode.ScaleAndCrop);
         }
 
-        /// IMGUI centres a font's whole line box (ascent + descent), so digits and capitals sit off-centre with fonts that have a big
-        /// descent or ascent. Shift the content by padding so the sample glyphs' own middle lands on the rect's middle.
+        // IMGUI centres a font's whole line box (ascent + descent), so digits and capitals sit off-centre with fonts that have a big
+        // descent or ascent. Shift the content by padding so the sample glyphs' own middle lands on the rect's middle.
         private static readonly HashSet<string> _centerLogged = new HashSet<string>();
+        /// <summary>Adjusts style padding so the visible bounds of the sample glyphs are vertically centered within the control.</summary>
         public static void CenterText(GUIStyle st, string sample)
         {
             try
@@ -194,6 +212,7 @@ namespace WildWasteland.Core.UI
         }
 
         private static GUIStyle _slotStyle;
+        /// <summary>Lazily creates the bordered slot style using the loaded slot texture.</summary>
         private static GUIStyle SlotStyle
         {
             get
@@ -204,6 +223,7 @@ namespace WildWasteland.Core.UI
         }
 
         // ---------------------------------------------------------------- textures
+        /// <summary>Loads a theme texture with bilinear filtering and the requested wrapping, logging failures and returning null.</summary>
         private static Texture2D Tex(string file, bool repeat = false)
         {
             var path = Path.Combine(Dir, file);
@@ -221,6 +241,7 @@ namespace WildWasteland.Core.UI
             catch (Exception e) { WildWasteland.Core.Log.Warn("Mods window: " + file + ": " + e.Message); return null; }
         }
 
+        /// <summary>Creates a brightness-scaled texture while preserving alpha, returning the original texture if copying fails.</summary>
         private static Texture2D Tint(Texture2D src, float k)
         {
             if (src == null) return null;
@@ -236,6 +257,7 @@ namespace WildWasteland.Core.UI
             catch { return src; }
         }
 
+        /// <summary>Creates and retains a two-by-two texture filled with a single color.</summary>
         private static Texture2D Solid(Color c)
         {
             var t = new Texture2D(2, 2, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
@@ -243,6 +265,7 @@ namespace WildWasteland.Core.UI
             return t;
         }
 
+        /// <summary>Creates and retains a point-filtered square texture with an explicit border width and interior color.</summary>
         private static Texture2D Boxed(int n, Color border, Color inner, int bw)
         {
             var t = new Texture2D(n, n, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
@@ -253,6 +276,7 @@ namespace WildWasteland.Core.UI
             return t;
         }
 
+        /// <summary>Creates and retains a repeating diagonal yellow and dark hazard texture.</summary>
         private static Texture2D Stripes()
         {
             const int n = 32;
@@ -264,6 +288,7 @@ namespace WildWasteland.Core.UI
             return t;
         }
 
+        /// <summary>Parses an RGB or RGBA hexadecimal string without its hash prefix, returning magenta on failure.</summary>
         public static Color Hex(string h)
         {
             Color c;

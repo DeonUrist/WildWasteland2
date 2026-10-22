@@ -7,7 +7,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// PM10 (plan §4, research A §3 #14: ConvertFloatToString 225 uses / 191 everyFrame, ConvertIntToString 8; HUD FSMs).
@@ -21,12 +21,19 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class StringConvertFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "PM10"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Number to text"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Reuse unchanged number strings"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 10; } }
+        /// <summary>Whether this feature can compare optimized answers while leaving the native path active.</summary>
         public override bool SupportsShadow { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "HUD FSMs format the same number into a new string every frame; the previous string is reused while the number is unchanged. Same text, less garbage."; } }
 
         internal static bool On, Shadow;
@@ -36,17 +43,22 @@ namespace WildWasteland.Modules.Performance
         [StructLayout(LayoutKind.Explicit)]
         struct Bits { [FieldOffset(0)] public float F; [FieldOffset(0)] public int I; }
 
+        /// <summary>Caches an integer, format/provider identity and its previously formatted string.</summary>
         sealed class Entry { public int Value; public string Format; public NumberFormatInfo Nfi; public string Result; }
         static readonly Dictionary<FsmStateAction, Entry> _cache = new Dictionary<FsmStateAction, Entry>(RefComparer<FsmStateAction>.Instance);
 
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("ConvertFloatToString / ConvertIntToString patch failed");
             _inst = this; _cache.Clear();
             Shadow = mode == FeatureMode.Shadow; On = mode == FeatureMode.On;
         }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = Shadow = false; _cache.Clear(); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _cache.Clear(); }
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Conversions / reused", Calls + " / " + Reused + " (cached actions " + _cache.Count + ")"); }
 
         /// <summary>The cached string when (value, format, culture) match the previous call of this action, else null.</summary>
@@ -63,6 +75,7 @@ namespace WildWasteland.Modules.Performance
             return null;
         }
 
+        /// <summary>Updates a cached formatting tuple after the native conversion inputs change.</summary>
         static void Store(Entry e, int value, string format, NumberFormatInfo nfi, string result)
         {
             e.Value = value; e.Format = format; e.Nfi = nfi; e.Result = result;
@@ -71,6 +84,7 @@ namespace WildWasteland.Modules.Performance
         [HarmonyPatch]
         static class Patch
         {
+            /// <summary>Float-to-string prefix: skips formatting only for an unchanged exact input/format tuple; Shadow keeps native conversion.</summary>
             [HarmonyPatch(typeof(ConvertFloatToString), "DoConvertFloatToString"), HarmonyPrefix]
             static bool FloatPre(ConvertFloatToString __instance)
             {
@@ -97,6 +111,7 @@ namespace WildWasteland.Modules.Performance
                 return false;
             }
 
+            /// <summary>Int-to-string prefix: skips formatting only for an unchanged exact input/format tuple; Shadow keeps native conversion.</summary>
             [HarmonyPatch(typeof(ConvertIntToString), "DoConvertIntToString"), HarmonyPrefix]
             static bool IntPre(ConvertIntToString __instance)
             {

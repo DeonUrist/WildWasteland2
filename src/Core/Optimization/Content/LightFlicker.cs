@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT6 (plan §7, research B §2 #7): ~60 LightFlicker FSMs (and the identical "FSM" on the Light_Flicker prefab) compute
@@ -19,21 +19,30 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class LightFlickerFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT6"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Light flicker"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Light flicker manager"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 6; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Flickering camp lights update at a fixed rate and only near the camera instead of every frame everywhere."; } }
 
         Knob _hz, _dist;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _hz = NewKnob(cfg, "Rate (Hz)", "Flicker update rate.", 15f, 20f, 30f, 0f);
             _dist = NewKnob(cfg, "Distance (m)", "Lamps farther from the camera keep their last intensity.", 120f, 200f, 300f, 0f);
         }
 
+        /// <summary>Retains one native light FSM's original state and transform for distance-based stepping.</summary>
         sealed class Lamp { public PlayMakerFSM Comp; public Fsm Fsm; public FsmState State; public Light Light; public Transform T; public float Next; }
         readonly List<Lamp> _lamps = new List<Lamp>(64);
         static bool On;
@@ -41,15 +50,17 @@ namespace WildWasteland.Modules.Performance
         float _interval, _dist2;
         internal static long Steps;
 
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
             Apply();
             FsmEdits.Watch(this, "LightFlicker", null, Ready);
             FsmEdits.Watch(this, "FSM", null, Ready);      // generic name: Ready keeps only the exact flicker shape
-            _job = Scheduler.EveryFrame(Module, "Performance.LightFlicker", Tick);
+            _job = Scheduler.EveryFrame(Module, "Core.Optimization.LightFlicker", Tick);
         }
 
+        /// <summary>Resolves the current preset's light flicker frequency and distance limits.</summary>
         void Apply()
         {
             float hz = Mathf.Max(1f, _hz.Value);
@@ -57,8 +68,10 @@ namespace WildWasteland.Modules.Performance
             float d = Mathf.Max(1f, _dist.Value); _dist2 = d * d;
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged() { Apply(); }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             On = false;
@@ -68,6 +81,7 @@ namespace WildWasteland.Modules.Performance
             _lamps.Clear();
         }
 
+        /// <summary>Registers only validated native flicker FSMs, retaining their original update behavior for restoration.</summary>
         void Ready(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -81,6 +95,7 @@ namespace WildWasteland.Modules.Performance
             _lamps.Add(lamp);
         }
 
+        /// <summary>Updates eligible nearby lights at the configured cadence and restores lights excluded by the feature.</summary>
         void Tick()
         {
             if (!On || _lamps.Count == 0) return;
@@ -111,6 +126,7 @@ namespace WildWasteland.Modules.Performance
             }
         }
 
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             int held = 0; for (int i = 0; i < _lamps.Count; i++) if (_lamps[i].Comp != null && FsmPause.Held(_lamps[i].Fsm, FsmPause.Stepped)) held++;

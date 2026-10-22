@@ -34,6 +34,7 @@ namespace WildWasteland.Modules.Quests
 
         internal void Start(QuestsModule owner, HireSettings hiring, VoiceSettings voices)
         {
+            ModApi.Provide<IQuestDiagnosticSource>(owner, new QuestDiagnosticSource());
             I = this; logStarted = true; logged.Clear(); DataDir = owner.Dir; _generation++;
             foreach (var file in QuestContent.Import(DataDir)) Core.Log.Always("[Quests] imported missing content: " + file);
             ApplyTakeoverSettings(); ApplyFactionSettings(); ParseGenTypes();
@@ -51,7 +52,6 @@ namespace WildWasteland.Modules.Quests
             Core.Log.Always("[Quests] Conversation mouse-look guard installed.");
             Hotkeys.Register(owner, logKey, ToggleJournal, CanJournal);
             Hotkeys.Register(owner, hiring.dismissKey, DismissFollower, CanDismiss);
-            Hotkeys.Register(owner, dumpKey, DumpFaction, CanJournal);
             Hotkeys.Register(owner, QuestsModule.InteractKey, OpenInteraction, CanInteract);
             bridge.InstallOptional(owner);
             Core.Log.Always("[Quests] Native Quests 1.8.2 ready: " + defs.Count + " authored quests; AQ1 / ApocalypterQuests retained; Talk optional.");
@@ -78,7 +78,6 @@ namespace WildWasteland.Modules.Quests
         bool CanJournal() { return ready && GameRefs.InGame && !bridge.TalkingNow; }
         bool CanDismiss() { return ready && Hire.Active && GameRefs.InGame; }
         void ToggleJournal() { if (!GamePaused()) showLog = !showLog; }
-        void DumpFaction() { var p = Game.Player(); if (p != null) { FactionDump.Run(p.position, 60f, Path.Combine(DataDir, "faction_dump.txt"), Factions.PeopleWords); AddToast("Wrote faction_dump.txt"); } }
 
         internal void SceneReset()
         {

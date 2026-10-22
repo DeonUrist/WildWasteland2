@@ -12,15 +12,24 @@ namespace WildWasteland.Core
     {
         internal static bool Serializing { get; private set; }
         static bool _requested;
-        internal static void Install()
+        /// <summary>True while returning to the menu to launch a chosen snapshot.</summary>
+        internal static bool Loading { get; private set; }
+        /// <summary>Fraction of the completed save milestones, not a native serializer percentage.</summary>
+        internal static float Progress { get; private set; }
+        /// <summary>Current save milestone shown through ISaves.</summary>
+        internal static string ProgressText { get; private set; }
+        /// <summary>Owns native input suppression and new-world identity selection while Saves runs.</summary>
+        internal static void Install(IModule owner)
         {
             SaveBus.StateChanged += StateChanged;
-            Hooks.MouseLookDo.Prefix(null, Look);
-            Hooks.GetButtonDownUpdate.Prefix(null, ButtonDown);
-            Hooks.GetButtonDo.Prefix(null, Button);
-            Hooks.GetButtonUpUpdate.Prefix(null, ButtonUp);
-            Hooks.GetMouseButtonDownUpdate.Prefix(null, MouseDown);
+            Hooks.MouseLookDo.Prefix(owner, Look);
+            Hooks.GetButtonDownUpdate.Prefix(owner, ButtonDown);
+            Hooks.GetButtonDo.Prefix(owner, Button);
+            Hooks.GetButtonUpUpdate.Prefix(owner, ButtonUp);
+            Hooks.GetMouseButtonDownUpdate.Prefix(owner, MouseDown);
         }
+        /// <summary>Detaches new-world identity selection after running routines have been disposed.</summary>
+        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; _requested = false; }
         static bool Look(MouseLook action) { return !Serializing; }
         static bool Block(FsmBool result) { if (!Serializing) return true; if (result != null) result.Value = false; return false; }
         static bool ButtonDown(GetButtonDown action) { return Block(action.storeResult); }
@@ -38,8 +47,8 @@ namespace WildWasteland.Core
         }
         internal static bool Request()
         {
-            if (_requested || Serializing || !SaveSystem.LocalReady) return false;
-            _requested = true; Scheduler.StartCoroutine(Save()); return true;
+            if (_requested || Serializing || Loading || !SaveSystem.LocalReady) return false;
+            _requested = true; Progress = 0; ProgressText = "Preparing save"; SaveRoutines.Start(Save()); return true;
         }
         static IEnumerator Save()
         {
@@ -58,8 +67,10 @@ namespace WildWasteland.Core
                 ES3Settings.defaultSettings.path = file;
                 Serializing = true; Time.timeScale = 0;
                 blocked = !ApocasetterBridge.InputBlocked && ApocasetterBridge.SetInputBlock(true);
+                Progress = .1f; ProgressText = "Waiting for terrain to settle";
                 var terrain = SaveTerrain.Prepare(); while (terrain.MoveNext()) yield return terrain.Current;
                 if (generation != SaveBus.Generation || !SaveSystem.LocalReady) yield break;
+                Progress = .25f; ProgressText = "Serializing world";
                 SaveSystem.Begin(); SaveSystem.Stamp();
                 // Activate objects exactly as the native save menu does before serializing all roots.
                 var activate = FsmUtil.Find(GameRefs.GameManager, "SaveGameActivateItems"); if (activate != null) activate.SendEvent("Activate");
@@ -74,6 +85,7 @@ namespace WildWasteland.Core
                 }
                 if (!observed || SaveBus.Generation != generation || SaveBus.State != "isPlay" || registry.ActiveStateName != "off" || SaveBus.PendingAfterSave)
                     throw new IOException("Offline serialization did not finish; previous files retained");
+                Progress = .75f; ProgressText = "Verifying and publishing save";
                 completed = SaveSystem.Complete();
             }
             finally
@@ -81,7 +93,7 @@ namespace WildWasteland.Core
                 try { if (!completed && (SaveSystem.Busy || SaveSystem.Requested)) SaveSystem.Abort(new IOException("Offline save did not finish; previous files retained")); }
                 finally
                 {
-                    SaveTerrain.Release(); Serializing = _requested = false;
+                    SaveTerrain.Release(); Serializing = _requested = false; Progress = 0; ProgressText = null;
                     if (SaveBus.Generation == generation) Time.timeScale = scale;
                     if (blocked) ApocasetterBridge.SetInputBlock(false);
                 }
@@ -90,18 +102,23 @@ namespace WildWasteland.Core
         }
         internal static void Load(string file)
         {
-            if (!SaveSystem.Ready || SaveSystem.RecoveryError != null || SaveSystem.Busy || SaveSystem.Requested) return;
+            if (!SaveSystem.Installed || !SaveSystem.Ready || SaveSystem.RecoveryError != null || SaveSystem.Busy || SaveSystem.Requested || Serializing || Loading) return;
             if (!SaveRuntime.IsSaveFile(file) || !File.Exists(SaveFiles.WorldPath(file))) return;
             if (!SaveRuntime.InMainMenu)
-            { if (SaveSystem.LocalReady) Scheduler.StartCoroutine(ReturnAndLoad(file)); return; }
+            { if (SaveSystem.LocalReady) SaveRoutines.Start(ReturnAndLoad(file)); return; }
             if (!SaveRuntime.Launch(file)) SaveSystem.Notify("The save could not be loaded. Check the log.");
         }
         static IEnumerator ReturnAndLoad(string file)
         {
-            UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
-            while (!SaveRuntime.InMainMenu) yield return null;
-            yield return null; yield return null;
-            if (!SaveRuntime.Launch(file)) SaveSystem.Notify("The save could not be loaded. Open LOAD GAME to retry.");
+            Loading = true;
+            try
+            {
+                UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+                while (!SaveRuntime.InMainMenu) yield return null;
+                yield return null; yield return null;
+                if (!SaveRuntime.Launch(file)) SaveSystem.Notify("The save could not be loaded. Open LOAD GAME to retry.");
+            }
+            finally { Loading = false; }
         }
     }
 }

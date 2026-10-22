@@ -154,7 +154,7 @@ namespace WildWasteland.Core
             Log.Always("[" + m.Id + "] stopped (" + newState + ")");
         }
 
-        /// <summary>Removes everything Core tracks for a module: jobs, hooks, hotkeys, patches, ModAPI providers, event handlers, old Services event handlers.</summary>
+        /// <summary>Releases every owner-scoped Core registration and resource after module shutdown or failed startup.</summary>
         static void Cleanup(IModule m)
         {
             SetActive(m, false);
@@ -165,6 +165,15 @@ namespace WildWasteland.Core
             ModApi.RemoveAll(m);
             ModEvents.RemoveAll(m);
             Services.RemoveHandlersOf(m);
+            Textures.Release(m);
+            WorldIndex.RemoveAll(m);
+            WorldTiles.RemoveAll(m);
+            FsmIndex.RemoveAll(m);
+            FsmPause.ReleaseAll(m);
+            Factions.RemoveAll(m);
+            CameraArbiter.RemoveAll(m);
+            VehicleOwnership.RemoveAll(m);
+            LoadingProgress.Remove(m);
         }
 
         /// <summary>Changes a module's state and publishes <see cref="Events.ModuleStateChanged"/> (local event) when it differs.</summary>
@@ -231,11 +240,20 @@ namespace WildWasteland.Core
         internal static void SceneLoaded(Scene s, LoadSceneMode mode)
         {
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "OnSceneLoaded", () => en.Module.OnSceneLoaded(s, mode)); }
+            Optimization.OptimizationRuntime.Instance.OnSceneLoaded(s, mode);
         }
 
         /// <summary>Forwards a save/world lifecycle hook to running modules.</summary>
         internal static void Broadcast(Event ev, string slot)
         {
+            var optimization = Optimization.OptimizationRuntime.Instance;
+            switch (ev)
+            {
+                case Event.WorldReady: optimization.OnWorldReady(); break;
+                case Event.SaveBegin: optimization.OnSaveBegin(slot); break;
+                case Event.SaveEnd: optimization.OnSaveEnd(slot); break;
+                case Event.LoadBegin: optimization.OnLoadBegin(slot); break;
+            }
             foreach (var e in _entries)
             {
                 if (e.State != ModuleState.Running) continue;
@@ -253,6 +271,7 @@ namespace WildWasteland.Core
         /// <summary>Forwards a floating-origin jump to running modules.</summary>
         internal static void OriginShift(Vector3 delta)
         {
+            Optimization.OptimizationRuntime.Instance.OnOriginShift(delta);
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "OnOriginShift", () => en.Module.OnOriginShift(delta)); }
         }
 
@@ -262,6 +281,11 @@ namespace WildWasteland.Core
             if (_quitting) return;
             _quitting = true;
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "Shutdown", () => en.Module.Shutdown()); }
+            Optimization.OptimizationRuntime.Instance.Shutdown();
+            Fixes.Remove();
+            UI.UiTheme.Shutdown();
+            WorldTiles.Uninstall();
+            Textures.ReleaseAll();
         }
 
         /// <summary>Runs a lifecycle hook, counting exceptions toward the module error rule.</summary>

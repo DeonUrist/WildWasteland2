@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
@@ -16,6 +17,8 @@ namespace WildWasteland.Modules.CleanHUD
     // Mirror the source UI's choices and callbacks, including Quests' AQ buttons. The source remains the dialogue model.
     internal static partial class TalkDialogue
     {
+        /// <summary>Uses the shared Core atlas wrapping metrics.</summary>
+        internal static List<string> Wrap(string text, float width, float size = 26) { return GlyphFont.Wrap(text, width, size); }
         private static object _plugin, _ui;
         private static Func<object, object> _getUi;
         private static Func<object, bool> _talking;

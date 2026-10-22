@@ -85,21 +85,15 @@ namespace WildWasteland.Modules.NPC
         static partial void BindPresentationAimPose();
         /// <summary>Presentation: [NPC / Brain] ApocaplayerClips.</summary>
         static partial void BindPresentationClips();
-        /// <summary>Debug: [NPC / Debug] VerboseLog, NavDump, ShowNavigation, HighlightUnbakedMapPois.</summary>
-        static partial void BindDebug();
-        /// <summary>Debug: [NPC / Burrow] Log.</summary>
-        static partial void BindDebugBurrowLog();
-        /// <summary>Debug: [NPC / Dogs] Log.</summary>
-        static partial void BindDebugDogLog();
-        /// <summary>Debug: [NPC / Nests] Log.</summary>
-        static partial void BindDebugNestLog();
-        /// <summary>Debug: [NPC / Pounce] Log.</summary>
-        static partial void BindDebugPounceLog();
+
+        /// <summary>Tools owns the navigation bake collection aid setting.</summary>
+        static partial void BindNavigationDiagnostics();
 
         /// <summary>Binds every NPC entry (F6 toggles and settings, [Keys], tools.cfg tuning) in the original order; target parts are partial calls.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             _cfg = cfg;
+            BindNavigationDiagnostics();
             BindWomen(cfg);
             // ---------------- F6: one toggle per feature, in feature order (section "NPC", after Core's Enabled) ----------------
             SensesEnabled = V(null, "EnableNpcDetection", true,
@@ -131,7 +125,7 @@ namespace WildWasteland.Modules.NPC
             ShoutModifier = cfg.Hotkey("Shout modifier", Key.LeftAlt,
                 "Hold this and press 'Shout' to shout (either Alt works when this is an Alt key); the game's own Q actions are ignored while it is held. None = the key alone.");
             // ---------------- F7 (tools.cfg): debug ----------------
-            BindDebug();
+
             // ---------------- F7 (tools.cfg): the dog animation tuning (ex DogAnimations.Initialize) ----------------
             DogIdlePoseMin = H("Behaviour", "DogIdlePoseMinSeconds", 10f, new ConfigDescription("Idle quadrupeds stand or lie at least this long before switching, s.", new AcceptableValueRange<float>(2f, 300f)));
             DogIdlePoseMax = H("Behaviour", "DogIdlePoseMaxSeconds", 25f, new ConfigDescription("... and at the most, s.", new AcceptableValueRange<float>(2f, 300f)));
@@ -162,9 +156,9 @@ namespace WildWasteland.Modules.NPC
             BurrowFxVolume = H("Burrow", "FxVolume", 0.35f, new ConfigDescription("Volume of the burrow sound.", new AcceptableValueRange<float>(0f, 1f)));
             BurrowFxPitch = H("Burrow", "FxPitch", 1.5f, new ConfigDescription("Pitch of the burrow sound (higher = smaller creature).", new AcceptableValueRange<float>(0.5f, 3f)));
             BurrowFxRange = H("Burrow", "FxRange", 45f, new ConfigDescription("No puff or sound when the camera is farther than this, m.", new AcceptableValueRange<float>(5f, 300f)));
-            BindDebugBurrowLog();
+
             DogPrefabs = H("Dogs", "Prefabs", "Wild Hound,Yard Hound,Grimhound,Nightwalker,Alpha_Nightwalker", "Creatures handled as dogs (exact prefab names).");
-            BindDebugDogLog();
+
             AmbushPrefabs = H("Ambush", "Prefabs", "Scorpion_Small,Scorpion_Big,Spider_Small,Spider_Big", "Creatures that lie in wait (exact prefab names).");
             AmbushMin = H("Ambush", "MinDistance", 3f, new ConfigDescription("They let a target come this close at the least before attacking, m (chosen at random each time they settle).", new AcceptableValueRange<float>(0.5f, 50f)));
             AmbushMax = H("Ambush", "MaxDistance", 5f, new ConfigDescription("... and at the most, m.", new AcceptableValueRange<float>(0.5f, 50f)));
@@ -184,7 +178,7 @@ namespace WildWasteland.Modules.NPC
             NestAlarmSeconds = H("Nests", "AlarmSeconds", 20f, new ConfigDescription("... for this long, s.", new AcceptableValueRange<float>(1f, 300f)));
             NestAlarmCooldown = H("Nests", "AlarmCooldown", 5f, new ConfigDescription("A nest is alarmed again by its webs at most this often, s.", new AcceptableValueRange<float>(1f, 120f)));
             NestSitterReach = H("Nests", "SitterReach", 1f, new ConfigDescription("A spider sitting in its web attacks only what comes this close, m (shot or alarmed: at once).", new AcceptableValueRange<float>(0.3f, 20f)));
-            BindDebugNestLog();
+
             PouncePrefabs = H("Pounce", "Prefabs", "Spider_Small", "Creatures that pounce (exact prefab names).");
             PounceZigMin = H("Pounce", "ZigzagFromMin", 8f, new ConfigDescription("It starts zigzagging this close at the least, m (chosen at random per try).", new AcceptableValueRange<float>(1f, 30f)));
             PounceZigMax = H("Pounce", "ZigzagFromMax", 11f, new ConfigDescription("... and at the most, m.", new AcceptableValueRange<float>(1f, 20f)));
@@ -199,7 +193,7 @@ namespace WildWasteland.Modules.NPC
             PounceFleeMax = H("Pounce", "RunOffMax", 2.5f, new ConfigDescription("... and at the most, s.", new AcceptableValueRange<float>(0.2f, 20f)));
             PounceCooldownMin = H("Pounce", "CooldownMin", 4f, new ConfigDescription("Then it chases as usual at least this long before the next pounce, s.", new AcceptableValueRange<float>(0f, 120f)));
             PounceCooldownMax = H("Pounce", "CooldownMax", 7f, new ConfigDescription("... and at the most, s.", new AcceptableValueRange<float>(0f, 120f)));
-            BindDebugPounceLog();
+
             HuntPrefabs = H("Hunt", "Prefabs", "Scorpion_Big", "Creatures that burrow AND hunt underground: they travel under the sand and come up behind the enemy (exact prefab names).");
             HuntRange = H("Hunt", "Range", 15f, new ConfigDescription("Burrowed, a hunter engages anything within this distance; fighting, it dives when the target is farther than this, m.", new AcceptableValueRange<float>(2f, 100f)));
             HuntMaxDistance = H("Hunt", "MaxDistance", 60f, new ConfigDescription("No dive after a target farther than this, m (it chases or loses it as usual).", new AcceptableValueRange<float>(5f, 300f)));

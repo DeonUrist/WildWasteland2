@@ -7,7 +7,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// Exact sleep for FSMs that wait in a "poll" state (research B §2: almost all polling is an everyFrame compare used as "wait
@@ -44,16 +44,15 @@ namespace WildWasteland.Modules.Performance
         internal static long WakeCount, SleepCount, GuardCalls;
         internal static int Asleep;
 
+        /// <summary>Starts the one shared early-update poll guard when the first polling feature becomes active.</summary>
         internal static void Acquire(Feature f)
         {
             if (_users++ == 0)
             {
-                if (_job == null || !IsAlive(_job)) _job = Scheduler.EveryFrame(f.Module, "Performance.PollSleep", Tick, Phase.EarlyUpdate);
+                if (_job == null || _job.Removed) _job = Scheduler.EveryFrame(f.Module, "Core.Optimization.PollSleep", Tick, Phase.EarlyUpdate);
                 _job.Enabled = true;
             }
         }
-
-        static bool IsAlive(Job j) { foreach (var x in Scheduler.AllJobs()) if (x == j) return true; return false; }
 
         /// <summary>Releases everything <paramref name="owner"/> registered (wakes its sleepers).</summary>
         internal static void Release(Feature owner)
@@ -68,10 +67,19 @@ namespace WildWasteland.Modules.Performance
             if (_users > 0 && --_users == 0 && _job != null) _job.Enabled = false;
         }
 
-        /// <summary>Called from SubscribeHooks of each user feature (Core removes the subscriptions when the module stops). Several
-        /// subscriptions of the same handler are harmless: the first call wakes, later ones find nothing asleep.</summary>
-        internal static void Hook(PerformanceModule m) { Hooks.EnterState.Postfix(m, AfterEnterState); }
+        static bool _subscribed;
+        /// <summary>Registers the shared state-entry wake handler once for the Core optimization lifetime.</summary>
+        internal static void Hook(OptimizationRuntime m)
+        {
+            if (_subscribed) return;
+            _subscribed = true;
+            Hooks.EnterState.Postfix(m, AfterEnterState);
+        }
 
+        /// <summary>Forgets the shared handler registration after Core removes the runtime's hooks.</summary>
+        internal static void Unsubscribed() { _subscribed = false; }
+
+        /// <summary>Creates one tracked sleeper for an eligible native FSM and its feature owner.</summary>
         internal static void Register(Feature owner, PlayMakerFSM comp)
         {
             var fsm = comp.Fsm;
@@ -80,6 +88,7 @@ namespace WildWasteland.Modules.Performance
             _all.Add(s); _byFsm[fsm] = s;
         }
 
+        /// <summary>Drops a sleeper by swapping the final entry into its slot and updates its identity/index bookkeeping.</summary>
         static void RemoveAt(int i)
         {
             var s = _all[i];
@@ -89,6 +98,7 @@ namespace WildWasteland.Modules.Performance
             _all.RemoveAt(last);
         }
 
+        /// <summary>Releases only this polling reason's ManualUpdate claim and resets the sleeper's guard state.</summary>
         static void Wake(Sleeper s)
         {
             if (!s.Asleep) return;
@@ -97,6 +107,7 @@ namespace WildWasteland.Modules.Performance
         }
 
         // Hooks.EnterState postfix: any state entry of a sleeping FSM (event, restart on enable, SetState) wakes it.
+        /// <summary>Shared EnterState postfix: wakes tracked polling FSMs before building a plan for their new state.</summary>
         static void AfterEnterState(Fsm fsm, FsmState st)
         {
             if (Asleep == 0) return;
@@ -104,12 +115,14 @@ namespace WildWasteland.Modules.Performance
             if (_byFsm.TryGetValue(fsm, out s) && s.Asleep) { Wake(s); s.PlanCount = -1; }
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         internal static void OnSceneLoaded()
         {
             for (int i = _all.Count - 1; i >= 0; i--) if (_all[i].Comp == null) { if (_all[i].Asleep) { _all[i].Asleep = false; Asleep--; } RemoveAt(i); }
         }
 
         static int _cursorPrune;
+        /// <summary>Runs bounded, staggered guard work for sleeping native poll states each early-update frame.</summary>
         static void Tick()
         {
             if (_all.Count == 0) return;
@@ -125,10 +138,11 @@ namespace WildWasteland.Modules.Performance
             {
                 var s = _all[i];
                 try { Step(s); }
-                catch (Exception e) { Wake(s); s.Failed = true; Log.Error("[Performance] poll sleep " + s.Fsm.Name, e); }
+                catch (Exception e) { Wake(s); s.Failed = true; Log.Error(OptimizationRuntime.Instance, "poll sleep " + s.Fsm.Name, e); }
             }
         }
 
+        /// <summary>Checks one sleeper's supported poll conditions and wakes it as soon as native behavior can change.</summary>
         static void Step(Sleeper s)
         {
             var fsm = s.Fsm;
@@ -156,6 +170,7 @@ namespace WildWasteland.Modules.Performance
             s.Asleep = true; Asleep++; SleepCount++;
         }
 
+        /// <summary>Builds a guard plan only when every active action supports equivalent change-driven polling.</summary>
         static void BuildPlan(Sleeper s, FsmState st)
         {
             s.PlanState = st;
@@ -172,6 +187,7 @@ namespace WildWasteland.Modules.Performance
             s.PlanLen = active.Count;
         }
 
+        /// <summary>Rejects actions with timed or otherwise unsupported update behavior before a state may sleep.</summary>
         static bool Supported(FsmStateAction a)
         {
             // callbacks only
@@ -254,6 +270,7 @@ namespace WildWasteland.Modules.Performance
             return false;
         }
 
+        /// <summary>Counts the registered and sleeping FSMs belonging to one polling feature for diagnostics.</summary>
         internal static int CountFor(Feature owner, out int asleep)
         {
             int n = 0; asleep = 0;
@@ -265,20 +282,28 @@ namespace WildWasteland.Modules.Performance
     /// <summary>Base for the features that only feed FSM names to <see cref="PollSleep"/>.</summary>
     public abstract class PollSleepFeature : Feature
     {
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
         protected abstract string[] FsmNames { get; }
+        /// <summary>Optional native owner-name filter for selecting polling FSMs.</summary>
         protected virtual string RootPattern { get { return null; } }
 
+        /// <summary>Registers the feature's shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { PollSleep.Hook(Module); }
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             PollSleep.Acquire(this);
             var names = FsmNames;
             for (int i = 0; i < names.Length; i++) FsmEdits.Watch(this, names[i], RootPattern, Ready);
         }
+        /// <summary>Registers a newly validated native FSM with the shared polling guard.</summary>
         void Ready(PlayMakerFSM f) { PollSleep.Register(this, f); }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { FsmEdits.Unwatch(this); PollSleep.Release(this); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { PollSleep.OnSceneLoaded(); FsmPause.Prune(); }
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             int asleep, n = PollSleep.CountFor(this, out asleep);

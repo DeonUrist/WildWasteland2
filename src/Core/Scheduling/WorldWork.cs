@@ -15,7 +15,8 @@ namespace WildWasteland.Core
         {
             int frame = Time.frameCount; Requested[owner] = frame;
             if (_frame == frame) return _owner == owner;
-            if (SaveBus.Saving || SaveSystem.Busy) return false;
+            var saves = ModApi.Get<ISaves>();
+            if (SaveBus.Saving || saves != null && saves.Busy && saves.Phase != SavePhase.Loading) return false;
             bool loading = SaveBus.Busy || GameRefs.SaveLoadState == "Wait for Terrain Gen";
             if (!loading && (Time.timeScale <= 0 || Scheduler.FrameMs >= Scheduler.FrameBudgetMs || Time.unscaledTime < _next)) return false;
             for (int offset = 1; offset <= Requested.Length; offset++)

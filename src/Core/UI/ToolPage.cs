@@ -37,8 +37,13 @@ namespace WildWasteland.Core.UI
         public bool IsTool;
         /// <summary>Called when the page becomes visible / the window opens.</summary>
         public virtual void OnShow() { }
+        /// <summary>Releases page-owned previews and modal state when the page or window is closed.</summary>
+        public virtual void OnHide() { }
+        /// <summary>Draws a page that owns the entire settings surface; true skips the standard settings layout.</summary>
+        public virtual bool DrawFullPage() { return false; }
         /// <summary>Called every frame while the window is open on this page (before drawing; use for live data).</summary>
         public virtual void Update() { }
+        /// <summary>Draws this page using the shared row layout.</summary>
         public abstract void Draw(ToolLayout l);
     }
 
@@ -46,7 +51,9 @@ namespace WildWasteland.Core.UI
     public sealed class ActionPage : ToolPage
     {
         readonly Action<ToolLayout> _draw;
+        /// <summary>Creates a delegate-backed page with explicit owner, group and title.</summary>
         public ActionPage(IModule owner, string group, string title, Action<ToolLayout> draw) { Owner = owner; Group = group; Title = title; _draw = draw; }
+        /// <summary>Draws this page using the shared row layout.</summary>
         public override void Draw(ToolLayout l) { _draw(l); }
     }
 
@@ -61,11 +68,14 @@ namespace WildWasteland.Core.UI
         readonly Func<ConfigDefinition, bool> _filter;
         public string Intro;
 
+        /// <summary>Creates a config-backed page selected by exact section patterns or a caller-supplied filter.</summary>
         public ConfigPage(IModule owner, string group, string title, ConfigFile file, params string[] sections)
         { Owner = owner; Group = group; Title = title; _file = file; _sections = sections; }
+        /// <summary>Creates a config-backed page selected by exact section patterns or a caller-supplied filter.</summary>
         public ConfigPage(IModule owner, string group, string title, ConfigFile file, Func<ConfigDefinition, bool> filter)
         { Owner = owner; Group = group; Title = title; _file = file; _filter = filter; }
 
+        /// <summary>Tests a config definition against the page filter or section patterns.</summary>
         bool Match(ConfigDefinition d)
         {
             if (_filter != null) return _filter(d);
@@ -80,6 +90,7 @@ namespace WildWasteland.Core.UI
         readonly List<ConfigDefinition> _keys = new List<ConfigDefinition>();
         int _count = -1;
 
+        /// <summary>Draws this page using the shared row layout.</summary>
         public override void Draw(ToolLayout l)
         {
             if (_count != _file.Count) { _count = _file.Count; _keys.Clear(); foreach (var k in _file.Keys) if (Match(k)) _keys.Add(k); }
@@ -115,10 +126,15 @@ namespace WildWasteland.Core.UI
         static ConfigEntryBase _rebinding;
         static GUIStyle _wrap, _wrapSource;
 
+        /// <summary>Resets row position, search context and drawn-entry deduplication for a layout pass.</summary>
         internal void Begin(float width, string prefix, string search = null) { X = 0; Y = 4; Width = width; Prefix = prefix; EntryFilter = null; DeduplicateEntries = false; _drawn.Clear(); _search = (search ?? "").Trim(); SearchContext = _category = _categoryHeading = _heading = _pendingHeading = null; _insideEntry = SearchResults = false; }
+        /// <summary>Checks active search text against row and enclosing section captions.</summary>
         internal bool Matches(string text) { return !Searching || _insideEntry || Contains(text) || Contains(_category) || Contains(SearchContext) || Contains(_heading); }
+        /// <summary>Matches text against the search query without case sensitivity.</summary>
         bool Contains(string text) { return text != null && text.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0; }
+        /// <summary>Changes the current searchable section and clears deferred headings.</summary>
         internal void SearchSection(string text) { SearchContext = text; _heading = _pendingHeading = null; _insideEntry = false; }
+        /// <summary>Draws or searches a collapsible category and returns whether its rows should be visited.</summary>
         internal bool Category(string key, string title)
         {
             SearchSection(null); _category = title; _categoryHeading = null;
@@ -127,6 +143,7 @@ namespace WildWasteland.Core.UI
             if (Button((expanded ? "[-]  " : "[+]  ") + title)) { expanded = !expanded; if (expanded) _expanded.Add(key); else _expanded.Remove(key); }
             return expanded;
         }
+        /// <summary>Admits a matching row and emits its deferred category and section headings.</summary>
         bool ShowRow(string text)
         {
             if (!Matches(text)) return false;
@@ -135,16 +152,21 @@ namespace WildWasteland.Core.UI
             if (_pendingHeading != null) { DrawHeading(_pendingHeading); _pendingHeading = null; }
             return true;
         }
+        /// <summary>Applies entry filtering, deduplication and search matching before allocating a row.</summary>
         internal bool CanShowEntry(ConfigEntryBase e) { return e != null && (EntryFilter == null || EntryFilter(e)) && (!DeduplicateEntries || !_drawn.Contains(e)) && (Matches(e.Definition.Section) || Matches(e.Definition.Key) || Matches(PageLabel(e)) || Matches(e.Description != null ? e.Description.Description : null)); }
+        /// <summary>Marks an admitted entry as drawn and enters its row search context.</summary>
         bool BeginEntry(ConfigEntryBase e) { if (!CanShowEntry(e)) return false; if (DeduplicateEntries && GUI.enabled) _drawn.Add(e); _insideEntry = true; ShowRow(null); return true; }
 
+        /// <summary>Allocates the next row rectangle with the active ledger spacing.</summary>
         public Rect Next(float h = Row)
         {
             if (Ledger.SettingsActive && h <= 40) h = h <= 22 ? 46 : 54;
             var r = new Rect(X + (Ledger.SettingsActive ? 0 : 8), Y, Width - (Ledger.SettingsActive ? 0 : 16), h); Y += h + 4; return r;
         }
+        /// <summary>Adds vertical spacing outside search-result presentation.</summary>
         public void Space(float h = 8) { if (!Searching) Y += h; }
 
+        /// <summary>Draws a row label with the active hover, accent and disabled-state styling.</summary>
         void Caption(Rect row, string text, float fraction = LabelWidth, GUIStyle style = null, Color? color = null)
         {
             float inset = Ledger.SettingsActive ? 22 : 0;
@@ -153,6 +175,7 @@ namespace WildWasteland.Core.UI
             Ledger.Label(new Rect(row.x + inset, row.y, row.width * fraction - inset, row.height), text, style ?? Ledger.Body, ink);
         }
 
+        /// <summary>Sets the searchable section heading, deferring its rendering during search.</summary>
         public void Heading(string text)
         {
             _heading = text;
@@ -160,6 +183,7 @@ namespace WildWasteland.Core.UI
             DrawHeading(text);
         }
 
+        /// <summary>Draws an admitted section heading using the active settings style.</summary>
         void DrawHeading(string text)
         {
             if (Ledger.SettingsActive)
@@ -172,6 +196,7 @@ namespace WildWasteland.Core.UI
             Y += 24; Ledger.Rule(X + 8, Y, Width - 16); Y += 6;
         }
 
+        /// <summary>Draws a search-filtered explanatory text row.</summary>
         public void Text(string text, Color? color = null)
         {
             if (!ShowRow(text)) return;
@@ -183,6 +208,7 @@ namespace WildWasteland.Core.UI
             Y += h + (Ledger.SettingsActive ? 10 : 4);
         }
 
+        /// <summary>Draws a search-filtered label and read-only value.</summary>
         public void Value(string label, string value)
         {
             if (!ShowRow(label) && !ShowRow(value)) return;
@@ -191,6 +217,7 @@ namespace WildWasteland.Core.UI
             Ledger.Label(new Rect(r.x + r.width * LabelWidth, r.y, r.width * (1 - LabelWidth), r.height), value, Ledger.Body, Ledger.Text);
         }
 
+        /// <summary>Draws an enabled or disabled action button and returns whether it was pressed.</summary>
         public bool Button(string text, bool enabled = true, bool primary = false, float width = 0)
         {
             if (!ShowRow(text)) return false;
@@ -208,6 +235,7 @@ namespace WildWasteland.Core.UI
             return hit;
         }
 
+        /// <summary>Draws a boolean control and writes a bound config entry when supplied.</summary>
         public bool Toggle(string label, bool value)
         {
             if (!ShowRow(label)) return value;
@@ -217,8 +245,10 @@ namespace WildWasteland.Core.UI
 
         // labels pages give their entry toggles (Debug "Switches" block reuses them); a lookup + reference compare per call, no allocation
         static readonly Dictionary<ConfigEntryBase, string> _labels = new Dictionary<ConfigEntryBase, string>();
+        /// <summary>Returns the explicit display label registered for a config entry.</summary>
         internal string PageLabel(ConfigEntryBase e) { string s; return e != null && _labels.TryGetValue(e, out s) ? s : null; }
 
+        /// <summary>Draws a boolean control and writes a bound config entry when supplied.</summary>
         public void Toggle(ConfigEntry<bool> e, string label = null)
         {
             if (label != null && e != null) { string old; if (!_labels.TryGetValue(e, out old) || !ReferenceEquals(old, label)) _labels[e] = label; }
@@ -228,6 +258,7 @@ namespace WildWasteland.Core.UI
             _insideEntry = false;
         }
 
+        /// <summary>Draws named choices and returns the newly selected index.</summary>
         public int Choices(string label, int selected, params string[] choices)
         {
             if (!ShowRow(label)) return selected;
@@ -244,6 +275,7 @@ namespace WildWasteland.Core.UI
             return selected;
         }
 
+        /// <summary>Draws a bounded numeric slider with a stable per-control key.</summary>
         public float Slider(string label, string key, float value, float min, float max)
         {
             if (!ShowRow(label) && !ShowRow(key)) return value;
@@ -269,6 +301,7 @@ namespace WildWasteland.Core.UI
             KeyButton(new Rect(x + bw + 6 + lw, r.y, w - bw - 6 - lw, r.height), b);
         }
 
+        /// <summary>Starts or presents keyboard rebinding for a config entry.</summary>
         static void KeyButton(Rect r, ConfigEntryBase e)
         {
             if (e == null) return;
@@ -349,8 +382,10 @@ namespace WildWasteland.Core.UI
 
         static readonly Dictionary<string, string> _text = new Dictionary<string, string>();
 
+        /// <summary>Copies an array into boxed choice values for the generic settings renderer.</summary>
         static object[] ToObjects(Array a) { var o = new object[a.Length]; for (int i = 0; i < a.Length; i++) o[i] = a.GetValue(i); return o; }
 
+        /// <summary>Reads allowed discrete values from the entry acceptable-values constraint.</summary>
         static object[] ListValues(ConfigEntryBase e)
         {
             var av = e.Description != null ? e.Description.AcceptableValues : null;
@@ -361,6 +396,7 @@ namespace WildWasteland.Core.UI
             return arr != null ? ToObjects(arr) : null;
         }
 
+        /// <summary>Reads numeric bounds from the entry range constraint when available.</summary>
         static bool Range(ConfigEntryBase e, out float min, out float max)
         {
             min = max = 0;
@@ -396,8 +432,10 @@ namespace WildWasteland.Core.UI
             }
         }
         internal static bool Rebinding { get { return _rebinding != null; } }
+        /// <summary>Clears any pending keyboard-rebinding entry.</summary>
         internal static void CancelRebind() { _rebinding = null; }
 
+        /// <summary>Returns the display name for a keyboard key.</summary>
         static string KeyCodeName(Key k)
         {
             string n = k.ToString();

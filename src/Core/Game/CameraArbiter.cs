@@ -36,6 +36,7 @@ namespace WildWasteland.Core
         static bool _hooked;
         // what to undo after the render
         static Camera _projCam, _viewCam, _fovCam, _persistViewCam;
+        static Writer _projWriter, _viewWriter, _fovWriter, _persistentWriter;
         static bool _jitter;
         static float _fovWas;
 
@@ -58,11 +59,31 @@ namespace WildWasteland.Core
             Hook();
         }
 
+        /// <summary>Restores changes held by one named writer while retaining its registration for later frames.</summary>
+        public static void Restore(IModule owner, string name)
+        {
+            if (Matches(_projWriter, owner, name)) { if (_projCam != null) { _projCam.useJitteredProjectionMatrixForTransparentRendering = _jitter; _projCam.ResetProjectionMatrix(); _projCam.ResetCullingMatrix(); } _projCam = null; _projWriter = null; }
+            if (Matches(_viewWriter, owner, name)) { if (_viewCam != null) { _viewCam.ResetWorldToCameraMatrix(); _viewCam.ResetCullingMatrix(); } _viewCam = null; _viewWriter = null; }
+            if (Matches(_persistentWriter, owner, name)) { if (_persistViewCam != null) { _persistViewCam.ResetWorldToCameraMatrix(); _persistViewCam.ResetCullingMatrix(); } _persistViewCam = null; _persistentWriter = null; }
+            if (Matches(_fovWriter, owner, name)) { if (_fovCam != null) _fovCam.fieldOfView = _fovWas; _fovCam = null; _fovWriter = null; }
+        }
+        /// <summary>Removes all channels registered by one named writer and releases its current camera overrides.</summary>
+        public static void Remove(IModule owner, string name)
+        {
+            Restore(owner, name);
+            _proj.RemoveAll(w => Matches(w, owner, name)); _view.RemoveAll(w => Matches(w, owner, name)); _fov.RemoveAll(w => Matches(w, owner, name));
+            if (_proj.Count == 0 && _view.Count == 0 && _fov.Count == 0) Unhook();
+        }
+        /// <summary>Whether a held channel belongs to the requested registration.</summary>
+        static bool Matches(Writer writer, IModule owner, string name) { return writer != null && writer.Owner == owner && writer.Name == name; }
+
         /// <summary>Removes every writer of owner, restores what it may still hold, and unhooks when nothing is left.</summary>
         public static void RemoveAll(IModule owner)
         {
-            RestoreAfterRender();
-            if (_persistViewCam != null) { _persistViewCam.ResetWorldToCameraMatrix(); _persistViewCam.ResetCullingMatrix(); _persistViewCam = null; }
+            if (_projWriter != null && _projWriter.Owner == owner) Restore(owner, _projWriter.Name);
+            if (_viewWriter != null && _viewWriter.Owner == owner) Restore(owner, _viewWriter.Name);
+            if (_fovWriter != null && _fovWriter.Owner == owner) Restore(owner, _fovWriter.Name);
+            if (_persistentWriter != null && _persistentWriter.Owner == owner) Restore(owner, _persistentWriter.Name);
             _proj.RemoveAll(w => w.Owner == owner); _view.RemoveAll(w => w.Owner == owner); _fov.RemoveAll(w => w.Owner == owner);
             if (_proj.Count == 0 && _view.Count == 0 && _fov.Count == 0) Unhook();
         }
@@ -90,6 +111,7 @@ namespace WildWasteland.Core
         {
             if (cam == null) return;
             RestoreAfterRender();
+            LastProjection = LastView = LastFov = null;
             // FOV first: the projection writers then scale the FOV-derived matrix
             for (int i = 0; i < _fov.Count; i++)
             {
@@ -97,7 +119,20 @@ namespace WildWasteland.Core
                 bool claim;
                 try { claim = _fov[i].Fov(cam, ref fov); } catch (Exception e) { claim = false; Fail(_fov[i], e); }
                 if (!claim) continue;
-                _fovCam = cam; _fovWas = was; cam.fieldOfView = fov; LastFov = _fov[i].Name;
+                _fovWriter = _fov[i]; _fovCam = cam; _fovWas = was; cam.fieldOfView = fov; LastFov = _fov[i].Name;
+                break;
+            }
+            for (int i = 0; i < _proj.Count; i++)
+            {
+                var p = cam.projectionMatrix;
+                bool claim;
+                try { claim = _proj[i].Projection(cam, ref p); } catch (Exception e) { claim = false; Fail(_proj[i], e); }
+                if (!claim) continue;
+                _projWriter = _proj[i]; _projCam = cam; _jitter = cam.useJitteredProjectionMatrixForTransparentRendering;
+                cam.projectionMatrix = p;
+                cam.useJitteredProjectionMatrixForTransparentRendering = true;
+                cam.ResetCullingMatrix();
+                LastProjection = _proj[i].Name;
                 break;
             }
             bool viewClaimed = false;
@@ -107,26 +142,16 @@ namespace WildWasteland.Core
                 bool claim;
                 try { claim = _view[i].View(cam, ref m); } catch (Exception e) { claim = false; Fail(_view[i], e); }
                 if (!claim) continue;
+                if (_persistViewCam != null && (_persistViewCam != cam || !_view[i].Persistent || _persistentWriter != _view[i]))
+                { _persistViewCam.ResetWorldToCameraMatrix(); _persistViewCam.ResetCullingMatrix(); _persistViewCam = null; _persistentWriter = null; }
                 cam.worldToCameraMatrix = m;
                 cam.cullingMatrix = cam.projectionMatrix * m;
-                if (_view[i].Persistent) _persistViewCam = cam; else _viewCam = cam;
+                if (_view[i].Persistent) { _persistViewCam = cam; _persistentWriter = _view[i]; } else { _viewCam = cam; _viewWriter = _view[i]; }
                 LastView = _view[i].Name; viewClaimed = true;
                 break;
             }
-            if (!viewClaimed && ReferenceEquals(_persistViewCam, cam)) { cam.ResetWorldToCameraMatrix(); cam.ResetCullingMatrix(); _persistViewCam = null; }
-            for (int i = 0; i < _proj.Count; i++)
-            {
-                var p = cam.projectionMatrix;
-                bool claim;
-                try { claim = _proj[i].Projection(cam, ref p); } catch (Exception e) { claim = false; Fail(_proj[i], e); }
-                if (!claim) continue;
-                _projCam = cam; _jitter = cam.useJitteredProjectionMatrixForTransparentRendering;
-                cam.projectionMatrix = p;
-                cam.useJitteredProjectionMatrixForTransparentRendering = true;
-                if (viewClaimed) cam.cullingMatrix = p * cam.worldToCameraMatrix; else cam.ResetCullingMatrix();
-                LastProjection = _proj[i].Name;
-                break;
-            }
+            if (!viewClaimed && ReferenceEquals(_persistViewCam, cam)) { cam.ResetWorldToCameraMatrix(); cam.ResetCullingMatrix(); _persistViewCam = null; _persistentWriter = null; }
+
         }
 
         /// <summary>Camera.onPostRender: restores the camera that was modified for this render.</summary>
@@ -141,6 +166,7 @@ namespace WildWasteland.Core
             if (_projCam != null) { _projCam.useJitteredProjectionMatrixForTransparentRendering = _jitter; _projCam.ResetProjectionMatrix(); _projCam.ResetCullingMatrix(); _projCam = null; }
             if (_viewCam != null) { _viewCam.ResetWorldToCameraMatrix(); _viewCam.ResetCullingMatrix(); _viewCam = null; }
             if (_fovCam != null) { _fovCam.fieldOfView = _fovWas; _fovCam = null; }
+            _projWriter = _viewWriter = _fovWriter = null;
         }
 
         /// <summary>Logs a writer failure (Log rate-limits repeats).</summary>

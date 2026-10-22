@@ -19,7 +19,7 @@ using Log = WildWasteland.Core.Log;
 
 namespace WildWasteland.Modules.POI
 {
-    public sealed class PoiModule : ModuleBase, IPoiApi
+    public sealed partial class PoiModule : ModuleBase, IPoiApi
     {
         private sealed class Registration
         {

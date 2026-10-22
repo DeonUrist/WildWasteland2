@@ -16,6 +16,7 @@ namespace WildWasteland.Core
     {
         public sealed class Record
         {
+            internal MethodBase Original;
             public string Owner; public string Target; public string Kind; public string Patch; public bool Ok; public string Error;
             /// <summary>"owner: kind target" plus the failure.</summary>
             public override string ToString() { return Owner + ": " + Kind + " " + Target + (Ok ? "" : " FAILED " + Error); }
@@ -127,6 +128,41 @@ namespace WildWasteland.Core
             foreach (var k in dead) _owners.Remove(k);
         }
 
+        /// <summary>Removes one exact module-owned probe patch while retaining unrelated patches and their records.</summary>
+        public static bool UnpatchMethod(IModule owner, MethodBase original, MethodInfo patch)
+        {
+            if (original == null || patch == null) return false;
+            string id = owner == null ? Plugin.GUID : Plugin.GUID + "." + owner.Id;
+            string name = owner == null ? "Core" : owner.Id;
+            var info = Harmony.GetPatchInfo(original);
+            if (info == null) return true;
+            bool found = false;
+            foreach (var list in new[] { info.Prefixes, info.Postfixes, info.Transpilers, info.Finalizers })
+                foreach (var entry in list)
+                    if (entry.PatchMethod == patch)
+                    {
+                        // Harmony's method-specific removal is not owner-filtered. Never remove another owner's identical method.
+                        if (entry.owner != id) return false;
+                        found = true;
+                    }
+            if (!found) return true;
+            try { For(owner).Unpatch(original, patch); }
+            catch (Exception error) { Log.Error(owner, "could not remove probe " + Describe(original), error); return false; }
+            string patchName = Name(patch), target = Describe(original);
+            var removedKinds = new HashSet<string>();
+            for (int i = _records.Count - 1; i >= 0; i--)
+                if (_records[i].Owner == name && _records[i].Original == original && _records[i].Patch == patchName)
+                { removedKinds.Add(_records[i].Kind); _records.RemoveAt(i); }
+            foreach (var kind in removedKinds)
+            {
+                bool remains = false;
+                for (int i = 0; i < _records.Count; i++)
+                    if (_records[i].Ok && _records[i].Target == target && _records[i].Kind == kind) { remains = true; break; }
+                if (!remains) _owners.Remove(target + "|" + kind);
+            }
+            return true;
+        }
+
         /// <summary>"Type.Method" of a patch method.</summary>
         static string Name(MethodInfo mi) { return mi == null ? "?" : mi.DeclaringType.Name + "." + mi.Name; }
         /// <summary>"Type.Method" of a target.</summary>
@@ -139,7 +175,7 @@ namespace WildWasteland.Core
         static void Note(string owner, MethodBase target, string patch, string kind, bool ok, string error)
         {
             string t = target == null ? patch : Describe(target);
-            _records.Add(new Record { Owner = owner, Target = t, Kind = kind, Patch = patch, Ok = ok, Error = error });
+            _records.Add(new Record { Original = target, Owner = owner, Target = t, Kind = kind, Patch = patch, Ok = ok, Error = error });
             if (!ok || target == null || kind == "attr") return;
             string key = t + "|" + kind;
             string other;

@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.Quests
         {
             _engine.Start(this, _hire, _voice); Services.Quests = _engine;
             SaveBus.StateChanged += StateChanged; Services.CrewBailedOut += CrewHistory.Bailed;
-            QuestWorld.Begin(); if (SaveBus.State != null) StateChanged(null, SaveBus.State);
+            QuestWorld.Begin(this); if (SaveBus.State != null) StateChanged(null, SaveBus.State);
         }
         void Late() { if (Plugin.I == _engine) { _engine.LateFrame(); LateNpcai(); } }
         bool Live { get { return Plugin.I == _engine && _engine.Ready && QuestWorld.Ready && GameRefs.InGame; } }
@@ -72,7 +72,7 @@ namespace WildWasteland.Modules.Quests
         bool WorldStep() { return Plugin.I == _engine && QuestWorld.Step(); }
         void StateChanged(string previous, string state) { _engine.StateChanged(previous, state); }
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-        { if (Plugin.I == _engine) { _engine.SceneReset(); QuestWorld.Begin(); } }
+        { if (Plugin.I == _engine) { _engine.SceneReset(); QuestWorld.Begin(this); } }
         public override void Shutdown()
         {
             SaveBus.StateChanged -= StateChanged; Services.CrewBailedOut -= CrewHistory.Bailed;

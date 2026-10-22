@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>Called once for each PlayMakerFSM instance a feature watches: when its actions are loaded (postfix on
     /// PlayMakerFSM.Awake, i.e. before its start state is entered) and, when the watch is added mid-game, for every instance that
@@ -24,19 +24,21 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     internal static class FsmEdits
     {
+        /// <summary>Records a feature's native FSM-name/root filter and validated edit callback.</summary>
         sealed class WatchEntry { public Feature Owner; public string Root; public FsmReadyHandler Ready; }
         static readonly Dictionary<string, List<WatchEntry>> _byName = new Dictionary<string, List<WatchEntry>>(StringComparer.Ordinal);
         static readonly List<WatchEntry> _any = new List<WatchEntry>();
         static int _count;
         static PlayMakerFSM[] _live; static int _liveFrame = -1;
         static readonly HashSet<string> _warned = new HashSet<string>(StringComparer.Ordinal);
+        static bool _subscribed;
         internal static long Delivered, Mismatches;
 
         /// <summary>Watch every FSM named <paramref name="fsmName"/> ("*" = every FSM; keep the handler cheap then) whose owner's root
         /// object name matches <paramref name="rootPattern"/> (null = any; '*' wildcards, '|' alternatives).</summary>
         internal static void Watch(Feature owner, string fsmName, string rootPattern, FsmReadyHandler ready)
         {
-            if (!owner.Module.EnsurePatched(typeof(AwakePatch))) throw new Exception("PlayMakerFSM.Awake patch failed");
+            if (!_subscribed) { Hooks.FsmAwake.Postfix(owner.Module, AfterAwake); _subscribed = true; }
             var w = new WatchEntry { Owner = owner, Root = rootPattern, Ready = ready };
             if (fsmName == "*") _any.Add(w);
             else
@@ -59,6 +61,7 @@ namespace WildWasteland.Modules.Performance
             }
         }
 
+        /// <summary>Removes all pending native FSM edit watches owned by this feature.</summary>
         internal static void Unwatch(Feature owner)
         {
             foreach (var kv in _byName) _count -= kv.Value.RemoveAll(w => w.Owner == owner);
@@ -86,6 +89,7 @@ namespace WildWasteland.Modules.Performance
             return all;
         }
 
+        /// <summary>Checks component eligibility and the optional owner-name filter before invoking one content-edit callback.</summary>
         static void Deliver(WatchEntry w, PlayMakerFSM f)
         {
             if (w.Root != null && !RootMatches(f, w.Root)) return;
@@ -94,6 +98,7 @@ namespace WildWasteland.Modules.Performance
             catch (Exception e) { Warn(w.Owner, "handler:" + f.FsmName, e.GetType().Name + ": " + e.Message); }
         }
 
+        /// <summary>Finds watches for a newly awakened FSM and applies their verified edits.</summary>
         static void Dispatch(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -120,6 +125,7 @@ namespace WildWasteland.Modules.Performance
             return false;
         }
 
+        /// <summary>Matches the limited root-name pattern syntax used by content-edit watches.</summary>
         static bool Wild(string s, string p)
         {
             if (p == "*") return true;
@@ -131,6 +137,7 @@ namespace WildWasteland.Modules.Performance
             return s == core;
         }
 
+        /// <summary>Finds an exact native state name without invoking noisy PlayMaker lookup helpers.</summary>
         internal static FsmState State(Fsm fsm, string name)
         {
             var st = fsm.States;
@@ -153,12 +160,13 @@ namespace WildWasteland.Modules.Performance
             return t;
         }
 
+        /// <summary>Logs one validation mismatch per feature/key and leaves the native action unchanged.</summary>
         internal static void Warn(Feature owner, string key, string why)
         {
             Mismatches++;
             string k = owner.PlanId + "|" + key + "|" + why;
             if (_warned.Count > 500 || !_warned.Add(k)) return;
-            Log.Warn("[Performance] " + owner.PlanId + " " + key + ": " + why + " - left vanilla (game updated?)");
+            Log.Warn(OptimizationRuntime.Instance, owner.PlanId + " " + key + ": " + why + " - left vanilla (game updated?)");
         }
 
         /// <summary>Swaps the action at <paramref name="number"/> (1-based) of <paramref name="state"/> for <paramref name="wrapper"/> and
@@ -172,27 +180,25 @@ namespace WildWasteland.Modules.Performance
             log.Add(new ReplaceUndo(comp, state, number - 1, original, wrapper));
         }
 
-        [HarmonyPatch]
-        internal static class AwakePatch
+        /// <summary>Runtime teardown clears subscription state before shared handlers are removed.</summary>
+        internal static void Unsubscribed() { _subscribed = false; }
+
+        /// <summary>Shared Awake postfix: dispatches verified content edits after copied pause flags were cleared.</summary>
+        static void AfterAwake(PlayMakerFSM component)
         {
-            [HarmonyPatch(typeof(PlayMakerFSM), "Awake"), HarmonyPostfix]
-            static void Post(PlayMakerFSM __instance)
-            {
-                // vanilla never sets ManualUpdate (research A): a fresh FSM carrying it was Instantiate-copied from one we had paused
-                // (the flag is serialized); nobody would ever resume the copy
-                if (FsmPause.Count > 0) { var f = __instance.Fsm; if (f != null && f.ManualUpdate) f.ManualUpdate = false; }
-                if (_count == 0) return;
-                try { Dispatch(__instance); }
-                catch (Exception e) { Log.Error("[Performance] FsmEdits dispatch", e); }
-            }
+            if (_count == 0) return;
+            try { Dispatch(component); }
+            catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "FsmEdits dispatch", e); }
         }
 
         // ---- undo records ----
         sealed class ReplaceUndo : Undo
         {
             readonly PlayMakerFSM _c; readonly FsmState _s; readonly int _i; readonly FsmStateAction _orig, _wrap;
+            /// <summary>Captures an action slot and both original/wrapper references for identity-safe undo.</summary>
             public ReplaceUndo(PlayMakerFSM c, FsmState s, int i, FsmStateAction o, FsmStateAction w) { _c = c; _s = s; _i = i; _orig = o; _wrap = w; }
             internal override bool Alive { get { return _c != null; } }
+            /// <summary>Restores the captured native value only while the undo record's owning component is live.</summary>
             internal override void Revert()
             {
                 var a = _s.Actions;
@@ -205,6 +211,7 @@ namespace WildWasteland.Modules.Performance
     internal abstract class Undo
     {
         internal abstract bool Alive { get; }
+        /// <summary>Restores the captured native value only while the undo record's owning component is live.</summary>
         internal abstract void Revert();
     }
 
@@ -214,12 +221,15 @@ namespace WildWasteland.Modules.Performance
     {
         readonly List<Undo> _items = new List<Undo>(64);
         int _pruneAt = 1024;
+        /// <summary>Number of reversible edits currently held by this feature.</summary>
         internal int Count { get { return _items.Count; } }
+        /// <summary>Appends one reversible edit and amortizes removal of records whose components were destroyed.</summary>
         internal void Add(Undo u)
         {
             _items.Add(u);
             if (_items.Count >= _pruneAt) { Prune(); _pruneAt = Math.Max(1024, _items.Count * 2); }
         }
+        /// <summary>Drops undo records whose native components no longer exist without reverting live edits.</summary>
         internal void Prune()
         {
             int n = 0;
@@ -231,31 +241,37 @@ namespace WildWasteland.Modules.Performance
             }
             _items.RemoveRange(n, _items.Count - n);
         }
+        /// <summary>Restores captured edits newest-first and isolates failures between independent records.</summary>
         internal void RevertAll()
         {
             for (int i = _items.Count - 1; i >= 0; i--)
             {
                 try { if (_items[i].Alive) _items[i].Revert(); }
-                catch (Exception e) { Log.Error("[Performance] undo", e); }
+                catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "undo", e); }
             }
             _items.Clear(); _pruneAt = 1024;
         }
+        /// <summary>Drops undo bookkeeping after its native scene objects have been discarded.</summary>
         internal void Clear() { _items.Clear(); _pruneAt = 1024; }
     }
 
     internal sealed class EnabledUndo : Undo
     {
         readonly PlayMakerFSM _c; readonly FsmStateAction _a; readonly bool _was;
+        /// <summary>Captures an action's original enabled flag and owning component.</summary>
         public EnabledUndo(PlayMakerFSM c, FsmStateAction a, bool was) { _c = c; _a = a; _was = was; }
         internal override bool Alive { get { return _c != null; } }
+        /// <summary>Restores the captured native value only while the undo record's owning component is live.</summary>
         internal override void Revert() { _a.Enabled = _was; }
     }
 
     internal sealed class FloatUndo : Undo
     {
         readonly PlayMakerFSM _c; readonly FsmFloat _v; readonly float _was;
+        /// <summary>Captures a native float variable and its original value for feature shutdown.</summary>
         public FloatUndo(PlayMakerFSM c, FsmFloat v, float was) { _c = c; _v = v; _was = was; }
         internal override bool Alive { get { return _c != null; } }
+        /// <summary>Restores the captured native value only while the undo record's owning component is live.</summary>
         internal override void Revert() { _v.Value = _was; }
     }
 

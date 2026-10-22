@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// RC1 (research C §1 "Renderers", §2 Tier 1.3, §3). 11,041 of 11,321 prefab MeshRenderers cast shadows; ~51% are smaller than
@@ -16,26 +16,38 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class SmallCasters : Feature, IScanClient, SaveGuard.IClient
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "RC1"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Small shadow casters"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "No shadows from tiny objects"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 7; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Objects smaller than a few centimetres to decimetres (cans, bolts, small props) stop casting shadows."; } }
 
         Knob _size;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg) { _size = NewKnob(cfg, "Half extent (m)", "Renderers with a world half extent below this stop casting shadows.", 0.35f, 0.15f, 0.08f, 0f); }
 
+        /// <summary>Retains one renderer's native shadow mode, measured size and asset/save flags.</summary>
         sealed class RRec { public MeshRenderer R; public ShadowCastingMode Orig; public bool Saved, Asset; public float Size; }
         readonly Dictionary<int, RRec> _recs = new Dictionary<int, RRec>();
         readonly List<RRec> _list = new List<RRec>();
         readonly Dictionary<long, ShadowCastingMode> _assetOrig = new Dictionary<long, ShadowCastingMode>();
         float _threshold;
+        /// <summary>Requests mesh renderers from the shared rendering scan.</summary>
         public ScanTypes Types { get { return ScanTypes.Renderers; } }
 
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { _threshold = _size.Value; SaveGuard.Register(this); RenderScan.Register(this); }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             RenderScan.Unregister(this); SaveGuard.Unregister(this);
@@ -43,6 +55,7 @@ namespace WildWasteland.Modules.Performance
             _list.Clear(); _recs.Clear(); _assetOrig.Clear();
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged()
         {
             _threshold = _size.Value;
@@ -54,9 +67,12 @@ namespace WildWasteland.Modules.Performance
             RenderScan.RequestFull();   // a larger threshold catches renderers that were not recorded
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { RenderScan.RequestFull(); }
+        /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { RenderScan.RequestFull(); }
 
+        /// <summary>Builds the mesh/root identity used to share native shadow-caster classification.</summary>
         static long MeshKey(MeshRenderer r, Transform root)
         {
             var mf = r.GetComponent<MeshFilter>();
@@ -64,6 +80,7 @@ namespace WildWasteland.Modules.Performance
             return ((long)mesh << 32) ^ (uint)RenderScan.RootHash(root);
         }
 
+        /// <summary>Shared scan: captures eligible native renderers before disabling only sufficiently small shadow casters.</summary>
         public void OnRenderer(MeshRenderer r, ref ScanCtx c)
         {
             if (c.Player || c.Vehicle || (c.Asset && c.Saved)) return;
@@ -86,16 +103,25 @@ namespace WildWasteland.Modules.Performance
             if (!(rec.Saved && SaveGuard.Reverted)) Apply(rec);
         }
 
+        /// <summary>Disables shadow casting on one still-live renderer selected by the feature's size threshold.</summary>
         static void Apply(RRec r) { if (r.R != null && r.R.shadowCastingMode != ShadowCastingMode.Off) r.R.shadowCastingMode = ShadowCastingMode.Off; }
+        /// <summary>Restores the captured native shadow-casting mode on one recorded renderer.</summary>
         static void Restore(RRec r) { if (r.R != null && r.R.shadowCastingMode != r.Orig) r.R.shadowCastingMode = r.Orig; }
 
+        /// <summary>Restores the original fields of saved objects before serialization.</summary>
         public void RevertSaved() { for (int i = 0; i < _list.Count; i++) if (_list[i].Saved) Restore(_list[i]); }
+        /// <summary>Reapplies active optimization settings after serialization releases saved objects.</summary>
         public void ReapplySaved() { for (int i = 0; i < _list.Count; i++) { var r = _list[i]; if (r.Saved && r.Size < _threshold) Apply(r); } }
 
+        /// <summary>This scan client does not modify lights.</summary>
         public void OnLight(Light l, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify particle systems.</summary>
         public void OnParticles(ParticleSystem p, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify animators.</summary>
         public void OnAnimator(Animator a, ref ScanCtx c) { }
+        /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
+        /// <summary>Prunes destroyed renderer records after shared discovery finishes.</summary>
         public void OnPassDone()
         {
             int n = 0;
@@ -105,6 +131,7 @@ namespace WildWasteland.Modules.Performance
             _recs.Clear(); for (int i = 0; i < _list.Count; i++) _recs[_list[i].R.GetInstanceID()] = _list[i];
         }
 
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Renderers without shadow", _list.Count + " (" + _assetOrig.Count + " prefab meshes)"); }
     }
 }

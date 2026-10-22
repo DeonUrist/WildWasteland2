@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using CleanHud = WildWasteland.Modules.CleanHUD;
 
 namespace WildWasteland.Core.UI
 {
@@ -21,16 +20,18 @@ namespace WildWasteland.Core.UI
         static string _debugSearch = "", _developerSearch = "";
         static Rect _rect;
         const float Width = 1920, Height = 1080;
-        static readonly Action<Rect, string, float, Color, TextAnchor> SettingsText = CleanHud.GlyphFont.Draw;
-        static readonly Action<Rect, string, float, Color, TextAnchor> SettingsWrap = CleanHud.GlyphFont.DrawWrapped;
-        static readonly Func<string, float, float, float> SettingsHeight = CleanHud.GlyphFont.WrappedHeight;
+        static readonly Action<Rect, string, float, Color, TextAnchor> SettingsText = GlyphFont.Draw;
+        static readonly Action<Rect, string, float, Color, TextAnchor> SettingsWrap = GlyphFont.DrawWrapped;
+        static readonly Func<string, float, float, float> SettingsHeight = GlyphFont.WrappedHeight;
         static bool _open;
         static bool _fromMenu;
         static Action _deferred;
+        /// <summary>Whether the settings window currently owns an editor session.</summary>
         public static bool IsOpen { get { return _open; } }
         /// <summary>The window is open or has a deferred action to run: the GUI runner must stay on.</summary>
         internal static bool NeedsGui { get { return _open || _deferred != null; } }
 
+        /// <summary>Registers the shared settings hotkey, core pages and save-state observer.</summary>
         internal static void Init()
         {
             Hotkeys.Register(null, Plugin.ToolWindowKey, Toggle, null, true);
@@ -39,12 +40,14 @@ namespace WildWasteland.Core.UI
         }
 
         static bool _newGame, _openNewGame;
+        /// <summary>Tracks new-game completion so the settings page opens at the existing ready point.</summary>
         static void OnSaveState(string previous, string current)
         {
             if (current == "LoadGame" || current == "generateTerrain 2") { _newGame = _openNewGame = false; }
             else if (current == "setSeed" || current == "generateTerrain") _newGame = true;
             else if (current == "isPlay" && _newGame) { _newGame = false; _openNewGame = true; }
         }
+        /// <summary>Closes blocked sessions and opens the new-game settings page when input is ready.</summary>
         internal static void Tick()
         {
             if (LoadingProgress.MenusBlocked) { if (_open) Close(); return; }
@@ -54,18 +57,22 @@ namespace WildWasteland.Core.UI
             if (_open) { _openNewGame = false; Log.Always("[Core] New game ready: opened Game settings"); }
         }
 
+        /// <summary>Adds a unique settings page to the window.</summary>
         public static void Add(ToolPage p) { if (p != null && !_pages.Contains(p)) _pages.Add(p); }
+        /// <summary>Removes a page and clears its current-page reference.</summary>
         public static void Remove(ToolPage p) { _pages.Remove(p); if (_current == p) _current = null; }
 
+        /// <summary>Closes the active settings window or opens its default page.</summary>
         public static void Toggle() { if (_open) Close(); else Open(null); }
 
+        /// <summary>Opens a requested page through the shared editor session and pause-menu policy.</summary>
         public static void Open(ToolPage page)
         { Open(page, GameRefs.Menu != null && GameRefs.Menu.ActiveStateName == "pause"); }
 
+        /// <summary>Opens Game settings while preserving the native menu context.</summary>
         internal static void OpenFromMenu() { Open(CorePages.GamePage, true); }
-        internal static void OpenSaves(bool saving = false) { SaveLibraryPage.Instance.Configure(saving); Open(SaveLibraryPage.Instance, true); }
-
-        static void Open(ToolPage page, bool fromMenu)
+        /// <summary>Opens an authored page, optionally acquiring input from an already paused native menu.</summary>
+        public static void Open(ToolPage page, bool fromMenu)
         {
             if (LoadingProgress.MenusBlocked) return;
             if (!_open)
@@ -76,15 +83,21 @@ namespace WildWasteland.Core.UI
                 CollectModulePages();
                 Log.Always("[Core] Settings opened: CleanHUD atlas UI, 54-unit rows");
             }
-            if (page != null) { _current = page; _scroll = Vector2.zero; Ledger.ClearNumbers(); ToolLayout.CancelRebind(); }
+            if (page != null)
+            {
+                if (_current != null && _current != page) _current.OnHide();
+                _current = page; _scroll = Vector2.zero; Ledger.ClearNumbers(); ToolLayout.CancelRebind();
+            }
             if (_current == null && _pages.Count > 0) _current = Sorted()[0];
             if (_current != null) _current.OnShow();
         }
 
+        /// <summary>Closes the current page and releases the editor session and transient widget state.</summary>
         public static void Close()
         {
             if (!_open) return;
-            if (_current == SaveLibraryPage.Instance) { SaveLibraryPage.Instance.ReleasePictures(); _current = CorePages.GamePage; _scroll = Vector2.zero; }
+            if (_current != null) _current.OnHide();
+            _current = CorePages.GamePage; _scroll = Vector2.zero;
             _open = false; _session.Close(); Ledger.ClearNumbers(); ToolLayout.CancelRebind();
         }
 
@@ -92,6 +105,9 @@ namespace WildWasteland.Core.UI
         public static void CloseThen(Action a) { Close(); _deferred = a; }
 
         static bool _collected;
+        /// <summary>Module tool pages collected for the Debug-owned Developer presentation.</summary>
+        public static IEnumerable<ToolPage> DeveloperPages { get { return CorePages.ModulePages; } }
+        /// <summary>Collects each module tool page once for the Debug-owned developer page.</summary>
         static void CollectModulePages()
         {
             if (_collected) return;
@@ -105,6 +121,7 @@ namespace WildWasteland.Core.UI
             }
         }
 
+        /// <summary>Collects visible pages and orders them by group and original registration.</summary>
         static List<ToolPage> Sorted()
         {
             var l = new List<ToolPage>();
@@ -117,10 +134,12 @@ namespace WildWasteland.Core.UI
             });
             return l;
         }
+        /// <summary>Applies Debug and Developer visibility settings to a page.</summary>
         static bool Visible(ToolPage p)
         {
             return (!p.DebugOnly || Plugin.EnableDebug.Value) && (p != CorePages.DeveloperPage || Plugin.DeveloperMode.Value);
         }
+        /// <summary>Returns the standard group order, placing custom groups last.</summary>
         static int GroupIndex(string g) { int i = Array.IndexOf(ToolGroups.Order, g); return i < 0 ? ToolGroups.Order.Length : i; }
 
         /// <summary>Called from the Runner's OnGUI.</summary>
@@ -133,7 +152,7 @@ namespace WildWasteland.Core.UI
             }
             if (!_open) return;
             if (_current != null && !Visible(_current))
-            { _current = Plugin.EnableDebug.Value ? CorePages.DebugPage : CorePages.GamePage; _scroll = Vector2.zero; Ledger.ClearNumbers(); ToolLayout.CancelRebind(); _current.OnShow(); }
+            { _current.OnHide(); _current = Plugin.EnableDebug.Value ? CorePages.DebugPage : CorePages.GamePage; _scroll = Vector2.zero; Ledger.ClearNumbers(); ToolLayout.CancelRebind(); _current.OnShow(); }
             if (Event.current.type == EventType.Layout)
             {
                 _session.Maintain();
@@ -141,16 +160,16 @@ namespace WildWasteland.Core.UI
                 if (!ToolLayout.Rebinding && Event.current != null && UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); return; }
                 if (_current != null) { try { _current.Update(); } catch (Exception e) { Log.Error("F7 page " + _current.Title, e); } }
             }
-            if (Skin.GameFont == null) { var f = ApocasetterBridge.GameFont; if (f != null) Skin.SetGameFont(f); }
+            Skin.EnsureGameFont();
             int depth = GUI.depth; GUI.depth = -900;
             float s = Mathf.Min(Screen.width / Width, Screen.height / Height);
-            var accent = CleanHud.CleanHudModule.Running ? CleanHud.AccentTheme.Resolve(CleanHud.DialogueWidgets.Gold) : CleanHud.DialogueWidgets.Gold;
+            var accent = AccentTheme.Resolve(ThemePalette.Gold);
             var border = new Color(214 / 255f, 203 / 255f, 176 / 255f, .55f);
-            if (CleanHud.CleanHudModule.Running) border = CleanHud.AccentTheme.Resolve(border);
-            var old = Ledger.BeginSettings(accent, border, CleanHud.Assets.Tex("panel_menu"), CleanHud.Assets.VGradient(.75f), SettingsText, SettingsWrap, SettingsHeight); var m = GUI.matrix;
-            if (_fromMenu && CleanHud.CleanHudModule.Running && CleanHud.CleanHudModule.MenuEnabled.Value)
+            border = AccentTheme.Resolve(border);
+            var old = Ledger.BeginSettings(accent, border, ThemeAssets.Tex("panel_menu"), ThemeAssets.VGradient(.75f), SettingsText, SettingsWrap, SettingsHeight); var m = GUI.matrix;
+            if (_fromMenu)
             {
-                var background = CleanHud.Menu.MenuBackground();
+                var background = ThemeAssets.MenuBackground();
                 if (background != null) GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), background, ScaleMode.ScaleAndCrop);
             }
             Ledger.Fill(new Rect(0, 0, Screen.width, Screen.height), new Color(0, 0, 0, .6f));
@@ -163,24 +182,25 @@ namespace WildWasteland.Core.UI
 
         static readonly ToolLayout _layout = new ToolLayout();
 
+        /// <summary>Lays out the active settings navigation, search and page surface.</summary>
         static void DrawWindow()
         {
-            if (_current == SaveLibraryPage.Instance) { SaveLibraryPage.Instance.DrawLibrary(); return; }
+            if (_current != null && _current.DrawFullPage()) return;
             Ledger.Label(new Rect(120, 120, 1420, 104), "WILD WASTELAND", Ledger.Brand, Ledger.Accent);
             Ledger.Label(new Rect(126, 228, 900, 36), "CONFIGURATION  /  " + Plugin.VERSION, Ledger.Small, Ledger.Muted);
             Ledger.Window(new Rect(120, 280, 1680, 704));
             if (Ledger.Button(new Rect(128, 900, 290, 64), "BACK", true, false, true, null, true)) { Close(); return; }
             Ledger.Label(new Rect(126, 1012, 600, 44), "CHANGES APPLY IMMEDIATELY", Ledger.Small, Ledger.Muted);
             Ledger.Label(new Rect(1340, 1012, 460, 44), Plugin.ToolWindowKey.Value + " / ESC TO CLOSE", Ledger.Small, Ledger.Muted, TextAnchor.MiddleRight);
-            if (CleanHud.CleanHudModule.Running && CleanHud.AccentTheme.Setting != null)
-                for (int i = 0; i < CleanHud.AccentTheme.DisplayOrder.Length; i++)
+            if (AccentTheme.Setting != null)
+                for (int i = 0; i < AccentTheme.DisplayOrder.Length; i++)
                 {
-                    int choice = CleanHud.AccentTheme.DisplayOrder[i];
+                    int choice = AccentTheme.DisplayOrder[i];
                     var swatch = new Rect(_rect.width / 2 - 156 + i * 40, 1020, 30, 30);
-                    bool selected = choice == CleanHud.AccentTheme.Index || swatch.Contains(Event.current.mousePosition);
+                    bool selected = choice == AccentTheme.Index || swatch.Contains(Event.current.mousePosition);
                     Ledger.Panel(swatch, Ledger.Field, selected ? Ledger.Accent : Ledger.Line);
-                    Ledger.Fill(new Rect(swatch.x + 4, swatch.y + 4, 22, 22), CleanHud.AccentTheme.Colors[choice]);
-                    if (GUI.Button(swatch, GUIContent.none, GUIStyle.none)) CleanHud.AccentTheme.Setting.Value = CleanHud.AccentTheme.Names[choice];
+                    Ledger.Fill(new Rect(swatch.x + 4, swatch.y + 4, 22, 22), AccentTheme.Colors[choice]);
+                    if (GUI.Button(swatch, GUIContent.none, GUIStyle.none)) AccentTheme.Setting.Value = AccentTheme.Names[choice];
                 }
 
             var pages = Sorted();
@@ -204,7 +224,7 @@ namespace WildWasteland.Core.UI
                     bool highlighted = p == _current || r.Contains(Event.current.mousePosition);
                     Ledger.RowHighlight(r, p == _current);
                     Ledger.Label(new Rect(r.x + 22, r.y, r.width - 30, r.height), p.Title + (off ? "  (OFF)" : ""), Ledger.Heading, off ? Ledger.Muted : highlighted ? Ledger.Accent : Ledger.Text);
-                    if (GUI.Button(r, GUIContent.none, GUIStyle.none) && p != _current) { _current = p; _scroll = Vector2.zero; Ledger.ClearNumbers(); ToolLayout.CancelRebind(); p.OnShow(); }
+                    if (GUI.Button(r, GUIContent.none, GUIStyle.none) && p != _current) { if (_current != null) _current.OnHide(); _current = p; _scroll = Vector2.zero; Ledger.ClearNumbers(); ToolLayout.CancelRebind(); p.OnShow(); }
                     y += 60;
                 }
                 _navHeight = y + 6;

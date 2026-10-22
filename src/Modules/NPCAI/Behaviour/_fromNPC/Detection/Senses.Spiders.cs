@@ -18,7 +18,6 @@ namespace WildWasteland.Modules.NPC
         {
             _hasSpiders = false; _spiderItems = null; _spiderFlashOf = null; _spiderFlash = null;
             _canLights.Clear(); _spiderLights.Clear(); _deadLights.Clear(); _playerCaveLight = 1f; _spiderItemPos = -1; _notCanLight.Clear();
-            CaveDarknessBridge.Reset();
             _spiderCavePlayer = null; _spiderInside = null;
         }
 
@@ -37,7 +36,6 @@ namespace WildWasteland.Modules.NPC
         private static void RefreshSpiderLights()
         {
             if (!_hasSpiders) return;
-            CaveDarknessBridge.Refresh();
             _playerCaveLight = SpiderAmbient(_playerHead != null ? _playerHead.transform.position : _player.transform.position + Vector3.up);
             if (_spiderItems == null)
             {
@@ -82,7 +80,8 @@ namespace WildWasteland.Modules.NPC
 
         private static float SpiderAmbient(Vector3 p)
         {
-            float level = CaveDarknessBridge.At(p);
+            var ambient = Core.ModApi.Get<Core.ICaveAmbient>();
+            float level = ambient != null ? ambient.At(p) : -1f;
             if (level >= 0f) return level;
             RaycastHit hit;
             if (!Physics.Raycast(p, Vector3.up, out hit, 80f, Blockers, QueryTriggerInteraction.Ignore)) return 1f;
@@ -137,7 +136,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 pos = light.transform.position;
             var g = GetOrMake(Src.Vision, OnGround(pos, pos.y), source, "a light", 0f, 1f, now);
             bool had = a.Ghost == g;
-            if (Assign(a, g, Src.Vision, now)) { if (!had) if (NpcModule.VerboseLog.Value) Log(a, "is illuminated, investigates a light (ghost #" + g.Id + ")"); }
+            if (Assign(a, g, Src.Vision, now)) { if (!had) if (WildWasteland.Core.Log.L2) Log(a, "is illuminated, investigates a light (ghost #" + g.Id + ")"); }
             else if (g.Holders.Count == 0) { int i = _ghosts.IndexOf(g); if (i >= 0) KillGhost(i); }
         }
     }

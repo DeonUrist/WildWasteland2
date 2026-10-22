@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT1 (plan §7, research B §3.2): sliced, de-phased replacement of the four culling sweeps. Vanilla (all Sources
@@ -20,7 +20,7 @@ namespace WildWasteland.Modules.Performance
     ///  - [DeleteFarAwayItems] L449: every 10 s: Items not on layer 22 farther than 5000 m, Cars farther than 5000 m (no layer check),
     ///    Sandstorms farther than 50000 m -> Destroy. "Perma base" (Gameplay_Canvas.md:L236-L251) is EnableFSM(DeleteFarAwayItems,
     ///    false): this pass runs only while that component is enabled, exactly like vanilla. WW Patrols' War Rig protection on that
-    ///    FSM's GetDistance is honoured through <see cref="PatrolsBridge"/> (skip protected, detach tankers before deleting a truck).
+    ///    FSM's GetDistance is honoured through ICullingProtection (skip protected, release trailers before deleting a truck).
     ///  - [DeleteFallingItems] L428: every 10 s: Items and Cars whose world Y is not above -10000 (FloatCompare greaterThan=back, so
     ///    equal and NaN are destroyed too) -> Destroy.
     ///  - NewGO_ArrayList [DeleteDestroyedItems] L11: every 5 s remove destroyed entries from Cars, Items, Sandstorms (vanilla skips the
@@ -36,12 +36,19 @@ namespace WildWasteland.Modules.Performance
     /// </summary>
     public sealed class CullerFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT1"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Culler"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Sliced item culling"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 1; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "The game's 5/10-second item culling and cleanup sweeps run a few entries per frame instead of the whole list in one frame (same rules)."; } }
 
         internal static bool On;
@@ -59,7 +66,6 @@ namespace WildWasteland.Modules.Performance
 
         // current pass
         static bool _running; static Kind _kind; static int _list; static int _cursor;
-        static bool _patrols;
         const int EntriesPerFrame = 64, ChangesPerFrame = 8;
 
         PlayMakerArrayListProxy _items, _cars, _sand; GameObject _arraysGo;
@@ -68,6 +74,7 @@ namespace WildWasteland.Modules.Performance
         internal static long Activated, Deactivated, Destroyed, Compacted, Passes, Skipped1000;
         static int _lastPassFrames, _passStartFrame;
 
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             _self = this; On = true;
@@ -77,9 +84,10 @@ namespace WildWasteland.Modules.Performance
             FsmEdits.Watch(this, "DeleteFarAwayItems", "__GameManager__", ReadyDeleteFar);
             FsmEdits.Watch(this, "DeleteFallingItems", "__GameManager__", ReadyFalling);
             FsmEdits.Watch(this, "DeleteDestroyedItems", "NewGO_ArrayList", ReadyCompact);
-            _job = Scheduler.Sliced(Module, "Performance.Culler", 1000, Step);
+            _job = Scheduler.Sliced(Module, "Core.Optimization.Culler", 1000, Step);
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             On = false;
@@ -90,6 +98,7 @@ namespace WildWasteland.Modules.Performance
             _running = false; _queue.Clear();
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded()
         {
             _undo.Prune();
@@ -97,14 +106,20 @@ namespace WildWasteland.Modules.Performance
             for (int i = 0; i < 4; i++) _queued[i] = false;
         }
 
+        /// <summary>Restores this feature's saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin() { _running = false; _queue.Clear(); for (int i = 0; i < 4; i++) _queued[i] = false; }
 
         // ---- neutralising the vanilla sweeps ----
+        /// <summary>Takes over the validated DeactivateFarAwayItems wait loop with its native five-second cadence.</summary>
         void ReadyDeactivate(PlayMakerFSM f) { Neutralise(f, Kind.Deactivate, "wait", 1, 5f); }
+        /// <summary>Takes over the validated DeleteFarAwayItems wait loop with its native ten-second cadence.</summary>
         void ReadyDeleteFar(PlayMakerFSM f) { Neutralise(f, Kind.DeleteFar, "wait", 1, 10f); }
+        /// <summary>Takes over the validated falling-object cleanup wait loop with its native ten-second cadence.</summary>
         void ReadyFalling(PlayMakerFSM f) { Neutralise(f, Kind.Falling, "wait", 1, 10f); }
+        /// <summary>Takes over the validated item-list compaction loop with its native five-second cadence.</summary>
         void ReadyCompact(PlayMakerFSM f) { Neutralise(f, Kind.Compact, "off", 2, 5f); }
 
+        /// <summary>Verifies the native cleanup FSM layout before replacing its wait with the bounded Core sweep.</summary>
         void Neutralise(PlayMakerFSM comp, Kind k, string state, int number, float seconds)
         {
             var fsm = comp.Fsm;
@@ -141,6 +156,7 @@ namespace WildWasteland.Modules.Performance
                     return CheckList(fsm, "Items", "ArrayList_Items") && CheckList(fsm, "cars", "ArrayList_Cars") && CheckList(fsm, "Sandstorms", "ArrayList_Sandstorms");
             }
         }
+        /// <summary>Validates a native FloatCompare threshold before enabling its replacement sweep.</summary>
         bool CheckCompare(Fsm fsm, string state, int n, float v, string key)
         {
             var c = FsmEdits.Act<FloatCompare>(this, fsm, state, n, key);
@@ -148,6 +164,7 @@ namespace WildWasteland.Modules.Performance
             if (c.float2.UseVariable || Math.Abs(c.float2.Value - v) > 0.01f) { FsmEdits.Warn(this, key, "threshold is " + c.float2.Value + ", expected " + v); return false; }
             return true;
         }
+        /// <summary>Validates the native object-layer read used by the cleanup FSM.</summary>
         bool CheckLayer(Fsm fsm, string state, int n, string key)
         {
             var c = FsmEdits.Act<IntCompare>(this, fsm, state, n, key);
@@ -155,6 +172,7 @@ namespace WildWasteland.Modules.Performance
             if (c.integer2.UseVariable || c.integer2.Value != 22) { FsmEdits.Warn(this, key, "layer is " + c.integer2.Value + ", expected 22"); return false; }
             return true;
         }
+        /// <summary>Verifies the cleanup FSM reads the expected saved-object list before taking ownership.</summary>
         bool CheckList(Fsm fsm, string state, string reference)
         {
             var g = FsmEdits.Act<ArrayListGetNext>(this, fsm, state, 1, fsm.Name + "/" + state + "#1");
@@ -166,8 +184,10 @@ namespace WildWasteland.Modules.Performance
         sealed class SweepUndo : Undo
         {
             readonly PlayMakerFSM _c; readonly Wait _w; readonly string _state;
+            /// <summary>Captures the cleanup FSM's original wait and state for restoration.</summary>
             public SweepUndo(PlayMakerFSM c, Wait w, string state) { _c = c; _w = w; _state = state; }
             internal override bool Alive { get { return _c != null; } }
+            /// <summary>Restores the native wait and re-enters its authored state if the component is still live.</summary>
             internal override void Revert()
             {
                 _w.Enabled = true;
@@ -177,6 +197,7 @@ namespace WildWasteland.Modules.Performance
         }
 
         // ---- the sliced job ----
+        /// <summary>Caches the current native item/car/storm lists and player variable; yields when they are unavailable.</summary>
         bool Resolve()
         {
             if (_player == null) _player = FsmVariables.GlobalVariables.FindFsmGameObject("Player");
@@ -197,8 +218,10 @@ namespace WildWasteland.Modules.Performance
             return _items != null && _cars != null && _sand != null;
         }
 
+        /// <summary>Checks the native component's enabled and hierarchy state before scheduling its cleanup pass.</summary>
         static bool ComponentRuns(PlayMakerFSM c) { return c != null && c.enabled && c.gameObject.activeInHierarchy; }
 
+        /// <summary>Advances the queued native cleanup passes with one bounded slice per frame and existing timer cadence.</summary>
         bool Step()
         {
             if (!On) return false;
@@ -227,7 +250,6 @@ namespace WildWasteland.Modules.Performance
                 var p = _player != null ? _player.Value : null;
                 if (p == null && k != Kind.Compact && k != Kind.Falling) return true;   // vanilla would compare stale distances: skip
                 _running = true; _kind = k; _list = 0; _cursor = 0; _passStartFrame = frame; Passes++;
-                _patrols = k == Kind.DeleteFar && PatrolsBridge.Active();
                 if (k == Kind.Compact) { CompactAll(); _running = false; _lastPassFrames = 1; return true; }
             }
             if (_lastSliceFrame == frame) return false;      // one slice of entries per frame
@@ -238,9 +260,10 @@ namespace WildWasteland.Modules.Performance
 
         static int _lastTimerFrame = -1, _lastSliceFrame = -1;
 
+        /// <summary>Processes a bounded number of cleanup entries and mutations while preserving native list order.</summary>
         void RunSlice()
         {
-            Telemetry.Mark("cull");
+            OptimizationMetrics.Mark("cull");
             var player = _player != null ? _player.Value : null;
             // scene teardown mid-pass: never compare against a missing player (would read as distance from the origin)
             if (_owned[(int)_kind] == null || (player == null && _kind != Kind.Falling)) { _running = false; return; }
@@ -271,7 +294,12 @@ namespace WildWasteland.Modules.Performance
                         float limit = _list == 2 ? 50000f : 5000f;
                         float d = Vector3.Distance(pp, go.transform.position);
                         if (!(d > limit)) break;
-                        if (_patrols) { if (PatrolsBridge.Protected(go)) break; PatrolsBridge.BeforeFarDelete(go); }
+                        var protection = ModApi.Get<ICullingProtection>();
+                        if (protection != null)
+                        {
+                            if (protection.Protected(go)) break;
+                            protection.BeforeFarDelete(go);
+                        }
                         UnityEngine.Object.Destroy(go); Destroyed++; changes++;
                         break;
                     }
@@ -297,11 +325,13 @@ namespace WildWasteland.Modules.Performance
             return null;
         }
 
+        /// <summary>Removes destroyed entries from every saved-object list covered by the native compaction pass.</summary>
         void CompactAll()
         {
             Compact(_cars.arrayList); Compact(_items.arrayList); Compact(_sand.arrayList);
         }
 
+        /// <summary>Compacts one native array list in place while preserving surviving entries and their order.</summary>
         static void Compact(ArrayList l)
         {
             if (l == null) return;
@@ -317,6 +347,7 @@ namespace WildWasteland.Modules.Performance
             if (n < count) { l.RemoveRange(n, count - n); Compacted += count - n; }
         }
 
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             if (_items != null) l.Value("Items / cars / sandstorms", _items.arrayList.Count + " / " + _cars.arrayList.Count + " / " + _sand.arrayList.Count);

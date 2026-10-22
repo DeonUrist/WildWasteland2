@@ -17,7 +17,7 @@ namespace WildWasteland.Core
     /// the contains rule, which picks the same proxy in the vanilla scene. Lookups are cached per NewGO_ArrayList / itemNameID
     /// instance (GameRefs clears those on scene load), so a registration does not allocate beyond the name string.
     /// </summary>
-    public static class ItemSpawner
+    public static partial class ItemSpawner
     {
         /// <summary>Which saved list.</summary>
         public enum SaveList { Items, Cars }
