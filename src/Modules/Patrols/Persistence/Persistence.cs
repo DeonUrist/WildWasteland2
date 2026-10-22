@@ -433,7 +433,7 @@ namespace WildWasteland.Modules.Patrols
             var factionMarker=car.GetComponent<PatrolMarker>();
             if(factionMarker!=null){factionMarker.Faction=TrafficFactions.Normalize(data.faction);factionMarker.ExplodeChance=data.explodeChance;factionMarker.DriverDied=data.driverDied;factionMarker.DriverBailed=data.driverBailed;factionMarker.ExplodeRolled=data.explodeRolled;factionMarker.ExplodeSelected=data.explodeSelected;TrafficFactions.Crew(car,factionMarker);}
             mk.PlayerEntered = data.playerEntered;
-            mk.SetupOnly=data.setupOnly;if(data.setupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Nwh.StopEngine(car);Patrol.Handbrake(car,true);}
+            mk.SetupOnly=data.setupOnly;if(data.setupOnly){var setup=car.GetComponent<Crew>();if(setup!=null)setup.Hold=true;Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(car);Patrol.Handbrake(car,true);}
             MerchantRuntime.Restore(car,data.merchantJson);
             WorldTraffic.BindRestored(mk, data.riders == null);
             WorldTraffic.BindBattle(mk,data);

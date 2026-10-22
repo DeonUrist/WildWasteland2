@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.Patrols
     /// into input.Throttle/Brakes/Clutch/Steering every frame, player inside or not. While the mod drives, they are disabled and the gearbox
     /// is set to automatic with an automatic clutch; Release() restores everything (single-state FSMs: PlayMaker's restart-on-enable is harmless).
     /// </summary>
-    internal class InputControl
+    internal class InputControl : IVehicleInputLease
     {
         private static readonly string[] Names = { "INPUT_AxisInput", "INPUT_AxisSteering", "INPUT_NormalizedAxisInput", "INPUT_MouseSteering",
             "Bool_AutomaticGearbox", "Bool_AutoClutch", "Bool_HShifter", "INPUT_HShifter", "INPUT_ShiftUpDown", "INPUT_GearChange" };
@@ -33,10 +33,10 @@ namespace WildWasteland.Modules.Patrols
         internal InputControl(GameObject car) { _car = car; }
 
         /// <summary>True while the mod owns the car's input.</summary>
-        internal bool Taken { get { return _owns; } }
+        public bool Taken { get { return _owns; } }
 
         /// <summary>Pauses the INPUT FSMs, turns off auto input, and switches the gearbox to automatic with RequireShiftInput and an automatic clutch.</summary>
-        internal void Take()
+        public void Take()
         {
             if (_owns) return;
             _owns = true;
@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Restores the gearbox settings, the INPUT FSMs and auto input.</summary>
-        internal void Release()
+        public void Release()
         {
             if (!_owns) return;
             _owns = false;

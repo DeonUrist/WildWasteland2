@@ -57,11 +57,11 @@ namespace WildWasteland.Modules.Patrols
             bool waiting=!pursuing&&(Data?.travelling!=true||(journey?.merchant==true&&(journey.arrived||journey.waitSeconds>0f)));
             if(Data?.travelling!=true&&crew!=null)crew.Hold=!pursuing;
             if(crew!=null)crew.WaitForMerchant(waiting);if(!waiting)return;
-            Nwh.StopEngine(gameObject);
+            Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(gameObject);
             if(_start==null)_start=Patrol.FindFsm(gameObject,"START","Start");
             if(_start!=null&&_start.enabled&&_start.Fsm.Initialized&&_start.ActiveStateName!="off")_start.Fsm.SetState("off");
             if(_handbrake==null&&Time.unscaledTime>=_handbrakeSearch){_handbrakeSearch=Time.unscaledTime+5f;_handbrake=Patrol.FindFsm(gameObject,"handbrake","Handbrake");}
-            Nwh.SetInput(gameObject,0f,0f,1f);Nwh.SetHandbrake(gameObject,1f);Patrol.Handbrake(gameObject,true,_handbrake);
+            Core.ModApi.Get<Core.IVehicleDrive>().SetInput(gameObject,0f,0f,1f);Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(gameObject,1f);Patrol.Handbrake(gameObject,true,_handbrake);
         }
         private IEnumerator Start()
         {
