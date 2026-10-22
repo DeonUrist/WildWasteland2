@@ -26,22 +26,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (string resource in WildWasteland.Core.DiskResources.Names.Where(n => n.StartsWith(Prefix, StringComparison.Ordinal) && n.EndsWith(".json", StringComparison.OrdinalIgnoreCase)))
                 using (var stream = WildWasteland.Core.DiskResources.Open(resource)) using (var reader = new StreamReader(stream)) _defaults[resource.Substring(Prefix.Length, resource.Length - Prefix.Length - 5)] = reader.ReadToEnd();
             foreach (var pair in _defaults) { string path = EditorStore.SafePath(Folder, pair.Key + ".json"); if (!File.Exists(path)) EditorStore.AtomicWrite(path, pair.Value); }
-            MigrateLegacy(); Refresh(true);
-        }
-        private static void MigrateLegacy()
-        {
-            string legacy = Path.Combine(_root, "CarTemplates"), marker = Path.Combine(_root, "legacy-templates-imported.txt");
-            if (!Directory.Exists(legacy) || File.Exists(marker)) return;
-            foreach (string path in Directory.GetFiles(legacy, "*.json")) try
-            {
-                var file = TemplateFile.FromJson(File.ReadAllText(path)); string name = string.IsNullOrWhiteSpace(file.name) ? Path.GetFileNameWithoutExtension(path) : file.name;
-                if (_defaults.ContainsKey(name)) name += "_Legacy";
-                string dest = EditorStore.UniquePath(PlayerFolder, name, ".json"); file.name = Path.GetFileNameWithoutExtension(dest); file.schema = 2;
-                if (file.lootPreset.Length == 0) file.lootPreset = file.body == "Rustcargo" ? (file.cargo.Length > 0 ? "truck-food" : "truck-empty") : "car-standard";
-                EditorStore.AtomicWrite(dest, file.ToJson());
-            }
-            catch (Exception e) { Warn("Legacy template preserved but import failed " + path + ": " + e.Message); }
-            File.WriteAllText(marker, "Imported copies into PlayerTemplates. Originals remain in CarTemplates.");
+            Refresh(true);
         }
         internal static void RestoreDefaults() { foreach (var pair in _defaults) EditorStore.AtomicWrite(EditorStore.SafePath(Folder, pair.Key + ".json"), pair.Value); }
         internal static void Refresh(bool force)
@@ -170,8 +155,5 @@ namespace WildWasteland.Modules.Patrols
             return kind.Split(new[] { ';', ',', ' ', '\t', '|' }, StringSplitOptions.RemoveEmptyEntries)
                        .Select(k => k.Trim().ToLowerInvariant()).Where(k => k.Length > 0).Distinct().ToArray();
         }
-
-        // A "cargo" value that is an item spec ("dogfood_can:6;akms:1") rather than "Random" or a [Loot] key
-        internal static bool IsItemSpec(string cargo) { return cargo != null && (cargo.IndexOf(':') >= 0 || cargo.IndexOf(';') >= 0); }
     }
 }

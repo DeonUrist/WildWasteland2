@@ -84,7 +84,7 @@ namespace WildWasteland.Modules.Patrols
         private static int _vistasRoads;
         private static string _vistasIdentity;
         // WW: BepInEx\config\WildWasteland\Patrols\roads (set by PatrolsModule.Init); the standalone cache folder is read as a fallback
-        internal static string CacheDir, LegacyCacheDir;
+        internal static string CacheDir;
         internal static int Revision { get; private set; }
         internal static Vector3 TileSize => _map != null ? (Vector3)_map.tileSize : Vector3.zero;
         internal static string Status => Tiles.Count + " road tiles";
@@ -322,8 +322,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 var load=Loads.Dequeue();string world=load.Item1;int x=load.Item2,z=load.Item3;
                 string path=Path.Combine(CacheRoot,world,x+"_"+z+".roads");
-                string legacy=LegacyCacheDir!=null?Path.Combine(LegacyCacheDir,world,x+"_"+z+".roads"):null;
-                EnqueueIO(()=>{if(!File.Exists(path)){if(legacy==null||!File.Exists(legacy))return;path=legacy;}var tile=ReadCache(path,world);tile.Compact();tile.Cached=true;Pending.Enqueue(tile);});
+                EnqueueIO(()=>{if(!File.Exists(path))return;var tile=ReadCache(path,world);tile.Compact();tile.Cached=true;Pending.Enqueue(tile);});
             }
             if(Errors.TryDequeue(out var error))Core.Log.Warn("[Patrols] " + "Road cache: "+error);
         }
@@ -375,7 +374,7 @@ namespace WildWasteland.Modules.Patrols
                 {writer.Write(grid.Area.x);writer.Write(grid.Area.y);writer.Write(grid.Area.width);writer.Write(grid.Area.height);writer.Write(grid.Size);foreach(float height in grid.Heights)writer.Write(height);}
                 writer.Write(tile.FinalGround);
             }
-            if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);
+            Core.AtomicFile.Replace(temporary, path);   // D17: no Mono File.Replace (Win32 error 1175); same-directory temp
         }
         internal static RoadTile ReadCache(string path, string world)
         {

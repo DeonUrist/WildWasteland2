@@ -38,15 +38,9 @@ namespace WildWasteland.Modules.Patrols
 
         static bool _paintPreloaded;
         GameObject _host;
-        Patrol _patrol; TemplateMenu _menu; TemplateExporter _exporter; TurretSpotter _spotter; BusPassengerPoseEditor _busPose;
-        Convoy _convoy; WorldTraffic _traffic; Cleanup _cleanup; MerchantEditor _merchantEditor;
+        Patrol _patrol;   // editor components: PatrolsModule.Tools.cs (Tools) and PatrolsModule.Developer.cs (Developer)
+        Convoy _convoy; WorldTraffic _traffic; Cleanup _cleanup;
         SaveBus.StateChange _onSaveState;
-
-        internal TemplateMenu Menu { get { return _menu; } }
-        internal TemplateExporter Exporter { get { return _exporter; } }
-        internal TurretSpotter Spotter { get { return _spotter; } }
-        internal BusPassengerPoseEditor BusPose { get { return _busPose; } }
-        internal MerchantEditor MerchantSpot { get { return _merchantEditor; } }
 
         // ---------------------------------------------------------------- lifecycle
 
@@ -93,14 +87,11 @@ namespace WildWasteland.Modules.Patrols
             Instance = this;
             DataDir = Dir;
             try { Directory.CreateDirectory(DataDir); } catch (Exception e) { Log.Warn("[Patrols] data folder: " + e.Message); }
-            MigrateData();
 
-            // sidecars: BepInEx\config\WildWasteland\Patrols\Saves (+ the old BepInEx\config\Apocapatrol\Saves as a read fallback), road cache
+            // sidecars: BepInEx\config\WildWasteland\Patrols\Saves, road cache
             var cfgDir = Assets.ModuleConfigDir(Id);
             PatrolPersistence.SavesDir = Path.Combine(cfgDir, "Saves");
-            PatrolPersistence.LegacySavesDir = Path.Combine(Path.Combine(Paths.ConfigPath, "Apocapatrol"), "Saves");
             TrafficRoads.CacheDir = Path.Combine(cfgDir, "roads");
-            TrafficRoads.LegacyCacheDir = Path.Combine(Paths.ConfigPath, "Apocapatrol.roads");
 
             // hooks (Core dispatchers) and module patches, each in its own try like the old Awake
             Try("Traffic roads", TrafficRoads.Install);
@@ -161,8 +152,9 @@ namespace WildWasteland.Modules.Patrols
             // destroying the runner object closes the editors (their OnDestroy releases the pause), the spot / merchant markers and the
             // debug-map textures; its coroutines (builds, restores, traffic materialisation) stop with it
             if (_host != null) UnityEngine.Object.Destroy(_host);
-            _host = null; _patrol = null; _menu = null; _exporter = null; _spotter = null; _busPose = null; _convoy = null; _traffic = null; _cleanup = null; _merchantEditor = null;
-            BusPassengerPoseEditor.Target = null;
+            _host = null; _patrol = null; _convoy = null; _traffic = null; _cleanup = null;
+            ShutdownTools();
+            ShutdownDeveloper();
             ModVehicles.Clear();
             Prefabs.Invalidate();
             Instance = null;
@@ -191,14 +183,12 @@ namespace WildWasteland.Modules.Patrols
             _host = new GameObject("WW.Patrols") { hideFlags = HideFlags.HideAndDontSave };
             if (parent != null) _host.transform.SetParent(parent.transform, false); else UnityEngine.Object.DontDestroyOnLoad(_host);
             _patrol = _host.AddComponent<Patrol>();
-            _menu = _host.AddComponent<TemplateMenu>();
-            _exporter = _host.AddComponent<TemplateExporter>();
-            _spotter = _host.AddComponent<TurretSpotter>();
-            _busPose = _host.AddComponent<BusPassengerPoseEditor>();
+            AddToolsComponents();
+            AddDeveloperSeatComponents();
             _convoy = _host.AddComponent<Convoy>();
             _traffic = _host.AddComponent<WorldTraffic>();
             _cleanup = _host.AddComponent<Cleanup>();
-            _merchantEditor = _host.AddComponent<MerchantEditor>();
+            AddDeveloperMerchantComponent();
             PatrolPersistence.Runner = _patrol;
         }
 
@@ -213,38 +203,28 @@ namespace WildWasteland.Modules.Patrols
             TrafficCompass.Clear();
             Scheduler.Interval(this, "Compass markers", .5f, TrafficCompass.Tick);
             Scheduler.EveryFrame(this, "Patrol.Tick", () => { if (_patrol != null) _patrol.Tick(); });
-            Scheduler.EveryFrame(this, "TemplateMenu.Tick", () => { if (_menu != null) _menu.Tick(); });
-            Scheduler.EveryFrame(this, "TemplateExporter.Tick", () => { if (_exporter != null) _exporter.Tick(); });
-            Scheduler.EveryFrame(this, "TurretSpotter.Tick", () => { if (_spotter != null) _spotter.Tick(); });
-            Scheduler.EveryFrame(this, "BusPassengerPoseEditor.Tick", () => { if (_busPose != null) _busPose.Tick(); });
+            RegisterToolsTicks();
+            RegisterDeveloperSeatTicks();
             Scheduler.EveryFrame(this, "Convoy.Tick", () => { if (_convoy != null) _convoy.Tick(); });
             Scheduler.EveryFrame(this, "WorldTraffic.Tick", () => { if (_traffic != null) _traffic.Tick(); });
             Scheduler.EveryFrame(this, "Cleanup.Tick", () => { if (_cleanup != null) _cleanup.Tick(); });
-            Scheduler.EveryFrame(this, "MerchantEditor.Tick", () => { if (_merchantEditor != null) _merchantEditor.Tick(); });
+            RegisterDeveloperMerchantTick();
 
-            Scheduler.EveryFrame(this, "TemplateMenu.LateTick", () => { if (_menu != null) _menu.LateTick(); }, Phase.LateUpdate);
-            Scheduler.EveryFrame(this, "TemplateExporter.LateTick", () => { if (_exporter != null) _exporter.LateTick(); }, Phase.LateUpdate);
+            RegisterToolsLateTicks();
 
             // (WW perf) each with a predicate (built once here): IMGUI stops when none of them (and no other module) has anything to draw
             Scheduler.Gui(this, "Patrol.Gui", () => { if (_patrol != null) _patrol.Gui(); }, () => _patrol != null && Patrol.GuiWanted());
-            Scheduler.Gui(this, "TemplateMenu.Gui", () => { if (_menu != null) _menu.Gui(); }, () => _menu != null && _menu.IsOpen);
-            Scheduler.Gui(this, "TemplateExporter.Gui", () => { if (_exporter != null) _exporter.Gui(); }, () => _exporter != null && _exporter.GuiWanted());
-            Scheduler.Gui(this, "TurretSpotter.Gui", () => { if (_spotter != null) _spotter.Gui(); }, () => _spotter != null && _spotter.GuiWanted());
-            Scheduler.Gui(this, "BusPassengerPoseEditor.Gui", () => { if (_busPose != null) _busPose.Gui(); }, () => _busPose != null && BusPassengerPoseEditor.Active);
+            RegisterToolsGui();
+            RegisterDeveloperSeatGui();
             Scheduler.Gui(this, "WorldTraffic.Gui", () => { if (_traffic != null) _traffic.Gui(); }, () => _traffic != null && _traffic.GuiWanted());
-            Scheduler.Gui(this, "MerchantEditor.Gui", () => { if (_merchantEditor != null) _merchantEditor.Gui(); }, () => _merchantEditor != null && MerchantEditor.Enabled);
+            RegisterDeveloperMerchantGui();
         }
 
         void RegisterHotkeys()
         {
-            Hotkeys.Register(this, MenuKey, () => OpenEditor(), () => GameRefs.InGame);
-            Hotkeys.Register(this, TemplateDumpKey, () => OpenRecorder(), () => GameRefs.InGame);
-            Hotkeys.Register(this, BusPassengerPoseEditorKey, () => BusPassengerPoseEditorEnabled.Value = !BusPassengerPoseEditorEnabled.Value);
-            Hotkeys.Register(this, MerchantEditorKey, () => { MerchantEditorEnabled.Value = !MerchantEditorEnabled.Value; Log.Info("[Patrols] Merchant editor " + (MerchantEditorEnabled.Value ? "enabled" : "disabled")); });
+            RegisterToolsHotkeys();
+            RegisterDeveloperHotkeys();
         }
-
-        internal bool OpenEditor() { return _menu != null && _menu.TryOpen(); }
-        internal bool OpenRecorder() { return _exporter != null && _exporter.TryOpen(); }
 
         // per-object coroutines (overheat, revive, bail-out timers, merchant setup) end with the module; the objects themselves stay
         static void StopObjectCoroutines()
@@ -268,24 +248,34 @@ namespace WildWasteland.Modules.Patrols
 
         internal static void Verbose(string msg) { if (Log.Verbose) Log.Info("[Patrols] " + msg); }
 
-        // the game's menu font as captured by Apocasetter (ex EditorSession.Resolve -> PatrolSkin.SetGameFont): asked when an editor opens or
-        // the spawn warning shows, at most once a second while unknown
-        static float _nextFontAsk;
-        internal static void EnsureGameFont()
-        {
-            if (Skin.GameFont != null || Time.unscaledTime < _nextFontAsk) return;
-            _nextFontAsk = Time.unscaledTime + 1f;
-            var f = ApocasetterBridge.GameFont;
-            if (f != null) Skin.SetGameFont(f);
-        }
-
-        internal static bool Pressed(Key key)
-        {
-            if (key == Key.None) return false;
-            var kb = Keyboard.current;
-            if (kb == null) return false;
-            try { return kb[key].wasPressedThisFrame; }
-            catch (Exception) { return false; }
-        }
+        // ---------------------------------------------------------------- per-target parts (Wave A split; implemented in the target module folders)
+        /// <summary>Drops the patrol editor / template recorder component references on Shutdown (the runner object owning them is destroyed). Implemented in Tools.</summary>
+        partial void ShutdownTools();
+        /// <summary>Drops the numpad editor component references and the bus pose target on Shutdown. Implemented in Developer.</summary>
+        partial void ShutdownDeveloper();
+        /// <summary>Adds the patrol editor and template recorder components to the runner object (after Patrol, old component order). Implemented in Tools.</summary>
+        partial void AddToolsComponents();
+        /// <summary>Adds the turret spot and bus passenger pose editors to the runner object (old component order). Implemented in Developer.</summary>
+        partial void AddDeveloperSeatComponents();
+        /// <summary>Adds the merchant item editor to the runner object (last, old component order). Implemented in Developer.</summary>
+        partial void AddDeveloperMerchantComponent();
+        /// <summary>Registers the editor/recorder Update jobs right after Patrol.Tick (old job order). Implemented in Tools.</summary>
+        partial void RegisterToolsTicks();
+        /// <summary>Registers the turret spot / bus pose editor Update jobs before Convoy.Tick (old job order). Implemented in Developer.</summary>
+        partial void RegisterDeveloperSeatTicks();
+        /// <summary>Registers the merchant editor Update job after Cleanup.Tick (old job order). Implemented in Developer.</summary>
+        partial void RegisterDeveloperMerchantTick();
+        /// <summary>Registers the editor/recorder LateUpdate jobs. Implemented in Tools.</summary>
+        partial void RegisterToolsLateTicks();
+        /// <summary>Registers the editor/recorder Gui jobs after Patrol.Gui (old order). Implemented in Tools.</summary>
+        partial void RegisterToolsGui();
+        /// <summary>Registers the turret spot / bus pose editor Gui jobs before WorldTraffic.Gui (old order). Implemented in Developer.</summary>
+        partial void RegisterDeveloperSeatGui();
+        /// <summary>Registers the merchant editor Gui job last (old order). Implemented in Developer.</summary>
+        partial void RegisterDeveloperMerchantGui();
+        /// <summary>Registers the patrol editor and template recorder hotkeys. Implemented in Tools.</summary>
+        partial void RegisterToolsHotkeys();
+        /// <summary>Registers the bus passenger pose and merchant item editor hotkeys. Implemented in Developer.</summary>
+        partial void RegisterDeveloperHotkeys();
     }
 }

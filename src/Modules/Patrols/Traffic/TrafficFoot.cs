@@ -70,7 +70,6 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
         private static bool AnyWalker(TrafficJourney j) { foreach (var w in j.walkers) if (!w.dead) return true; return false; }
-        internal static bool FootAlive(TrafficJourney j) { return j.foot && j.walkers != null && AnyWalker(j); }
         // every foot group (travelers and wrapped stranded crew) is "<Faction> travelers"; the car group name is not used
         internal static string FootName(string faction, string group) { return TrafficFactions.Normalize(faction) == "Coyotes" ? "Coyote travelers" : "Scrapyard travelers"; }
 
