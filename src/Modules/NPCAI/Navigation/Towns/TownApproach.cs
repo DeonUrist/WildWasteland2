@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>
     /// Numeric entrance selection outside the town; the street graph is only used inside its contour.

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>Immutable, validated generation rules loaded once before terrain workers start.</summary>
     internal sealed class TownTemplate

@@ -10,7 +10,7 @@ using WildWasteland.Modules.Guns;
 using WildWasteland.Modules.NPC;
 using WildWasteland.Modules.Patrols;
 using WildWasteland.Modules.Quests;
-using WildWasteland.Modules.Towns;
+using WildWasteland.Modules.POI;
 
 namespace WildWasteland.Modules.NPCAI
 {

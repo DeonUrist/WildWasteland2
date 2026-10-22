@@ -39,9 +39,9 @@ namespace WildWasteland.Modules.POI
         private readonly Dictionary<Graph, Registration> _graphs = new Dictionary<Graph, Registration>();
         private readonly List<PoiSite> _sites = new List<PoiSite>();
         private readonly HashSet<string> _spawned = new HashSet<string>();
-        private readonly Towns.TownRuntime _towns;
+        private readonly TownRuntime _towns;
         /// <summary>Creates the town runtime under the same POI lifecycle owner.</summary>
-        public PoiModule() { _towns = new Towns.TownRuntime(this); }
+        public PoiModule() { _towns = new TownRuntime(this); }
         private ConfigEntry<int> _chance;
         private bool _running, _loaded, _loadFailed;
         private string _slot;
@@ -50,7 +50,6 @@ namespace WildWasteland.Modules.POI
         public override string DisplayName { get { return "Points of interest"; } }
         public override void BindConfig(ModuleConfig cfg)
         {
-            Sidecars.Register(this, "POI/Saves/{slot}.poi.txt");
             _towns.BindConfig(cfg);
             _chance = cfg.Player("World", "Spawn chance (%)", 2,
                 "Chance for each added POI in each generated 5 km terrain slice. 100 guarantees one site per slice for debugging. Changes affect newly generated slices.", new AcceptableValueRange<int>(0, 100));

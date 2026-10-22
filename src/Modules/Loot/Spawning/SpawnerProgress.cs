@@ -25,13 +25,6 @@ namespace WildWasteland.Modules.Loot
         internal const string MarkerOwner = "PoiDressMarkers";
         private const string MarkerKey = "WildWasteland.Towns.PoiDressMarkers.v1";
 
-        /// <summary>Saved state of one spawner.</summary>
-        internal sealed class State
-        {
-            /// <summary>Native OnOff (1 = finished/off), spawned so far, target count.</summary>
-            internal int OnOff, Number, NumberEnd;
-        }
-
         /// <summary>A live marker spawner FSM whose variables are captured into its state.</summary>
         private struct Live
         {
@@ -44,21 +37,21 @@ namespace WildWasteland.Modules.Loot
         /// <summary>Fraction done of the running POI marker spawn-list scan (PoiSpawnCatalog), 1 when idle.</summary>
         internal static float ScanProgress = 1f;
 
-        private static readonly Dictionary<string, State> markers = new Dictionary<string, State>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, NativeSpawnProgress> markers = new Dictionary<string, NativeSpawnProgress>(StringComparer.Ordinal);
         private static readonly List<Live> live = new List<Live>();
-        private static readonly Dictionary<string, Dictionary<string, State>> others = new Dictionary<string, Dictionary<string, State>>(StringComparer.Ordinal);
+        private static readonly Dictionary<string, Dictionary<string, NativeSpawnProgress>> others = new Dictionary<string, Dictionary<string, NativeSpawnProgress>>(StringComparer.Ordinal);
 
         /// <summary>Saved marker state of an identity, or null.</summary>
-        internal static State Marker(string key)
+        internal static NativeSpawnProgress Marker(string key)
         {
-            State state;
+            NativeSpawnProgress state;
             return markers.TryGetValue(key, out state) ? state : null;
         }
 
         /// <summary>Adds the first (committed) state of a marker group; later builds reuse it, so layout/list changes never reroll.</summary>
-        internal static State AddMarker(string key, int numberEnd, int onOff)
+        internal static NativeSpawnProgress AddMarker(string key, int numberEnd, int onOff)
         {
-            var state = new State { NumberEnd = numberEnd, OnOff = onOff };
+            var state = new NativeSpawnProgress { NumberEnd = numberEnd, OnOff = onOff };
             markers.Add(key, state);
             return state;
         }
@@ -113,7 +106,7 @@ namespace WildWasteland.Modules.Loot
                 var v = line.Split('\t'); int on, number, end;
                 if (v.Length != 4 || !int.TryParse(v[1], out on) || !int.TryParse(v[2], out number) || !int.TryParse(v[3], out end)
                     || on < 0 || on > 1 || number < 0 || end < 0 || end > 32 || number > 32 || markers.ContainsKey(v[0])) throw new InvalidDataException("Invalid marker progress row");
-                markers.Add(v[0], new State { OnOff = on, Number = number, NumberEnd = end });
+                markers.Add(v[0], new NativeSpawnProgress { OnOff = on, Number = number, NumberEnd = end });
             }
             if (Log.L1) Log.Main(LootModule.Instance, "POI marker progress loaded: " + markers.Count + " group(s)");
         }
@@ -123,9 +116,9 @@ namespace WildWasteland.Modules.Loot
         {
             on = false; number = numberEnd = 0;
             if (ownerKey == null || spawnerPath == null) return false;
-            State state = null;
+            NativeSpawnProgress state = null;
             if (ownerKey == MarkerOwner) { CaptureMarkers(); markers.TryGetValue(spawnerPath, out state); }
-            else { Dictionary<string, State> paths; if (others.TryGetValue(ownerKey, out paths)) paths.TryGetValue(spawnerPath, out state); }
+            else { Dictionary<string, NativeSpawnProgress> paths; if (others.TryGetValue(ownerKey, out paths)) paths.TryGetValue(spawnerPath, out state); }
             if (state == null) return false;
             on = state.OnOff > 0; number = state.Number; numberEnd = state.NumberEnd;
             return true;
@@ -135,9 +128,9 @@ namespace WildWasteland.Modules.Loot
         internal static void Report(string ownerKey, string spawnerPath, bool on, int number, int numberEnd)
         {
             if (ownerKey == null || spawnerPath == null) return;
-            Dictionary<string, State> paths;
+            Dictionary<string, NativeSpawnProgress> paths;
             if (ownerKey == MarkerOwner) paths = markers;
-            else if (!others.TryGetValue(ownerKey, out paths)) others[ownerKey] = paths = new Dictionary<string, State>(StringComparer.Ordinal);
+            else if (!others.TryGetValue(ownerKey, out paths)) others[ownerKey] = paths = new Dictionary<string, NativeSpawnProgress>(StringComparer.Ordinal);
             Set(ownerKey, spawnerPath, paths, on ? 1 : 0, number, numberEnd);
         }
 
@@ -145,7 +138,7 @@ namespace WildWasteland.Modules.Loot
         internal static bool TryBudget(string ownerKey, out int remaining)
         {
             remaining = 0;
-            Dictionary<string, State> paths;
+            Dictionary<string, NativeSpawnProgress> paths;
             if (ownerKey == MarkerOwner) { CaptureMarkers(); paths = markers; }
             else if (ownerKey == null || !others.TryGetValue(ownerKey, out paths)) return false;
             foreach (var state in paths.Values) if (state.OnOff == 0 && state.NumberEnd > state.Number) remaining += state.NumberEnd - state.Number;
@@ -153,10 +146,10 @@ namespace WildWasteland.Modules.Loot
         }
 
         /// <summary>Stores a state and publishes <see cref="SpawnerProgressChanged"/> when it changed and someone listens.</summary>
-        private static void Set(string ownerKey, string path, Dictionary<string, State> paths, int onOff, int number, int numberEnd)
+        private static void Set(string ownerKey, string path, Dictionary<string, NativeSpawnProgress> paths, int onOff, int number, int numberEnd)
         {
-            State state;
-            if (!paths.TryGetValue(path, out state)) paths[path] = state = new State { OnOff = -1 };
+            NativeSpawnProgress state;
+            if (!paths.TryGetValue(path, out state)) paths[path] = state = new NativeSpawnProgress { OnOff = -1 };
             if (state.OnOff == onOff && state.Number == number && state.NumberEnd == numberEnd) return;
             state.OnOff = onOff; state.Number = number; state.NumberEnd = numberEnd;
             if (!ModEvents.HasListeners<SpawnerProgressChanged>()) return;

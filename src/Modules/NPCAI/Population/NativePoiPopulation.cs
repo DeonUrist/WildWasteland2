@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     // Native non-town POIs only; shares the interior population's lifecycle and native spawn sequence.
     internal static class NativePoiPopulation

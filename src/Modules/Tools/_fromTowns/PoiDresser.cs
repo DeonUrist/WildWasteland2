@@ -6,7 +6,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Object = UnityEngine.Object;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     // A paused authoring session. Drafts are visual-only; saving publishes reusable POI-local placement data.
     internal sealed class PoiDresser

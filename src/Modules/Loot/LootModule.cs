@@ -41,6 +41,7 @@ namespace WildWasteland.Modules.Loot
         /// <summary>Provides <see cref="ILootTables"/> and <see cref="ILootSpawning"/>.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<INativeSpawners>(this, new NativeSpawnerApi());
             ModApi.Provide<ILootTables>(this, new LootTablesApi(Tables));
             ModApi.Provide<ILootSpawning>(this, new LootSpawningApi());
         }

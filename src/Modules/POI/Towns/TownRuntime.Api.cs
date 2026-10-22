@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Towns
+namespace WildWasteland.Modules.POI
 {
     /// <summary>Detached public town geometry and template authoring API.</summary>
     internal sealed partial class TownRuntime : ITownsApi
