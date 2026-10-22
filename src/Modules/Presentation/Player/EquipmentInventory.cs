@@ -4,6 +4,7 @@ using System.Reflection;
 using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -25,9 +26,9 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Reads optional inventory ownership when available, otherwise uses shared native slot data and existing extra holders.</summary>
         public bool Read()
         {
-            if (_camera != Game.PlayerCamera)
+            if (_camera != PlayerState.PlayerCamera)
             {
-                _camera = Game.PlayerCamera;
+                _camera = PlayerState.PlayerCamera;
                 Array.Clear(Items, 0, Items.Length); Drawn = -1;
             }
             Resolve();
