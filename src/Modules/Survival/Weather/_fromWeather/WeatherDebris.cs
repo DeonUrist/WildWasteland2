@@ -32,7 +32,7 @@ namespace WildWasteland.Modules.Weather
         }
         internal void Draw(int key, Vector3 position, Quaternion rotation, WeatherVisualDetail detail)
         {
-            if (!WeatherDiagnostics.Full || (WeatherDiagnostics.Enabled && WeatherDiagnostics.Output != 0)) return;
+            if (!WeatherDiagnosticState.Full || (WeatherDiagnosticState.Enabled && WeatherDiagnosticState.Output != 0)) return;
             int slot = -1;
             for (int i=0;i<_limit;i++) if (_keys[i] == key) { slot=i; break; }
             if (slot < 0) for (int i=0;i<_limit;i++) if (!_used[i]) { slot=i; break; }
@@ -44,9 +44,9 @@ namespace WildWasteland.Modules.Weather
             var settings = system.main; settings.maxParticles = detail == WeatherVisualDetail.Low ? 32 : detail == WeatherVisualDetail.Max ? 96 : 64;
             settings.startColor = Color.white; // Independent dark material, not the bright hurricane palette.
             var emission = system.emission; emission.rateOverTimeMultiplier = settings.maxParticles*.5f; emission.enabled = true;
-            if (!GameRefs.InGame || WeatherDiagnostics.Frozen) { if (system.isPlaying) system.Pause(); }
+            if (!GameRefs.InGame || WeatherDiagnosticState.Frozen) { if (system.isPlaying) system.Pause(); }
             else if (!system.isPlaying) system.Play();
-            if (!_reported[slot] && GameRefs.InGame && !WeatherDiagnostics.Frozen)
+            if (!_reported[slot] && GameRefs.InGame && !WeatherDiagnosticState.Frozen)
             {
                 if (_checkAt[slot] == 0) _checkAt[slot] = Time.time+3;
                 if (system.particleCount > 0 || Time.time >= _checkAt[slot])

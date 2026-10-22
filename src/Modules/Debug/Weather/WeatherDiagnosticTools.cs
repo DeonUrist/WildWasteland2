@@ -4,42 +4,21 @@ using System.IO;
 using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
+using static WildWasteland.Core.WeatherDiagnosticState;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Debug
 {
-    internal static class WeatherDiagnostics
+    internal sealed class WeatherDiagnosticTools : IWeatherDiagnosticControls
     {
         internal static readonly string[] Presets = { "Normal", "Engine baseline", "Regional atmosphere", "Wall only", "Canopy only", "Wall and canopy", "One hurricane - shape", "One hurricane - full", "Local clouds - native tint", "Local clouds - brown tint", "Native fog scope OFF", "Native fog scope ON" };
         private static readonly string[] Outputs = { "Normal", "Layer IDs", "Opacity", "Entry/exit distances", "Linear scene depth", "World ray direction", "Density only" };
-        internal static bool Enabled, Freeze, PendingCamera;
-        internal static int Preset, Output, SelectedRegion = -1, SelectedColumn = -1;
-        private static bool _visible;
         private static string _caption = "";
         private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
-        internal static bool Frozen { get { return Enabled && Freeze; } }
-        internal static bool Full { get { return !Enabled || Preset == 0 || Preset >= 10; } }
-        private static bool ScreenData { get { return Enabled && (Output == 4 || Output == 5); } }
-        internal static bool Wall { get { return !ScreenData && (Full || Preset == 3 || Preset == 5); } }
-        internal static bool Canopy { get { return !ScreenData && (Full || Preset == 4 || Preset == 5); } }
-        internal static bool Core { get { return !ScreenData && (Full || Preset == 6 || Preset == 7); } }
-        internal static bool Clouds { get { return !ScreenData && (Full || Preset == 8 || Preset == 9); } }
-        internal static bool Atmosphere { get { return Full || Preset == 2; } }
-        internal static bool SkyScope { get { return Atmosphere; } }
-        internal static bool FogScope { get { return SkyScope && (!Enabled || Preset != 10); } }
-        internal static bool Single { get { return Enabled && (Preset == 6 || Preset == 7); } }
-        internal static bool ShapeOnly { get { return Enabled && Preset == 6; } }
-        internal static bool CloudPair { get { return Enabled && (Preset == 8 || Preset == 9); } }
-
-        internal static void Reset()
+        internal static void OnStateChanged()
         {
-            Enabled = false; Freeze = false; Preset = 0; Output = 0; SelectedRegion = SelectedColumn = -1;
-            PendingCamera = false; _visible = false; Apply();
-        }
-        internal static void Changed()
-        {
-            Apply(); PendingCamera = Enabled;
+            Apply();
             _caption = "WEATHER DIAGNOSTICS | " + Presets[Preset] + " | " + Outputs[Output] + (Frozen ? " | FROZEN" : " | RUNNING");
-            Log.Always("[WeatherDiag] " + (Enabled ? _caption : "OFF - normal renderer") + "; no cause established by changing this view.");
+            if (Log.L1) Log.Main(DebugModule.Instance, "[WeatherDiag] " + (Enabled ? _caption : "OFF - normal renderer") + "; no cause established by changing this view.");
         }
         private static void Apply()
         {
@@ -49,68 +28,62 @@ namespace WildWasteland.Modules.Weather
             Shader.SetGlobalFloat("_WWDiagNoAtmosphere",Enabled && !Atmosphere ? 1 : 0);
             Shader.SetGlobalFloat("_WWDiagSmokeLayer",Enabled && Preset == 3 ? 1 : Enabled && Preset == 4 ? 2 : 0);
         }
-        internal static void Show(bool visible) { _visible = visible; }
-        internal static bool WantsOverlay() { return Enabled && _visible; }
+                internal static bool WantsOverlay() { return Enabled && OverlayVisible; }
         internal static void DrawOverlay() { GUI.Box(new Rect(12,85,780,30),_caption); }
         internal static void Controls(ToolLayout l)
         {
             l.Heading("Weather diagnosis");
             bool enabled = l.Toggle("Enable diagnostic controls (temporary)",Enabled);
-            if (enabled != Enabled) { Enabled = enabled; if (!enabled) Freeze = false; Changed(); }
+            if (enabled != Enabled) { Enabled = enabled; if (!enabled) Freeze = false; WeatherDiagnosticState.Changed(); }
             if (!Enabled) return;
             l.Value("Layer preset",Presets[Preset]);
             int hit = l.Buttons("Previous layer", "Next layer");
-            if (hit >= 0) { Preset = (Preset+(hit == 0 ? Presets.Length-1 : 1))%Presets.Length; Changed(); }
+            if (hit >= 0) { Preset = (Preset+(hit == 0 ? Presets.Length-1 : 1))%Presets.Length; WeatherDiagnosticState.Changed(); }
             l.Value("Shader data view",Outputs[Output]);
             hit = l.Buttons("Previous data view", "Next data view");
-            if (hit >= 0) { Output = (Output+(hit == 0 ? Outputs.Length-1 : 1))%Outputs.Length; Changed(); }
+            if (hit >= 0) { Output = (Output+(hit == 0 ? Outputs.Length-1 : 1))%Outputs.Length; WeatherDiagnosticState.Changed(); }
             bool freeze = l.Toggle("Freeze owned storm state / particle simulation",Freeze);
-            if (freeze != Freeze) { Freeze = freeze; Changed(); }
+            if (freeze != Freeze) { Freeze = freeze; WeatherDiagnosticState.Changed(); }
             l.Text("Normal output is unchanged with diagnostics off. Freeze leaves the player/camera and native sky/time running; native sand shader UV time also continues. Local-cloud paired views share source parameters and differ only in tint. Shader data views apply to WW shaders, not the borrowed native sand material.");
-            if (Single) l.Value("Selected hurricane",SelectedColumn < 0 ? "Waiting for a critical storm" : "region "+SelectedRegion+", column "+SelectedColumn);
+            if (WeatherDiagnosticState.Single) l.Value("Selected hurricane",SelectedColumn < 0 ? "Waiting for a critical storm" : "region "+SelectedRegion+", column "+SelectedColumn);
         }
-        internal static void CameraRecord(Camera camera, float clock)
+        internal static void OnCameraRecord(Camera camera, float clock)
         {
-            if (!Enabled || !PendingCamera || camera == null) return;
-            PendingCamera = false;
-            Log.Always("[WeatherDiag] Camera "+camera.name+"; clock="+clock.ToString("R",Culture)+"; "+Screen.width+"x"+Screen.height+"; FOV="+camera.fieldOfView.ToString("R",Culture)+"; quality="+QualitySettings.GetQualityLevel()+"; colorSpace="+QualitySettings.activeColorSpace+"; MSAA="+QualitySettings.antiAliasing+"; projection="+camera.projectionMatrix.ToString("F6")+"; view="+camera.worldToCameraMatrix.ToString("F6"));
+            if (!Enabled || camera == null || !Log.L2) return;
+            if (Log.L1) Log.Main(DebugModule.Instance, "[WeatherDiag] Camera "+camera.name+"; clock="+clock.ToString("R",Culture)+"; "+Screen.width+"x"+Screen.height+"; FOV="+camera.fieldOfView.ToString("R",Culture)+"; quality="+QualitySettings.GetQualityLevel()+"; colorSpace="+QualitySettings.activeColorSpace+"; MSAA="+QualitySettings.antiAliasing+"; projection="+camera.projectionMatrix.ToString("F6")+"; view="+camera.worldToCameraMatrix.ToString("F6"));
         }
 
-        [Serializable]
-        internal sealed class Snapshot
+        /// <summary>Draws diagnostic controls and delegates live capture/restore to Survival through Core.</summary>
+        public void Draw(ToolLayout layout)
         {
-            public int Version = 1, WorldSeed, SelectedRegion, SelectedColumn, ResolutionX, ResolutionY;
-            public string Slot, CapturedUtc, CameraName, Policy;
-            public float Clock, Width, Depth, Density, Fov;
-            public WeatherRegion[] Regions;
-            public float[] Ages, GroundOffsets;
-            public bool[] GroundValid;
-            public Vector3 CameraWorld, CameraForward, ParticleRoot;
-            public Vector4 DustColor, AirColor, SunDirection;
-            public Quaternion ParticleRotation;
-            public Matrix4x4 Projection, View;
-            public uint ParticleSeed;
-            public Particle[] Particles;
+            Controls(layout);
+            if (!Enabled) return;
+            var runtime = ModApi.Get<IWeatherDiagnosticRuntime>();
+            if (layout.Button("Capture snapshot and freeze", runtime != null && runtime.CanCapture))
+            {
+                try { Freeze = true; WeatherDiagnosticState.Changed(); Write(runtime.Capture()); }
+                catch (Exception error) { Log.Error(DebugModule.Instance, "Weather snapshot capture failed", error); }
+            }
+            if (layout.Button("Restore diagnostic snapshot", runtime != null && GameRefs.InPlay))
+            {
+                try
+                {
+                    string outcome;
+                    if (!runtime.Restore(Read(), out outcome)) Log.Warn(DebugModule.Instance, outcome);
+                    else if (Log.L1) Log.Main(DebugModule.Instance, outcome);
+                }
+                catch (Exception error) { Log.Error(DebugModule.Instance, "Weather snapshot restore failed", error); }
+            }
+            if (layout.Button("Select hurricane again (nearest in first region)", runtime != null && runtime.CanCapture))
+            { SelectedRegion = SelectedColumn = -1; WeatherDiagnosticState.Changed(); }
         }
-        [Serializable]
-        internal struct Particle
-        {
-            public Vector3 World, Velocity, Size, Rotation;
-            public Color32 Color;
-            public float Life, StartLife;
-            public uint Seed;
-        }
-        internal static int WorldSeed()
-        {
-            var fsm = GameRefs.SaveLoadGame;
-            var value = fsm != null ? fsm.FsmVariables.FindFsmInt("seed") : null;
-            return value != null ? value.Value : int.MinValue;
-        }
-        internal static string SnapshotPath { get { return Path.Combine(Assets.ModuleConfigDir("Weather"),"diagnostic-snapshot.bin"); } }
+        internal static string SnapshotPath { get { return Path.Combine(Assets.ModuleConfigDir("Debug"),"diagnostic-snapshot.bin"); } }
         internal static void Write(Snapshot snapshot)
         {
-            using (var writer = new BinaryWriter(File.Create(SnapshotPath))) WriteSnapshot(writer,snapshot);
-            Log.Always("[WeatherDiag] Captured snapshot: "+SnapshotPath+"; slot="+snapshot.Slot+"; world seed="+snapshot.WorldSeed+"; camera world="+snapshot.CameraWorld.ToString("F3")+"; camera is recorded, never teleported.");
+            string temporary = SnapshotPath + ".tmp";
+            using (var writer = new BinaryWriter(File.Create(temporary))) WriteSnapshot(writer,snapshot);
+            AtomicFile.Replace(temporary, SnapshotPath);
+            if (Log.L1) Log.Main(DebugModule.Instance, "[WeatherDiag] Captured snapshot: "+SnapshotPath+"; slot="+snapshot.Slot+"; world seed="+snapshot.WorldSeed+"; camera world="+snapshot.CameraWorld.ToString("F3")+"; camera is recorded, never teleported.");
         }
         internal static Snapshot Read()
         {

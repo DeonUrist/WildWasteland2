@@ -10,7 +10,7 @@ using BepInEx.Bootstrap;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWastelandDeveloper
+namespace WildWasteland.Modules.Debug
 {
     // Immutable plain data is captured on the main thread; serialization/file IO runs on the writer.
     internal static class Diagnosis
@@ -23,20 +23,20 @@ namespace WildWastelandDeveloper
         private static string _lastContext;
         internal static string BaselineLabel { get { return _baseline == null ? "No baseline A retained." : "Baseline A: " + _baseline["scenario"] + " | " + _baseline["utc"]; } }
         internal static void ResetWindow() { _startSettings = Settings(); _coverageAtReset = CoverageSignature(); WindowEvents.Clear(); _lastContext = null; }
-        private static string CoverageSignature() { return string.Join(";", Instrumentation.Scopes.Select(s => s.Name + ":" + s.Enabled + ":" + s.Patched).ToArray()) + ";alloc=" + Plugin.AllocationTiming.Value; }
+        private static string CoverageSignature() { return string.Join(";", Instrumentation.Scopes.Select(s => s.Name + ":" + s.Enabled + ":" + s.Patched).ToArray()) + ";alloc=" + DebugModule.AllocationTiming.Value; }
         internal static void Observe()
         {
             string context = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name + ":" + GameRefs.SaveLoadState + ":scale=" + Time.timeScale;
             if (context != _lastContext && WindowEvents.Count < 128) { WindowEvents.Add(DateTime.UtcNow.ToString("O") + " " + context); _lastContext = context; }
             if (_coverageAtReset != CoverageSignature() && !WindowEvents.Contains("Instrumentation changed since reset")) WindowEvents.Add("Instrumentation changed since reset");
         }
-        internal static void KeepBaseline(Runtime runtime) { _baseline = Capture(runtime); }
+        internal static void KeepBaseline(DebugRuntime runtime) { _baseline = Capture(runtime); }
         private static Dictionary<string, object> D(params object[] pairs)
         { var d = new Dictionary<string, object>(); for (int i = 0; i < pairs.Length; i += 2) d.Add((string)pairs[i], pairs[i + 1]); return d; }
         private static Dictionary<string, string> Settings()
         {
             var result = new Dictionary<string, string>(StringComparer.Ordinal);
-            ConfigFile[] files = { WildWasteland.Plugin.Main, WildWasteland.Plugin.Settings, WildWasteland.Plugin.Tools, Plugin.Settings };
+            ConfigFile[] files = { WildWasteland.Plugin.Main, WildWasteland.Plugin.Settings, WildWasteland.Plugin.Tools };
             for (int i = 0; i < files.Length; i++)
             {
                 if (files[i] == null) continue;
@@ -50,7 +50,7 @@ namespace WildWastelandDeveloper
             foreach (string key in a.Keys.Union(b.Keys).OrderBy(k => k)) { string av, bv; a.TryGetValue(key, out av); b.TryGetValue(key, out bv); if (av != bv) result.Add(key + ": " + (av ?? "absent") + " -> " + (bv ?? "absent")); }
             return result;
         }
-        internal static Dictionary<string, object> Capture(Runtime runtime)
+        internal static Dictionary<string, object> Capture(DebugRuntime runtime)
         {
             var settings = Settings();
             var modules = new List<object>(); string performance = "absent";
@@ -72,7 +72,7 @@ namespace WildWastelandDeveloper
                     "worker_self_ms", (Interlocked.Read(ref p.Worker) - p.EpochWorker) * factor,
                     "max_call_ms", Interlocked.Read(ref p.Maximum) * factor,
                     "errors", Interlocked.Read(ref p.Errors) - p.EpochErrors,
-                    "inclusive_alloc_bytes", Plugin.AllocationTiming.Value && Instrumentation.AllocationSupported ? (object)(Interlocked.Read(ref p.Allocated) - p.EpochAllocated) : null));
+                    "inclusive_alloc_bytes", DebugModule.AllocationTiming.Value && Instrumentation.AllocationSupported ? (object)(Interlocked.Read(ref p.Allocated) - p.EpochAllocated) : null));
             }
             methods.Sort((a,b) => ((double)b["main_self_ms"]).CompareTo((double)a["main_self_ms"]));
             var coverage = new List<object>();
@@ -100,13 +100,13 @@ namespace WildWastelandDeveloper
                 "frame", D("recorded_seconds", seconds, "total_frames", Measurements.Samples, "rolling_samples", Measurements.Count, "paused_frames", Measurements.PausedFrames, "average_ms", Measurements.Average, "p95_ms", Measurements.P95, "p99_ms", Measurements.P99, "worst_ms", Measurements.Worst),
                 "gc", D("managed_bytes", Measurements.ManagedBytes, "collections_gen0", Measurements.Gc0, "collections_gen1", Measurements.Gc1, "collections_gen2", Measurements.Gc2),
                 "active_fsm_count", PlayMakerFSM.FsmList.Count, "developer_update_gui_ms_per_frame", Measurements.OwnMilliseconds,
-                "instrumentation", D("timing_active", Instrumentation.Timing, "pending", Instrumentation.PendingCount, "fault", Instrumentation.Fault, "allocation_enabled_at_export", Plugin.AllocationTiming.Value, "dropped_trace_events_lifetime", Instrumentation.Dropped, "coverage", coverage, "failures", Instrumentation.Failures.ToArray()),
+                "instrumentation", D("timing_active", Instrumentation.Timing, "pending", Instrumentation.PendingCount, "fault", Instrumentation.Fault, "allocation_enabled_at_export", DebugModule.AllocationTiming.Value, "dropped_trace_events_lifetime", Instrumentation.Dropped, "coverage", coverage, "failures", Instrumentation.Failures.ToArray()),
                 "modules", modules, "settings", settings, "settings_changed_since_reset", changes, "plugins", plugins, "window_events", WindowEvents.ToArray(),
                 "manual_collection_snapshot", Dashboard.Counters.ToArray(),
                 "engine_counters_latest", counters, "methods_since_reset", methods, "scheduler_latest_snapshot", jobs, "warnings", warnings);
         }
         private static double Number(Dictionary<string, object> d, string key) { return Convert.ToDouble(d[key], CultureInfo.InvariantCulture); }
-        internal static void AddFiles(Dictionary<string, string> files, Runtime runtime)
+        internal static void AddFiles(Dictionary<string, string> files, DebugRuntime runtime)
         {
             var current = Capture(runtime); files.Add("capture.json", Json(current));
             var b = new StringBuilder("# WW performance evidence\n\nRead this file, capture.json and builds.txt first. Raw CSVs support deeper inspection.\n\n");

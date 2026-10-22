@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.Weather
 
         public override void Init()
         {
-            WeatherDiagnostics.Reset();
+            WeatherDiagnosticState.Reset();
             _running = true; _count = 0; _clock = 0; _nativeAssetsReady=false;
             if (!Core.Patches.Patch(this,Core.Patches.Method(typeof(UnityEngine.AzureSky.AzureFogScattering),"OnRenderImage"),
                 prefix: Core.Patches.Method(typeof(WeatherSky),"NativeFogBefore"), finalizer: Core.Patches.Method(typeof(WeatherSky),"NativeFogAfter")))
@@ -64,11 +64,7 @@ namespace WildWasteland.Modules.Weather
             _draw.Enabled = false;
             _native = new WeatherNative(this); _hazards = new WeatherHazards();
             Scheduler.EveryFrame(this,"Weather.HurricaneHazards",TickHazards,Phase.FixedUpdate);
-            InitDebug();
         }
-
-        /// <summary>Debug part: registers the diagnostic overlay label Gui job (WeatherModule.Debug.cs).</summary>
-        partial void InitDebug();
 
         public bool TryGet(int index, out WeatherRegion region)
         {

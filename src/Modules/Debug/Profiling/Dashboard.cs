@@ -1,17 +1,18 @@
+using WildWasteland.Core;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 
-namespace WildWastelandDeveloper
+namespace WildWasteland.Modules.Debug
 {
     internal static class Dashboard
     {
         private static Rect _window = new Rect(30, 35, 1080, 740);
         private static readonly GUI.WindowFunction Window = DrawWindow;
         private static readonly string[] Tabs = { "Overview", "Scheduler", "Detailed calls", "Systems & tracing", "Counters", "Logs & capture", "Development tools" };
-        private static Runtime _runtime;
+        private static DebugRuntime _runtime;
         private static int _tab;
         private static Vector2 _scroll;
         private static string _filter = "";
@@ -21,14 +22,14 @@ namespace WildWastelandDeveloper
         private static readonly List<WildWasteland.Core.UI.ToolPage> Tools = new List<WildWasteland.Core.UI.ToolPage>();
         private static GUIStyle _mono, _heading;
         private static readonly CultureInfo C = CultureInfo.InvariantCulture;
-        internal static void Draw(Runtime runtime)
+        internal static void Draw(DebugRuntime runtime)
         {
             _runtime = runtime;
             if (_mono == null) { _mono = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = false }; _heading = new GUIStyle(GUI.skin.label) { fontSize = 17, fontStyle = FontStyle.Bold }; }
             _window.width = Mathf.Min(1080, Screen.width - 20); _window.height = Mathf.Min(740, Screen.height - 20);
             _window.x = Mathf.Clamp(_window.x, 0, Mathf.Max(0, Screen.width - _window.width)); _window.y = Mathf.Clamp(_window.y, 0, Mathf.Max(0, Screen.height - _window.height));
             int depth = GUI.depth; GUI.depth = -950;
-            _window = GUI.Window(0x574457, _window, Window, "WILD WASTELAND DEVELOPER  |  " + Plugin.MenuKey.Value);
+            _window = GUI.Window(0x574457, _window, Window, "WILD WASTELAND DEBUG  |  " + DebugModule.MenuKey.Value);
             GUI.depth = depth;
         }
         private static void DrawWindow(int id)
@@ -106,7 +107,7 @@ namespace WildWastelandDeveloper
                 if (!Matches(row.Name)) continue;
                 GUILayout.Label(row.Name, _mono);
                 GUILayout.Label("   " + F(row.Calls) + " calls/s   self " + F(row.Self) + " ms/s   incl " + F(row.Inclusive) + " ms/s   main/worker " + F(row.Main) + "/" + F(row.Worker)
-                    + " ms/s   max " + F(row.Maximum) + " ms   errors/snapshot " + row.Errors + (Instrumentation.AllocationSupported && Plugin.AllocationTiming.Value ? "   alloc " + F(row.Allocated / 1024) + " KiB/s (inclusive)" : "   allocations: off/n/a"), _mono);
+                    + " ms/s   max " + F(row.Maximum) + " ms   errors/snapshot " + row.Errors + (Instrumentation.AllocationSupported && DebugModule.AllocationTiming.Value ? "   alloc " + F(row.Allocated / 1024) + " KiB/s (inclusive)" : "   allocations: off/n/a"), _mono);
                 Bar("", row.Self, Measurements.Methods.Count == 0 ? 1 : Math.Max(1, Measurements.Methods[0].Self));
             }
         }
@@ -164,17 +165,16 @@ namespace WildWastelandDeveloper
             GUILayout.Label("Label the location/action. Finish hook installation, reset, close F4, play 30-60 seconds, then capture. Change Performance yourself between A and B; use the same route, camera and hooks.");
             if (GUILayout.Button("Keep current window as baseline A")) { Diagnosis.KeepBaseline(_runtime); _runtime.Status = "Baseline A retained in memory; reset before collecting B."; }
             GUILayout.Label(Diagnosis.BaselineLabel);
-            GUILayout.Label("Logging is owned by WildWastelandDeveloper; WW verbose stays unchanged", _heading);
-            Plugin.Summaries.Value = GUILayout.Toggle(Plugin.Summaries.Value, "Periodic frame / scheduler / top-call summaries");
-            Plugin.SpikeLog.Value = GUILayout.Toggle(Plugin.SpikeLog.Value, "Slow-call logs for systems with Trace checked");
-            Plugin.LifecycleLog.Value = GUILayout.Toggle(Plugin.LifecycleLog.Value, "Save / load / terrain / spawn lifecycle logs for systems with Trace checked");
-            Plugin.AllocationTiming.Value = GUILayout.Toggle(Plugin.AllocationTiming.Value, "Thread allocation measurements: " + (Instrumentation.AllocationSupported ? "available (adds overhead)" : "unavailable on this runtime"));
-            GUILayout.Label("Slow-call threshold " + F(Plugin.SpikeThreshold.Value) + " ms"); Plugin.SpikeThreshold.Value = GUILayout.HorizontalSlider(Plugin.SpikeThreshold.Value, .1f, 50);
-            GUILayout.Label("Summary interval " + F(Plugin.LogInterval.Value) + " seconds"); Plugin.LogInterval.Value = GUILayout.HorizontalSlider(Plugin.LogInterval.Value, 1, 60);
+            GUILayout.Label("Shared Debug logging level", _heading);
+            int level = GUILayout.SelectionGrid(DebugModule.VerboseLevel.Value, new[] { "Off", "Main actions", "Deep traces" }, 3);
+            if (level != DebugModule.VerboseLevel.Value) DebugModule.VerboseLevel.Value = level;
+            DebugModule.AllocationTiming.Value = GUILayout.Toggle(DebugModule.AllocationTiming.Value, "Thread allocation measurements: " + (Instrumentation.AllocationSupported ? "available (adds overhead)" : "unavailable on this runtime"));
+            GUILayout.Label("Slow-call threshold " + F(DebugModule.SpikeThreshold.Value) + " ms");
+            DebugModule.SpikeThreshold.Value = GUILayout.HorizontalSlider(DebugModule.SpikeThreshold.Value, .1f, 50);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Write summary now")) _runtime.WriteSummary();
             if (GUILayout.Button("Export capture")) Reports.Export(_runtime);
-            if (GUILayout.Button(_runtime.Rebinding ? "Press a key; Esc cancels" : "Rebind " + Plugin.MenuKey.Value)) _runtime.Rebinding = true;
+            if (GUILayout.Button(_runtime.Rebinding ? "Press a key; Esc cancels" : "Rebind " + DebugModule.MenuKey.Value)) _runtime.Rebinding = true;
             GUILayout.EndHorizontal();
             GUILayout.Label("Trace queue is bounded; dropped events: " + Instrumentation.Dropped + ". Errors from instrumented calls are always retained. Last 512 lines kept for export.");
             foreach (var line in _runtime.Trace) if (Matches(line)) GUILayout.Label(line, _mono);
