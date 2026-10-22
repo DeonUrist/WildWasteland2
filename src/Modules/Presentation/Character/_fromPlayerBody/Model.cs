@@ -14,8 +14,8 @@ namespace WildWasteland.Modules.PlayerBody
     internal static partial class Model
     {
         public static Mesh Full, NoHead, NoArms, ArmsOnly, NoHeadRightArm, LeftArmOnly;
-        public static Texture2D BodyTex, ArmsTex, ArmsLeftTex, KickTex;
-        private static bool _tried, _texTried, _armsTried, _armsLeftTried, _kickTried;
+        public static Texture2D BodyTex, ArmsTex, KickTex;
+        private static bool _tried, _texTried, _armsTried, _kickTried;
 
         private static readonly HashSet<string> HeadBones = new HashSet<string> { "mixamorig:Head" };
         private static readonly HashSet<string> HeadNeckBones = new HashSet<string> { "mixamorig:Head", "mixamorig:Neck" };
@@ -305,7 +305,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static void AddW(Dictionary<int, float> d, int bone, float w) { if (w <= 0f) return; float o; d.TryGetValue(bone, out o); d[bone] = o + w; }
 
         // Character switched: the next body is built from the other model
-        public static void Reset() { _inside.Clear(); Full = NoHead = NoArms = ArmsOnly = NoHeadRightArm = LeftArmOnly = null; BodyTex = ArmsTex = ArmsLeftTex = KickTex = null; _tried = _texTried = _armsTried = _armsLeftTried = _kickTried = false; }
+        public static void Reset() { _inside.Clear(); Full = NoHead = NoArms = ArmsOnly = NoHeadRightArm = LeftArmOnly = null; BodyTex = ArmsTex = KickTex = null; _tried = _texTried = _armsTried = _kickTried = false; }
 
         public static Texture2D Body()
         {
@@ -335,13 +335,6 @@ namespace WildWasteland.Modules.PlayerBody
             }
             catch (Exception e) { PlayerBodyModule.Warn("Kick texture " + path + ": " + e.Message); }
             return KickTex;
-        }
-
-        // Max only: his left arm (armoured sleeve) differs from the right; null = both arms use Arms()
-        public static Texture2D ArmsLeft()
-        {
-            if (!_armsLeftTried) { _armsLeftTried = true; ArmsLeftTex = null; }
-            return ArmsLeftTex;
         }
 
         private static Texture2D Load(string rel, string name)

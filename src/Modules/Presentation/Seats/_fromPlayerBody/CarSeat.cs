@@ -94,14 +94,6 @@ namespace WildWasteland.Modules.PlayerBody
             if (PlayerBodyModule.SeatDrop.Value != 0f && bones.TryGetValue("mixamorig:Hips", out hips)) hips.position -= _seat.root.up * PlayerBodyModule.SeatDrop.Value;
         }
 
-        // the bones of a Player2 man (car seat, TAB-screen model) -> her skeleton
-        public static Transform[] FindSource(Transform model)
-        {
-            var src = new Transform[Pairs.Length];
-            for (int i = 0; i < Pairs.Length; i++) { src[i] = Game.FindDeep(model, Pairs[i].Src); if (src[i] == null) return null; }
-            return src;
-        }
-
         public static void PoseFrom(Transform[] src, Dictionary<string, Transform> bones, Dictionary<string, Quaternion> bindLocal)
         {
             for (int i = 0; i < Pairs.Length; i++)

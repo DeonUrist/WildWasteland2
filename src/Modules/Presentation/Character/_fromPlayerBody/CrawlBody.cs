@@ -12,7 +12,6 @@ namespace WildWasteland.Modules.PlayerBody
         float _crawlTime, _crawlBlend;
         Vector3 _crawlHips;
         internal bool CrawlMotion { get { return _crawlMix.IsValid(); } }
-        partial void CaptureCrawlMotion();
 
         bool LateCrawl(View view, float dt)
         {
@@ -45,7 +44,6 @@ namespace WildWasteland.Modules.PlayerBody
             _crawlBlend = Mathf.Min(1, _crawlBlend + dt / .18f);
             hips.localPosition = Vector3.Lerp(_crawlHips, hips.localPosition, _crawlBlend);
             ApplyPoseFade(dt, null); CapturePose(null); ShowProp(false); _lastView = view;
-            CaptureCrawlMotion();
             Transform head;
             if (view == View.FirstPerson && Bones.TryGetValue("mixamorig:Head", out head))
             {

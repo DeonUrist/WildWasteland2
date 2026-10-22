@@ -8,11 +8,10 @@ namespace WildWasteland.Modules.PlayerBody
     // renderers a copy of the material with our atlas (the arm/leg islands repainted from the character's texture, the rest unchanged),
     // so every vanilla animation - reloads, melee, items - keeps working, just with her (or Max's) arms.
     //  - Female: Player2_female_arms.png on both arms and the leg (her arms are alike).
-    //  - Max: both arms share one atlas island, but his arms differ (left: armoured sleeve to the glove, right: bare forearm), so the
-    //    left arm mesh gets Player2_max_arms_left.png and the right arm + kick leg Player2_max_arms.png (tools/max_arms/bake_max2.py).
+    //  (WW2) the never-used separate left-arm texture path (Model.ArmsLeft, always null) is gone (README 7).
     internal static class Arms
     {
-        private static Material _mat, _matLeft, _matKick;
+        private static Material _mat, _matKick;
         private static readonly Dictionary<Renderer, Material> _orig = new Dictionary<Renderer, Material>();
         private static float _next;
 
@@ -23,7 +22,6 @@ namespace WildWasteland.Modules.PlayerBody
             if (Game.CameraHolder == null) return;
             var tex = Model.Arms();
             if (tex == null) return;
-            var texLeft = Model.ArmsLeft();
             int added = 0;
             foreach (var smr in Game.CameraHolder.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
@@ -35,11 +33,6 @@ namespace WildWasteland.Modules.PlayerBody
                     _mat = new Material(m) { name = "Player2 (Apocaplayer)", mainTexture = tex };
                     _mat.hideFlags = HideFlags.DontUnloadUnusedAsset;
                 }
-                if (texLeft != null && _matLeft == null)
-                {
-                    _matLeft = new Material(m) { name = "Player2 (Apocaplayer, left arm)", mainTexture = texLeft };
-                    _matLeft.hideFlags = HideFlags.DontUnloadUnusedAsset;
-                }
                 _orig[smr] = m;
                 bool kick = smr.sharedMesh != null && smr.sharedMesh.name == "Player_leg";
                 if (kick && _matKick == null)
@@ -47,26 +40,17 @@ namespace WildWasteland.Modules.PlayerBody
                     var leg = Model.Kick();
                     if (leg != null) _matKick = new Material(m) { name = "Player2 (Apocaplayer, kick)", mainTexture = leg, hideFlags = HideFlags.DontUnloadUnusedAsset };
                 }
-                smr.sharedMaterial = kick && _matKick != null ? _matKick : texLeft != null && IsLeftArm(smr) ? _matLeft : _mat;
+                smr.sharedMaterial = kick && _matKick != null ? _matKick : _mat;
                 added++;
             }
             if (added > 0) PlayerBodyModule.Verbose("Arms: " + added + " first-person arm/leg renderer(s) dressed");
-        }
-
-        // player_arm_left = the left arm, player_arm_left.002 = the right one (mesh names; the renderer names vary per weapon)
-        private static bool IsLeftArm(SkinnedMeshRenderer smr)
-        {
-            var mesh = smr.sharedMesh;
-            string n = mesh != null ? mesh.name : smr.name;
-            n = n.ToLowerInvariant();
-            return n.Contains("arm") && !n.Contains("002");
         }
 
         public static void Restore()
         {
             foreach (var kv in _orig) if (kv.Key != null) kv.Key.sharedMaterial = kv.Value;
             _orig.Clear();
-            _mat = _matLeft = _matKick = null;   // the next character's textures
+            _mat = _matKick = null;   // the next character's textures
             _next = 0f;
         }
 

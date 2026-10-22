@@ -77,12 +77,6 @@ namespace WildWasteland.Modules.PlayerBody
             localPosition = new Vector3(v[0], v[1], v[2]) * 0.01f; localRotation = Quaternion.Euler(v[3], v[4], v[5]);
             return true;
         }
-        // the aim lift for an aim / fire clip: x = hands lifted (cm), y = head down (degrees), z = hands forward (cm)
-        public static Vector3 AimLiftOf(string weaponKey, string clip, bool crouched)
-        {
-            var v = AimLift.Get(weaponKey ?? "", clip ?? "", crouched);
-            return new Vector3(v[0], v[1], v[2]);
-        }
         internal static string IdleOf(Props.Kind k) { return k == Props.Kind.Rifle ? "RifleIdle" : k == Props.Kind.Pistol ? "PistolIdle" : "Idle"; }
 
         // the clip the player reloads this weapon with ("RifleReload" / "PistolReload"), null without one
