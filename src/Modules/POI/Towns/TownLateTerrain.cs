@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.POI
 {
     internal static class TownLateTerrain
     {
+        /// <summary>Applies the captured numeric geometry changes to the current terrain instance.</summary>
         internal static void Apply(TileData data, TownPlan plan, TownAssets assets, StopToken stop)
         {
             if (WorldGeneration.Present) { ClearObjects(data, plan, assets, stop); return; }
@@ -50,6 +51,7 @@ namespace WildWasteland.Modules.POI
             data.heights = heights;
             ClearObjects(data, plan, assets, stop);
         }
+        /// <summary>Filters terrain-generated scenery against the planned POI footprint.</summary>
         private static void ClearObjects(TileData data, TownPlan plan, TownAssets assets, StopToken stop)
         {
             var objects = data.ApplyOfType<ObjectsOutput.ApplyObjectsData>();
@@ -78,6 +80,7 @@ namespace WildWasteland.Modules.POI
                 }
             }
         }
+        /// <summary>Grades the authored access corridor in the terrain height buffer.</summary>
         private static void GradeAccess(MatrixWorld heights, TownPlan plan, float scale, StopToken stop)
         {
             var amount = new float[heights.arr.Length]; var target = new float[heights.arr.Length];

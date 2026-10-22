@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.POI
     {
         private readonly List<Vector3> _segments = new List<Vector3>();
         private readonly float _minX, _minZ, _maxX, _maxZ;
+        /// <summary>Initializes town world roads with the supplied owning state and immutable inputs.</summary>
         internal TownWorldRoads(SplineSys roads, TileData data)
         {
             var area = data.area.active;
@@ -46,7 +47,9 @@ namespace WildWasteland.Modules.POI
                 if (c == 0) c = a[1].x.CompareTo(b[1].x); return c == 0 ? a[1].z.CompareTo(b[1].z) : c; });
             _segments.Clear(); foreach (var segment in segments) _segments.AddRange(segment);
         }
+        /// <summary>Tests whether a point lies inside the captured terrain extent.</summary>
         internal bool Inside(Vector3 p) { return p.x >= _minX && p.x <= _maxX && p.z >= _minZ && p.z <= _maxZ; }
+        /// <summary>Finds the nearest retained road sample within the requested distance.</summary>
         internal bool Nearest(Vector3 position, float limit, out Vector3 point)
         {
             point = Vector3.zero; position.y = 0; float best = limit * limit;
@@ -60,6 +63,7 @@ namespace WildWasteland.Modules.POI
             }
             return best < limit * limit;
         }
+        /// <summary>Copies detached metadata and layout JSON for live authoring sites.</summary>
         internal List<Vector3> Sites(float outer, float reach)
         {
             var points = new List<Vector3>();
@@ -89,6 +93,7 @@ namespace WildWasteland.Modules.POI
         private readonly MatrixWorld _heights;
         private readonly float _scale;
         private readonly List<Vector3> _avoid;
+        /// <summary>Initializes town ground with the supplied owning state and immutable inputs.</summary>
         internal TownGround(TownPlan plan, BuildingSpec[] specs, MatrixWorld heights, float scale, List<Vector3> avoid)
         {
             _plan = plan; _scale = scale;
@@ -118,10 +123,14 @@ namespace WildWasteland.Modules.POI
                     plan.Radius + plan.Feather, plan.Radius / (plan.Radius + plan.Feather));
             }
         }
+        /// <summary>Converts a stable world position to the town plan frame.</summary>
         internal Vector3 Local(Vector3 world) { return Quaternion.Euler(0, -_plan.Yaw, 0) * (world - _plan.WorldCenter); }
+        /// <summary>Tests whether the supplied geometry is reserved by the town plan.</summary>
         internal bool Protected(Vector3 world) { return Blocked(Local(world), -1); }
+        /// <summary>Tests the geometry or name against the requested containment rule.</summary>
         private bool Contains(int i, Vector3 p)
         { var b = _bounds[i]; return _maps[i] != null && p.x >= b.x && p.z >= b.y && p.x <= b.z && p.z <= b.w; }
+        /// <summary>Tests whether a candidate path point overlaps planned solid geometry.</summary>
         internal bool Blocked(Vector3 local, int door)
         {
             for (int i = 0; i < _maps.Length; i++)
@@ -138,6 +147,7 @@ namespace WildWasteland.Modules.POI
             }
             return false;
         }
+        /// <summary>Tests whether the segment crosses a solid building or perimeter wall.</summary>
         internal bool Wall(Vector3 a, Vector3 b)
         {
             for (int i = 0; i < _maps.Length; i++)
@@ -150,6 +160,7 @@ namespace WildWasteland.Modules.POI
             }
             return false;
         }
+        /// <summary>Tests a path segment while preserving the designated entrance exception.</summary>
         internal bool DoorLine(Vector3 a, Vector3 b, int door)
         {
             int steps = Mathf.Max(1, Mathf.CeilToInt(Vector3.Distance(a, b) * 5)); var previous = a;

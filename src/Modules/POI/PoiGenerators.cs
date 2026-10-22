@@ -12,13 +12,17 @@ namespace WildWasteland.Modules.POI
     [Serializable]
     internal sealed class PoiLocations : Generator, IMultiInlet, IOutlet<TransitionsList>, ICustomDependence
     {
+        /// <summary>Initializes poi locations with the supplied owning state and immutable inputs.</summary>
         public PoiLocations() { }
         public readonly Inlet<MatrixWorld> Heights = new Inlet<MatrixWorld>();
         internal IOutlet<TransitionsList>[] Avoid = new IOutlet<TransitionsList>[0];
         internal int Chance, Seed;
         internal float Radius;
+        /// <summary>Enumerates the terrain-generator inputs.</summary>
         public IEnumerable<IInlet<object>> Inlets() { yield return Heights; }
+        /// <summary>Declares generation dependencies so source products exist before this generator runs.</summary>
         public IEnumerable<Generator> PriorGens() { foreach (var source in Avoid) yield return source.Gen; }
+        /// <summary>Runs deterministic numeric generation against the captured tile inputs.</summary>
         public override void Generate(TileData data, StopToken stop)
         {
             var result = new TransitionsList();
@@ -66,9 +70,12 @@ namespace WildWasteland.Modules.POI
     [Serializable]
     internal sealed class PoiClearance : Generator, IInlet<TransitionsList>, IOutlet<TransitionsList>, ICustomDependence
     {
+        /// <summary>Initializes poi clearance with the supplied owning state and immutable inputs.</summary>
         public PoiClearance() { }
         internal PoiLocations[] Sites;
+        /// <summary>Declares generation dependencies so source products exist before this generator runs.</summary>
         public IEnumerable<Generator> PriorGens() { foreach (var site in Sites) yield return site; }
+        /// <summary>Runs deterministic numeric generation against the captured tile inputs.</summary>
         public override void Generate(TileData data, StopToken stop)
         {
             var input = data.ReadInletProduct(this); if (input == null) return;

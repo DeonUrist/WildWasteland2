@@ -13,8 +13,10 @@ namespace WildWasteland.Modules.POI
     {
         // A lot's prefab clone is deserialized one build slot ahead (Stage) and activated in the next (Building): the two
         // indivisible native costs land in different frames.
+        /// <summary>Tests whether a native lot needs an inactive clone before activation.</summary>
         internal static bool NeedsStage(TownSite site, int index)
         { var lot = site.Plan.Lots[index]; return !lot.Skipped && !lot.IsParking && site.Buildings[index] == null; }
+        /// <summary>Clones the native lot under an inactive staging root before a later activation frame.</summary>
         internal static GameObject Stage(TownSite site, int index, TownAssets assets, Transform staging)
         {
             var lot = site.Plan.Lots[index]; BuildingAsset asset;
@@ -22,6 +24,7 @@ namespace WildWasteland.Modules.POI
             if (!assets.Buildings.TryGetValue(lot.Prefab, out asset)) throw new InvalidOperationException("Saved town prefab unavailable: " + lot.Prefab);
             return UnityEngine.Object.Instantiate(asset.Prefab, staging, false);
         }
+        /// <summary>Activates one committed lot with its saved spawn progress and town ownership.</summary>
         internal static void Building(TownSite site, int index, TownAssets assets, TownSettings settings, TownRecord record, Transform staging, Transform parent, GameObject staged)
         {
             var lot = site.Plan.Lots[index]; BuildingAsset asset;
@@ -86,18 +89,21 @@ namespace WildWasteland.Modules.POI
             Log.Main(null, "[POI] lot " + site.Plan.Key + "/" + index + ": " + lot.Prefab + ", role=" + lot.Role + ", town=" + site.Plan.Condition);
         }
 
+        /// <summary>Creates the planned static street-side dressing without extra road surfaces.</summary>
         internal static GameObject Streets(TownSite site, TownAssets assets, Transform parent)
         {
             var root = new GameObject("Towns parking and wreck pockets " + site.Plan.Key); root.transform.SetParent(parent, false);
             TownDebris.Build(site, assets, root.transform);
             return root;
         }
+        /// <summary>Retains usable scenery while disabling unsafe or failed native spawn groups.</summary>
         internal static void KeepGeometry(TownSite site, int index, Transform parent)
         {
             var go = site.Buildings[index]; if (go == null) { site.Plan.Lots[index].Skipped = true; return; }
             foreach (var f in go.GetComponentsInChildren<PlayMakerFSM>(true)) if (f.FsmName == "ItemSpawner") { Set(f, "OnOff", 1); f.enabled = false; }
             go.transform.SetParent(parent, true); go.SetActive(true); TownBakeBridge.Discover(go);
         }
+        /// <summary>Releases the site population/navigation contexts before destroying its owned geometry.</summary>
         internal static void Destroy(TownSite site)
         {
             if(site.NavContext!=null)ModApi.Get<ITownNavigation>()?.Release(site.NavContext);

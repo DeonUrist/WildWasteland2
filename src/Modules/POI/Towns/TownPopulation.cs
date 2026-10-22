@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.POI
     /// </summary>
     internal static partial class TownPopulation
     {
+        /// <summary>Assigns deterministic town population or naming intent from the committed plan.</summary>
         internal static void Assign(TownPlan plan, GenerationInput input, System.Random random)
         {
             int min = plan.Condition == TownCondition.Ruined ? input.RuinsMin : input.HumansMin;
@@ -37,6 +38,7 @@ namespace WildWasteland.Modules.POI
             plan.PopulationMeasured = true;
             Classify(plan);
         }
+        /// <summary>Counts each actual spawned faction member once.</summary>
         internal static void Created(TownSite site, GameObject actor)
         {
             if (!site.CountedMembers.Add(actor.GetInstanceID())) return;
@@ -53,11 +55,13 @@ namespace WildWasteland.Modules.POI
             }
             plan.FactionMembers++;
         }
+        /// <summary>Derives inhabited or ruined state from the planned faction ownership.</summary>
         internal static void Classify(TownPlan plan)
         {
             plan.Condition = plan.Owned && (plan.Faction == TownFaction.Coyotes || plan.Faction == TownFaction.Scrapyard)
                 ? TownCondition.Inhabited : TownCondition.Ruined;
         }
+        /// <summary>Draws the stable per-town percentage from the saved template bounds.</summary>
         private static int Percentage(TownPlan plan, int min, int max, string kind)
         {
             int lo = Math.Min(min, max), hi = Math.Max(min, max);

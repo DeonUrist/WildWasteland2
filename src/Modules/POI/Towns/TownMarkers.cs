@@ -21,13 +21,18 @@ namespace WildWasteland.Modules.POI
             internal bool Named;
             internal string Icon;
             internal Color Color;
+            /// <summary>Returns the live marker scene position.</summary>
             internal Vector3 Position() { return Site.Anchor.TransformPoint(Site.Plan.WorldCenter); }
         }
         private static readonly HashSet<Transform> Buildings = new HashSet<Transform>();
         private static readonly List<Marker> Markers = new List<Marker>();
+        /// <summary>Registers a town-owned root and excludes its automatic native location marker.</summary>
         internal static void Building(Transform root) { Buildings.Add(root); var locations = ModApi.Get<ILocationMarkers>(); if (locations != null) locations.Exclude(root, true); }
+        /// <summary>Tests exact registration of town-owned building geometry.</summary>
         internal static bool Owns(Transform root) { return root != null && Buildings.Contains(root); }
+        /// <summary>Adds the captured item to the owning plan or live registry.</summary>
         internal static void Add(TownSite site) { Markers.Add(new Marker { Site = site }); }
+        /// <summary>Refreshes live state within the existing bounded update cadence.</summary>
         internal static void Refresh()
         {
             foreach (var marker in Markers)
@@ -74,6 +79,7 @@ namespace WildWasteland.Modules.POI
                 else RemoveCompass(marker);
             }
         }
+        /// <summary>Maps the committed faction to its presentation color.</summary>
         private static Color FactionColor(TownFaction faction)
         {
             switch (faction)
@@ -84,10 +90,13 @@ namespace WildWasteland.Modules.POI
                 default: return Color.white;
             }
         }
+        /// <summary>Removes the owned map marker and clears its handle.</summary>
         private static void RemoveMap(Marker marker)
         { if (marker.Map != null) marker.Map.Remove(marker.MapId); marker.MapId = 0; }
+        /// <summary>Removes the owned compass marker and clears its handle.</summary>
         private static void RemoveCompass(Marker marker)
         { if (marker.Compass != null) marker.Compass.Remove(marker.CompassId); marker.CompassId = 0; }
+        /// <summary>Removes the matching registration and releases its live presentation state.</summary>
         internal static void Remove(TownSite site)
         {
             for (int i = Markers.Count - 1; i >= 0; i--) if (Markers[i].Site == site)

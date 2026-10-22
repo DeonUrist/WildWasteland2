@@ -15,16 +15,21 @@ namespace WildWasteland.Modules.POI
         private readonly TownDressingPlan _plan;
         private int _tower, _prop;
         internal bool Ready { get; private set; }
+        /// <summary>Returns 5f for the current owner state.</summary>
         internal float Progress { get { return Ready ? 1 : .5f * (_plan.Towers.Length == 0 ? 1 : (_tower + (_tower < _plan.Towers.Length ? _assets.WallKit.Tower.Progress : 0)) / (float)_plan.Towers.Length)
             + .5f * (_plan.Props.Length == 0 ? 1 : _prop / (float)_plan.Props.Length); } }
+        /// <summary>Returns the current construction-stage label for loading presentation.</summary>
         internal string Stage { get { return _tower < _plan.Towers.Length ? _assets.WallKit.Tower.Ready ? "Placing town towers" : "Preparing tower navigation" : "Placing town trees and wrecks"; } }
+        /// <summary>Initializes town border props with the supplied owning state and immutable inputs.</summary>
         internal TownBorderProps(TownSite site, TownAssets assets, Transform root)
         {
             _site = site; _assets = assets; _root = root;
             _plan = TownOverlayPlan.DressingFor(site.Plan, assets);
             Blockers.AddRange(_plan.Blockers);
         }
+        /// <summary>Converts a plan-local point through the live map anchor.</summary>
         private Vector3 Scene(Vector3 p) { return _site.Ground(_site.Anchor.TransformPoint(_site.Plan.WorldCenter + p), p.y); }
+        /// <summary>Advances one bounded construction or preparation step.</summary>
         internal bool Step(out bool spawned)
         {
             spawned = false;
@@ -66,6 +71,7 @@ namespace WildWasteland.Modules.POI
             }
             Add(prop.Box); return true;
         }
+        /// <summary>Adds the captured item to the owning plan or live registry.</summary>
         private void Add(Bounds box)
         {
             // Plan boxes are town-centred; the overlap fallback and street-edge rechecks read anchor-relative boxes.

@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.POI
         private int _x, _z, _resolution; private Vector3 _size;
         private float[,] _target;
 
+        /// <summary>Captures main-thread inputs before worker generation or staged preparation.</summary>
         internal static TownGroundPad Prepare(TownSite site, Terrain terrain)
         {
             if (terrain == null || terrain.terrainData == null) throw new InvalidOperationException("Town foundation terrain is missing.");
@@ -39,6 +40,7 @@ namespace WildWasteland.Modules.POI
             return pad;
         }
 
+        /// <summary>Applies the captured numeric geometry changes to the current terrain instance.</summary>
         internal void Apply()
         {
             if (_terrain == null || _terrain.terrainData != _data || _data.heightmapResolution != _resolution || _data.size != _size) return;

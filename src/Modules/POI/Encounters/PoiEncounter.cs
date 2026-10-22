@@ -12,15 +12,21 @@ namespace WildWasteland.Modules.POI
     {
         private static string _template;
         private static GameObject _zombie, _deadLugnut;
+        /// <summary>Registers validated data under its owning module.</summary>
         internal static void Register(Core.IPoiApi api)
         {
             if (api == null) return;
             api.Register(new Core.PoiDefinition { Id = "WarRig", Radius = 65f, Enabled = Enabled, Spawn = Spawn, Mark = Mark });
         }
+        /// <summary>Reports whether the required live providers and feature switches allow this operation.</summary>
         private static bool Enabled() { return ModApi.Get<IWarRigWorld>()?.SpawnEnabled==true && ModApi.Get<IAuthoredVehicleRequests>()!=null; }
+        /// <summary>Remembers the live encounter location for map presentation.</summary>
         private static void Mark(GameObject marker) { EncounterNotices.Rigs.Add(marker); }
+        /// <summary>Drops per-world observations and invalidates cached query revisions.</summary>
         internal static void Reset() { _template = null; _zombie = _deadLugnut = null; }
+        /// <summary>Drops scene objects while retaining reusable authored definitions.</summary>
         internal static void ResetForScene() { _zombie = _deadLugnut = null; }
+        /// <summary>Captures main-thread inputs before worker generation or staged preparation.</summary>
         internal static void Prepare()
         {
            
@@ -31,6 +37,7 @@ namespace WildWasteland.Modules.POI
             if (_template == null) using(var stream=DiskResources.Open("POI.Encounters.AbandonedWarRig.json")) using(var reader=new StreamReader(stream)) _template=reader.ReadToEnd();
             ModApi.Get<IAuthoredVehicleRequests>()?.Prepare(_template);
         }
+        /// <summary>Requests a saved encounter through the authored vehicle provider.</summary>
         private static void Spawn(Vector3 position, Quaternion rotation, Action<GameObject> onDone)
         {
             if (!Enabled() || _template == null || _zombie == null || _deadLugnut == null)
@@ -42,6 +49,7 @@ namespace WildWasteland.Modules.POI
         private sealed class Completion
         {
             internal Action<GameObject> Done;
+            /// <summary>Completes the authored encounter with worn wheels and saved native actors.</summary>
             internal void Finished(GameObject truck)
             {
                 if (truck == null) { Done(null); return; }
@@ -72,6 +80,7 @@ namespace WildWasteland.Modules.POI
                 Done(truck);
             }
         }
+        /// <summary>Applies the encounter wheel-condition rule at the actual fitted hinges.</summary>
         private static void Wheels(GameObject vehicle, string[] hinges)
         {
             foreach (string name in hinges)

@@ -17,10 +17,12 @@ namespace WildWasteland.Modules.POI
     /// </summary>
     internal sealed partial class PoiDressMarkers
     {
+        /// <summary>Resolves the current Loot-owned native spawner service.</summary>
         private static INativeSpawners Spawners { get { return SpawnerControl.Required; } }
 
         /// <summary>Spawn-list catalog used by the marker groups and the POI editor.</summary>
         private INativeSpawnCatalog _catalog;
+        /// <summary>Returns if for the current owner state.</summary>
         internal INativeSpawnCatalog Catalog { get { if (_catalog == null) _catalog = Spawners.CreateCatalog(); return _catalog; } }
 
         /// <summary>Copies live marker FSM progress into the Loot store (before unload/save).</summary>

@@ -20,25 +20,32 @@ namespace WildWasteland.Modules.POI
         private static readonly HashSet<string> Mapped = new HashSet<string>();
         private static readonly HashSet<string> ExaminedPoints = new HashSet<string>();
         private static readonly Stack<Transform> Scan = new Stack<Transform>();
-        private sealed class MapRequest { internal Transform Root; internal Bounds? Box; internal object Structure; }
+        /// <summary>Describes the map request data used by this owner.</summary>
+        private sealed class MapRequest { internal Transform Root; internal Bounds? Box; internal NavStructure Structure; }
         private static readonly Queue<MapRequest> MapQueue=new Queue<MapRequest>();
         private static readonly HashSet<Transform> QueuedMaps=new HashSet<Transform>();
         private static float _nextBake;
         private static readonly List<Core.NavStructure> _structures = new List<Core.NavStructure>();   // WW: Core.Services.Npc.Structures (ex NPCAI.Nav._structures reflection)
         internal static int Revision { get; private set; }
         private static bool _discoveryReady;
+        /// <summary>Reports completion of the initial shared-world discovery pass.</summary>
         internal static bool DiscoveryReady=>_discoveryReady;
+        /// <summary>Counts pending POI observations and shared world-index work.</summary>
         internal static int DiscoveryLeft=>Scan.Count+WorldIndex.Pending;   // diagnostics: transforms still queued for the deep camp scan
+        /// <summary>Invalidates cached world-location queries after a committed change.</summary>
         internal static void Changed(){Revision++;}
 
+        /// <summary>Drops per-world observations and invalidates cached query revisions.</summary>
         internal static void Reset()
         { Known.Clear(); Points.Clear(); ExaminedPoints.Clear(); Roots.Clear(); Mapped.Clear(); Scan.Clear(); MapQueue.Clear();QueuedMaps.Clear();_nextBake = 0f; _structures.Clear();_discoveryReady=false; Revision++; }
 
         private static WorldWatch _watch;
         private static readonly System.Diagnostics.Stopwatch Budget = new System.Diagnostics.Stopwatch();
         private static readonly long BudgetTicks = (long)(System.Diagnostics.Stopwatch.Frequency * .0003);
+        /// <summary>Registers owner-scoped hooks, services and scheduled work.</summary>
         internal static void Install(IModule owner)
         {_watch=WorldIndex.Watch(owner,(t,n)=>t.parent==null||IsCamp(n)||PoiName(n),(t,n,c)=>Scan.Push(t));}
+        /// <summary>Rejects names that cannot match a native Coyote camp before normalizing them.</summary>
         private static bool MaybeCoyote(string n)
         {
             // exact pre-filter for PrefabName(n) == "Camp_1x": PrefabName only strips a trailing suffix and trims whitespace
@@ -46,6 +53,7 @@ namespace WildWasteland.Modules.POI
             return n.Length - i >= 7 && string.CompareOrdinal(n, i, "Camp_1", 0, 6) == 0;
         }
 
+        /// <summary>Advances the bounded runtime work admitted by its own cadence.</summary>
         internal static void Tick()
         {
             bool remembered=false;Budget.Reset();Budget.Start();
@@ -76,18 +84,23 @@ namespace WildWasteland.Modules.POI
             catch (Exception e) { Core.Log.Warn("Traffic: NPC Overhaul map adapter: " + e.Message); }
         }
 
+        /// <summary>Recognizes native numbered camp prefab names.</summary>
         internal static bool IsCamp(string name)
         { return name != null && name.StartsWith("Camp_", StringComparison.OrdinalIgnoreCase) && name.Length > 5 && char.IsDigit(name[5]); }
 
+        /// <summary>Recognizes the native camp templates belonging to the Coyote faction.</summary>
         internal static bool CoyoteCamp(string name)
         {if(!MaybeCoyote(name))return false;var n=Names.Prefab(name);return n=="Camp_10"||n=="Camp_15"||n=="Camp_16";}
+        /// <summary>Recognizes native world-location prefab families.</summary>
         internal static bool PoiName(string name)
         // The game's real world locations (its Codex lists Camps / Buildings / Wrecks / Caves): Building_1-7, Wreck_1-8, Cave_1-7,
         // Starter_Area and the Coyote camps (Camp_10/15/16). Raider camps are CampDiscovery camps, not POIs. Every location is a target
         // for roaming Coyote patrols and foot patrols. (The old Apocapatrol "GasStation"/"Shop_" prefixes matched nothing in this game.)
         {return name!=null&&(CoyoteCamp(name)||Numbered(name,"Building_")||Numbered(name,"Wreck_")||Numbered(name,"Cave_")||name.StartsWith("Starter_Area",StringComparison.Ordinal));}
+        /// <summary>Tests a prefab family followed by a numeric identifier.</summary>
         private static bool Numbered(string name,string prefix)
         {return name.Length>prefix.Length&&name.StartsWith(prefix,StringComparison.OrdinalIgnoreCase)&&char.IsDigit(name[prefix.Length]);}
+        /// <summary>Stores a stable location once while excluding town-owned clones.</summary>
         private static void RememberPoi(Transform root,string name)
         {
             if (TownBuilding(root)) return;
@@ -103,13 +116,15 @@ namespace WildWasteland.Modules.POI
             Revision++;
         }
 
+        /// <summary>Builds a deterministic identity from the prefab name and stable world position.</summary>
         internal static string Identity(Transform t)
         {
             var p = Origin.World(t.position);
             return Names.Prefab(t.name) + ":" + Mathf.RoundToInt(p.x) + ":" + Mathf.RoundToInt(p.z);
         }
 
-        private static void Remember(Transform root, Bounds? baked, object structure = null)
+        /// <summary>Captures camp bounds and certifies its accessible exterior entrance.</summary>
+        private static void Remember(Transform root, Bounds? baked, NavStructure structure = null)
         {
             if (TownBuilding(root)) return;
             string id = Identity(root);
@@ -117,7 +132,7 @@ namespace WildWasteland.Modules.POI
             // Older NPC Overhaul grids can still contain pre-jump scene coordinates; use current collider geometry instead.
             if (baked.HasValue && !baked.Value.Contains(root.position)) { baked = null; structure = null; }
             bool existed = Known.TryGetValue(id, out var location);
-            var nav = structure as Core.NavStructure;
+            var nav = structure;
             bool complete = nav != null && nav.Baked;
             if (existed && Roots.TryGetValue(id, out var same) && same == root && Mapped.Contains(id)) return;
             if (existed && Roots.TryGetValue(id, out same) && same == root && !complete) return;
@@ -189,8 +204,10 @@ namespace WildWasteland.Modules.POI
             }
         }
 
+        /// <summary>Measures horizontal distance while ignoring elevation.</summary>
         internal static float FlatDistance(Vector3 a, Vector3 b) { a.y = b.y = 0f; return Vector3.Distance(a, b); }
 
+        /// <summary>Excludes transforms belonging to registered town geometry.</summary>
         internal static bool TownBuilding(Transform root)
         { for (var t = root; t != null; t = t.parent) if (Modules.POI.TownMarkers.Owns(t)) return true; return false; }
     }

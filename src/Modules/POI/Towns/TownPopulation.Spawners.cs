@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.POI
     /// </summary>
     internal static partial class TownPopulation
     {
+        /// <summary>Resolves the current Loot-owned native spawner service.</summary>
         private static INativeSpawners Spawners { get { return SpawnerControl.Required; } }
 
         /// <summary>Native count budget of one spawn group of a town building asset (POI TownAssets data; see <see cref="NativeSpawnerBudget"/>).</summary>

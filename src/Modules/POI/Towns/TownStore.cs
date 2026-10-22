@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.POI
     internal static class TownStore
     {
         private const int Magic = 0x5757544E, Version = 9;
+        /// <summary>Serializes the complete current record while validating the output schema.</summary>
         internal static byte[] Serialize(Dictionary<string, TownRecord> records)
         {
             using (var stream = new MemoryStream())
@@ -47,6 +48,7 @@ namespace WildWasteland.Modules.POI
                 w.Flush(); return stream.ToArray();
             }
         }
+        /// <summary>Reads the current format with bounded lengths, valid enums and complete consumption.</summary>
         internal static Dictionary<string, TownRecord> Deserialize(byte[] bytes)
         {
             var records = new Dictionary<string, TownRecord>(StringComparer.Ordinal);
@@ -118,11 +120,15 @@ namespace WildWasteland.Modules.POI
             }
             return records;
         }
+        /// <summary>Reads a bounded collection length from the binary record.</summary>
         private static int Count(BinaryReader r, int max)
         { int n = r.ReadInt32(); if (n < 0 || n > max) throw new InvalidDataException("Invalid Towns record length"); return n; }
+        /// <summary>Reads a finite floating-point coordinate from the binary record.</summary>
         private static float F(BinaryReader r)
         { float f = r.ReadSingle(); if (float.IsNaN(f) || float.IsInfinity(f)) throw new InvalidDataException("Non-finite Towns value"); return f; }
+        /// <summary>Encodes or decodes a three-component vector in the current record.</summary>
         private static void V(BinaryWriter w, Vector3 v) { w.Write(v.x); w.Write(v.y); w.Write(v.z); }
+        /// <summary>Encodes or decodes a three-component vector in the current record.</summary>
         private static Vector3 V(BinaryReader r) { return new Vector3(F(r), F(r), F(r)); }
     }
 }

@@ -6,6 +6,7 @@ namespace WildWasteland.Modules.POI
 {
     internal static class TownParking
     {
+        /// <summary>Places the authored parking apron outside the town perimeter.</summary>
         internal static void Outside(TownPlan plan)
         {
             var frame = TownPerimeter.Frame(plan);
@@ -21,6 +22,7 @@ namespace WildWasteland.Modules.POI
             }
             for (int c = 0; c < 4; c++) plan.Radius = Mathf.Max(plan.Radius, TownPerimeter.Corner(frame, c, 20).magnitude + 3);
         }
+        /// <summary>Plans an exterior-only terrain access corridor to the world road.</summary>
         internal static void Access(TownPlan plan, MatrixWorld heights, float scale, List<Vector3> avoid)
         {
             if (WorldGeneration.Present) { plan.AccessPath = new Vector3[0]; plan.GradeAccess = false; return; }
@@ -51,6 +53,7 @@ namespace WildWasteland.Modules.POI
             }
         }
         internal static readonly BuildingSpec Spec = Make();
+        /// <summary>Builds deterministic numeric planning data from the supplied geometry and seed.</summary>
         private static BuildingSpec Make()
         {
             var spec = new BuildingSpec { Name = "Towns_Parking", HalfX = 12, HalfZ = 20,

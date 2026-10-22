@@ -25,6 +25,7 @@ namespace WildWasteland.Modules.POI
         /// <summary>Binds the Tools-owned editor/test entries first (keeps the original bind order); implemented in Tools/_fromTowns.</summary>
         partial void BindTools(ConfigFile file);
         // Raw ConfigFile binder (settings.cfg via ModuleConfig.Main); the standalone-DLL entry BindStandalone is gone (README 7).
+        /// <summary>Attaches managed population observations without adding components to saved actors.</summary>
         internal void Bind(ConfigFile file)
         {
             File = file;
@@ -48,14 +49,18 @@ namespace WildWasteland.Modules.POI
             RoadLayer = file.Bind("POI / Assets", "Road terrain layer", "", "Optional exact TerrainLayer name. Blank follows the graph's roadStroke texture input. Missing/ambiguous road artwork rejects town generation instead of inventing a texture. Restart after changing.");
             AccessLength = Float(file, "Maximum access road length", 900, 100, 1800, "Maximum straight-line road search distance in metres. New towns require a nearby native road and a route with acceptable terrain grade.");
         }
+        /// <summary>Attaches managed population observations without adding components to saved actors.</summary>
         internal void Bind(ModuleConfig cfg)
         {
             Bind(cfg.Tools);
         }
+        /// <summary>Binds a bounded integer generation setting in the module tuning file.</summary>
         private static ConfigEntry<int> Int(ConfigFile f, string k, int d, int min, int max, string desc)
         { return f.Bind("POI / Generation", k, d, new ConfigDescription(desc, new AcceptableValueRange<int>(min, max))); }
+        /// <summary>Binds a bounded floating-point generation setting in the module tuning file.</summary>
         private static ConfigEntry<float> Float(ConfigFile f, string k, float d, float min, float max, string desc)
         { return f.Bind("POI / Generation", k, d, new ConfigDescription(desc, new AcceptableValueRange<float>(min, max))); }
+        /// <summary>Captures immutable settings and saved intent for a terrain worker.</summary>
         internal GenerationInput Snapshot(string key, int seed, BuildingSpec[] specs, TownPlan saved)
         {
             // Retry empty placement failures. At 100%, old empty chance decisions are also eligible.
@@ -69,6 +74,7 @@ namespace WildWasteland.Modules.POI
                 RuinsMin = 3, RuinsMax = 6, HumansMin = 5, HumansMax = 9, LootMin = 12, LootMax = 20,
                  AccessLength = AccessLength.Value };
         }
+        /// <summary>Recognizes an unfinished placement decision eligible for another generation attempt.</summary>
         internal static bool RejectedDoor(TownPlan plan)
         { return plan != null && !plan.HasTown && plan.Decision != "chance" && !plan.Decision.StartsWith("skipped:", System.StringComparison.Ordinal); }
     }
