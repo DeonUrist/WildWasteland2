@@ -25,7 +25,9 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 | B | B01 Core-Kernel | refactor/B01 | in progress | | isolated local worktree; see its state/B01.md |
 | B | B02 Core-Optimization | refactor/B02 | accepted in integration | ee96efb | source gates and combined Windows build passed; reports/B02.md |
 | B | B03 Debug | refactor/B03 | accepted in integration | 8028483 | authored ownership audit, source gates and combined Windows build passed; reports/B03.md |
-| B | B04..B18 | | queued | | dispatch as parallel-agent slots free up, following guide dependencies |
+| B | B04 Saves | refactor/save-bootstrap | active | | bootstrap integrated; full framework conversion in progress |
+| B | B17 Compatibility | refactor/B17 | active | | session bootstrap reviewed; full bridge conversion in progress |
+| B | B05..B16, B18 | | queued | | dispatch as parallel-agent slots free up, following guide dependencies |
 | C | C | | not started | | |
 
 ## Coordinator decisions
@@ -43,3 +45,5 @@ Originally a cloud mirror; Denis authorized local continuation on 2026-10-22. Pr
 (none)
 
 - 2026-10-22 resume: Coordinator accepted B02 and B03 in `refactor/coord-wiring`; Windows Release/Deploy=false after shared-services and Vistas integration passed with zero warnings/errors. B02/B03 references and summaries pass; combined partial check: 181 declarations, none missing. B03 authored-commit audit: 106 changed paths, none outside base ownership plus 60 exact approved exceptions recorded centrally. B01 consolidation and the Saves bootstrap integration remain active. No deployment or runtime verification.
+
+- 2026-10-22 interruption recovery: pending B01 merge conflict resolved as `293efaa`, preserving canonical Core fix installs and generic session takeover while removing old direct Saves/Vistas bootstrap. Combined Windows Release/Deploy=false: zero warnings/errors; Core dependency findings zero; 178 partial declarations, none missing. Agents resumed for B01 completion, full B04 and full B17. Session bootstrap review recorded separately; no game/deploy/runtime claim.
