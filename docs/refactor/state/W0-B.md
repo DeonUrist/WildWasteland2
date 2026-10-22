@@ -22,16 +22,16 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 16. Clock
 - [x] 17. Names
 - [x] 18. Layers
-- [ ] 19. Factions
+- [x] 19. Factions
 - [ ] 20. CameraArbiter
 - [ ] 21. PlayerState
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-478875f (COMPILE OK; state line updated in next commit)
+8442471 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 19 Factions: read Quests Factions.cs and Patrols faction use.
+Item 20 CameraArbiter: read the 3 camera projection writers (PlayerBody, Performance RenderShared GameCameras, ...).
 
 ## Blockers / questions for Denis
 (none yet)
@@ -55,3 +55,4 @@ Item 19 Factions: read Quests Factions.cs and Patrols faction use.
 - Clock: GameHours (Quests semantics, -1), Day, HourOfDay, Ready (TrafficReinforcements' Initialized check), Dark (Patrols DayLight verbatim); cached vars, throttled 1 s lookup, reset on scene load. Quests' QuestWorld.All fallback dropped (GameManager is always the owner).
 - Names: Base (Quests), StripClone (SaveCleanup), RenderBase (RenderShared k>0+TrimEnd), RemoveClone (Nav), CloneNumber (LastIndexOf+TryParse), BaseEquals/BaseStartsWith non-allocating.
 - Layers: named layer numbers + shared masks (bit-identical to the literals they replace); 12/13 unnamed.
+- Factions: Stance enum, symmetric owned relations Set/SetPlayer/Relation/ToPlayer/Hostile, IFactionSource membership chain Of(go), RemoveAll(owner); no data until Quests/Patrols feed it (Wave B).
