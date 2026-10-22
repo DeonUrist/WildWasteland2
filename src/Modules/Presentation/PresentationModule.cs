@@ -207,6 +207,7 @@ namespace WildWasteland.Modules.Presentation
         /// IWeaponPose, IPoseAuthoring, ICharacterAssets, INpcAppearance while Women of Wasteland runs), then World's.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<IBusPassengerAuthoring>(this,new BusPassengerAuthoring());
             ModApi.Provide<IVehicleVisuals>(this,new VehicleVisuals());
             ModApi.Provide<ICrewSeats>(this,new CrewSeats());
             ModApi.Provide<ICrewAppearance>(this,new CrewAppearance());

@@ -197,14 +197,14 @@ namespace WildWasteland.Modules.Patrols
         void BindKeys(ModuleConfig cfg)
         {
             BindToolsKeys(cfg);
-            BindDeveloperKeys(cfg);
+
         }
 
         // ---------------------------------------------------------------- F7 tools.cfg
         /// <summary>Binds tools for the current patrols settings.</summary>
         void BindTools(ModuleConfig cfg)
         {
-            BindDeveloperDebug(cfg);
+
             BindToolsDebug(cfg);
 
             BindCoreDebug(cfg);
@@ -308,10 +308,6 @@ namespace WildWasteland.Modules.Patrols
         partial void BindVehiclesCombat(ModuleConfig cfg);
         /// <summary>Binds the [Keys] entries of the patrol editor and the template recorder. Implemented in Tools (_fromPatrols).</summary>
         partial void BindToolsKeys(ModuleConfig cfg);
-        /// <summary>Binds the [Keys] entries of the bus passenger pose editor and the merchant item editor. Implemented in Developer (_fromPatrols).</summary>
-        partial void BindDeveloperKeys(ModuleConfig cfg);
-        /// <summary>Binds the tools.cfg Debug switches of the turret spot, bus passenger pose and merchant item editors. Implemented in Developer (_fromPatrols).</summary>
-        partial void BindDeveloperDebug(ModuleConfig cfg);
         /// <summary>Binds the tools.cfg Debug entry AllowDebugSpawns (patrol editor spawn controls). Implemented in Tools (_fromPatrols).</summary>
         partial void BindToolsDebug(ModuleConfig cfg);
         /// <summary>Binds the tools.cfg Debug entry Hide missing-FSM warnings (drives Core QuietFsm). Implemented in Core (_fromPatrols).</summary>
