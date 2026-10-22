@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.HUD
     // module reports its projectile hits through Services.Hud and sets ExternalReporter; while that is true (and Guns is
     // running) this observer stays quiet, so one shot never produces feedback twice. First line of the handler is a static
     // bool (feedback off / external reporter), then the 1.2.2 string filters; GetComponents use a reused list (no alloc).
-    internal static class VanillaHits
+    internal static partial class VanillaHits
     {
         private sealed class Hit
         {
@@ -26,17 +26,6 @@ namespace WildWasteland.Modules.HUD
         }
         private static readonly List<Hit> Pending = new List<Hit>();
         private static readonly List<PlayMakerFSM> _fsms = new List<PlayMakerFSM>(8);
-
-        /// <summary>HitFeedback on and something to show (= old Api.Enabled), recomputed on setting changes.</summary>
-        internal static bool Observing;
-        /// <summary>The Guns module reports hits itself (Services.Hud.ExternalReporter) and is running.</summary>
-        internal static bool Quiet { get { return HitFeedbackService.External && Services.Guns != null; } }
-
-        internal static void UpdateFlags()
-        {
-            var api = Services.Hud as HitFeedbackService;
-            Observing = api != null && api.Enabled;
-        }
 
         public static bool BeforeSetFsmFloat(SetFsmFloat __instance)
         {

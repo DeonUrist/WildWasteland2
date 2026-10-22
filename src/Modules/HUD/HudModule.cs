@@ -15,11 +15,8 @@ namespace WildWasteland.Modules.HUD
     /// hit marker, floating damage numbers / damage list and the headshot sound. Provides <see cref="Services.Hud"/>
     /// (ex GunplayHUD.Api) that the Guns module reports its projectile hits to.
     /// </summary>
-    public sealed class HudModule : ModuleBase
+    public sealed partial class HudModule : ModuleBase
     {
-        public const string OldCfg = "com.denis.apocalypter.gunplayhud.cfg";
-        public const string RaiderCfg = "com.denis.apocalypter.apocaraider.cfg";
-
         internal static HudModule Instance;
         /// <summary>BepInEx\plugins\WildWasteland\HUD\ (Textures/, Sounds/).</summary>
         internal new static string Dir;
@@ -67,8 +64,6 @@ namespace WildWasteland.Modules.HUD
             HeadshotGain = cfg.Tool("Headshot sound", "Gain", 1.3f, "Sample gain applied once when headshot.mp3 is decoded (AudioSource volume cannot exceed 1). Applies on the next load (module off/on).", new AcceptableValueRange<float>(0.5f, 3f));
             HeadshotMinInterval = cfg.Tool("Headshot sound", "MinInterval", 0.075f, "Headshots closer together than this play one sound, s.", new AcceptableValueRange<float>(0f, 0.5f));
 
-            LegacyConfig.Import(cfg);
-
             // React live to F6/F7 edits (subscribed once; handlers do nothing while the module is off).
             EventHandler flags = (s, a) => OnFeedbackSettingChanged();
             HudEnabled.SettingChanged += flags; HitMarker.SettingChanged += flags; DamageNumbers.SettingChanged += flags; HeadshotSound.SettingChanged += flags;
@@ -89,7 +84,7 @@ namespace WildWasteland.Modules.HUD
             if (guns != null) HitFeedbackService.External = guns.ProjectilesEnabled;
             VanillaHits.UpdateFlags();
 
-            Hooks.SetFsmFloatEnter.Prefix(this, VanillaHits.BeforeSetFsmFloat);
+            InitGunplay();
 
             // old Runner: Update = crosshair + headshot audio, LateUpdate = VanillaHits.Flush + Hud.Flush, OnGUI = Hud.OnGUI
             _crosshairJob = Scheduler.Interval(this, "Crosshair", 0.25f, CrosshairController.Tick);
@@ -133,16 +128,14 @@ namespace WildWasteland.Modules.HUD
 
         // ------------------------------------------------------------------ assets
 
-        /// <summary>Path of a module asset: BepInEx\plugins\WildWasteland\HUD\&lt;sub&gt;\&lt;name&gt;, else the old BepInEx\plugins\GunplayHUD\ folder. Null if neither exists.</summary>
+        /// <summary>Path of a module asset: BepInEx\plugins\WildWasteland\HUD\&lt;sub&gt;\&lt;name&gt;. Null if it does not exist.</summary>
         internal static string AssetPath(string sub, string name)
         {
             string p = Path.Combine(Path.Combine(Dir ?? Assets.ModuleDir("HUD"), sub), name);
-            if (File.Exists(p)) return p;
-            string legacy = Path.Combine(Path.Combine(Assets.LegacyPluginDir("GunplayHUD"), sub), name);
-            return File.Exists(legacy) ? legacy : null;
+            return File.Exists(p) ? p : null;
         }
 
-        /// <summary>Asset bytes: the current/legacy file wins, otherwise use the packaged disk-asset index.</summary>
+        /// <summary>Asset bytes: the module file wins, otherwise use the packaged disk-asset index.</summary>
         internal static byte[] ReadAsset(string sub, string name)
         {
             string p = AssetPath(sub, name);
@@ -156,6 +149,9 @@ namespace WildWasteland.Modules.HUD
                 return buf;
             }
         }
+
+        /// <summary>Gunplay: the vanilla hit observer hook (implemented in Gunplay/HitDetection/_fromHUD/HudModule.Gunplay.cs).</summary>
+        partial void InitGunplay();
 
         // ------------------------------------------------------------------ F7
 
