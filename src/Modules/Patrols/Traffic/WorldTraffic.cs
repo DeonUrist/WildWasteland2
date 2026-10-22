@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.Patrols
 {
     internal sealed class TrafficPlatform : MonoBehaviour { internal TrafficAgent Owner; }
 
-    internal sealed class TrafficAgent : MonoBehaviour
+    internal sealed partial class TrafficAgent : MonoBehaviour
     {
         internal string Journey;
         internal int Slot;
@@ -16,7 +16,6 @@ namespace WildWasteland.Modules.Patrols
         internal float SeenUntil;
         internal Vector3 LastKnown;
         internal string Detection = "travelling";
-        private float _nextSense;
 
         internal bool Goal(out Vector3 goal, out float cruise, out bool stop, out bool hunt)
         {
@@ -34,27 +33,7 @@ namespace WildWasteland.Modules.Patrols
             bool hasPlayer = TrafficFactions.PlayerHostile(journey.faction)&&PlayerRef.Target(out player, out velocity, out car) && !PlayerRef.GodMode
                 && Time.time >= _ignorePlayerUntil && !(journey.convoy && PatrolPoi.PlayerRoot != null);
             float distance = hasPlayer ? TrafficLocations.FlatDistance(journey.position, TrafficSpace.World(player)) : float.MaxValue;
-            if (Time.time >= _nextSense)
-            {
-                _nextSense = Time.time + 0.5f;
-                bool saw = false, heard = false;
-                if (hasPlayer && !journey.convoy)
-                {
-                    var delta = player - transform.position; delta.y = 0f;
-                    float sight = TrafficRules.VisibilityRange(DayLight.Dark, PatrolVisibility.LightsOn(car));
-                    saw = delta.magnitude <= sight && Vector3.Angle(transform.forward, delta) <= 100f
-                        && Sight(player, car);
-                    heard = DayLight.Dark && delta.magnitude <= TrafficLocations.EngineRange(car);
-                    if (saw || heard)
-                    {
-                        LastKnown = TrafficSpace.World(player); SeenUntil = Time.time + PatrolsModule.PatrolMemorySeconds.Value;
-                        if (_pm == null) _pm = GetComponent<PatrolMarker>();
-                        if (_pm != null) _pm.PlayerContactAt = Time.time;   // awareness handover at dismount (CrewReturn)
-                    }
-                }
-                Detection = saw ? "sight" : heard ? "engine" : Time.time < SeenUntil ? "last known" : "travelling";
-                _detected = saw || heard;
-            }
+            SensePlayer(journey, hasPlayer, player, car);   // NPCAI part: TrafficAgent.Sensing.cs (sight/hearing of the player)
             hunt = hasPlayer && TrafficRules.Pursue(journey.convoy, Truck, distance, PatrolsModule.ConvoyGuardRange.Value,
                 _detected, Time.time < SeenUntil);
             if (hunt)
@@ -80,6 +59,8 @@ namespace WildWasteland.Modules.Patrols
             stop = journey.arrived && (Truck || Slot == 0 || TrafficLocations.FlatDistance(transform.position, goal) < 12f);
             return true;
         }
+        /// <summary>Patrol sight (range by day/lights, 100 degree cone, raycast) and engine hearing of the player every 0.5 s; updates LastKnown/SeenUntil/Detection. Implemented in NPCAI (TrafficAgent.Sensing.cs).</summary>
+        partial void SensePlayer(TrafficJourney journey, bool hasPlayer, Vector3 player, GameObject car);
         private bool _detected;
         private float _ignorePlayerUntil;
         internal void ForgetPlayer() { SeenUntil = 0f; _detected = false; Detection = "travelling"; _ignorePlayerUntil = Time.time + 10f; }
@@ -95,24 +76,6 @@ namespace WildWasteland.Modules.Patrols
             return rank;
         }
 
-        private bool Sight(Vector3 target, GameObject playerCar)
-        {
-            var origin = transform.position + Vector3.up * 2f;
-            var delta = target + Vector3.up - origin;
-            int count=Physics.RaycastNonAlloc(origin,delta.normalized,SightHits,delta.magnitude,Physics.DefaultRaycastLayers,QueryTriggerInteraction.Ignore);
-            if(count==SightHits.Length)return false;
-            for(int i=0;i<count;i++)
-            {
-                var hit=SightHits[i];
-                var t = hit.collider.transform;
-                if (t.IsChildOf(transform) || (playerCar != null && t.IsChildOf(playerCar.transform))
-                    || (PlayerRef.Player != null && t.IsChildOf(PlayerRef.Player))) continue;
-                return false;
-            }
-            return true;
-        }
-
-        private static readonly RaycastHit[] SightHits=new RaycastHit[24];
         internal bool CanFight
         {
             get
