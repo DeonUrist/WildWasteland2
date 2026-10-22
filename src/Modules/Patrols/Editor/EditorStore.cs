@@ -34,7 +34,11 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
-        internal static void Save() { AtomicWrite(StatePath, Data.ToJson()); }
+        /// <summary>Saves patrol group authoring and delegates cargo profile publication to its actual Loot owner.</summary>
+        internal static void Save() { var cargo=Core.ModApi.Get<Core.ICargoLoot>();if(cargo!=null)cargo.SaveProfiles(Data.CarLoot,Data.TruckLoot);var root=Core.Json.ParseObject(Data.ToJson());root.Remove("carLoot");root.Remove("truckLoot");AtomicWrite(StatePath,Core.Json.Write(root)); }
+        /// <summary>Refreshes editor views from the authoritative provider when Loot starts, restarts or changes its tables.</summary>
+        internal static void CargoApiChanged(Type changed) { if(changed!=null&&changed!=typeof(Core.ICargoLoot)||Data==null)return;var api=Core.ModApi.Get<Core.ICargoLoot>();if(api!=null)api.Profiles(Data.CarLoot,Data.TruckLoot); }
+
 
         // avoid = the group id of the previous spawn: left out of the roll when at least one other group of that list is eligible
         internal static SpawnGroup Roll(float km, int bosses, float patrolPercent, Func<double> random, out bool convoy, string avoid = null)

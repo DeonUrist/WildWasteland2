@@ -11,6 +11,10 @@ namespace WildWasteland.Modules.Loot
         private readonly LootTableStore _store;
         /// <summary>Uses the module's actual persisted table store.</summary>
         internal CargoLootApi(LootTableStore store) { _store=store; }
+        /// <summary>Copies current authoritative editable cargo metadata.</summary>
+        public void Profiles(List<LootProfile> cars,List<LootProfile> trucks) {_store.Profiles(cars,trucks);}
+        /// <summary>Publishes current authored profiles through Loot persistence.</summary>
+        public void SaveProfiles(IList<LootProfile> cars,IList<LootProfile> trucks) {_store.SaveProfiles(cars,trucks);}
         private sealed class CallerRandom : System.Random { private readonly Func<double> _next;internal CallerRandom(Func<double> next){_next=next;}public override double NextDouble(){return _next();} }
         /// <summary>Selects only the requested table or eligible weighted truck tables; preserves authored allow lists and order.</summary>
         public string Select(bool truck,string requested,IEnumerable<string> allowed,Func<double> random)

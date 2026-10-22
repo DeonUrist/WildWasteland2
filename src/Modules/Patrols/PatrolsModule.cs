@@ -106,6 +106,7 @@ namespace WildWasteland.Modules.Patrols
             Try("Motorcycle save hook (saved motorcycles may not load)", () => MotorcycleIntegration.Install(this));
 
             EditorStore.Load(DataDir);
+            Core.ModApi.Changed-=EditorStore.CargoApiChanged;Core.ModApi.Changed+=EditorStore.CargoApiChanged;EditorStore.CargoApiChanged(null);
             CarTemplates.Init(DataDir);
             CarTemplates.Load();
             Try("War Rig", () => WarRig.WarRigFeature.Install(this, Path.Combine(DataDir, "WarRig")));
@@ -123,6 +124,7 @@ namespace WildWasteland.Modules.Patrols
 
         public override void Shutdown()
         {
+            Core.ModApi.Changed-=EditorStore.CargoApiChanged;
             Services.NpcHurt-=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;
             CrewReturn.Reset();

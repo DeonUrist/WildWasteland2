@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.Patrols
             var result = new EditorData();
             result.Patrols = Groups(root, "patrols"); result.Convoys = Groups(root, "convoys");
             result.Merchants=root.ContainsKey("merchants")?Groups(root,"merchants"):MerchantCatalog.DefaultGroups();
-            result.CarLoot = Loot(root, "carLoot"); result.TruckLoot = Loot(root, "truckLoot");
+            result.CarLoot = root.ContainsKey("carLoot")?Loot(root, "carLoot"):new List<LootProfile>(); result.TruckLoot = root.ContainsKey("truckLoot")?Loot(root, "truckLoot"):new List<LootProfile>();
             object order;
             if (root.TryGetValue("templateOrder", out order) && order is List<object>) result.TemplateOrder = ((List<object>)order).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             foreach (var g in result.Convoys.Where(g => g.AllowedCargo == null))

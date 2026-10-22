@@ -65,23 +65,14 @@ namespace WildWasteland.Modules.Loot
                 using(var reader=new StreamReader(stream))
                 { var defaults=Json.ParseObject(reader.ReadToEnd());ImportProfiles(defaults,"carLoot","car");ImportProfiles(defaults,"truckLoot","truck"); }
             }
-            if (ImportPatrolsLoot()) dirty = true;
+
             if (dirty) Save();
             Revision++;
             if (Log.L1) Log.Main(LootModule.Instance, "loot tables: " + _file.Count + " in " + _path + (_importedFrom != null ? " (profiles imported from " + _importedFrom + ")" : ""));
         }
 
         /// <summary>World ready: re-runs the copy-missing import when PatrolsAndLoot.json changed since the last import.</summary>
-        internal void Refresh()
-        {
-            if (_path == null) return;
-            string source = PatrolsLootPath();
-            if (source == null) return;
-            DateTime stamp;
-            try { stamp = File.GetLastWriteTimeUtc(source); } catch (Exception) { return; }
-            if (source == _importedFrom && stamp == _importedStamp) return;
-            if (ImportPatrolsLoot()) { Save(); Revision++; }
-        }
+        internal void Refresh() { }
 
         /// <summary>Drops runtime tables (module shutdown).</summary>
         internal void ClearRuntime()
@@ -177,33 +168,6 @@ namespace WildWasteland.Modules.Loot
 
         /// <summary>Location of the Patrols editor file: config/WildWasteland/Patrols/ first, then the Patrols plugin folder
         /// (where the Patrols module keeps it today); null when neither exists.</summary>
-        private static string PatrolsLootPath()
-        {
-            string config = Path.Combine(Path.Combine(Assets.ConfigDir, "Patrols"), "PatrolsAndLoot.json");
-            if (File.Exists(config)) return config;
-            string plugin = Path.Combine(Assets.ModuleDir("Patrols"), "PatrolsAndLoot.json");
-            return File.Exists(plugin) ? plugin : null;
-        }
-
-        /// <summary>Copy-missing import of the carLoot/truckLoot profiles; true when a table was added. Unreadable files or rows are
-        /// skipped with a warning (the Patrols module reports its own file errors).</summary>
-        private bool ImportPatrolsLoot()
-        {
-            string source = PatrolsLootPath();
-            if (source == null) return false;
-            Dictionary<string, object> root;
-            try
-            {
-                _importedStamp = File.GetLastWriteTimeUtc(source); _importedFrom = source;
-                root = Json.ParseObject(File.ReadAllText(source));
-            }
-            catch (Exception e) { Log.Warn(LootModule.Instance, "PatrolsAndLoot.json not imported: " + e.Message); return false; }
-            if (root == null) return false;
-            int added = ImportProfiles(root, "carLoot", "car") + ImportProfiles(root, "truckLoot", "truck");
-            if (added > 0 && Log.L1) Log.Main(LootModule.Instance, "copied " + added + " loot profile(s) from " + source + " into LootTables.json (source retained)");
-            return added > 0;
-        }
-
         /// <summary>Adds the profiles of one PatrolsAndLoot.json list whose table id is missing; returns the number added. A car and a
         /// truck profile with the same id: the second one gets the id "kind:id".</summary>
         private int ImportProfiles(Dictionary<string, object> root, string key, string kind)
@@ -240,6 +204,28 @@ namespace WildWasteland.Modules.Loot
                 added++;
             }
             return added;
+        }
+
+        /// <summary>Copies editable file cargo rows without exposing mutable authoritative tables.</summary>
+        internal void Profiles(List<LootProfile> cars,List<LootProfile> trucks)
+        {
+            cars.Clear();trucks.Clear();foreach(var id in _order){var table=_file[id];if(table.Kind!="car"&&table.Kind!="truck")continue;var p=new LootProfile {Id=table.Id,Name=table.Name,TextureKey=table.TextureKey,Default=table.Default,SpawnChance=table.SpawnChance};foreach(var item in table.Entries)p.Items.Add(new LootItem {Id=item.ItemKey,Chance=item.Weight});(table.Kind=="car"?cars:trucks).Add(p);}
+        }
+        /// <summary>Validates and publishes all edited cargo rows, restoring in-memory authority if publication fails.</summary>
+        internal void SaveProfiles(IList<LootProfile> cars,IList<LootProfile> trucks)
+        {
+            var replacement=new List<LootTable>();var ids=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach(bool truck in new[]{false,true})foreach(var p in truck?trucks:cars)
+            {
+                if(p==null||string.IsNullOrWhiteSpace(p.Id)||!ids.Add(p.Id))throw new FormatException("Missing or duplicate cargo profile");
+                var old=Find(p.Id);var table=new LootTable {Id=p.Id,Name=p.Name,Kind=truck?"truck":"car",TextureKey=p.TextureKey,Default=p.Default,SpawnChance=Clamp(p.SpawnChance,0,100)};
+                var items=new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach(var row in p.Items){if(row==null||string.IsNullOrWhiteSpace(row.Id)||!items.Add(row.Id)||float.IsNaN(row.Chance)||float.IsInfinity(row.Chance))throw new FormatException("Invalid or duplicate cargo item");var entry=new LootEntry {ItemKey=row.Id,Weight=Clamp(row.Chance,0,100000),Min=1,Max=1};if(old!=null)foreach(var prior in old.Entries)if(prior.ItemKey==row.Id){entry.Min=prior.Min;entry.Max=prior.Max;break;}table.Entries.Add(entry);}replacement.Add(table);
+            }
+            foreach(var table in _file.Values)if(table.Kind!="car"&&table.Kind!="truck"&&ids.Contains(table.Id))throw new FormatException("Cargo profile conflicts with a world loot table");
+            var previous=new Dictionary<string,LootTable>(_file,StringComparer.OrdinalIgnoreCase);var order=new List<string>(_order);
+            try{foreach(var id in new List<string>(_order))if(_file[id].Kind=="car"||_file[id].Kind=="truck"){_file.Remove(id);_order.Remove(id);}foreach(var table in replacement)Add(table);Save(true);Revision++;}
+            catch{_file.Clear();foreach(var pair in previous)_file.Add(pair.Key,pair.Value);_order.Clear();_order.AddRange(order);throw;}
         }
 
         /// <summary>Clamps a parsed number (NaN -> min).</summary>
@@ -294,7 +280,7 @@ namespace WildWasteland.Modules.Loot
         }
 
         /// <summary>Writes LootTables.json through a same-directory atomic replace (D17).</summary>
-        private void Save()
+        private void Save(bool fail=false)
         {
             var tables = new List<object>();
             foreach (var id in _order)
@@ -307,7 +293,7 @@ namespace WildWasteland.Modules.Loot
             var poi = new Dictionary<string, object>(); foreach (var pair in _poi) poi[pair.Key] = pair.Value;
             var lots = new Dictionary<string, object>(); foreach (var pair in _lots) lots[pair.Key] = pair.Value;
             try { AuthoringFiles.AtomicWrite(_path, Json.Write(Json.Object("schema", Schema, "tables", tables, "poiTables", poi, "lotTables", lots))); }
-            catch (Exception e) { Log.Warn(LootModule.Instance, "LootTables.json not written: " + e.Message); }
+            catch (Exception e) { if(fail)throw;Log.Warn(LootModule.Instance, "LootTables.json not written: " + e.Message); }
         }
     }
 }
