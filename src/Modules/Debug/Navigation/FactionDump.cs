@@ -6,7 +6,7 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Quests
+namespace WildWasteland.Modules.Debug
 {
     // Debug helper: writes everything that could tell which faction an NPC / enemy belongs to
     // (tag, layer, parents, component types, FSM variables with telling names) into faction_dump.txt.
@@ -14,6 +14,9 @@ namespace WildWasteland.Modules.Quests
     {
         static readonly string[] Telling = { "faction", "team", "group", "hostile", "enemy", "friend", "ally", "tribe", "clan", "relation", "type", "kind", "species", "side", "owner", "camp" };
 
+        /// <summary>Horizontal distance preserves the existing faction dump's local radius selector.</summary>
+        private static float Distance(Vector3 a, Vector3 b) { a.y = b.y = 0; return Vector3.Distance(a, b); }
+        /// <summary>Selects variable and FSM names that may reveal faction relationships.</summary>
         static bool Interesting(string name)
         {
             string n = (name ?? "").ToLowerInvariant();
@@ -21,6 +24,7 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
+        /// <summary>Builds a hierarchy path for the explicit dump without retaining transforms.</summary>
         static string PathOf(Transform t)
         {
             var parts = new List<string>();
@@ -29,6 +33,7 @@ namespace WildWasteland.Modules.Quests
             return string.Join("/", parts.ToArray());
         }
 
+        /// <summary>Writes native globals, nearby actor components/FSMs and copied quest context to the existing faction dump text format.</summary>
         public static string Run(Vector3 center, float radius, string file, string[] peopleWords)
         {
             var sb = new StringBuilder();
@@ -63,8 +68,8 @@ namespace WildWasteland.Modules.Quests
                         sb.AppendLine(PathOf(f.transform) + "  [" + f.FsmName + "]  state=" + f.ActiveStateName);
                     GameObject go = f.gameObject;
                     if (!go.activeInHierarchy) continue;
-                    if (Game.HDist(go.transform.position, center) > radius) continue;
-                    string n = Util.Norm(go.name);
+                    if (Distance(go.transform.position, center) > radius) continue;
+                    string n = (go.name ?? "").ToLowerInvariant();
                     bool person = f.FsmName == "Health" || f.FsmName == "PlayerIsEnemy";
                     for (int k = 0; k < peopleWords.Length && !person; k++) if (peopleWords[k].Length > 0 && n.Contains(peopleWords[k])) person = true;
                     if (person && seen.Add(go.GetInstanceID())) near.Add(go);
@@ -72,23 +77,16 @@ namespace WildWasteland.Modules.Quests
             }
 
             sb.AppendLine();
-            sb.AppendLine("== Takeover walkers ==");
-            foreach (string s in Takeover.DescribeWalkers(center)) sb.AppendLine(s);
-            sb.AppendLine("== Camps taken over by quests ==");
-            foreach (KeyValuePair<string, string> o in Factions.Overrides) sb.AppendLine(o.Key + " -> " + o.Value);
-
-            sb.AppendLine();
-            sb.AppendLine("== Points of interest within 300 m (name, owner from its EnemySpawn_ child) ==");
-            foreach (Poi poi in Game.FindPois(center, 0f, 300f, ""))
-                sb.AppendLine(poi.Name + "   owner=" + (poi.Faction.Length > 0 ? poi.Faction : "(none)") + "   dist " + (int)Game.HDist(poi.Pos, center) + " m");
-
+            var context = ModApi.Get<IQuestDiagnosticSource>();
+            if (context != null) sb.AppendLine(context.DescribeFactionContext(center));
+            else sb.AppendLine("Quest diagnostic context unavailable (Quests disabled).");
             sb.AppendLine();
             sb.AppendLine("== Objects near you (" + near.Count + ", showing up to 30) ==");
             for (int i = 0; i < near.Count && i < 30; i++)
             {
                 GameObject go = near[i];
                 sb.AppendLine();
-                sb.AppendLine("-- " + PathOf(go.transform) + "   dist " + (int)Game.HDist(go.transform.position, center) + " m");
+                sb.AppendLine("-- " + PathOf(go.transform) + "   dist " + (int)Distance(go.transform.position, center) + " m");
                 sb.AppendLine("   tag=" + go.tag + "  layer=" + LayerMask.LayerToName(go.layer) + "  active=" + go.activeInHierarchy);
                 try
                 {

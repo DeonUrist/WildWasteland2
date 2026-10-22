@@ -49,14 +49,18 @@ namespace WildWasteland.Modules.Debug
         private static int _eventCount;
         internal static volatile bool Timing, Allocations, Spikes, Lifecycle;
         internal static double Threshold = 2;
+        /// <summary>Number of optional methods waiting for bounded installation.</summary>
         internal static int PendingCount { get { return Pending.Count; } }
         private static readonly Func<long> ReadAllocation = AllocationReader();
         internal static bool AllocationSupported { get { return ReadAllocation != null; } }
+        /// <summary>Tracks child method ticks for one thread-local inclusive/self timing frame.</summary>
         private struct StackEntry { internal long Children; }
         [ThreadStatic] private static StackEntry[] _stack;
         [ThreadStatic] private static int _depth;
+        /// <summary>Carries one in-flight probe invocation without altering its original return or exception behavior.</summary>
         internal struct Token { internal Probe Probe; internal long Start, Allocation; internal int Depth, Thread; }
 
+        /// <summary>Discovers managed WW probe candidates once, excluding Debug itself and the already-timed scheduler.</summary>
         internal static void Initialize()
         {
             MainThread = Thread.CurrentThread.ManagedThreadId;
@@ -86,6 +90,7 @@ namespace WildWasteland.Modules.Debug
             Scopes.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
             ScopeNames = new string[Scopes.Count]; for (int i = 0; i < Scopes.Count; i++) ScopeNames[i] = Scopes[i].Name;
         }
+        /// <summary>Selects named execution boundaries for lower-overhead optional instrumentation.</summary>
         private static bool Boundary(MethodInfo method)
         {
             string n = method.Name;
@@ -99,6 +104,7 @@ namespace WildWasteland.Modules.Debug
                 || n == "GetAsync" || n == "Init" || n == "Shutdown" || n == "RunPrefix" || n == "RunPostfix" || n == "Start" || n == "Stop"
                 || n == "MoveNext" || n == "Generate" || n == "Apply" || n == "ProcessEvent" || n == "EnterState" || n.StartsWith("SendEvent", StringComparison.Ordinal);
         }
+        /// <summary>Discovers optional managed base-game/FSM/terrain/save candidates only on explicit request.</summary>
         internal static void DiscoverNative()
         {
             if (Scopes.Exists(s => s.Name.StartsWith("Game.", StringComparison.Ordinal))) return;
@@ -127,12 +133,14 @@ namespace WildWasteland.Modules.Debug
             Scopes.AddRange(groups.Values); Scopes.Sort((a,b) => string.CompareOrdinal(a.Name,b.Name));
             ScopeNames = Scopes.ConvertAll(s => s.Name).ToArray();
         }
+        /// <summary>Queues uninstalled methods in the selected scope only at deep logging level.</summary>
         internal static void Enable(Scope scope, bool deep)
         {
             if (!Core.Log.L2) return;
             scope.Enabled = true;
             foreach (var method in scope.Methods) if ((deep || Boundary(method)) && !Map.ContainsKey(method) && Queued.Add(method)) Pending.Enqueue(method);
         }
+        /// <summary>Installs at most one queued method probe per scheduler frame through Core patch ownership.</summary>
         internal static void InstallStep()
         {
             if (Pending.Count == 0) return;
@@ -148,6 +156,7 @@ namespace WildWasteland.Modules.Debug
             }
             catch (Exception e) { Probe ignored; Map.TryRemove(method, out ignored); scope.Failed++; Failures.Add(probe.Name + ": " + e.GetBaseException().Message); }
         }
+        /// <summary>Diagnostic Harmony prefix: returns immediately unless the selected probe is active and timing is enabled.</summary>
         private static void Begin(MethodBase __originalMethod, out Token __state)
         {
             __state = new Token();
@@ -161,6 +170,7 @@ namespace WildWasteland.Modules.Debug
             }
             catch (Exception e) { Fault = e.GetType().Name + ": " + e.Message; Timing = false; _depth = 0; __state = new Token(); }
         }
+        /// <summary>Diagnostic Harmony finalizer: records inclusive/self/thread/allocation costs and preserves the original exception.</summary>
         private static Exception End(Exception __exception, Token __state)
         {
             try
@@ -185,9 +195,12 @@ namespace WildWasteland.Modules.Debug
             }
             catch (Exception e) { Fault = e.GetType().Name + ": " + e.Message; Timing = false; _depth = 0; return __exception; }
         }
+        /// <summary>Recognizes save/load/terrain/spawn method names for bounded deep-level lifecycle traces.</summary>
         private static bool IsLifecycle(string name)
         { return name.IndexOf("Save", StringComparison.Ordinal) >= 0 || name.IndexOf("Load", StringComparison.Ordinal) >= 0 || name.IndexOf("Shift", StringComparison.Ordinal) >= 0 || name.IndexOf("Finalized", StringComparison.Ordinal) >= 0 || name.IndexOf("Applied", StringComparison.Ordinal) >= 0 || name.IndexOf("SpawnEvent", StringComparison.Ordinal) >= 0 || name.IndexOf("WorldReady", StringComparison.Ordinal) >= 0; }
+        /// <summary>Removes one bounded trace event and releases its queue accounting slot.</summary>
         internal static bool Dequeue(out TraceEvent ev) { if (!Events.TryDequeue(out ev)) return false; Interlocked.Decrement(ref _eventCount); return true; }
+        /// <summary>Computes per-second method deltas using atomic counters while retaining lifetime and sample-window totals.</summary>
         internal static List<MethodRow> Snapshot(double seconds)
         {
             var rows = new List<MethodRow>(); double ms = 1000.0 / Stopwatch.Frequency;
@@ -202,17 +215,36 @@ namespace WildWasteland.Modules.Debug
             }
             rows.Sort((a, b) => b.Self.CompareTo(a.Self)); return rows;
         }
+        /// <summary>Binds the optional runtime allocation API and validates it without requiring unsupported runtimes to provide it.</summary>
         private static Func<long> AllocationReader()
         {
             var method = typeof(GC).GetMethod("GetAllocatedBytesForCurrentThread", BindingFlags.Static | BindingFlags.Public);
             try { if (method == null) return null; var read = (Func<long>)Delegate.CreateDelegate(typeof(Func<long>), method); read(); return read; } catch { return null; }
         }
+        /// <summary>Stops new probes, removes installed diagnostic patches and clears probe queues while preserving in-flight finalizer references.</summary>
         internal static void Remove()
         {
-            Timing = false; Pending.Clear(); Queued.Clear(); Patches.Unpatch(DebugModule.Instance);
-            Fault = null;
+            Timing = false; Pending.Clear(); Queued.Clear();
+            var prefix = Patches.Method(typeof(Instrumentation), nameof(Begin));
+            var finalizer = Patches.Method(typeof(Instrumentation), nameof(End));
+            foreach (var pair in Map)
+            {
+                bool prefixRemoved = Patches.UnpatchMethod(DebugModule.Instance, pair.Key, prefix);
+                bool finalizerRemoved = Patches.UnpatchMethod(DebugModule.Instance, pair.Key, finalizer);
+                if (!prefixRemoved || !finalizerRemoved)
+                {
+                    Fault = "Could not remove diagnostic probe: " + pair.Value.Name;
+                    Failures.Add(Fault);
+                    continue;
+                }
+                Probe ignored; Map.TryRemove(pair.Key, out ignored);
+                Probes.Remove(pair.Value);
+                if (pair.Value.Scope.Patched > 0) pair.Value.Scope.Patched--;
+            }
+            foreach (var scope in Scopes) scope.Enabled = false;
+            if (Map.Count == 0) Fault = null;
             // In-flight finalizers retain their Probe references safely. New hooks no longer start.
-            Map.Clear(); Probes.Clear(); foreach (var scope in Scopes) { scope.Enabled = false; scope.Patched = 0; }
+
         }
     }
 }

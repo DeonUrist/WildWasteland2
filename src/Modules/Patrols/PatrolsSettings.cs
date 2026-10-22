@@ -198,11 +198,10 @@ namespace WildWasteland.Modules.Patrols
         {
             BindDeveloperDebug(cfg);
             BindToolsDebug(cfg);
-            BindDebugOverlay(cfg);
+
             BindCoreDebug(cfg);
             BindVehiclesDebug(cfg);
 
-            BindDebugMap(cfg);
             RealPatrolNames = cfg.Tool(TTraffic, "Real patrol names", true, "Use each group's actual name on the game debug map; off labels groups Patrol or Convoy");
             HideRouteType = cfg.Tool(TTraffic, "hide route type", false, "Draw every traffic route and marker gray and label it Distant traffic; overrides Real patrol names");
             TrafficRoadRouting = cfg.Tool(TTraffic, "FollowRoads", true, "Influence sparse patrol waypoints with cached road hints; missing hints use a cached snake route");
@@ -307,14 +306,10 @@ namespace WildWasteland.Modules.Patrols
         partial void BindDeveloperDebug(ModuleConfig cfg);
         /// <summary>Binds the tools.cfg Debug entry AllowDebugSpawns (patrol editor spawn controls). Implemented in Tools (_fromPatrols).</summary>
         partial void BindToolsDebug(ModuleConfig cfg);
-        /// <summary>Binds the tools.cfg Debug entry AiOverlay (on-screen AI car lines). Implemented in Debug (_fromPatrols).</summary>
-        partial void BindDebugOverlay(ModuleConfig cfg);
         /// <summary>Binds the tools.cfg Debug entry Hide missing-FSM warnings (drives Core QuietFsm). Implemented in Core (_fromPatrols).</summary>
         partial void BindCoreDebug(ModuleConfig cfg);
         /// <summary>Binds the tools.cfg Debug entry ExitSpeedKmh (player exit-speed rule). Implemented in Vehicles (_fromPatrols).</summary>
         partial void BindVehiclesDebug(ModuleConfig cfg);
-        /// <summary>Binds the Traffic tuning entry DebugMap (routes on the game debug map). Implemented in Debug (_fromPatrols).</summary>
-        partial void BindDebugMap(ModuleConfig cfg);
         /// <summary>Binds the tools.cfg Audio entry AudioVoices (read by Core at startup). Implemented in Core (_fromPatrols).</summary>
         partial void BindCoreAudio(ModuleConfig cfg);
         /// <summary>Binds the Combat tuning entries of the blast-lance rider decisions (range, throw angle, jump, intervals, leap reach, bail range). Implemented in NPCAI (_fromPatrols).</summary>

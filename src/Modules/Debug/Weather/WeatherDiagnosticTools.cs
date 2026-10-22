@@ -14,12 +14,14 @@ namespace WildWasteland.Modules.Debug
         private static readonly string[] Outputs = { "Normal", "Layer IDs", "Opacity", "Entry/exit distances", "Linear scene depth", "World ray direction", "Density only" };
         private static string _caption = "";
         private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
+        /// <summary>Applies the chosen weather shader diagnostics and updates the overlay caption.</summary>
         internal static void OnStateChanged()
         {
             Apply();
             _caption = "WEATHER DIAGNOSTICS | " + Presets[Preset] + " | " + Outputs[Output] + (Frozen ? " | FROZEN" : " | RUNNING");
             if (Log.L1) Log.Main(DebugModule.Instance, "[WeatherDiag] " + (Enabled ? _caption : "OFF - normal renderer") + "; no cause established by changing this view.");
         }
+        /// <summary>Sets diagnostic-only shader globals; disabled state restores normal weather rendering.</summary>
         private static void Apply()
         {
             if (Enabled) Shader.EnableKeyword("WW_DIAGNOSTICS_ON"); else Shader.DisableKeyword("WW_DIAGNOSTICS_ON");
@@ -28,8 +30,11 @@ namespace WildWasteland.Modules.Debug
             Shader.SetGlobalFloat("_WWDiagNoAtmosphere",Enabled && !Atmosphere ? 1 : 0);
             Shader.SetGlobalFloat("_WWDiagSmokeLayer",Enabled && Preset == 3 ? 1 : Enabled && Preset == 4 ? 2 : 0);
         }
+                /// <summary>Requests GUI work only while diagnostics and an available weather view are active.</summary>
                 internal static bool WantsOverlay() { return Enabled && OverlayVisible; }
+        /// <summary>Draws the current weather preset/data/freeze caption without changing the scene.</summary>
         internal static void DrawOverlay() { GUI.Box(new Rect(12,85,780,30),_caption); }
+        /// <summary>Draws the existing temporary weather layer, shader-output and freeze choices.</summary>
         internal static void Controls(ToolLayout l)
         {
             l.Heading("Weather diagnosis");
@@ -47,6 +52,7 @@ namespace WildWasteland.Modules.Debug
             l.Text("Normal output is unchanged with diagnostics off. Freeze leaves the player/camera and native sky/time running; native sand shader UV time also continues. Local-cloud paired views share source parameters and differ only in tint. Shader data views apply to WW shaders, not the borrowed native sand material.");
             if (WeatherDiagnosticState.Single) l.Value("Selected hurricane",SelectedColumn < 0 ? "Waiting for a critical storm" : "region "+SelectedRegion+", column "+SelectedColumn);
         }
+        /// <summary>Writes the requested camera/projection details only under the shared deep log policy.</summary>
         internal static void OnCameraRecord(Camera camera, float clock)
         {
             if (!Enabled || camera == null || !Log.L2) return;
@@ -77,7 +83,9 @@ namespace WildWasteland.Modules.Debug
             if (layout.Button("Select hurricane again (nearest in first region)", runtime != null && runtime.CanCapture))
             { SelectedRegion = SelectedColumn = -1; WeatherDiagnosticState.Changed(); }
         }
+        /// <summary>Debug-owned version-1 diagnostic snapshot path.</summary>
         internal static string SnapshotPath { get { return Path.Combine(Assets.ModuleConfigDir("Debug"),"diagnostic-snapshot.bin"); } }
+        /// <summary>Writes a same-directory temporary snapshot and publishes it through Core AtomicFile.</summary>
         internal static void Write(Snapshot snapshot)
         {
             string temporary = SnapshotPath + ".tmp";
@@ -85,6 +93,7 @@ namespace WildWasteland.Modules.Debug
             AtomicFile.Replace(temporary, SnapshotPath);
             if (Log.L1) Log.Main(DebugModule.Instance, "[WeatherDiag] Captured snapshot: "+SnapshotPath+"; slot="+snapshot.Slot+"; world seed="+snapshot.WorldSeed+"; camera world="+snapshot.CameraWorld.ToString("F3")+"; camera is recorded, never teleported.");
         }
+        /// <summary>Reads and validates the existing binary weather snapshot header, version and bounded arrays.</summary>
         internal static Snapshot Read()
         {
             using (var reader = new BinaryReader(File.OpenRead(SnapshotPath)))
@@ -119,6 +128,7 @@ namespace WildWasteland.Modules.Debug
                 return d;
             }
         }
+        /// <summary>Writes the unchanged version-1 camera/weather/particle value layout.</summary>
         private static void WriteSnapshot(BinaryWriter w, Snapshot d)
         {
             w.Write(0x57574431); w.Write(d.Version); w.Write(d.WorldSeed); w.Write(d.SelectedRegion); w.Write(d.SelectedColumn);
@@ -145,12 +155,19 @@ namespace WildWasteland.Modules.Debug
                 w.Write(p.Color.r); w.Write(p.Color.g); w.Write(p.Color.b); w.Write(p.Color.a); w.Write(p.Life); w.Write(p.StartLife); w.Write(p.Seed);
             }
         }
+        /// <summary>Rejects negative or oversized persisted array lengths before allocation.</summary>
         private static int ReadCount(BinaryReader r, int max) { int count=r.ReadInt32(); if (count<0 || count>max) throw new InvalidDataException("Invalid snapshot array length"); return count; }
+        /// <summary>Writes a three-float vector in the established binary field order.</summary>
         private static void WriteVector(BinaryWriter w, Vector3 v) { w.Write(v.x); w.Write(v.y); w.Write(v.z); }
+        /// <summary>Reads a three-float vector in the established binary field order.</summary>
         private static Vector3 ReadVector(BinaryReader r) { return new Vector3(r.ReadSingle(),r.ReadSingle(),r.ReadSingle()); }
+        /// <summary>Writes a four-float vector in the established binary field order.</summary>
         private static void WriteFour(BinaryWriter w, Vector4 v) { w.Write(v.x); w.Write(v.y); w.Write(v.z); w.Write(v.w); }
+        /// <summary>Reads a four-float vector in the established binary field order.</summary>
         private static Vector4 ReadFour(BinaryReader r) { return new Vector4(r.ReadSingle(),r.ReadSingle(),r.ReadSingle(),r.ReadSingle()); }
+        /// <summary>Writes matrix entries in Unity index order for version-1 snapshots.</summary>
         private static void WriteMatrix(BinaryWriter w, Matrix4x4 m) { for (int i=0;i<16;i++) w.Write(m[i]); }
+        /// <summary>Reads matrix entries in Unity index order for version-1 snapshots.</summary>
         private static Matrix4x4 ReadMatrix(BinaryReader r) { var m=new Matrix4x4(); for (int i=0;i<16;i++) m[i]=r.ReadSingle(); return m; }
     }
 }

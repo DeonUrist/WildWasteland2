@@ -28,7 +28,6 @@ namespace WildWasteland.Modules.Survival
         public override void BindConfig(ModuleConfig cfg)
         {
             Scale = Bind(cfg, "Model", "Scale", .2f, "Pot model scale. Restart to apply.", .1f, .5f);
-            BindDebug(cfg);
             AllowStewPotSpilling = cfg.Tool("Debug", "AllowStewPotSpilling", false, "Allow tilted stew pots to spill their contents, including pouring into another pot. Applies immediately.");
             NutritionMultiplier = Bind(cfg, "Stew Pot", "Nutrition conversion multiplier", 2f, "Cooked nutrition produced per raw nutrition point.", 1f, 10f);
             CookingRate = Bind(cfg, "Stew Pot", "Cooking rate", .25f, "Raw nutrition converted per unpaused second. Dog meat: 5 nutrition / 20 seconds.", .001f, 100f);
@@ -43,8 +42,6 @@ namespace WildWasteland.Modules.Survival
         }
 
         // Wave A split (refactor): parts owned by other target modules live in partial files in their folders.
-        /// <summary>Debug part: binds the Survival VerboseLog switch (src/Modules/Debug/_fromSurvival/SurvivalModule.Debug.cs).</summary>
-        partial void BindDebug(ModuleConfig cfg);
         /// <summary>Loot part: installs the natural Stew Pot substitution hook (src/Modules/Loot/_fromSurvival/SurvivalModule.Loot.cs).</summary>
         partial void InitLoot();
         /// <summary>Compatibility part: installs the Apocaspawner catalog bridge (src/Modules/Compatibility/_fromSurvival/SurvivalModule.Compatibility.cs).</summary>

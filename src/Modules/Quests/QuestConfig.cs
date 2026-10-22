@@ -8,8 +8,6 @@ namespace WildWasteland.Modules.Quests
     internal class EngineSettings
     {
         internal ConfigEntry<Key> logKey;
-        internal ConfigEntry<Key> dumpKey;
-        internal ConfigEntry<bool> recordNpcs;
         internal ConfigEntry<int> maxActive;
         internal ConfigEntry<float> rewardMult;
         internal ConfigEntry<bool> showTracker;
@@ -70,8 +68,6 @@ namespace WildWasteland.Modules.Quests
         internal void Bind(ModuleConfig cfg)
         {
             logKey = QuestBinding.BindKey(cfg, "General", "QuestLogKey", Key.J, "Key that shows or hides the quest log.");
-            dumpKey = QuestBinding.BindKey(cfg, "Debug", "FactionDumpKey", Key.None, "Troubleshooting: press near NPCs and enemies to write faction_dump.txt (next to the DLL) with every detail that might show which faction they belong to. None = off.");
-            recordNpcs = QuestBinding.Bind(cfg, "Debug", "RecordNpcNames", false, "For quest writers: log every NPC you talk to and keep lists of their names and home camps in npc_names.txt and npc_locations.txt next to the DLL.");
             maxActive = QuestBinding.Bind(cfg, "General", "MaxActiveQuests", 5, "How many quests you can carry at once.");
             rewardMult = QuestBinding.Bind(cfg, "General", "RewardMultiplier", 1f, "Multiplies every reward (hand-written and generated).");
             showTracker = QuestBinding.Bind(cfg, "General", "ShowTracker", true, "Show a short list of your active quests in the top-right corner.");

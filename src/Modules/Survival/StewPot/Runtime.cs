@@ -135,7 +135,7 @@ namespace WildWasteland.Modules.Survival
                 Stew = new Stew(Factory.Fsm(root, "saveItemVar"))
             };
             byObject.Add(root, pot); pots.Add(pot);
-            if (SurvivalModule.Verbose.Value) WildWasteland.Core.Log.Always("[Survival] StewPot registered: " + root.name);
+            if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(null, "[Survival] StewPot registered: " + root.name);
         }
 
         static void Remove(int index)
@@ -358,7 +358,7 @@ namespace WildWasteland.Modules.Survival
 
         static void Trace(Pot pot, string action)
         {
-            if (SurvivalModule.Verbose.Value) WildWasteland.Core.Log.Always("[Survival] StewPot " + action + ": " + pot.Root.name + " " + pot.Amount.Value.ToString("0.00", CultureInfo.InvariantCulture) + "/20 L");
+            if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(null, "[Survival] StewPot " + action + ": " + pot.Root.name + " " + pot.Amount.Value.ToString("0.00", CultureInfo.InvariantCulture) + "/20 L");
         }
     }
 }
