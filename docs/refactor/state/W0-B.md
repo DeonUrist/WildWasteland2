@@ -14,7 +14,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 8. KeyMap
 - [x] 9. GameBindings
 - [ ] 10. WorldIndex
-- [ ] 11. WorldTiles
+- [x] 11. WorldTiles
 - [ ] 12. FsmIndex
 - [ ] 13. FsmPause
 - [ ] 14. PrefabCatalog
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-b52f114 (COMPILE OK; state line updated in next commit)
+9f509e4 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 10 WorldIndex: read CleanHUD SceneCache, Quests QuestWorld, EngineDiscovery and the other walkers.
+Item 10 WorldIndex (uses WorldTiles.OnApplied).
 
 ## Blockers / questions for Denis
 (none yet)
@@ -46,3 +46,4 @@ Item 10 WorldIndex: read CleanHUD SceneCache, Quests QuestWorld, EngineDiscovery
 - Textures: TextureSettings expresses each old site exactly (defaults = Unity defaults); cache per (source,settings), negative cache, reloadIfChanged by write time, Release(owner) needs ModuleHost wiring (request W0B-1).
 - Access (src/Core/Util/Access/, partial static class Access): Call/Get (NativeAccess), Read/Call(MethodInfo) (OptionalAccess), FastReflect builders verbatim, FieldBatch (BatchCompiler), Queue (CompileQueue; job name <owner>.AccessCompile, Telemetry mark via Queue.OnFirstBatch). Old classes untouched (Wave A makes them wrappers).
 - KeyMap: identical copies ported. GameBindings: PlayerBody API + Held(); name->KeyAction cache per InputStorage instance/list/count (old Find was a linear scan per call). CleanHUD KeyCatalog is UI-specific and not merged.
+- WorldTiles: OnPrepare/OnFinalized(worker)/OnApplied/OnMoved/OnEdited with owner, copy-on-write handler arrays, per-handler try/catch, worker errors logged on main thread; Edited source = VistasWorldGen.TerrainEdited += WorldTiles.EditedSource (Wave A wiring).
