@@ -44,11 +44,20 @@ namespace WildWasteland.Core
         public int Exceptions;
         internal float ErrorWindowStart; internal int WindowErrors;
 
+        /// <summary>Created by <see cref="Scheduler"/> only.</summary>
         internal Job(IModule owner, string name, Phase phase) { Owner = owner; Name = name; Phase = phase; }
+        /// <summary>Marks the job removed; the runner drops it on its next pass. Re-registering code checks <see cref="IsRemoved"/>.</summary>
         public void Remove() { Removed = true; }
+        /// <summary>True once the job was removed (by <see cref="Remove"/> or by Scheduler.RemoveAll on module shutdown).</summary>
+        public bool IsRemoved { get { return Removed; } }
         /// <summary>Force an interval job to run on its next phase tick.</summary>
         public void RunNow() { NextAt = 0; }
-        public override string ToString() { return (Owner != null ? Owner.Id : "Core") + "." + Name; }
+        /// <summary>"&lt;OwnerId&gt;.&lt;Name&gt;" without doubling a name that already carries the owner prefix.</summary>
+        public override string ToString()
+        {
+            string id = Owner != null ? Owner.Id : "Core";
+            return Name != null && Name.Length > id.Length && Name[id.Length] == '.' && Name.StartsWith(id, StringComparison.Ordinal) ? Name : id + "." + Name;
+        }
     }
 
     /// <summary>
@@ -78,8 +87,10 @@ namespace WildWasteland.Core
             return a;
         }
 
+        /// <summary>Runs <paramref name="tick"/> every frame in <paramref name="phase"/>. Name jobs "&lt;ModuleId&gt;.&lt;Name&gt;" with a named method.</summary>
         public static Job EveryFrame(IModule owner, string name, Action tick, Phase phase = Phase.Update)
         {
+            CheckName(owner, name);
             var j = new Job(owner, name, phase) { Tick = tick };
             _jobs[(int)phase].Add(j);
             return j;
@@ -88,6 +99,7 @@ namespace WildWasteland.Core
         /// <summary>Runs <paramref name="tick"/> every <paramref name="seconds"/> (unscaled time, random phase so jobs spread over frames).</summary>
         public static Job Interval(IModule owner, string name, float seconds, Action tick, Phase phase = Phase.Update, bool scaledTime = false)
         {
+            CheckName(owner, name);
             var j = new Job(owner, name, phase) { Tick = tick, Interval = seconds, Scaled = scaledTime };
             j.NextAt = Now(scaledTime) + seconds * _rng.NextDouble();
             _jobs[(int)phase].Add(j);
@@ -100,6 +112,7 @@ namespace WildWasteland.Core
         /// </summary>
         public static Job Sliced(IModule owner, string name, int micros, Func<bool> step, Phase phase = Phase.Update)
         {
+            CheckName(owner, name);
             var j = new Job(owner, name, phase) { Step = step, BudgetMicros = micros };
             _jobs[(int)phase].Add(j);
             return j;
@@ -138,33 +151,54 @@ namespace WildWasteland.Core
             return false;
         }
 
+        /// <summary>Starts a coroutine on the Core runner (null when the runner is missing).</summary>
         public static Coroutine StartCoroutine(IEnumerator routine)
         {
             var r = Runner.Instance;
             return r != null ? r.StartCoroutine(routine) : null;
         }
+        /// <summary>Stops a coroutine started with <see cref="StartCoroutine"/>.</summary>
         public static void StopCoroutine(Coroutine c)
         {
             var r = Runner.Instance;
             if (r != null && c != null) r.StopCoroutine(c);
         }
 
+        /// <summary>Removes every job of <paramref name="owner"/> and marks each <see cref="Job.IsRemoved"/> (README 9: re-registration
+        /// guards like `if (_job == null || _job.Removed)` work again after a module off -> on).</summary>
         public static void RemoveAll(IModule owner)
         {
             for (int p = 0; p < _jobs.Length; p++)
             {
                 var list = _jobs[p];
-                for (int i = list.Count - 1; i >= 0; i--) if (list[i].Owner == owner) list.RemoveAt(i);
+                for (int i = list.Count - 1; i >= 0; i--) if (list[i].Owner == owner) { list[i].Removed = true; list.RemoveAt(i); }
             }
         }
 
+        /// <summary>Jobs of one phase in run order.</summary>
         public static IEnumerable<Job> Jobs(Phase phase) { return _jobs[(int)phase]; }
+
+        /// <summary>Every job of every phase.</summary>
         public static IEnumerable<Job> AllJobs()
         {
             for (int p = 0; p < _jobs.Length; p++) for (int i = 0; i < _jobs[p].Count; i++) yield return _jobs[p][i];
         }
 
+        /// <summary>Current scaled or unscaled time.</summary>
         static double Now(bool scaled) { return scaled ? Time.timeAsDouble : Time.unscaledTimeAsDouble; }
+
+        static readonly HashSet<string> _badNames = new HashSet<string>();
+
+        /// <summary>Job naming rule (README 4.1): names should be "&lt;ModuleId&gt;.&lt;Name&gt;". A violation is logged once per name at
+        /// level 1 (not a failure; old jobs are renamed in Wave B).</summary>
+        static void CheckName(IModule owner, string name)
+        {
+            string id = owner != null ? owner.Id : "Core";
+            if (name != null && name.Length > id.Length + 1 && name[id.Length] == '.' && name.StartsWith(id, StringComparison.Ordinal)) return;
+            string key = id + "/" + name;
+            if (!_badNames.Add(key)) return;
+            if (Log.L1) Log.Main(owner, "job name '" + name + "' should be '" + id + ".<Name>'");
+        }
 
         /// <summary>Called by the runner MonoBehaviours. Not for modules.</summary>
         internal static void Run(Phase phase)
@@ -192,7 +226,10 @@ namespace WildWasteland.Core
                 {
                     double now = j.Scaled ? scaled : unscaled;
                     if (now < j.NextAt) continue;
-                    j.NextAt = now + j.Interval;
+                    // phase-keeping: the next run is one interval after the previous due time, not after "now"; when the job fell
+                    // more than one interval behind (pause, hitch, RunNow), it restarts from now instead of bursting to catch up
+                    j.NextAt += j.Interval;
+                    if (j.NextAt <= now) j.NextAt = now + j.Interval;
                 }
                 long t0 = _sw.ElapsedTicks;
                 if (!_sw.IsRunning) { _sw.Start(); t0 = _sw.ElapsedTicks; }
@@ -230,6 +267,7 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Clears frame and per-job statistics (Performance page reset).</summary>
         public static void ResetStats()
         {
             Frames = 0; _sumFrameMs = 0; MaxFrameMs = 0;
