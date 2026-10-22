@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Patrols
             internal Transform Target;
             internal Vector3 Anchor;
             internal bool Known;
+            /// <summary>Returns the current stable position of the tracked patrol object.</summary>
             internal Vector3 Position() { return Target != null ? Target.position : TrafficSpace.Scene(Anchor); }
         }
         private static readonly Color[] Colors = { new Color32(255,220,50,255), new Color32(80,220,100,255), new Color32(255,80,80,255), new Color32(255,150,40,255) };
@@ -20,15 +21,19 @@ namespace WildWasteland.Modules.Patrols
         private static readonly HashSet<string> Journeys = new HashSet<string>();
         private static readonly List<object> Dead = new List<object>();
         private static Core.ICompassMarkers _api;
+        /// <summary>Checks whether the supplied authored or discovered identity is registered.</summary>
         internal static bool Known(object key) { Tracked marker; return key != null && Markers.TryGetValue(key, out marker) && marker.Known; }
+        /// <summary>Returns the stable merchant identity used by compass registration.</summary>
         internal static object MerchantKey(MerchantHost merchant)
         { var encounter = merchant.GetComponent<EncounterCar>(); return encounter != null && !string.IsNullOrEmpty(encounter.Event) ? (object)encounter.Event : merchant; }
 
+        /// <summary>Clears retained owned state or validates numeric route exclusion geometry.</summary>
         internal static void Clear()
         {
             if (_api != null && Markers.Count > 0) _api.RemoveAll(Owner);
             _api = null; Markers.Clear(); Seen.Clear(); Journeys.Clear(); Dead.Clear();
         }
+        /// <summary>Advances scheduled work under the current save, pause and admission gates.</summary>
         internal static void Tick()
         {
             var api = Core.Services.Compass;
@@ -66,8 +71,10 @@ namespace WildWasteland.Modules.Patrols
             foreach (var pair in Markers) if (!Seen.Contains(pair.Key)) { if (api != null) api.Remove(pair.Value.Id); Dead.Add(pair.Key); }
             foreach (var key in Dead) Markers.Remove(key);
         }
+        /// <summary>Checks the current kind condition for traffic compass.</summary>
         private static int Kind(bool merchant, string faction, bool convoy)
         { return merchant ? 0 : TrafficFactions.Normalize(faction) == "Coyotes" ? 1 : convoy ? 3 : 2; }
+        /// <summary>Checks the current track condition for traffic compass.</summary>
         private static void Track(object key, Transform target, Vector3 anchor, int kind, string name, Color color, bool compass, TrafficJourney journey = null)
         {
             bool first = Seen.Add(key);
@@ -89,6 +96,7 @@ namespace WildWasteland.Modules.Patrols
 
     internal sealed partial class WorldTraffic
     {
+        /// <summary>Observes journey for the current traffic compass.</summary>
         internal static bool ObserveJourney(TrafficJourney journey, Core.IMapMarkers map, string name, Color color)
         {
             if (_instance == null) return false;
@@ -112,6 +120,7 @@ namespace WildWasteland.Modules.Patrols
             return seen;
         }
         internal static IList<TrafficJourney> CompassJourneys { get { return _instance != null ? _instance._journeys : null; } }
+        /// <summary>Resolves the current accepted compass target of a retained journey.</summary>
         internal static Transform CompassTarget(TrafficJourney journey)
         {
             Live live;

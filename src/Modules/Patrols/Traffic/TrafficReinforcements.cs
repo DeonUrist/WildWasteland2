@@ -8,8 +8,10 @@ namespace WildWasteland.Modules.Patrols
     internal sealed partial class WorldTraffic
     {
         private readonly Dictionary<string,Departure> _calls=new Dictionary<string,Departure>();
+        /// <summary>Returns the current call reservations used by traffic reinforcements.</summary>
         private int CallReservations=>_calls.Values.Count(c=>c.Redirect==null);
         private PlayMakerFSM _callClock;
+        /// <summary>Reads the shared game hour used by reinforcement scheduling.</summary>
         private float CallHour()
         {
             if(_callClock==null)_callClock=Core.FsmUtil.Find(Core.GameRefs.GameManager,"DayTime");
@@ -17,8 +19,10 @@ namespace WildWasteland.Modules.Patrols
             var day=_callClock.FsmVariables.FindFsmInt("Day");var hour=_callClock.FsmVariables.FindFsmFloat("Time");
             return day!=null&&hour!=null?day.Value*24f+hour.Value:-1f;
         }
+        /// <summary>Reserves an eligible reinforcement response under current world limits.</summary>
         internal static void CallPatrol(TrafficBase camp)
         {if(_instance!=null&&PatrolsModule.ConvoyEnabled.Value)_instance.QueuePatrolCall(camp);}
+        /// <summary>Queues patrol call for the current traffic reinforcements.</summary>
         private void QueuePatrolCall(TrafficBase camp)
         {
             float hour=CallHour();
@@ -49,6 +53,7 @@ namespace WildWasteland.Modules.Patrols
             _calls[camp.id]=new Departure{Source=source,Destination=camp,Name=name,Faction=camp.faction,Vehicles=vehicles,Redirect=redirect,Job=RoadPlanner.RequestRoute(source,camp,vehicles!=null&&vehicles.Any(v=>v.truck),false,alternatives)};
             PatrolsModule.Verbose("Patrol call planning: "+camp.id+" from "+(redirect!=null?"nearby patrol "+redirect.id:string.IsNullOrEmpty(source.id)?"outside map":source.id));
         }
+        /// <summary>Advances queued patrol calls for the current traffic reinforcements.</summary>
         private void PumpPatrolCalls()
         {
             foreach(var pair in _calls.ToArray())

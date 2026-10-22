@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Navigation: start - registers the navigation jobs (NavRuntime.Start).</summary>
         partial void InitNavigation() { NavRuntime.Start(this); }
         /// <summary>Navigation: stop - releases bodies and colliders, clears every navigation registry.</summary>
-        partial void ShutdownNavigation() { NavRuntime.Stop(); }
+        partial void ShutdownNavigation() { NavigationAuthoringApi.Reset(); NavRuntime.Stop(); }
         /// <summary>Navigation: scene loaded - every navigation registry starts empty.</summary>
         partial void SceneLoadedNavigation(Scene scene, LoadSceneMode mode) { NavRuntime.ResetAll(); }
         /// <summary>Navigation: world ready.</summary>
@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Navigation: origin shift - grid maps, POI instances, routes and traversals move with the world.</summary>
         partial void OriginShiftNavigation(Vector3 delta) { NavRuntime.Shift(delta); }
         /// <summary>Navigation: provides <see cref="INavApi"/> (Core removes it when the module stops).</summary>
-        partial void ProvideApisNavigation() { ModApi.Provide<INavApi>(this, new NavApi(this)); }
+        partial void ProvideApisNavigation() { ModApi.Provide<INavApi>(this, new NavApi(this)); ModApi.Provide<INavigationAuthoring>(this, new NavigationAuthoringApi()); }
         /// <summary>Navigation: settings rows.</summary>
         partial void SettingsNavigation(SettingsShell shell) { }
         /// <summary>Navigation: tool pages.</summary>

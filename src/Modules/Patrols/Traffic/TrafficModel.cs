@@ -80,6 +80,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Advances numeric journey progress by the accepted elapsed game time.</summary>
         internal void Advance(float seconds)
         {
             if (arrived || route.Length < 2) return;
@@ -96,6 +97,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Project real progress only onto the current leg: an attack detour cannot skip the remaining route.
+        /// <summary>Project real progress only onto the current leg: an attack detour cannot skip the remaining route.</summary>
         internal void Follow(Vector3 actual, float reach)
         {
             position = actual;
@@ -115,6 +117,7 @@ namespace WildWasteland.Modules.Patrols
             if (++leg >= route.Length) { arrived = true; leg = route.Length - 1; }
         }
 
+        /// <summary>Checks the current expire condition for traffic model.</summary>
         internal bool Expire(float seconds, bool playerNearby, float grace)
         {
             if (!arrived) return false;
@@ -135,12 +138,16 @@ namespace WildWasteland.Modules.Patrols
 
     internal static class TrafficRules
     {
+        /// <summary>Checks the current visibility range condition for traffic model.</summary>
         internal static float VisibilityRange(bool night, bool lights) { return !night || lights ? 500f : 0f; }
+        /// <summary>Calculates the accepted virtual population target from current gameplay settings.</summary>
         internal static int Population(float squareKm, float density, int cap)
         { return Mathf.Min(cap, Mathf.CeilToInt(Mathf.Max(0f, squareKm * density))); }
 
+        /// <summary>Returns the existing perception range of the native vehicle engine.</summary>
         internal static float EngineRange(float hp) { return Mathf.Max(0f,hp); }
 
+        /// <summary>Checks the current pursue condition for traffic model.</summary>
         internal static bool Pursue(bool convoy, bool truck, float distance, float guardRange, bool detected, bool remembered)
         { return convoy ? !truck && distance <= guardRange : detected || remembered; }
     }

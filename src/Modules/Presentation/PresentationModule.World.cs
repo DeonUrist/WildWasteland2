@@ -76,7 +76,6 @@ namespace WildWasteland.Modules.Presentation
             LadderController.Init();
             // hooks run for every GetButtonDown / ActivateGameObject / SmoothLookAt of every FSM: each handler starts with a cheap filter
             Hooks.GetButtonDownUpdate.Prefix(this, ThirdPerson.BeforeGetButtonDown);
-            Hooks.ActivateGameObjectDo.Prefix(this, ThirdPerson.BeforeActivateGameObject);
             Hooks.SmoothLookAtDo.Prefix(this, FirstPersonSway.BeforeSmoothLookAt);
             Hooks.DoMousePick.Postfix(this, PickAssist.AfterDoMousePick);
             Patches.Patch(this, Patches.Method(typeof(HutongGames.PlayMaker.Actions.MouseLook), "OnUpdate"), prefix: Patches.Method(typeof(ThirdPerson), "BeforeMouseLook"));

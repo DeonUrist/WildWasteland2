@@ -12,12 +12,14 @@ namespace WildWasteland.Modules.Patrols
     // Runner on the hidden plugin object: the car builder (template spawner + convoy), the in-game check, the persistence tick.
     internal partial class Patrol : MonoBehaviour
     {
+        /// <summary>Clears previous-scene objects and starts a fresh runtime generation.</summary>
         internal static void ResetForScene() { BuildQueue.Reset(); VehiclePreparation.Reset(); PatrolLoadPreparation.Reset(); Prefabs.Invalidate(); Register.Invalidate(); DayLight.Reset(); _lightState = -1; SceneGen++; WorldTraffic.ResetForScene(); }
 
         // bumped on every scene load: a build or a convoy that waited through a load does not continue in the new world
         internal static int SceneGen;
 
         // WW: was Update (registered as the module's first Update job)
+        /// <summary>WW: was Update (registered as the module's first Update job)</summary>
         internal void Tick()
         {
             if (!InGame()) return;
@@ -30,6 +32,7 @@ namespace WildWasteland.Modules.Patrols
         // player never took is switched over. New builds and restored cars pick the current state themselves.
         private static float _nextLights;
         private static int _lightState = -1;   // -1 = not read yet in this scene, 0 = day, 1 = dark
+        /// <summary>Updates native headlights only when shared day/night state changes.</summary>
         private static void LightsTick()
         {
             int state = DayLight.Dark ? 1 : 0;
@@ -51,6 +54,7 @@ namespace WildWasteland.Modules.Patrols
 
         // The game is saving or loading (SaveLoadGame anywhere but isPlay). Builds wait for it: nothing is created or added to the
         // game's save lists while the save walks them.
+        /// <summary>The game is saving or loading (SaveLoadGame anywhere but isPlay). Builds wait for it: nothing is created or added to the game's save lists while the save walks them.</summary>
         internal bool SaveBusy()
         {
             var sl = Core.GameRefs.SaveLoadGame;
@@ -58,6 +62,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Waits while a save runs. False = give the build up: a load ran (or the scene changed) meanwhile, or 60 s passed.
+        /// <summary>Waits while a save runs. False = give the build up: a load ran (or the scene changed) meanwhile, or 60 s passed.</summary>
         private IEnumerator WaitForSave(int gen, bool[] ok)
         {
             ok[0] = true;
@@ -77,6 +82,7 @@ namespace WildWasteland.Modules.Patrols
         // occupants of destroyed cars (the game deletes cars beyond 5 km, the cleanup removes more) leave their signature behind
         private static float _nextPrune;
         private static readonly List<GameObject> _deadKeys = new List<GameObject>();
+        /// <summary>Prunes ignore signatures for the current patrol.</summary>
         private static void PruneIgnoreSignatures()
         {
             _deadKeys.Clear();
@@ -100,6 +106,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // builds a template (from the F8 menu); one at a time
+        /// <summary>builds a template (from the F8 menu); one at a time</summary>
         internal void Spawn(CarTemplate t)
         {
             if (!InGame()) return;
@@ -108,20 +115,24 @@ namespace WildWasteland.Modules.Patrols
 
         // Builds a template at a given place (convoy spawner). hold = the crew waits for Crew.Release() before driving off;
         // onDone receives the car (or null) when the build has finished.
+        /// <summary>Builds a template at a given place (convoy spawner). hold = the crew waits for Crew.Release() before driving off; onDone receives the car (or null) when the build has finished.</summary>
         internal void SpawnAt(CarTemplate t, Vector3 pos, Quaternion rot, bool hold, Action<GameObject> onDone)
         {
             if (!InGame()) { if (onDone != null) onDone(null); return; }
             BuildQueue.Add(this, t, pos, rot, false, hold, onDone);
         }
+        /// <summary>Checks admission for cel build for the current patrol.</summary>
         internal void CancelBuild(bool menu, Action<GameObject> done) { if (done != null) done(null); }
 
         // WW: Core.GameRefs.InGame (Menu "play" && SaveLoadGame "isPlay" && timeScale > 0, evaluated once per frame, Fsm.Initialized checked)
+        /// <summary>WW: Core.GameRefs.InGame (Menu "play" &amp;&amp; SaveLoadGame "isPlay" &amp;&amp; timeScale &gt; 0, evaluated once per frame, Fsm.Initialized checked)</summary>
         internal bool InGame() { return Core.GameRefs.InGame; }
 
         // =============================================================== build
 
         // at == null: SpawnDistance in front of the player, facing the player's way; otherwise exactly there.
         // The work is spread over several frames (one Instantiate group per frame) so a build never stalls a single frame for long.
+        /// <summary>at == null: SpawnDistance in front of the player, facing the player's way; otherwise exactly there. The work is spread over several frames (one Instantiate group per frame) so a build never stalls a single frame for long.</summary>
         internal IEnumerator Build(CarTemplate tpl, Vector3? at, Quaternion rot, bool menu, bool hold, Action<GameObject> onDone)
         {
             while(Core.ModApi.Get<Core.IVehicleAssembly>()==null||Core.ModApi.Get<Core.IVehicleDrive>()==null||Core.ModApi.Get<Core.IVehicleAttachments>()==null)yield return null;
@@ -172,11 +183,17 @@ namespace WildWasteland.Modules.Patrols
                     }
                 }
 
-                var packed = VehiclePreparation.Require(tpl, tpl.RollBumper(), false);
+                string bumper=tpl.RollBumper();
+                var assemblyProvider=Core.ModApi.Get<Core.IVehicleAssembly>();
+                var packed = VehiclePreparation.Require(tpl, bumper, false);
                 var packedTrailer = tpl.Trailer != null ? VehiclePreparation.Require(tpl.Trailer, "", true) : null;
                 while (!packed.Ready || (packedTrailer != null && !packedTrailer.Ready))
                 {
-                    if (gen != SceneGen || packed.Failed || (packedTrailer != null && packedTrailer.Failed)) yield break;
+                    if (gen != SceneGen) yield break;
+                    var currentProvider=Core.ModApi.Get<Core.IVehicleAssembly>();
+                    if(currentProvider==null){yield return null;continue;}
+                    if(!ReferenceEquals(currentProvider,assemblyProvider)){assemblyProvider=currentProvider;packed=VehiclePreparation.Require(tpl,bumper,false);packedTrailer=tpl.Trailer!=null?VehiclePreparation.Require(tpl.Trailer,"",true):null;}
+                    if(packed.Failed||(packedTrailer!=null&&packedTrailer.Failed))yield break;
                     yield return null;
                 }
                 yield return WaitForSave(gen, saveOk);
@@ -320,6 +337,7 @@ namespace WildWasteland.Modules.Patrols
         // A radio with a cassette in it (the cassette's CheckTag FSM has set the radio's Music.music clip and started it, the OnOff FSM
         // holds the pitch at 0 = "off"): full volume, then switched on the way the player does it - "useDoor" on the PlayStop [Play]
         // FSM (click sound, OnOff Activate = pitch 1, Play/Stop swap, so one click of the player stops it).
+        /// <summary>A radio with a cassette in it (the cassette's CheckTag FSM has set the radio's Music.music clip and started it, the OnOff FSM holds the pitch at 0 = "off"): full volume, then switched on the way the player does it - "useDoor" on the PlayStop [Play] FSM (click sound, OnOff Activate = pitch 1, Play/Stop swap, so one click of the player stops it).</summary>
         internal static void RaiderMusic(GameObject car, PlayMakerFSM[] snapshot = null)
         {
             if (car == null || PatrolsModule.RaiderMusic == null || !PatrolsModule.RaiderMusic.Value) return;
@@ -353,6 +371,7 @@ namespace WildWasteland.Modules.Patrols
         // A ragdoll on the driver seat: the *_Dead prefab's root Rigidbody is made kinematic and parented to the car's sitPos
         // (where the player sits), so it rides along exactly; the bones hang off it through their CharacterJoints and keep
         // flopping. Collisions between the ragdoll and the car are ignored so it never gets thrown out by the car's colliders.
+        /// <summary>A ragdoll on the driver seat: the *_Dead prefab's root Rigidbody is made kinematic and parented to the car's sitPos (where the player sits), so it rides along exactly; the bones hang off it through their CharacterJoints and keep flopping. Collisions between the ragdoll and the car are ignored so it never gets thrown out by the car's colliders.</summary>
         internal static GameObject SeatDriver(GameObject car, string prefabName, bool randomize = true)
         {
             var prefab = Prefabs.FindAny(prefabName);
@@ -387,6 +406,7 @@ namespace WildWasteland.Modules.Patrols
         // A live enemy at the wheel with its AI off: instantiated at sitPos, the mover/AI FSMs disabled before they Start,
         // root Rigidbody kinematic and parented to the seat, collisions with the car ignored. Health/Damage/Bodypart stay
         // vanilla so it can be shot; the Crew component drives the car and reacts to its death.
+        /// <summary>A live enemy at the wheel with its AI off: instantiated at sitPos, the mover/AI FSMs disabled before they Start, root Rigidbody kinematic and parented to the seat, collisions with the car ignored. Health/Damage/Bodypart stay vanilla so it can be shot; the Crew component drives the car and reacts to its death.</summary>
         internal static GameObject SeatLiveDriver(GameObject car, string prefabName, float health = -1f, CrewPhase phase = CrewPhase.Waiting, float seated = 0f, bool hold = false, bool randomize = true)
         {
             var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
@@ -403,6 +423,7 @@ namespace WildWasteland.Modules.Patrols
 
         // The passenger sits where the driver would if the driver seat hinge were the passenger seat hinge: sitPos shifted
         // by the offset between the two seat hinges (the game has no passenger sit point of its own).
+        /// <summary>The passenger sits where the driver would if the driver seat hinge were the passenger seat hinge: sitPos shifted by the offset between the two seat hinges (the game has no passenger sit point of its own).</summary>
         internal static GameObject SeatPassenger(GameObject car, string prefabName, float health = -1f, bool randomize = true)
         {
             var sit = FindChild(car.transform, "sitPos");
@@ -435,6 +456,7 @@ namespace WildWasteland.Modules.Patrols
         // A live enemy in a seat with its AI off: instantiated at the anchor, the mover/AI FSMs disabled by the Crew before
         // they Start, root Rigidbody kinematic and parented to the anchor, collisions with the car ignored, seated pose.
         // Health/Damage/Bodypart stay vanilla so it can be shot.
+        /// <summary>A live enemy in a seat with its AI off: instantiated at the anchor, the mover/AI FSMs disabled by the Crew before they Start, root Rigidbody kinematic and parented to the anchor, collisions with the car ignored, seated pose. Health/Damage/Bodypart stay vanilla so it can be shot.</summary>
         private static GameObject SeatOccupant(GameObject car, string prefabName, Transform anchor, string role, bool passenger, float health = -1f, bool randomize = true)
         {
             var prefab = Prefabs.FindAny(prefabName);
@@ -475,6 +497,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Cheap signature of the occupant's + car's enabled colliders; the pairs are re-applied only when it changes
         // (a toggled prop, a part fallen off), not every second - each IgnoreCollision call makes PhysX rebuild pair filters.
+        /// <summary>Cheap signature of the occupant's + car's enabled colliders; the pairs are re-applied only when it changes (a toggled prop, a part fallen off), not every second - each IgnoreCollision call makes PhysX rebuild pair filters.</summary>
         internal static int IgnoreCollisionsIfChanged(GameObject who, GameObject car)
         {
             if (who == null || car == null) return 0;
@@ -484,6 +507,7 @@ namespace WildWasteland.Modules.Patrols
         // carCols = the car's colliders, fetched by the caller once for every occupant it checks
         // Perf: the occupant's colliders go to a reused buffer (was a GetComponentsInChildren array per check, 1-2 Hz per occupant)
         private static readonly List<Collider> _whoCols = new List<Collider>();
+        /// <summary>Ignores collisions if changed for the current patrol.</summary>
         internal static int IgnoreCollisionsIfChanged(GameObject who, GameObject car, IList<Collider> carCols)
         {
             if (who == null || car == null) return 0;
@@ -501,18 +525,21 @@ namespace WildWasteland.Modules.Patrols
             return n;
         }
 
+        /// <summary>Ignores collisions for the current patrol.</summary>
         internal static int IgnoreCollisions(GameObject who, GameObject car)
         {
             if (who == null || car == null) return 0;
             return IgnoreCollisions(who, car, car.GetComponentsInChildren<Collider>(true));
         }
 
+        /// <summary>Ignores collisions for the current patrol.</summary>
         internal static int IgnoreCollisions(GameObject who, GameObject car, IList<Collider> carCols)
         {
             if (who == null || car == null) return 0;
             return IgnoreCore(who, who.GetComponentsInChildren<Collider>(true), carCols);
         }
 
+        /// <summary>Ignores core for the current patrol.</summary>
         private static int IgnoreCore(GameObject who, IList<Collider> whoCols, IList<Collider> carCols)
         {
             int n = 0;
@@ -531,6 +558,7 @@ namespace WildWasteland.Modules.Patrols
         // shove the car), joints to the car are cut, and every bone gets a sideways+up velocity. The returned CorpseEject is
         // Done once the carcass is EjectDistance from the seat; if it has not got there after 3 s it is put down there once.
         // Returns null when there is nothing to eject.
+        /// <summary>Before the passenger climbs over, the dead driver's carcass (the &lt;X&gt;_Dead ragdoll its Health FSM dropped on the seat) is thrown out of the car by physics: its colliders are told to ignore the car and the passenger first (so it cannot shove the car), joints to the car are cut, and every bone gets a sideways+up velocity. The returned CorpseEject is Done once the carcass is EjectDistance from the seat; if it has not got there after 3 s it is put down there once. Returns null when there is nothing to eject.</summary>
         internal static CorpseEject EjectCorpses(GameObject car, GameObject pax)
         {
             var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
@@ -571,6 +599,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // The surviving passenger climbs over to the driver seat: same placement as SeatOccupant, AI fully muted, pose re-anchored.
+        /// <summary>The surviving passenger climbs over to the driver seat: same placement as SeatOccupant, AI fully muted, pose re-anchored.</summary>
         internal static GameObject MoveToDriverSeat(GameObject car, GameObject pax)
         {
             var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
@@ -596,6 +625,7 @@ namespace WildWasteland.Modules.Patrols
         // The passenger gets out: a fresh instance of its prefab (fully vanilla AI, registered like a spawned enemy so it is
         // saved by the game) appears beside the car with the passenger's remaining health; the seated copy is destroyed.
         // A fresh instance rather than the seated one because the seat setup rewires its FSM actions (ranged-only, melee off).
+        /// <summary>The passenger gets out: a fresh instance of its prefab (fully vanilla AI, registered like a spawned enemy so it is saved by the game) appears beside the car with the passenger's remaining health; the seated copy is destroyed. A fresh instance rather than the seated one because the seat setup rewires its FSM actions (ranged-only, melee off).</summary>
         internal static void BailOut(GameObject car, GameObject pax, PatrolMarker marker)
         {
             marker.PassengerLeft();
@@ -612,6 +642,7 @@ namespace WildWasteland.Modules.Patrols
             Core.ModEvents.Publish(ref ev);
         }
 
+        /// <summary>Replaces the seated actor with its accepted on-foot native representation.</summary>
         internal static GameObject BailOut(GameObject car, GameObject pax, string prefabName, float side,bool record=true)
         {
             float health = GetHealth(pax);
@@ -688,8 +719,10 @@ namespace WildWasteland.Modules.Patrols
         private float _t, _nextCheck;
         internal bool Done { get; private set; }
 
+        /// <summary>Initializes native references and retained runtime state before scheduled work starts.</summary>
         internal void Init(Transform sit, List<Transform> roots, Vector3 left) { _sit = sit; _roots = roots; _left = left; }
 
+        /// <summary>Measures the current native separation used by the delayed ejection sequence.</summary>
         private float Distance(Transform root)
         {
             var rb = root.GetComponentInChildren<Rigidbody>();
@@ -698,6 +731,7 @@ namespace WildWasteland.Modules.Patrols
             return d.magnitude;
         }
 
+        /// <summary>Updates native physics and driving state on the fixed-step clock.</summary>
         private void FixedUpdate()
         { if (!PatrolsModule.Running) return;
             if (Done) { Destroy(this); return; }
@@ -729,6 +763,7 @@ namespace WildWasteland.Modules.Patrols
     {
         internal float Value;
         private int _frames;
+        /// <summary>Advances this component during gameplay under its timing and lifecycle guards.</summary>
         private void Update()
         { if (!PatrolsModule.Running) return;
             Patrol.SetHealth(gameObject, Value);

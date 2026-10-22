@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.Patrols
     // on/off switch, the key list, the live selection and the buttons for what the old editors did with keys.
     public sealed partial class PatrolsModule
     {
+        /// <summary>Returns current owner-contributed patrol settings pages.</summary>
         public override IEnumerable<ToolPage> ToolPages()
         {
             var v = ToolGroups.Vehicles; var p = ToolGroups.Poses; var m = ToolGroups.Merchants;
@@ -31,6 +32,7 @@ namespace WildWasteland.Modules.Patrols
             };
         }
 
+        /// <summary>Resolves the current module configuration section label.</summary>
         static string Sec(string sub) { return Cfg.Section(sub); }
 
         // "in play" while F7 itself pauses the game (GameRefs.InGame is false at timeScale 0): Menu "play" and SaveLoadGame "isPlay"
@@ -44,16 +46,19 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // all entries of one tools.cfg / main cfg section as rows
+        /// <summary>all entries of one tools.cfg / main cfg section as rows</summary>
         static void Section(ToolLayout l, ConfigFile file, string section)
         {
             foreach (var k in file.Keys)
                 if (k.Section == section) { var e = file[k]; if (e != null) l.Entry(e); }
         }
 
+        /// <summary>Formats the configured key label for the current settings UI.</summary>
         static string KeyName(ConfigEntry<Key> k) { return k == null || k.Value == Key.None ? "not bound" : k.Value.ToString(); }
 
         // ---------------------------------------------------------------- Patrols & vehicles
 
+        /// <summary>Contributes current world-traffic controls to the owner settings page.</summary>
         void WorldTrafficPage(ToolLayout l)
         {
             l.Text("Persistent world traffic: patrols, convoys, Coyote roamers, merchants and faction battles travel between known camps on road-influenced routes and become real cars near you. The game's debug map can show the routes.");
@@ -69,6 +74,7 @@ namespace WildWasteland.Modules.Patrols
             l.Entry(TacticalDriving); l.Entry(FactionBattles);
         }
 
+        /// <summary>Materializes ing page for the current patrols module.</summary>
         void SpawningPage(ToolLayout l)
         {
             l.Text("Automatic raiders come from the world traffic (Game > World > Enemy Vehicles). Caps of the groups near you and the cleanup of cars you left behind.");
@@ -79,6 +85,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ---------------------------------------------------------------- Merchants
 
+        /// <summary>Contributes current merchant controls to the owner settings page.</summary>
         void MerchantsPage(ToolLayout l)
         {
             l.Text("Coyote trader buses (General / Mechanic / Organic shops) of the world traffic: parked setup buses and travelling traders with stock, prices and wanted lists that are saved. Stop a loaded merchant near you with Alt+Q (30 m) or the car horn (100 m). Shop types and rosters are edited in the patrol editor's MERCHANTS tab.");

@@ -16,7 +16,8 @@ namespace WildWasteland.Modules.Patrols
     // Native ES3 owns vehicles, fitted/missing parts, condition, fluids and existing items. Only unsaved seated bodies need a delta.
     internal static class PatrolCrewDelta
     {
-        private const int Magic = 0x32524457, FirstMagic = 0x31524457; // WDR2: hitch identity; WDR1: seated riders
+        private const int Magic = 0x32524457; // WDR2 current seated rider and hitch record
+        /// <summary>Copies current native state into detached records for persistence or handoff.</summary>
         internal static PatrolRiderData[] Capture(PatrolMarker marker)
         {
             var result = new PatrolRiderData[PatrolMarker.TotalTurretSlots];
@@ -31,6 +32,7 @@ namespace WildWasteland.Modules.Patrols
             }
             return result;
         }
+        /// <summary>Rebinds recorded state to native objects without rerolling authored outcomes.</summary>
         internal static void Restore(GameObject car, PatrolMarker marker, PatrolRiderData[] riders)
         {
             if (riders == null || marker.Exploded) return;
@@ -46,6 +48,7 @@ namespace WildWasteland.Modules.Patrols
                 { Patrol.SetHealth(rider, saved.health); rider.AddComponent<Patrol.LateHealth>().Value = saved.health; }
             }
         }
+        /// <summary>Restores hitch for the current patrol crew delta.</summary>
         internal static void RestoreHitch(GameObject car, PatrolCarData data, List<GameObject> roots)
         {
             if (data.trailerName == null) return;
@@ -62,6 +65,7 @@ namespace WildWasteland.Modules.Patrols
             }
             Core.Log.Warn("[Patrols] Saved trailer not found; nothing rebuilt: " + data.trailerName);
         }
+        /// <summary>Encodes the current record in its stable field order.</summary>
         internal static void Write(BinaryWriter writer, PatrolCarData[] cars)
         {
             writer.Write(Magic); writer.Write(cars.Length);
@@ -79,13 +83,13 @@ namespace WildWasteland.Modules.Patrols
                 }
             }
         }
+        /// <summary>Decodes the current record and rejects structurally invalid data.</summary>
         internal static void Read(BinaryReader reader, PatrolCarData[] cars)
         {
-            int magic = reader.ReadInt32(); if (magic != Magic && magic != FirstMagic) return;
+            int magic = reader.ReadInt32(); if (magic != Magic) throw new InvalidDataException("Unsupported crew delta header");
             if (reader.ReadInt32() != cars.Length) throw new InvalidDataException("Invalid crew delta count");
             foreach (var car in cars)
             {
-                if (magic == Magic)
                 {
                     car.trailerName = reader.ReadString();
                     if (car.trailerName.Length > 4096) throw new InvalidDataException("Invalid trailer identity");

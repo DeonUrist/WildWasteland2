@@ -7,6 +7,7 @@ namespace WildWasteland.Modules.Patrols
     internal sealed class MerchantGuardHealth : MonoBehaviour
     {
         internal MerchantTurret Saved;internal float Maximum;
+        /// <summary>Resolves native references after the component enters the loaded scene.</summary>
         private IEnumerator Start()
         {
             yield return null;yield return null;
@@ -21,12 +22,14 @@ namespace WildWasteland.Modules.Patrols
     }
     internal static class MerchantGuards
     {
+        /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
         internal static void Attach(GameObject car,GameObject person,int slot)
         {
             var host=car.GetComponent<MerchantHost>();if(host?.Data==null)return;
             var health=person.GetComponent<MerchantGuardHealth>()??person.AddComponent<MerchantGuardHealth>();
             health.Saved=host.Data.turrets?.FirstOrDefault(t=>t.slot==slot);
         }
+        /// <summary>Copies current native state into detached records for persistence or handoff.</summary>
         internal static void Capture(MerchantHost host)
         {
             var marker=host.GetComponent<PatrolMarker>();if(marker==null)return;
@@ -40,6 +43,7 @@ namespace WildWasteland.Modules.Patrols
                     maxHealth=guard!=null?guard.Maximum:0f,position=anchor!=null?anchor.localPosition:Vector3.zero,standing=person!=null&&person.GetComponent<RiderGuard>()?.StandingPose==true};
             }).ToArray();
         }
+        /// <summary>Rebinds recorded state to native objects without rerolling authored outcomes.</summary>
         internal static void Restore(MerchantHost host)
         {
             if(host.Data.turrets==null)return;var marker=host.GetComponent<PatrolMarker>();if(marker==null)return;

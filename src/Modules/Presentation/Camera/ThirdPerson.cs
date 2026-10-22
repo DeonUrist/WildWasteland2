@@ -29,24 +29,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static float _zoomK;
         private static bool _deathView;
         private static Quaternion _deathRotation;
-        private static GameObject _crosshair;
         public const float ZoomFov = 0.55f, ZoomDistance = 0.7f;
-
-        // Harmony prefix on PlayMaker's ActivateGameObject.DoActivateGameObject: while zooming, the weapon's AimDownSights FSM may not switch
-        // MouseCrosshair off
-        /// <summary>Core.Hooks.ActivateGameObjectDo prefix (every ActivateGameObject of every FSM; early-out unless aim-zooming): keeps MouseCrosshair on while zooming.</summary>
-        public static bool BeforeActivateGameObject(HutongGames.PlayMaker.Actions.ActivateGameObject __instance)
-        {
-            if (!AimZoom) return true;
-            try
-            {
-                if (__instance.activate == null || __instance.activate.Value || __instance.Fsm == null) return true;
-                var go = __instance.Fsm.GetOwnerDefaultTarget(__instance.gameObject);
-                if (go != null && go.name == "MouseCrosshair") { _crosshair = go; if (!go.activeSelf) go.SetActive(true); return false; }
-            }
-            catch (System.Exception) { }
-            return true;
-        }
 
         // (2.1.8) aiming down a scoped gun's sights: the game's own first-person scope view (its camera = where the shots start, FOV 25, overlay),
         // no camera behind her - as with the binoculars
@@ -69,7 +52,7 @@ namespace WildWasteland.Modules.PlayerBody
             AimZoom = On && !Peek && !Game.Paused && !Game.Dead && gun && w.IndexOf("scope", System.StringComparison.OrdinalIgnoreCase) < 0 && Game.AimDownSights;
             _zoomK = Mathf.MoveTowards(_zoomK, AimZoom ? 1f : 0f, Time.unscaledDeltaTime * 6f);
             if (!On) _zoomK = 0f;
-            if (AimZoom && _crosshair != null && !_crosshair.activeSelf) _crosshair.SetActive(true);
+            Core.ModApi.Get<Core.ICursorPresentation>()?.SetAimZoom(AimZoom);
         }
         /// <summary>Smoothstep of the zoom blend factor.</summary>
         private static float ZoomEase { get { return _zoomK * _zoomK * (3f - 2f * _zoomK); } }
@@ -510,6 +493,7 @@ namespace WildWasteland.Modules.PlayerBody
             Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); HasCrosshair = false;
             OcclusionCutaway.Stop();
             On = false; Peek = false; Orbiting = false; _orbitOn = false; CarShift = false; HasView = false; AimZoom = false; _zoomK = 0f;
+            Core.ModApi.Get<Core.ICursorPresentation>()?.SetAimZoom(false);
             _deathView = false;
             ShowViewModel();
             if (_hooked) { Core.CameraArbiter.Remove(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); _hooked = false; if (Game.Cam != null) Game.Cam.ResetCullingMatrix(); }

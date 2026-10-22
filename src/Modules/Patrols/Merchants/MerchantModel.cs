@@ -8,12 +8,19 @@ namespace WildWasteland.Modules.Patrols
     internal static partial class MerchantCatalog
     {
         internal static readonly string[] Types={"general","mechanic","organic"};
+        /// <summary>Checks whether the supplied authored or discovered identity is registered.</summary>
         internal static bool Known(string id)=>Types.Contains(id);
+        /// <summary>Returns the current authored selection with its existing fallback.</summary>
         internal static string Selected(IEnumerable<string> types)=>types?.FirstOrDefault(Known)??"general";
+        /// <summary>Normalizes authored selections against the current catalog.</summary>
         internal static string[] Selection(IEnumerable<string> types)=>new[]{Selected(types)};
+        /// <summary>Returns the existing display label of the authored identity.</summary>
         internal static string Label(string id)=>id=="mechanic"?"Mechanic":id=="organic"?"Organic mechanic":"General merchant";
+        /// <summary>Checks the authored merchant type for station eligibility.</summary>
         internal static string Station(string id)=>id=="mechanic"?"Sell_Items_mechanic":id=="organic"?"Sell_Items_organic_mechanic":"Sell_Items";
+        /// <summary>Returns the shipped default group for the current merchant model.</summary>
         internal static SpawnGroup DefaultGroup()=>new SpawnGroup{Id="coyote-merchant",Name="Coyote merchant",Faction="Coyotes",Chance=10,Templates=new List<string>{"Coyote_Trader"},MerchantTypes=new List<string>{"general"}};
+        /// <summary>Returns the shipped default groups for the current merchant model.</summary>
         internal static List<SpawnGroup> DefaultGroups()=>Types.Select(type=>{var group=DefaultGroup();group.MerchantTypes=new List<string>{type};if(type!="general"){group.Id+="-"+type;group.Name="Coyote "+Label(type).ToLowerInvariant();}return group;}).ToList();
     }
     [Serializable] public sealed class MerchantPose
@@ -35,7 +42,9 @@ namespace WildWasteland.Modules.Patrols
     internal static class MerchantLayouts
     {
         private static MerchantLayoutFile _data;
+        /// <summary>Returns the current path name used by merchant model.</summary>
         private static string PathName=>Path.Combine(EditorStore.Root,"MerchantLayouts.json");
+        /// <summary>Reads the current shipped authoring defaults.</summary>
         private static MerchantLayoutFile Defaults()
         {using(var stream=WildWasteland.Core.DiskResources.Open("Patrols.MerchantLayouts.defaults.json"))using(var reader=new StreamReader(stream))return TrafficCodec.ReadRecord<MerchantLayoutFile>(reader.ReadToEnd());}
         private static MerchantLayoutFile Data
@@ -63,12 +72,15 @@ namespace WildWasteland.Modules.Patrols
                 return _data;
             }
         }
+        /// <summary>Returns the shared merchant-layout identity.</summary>
         internal static string CommonId(string id){var slash=(id??"").IndexOf('/');return slash>0&&MerchantCatalog.Known(id.Substring(0,slash))?id.Substring(slash+1):id;}
+        /// <summary>Applies the accepted result to the bound native objects.</summary>
         internal static void Apply(MerchantHost host)
         {
             var layout=Data.layouts.FirstOrDefault(l=>l!=null&&l.template==host.Data.template);if(layout?.objects==null)return;
             foreach(var pose in layout.objects.OrderBy(p=>p.id=="board"?0:1)){var obj=host.Objects.FirstOrDefault(o=>CommonId(o.Id)==pose.id);if(obj?.Transform==null)continue;obj.Transform.position=host.transform.TransformPoint(pose.position);obj.Transform.rotation=host.transform.rotation*Quaternion.Euler(pose.rotation);}
         }
+        /// <summary>Publishes current owned data through its authoritative persistence boundary.</summary>
         internal static string Save(GameObject car)
         {
             var host=car!=null?car.GetComponent<MerchantHost>():null;if(host==null)return "No merchant bus selected";

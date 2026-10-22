@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.Patrols
     internal partial class PassengerGuard
     {
         // a gunner on a turret spot (roof / motorcycle seat): passenger combat, but all around - no fire arc, the Pose turns the whole body
+        /// <summary>a gunner on a turret spot (roof / motorcycle seat): passenger combat, but all around - no fire arc, the Pose turns the whole body</summary>
         internal static PassengerGuard AttachTurret(GameObject who, GameObject car, Transform anchor, float arc)
         {
             Attach(who, car, anchor);
@@ -20,6 +21,7 @@ namespace WildWasteland.Modules.Patrols
 
         // A shooting mob at the wheel: like a passenger, but it only shoots in bursts at random intervals and sits in the
         // generic driver pose (hands on the wheel) in between.
+        /// <summary>A shooting mob at the wheel: like a passenger, but it only shoots in bursts at random intervals and sits in the generic driver pose (hands on the wheel) in between.</summary>
         internal static PassengerGuard AttachDriver(GameObject driver, GameObject car, Transform sit)
         {
             Attach(driver, car, sit);
@@ -28,6 +30,7 @@ namespace WildWasteland.Modules.Patrols
             return guard;
         }
 
+        /// <summary>Sets driver mode for the current passenger guard.</summary>
         internal void SetDriverMode(Transform sit)
         {
             _anchor = sit;
@@ -41,11 +44,13 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Driver: " + _passenger.name + (_ranged ? " shoots in bursts every " + PatrolsModule.FireIntervalMin.Value + "-" + PatrolsModule.FireIntervalMax.Value + " s" : " does not shoot"));
         }
 
+        /// <summary>Schedules burst for the current passenger guard.</summary>
         private void ScheduleBurst()
         {
             _nextBurst = Time.time + UnityEngine.Random.Range(PatrolsModule.FireIntervalMin.Value, Mathf.Max(PatrolsModule.FireIntervalMin.Value, PatrolsModule.FireIntervalMax.Value));
         }
 
+        /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
         internal static void Attach(GameObject passenger, GameObject car, Transform anchor)
         {
             var guard = passenger.GetComponent<PassengerGuard>() ?? passenger.AddComponent<PassengerGuard>();

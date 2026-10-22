@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -47,7 +48,9 @@ namespace WildWasteland.Modules.Patrols
         private static RoadTile[] _tiles;
         private static Bounds[] _blocks;
         internal static long Searches;
+        /// <summary>Clears retained runtime state at the owning lifecycle boundary.</summary>
         internal static void Reset(){Interlocked.Increment(ref _epoch);_snapshotRoad=_snapshotCamps=_snapshotCount=-1;}
+        /// <summary>Checks the current request route condition for road planner.</summary>
         internal static RoadJob RequestRoute(TrafficBase source,TrafficBase destination,bool convoy,bool foot=false,TrafficBase[] sources=null,TrafficBase[] destinations=null,Vector3[] existing=null)
         {
             if(PatrolsModule.TrafficRoadRouting.Value)TrafficRoads.RequestAlong(source.apron,destination.apron);
@@ -74,13 +77,16 @@ namespace WildWasteland.Modules.Patrols
                 Sources=Alternatives(sources,source),Destinations=Alternatives(destinations,destination),Existing=existing,Quiet=quiet});
             Start();return job;
         }
+        /// <summary>Chooses the bounded alternative endpoint set for worker planning.</summary>
         private static TrafficBase[] Alternatives(TrafficBase[] choices,TrafficBase fallback)
         {
             if(choices==null||choices.Length==0)return new[]{fallback};
             var result=new TrafficBase[Math.Min(4,choices.Length)];int start=UnityEngine.Random.Range(0,choices.Length);
             for(int i=0;i<result.Length;i++)result[i]=choices[(start+i)%choices.Length];return result;
         }
+        /// <summary>Resolves native references after the component enters the loaded scene.</summary>
         private static void Start(){if(Interlocked.CompareExchange(ref _running,1,0)==0)Task.Run((Action)Run);}
+        /// <summary>Drains detached numeric worker requests and publishes completed results.</summary>
         private static void Run()
         {
             try
@@ -138,65 +144,7 @@ namespace WildWasteland.Modules.Patrols
             }
             finally{Interlocked.Exchange(ref _running,0);if(!Queue.IsEmpty)Start();}
         }
-        internal static Vector3[] Build(Vector3 a,Vector3 b,Vector3[][] hints,Bounds[] blocks,float influence,int seed,out bool[] roads)
-        {
-            float length=TrafficLocations.FlatDistance(a,b);
-            int steps=Mathf.Clamp(Mathf.CeilToInt(length/400f),6,16);
-            var direction=b-a;direction.y=0f;direction.Normalize();var side=Vector3.Cross(Vector3.up,direction);
-            var random=new System.Random(seed);float phase=(float)random.NextDouble()*Mathf.PI*2f;
-            float amplitude=Mathf.Min(180f,length*0.16f);
-            var route=new List<Vector3>{a};var kinds=new List<bool>{false};
-            for(int i=1;i<steps;i++)
-            {
-                float t=(float)i/steps;
-                var desired=Vector3.Lerp(a,b,t)+side*(Mathf.Sin(t*Mathf.PI*3f+phase)*Mathf.Sin(t*Mathf.PI)*amplitude);
-                var chosen=desired;float best=influence*influence;bool road=false;
-                foreach(var tile in hints)foreach(var point in tile)
-                {
-                    float along=Vector3.Dot(point-a,direction);
-                    if(Mathf.Abs(along-length*t)>length/steps*0.7f)continue;
-                    var d=point-desired;d.y=0f;float score=d.sqrMagnitude;
-                    if(score>=best)continue;
-                    bool inside=false;var flat=point;flat.y=0f;foreach(var box in blocks)if(box.Contains(flat)){inside=true;break;}
-                    if(inside)continue;best=score;chosen=point;road=true;
-                }
-                if(TrafficLocations.FlatDistance(route[route.Count-1],chosen)<12f)continue;
-                route.Add(chosen);kinds.Add(road);
-            }
-            route.Add(b);kinds.Add(false);
-            // A coarse route can skirt a known camp without constructing a world navigation graph.
-            for(int attempts=0;attempts<16 && route.Count<32;attempts++)
-            {
-                bool changed=false;
-                for(int leg=1;leg<route.Count&&!changed;leg++)foreach(var box in blocks)
-                {
-                    var start=route[leg-1];var end=route[leg];start.y=end.y=0f;var d=end-start;float distance=d.magnitude;
-                    if(box.Contains(start)||box.Contains(end)||distance<0.01f||!box.IntersectRay(new Ray(start,d/distance),out var hit)||hit>=distance)continue;
-                    var min=box.min;var max=box.max;
-                    var corners=new[]{new Vector3(min.x-3f,route[leg-1].y,min.z-3f),new Vector3(min.x-3f,route[leg-1].y,max.z+3f),
-                        new Vector3(max.x+3f,route[leg-1].y,min.z-3f),new Vector3(max.x+3f,route[leg-1].y,max.z+3f)};
-                    float cost=float.MaxValue;Vector3[] detour=null;
-                    foreach(var c in corners)foreach(var e in corners)
-                    {
-                        if(Crosses(box,start,c)||Crosses(box,c,e)||Crosses(box,e,end))continue;
-                        float score=TrafficLocations.FlatDistance(start,c)+TrafficLocations.FlatDistance(c,e)+TrafficLocations.FlatDistance(e,end);
-                        if(score<cost){cost=score;detour=c==e?new[]{c}:new[]{c,e};}
-                    }
-                    if(detour==null)continue;
-                    route.InsertRange(leg,detour);kinds.InsertRange(leg,Enumerable.Repeat(false,detour.Length));kinds[leg+detour.Length]=false;
-                    changed=true;break;
-                }
-                if(!changed)break;
-            }
-            roads=kinds.ToArray();return route.ToArray();
-        }
-        private static bool Crosses(Bounds box,Vector3 a,Vector3 b)
-        {a.y=b.y=0f;var d=b-a;float length=d.magnitude;return length>0.01f&&box.IntersectRay(new Ray(a,d/length),out var hit)&&hit<length;}
-        internal static bool Clear(Vector3[] route, Bounds[] blocks)
-        {
-            foreach (var box in blocks) for (int i = 0; i < route.Length; i++)
-            { var p = route[i]; p.y = 0; if (box.Contains(p) || i > 0 && Crosses(box, route[i - 1], p)) return false; }
-            return true;
-        }
+        /// <summary>Validates immutable planned routes against numeric exclusion bounds.</summary>
+        internal static bool Clear(Vector3[] route,Bounds[] blocks) {return Core.RouteGeometry.Clear(route,blocks);}
     }
 }

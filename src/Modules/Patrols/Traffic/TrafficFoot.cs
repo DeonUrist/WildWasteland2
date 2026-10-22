@@ -45,16 +45,20 @@ namespace WildWasteland.Modules.Patrols
         private static readonly TrafficVehicle[] NoVehicles = new TrafficVehicle[0];
         private static readonly Vector3[][] NoHints = new Vector3[0][];
 
+        /// <summary>Resets foot for the current traffic foot.</summary>
         private void ResetFoot() { _footLive.Clear(); _footDeparture = null; _nextFootRoll = 0f; _nextFootSecond = 0f; _wrap.Clear(); _settling.Clear(); _settlingUntil.Clear(); }
         // settled residents' last travel order (into the camp): cancelled once it ends, so the NPC Idle camp logic takes them over
         private readonly List<GameObject> _settling = new List<GameObject>();
         private readonly List<float> _settlingUntil = new List<float>();
         // a walker leaves the journey (released, hired, removed): its walk order goes with it
+        /// <summary>a walker leaves the journey (released, hired, removed): its walk order goes with it</summary>
         private static void Unorder(GameObject body)
         { var api = Core.Services.Npc; if (api != null && body != null) try { api.Travel(body, null, 0f); } catch (Exception) { } }
 
         // module shutdown: live walkers stay in the world as ordinary (natively saved) NPCs
+        /// <summary>module shutdown: live walkers stay in the world as ordinary (natively saved) NPCs</summary>
         internal static void ReleaseFootAll() { if (_instance != null) _instance.ReleaseFoot("Patrols off"); }
+        /// <summary>Releases foot for the current traffic foot.</summary>
         private void ReleaseFoot(string why)
         {
             foreach (var fl in _footLive.Values)
@@ -63,17 +67,21 @@ namespace WildWasteland.Modules.Patrols
             _footLive.Clear(); _footDeparture = null;
         }
 
+        /// <summary>Checks the current foot valid condition for traffic foot.</summary>
         private static bool FootValid(TrafficJourney j)
         {
             if (j.walkers == null || j.walkers.Length < 1 || j.walkers.Length > MaxWalkers) return false;
             foreach (var w in j.walkers) if (w == null || string.IsNullOrEmpty(w.identity)) return false;
             return true;
         }
+        /// <summary>Checks availability of walker for the current traffic foot.</summary>
         private static bool AnyWalker(TrafficJourney j) { foreach (var w in j.walkers) if (!w.dead) return true; return false; }
         // every foot group (travelers and wrapped stranded crew) is "<Faction> travelers"; the car group name is not used
+        /// <summary>every foot group (travelers and wrapped stranded crew) is "&lt;Faction&gt; travelers"; the car group name is not used</summary>
         internal static string FootName(string faction, string group) { return TrafficFactions.Normalize(faction) == "Coyotes" ? "Coyote travelers" : "Scrapyard travelers"; }
 
         // the compass/map target of a real foot patrol: its first living walker
+        /// <summary>the compass/map target of a real foot patrol: its first living walker</summary>
         private Transform FootLeader(TrafficJourney journey)
         {
             FootLive fl;
@@ -84,6 +92,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ per journey (0.25 s)
 
+        /// <summary>Advances the current virtual or physical foot-patrol journey.</summary>
         private void FootStep(TrafficJourney journey, float seconds, Transform player)
         {
             var playerWorld = TrafficSpace.World(player.position);
@@ -126,6 +135,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // deaths (the game swaps a dead NPC for its carcass) and walkers taken over by something else (a quest hire, a seat)
+        /// <summary>deaths (the game swaps a dead NPC for its carcass) and walkers taken over by something else (a quest hire, a seat)</summary>
         private void FootBodies(TrafficJourney journey, FootLive fl)
         {
             for (int i = 0; i < journey.walkers.Length && i < MaxWalkers; i++)
@@ -140,6 +150,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Materializes one exact saved foot-patrol member.</summary>
         private void FootSpawnOne(TrafficJourney journey, FootLive fl)
         {
             if (_footSpawnFrame == Time.frameCount) return;   // one instantiation per frame across all foot patrols
@@ -152,6 +163,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Materializes eligible retained foot-patrol members with existing spacing.</summary>
         private void FootSpawn(TrafficJourney journey, FootLive fl, int i)
         {
             var w = journey.walkers[i];
@@ -176,6 +188,7 @@ namespace WildWasteland.Modules.Patrols
 
         // 1 Hz: formation targets ahead along the route; the journey follows the leader. A leader that cannot get anywhere (Travel failed
         // repeatedly) lets the journey advance virtually, and walkers out of the player's sight catch up by moving them.
+        /// <summary>1 Hz: formation targets ahead along the route; the journey follows the leader. A leader that cannot get anywhere (Travel failed repeatedly) lets the journey advance virtually, and walkers out of the player's sight catch up by moving them.</summary>
         private void FootWalk(TrafficJourney journey, FootLive fl, Transform player)
         {
             var api = Core.Services.Npc;
@@ -224,12 +237,14 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Returns the current travel heading of the foot journey.</summary>
         private static Vector3 FootDirection(Vector3[] route, float progress)
         {
             var d = RoadPath.Point(route, progress + 2f) - RoadPath.Point(route, progress - 2f); d.y = 0f;
             return d.sqrMagnitude > 0.01f ? d.normalized : Vector3.forward;
         }
 
+        /// <summary>Checks the current foot ground condition for traffic foot.</summary>
         private static bool FootGround(Vector3 p, out Vector3 ground)
         {
             ground = p;
@@ -245,6 +260,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // simulated again: health captured, bodies removed (journey-owned, never in the native lists)
+        /// <summary>simulated again: health captured, bodies removed (journey-owned, never in the native lists)</summary>
         private void FootVirtualize(TrafficJourney journey, FootLive fl, string why)
         {
             for (int i = 0; i < MaxWalkers && i < journey.walkers.Length; i++)
@@ -259,6 +275,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // arrival at a loaded camp: step 1 drops the simple-bandit / faction-actor components (ordinary NPC AI again)...
+        /// <summary>arrival at a loaded camp: step 1 drops the simple-bandit / faction-actor components (ordinary NPC AI again)...</summary>
         private void FootBeginSettle(TrafficJourney journey, FootLive fl)
         {
             var api = Core.Services.Npc;
@@ -274,6 +291,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // ...step 2 (a tick later): natively saved residents of the camp, sent inside so the NPC Idle picks a spawn point there
+        /// <summary>...step 2 (a tick later): natively saved residents of the camp, sent inside so the NPC Idle picks a spawn point there</summary>
         private void FootSettle(TrafficJourney journey, FootLive fl)
         {
             TrafficBase camp;
@@ -295,6 +313,7 @@ namespace WildWasteland.Modules.Patrols
             if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived at " + (camp != null ? camp.name + " " + camp.id : "its camp") + ": " + n + " new resident(s)");
         }
 
+        /// <summary>Removes foot for the current traffic foot.</summary>
         private void RemoveFoot(TrafficJourney journey)
         {
             FootLive fl;
@@ -305,6 +324,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // the destination was cleared on the way: the nearest uncleared camp of the faction, else stop (removed once simulated)
+        /// <summary>the destination was cleared on the way: the nearest uncleared camp of the faction, else stop (removed once simulated)</summary>
         private bool FootRetarget(TrafficJourney journey, bool live)
         {
             var camp = NearestCamp(journey.faction, journey.position, journey.destination);
@@ -315,7 +335,7 @@ namespace WildWasteland.Modules.Patrols
                 return true;
             }
             bool[] roads;
-            var route = RoadPlanner.Build(journey.position, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, journey.id.GetHashCode(), out roads);
+            var route = Core.RouteGeometry.Build(journey.position, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, journey.id.GetHashCode(), out roads);
             if (route == null || route.Length < 2)
             {
                 if (!live) { Remove(journey); return false; }
@@ -327,6 +347,7 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>Finds the nearest camp for the current traffic foot.</summary>
         private static TrafficBase NearestCamp(string faction, Vector3 world, string except)
         {
             faction = TrafficFactions.Normalize(faction);
@@ -342,6 +363,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ crew left without a usable car (1 Hz)
 
+        /// <summary>Updates surviving actors whose original vehicle journey cannot continue.</summary>
         private void StrandedTick(float seconds)
         {
             if (_settling.Count > 0) SettlingTick();
@@ -377,6 +399,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Sets tling tick for the current traffic foot.</summary>
         private void SettlingTick()
         {
             var api = Core.Services.Npc; float now = Time.time;
@@ -390,6 +413,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Registers a surviving actor as a detached returning foot traveller.</summary>
         private void WrapStranded(List<CrewReturn.StrandedCrew> group)
         {
             var first = group[0];
@@ -397,7 +421,7 @@ namespace WildWasteland.Modules.Patrols
             var camp = NearestCamp(first.Faction, start, null);
             if (camp == null) { if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrols: no " + first.Faction + " camp known; " + group.Count + " stranded crew stay where they are"); return; }
             bool[] roads;
-            var route = RoadPlanner.Build(start, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, unchecked(first.Body.GetInstanceID() * 397), out roads);
+            var route = Core.RouteGeometry.Build(start, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, unchecked(first.Body.GetInstanceID() * 397), out roads);
             if (route == null || route.Length < 2) return;
             var walkers = new TrafficWalker[group.Count];
             var fl = new FootLive { NextOrder = Time.time + UnityEngine.Random.Range(0.2f, 1f) };
@@ -420,6 +444,7 @@ namespace WildWasteland.Modules.Patrols
 
         private const float FootRetrySeconds = 10f;
         private string _footWhy;
+        /// <summary>Schedules the existing retry when foot routing or placement is unavailable.</summary>
         private void FootRetry(string why)
         {
             _nextFootRoll = Time.time + FootRetrySeconds;
@@ -428,6 +453,7 @@ namespace WildWasteland.Modules.Patrols
         }
         // diagnostics: every reason a foot patrol is not leaving is logged once when it changes (verbose only, no per-tick strings)
         private int _footStateCode = -1;
+        /// <summary>Reads the current virtual or physical foot-patrol phase.</summary>
         private void FootState(int code, string text)
         {
             if (code == _footStateCode) return;
@@ -435,13 +461,16 @@ namespace WildWasteland.Modules.Patrols
             if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrols: " + text);
         }
         // one MapMagic main tile ("chunk"); 5 km when the map is not known yet
+        /// <summary>one MapMagic main tile ("chunk"); 5 km when the map is not known yet</summary>
         private static float ChunkMetres() { var size = TrafficRoads.TileSize; float c = Mathf.Max(size.x, size.z); return c > 0f ? c : 5000f; }
+        /// <summary>Checks containment in camp for the current traffic foot.</summary>
         private static bool InsideCamp(Vector3 world)
         {
             foreach (var c in TrafficLocations.Known.Values)
                 if (Mathf.Abs(world.x - c.center.x) <= c.size.x / 2f + 40f && Mathf.Abs(world.z - c.center.z) <= c.size.z / 2f + 40f) return true;
             return false;
         }
+        /// <summary>Populates foot for the current traffic foot.</summary>
         private void PopulateFoot(Vector3 playerWorld)
         {
             if (!PatrolsModule.FootPatrols.Value) { _footDeparture = null; FootState(1, "off (Game > World > Foot patrols)"); return; }
@@ -549,6 +578,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // saving: health / deaths of real walkers into the journey record
+        /// <summary>saving: health / deaths of real walkers into the journey record</summary>
         private void CaptureFoot()
         {
             foreach (var journey in _journeys)

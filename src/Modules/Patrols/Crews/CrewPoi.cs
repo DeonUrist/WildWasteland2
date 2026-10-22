@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Patrols
         internal static Transform Root;
         internal static Bounds Box;
 
+        /// <summary>Clears retained runtime state at the owning lifecycle boundary.</summary>
         internal static void Reset() { Root = null; _next = 0f; Structures.Clear(); }
         internal static Transform PlayerRoot
         {
@@ -37,12 +38,14 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Ignores d for the current crew poi.</summary>
         internal static bool Ignored(GameObject car)
         {
             var agent = WorldTraffic.AgentOf(car);
             return agent != null && WorldTraffic.Find(agent.Journey)?.convoy == true && PlayerRoot != null;
         }
 
+        /// <summary>Checks the current parking condition for crew poi.</summary>
         internal static bool Parking(GameObject car, Bounds box, out Vector3 point)
         {
             point = car.transform.position; float best = float.MaxValue;
@@ -93,6 +96,7 @@ namespace WildWasteland.Modules.Patrols
         private float _nextPoiPark, _poiRange = 120f;
         private RoadJob _poiRoad;
         private int _poiLeg;
+        /// <summary>Returns the current poi exit used by crew poi.</summary>
         internal bool PoiExit { get { return _poiAssault; } }
         internal bool PoiEngaged
         {
@@ -105,6 +109,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Checks the current poi tick condition for crew poi.</summary>
         private bool PoiTick(bool slow)
         {
             if (Regroup != null) return false;
@@ -139,6 +144,7 @@ namespace WildWasteland.Modules.Patrols
             return ExitCrew(false);
         }
 
+        /// <summary>Checks the current poi goal condition for crew poi.</summary>
         internal bool PoiGoal(out Vector3 goal, out bool stop, out float cruise)
         {
             goal = Vector3.zero; stop = false; cruise = 0f;
@@ -173,6 +179,7 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>Ends poi for the current crew poi.</summary>
         internal void EndPoi()
         {
             if (!_poiAssault) return;

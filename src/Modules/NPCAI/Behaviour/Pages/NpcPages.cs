@@ -46,9 +46,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Presentation: the "Female appearance & voices" config page.</summary>
         static partial void AddPresentationPages(NpcModule m, List<ToolPage> pages);
         /// <summary>Tools: the "Pathfinding baked data" block of the Debug page (map highlight, reset / export of maps).</summary>
-        static partial void DrawToolsMapData(ToolLayout l);
         /// <summary>Tools: the "POI pathfinding" page (editor / setup).</summary>
-        static partial void AddToolsPages(NpcModule m, List<ToolPage> pages);
 
         /// <summary>F7 pages of the old NPC entry shell: NPC population (Women of Wasteland config), then the Presentation and Tools pages.</summary>
         internal static IEnumerable<ToolPage> BuildShell(NpcModule m)
@@ -59,7 +57,6 @@ namespace WildWasteland.Modules.NPC
             AddPresentationPages(m, pages);
             pages.Add(new ConfigPage(m, ToolGroups.Npc, "NPC visuals", m.Config.Tools, Sec("Brain"), Sec("NpcAim"), Sec("Behaviour"))
             { Intro = "Gunman animation (Apocaplayer clips, aim pose), reload sounds and the lying-dog pose. These entries stay in the old [NPC / ...] sections until Presentation takes them over." });
-            AddToolsPages(m, pages);
             return pages;
         }
 

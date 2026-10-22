@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -42,7 +43,9 @@ namespace WildWasteland.Modules.Patrols
                 return _hints=points.ToArray();
             }
         }
+        /// <summary>Returns the stable current record identifier.</summary>
         internal string Id => X + "_" + Z;
+        /// <summary>Retains the bounded immutable hint representation of captured road geometry.</summary>
         internal void Compact()
         {
             var hints=Hints;
@@ -86,10 +89,14 @@ namespace WildWasteland.Modules.Patrols
         // WW: BepInEx\config\WildWasteland\Patrols\roads (set by PatrolsModule.Init); the standalone cache folder is read as a fallback
         internal static string CacheDir;
         internal static int Revision { get; private set; }
+        /// <summary>Returns the current tile size used by traffic roads.</summary>
         internal static Vector3 TileSize => _map != null ? (Vector3)_map.tileSize : Vector3.zero;
+        /// <summary>Formats the current bounded discovery or preparation status.</summary>
         internal static string Status => Tiles.Count + " road tiles";
+        /// <summary>Returns the current cache root used by traffic roads.</summary>
         private static string CacheRoot => CacheDir ?? Path.Combine(Paths.ConfigPath, "Apocapatrol.roads");
 
+        /// <summary>Registers native callbacks under the current owning runtime lifecycle.</summary>
         internal static void Install()
         {
             if (_installed) return;
@@ -99,6 +106,7 @@ namespace WildWasteland.Modules.Patrols
             TerrainTile.OnTileApplied += LocationsApplied;
             Core.VistasWorldGen.TerrainEdited += QueueGround;
         }
+        /// <summary>Unsubscribes native callbacks and clears retained runtime references.</summary>
         internal static void Uninstall()
         {
             if (!_installed) return;
@@ -109,6 +117,7 @@ namespace WildWasteland.Modules.Patrols
             Core.VistasWorldGen.TerrainEdited -= QueueGround;
         }
 
+        /// <summary>Clears retained runtime state at the owning lifecycle boundary.</summary>
         internal static void Reset()
         {
             Flush(); Captures.Clear(); Tiles.Clear(); Loads.Clear();Requested.Clear();
@@ -117,6 +126,7 @@ namespace WildWasteland.Modules.Patrols
             while (Pending.TryDequeue(out _)) { }
         }
 
+        /// <summary>Prepares current native references or detached numeric route data.</summary>
         private static void Prepare(TerrainTile tile, TileData data)
         {
             if (data == null || data.isDraft || tile == null || tile.mapMagic == null) return;
@@ -129,6 +139,7 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { Core.Log.Warn("[Patrols] " + "Road discovery prepare: " + e.Message); }
         }
 
+        /// <summary>Switches captured road metadata to the current generation recipe.</summary>
         private static void Activate(MapMagicObject map)
         {
             if (map.graph == null) return;
@@ -165,9 +176,11 @@ namespace WildWasteland.Modules.Patrols
             PatrolsModule.Verbose("Roads: " + _sources.Length + " spline sources; cached hints will load on demand, seed " + seed);
         }
 
+        /// <summary>Resolves the actual linked generation output without authored generator IDs.</summary>
         private static ulong LinkedGenerator(Graph graph, IInlet<object> inlet)
         { return graph.links.TryGetValue(inlet, out var outlet) && outlet.Gen != null ? outlet.Gen.Id : 0; }
 
+        /// <summary>Hashes the actual generation recipe and wiring for derived road-cache identity.</summary>
         private static string Fingerprint(MapMagicObject map)
         {
             var text = new StringBuilder("roads-v3|");
@@ -194,8 +207,10 @@ namespace WildWasteland.Modules.Patrols
                 return BitConverter.ToString(hash.ComputeHash(Encoding.UTF8.GetBytes(text.ToString()))).Replace("-", "").Substring(0, 24);
         }
 
+        /// <summary>Publishes captured immutable roads only after native tile application.</summary>
         private static void LocationsApplied(TerrainTile tile, TileData data, StopToken stop)
         { if (tile != null) { TrafficLocations.TileApplied(); QueueGround(tile); } }
+        /// <summary>Queues ground for the current traffic roads.</summary>
         private static void QueueGround(TerrainTile tile)
         {
             if (tile == null || tile.main == null || !tile.main.applyReady || tile.main.terrain == null || _world == null) return;
@@ -205,6 +220,7 @@ namespace WildWasteland.Modules.Patrols
             capture = new GroundCapture { Tile = tile, World = _world, At = Time.unscaledTime + 2f, Revision = Core.VistasWorldGen.RoadRevision };
             GroundPending.Add(tile, capture); GroundQueue.Enqueue(capture);
         }
+        /// <summary>Checks the current ground step condition for traffic roads.</summary>
         internal static bool GroundStep()
         {
             if (GroundQueue.Count == 0) return false;
@@ -229,6 +245,7 @@ namespace WildWasteland.Modules.Patrols
             Tiles[id] = result; Dirty.Enqueue(result); Revision++;
             GroundQueue.Dequeue(); GroundPending.Remove(tile); return GroundQueue.Count > 0;
         }
+        /// <summary>Captures immutable worker-produced road data without scene API access.</summary>
         private static void Finalized(TerrainTile tile, TileData data, StopToken stop)
         {
             if (data == null || data.isDraft || (stop != null && stop.stop) || !Captures.TryRemove(data, out var capture)) return;
@@ -261,6 +278,7 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { /* This callback must never interrupt terrain generation. */ System.Diagnostics.Debug.WriteLine(e); }
         }
 
+        /// <summary>Clips captured road coordinates to the requested numeric tile rectangle.</summary>
         internal static Vector3[][] Clip(Vector3[] points, Rect rect)
         {
             var result = new List<Vector3[]>(); var run = new List<Vector3>();
@@ -278,6 +296,7 @@ namespace WildWasteland.Modules.Patrols
             }
             if (run.Count > 1) result.Add(run.ToArray()); return result.ToArray();
         }
+        /// <summary>Clamps captured numeric geometry to its accepted tile boundary.</summary>
         private static bool Bound(float a, float d, float min, float max, ref float lo, ref float hi)
         {
             if (Mathf.Abs(d) < 0.00001f) return a >= min && a <= max;
@@ -285,6 +304,7 @@ namespace WildWasteland.Modules.Patrols
             lo = Mathf.Max(lo, Mathf.Min(x, y)); hi = Mathf.Min(hi, Mathf.Max(x, y)); return lo <= hi;
         }
 
+        /// <summary>Advances scheduled work under the current save, pause and admission gates.</summary>
         internal static void Tick()
         {
             if (Time.unscaledTime >= _scanAt)
@@ -327,6 +347,7 @@ namespace WildWasteland.Modules.Patrols
             if(Errors.TryDequeue(out var error))Core.Log.Warn("[Patrols] " + "Road cache: "+error);
         }
 
+        /// <summary>Queues derived road-cache reads along the requested world-space segment.</summary>
         internal static void RequestAlong(Vector3 a,Vector3 b)
         {
             var size=TileSize;if(_world==null||size.x<=0f||size.z<=0f)return;
@@ -343,23 +364,28 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Adds file work to the single serialized derived-cache worker.</summary>
         private static void EnqueueIO(Action action)
         {
             IO.Enqueue(action);
             if(Interlocked.CompareExchange(ref _ioRunning,1,0)==0)Task.Run((Action)RunIO);
         }
+        /// <summary>Drains serialized derived-cache file work and publishes bounded errors.</summary>
         private static void RunIO()
         {
             try{while(IO.TryDequeue(out var action))try{action();}catch(Exception e){Errors.Enqueue(e.Message);}}
             finally{Interlocked.Exchange(ref _ioRunning,0);if(!IO.IsEmpty&&Interlocked.CompareExchange(ref _ioRunning,1,0)==0)Task.Run((Action)RunIO);}
         }
 
+        /// <summary>Queues dirty regenerable road tiles for serialized file publication.</summary>
         internal static void Flush() { while (Dirty.Count > 0) Save(Dirty.Dequeue()); }
+        /// <summary>Publishes current owned data through its authoritative persistence boundary.</summary>
         private static void Save(RoadTile tile)
         {
             string directory=Path.Combine(CacheRoot,tile.World);
             EnqueueIO(()=>{Directory.CreateDirectory(directory);WriteCache(Path.Combine(directory,tile.Id+".roads"),tile);});
         }
+        /// <summary>Encodes cache for the current traffic roads.</summary>
         internal static void WriteCache(string path, RoadTile tile)
         {
             string temporary = path + ".tmp";
@@ -376,12 +402,13 @@ namespace WildWasteland.Modules.Patrols
             }
             Core.AtomicFile.Replace(temporary, path);   // D17: no Mono File.Replace (Win32 error 1175); same-directory temp
         }
+        /// <summary>Decodes cache for the current traffic roads.</summary>
         internal static RoadTile ReadCache(string path, string world)
         {
             using (var reader = new BinaryReader(File.OpenRead(path)))
             {
                 if(reader.ReadInt32()!=0x41505244)throw new InvalidDataException("Road cache header");
-                int version=reader.ReadInt32();if((version!=1&&version!=2&&version!=3)||reader.ReadString()!=world)throw new InvalidDataException("Road cache identity mismatch");
+                int version=reader.ReadInt32();if(version!=3||reader.ReadString()!=world)throw new InvalidDataException("Road cache identity mismatch");
                 var tile = new RoadTile { World = world, X = reader.ReadInt32(), Z = reader.ReadInt32(), Approximate = reader.ReadBoolean() };
                 int count = reader.ReadInt32(), total = 0;
                 if (count < 0 || count > 4096) throw new InvalidDataException("Road count");
@@ -397,19 +424,20 @@ namespace WildWasteland.Modules.Patrols
                         if (!Finite(v)) throw new InvalidDataException("Road coordinate"); tile.Lines[i][p] = v;
                     }
                 }
-                if(version>=2&&reader.ReadBoolean())
+                if(reader.ReadBoolean())
                 {
                     var rect=new Rect(reader.ReadSingle(),reader.ReadSingle(),reader.ReadSingle(),reader.ReadSingle());int size=reader.ReadInt32();
                     if(!Finite(new Vector3(rect.x,rect.y,rect.width))||!Finite(new Vector3(rect.height,0f,0f))||rect.width<=0f||rect.height<=0f||size<2||size>257)throw new InvalidDataException("Elevation grid dimensions");
                     var heights=new float[size*size];for(int i=0;i<heights.Length;i++){heights[i]=reader.ReadSingle();if(float.IsNaN(heights[i])||float.IsInfinity(heights[i]))throw new InvalidDataException("Elevation sample");}
                     tile.Elevation=new ElevationGrid{Area=rect,Size=size,Heights=heights};
                 }
-                if(version>=3)tile.FinalGround=reader.ReadBoolean();
+                tile.FinalGround=reader.ReadBoolean();
                 if (reader.BaseStream.Position != reader.BaseStream.Length) throw new InvalidDataException("Trailing road data");
                 var hints=tile.Hints;
                 return tile;
             }
         }
+        /// <summary>Rejects NaN and infinite numeric coordinates.</summary>
         private static bool Finite(Vector3 p) => !float.IsNaN(p.x + p.y + p.z) && !float.IsInfinity(p.x + p.y + p.z);
     }
 }

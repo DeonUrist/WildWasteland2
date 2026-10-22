@@ -28,12 +28,14 @@ namespace WildWasteland.Modules.Patrols
         private static readonly string[] HarmfulFsms = { "ExplosionRadius", "ExplosionDamage" };
 
         // Called by the Crew when the car is vacated. Re-checks after a short delay: a car the player took or sits in is never blown up.
+        /// <summary>Called by the Crew when the car is vacated. Re-checks after a short delay: a car the player took or sits in is never blown up.</summary>
         internal static void Schedule(Crew crew, GameObject car, PatrolMarker marker, string why)
         {
             if (car == null || marker == null || marker.Exploded || !Eligible(marker)) return;
             crew.StartCoroutine(Routine(car, marker, why));
         }
 
+        /// <summary>Runs the delayed vehicle destruction sequence under native lifetime gates.</summary>
         private static IEnumerator Routine(GameObject car, PatrolMarker marker, string why)
         {
             yield return new WaitForSeconds(Delay);
@@ -112,9 +114,13 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ pieces
 
+        /// <summary>Returns the shipped default chance for the current explode.</summary>
         internal static float DefaultChance(string name)=>string.Equals(name,"War_rig",StringComparison.OrdinalIgnoreCase)||string.Equals(name,"Truck_War_Rig",StringComparison.OrdinalIgnoreCase)?0f:50f;
+        /// <summary>Selects the configured outcome using the caller random source.</summary>
         internal static bool Roll(float chance,bool always,float roll)=>always||roll*100f<Mathf.Clamp(chance,0f,100f);
+        /// <summary>Checks current progression and chance gates for the authored spawn group.</summary>
         internal static bool Eligible(PatrolMarker marker)=>marker!=null&&marker.DriverDied&&!marker.DriverBailed&&!marker.PlayerEntered&&!CrewReturn.Holds(marker.gameObject);   // never while its crew may still walk back
+        /// <summary>Applies the accepted battle wreck outcome without rerolling it.</summary>
         internal static void BattleWreck(GameObject car)
         {
             var marker=car.GetComponent<PatrolMarker>();if(marker==null||marker.PlayerEntered)return;
@@ -122,18 +128,22 @@ namespace WildWasteland.Modules.Patrols
             foreach(var part in Parts(car))SetCondition(part,0f);
             bool truck=IsTruck(marker.BodyPrefab);if(!truck)Darken(car);Blast(car);QuietHinges(car);Patrol.Headlights(car,false);Deaden(car,truck);
         }
+        /// <summary>Counts living occupants for the current explode.</summary>
         private static bool LivingOccupants(PatrolMarker marker)
         {
             if(SeatAlive(marker.Driver)||SeatAlive(marker.Passenger))return true;
             foreach(var rider in marker.Riders)if(SeatAlive(rider))return true;
             return false;
         }
+        /// <summary>Checks the current seat alive condition for explode.</summary>
         private static bool SeatAlive(GameObject npc)
         {if(npc==null)return false;foreach(var f in npc.GetComponents<PlayMakerFSM>())if(f.FsmName=="Health"){var health=f.FsmVariables.GetFsmFloat("Health");if(health!=null)return health.Value>0f;}return !npc.name.Contains("_Dead");}
 
         // the cargo trucks (Rustcargo...): same test as the convoy / template code
+        /// <summary>the cargo trucks (Rustcargo...): same test as the convoy / template code</summary>
         internal static bool IsTruck(string body) { return (body ?? "").StartsWith("Rust", StringComparison.OrdinalIgnoreCase); }
 
+        /// <summary>Handles the qualifying native event for wheel hinge for the current explode.</summary>
         private static bool OnWheelHinge(GameObject car, Transform t)
         {
             for (var a = t.parent; a != null && a != car.transform; a = a.parent)
@@ -143,6 +153,7 @@ namespace WildWasteland.Modules.Patrols
 
         // what a dead truck keeps working: the rear doors (parts/door_hinge_*: DoorOpen/DoorClose), the wheel hinges (Suspension,
         // checkWheel, attach - the NWH wheels read them) and the cargo in parts/PhysicsLock (its own LockPhysics/pickup FSMs)
+        /// <summary>what a dead truck keeps working: the rear doors (parts/door_hinge_*: DoorOpen/DoorClose), the wheel hinges (Suspension, checkWheel, attach - the NWH wheels read them) and the cargo in parts/PhysicsLock (its own LockPhysics/pickup FSMs)</summary>
         private static bool KeptOnTruck(GameObject car, Transform t)
         {
             for (var a = t; a != null && a != car.transform; a = a.parent)
@@ -151,6 +162,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Every attached part: a vehPart-tagged object under the car (not one nested in another part, not an occupant)
+        /// <summary>Every attached part: a vehPart-tagged object under the car (not one nested in another part, not an occupant)</summary>
         private static List<Transform> Parts(GameObject car)
         {
             var list = new List<Transform>();
@@ -165,6 +177,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Cargo locked in the bed: children of parts/PhysicsLock that carry a LockPhysics FSM
+        /// <summary>Cargo locked in the bed: children of parts/PhysicsLock that carry a LockPhysics FSM</summary>
         private static List<Transform> Cargo(GameObject car)
         {
             var list = new List<Transform>();
@@ -179,6 +192,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // [Scaling] ExplodedCarPartsPercent (2.6.4): a plain chance per part to keep its condition (was a weighted roll against 12 = 20 %)
+        /// <summary>[Scaling] ExplodedCarPartsPercent (2.6.4): a plain chance per part to keep its condition (was a weighted roll against 12 = 20 %)</summary>
         private static bool KeepsCondition()
         {
             float pct = Mathf.Clamp(PatrolsModule.ExplodedLootPercent.Value, 0f, 100f);
@@ -187,6 +201,7 @@ namespace WildWasteland.Modules.Patrols
             return UnityEngine.Random.value * 100f < pct;
         }
 
+        /// <summary>Applies the existing native destruction impulse to an eligible object.</summary>
         private static void Shove(Transform t, Vector3 centre, float min, float max)
         {
             if (t == null) return;
@@ -205,6 +220,7 @@ namespace WildWasteland.Modules.Patrols
         // play-on-awake; `Explosion` FSM: ParticleSystemPlay BigExplosion with children (fireball, smoke, debris, embers, light, shockwave) +
         // AudioPlay + a physics Explosion (force 3000, radius 5, which also helps throw the parts) + Wait 2 s + DestroySelf). Its damage FSMs,
         // sensors and trigger collider are disabled before they Start; it is not registered, so the game never saves it.
+        /// <summary>The exploder zombie's blast without its damage: the game's own Explosion_BlastZombie prefab (AudioSource explosion_03, 0.7, 100 m, play-on-awake; `Explosion` FSM: ParticleSystemPlay BigExplosion with children (fireball, smoke, debris, embers, light, shockwave) + AudioPlay + a physics Explosion (force 3000, radius 5, which also helps throw the parts) + Wait 2 s + DestroySelf). Its damage FSMs, sensors and trigger collider are disabled before they Start; it is not registered, so the game never saves it.</summary>
         private static void Blast(GameObject car)
         {
             Core.Services.RaiseVehicleExploded(car);   // WW: the NPC module subscribes (ex a Harmony patch on Apocapatrol.Explode.Blast)
