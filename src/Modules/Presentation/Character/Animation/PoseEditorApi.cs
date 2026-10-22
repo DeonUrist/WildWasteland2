@@ -43,11 +43,11 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Returns a complete detached aim/head/arm record.</summary>
         public float[] GetAim(string weapon,string clip,bool crouched){return (float[])AimLift.Get(weapon,clip,crouched).Clone();}
         /// <summary>Applies the existing bounded arm motion algorithm.</summary>
-        public void ArmMotion(bool left,Vector3 move,Vector3 rotation,float seconds){AimLift.ArmKeys(left,move,rotation,seconds);}
+        public void ArmMotion(bool left,Vector3 move,Vector3 rotation,float seconds){Finite(move.x);Finite(move.y);Finite(move.z);Finite(rotation.x);Finite(rotation.y);Finite(rotation.z);Finite(seconds);if(seconds<0f)throw new ArgumentOutOfRangeException(nameof(seconds));AimLift.ArmKeys(left,move,rotation,seconds);}
         /// <summary>Commits the preceding runtime weapon and arm motion.</summary>
         public void EndMotion(){GunPose.Flush();AimLift.EndArmKeys();AimLift.SaveIfDirty();}
         /// <summary>Applies a bounded immediate arm adjustment.</summary>
-        public void NudgeArm(bool left,int axis,float delta){if(axis<0||axis>4)throw new ArgumentOutOfRangeException(nameof(axis));AimLift.NudgeArm(left,axis,delta);}
+        public void NudgeArm(bool left,int axis,float delta){if(axis<0||axis>4)throw new ArgumentOutOfRangeException(nameof(axis));Finite(delta);AimLift.NudgeArm(left,axis,delta);}
         /// <summary>Resets one arm's offsets using the current eligible animation context.</summary>
         public void ResetArm(bool left){AimLift.ResetArm(left);}
         /// <summary>Saves complete weapon and aim tables.</summary>
@@ -56,5 +56,7 @@ namespace WildWasteland.Modules.Presentation
         public void Reload(){GunPose.ReloadFiles();AimLift.Load(PresentationModule.DataDir);}
         /// <summary>Rejects malformed buffers before publishing any live state.</summary>
         internal static void Validate(float[] values,int count){if(values==null||values.Length!=count)throw new ArgumentException("Unexpected pose dimensions");foreach(float v in values)if(float.IsNaN(v)||float.IsInfinity(v))throw new ArgumentException("Nonfinite pose value");}
+        /// <summary>Rejects invalid public motion input before it can contaminate the authored table.</summary>
+        private static void Finite(float value){if(float.IsNaN(value)||float.IsInfinity(value))throw new ArgumentException("Nonfinite pose motion");}
     }
 }
