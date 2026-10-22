@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Loot;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Loot
 {
     /// <summary>
     /// Cargo loot of patrol cars and trucks (Loot, ex Patrols Vehicles/Cargo.cs). Every vehicle has parts/PhysicsLock: BoxColliders
@@ -57,7 +57,7 @@ namespace WildWasteland.Modules.Patrols
             var slots = new List<Slot>();
             foreach (var pair in counts)
             {
-                var prefab = Prefabs.FindAny(pair.Key); // refs-ok: REFACTOR-REQUEST B15-3
+                var prefab = PrefabCatalog.Find(pair.Key); // refs-ok: REFACTOR-REQUEST B15-3
                 if (prefab != null && pair.Value > 0) slots.Add(new Slot { Prefab = prefab, Count = pair.Value });
                 else Log.Warn("[Patrols] " + "Loot prefab not found: " + pair.Key);
             }
@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.Patrols
             Vector3 spot = rear != null && rear.gameObject.activeInHierarchy ? rear.position : driver != null ? driver.position - ct.forward * 0.6f : ct.position;
             foreach (var slot in slots) for (int i = 0; i < slot.Count; i++)
             {
-                yield return BuildQueue.Continue; if (car == null) yield break; // refs-ok: REFACTOR-REQUEST B15-3
+                yield return null; if (car == null) yield break; // refs-ok: REFACTOR-REQUEST B15-3
                 Vector3 p = spot + ct.right * UnityEngine.Random.Range(-0.3f, 0.3f) + ct.forward * UnityEngine.Random.Range(-0.2f, 0.2f);
                 var go = UnityEngine.Object.Instantiate(slot.Prefab, p + ct.up, ct.rotation);
                 go.SetActive(true); var bounds = Bounds(go);
@@ -126,7 +126,7 @@ namespace WildWasteland.Modules.Patrols
                 wanted += slot.Count;
                 for (int i = 0; i < slot.Count; i++)
                 {
-                    if (sinceYield > 0) { sinceYield = 0; yield return BuildQueue.Continue; if (car == null || t == null) yield break; } // refs-ok: REFACTOR-REQUEST B15-3
+                    if (sinceYield > 0) { sinceYield = 0; yield return null; if (car == null || t == null) yield break; } // refs-ok: REFACTOR-REQUEST B15-3
                     sinceYield++;
                     var go = UnityEngine.Object.Instantiate(slot.Prefab, t.TransformPoint(new Vector3(0f, ceilY + 5f, 0f)), t.rotation);
                     go.SetActive(true);
