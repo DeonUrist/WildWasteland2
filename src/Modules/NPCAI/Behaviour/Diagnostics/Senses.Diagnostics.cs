@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -20,7 +21,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Per-agent verbose log line (callers build the text; Wave B guards it by level).</summary>
         private static void Log(Agent a, string s)
         {
-            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Senses: " + a.Owner.name + " " + s);
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Senses: " + a.Owner.name + " " + s);
         }
 
         /// <summary>Status line for the Debug page and the log.</summary>
@@ -28,17 +29,17 @@ namespace WildWasteland.Modules.NPC
 
         private static readonly Color[] SrcColor = { Color.gray, new Color(0.4f, 0.6f, 1f), new Color(0.4f, 0.9f, 0.4f), new Color(1f, 0.9f, 0.2f), new Color(1f, 0.55f, 0.15f), new Color(1f, 0.3f, 0.9f), new Color(1f, 0.25f, 0.2f) };
         /// <summary>ShowNavigation overlay: ghosts (by source colour) and each agent's state label.</summary>
-        internal static void DrawDebug()
+        internal static void CollectDebug(List<DiagnosticMarker> markers)
         {
-            if (!On || !NpcModule.ShowNav.Value) return;
+            if (!On || !WildWasteland.Core.NavigationDiagnosticState.Overlay) return;
             var cam = Core.GameRefs.MainCamera; if (cam == null) return;
-            float now = Time.time, r2 = DebugOverlay.Range * DebugOverlay.Range; Vector3 cp = cam.transform.position;   // (WW perf) no label strings for what is not drawn
+            float now = Time.time, r2 = NavigationDiagnosticState.Range * NavigationDiagnosticState.Range; Vector3 cp = cam.transform.position;   // (WW perf) no label strings for what is not drawn
             foreach (var g in _ghosts)
             {
                 if ((g.Pos - cp).sqrMagnitude > r2) continue;
                 var c = g.Retired ? Color.gray : SrcColor[(int)g.Src];
-                DebugOverlay.Mark(g.Pos + Vector3.up * 1.2f, c, 14f);
-                DebugOverlay.Label(g.Pos + Vector3.up * 1.6f, "#" + g.Id + " " + g.Src.ToString().ToUpperInvariant() + (g.Retired ? " (searched)" : "") + " " + g.About + "  (" + g.Holders.Count + ", " + (now - g.Born).ToString("0") + " s)", c);
+                DiagnosticMarkers.Mark(markers, g.Pos + Vector3.up * 1.2f, c, 14f);
+                DiagnosticMarkers.Label(markers, g.Pos + Vector3.up * 1.6f, "#" + g.Id + " " + g.Src.ToString().ToUpperInvariant() + (g.Retired ? " (searched)" : "") + " " + g.About + "  (" + g.Holders.Count + ", " + (now - g.Born).ToString("0") + " s)", c);
             }
             foreach (var kv in _agents)
             {
@@ -53,7 +54,7 @@ namespace WildWasteland.Modules.NPC
                     default: s = "SEARCH " + Mathf.Max(0f, a.SearchUntil - now).ToString("0") + " s"; c = new Color(0.75f, 0.6f, 1f); break;
                 }
                 Vector3 top = a.Col != null ? new Vector3(a.Col.bounds.center.x, a.Col.bounds.max.y, a.Col.bounds.center.z) : a.T.position + Vector3.up * 2f;
-                DebugOverlay.Label(top + Vector3.up * 0.35f, Prefab(a.Owner.name) + ": " + s, c);
+                DiagnosticMarkers.Label(markers, top + Vector3.up * 0.35f, Prefab(a.Owner.name) + ": " + s, c);
             }
         }
     }

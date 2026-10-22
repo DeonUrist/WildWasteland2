@@ -49,18 +49,12 @@ namespace WildWasteland.Modules.NPC
         partial void InitPresentationJobs();
         /// <summary>Gunplay: the WeaponRanges.Sweep job (after Aim.Sweep, as before).</summary>
         partial void InitGunplayJobs();
-        /// <summary>Debug: the ShowNavigation overlay Gui job and its live switch.</summary>
-        partial void InitDebug();
         /// <summary>Core (Hotkeys): the player's shout key.</summary>
         partial void InitCoreShout();
         /// <summary>Tools: the POI pathfinding setup job (before PoiNav.Build, as before).</summary>
         partial void InitToolsPoiNavSetup();
         /// <summary>Tools: the POI navigation data view, its editor jobs and the editor hotkey (after PoiNav.Traverse, as before).</summary>
         partial void InitToolsPoiNavEditor();
-        /// <summary>Debug: unsubscribes the ShowNavigation live switch (first step of Shutdown, as before).</summary>
-        partial void ShutdownDebugSwitch();
-        /// <summary>Debug: forgets the overlay job (end of Shutdown).</summary>
-        partial void ShutdownDebug();
         /// <summary>Presentation: Women of Wasteland shutdown step.</summary>
         static partial void ShutdownPresentationWomen();
         /// <summary>Compatibility: Weapons Pack shutdown step.</summary>
@@ -143,7 +137,7 @@ namespace WildWasteland.Modules.NPC
             Scheduler.EveryFrame(this, "DogBite", DogBite.Tick);
             Scheduler.Interval(this, "Aim.Sweep", 10f, Aim.Sweep);
             InitGunplayJobs();                             // "WeaponRanges.Sweep"
-            InitDebug();                                   // "Overlay" (Gui)
+
 
             InitCoreShout();                               // [Keys] Shout
 
@@ -163,7 +157,7 @@ namespace WildWasteland.Modules.NPC
         {
             // first: every handler / On property sees the module off (FSM events sent below re-enter our hooks synchronously)
             Running = false;
-            ShutdownDebugSwitch();
+
             if (_subscribed)
             {
                 Services.CrewBailedOut -= OnCrewBailedOut;
@@ -188,7 +182,7 @@ namespace WildWasteland.Modules.NPC
             ShutdownGunplay();
             Step("Senses", Senses.Shutdown);
             ResetAll();
-            ShutdownDebug();
+
             Instance = null;
         }
 

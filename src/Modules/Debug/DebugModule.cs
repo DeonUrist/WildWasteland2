@@ -5,6 +5,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
+using WildWasteland.Core.Optimization;
 
 namespace WildWasteland.Modules.Debug
 {
@@ -50,6 +51,8 @@ namespace WildWasteland.Modules.Debug
             VerboseLevel.SettingChanged += PolicyChanged;
             _traceHandlers.SettingChanged += PolicyChanged;
             ApplyPolicy();
+            Core.Trace.Marked += Measurements.MarkTag;
+            OptimizationMetrics.Marked += Measurements.MarkTag;
             WeatherDiagnosticState.StateChanged += WeatherDiagnosticTools.OnStateChanged;
             WeatherDiagnosticState.CameraRecordRequested += WeatherDiagnosticTools.OnCameraRecord;
             WeatherDiagnosticState.Reset();
@@ -73,6 +76,7 @@ namespace WildWasteland.Modules.Debug
             shell.Row(this, SettingsShell.Page.Debug, "Logging", VerboseLevel, "Logging level");
             shell.Row(this, SettingsShell.Page.Debug, "Measurements", _traceHandlers, "Trace hook and event handlers");
             shell.Custom(this, SettingsShell.Page.Debug, "Measurements", DrawMeasurements);
+            shell.Custom(this, SettingsShell.Page.Developer, "Optimizations", OptimizationDiagnosticsPage.DrawDeveloper);
             shell.Resettable(this, SettingsShell.Page.Debug, VerboseLevel);
             shell.Resettable(this, SettingsShell.Page.Debug, _traceHandlers);
         }
@@ -112,6 +116,7 @@ namespace WildWasteland.Modules.Debug
         {
             Scheduler.ResetStats();
             Core.Trace.ResetStats();
+            Hooks.ResetStats(); ModEvents.ResetStats(); OptimizationMetrics.Reset();
             Measurements.Reset();
         }
 
@@ -133,6 +138,8 @@ namespace WildWasteland.Modules.Debug
         public override void Shutdown()
         {
             _running = false;
+            Core.Trace.Marked -= Measurements.MarkTag;
+            OptimizationMetrics.Marked -= Measurements.MarkTag;
             WeatherDiagnosticState.Reset();
             WeatherDiagnosticState.StateChanged -= WeatherDiagnosticTools.OnStateChanged;
             WeatherDiagnosticState.CameraRecordRequested -= WeatherDiagnosticTools.OnCameraRecord;

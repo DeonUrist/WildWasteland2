@@ -83,7 +83,7 @@ namespace WildWasteland.Modules.NPC
             if (!_travel.TryGetValue(id, out o) || !ReferenceEquals(o.Npc, npc)) { o = new Order { Npc = npc }; _travel[id] = o; }
             else if (o.State != 1 || Flat(o.Point - point.Value) > 4f) { o.Tries = 0; o.Best = float.MaxValue; }   // a new goal: tries count again
             o.Point = point.Value; o.Radius = Mathf.Max(0.3f, radius); o.State = 1; o.Touched = Time.time;
-            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Idle: " + npc.name + " sent to travel " + Flat(npc.transform.position - o.Point).ToString("0") + " m (arrive within " + o.Radius.ToString("0.0") + " m)");
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Idle: " + npc.name + " sent to travel " + Flat(npc.transform.position - o.Point).ToString("0") + " m (arrive within " + o.Radius.ToString("0.0") + " m)");
         }
 
         internal static int TravelState(GameObject npc)
@@ -388,7 +388,7 @@ namespace WildWasteland.Modules.NPC
             bool idle = a.State == Senses.State.Idle && a.Target == null && a.Ghost == null && (a.DetectedVar == null || a.DetectedVar.Value == null);
             if (!idle)
             {
-                if (c.Leg != Leg.None || c.Moving || c.Turning) { Stop(c, false); if (NpcModule.VerboseLog.Value) Log(c, "travel paused (" + a.State + ")"); }
+                if (c.Leg != Leg.None || c.Moving || c.Turning) { Stop(c, false); if (WildWasteland.Core.Log.L2) Log(c, "travel paused (" + a.State + ")"); }
                 c.ThinkKind = 0; c.WaitUntil = 0f;
                 return;
             }
@@ -560,7 +560,7 @@ namespace WildWasteland.Modules.NPC
         {
             c.Leg = leg; c.Goal = goal; c.LegStart = now; c.ProgressAt = now; c.BestLeft = float.MaxValue; c.Speed = speed;
             if (leg == Leg.Home) Log(c, "runs home (" + Flat(c.A.T.position - goal).ToString("0") + " m, try " + (c.Tries + 1) + ")");
-            else if (leg == Leg.Travel && NpcModule.VerboseLog.Value) Log(c, (speed > 2.5f ? "runs" : "walks") + " to its travel goal (" + Flat(c.A.T.position - goal).ToString("0") + " m" + (c.Ord != null && c.Ord.Tries > 0 ? ", try " + (c.Ord.Tries + 1) : "") + ")");
+            else if (leg == Leg.Travel && WildWasteland.Core.Log.L2) Log(c, (speed > 2.5f ? "runs" : "walks") + " to its travel goal (" + Flat(c.A.T.position - goal).ToString("0") + " m" + (c.Ord != null && c.Ord.Tries > 0 ? ", try " + (c.Ord.Tries + 1) : "") + ")");
             LegThink(c, now, c.A.T.position);
             if (c.Leg != Leg.None) Go(c, speed);
         }
@@ -762,7 +762,7 @@ namespace WildWasteland.Modules.NPC
 
         private static void Log(Ctl c, string msg)
         {
-            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Idle: " + (c.A.Owner != null ? c.A.Owner.name : "?") + " " + msg);
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Idle: " + (c.A.Owner != null ? c.A.Owner.name : "?") + " " + msg);
         }
     }
 }

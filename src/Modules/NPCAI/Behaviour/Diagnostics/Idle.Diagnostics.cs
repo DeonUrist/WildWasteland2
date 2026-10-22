@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
@@ -10,9 +11,9 @@ namespace WildWasteland.Modules.NPC
     {
         // [Debug] ShowNavigation: home (green; grey = forgotten), patrol points (lime), search points (violet) and a label above the head
         /// <summary>ShowNavigation overlay: homes, patrol / search points and a label above each idle controller.</summary>
-        internal static void DrawDebug()
+        internal static void CollectDebug(List<DiagnosticMarker> markers)
         {
-            if (!NpcModule.ShowNav.Value || _ctl.Count == 0) return;
+            if (!WildWasteland.Core.NavigationDiagnosticState.Overlay || _ctl.Count == 0) return;
             var cam = Core.GameRefs.MainCamera; if (cam == null) return;
             float now = Time.time;
             Vector3 cp = cam.transform.position;
@@ -22,10 +23,10 @@ namespace WildWasteland.Modules.NPC
                 if (c.Excluded || a.Owner == null || a.T.parent != null || (a.T.position - cp).sqrMagnitude > 200f * 200f) continue;
                 if (c.HasHome)
                 {
-                    DebugOverlay.Mark(c.Home + Vector3.up * 0.2f, c.Forgotten ? Color.gray : Color.green, 10f);
-                    if (c.Points != null) foreach (var p in c.Points) DebugOverlay.Mark(p + Vector3.up * 0.2f, new Color(0.6f, 1f, 0.2f), 7f);
+                    DiagnosticMarkers.Mark(markers, c.Home + Vector3.up * 0.2f, c.Forgotten ? Color.gray : Color.green, 10f);
+                    if (c.Points != null) foreach (var p in c.Points) DiagnosticMarkers.Mark(markers, p + Vector3.up * 0.2f, new Color(0.6f, 1f, 0.2f), 7f);
                 }
-                if (c.InSearch && c.SPts != null) foreach (var p in c.SPts) DebugOverlay.Mark(p + Vector3.up * 0.2f, new Color(0.75f, 0.6f, 1f), 7f);
+                if (c.InSearch && c.SPts != null) foreach (var p in c.SPts) DiagnosticMarkers.Mark(markers, p + Vector3.up * 0.2f, new Color(0.75f, 0.6f, 1f), 7f);
                 string s = null; Color col = new Color(0.6f, 1f, 0.6f);
                 if (c.InSearch)
                 {
@@ -47,7 +48,7 @@ namespace WildWasteland.Modules.NPC
                 if (c.Leg == Leg.Travel) { s = "TRAVEL " + Flat(a.T.position - c.Goal).ToString("0") + " m" + (c.Ord != null && c.Ord.Tries > 0 ? " (try " + (c.Ord.Tries + 1) + ")" : ""); col = Color.cyan; }
                 if (s == null) continue;
                 Vector3 top = a.Col != null ? new Vector3(a.Col.bounds.center.x, a.Col.bounds.max.y, a.Col.bounds.center.z) : a.T.position + Vector3.up * 2f;
-                DebugOverlay.Label(top + Vector3.up * (c.InSearch ? 0.65f : 0.35f), s, col);   // the senses' own label (SEARCH ...) sits at +0.35
+                DiagnosticMarkers.Label(markers, top + Vector3.up * (c.InSearch ? 0.65f : 0.35f), s, col);   // the senses' own label (SEARCH ...) sits at +0.35
             }
         }
     }

@@ -168,7 +168,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (companion != null) dog.NextBite = companion.NativeNextBite;
             Dogs[id] = dog;
-            if (NpcModule.DogLog.Value) NpcModule.Log.LogInfo("Dog animations: " + agent.Owner.name + " mapped " + bones.Length + " bones; " + clips.Count + " clips.");
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Dog animations: " + agent.Owner.name + " mapped " + bones.Length + " bones; " + clips.Count + " clips.");
         }
 
         private static bool Eligible(Dog d)
@@ -204,7 +204,7 @@ namespace WildWasteland.Modules.NPC
                 for (int i = 0; i < d.Meshes.Length; i++) if (d.Meshes[i] != null)
                 { d.MeshOffscreen[i] = d.Meshes[i].updateWhenOffscreen; d.MeshBounds[i] = d.Meshes[i].localBounds; }
                 MeshCulling(d, !Core.SaveBus.Busy);
-                if (NpcModule.DogLog.Value) NpcModule.Log.LogInfo("Dog animations: " + d.Agent.Owner.name + " companion mesh bounds updating (" + d.Meshes.Length + " renderers).");
+                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Dog animations: " + d.Agent.Owner.name + " companion mesh bounds updating (" + d.Meshes.Length + " renderers).");
             }
             for (int i = 0; i < d.Ik.Length; i++) if (d.Ik[i] != null) { d.IkEnabled[i] = d.Ik[i].enabled; d.Ik[i].enabled = false; }
             d.Prepared = true;
@@ -468,7 +468,7 @@ namespace WildWasteland.Modules.NPC
             if (!Physics.Raycast(h + Vector3.up * .8f, Vector3.down, out gh, 2.5f, Floor, QueryTriggerInteraction.Ignore)) return;
             float extra = frontLift != null ? frontLift.Value : 0f;
             float lift = ((h.y - gh.point.y) + d.ShoulderOverHip - (s.y - gs.point.y) + extra) * w;
-            if (NpcModule.DogLog.Value && d.Pose == Pose.Rest && !d.LevelLogged)
+            if (WildWasteland.Core.Log.L2 && d.Pose == Pose.Rest && !d.LevelLogged)
             {
                 d.LevelLogged = true;
                 NpcModule.Log.LogInfo("Dog animations: " + d.Agent.Owner.name + " lying: shoulders " + (s.y - gs.point.y).ToString("F3") + " m, hips " + (h.y - gh.point.y).ToString("F3") + " m above the ground (standing: shoulders " + d.ShoulderOverHip.ToString("F3") + " m over the hips); front raised " + lift.ToString("F3") + " m at " + d.FrontRoot.name);

@@ -128,7 +128,7 @@ namespace WildWasteland.Modules.NPC
             n.Hunter = hunter;
             n.NextToggle = 0f;      // spawned: burrows at once, if it stands on sand and nothing alerts it
             _list.Add(n);
-            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: " + a.Owner.name + (hunter ? " hunts underground" : " can burrow") + " (depth " + n.Depth.ToString("0.00") + " m, body " + h.ToString("0.00") + " m, radius " + n.Radius.ToString("0.00") + " m)");
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: " + a.Owner.name + (hunter ? " hunts underground" : " can burrow") + " (depth " + n.Depth.ToString("0.00") + " m, body " + h.ToString("0.00") + " m, radius " + n.Radius.ToString("0.00") + " m)");
         }
 
         internal static void Tick()
@@ -219,7 +219,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (p == Phase.Rising) { b.A.AmbushDist = 0f; b.A.Burrowed = false; }      // eyes were at the surface all along; the 360 degree look ends when it comes out
             Fx(b, b.T.position);
-            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + (p == Phase.Burrowing ? " burrows (" + (b.Hunter ? "hunts within " : "ambush at ") + b.A.AmbushDist.ToString("0.0") + " m)" : fast ? " is alerted, comes up" : " comes up"));
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + (p == Phase.Burrowing ? " burrows (" + (b.Hunter ? "hunts within " : "ambush at ") + b.A.AmbushDist.ToString("0.0") + " m)" : fast ? " is alerted, comes up" : " comes up"));
         }
 
         // ---------- (1.4.0) the underground hunt ----------
@@ -245,7 +245,7 @@ namespace WildWasteland.Modules.NPC
             b.Held = Brain.SetTravel(b.A.Owner, true);       // stands still from now on: no pedal, no thinking, no stuck judgement
             Fx(b, b.T.position);
             b.Phase = Phase.Diving;
-            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + " dives after " + b.A.Target.name + (b.Fallback ? " (no room behind it: comes back up here in " + b.TravelEnd.ToString("0.0") + " s)" : ", travels " + b.TravelEnd.ToString("0.0") + " s at " + RunSpeed(b).ToString("0.0") + " m/s"));
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + " dives after " + b.A.Target.name + (b.Fallback ? " (no room behind it: comes back up here in " + b.TravelEnd.ToString("0.0") + " s)" : ", travels " + b.TravelEnd.ToString("0.0") + " s at " + RunSpeed(b).ToString("0.0") + " m/s"));
         }
 
         private static void BeginTravel(B b, float now)
@@ -303,7 +303,7 @@ namespace WildWasteland.Modules.NPC
             }
             b.RiseRate = Mathf.Max(0.05f, b.Amount) / Mathf.Max(0.1f, NpcModule.HuntRiseSeconds.Value);      // bursts out
             Go(b, Phase.Rising, true);
-            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + " bursts out " + (b.Fallback || at == b.Origin ? "where it went down" : (Vector3.Distance(at, b.Origin).ToString("0.0") + " m away")));
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + " bursts out " + (b.Fallback || at == b.Origin ? "where it went down" : (Vector3.Distance(at, b.Origin).ToString("0.0") + " m away")));
         }
 
         private static void EndHunt(B b, float now)
@@ -411,7 +411,7 @@ namespace WildWasteland.Modules.NPC
                 string n = (l.name ?? "") + "|" + (l.diffuseTexture != null ? l.diffuseTexture.name : "");
                 foreach (var k in keys) { string kk = k.Trim(); if (kk.Length > 0 && n.IndexOf(kk, StringComparison.OrdinalIgnoreCase) >= 0) { res[i] = true; any = true; break; } }
             }
-            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: terrain layers " + string.Join(", ", Array.ConvertAll(layers, l => l == null ? "-" : l.name)) + (any ? "" : " (no sand-named layer: TerrainIsSand rules)"));
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: terrain layers " + string.Join(", ", Array.ConvertAll(layers, l => l == null ? "-" : l.name)) + (any ? "" : " (no sand-named layer: TerrainIsSand rules)"));
             return any ? res : null;
         }
     }
