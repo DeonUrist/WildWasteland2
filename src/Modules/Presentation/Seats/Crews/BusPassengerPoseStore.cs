@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// The bus passenger pose preset (one for all bus passengers): loaded lazily from <c>config/WildWasteland/Presentation/BusPassengerPose.json</c>

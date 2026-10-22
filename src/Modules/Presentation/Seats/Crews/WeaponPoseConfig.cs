@@ -1,7 +1,8 @@
+using WildWasteland.Modules.Presentation;
 using BepInEx.Configuration;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Held-weapon offset (hand-local position and rotation) of a ranged human's seat pose profile.</summary>
     internal class WeaponPoseConfig

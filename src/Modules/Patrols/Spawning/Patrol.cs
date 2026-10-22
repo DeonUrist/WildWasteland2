@@ -1,3 +1,4 @@
+using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -379,7 +380,7 @@ namespace WildWasteland.Modules.Patrols
             var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
             if (sit == null) { Core.Log.Warn("[Patrols] " + "No sitPos on " + car.name); return null; }
 
-            var off = new Vector3(PatrolsModule.DriverOffsetX.Value, PatrolsModule.DriverOffsetY.Value, PatrolsModule.DriverOffsetZ.Value);
+            var off = new Vector3(SeatPoseSettings.DriverOffsetX.Value, SeatPoseSettings.DriverOffsetY.Value, SeatPoseSettings.DriverOffsetZ.Value);
             var pos = sit.position + car.transform.right * off.x + car.transform.up * off.y + car.transform.forward * off.z;
             var rot = Quaternion.LookRotation(car.transform.forward, car.transform.up);
             var drv = UnityEngine.Object.Instantiate(prefab, pos, rot);
@@ -441,7 +442,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 var col = chair.GetComponentInChildren<Collider>(true);
                 var top = col != null ? new Vector3(col.bounds.center.x, col.bounds.max.y, col.bounds.center.z) : chair.position;
-                anchor.position = top + car.transform.up * (0.08f - PatrolsModule.DriverOffsetY.Value);   // Pose puts the hips at anchor + DriverOffset
+                anchor.position = top + car.transform.up * (0.08f - SeatPoseSettings.DriverOffsetY.Value);   // Pose puts the hips at anchor + DriverOffset
                 anchor.rotation = car.transform.rotation * Quaternion.Euler(0f, -90f, 0f);
                 PatrolsModule.Verbose("Passenger on the bus chair at local " + car.transform.InverseTransformPoint(anchor.position).ToString("F2"));
             }
@@ -463,7 +464,7 @@ namespace WildWasteland.Modules.Patrols
             if (prefab == null) { Core.Log.Warn("[Patrols] " + role + " prefab not found: " + prefabName); return null; }
 
             // along the anchor's axes (= the car's for every seat but the bus chair, which faces sideways)
-            var off = new Vector3(PatrolsModule.DriverOffsetX.Value, PatrolsModule.DriverOffsetY.Value, PatrolsModule.DriverOffsetZ.Value);
+            var off = new Vector3(SeatPoseSettings.DriverOffsetX.Value, SeatPoseSettings.DriverOffsetY.Value, SeatPoseSettings.DriverOffsetZ.Value);
             var pos = anchor.position + anchor.right * off.x + anchor.up * off.y + anchor.forward * off.z;
             var rot = Quaternion.LookRotation(anchor.forward, anchor.up);
             var go = UnityEngine.Object.Instantiate(prefab, pos, rot);
@@ -480,7 +481,7 @@ namespace WildWasteland.Modules.Patrols
             root.interpolation = RigidbodyInterpolation.None;
             Rider.NoContacts(go);   // no contacts while seated, only bullet hits (was: every collider pair vs the car ignored)
             go.transform.SetParent(anchor, true);
-            if (PatrolsModule.PoseEnabled.Value)
+            if (SeatPoseSettings.PoseEnabled.Value)
             {
                 var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Apply(go, anchor, prefab.name);
                 if (!passenger) pose?.SetShooting(false);   // a driver sits with its hands on the wheel; PassengerGuard raises the gun only while it fires
@@ -609,7 +610,7 @@ namespace WildWasteland.Modules.Patrols
             var oldAnchor = pax.transform.parent;
             if (guard && PatrolsModule.RangedCombat.Value) combat.Mute(pax,true);
             else { if (guard) combat.Release(pax); guard = false; Crew.MuteAi(pax); }
-            var off = new Vector3(PatrolsModule.DriverOffsetX.Value, PatrolsModule.DriverOffsetY.Value, PatrolsModule.DriverOffsetZ.Value);
+            var off = new Vector3(SeatPoseSettings.DriverOffsetX.Value, SeatPoseSettings.DriverOffsetY.Value, SeatPoseSettings.DriverOffsetZ.Value);
             pax.transform.SetParent(sit, true);
             pax.transform.position = sit.position + car.transform.right * off.x + car.transform.up * off.y + car.transform.forward * off.z;
             pax.transform.rotation = Quaternion.LookRotation(car.transform.forward, car.transform.up);

@@ -2,7 +2,7 @@ using BepInEx.Configuration;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>One float seat-pose setting, always backed by an F7 tools.cfg entry (the old in-memory "PoseConfiguration = false" path is gone).</summary>
     internal class PoseFloat

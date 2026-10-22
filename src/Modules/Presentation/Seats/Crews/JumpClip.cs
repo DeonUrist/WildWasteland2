@@ -10,7 +10,7 @@ using UnityEngine.Playables;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     // A jumped-off turret's fresh mob: its velocity is applied once its FSMs have started (Movement's Idle sets the velocity to 0 on entry),
     // and Apocaplayer's Jump clip plays on its own Animator through a PlayableGraph until it is back on the ground (0.25..1.5 s); then the
@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.Patrols
             _rb = GetComponent<Rigidbody>(); _col = GetComponent<Collider>();
             try
             {
-                var clip = Rider.Clip("Jump"); var anim = GetComponentInChildren<Animator>();
+                var clip = Core.ModApi.Get<Core.IAnimationApi>()?.GetClip("Jump"); var anim = GetComponentInChildren<Animator>();
                 if (clip != null && anim != null && anim.isHuman)
                 {
                     _graph = PlayableGraph.Create("Apocapatrol.JumpOff");
@@ -45,7 +45,7 @@ namespace WildWasteland.Modules.Patrols
 
         /// <summary>Applies the jump velocity once the mob FSMs have started (second physics step).</summary>
         private void FixedUpdate()
-        { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
+        { if (!(Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.Running==true)) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             if (_pushed || ++_frames < 2) return;
             _pushed = true;
             if (_rb != null && !_rb.isKinematic) _rb.velocity = Velocity;
@@ -53,7 +53,7 @@ namespace WildWasteland.Modules.Patrols
 
         /// <summary>Ends the clip on landing (or after 1.5 s), turns the mob to the player and alerts it, then removes the component.</summary>
         private void Update()
-        { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
+        { if (!(Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.Running==true)) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             float t = Time.time - _start;
             bool grounded = false;
             if (t > 0.25f && _col != null && (_rb == null || _rb.velocity.y <= 0.5f))

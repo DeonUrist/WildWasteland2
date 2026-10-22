@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     // Runs after animation/pose work, including frames where the distant pose is throttled.
     [DefaultExecutionOrder(20000)]
@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.Patrols
 
         /// <summary>After animation and pose work: keeps the rider parented and on its anchor with a kinematic body that follows the transform.</summary>
         private void LateUpdate()
-        { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
+        { if (!(Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.Running==true)) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             if (_mounted == null || !_mounted() || _anchor == null) return;
             if (transform.parent != _anchor) transform.SetParent(_anchor, true);
             // Every turret's sitting/standing height is owned by Pose, including lance throwers.

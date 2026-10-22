@@ -7,7 +7,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     // Custom paint for the mod's own cars: BepInEx/plugins/Apocapatrol/Textures/<texture name>.png replaces the frame texture of that name
     // on every car the mod spawns (and on its saved cars after a load). Textures/junker.png = the Junker body's "junker" texture.
@@ -105,7 +105,7 @@ namespace WildWasteland.Modules.Patrols
         internal static void Apply(GameObject car, string body,string faction=null)
         {
             if (car == null || !Enabled || _dir == null || !Directory.Exists(_dir)) return;
-            faction=faction??car.GetComponent<PatrolMarker>()?.Faction??"Scrapyard";   // refs-ok: REFACTOR-REQUEST B06-3 (no IPatrols faction query; Patrols should pass the faction)
+            faction=faction??Core.ModApi.Get<Core.IVehicleCrewMetadata>()?.Faction(car)??"Scrapyard";   // refs-ok: REFACTOR-REQUEST B06-3 (no IPatrols faction query; Patrols should pass the faction)
             int n = 0;
             string bodyTexName = null, bodyFile = null; Texture2D bodyTex = null;
             if (!string.IsNullOrEmpty(body) && BodyTexture.TryGetValue(body, out bodyTexName))
@@ -398,7 +398,7 @@ namespace WildWasteland.Modules.Patrols
         private static bool OnFrame(GameObject car, Transform t)
         {
             for (var a = t; a != null && a != car.transform; a = a.parent)
-                if (a.CompareTag("vehPart") || a.GetComponent<Crew>() != null ||   // refs-ok: REFACTOR-REQUEST B06-3 (crew root marker)
+                if (a.CompareTag("vehPart") || Core.ModApi.Get<Core.IVehicleCrewMetadata>()?.HasCrewController(a.gameObject)==true ||   // refs-ok: REFACTOR-REQUEST B06-3 (crew root marker)
                      a.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0
                     || a.name.IndexOf("(Passenger)", StringComparison.Ordinal) >= 0 || a.name.IndexOf("_Dead", StringComparison.Ordinal) >= 0
                     || a.name == "PhysicsLock"||a.name=="Apocapatrol.Merchant") return false;

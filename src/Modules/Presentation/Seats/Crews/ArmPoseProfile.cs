@@ -1,8 +1,9 @@
+using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections.Generic;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Per-human seated arm pose (both arms, elbows, hands) plus the held-weapon offset for ranged humans.</summary>
     internal class ArmPoseProfile

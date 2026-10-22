@@ -4,7 +4,7 @@ using BepInEx.Configuration;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Config entries of the crew seat poses (live occupants, per-human arm/weapon profiles, crouched turret gunners, the Warboy lance prop).

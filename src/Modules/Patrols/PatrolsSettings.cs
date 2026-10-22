@@ -1,3 +1,4 @@
+using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections.Generic;
 using BepInEx.Configuration;
@@ -250,7 +251,6 @@ namespace WildWasteland.Modules.Patrols
             BindVehiclesTuning(cfg);
             BindNpcaiRiderLeap(cfg);
 
-            BindPresentationTurret(cfg);
 
             StuckPedalChance = cfg.Tool(TDriving, "StuckPedalChance", 5f, "% chance that a killed driver's gas pedal stays stuck; otherwise the gas is released and the car rolls to a stop", new AcceptableValueRange<float>(0f, 100f));
             BailChance = cfg.Tool(TDriving, "BailChance", 25f,
@@ -315,7 +315,6 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Binds the Combat tuning entries of the rider leap and lance (leap speed, blast damage/radius, lance speed). Implemented in NPCAI (_fromPatrols).</summary>
         partial void BindNpcaiRiderLeap(ModuleConfig cfg);
         /// <summary>Binds the Turret pose entries (crouched gunner pose and the Warboy lance prop). Implemented in Presentation (_fromPatrols).</summary>
-        partial void BindPresentationTurret(ModuleConfig cfg);
         /// <summary>Wires the Core QuietFsm switch to its entry (initial value + live changes). Implemented in Core (_fromPatrols).</summary>
         partial void HookCoreSettings();
         /// <summary>Binds the seated-occupant pose entries (Pose, Pose.&lt;Human&gt;). Implemented in Presentation (_fromPatrols).</summary>

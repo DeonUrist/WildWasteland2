@@ -2,7 +2,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     // (2.6.1) Human turrets animated by the player animation framework (ex Apocaplayer's ModAPI): the player's own crouch set on the roof -
     // a Warboy crouches (CrouchIdle) and throws his lance over the crouched legs (ThrowRight on the upper body), stands up before a
@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.Patrols
         {
             var api = ModApi.Get<IAnimationApi>();
             if (api == null || a == null || !a.isHuman) return null;
-            if (api.Find(a) != null) { PatrolsModule.Verbose("Human turrets: " + a.gameObject.name + " is already animated by another mod - left to it"); return null; }
+            if (api.Find(a) != null) { Core.Log.Deep(PresentationModule.Instance,"Human turrets: " + a.gameObject.name + " is already animated by another mod - left to it"); return null; }
             var c = api.Attach(a);
             if (c == null) return null;
             c.ManualVelocity = true; c.Velocity = Vector3.zero;

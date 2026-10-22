@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// <see cref="IVehicleSkins"/> provider of the Presentation World part (README D10): faction paintjobs and the cargo container pictures

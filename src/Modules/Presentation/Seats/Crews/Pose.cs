@@ -4,7 +4,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     // One fixed seated limb pose for every live occupant. A ranged passenger may rotate that fixed pose through the
     // spine, but combat never receives control of the arms or legs.
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Patrols
         // Sitting/standing is independent of platform: roof turrets turn freely; motorcycle turrets retain BikeArc.
         private bool _turret, _turretSeated;
         private bool _turretBike,_turretWarboy;
-        private RiderGuard _turretRider;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+        private Core.IRiderPresentationState _turretRider;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
         private float _turretYaw;
         // 2.6.1: a roof gunner animated by Apocaplayer's ModAPI (PlayerAnims): the player's crouch with the gun in the right hand, aiming; this
         // class then only turns the whole body to the target and keeps its feet on the spot. null = the bone squat below (bike seats always)
@@ -127,7 +127,7 @@ namespace WildWasteland.Modules.Patrols
         public void ConfigureTurret(bool standing,bool bike,bool warboy=false)
         {
             _turret = true; _turretSeated = !standing;_turretBike=bike;_turretWarboy=warboy;
-            if(warboy)_turretRider=GetComponent<RiderGuard>();   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+            if(warboy)foreach(var component in GetComponents<MonoBehaviour>())if(component is Core.IRiderPresentationState)_turretRider=(Core.IRiderPresentationState)component;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
             _lockSeatRotation = false;
             _turretYaw = 0f;
             if (!warboy && (standing || !bike) && _body == null && PlayerAnims.Available)
@@ -223,7 +223,7 @@ namespace WildWasteland.Modules.Patrols
 
         /// <summary>Applies the seated pose after animation (distance throttled: every 4th frame beyond 120 m, every 16th beyond 300 m): legs, arms (bus preset, profile or generic), spine aim and hips on the anchor.</summary>
         private void LateUpdate()
-        { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
+        { if (!(Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.Running==true)) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             if (_root == null || _anchor == null) return;
             // Far from the camera the pose is refreshed less often: every 4th frame beyond 120 m, every 16th beyond 300 m (a convoy
             // spawning 350 m away is fourteen occupants; ~40 bone rotations each). The animator keeps the body in a sane idle in between.
@@ -288,12 +288,12 @@ namespace WildWasteland.Modules.Patrols
                 if (flat > 0.001f)
                 {
                     wantedYaw = Mathf.Clamp(Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg,
-                        -PatrolsModule.FireArc.Value, PatrolsModule.FireArc.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                        -(Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.FireArc??0f), (Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.FireArc??0f));   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
                     wantedPitch = Mathf.Clamp(Mathf.Atan2(local.y, flat) * Mathf.Rad2Deg,
-                        -PatrolsModule.MaxAimPitch.Value, PatrolsModule.MaxAimPitch.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                        -(Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.MaxAimPitch??0f), (Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.MaxAimPitch??0f));   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
                 }
             }
-            float step = PatrolsModule.AimTurnSpeed.Value * Time.deltaTime;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+            float step = (Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.AimTurnSpeed??0f) * Time.deltaTime;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
             _aimYaw = Mathf.MoveTowardsAngle(_aimYaw, wantedYaw, step);
             _aimPitch = Mathf.MoveTowardsAngle(_aimPitch, wantedPitch, step);
             AimSpine(_spine, 0.25f, up, right);
@@ -332,12 +332,12 @@ namespace WildWasteland.Modules.Patrols
                 if (flat > 0.001f)
                 {
                     wantedYaw = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
-                    if (_turretBike) wantedYaw = Mathf.Clamp(wantedYaw, -Rider.BikeArc, Rider.BikeArc);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
-                    wantedPitch = Mathf.Clamp(Mathf.Atan2(local.y, flat) * Mathf.Rad2Deg, -PatrolsModule.MaxAimPitch.Value, PatrolsModule.MaxAimPitch.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                    if (_turretBike) wantedYaw = Mathf.Clamp(wantedYaw, -(Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.BikeArc??0f), (Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.BikeArc??0f));   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                    wantedPitch = Mathf.Clamp(Mathf.Atan2(local.y, flat) * Mathf.Rad2Deg, -(Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.MaxAimPitch??0f), (Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.MaxAimPitch??0f));   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
                 }
             }
             else wantedYaw = _turretBike ? 0f : _turretYaw * 0.995f;
-            float step = PatrolsModule.AimTurnSpeed.Value * Time.deltaTime;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+            float step = (Core.ModApi.Get<Core.IOccupantCombatPolicy>()?.AimTurnSpeed??0f) * Time.deltaTime;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
             _turretYaw = Mathf.MoveTowardsAngle(_turretYaw, wantedYaw, step);
             _aimPitch = Mathf.MoveTowardsAngle(_aimPitch, wantedPitch, step);
             // roof: the whole body turns; motorcycle seat: the body sits straight, the upper body turns (spine, at most BikeArc)

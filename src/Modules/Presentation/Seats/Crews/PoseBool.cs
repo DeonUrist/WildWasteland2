@@ -2,7 +2,7 @@ using BepInEx.Configuration;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>One boolean seat-pose setting backed by an F7 tools.cfg entry.</summary>
     internal class PoseBool

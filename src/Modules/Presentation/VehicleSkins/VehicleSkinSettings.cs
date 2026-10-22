@@ -3,7 +3,7 @@ using BepInEx.Configuration;
 using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// Config and folder of the faction vehicle skins (custom paintjobs and cargo container pictures). Bound by <see cref="PresentationModule"/>

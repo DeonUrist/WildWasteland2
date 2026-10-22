@@ -12,10 +12,20 @@ namespace WildWasteland.Core
         float BurstSeconds { get; }
         float IntervalMin { get; }
         float IntervalMax { get; }
+        float MaxAimPitch { get; }
+        float AimTurnSpeed { get; }
+        float BikeArc { get; }
         bool Allowed(GameObject vehicle, bool driver, bool turret);
         bool HasTraffic(GameObject vehicle);
         GameObject Target(GameObject vehicle);
         void PlayerContact(GameObject vehicle);
+    }
+    /// <summary>Read-only rider pose intent implemented by the actual traffic actor.</summary>
+    public interface IRiderPresentationState
+    {
+        bool Mounted { get; }
+        bool AnimatedPose { get; }
+        bool StandingPose { get; }
     }
     /// <summary>NPC-owned actual occupant combat operations; callers never access private guard state.</summary>
     public interface IOccupantCombat

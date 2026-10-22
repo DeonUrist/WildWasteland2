@@ -1,5 +1,5 @@
 using UnityEngine;
-using Pose=WildWasteland.Modules.Patrols.Pose;
+using Pose=WildWasteland.Modules.Presentation.Pose;
 using WildWasteland.Core;
 using WildWasteland.Modules.Patrols;
 namespace WildWasteland.Modules.Presentation

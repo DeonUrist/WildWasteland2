@@ -1,7 +1,8 @@
+using WildWasteland.Modules.Presentation;
 using BepInEx.Configuration;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>Three angles (vertical swing, horizontal swing, axial twist) of one bone of a per-human seat pose profile.</summary>
     internal class BonePoseConfig

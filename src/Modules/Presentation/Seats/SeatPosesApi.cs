@@ -3,7 +3,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.Events;
 using WildWasteland.Modules.PlayerBody;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// <see cref="ISeatPoses"/> provider of the Presentation World part: one entry point for the crew seat pose (<see cref="Pose"/>: drivers,

@@ -1,3 +1,4 @@
+using WildWasteland.Modules.Presentation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -250,7 +251,7 @@ namespace WildWasteland.Modules.Patrols
         internal static string FormatV3(Vector3 v) { return v.x.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + ", " + v.y.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) + ", " + v.z.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture); }
     }
 
-    internal sealed partial class RiderGuard : MonoBehaviour
+    internal sealed partial class RiderGuard : MonoBehaviour, Core.IRiderPresentationState
     {
         /// <summary>Mounted rider and airborne attack phases.</summary>
         private enum Mode { Riding, Throwing, Witness, Flying, Dismount, Done }
@@ -267,9 +268,9 @@ namespace WildWasteland.Modules.Patrols
         private int _slot; private bool _gunner, _bike;   // 2.2.0: turret spot 0..2, a gunner (PassengerGuard shoots, Pose crouches / seats), on a motorcycle
         private bool _standing;
         /// <summary>Checks the current standing pose condition for rider.</summary>
-        internal bool StandingPose=>_standing||(_bike&&_standAt>=0f);
+        public bool StandingPose=>_standing||(_bike&&_standAt>=0f);
         /// <summary>Checks the current animated pose condition for rider.</summary>
-        internal bool AnimatedPose=>(_body!=null&&(_body is Core.IAnimatedCharacter character && Core.ModApi.Get<Core.IAnimationApi>()!=null && character.Valid && !character.Suspended))||_graphOk;
+        public bool AnimatedPose=>(_body!=null&&(_body is Core.IAnimatedCharacter character && Core.ModApi.Get<Core.IAnimationApi>()!=null && character.Valid && !character.Suspended))||_graphOk;
         /// <summary>Returns the native maximum health bound for the rider.</summary>
         internal void MaxHealth(float health){_maxHealth=health;}
         private float _standAt = -1f;                      // a Warboy on a bike stands up (crouch -> stand blend) before the leap
@@ -279,7 +280,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Checks whether the current value represents warboy for the current rider.</summary>
         internal bool IsWarboy { get { return !_gunner && _warboyPrefab && (_mode == Mode.Riding || _mode == Mode.Throwing || _mode == Mode.Witness); } }
         /// <summary>Checks the current mounted condition for rider.</summary>
-        internal bool Mounted { get { return (_mode == Mode.Riding || _mode == Mode.Throwing || _mode == Mode.Witness) && Alive(); } }
+        public bool Mounted { get { return (_mode == Mode.Riding || _mode == Mode.Throwing || _mode == Mode.Witness) && Alive(); } }
         private AnimationClipPlayable _stand;
         private bool _released, _inClose, _kamikazeArmed;
         private float _nextWitness;

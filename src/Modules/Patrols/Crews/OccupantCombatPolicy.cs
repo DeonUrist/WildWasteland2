@@ -12,6 +12,9 @@ namespace WildWasteland.Modules.Patrols
         public float BurstSeconds => PatrolsModule.FireBurstSeconds.Value;
         public float IntervalMin => PatrolsModule.FireIntervalMin.Value;
         public float IntervalMax => PatrolsModule.FireIntervalMax.Value;
+        public float MaxAimPitch => PatrolsModule.MaxAimPitch.Value;
+        public float AimTurnSpeed => PatrolsModule.AimTurnSpeed.Value;
+        public float BikeArc => Rider.BikeArc;
         /// <summary>Preserves convoy driver passivity, turret enablement and actual traffic combat policy.</summary>
         public bool Allowed(GameObject car,bool driver,bool turret)
         {var traffic=WorldTraffic.AgentOf(car);if(traffic!=null&&driver&&traffic.Truck&&WorldTraffic.Find(traffic.Journey)?.convoy==true)return false;return Ranged&&(!turret||PatrolsModule.RiderLances.Value)&&WorldTraffic.CombatAllowed(car);}
