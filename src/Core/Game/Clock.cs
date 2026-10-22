@@ -19,6 +19,7 @@ namespace WildWasteland.Core
         static FsmFloat _time;
         static float _nextFind;
         static bool _installed;
+        static bool _fallbackTracked;
 
         // day/night (Patrols DayLight)
         static UnityEngine.AzureSky.AzureTimeController _azure;
@@ -83,6 +84,14 @@ namespace WildWasteland.Core
             if (Time.unscaledTime < _nextFind) return;
             _nextFind = Time.unscaledTime + 1f;
             if (_fsm == null) _fsm = FsmUtil.Find(GameRefs.GameManager, "DayTime");
+            if (_fsm == null)
+            {
+                // Quests also accepts a DayTime FSM outside the game-manager root. Reuse the shared sliced index.
+                if (!_fallbackTracked) { FsmIndex.Track(null, "DayTime"); _fallbackTracked = true; }
+                var all = FsmIndex.ByName("DayTime");
+                for (int i = 0; i < all.Count; i++)
+                    if (all[i] != null) { _fsm = all[i]; break; }
+            }
             if (_fsm == null) return;
             _day = FsmIndex.Int(_fsm, "Day");
             _time = FsmIndex.Float(_fsm, "Time");

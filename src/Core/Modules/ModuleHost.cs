@@ -154,7 +154,7 @@ namespace WildWasteland.Core
             Log.Always("[" + m.Id + "] stopped (" + newState + ")");
         }
 
-        /// <summary>Removes everything Core tracks for a module: jobs, hooks, hotkeys, patches, ModAPI providers, event handlers, old Services event handlers.</summary>
+        /// <summary>Releases every owner-scoped Core registration and resource after module shutdown or failed startup.</summary>
         static void Cleanup(IModule m)
         {
             SetActive(m, false);
@@ -165,6 +165,14 @@ namespace WildWasteland.Core
             ModApi.RemoveAll(m);
             ModEvents.RemoveAll(m);
             Services.RemoveHandlersOf(m);
+            Textures.Release(m);
+            WorldIndex.RemoveAll(m);
+            WorldTiles.RemoveAll(m);
+            FsmIndex.RemoveAll(m);
+            FsmPause.ReleaseAll(m);
+            Factions.RemoveAll(m);
+            CameraArbiter.RemoveAll(m);
+            LoadingProgress.Remove(m);
         }
 
         /// <summary>Changes a module's state and publishes <see cref="Events.ModuleStateChanged"/> (local event) when it differs.</summary>
@@ -262,6 +270,8 @@ namespace WildWasteland.Core
             if (_quitting) return;
             _quitting = true;
             foreach (var e in _entries) if (e.State == ModuleState.Running) { var en = e; Safe(en, "Shutdown", () => en.Module.Shutdown()); }
+            WorldTiles.Uninstall();
+            Textures.ReleaseAll();
         }
 
         /// <summary>Runs a lifecycle hook, counting exceptions toward the module error rule.</summary>

@@ -20,10 +20,10 @@ namespace WildWasteland.Core
         static bool _resolved;
         static MethodInfo _set;
         static FieldInfo _active, _font;
-        // (WW perf) InputBlocker.Active compiled once into a typed getter (it is read every frame by Hotkeys and by input hooks:
-        // FieldInfo.GetValue boxed a bool per call). Falls back to reflection if the delegate can't be built or fails once.
-        static Func<bool> _activeGet;
+        // InputBlocker.Active is read every frame; compile once through the runtime-safe Core accessor service.
+        static Func<object, bool> _activeGet;
 
+        /// <summary>Resolves optional Apocasetter input, font and settings APIs once without scene lookups.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
         static void Resolve()
         {
@@ -38,7 +38,7 @@ namespace WildWasteland.Core
                 if (ib != null) { _set = ib.GetMethod("Set", BindingFlags.Static | BindingFlags.Public); _active = ib.GetField("Active", BindingFlags.Static | BindingFlags.Public); }
                 if (_active != null && _active.FieldType == typeof(bool))
                 {
-                    try { _activeGet = System.Linq.Expressions.Expression.Lambda<Func<bool>>(System.Linq.Expressions.Expression.Field(null, _active)).Compile(); _activeGet(); }
+                    try { _activeGet = Access.Get<bool>(ib, "Active"); _activeGet(null); }
                     catch (Exception) { _activeGet = null; }
                 }
                 var gs = asm.GetType("Apocasetter.GameSkin");
@@ -53,8 +53,10 @@ namespace WildWasteland.Core
             catch (Exception e) { Log.Warn("Apocasetter bridge: " + e.Message); }
         }
 
+        /// <summary>Whether the optional input-blocking API is available.</summary>
         public static bool Present { get { Resolve(); return _set != null; } }
 
+        /// <summary>Allows closing an existing Apocasetter menu but prevents opening one during loading or saving.</summary>
         private static bool BeforeMenuToggle(bool ____open) { return ____open || !LoadingProgress.MenusBlocked; }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -150,7 +152,7 @@ namespace WildWasteland.Core
             {
                 Resolve();
                 var g = _activeGet;
-                if (g != null) { try { return g(); } catch { _activeGet = null; } }
+                if (g != null) { try { return g(null); } catch { _activeGet = null; } }
                 try { return _active != null && (bool)_active.GetValue(null); } catch { return false; }
             }
         }
