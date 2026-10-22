@@ -36,7 +36,10 @@ namespace WildWasteland.Modules.Patrols
         internal static void Warm(CarTemplate t,bool trailer=false) { if(t==null||!t.Available)return; if(trailer||t.Bumpers==null||t.Bumpers.Length==0)Require(t,"",trailer);else foreach(var bumper in t.Bumpers)Require(t,bumper??"",false);if(t.Trailer!=null)Warm(t.Trailer,true); }
         /// <summary>Resets prepared world structures when the submitting Patrols world ends.</summary>
         internal static void Reset() { var api=ModApi.Get<IVehicleAssembly>();if(api!=null)api.Reset();_pending=true; }
-        internal static bool Warming { get { var api=ModApi.Get<IVehicleAssembly>();PublishWarm();return _pending||api!=null&&api.Warming; } }
+        /// <summary>Reports active preparation only while the actual mechanical owner is available.</summary>
+        internal static bool Warming { get { var api=ModApi.Get<IVehicleAssembly>();PublishWarm();return api!=null&&(_pending||api.Warming); } }
+        /// <summary>Checks the real providers required to prepare and control native patrol vehicles.</summary>
+        internal static bool Available {get{return ModApi.Get<IVehicleAssembly>()!=null&&ModApi.Get<IVehicleDrive>()!=null&&ModApi.Get<IVehicleAttachments>()!=null;}}
         /// <summary>Reports only Patrols restoration; Vehicles reports its own preparation progress.</summary>
         internal static LoadingProgress.Work? LoadWork() { return PatrolPersistence.Restoring ? new LoadingProgress.Work(PatrolPersistence.LoadFraction,"restoring saved patrols, crew and AI") : (LoadingProgress.Work?)null; }
     }
