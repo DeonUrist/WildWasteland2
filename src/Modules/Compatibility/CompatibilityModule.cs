@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using BepInEx.Configuration;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
@@ -24,10 +25,22 @@ namespace WildWasteland.Modules.Compatibility
         private Job _caveDiscovery;
         private ApocaLanguageBridge _language;
         private bool _running;
+        private readonly List<OptionalBridge> _bridges = new List<OptionalBridge>();
+
+        /// <summary>True between Init and Shutdown (bridge switches react live only then).</summary>
+        internal bool IsRunning { get { return _running; } }
+
+        /// <summary>Declares the per-mod bridges in start order (README 6.12: one folder and one switch per third-party mod).</summary>
+        public CompatibilityModule()
+        {
+            _bridges.Add(new OptionalBridge(this, "BloodFX", "BloodFX", "Recover the optional BloodFX updater after scene destruction and suppress its F8 debug hit.", BloodFxCompat.Start, BloodFxCompat.Shutdown));
+            _bridges.Add(new OptionalBridge(this, "WeaponsPack", "Weapons Pack", "Connect optional Weapons Pack behavior (NPC fear, chainsaw kills, held-model shadows, HUD icons, slash sound) through Wild Wasteland services.", WeaponsPackBridge.Start, WeaponsPackBridge.Shutdown));
+        }
+
         /// <summary>Binds per-mod switches; session takeover remains mandatory and independent of these switches.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
-            BindBloodFx(cfg); BindWeaponsPack(cfg);
+            foreach (var bridge in _bridges) bridge.Bind(cfg);
             _engineEnabled = cfg.Player("EngineSim", "Enabled", true, "Schedule Engine Sim through Wild Wasteland and provide player and crew ignition.");
             _engineEnabled.SettingChanged += EngineChanged;
             _languageEnabled = cfg.Player("ApocaLanguage", "Enabled", true, "Use the optional language mod's language choices in the Wild Wasteland menu.");
@@ -65,13 +78,18 @@ namespace WildWasteland.Modules.Compatibility
             ModApi.Provide<ICaveAmbient>(this, _cave);
         }
         /// <summary>Reseeds shared scene discovery and clears ignition requests.</summary>
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (_running && _engineEnabled.Value) _engineSim.OnSceneLoaded(scene, mode); }
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (!_running) return;
+            if (_engineEnabled.Value) _engineSim.OnSceneLoaded(scene, mode);
+            WeaponsPackBridge.OnSceneLoaded();
+        }
 
         /// <summary>Exposes the per-mod Engine Sim switch in the shared settings shell.</summary>
-        public override void Settings(SettingsShell shell) { BloodFxSettings(shell); WeaponsPackSettings(shell); shell.Row(this, SettingsShell.Page.System, "Compatibility", _engineEnabled, "Engine Sim"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _languageEnabled, "ApocaLanguage"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _caveEnabled, "Cave Darkness"); }
+        public override void Settings(SettingsShell shell) { foreach (var bridge in _bridges) bridge.Settings(shell); shell.Row(this, SettingsShell.Page.System, "Compatibility", _engineEnabled, "Engine Sim"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _languageEnabled, "ApocaLanguage"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _caveEnabled, "Cave Darkness"); }
 
         /// <summary>Installs detected SigmaMod and Vistas hooks under this module's lifetime.</summary>
-        public override void Init() { SigmaFsmStates.Install(this); VistasWorldGen.Init(this); _running = true; StartBloodFx(); StartWeaponsPack(); if (_engineEnabled.Value) _engineSim.Init(); }
+        public override void Init() { SigmaFsmStates.Install(this); VistasWorldGen.Init(this); _running = true; foreach (var bridge in _bridges) bridge.Start(); if (_engineEnabled.Value) _engineSim.Init(); }
 
         /// <summary>Registers the detected third-party vehicle owner before Core optimization starts.</summary>
         public override void ProvideApis()
@@ -84,7 +102,7 @@ namespace WildWasteland.Modules.Compatibility
         }
 
         /// <summary>Detaches external listeners and clears runtime state before Core removes this module's hooks.</summary>
-        public override void Shutdown() { _running = false; StopBloodFx(); StopWeaponsPack(); if (_caveDiscovery != null) _caveDiscovery.Remove(); _caveDiscovery = null; ModApi.Withdraw<ICaveAmbient>(this); _cave = null; ModApi.Withdraw<ILanguageMenu>(this); _language = null; _engineSim.Shutdown(); VistasWorldGen.Shutdown(); SigmaFsmStates.Clear(); }
+        public override void Shutdown() { _running = false; for (int i = _bridges.Count - 1; i >= 0; i--) _bridges[i].Stop(); if (_caveDiscovery != null) _caveDiscovery.Remove(); _caveDiscovery = null; ModApi.Withdraw<ICaveAmbient>(this); _cave = null; ModApi.Withdraw<ILanguageMenu>(this); _language = null; _engineSim.Shutdown(); VistasWorldGen.Shutdown(); SigmaFsmStates.Clear(); }
 
         /// <summary>Publishes generation facts without exposing reflective third-party bridge state.</summary>
         private sealed class VistasFacts : IWorldGenFacts

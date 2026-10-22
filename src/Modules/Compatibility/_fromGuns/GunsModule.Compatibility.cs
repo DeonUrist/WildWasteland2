@@ -6,16 +6,10 @@ namespace WildWasteland.Modules.Guns
         /// <summary>Installs the optional Apocaspawner weapon-damage postfix.</summary>
         partial void InitCompatibility() { ApocaspawnerDamage.Install(this); }
 
-        /// <summary>Lazily installs the Weapons Pack sound bridge (called from the Bosses job every 0.5 s).</summary>
-        static partial void EnsureCompatibility()
-        {
-            WeaponsPackSound.Ensure();
-        }
+        /// <summary>Empty (B17): the Weapons Pack sound part is installed by the Compatibility Weapons Pack bridge.</summary>
+        static partial void EnsureCompatibility() { }
 
-        /// <summary>Tears the Weapons Pack sound bridge down on module shutdown.</summary>
-        static partial void ShutdownCompatibility()
-        {
-            WeaponsPackSound.Shutdown();
-        }
+        /// <summary>Empty (B17): the Weapons Pack sound part shuts down with the Compatibility bridge.</summary>
+        static partial void ShutdownCompatibility() { }
     }
 }

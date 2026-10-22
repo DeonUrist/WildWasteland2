@@ -1,26 +1,32 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using BepInEx.Bootstrap;
 using HarmonyLib;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Compatibility;
 
 namespace WildWasteland.Modules.NPC
 {
-    // No pack assembly reference: observe its own attack and burning-status contracts.
-    internal static class WeaponsPackCompat
+    /// <summary>
+    /// Weapons Pack part serving NPC AI (no pack assembly reference; observes the pack's own attack and burning-status contracts):
+    /// a burning NPC retreats while it burns, hostile humans that see a chainsaw kill flee, and a drawn chainsaw triples the player's
+    /// footstep radius (read by NPC Senses through <see cref="ChainsawDrawn"/>). Acts only while the NPC module runs.
+    /// </summary>
+    internal static class WeaponsPackFear
     {
-        private static bool installed, unavailable;
-        private static FieldInfo actor;
-        private static FieldInfo drawn;
+        private static IModule _owner;
+        private static bool installed;
+        private static Func<object, Transform> actor;
+        private static Func<object, bool> drawn;
+        /// <summary>True while the pack's chainsaw is drawn (NPC Senses footstep radius x3).</summary>
         internal static bool ChainsawDrawn { get; private set; }
         private static readonly Dictionary<object, GameObject> burning = new Dictionary<object, GameObject>();
         private static readonly Dictionary<CreateObject, SawHit> cuts = new Dictionary<CreateObject, SawHit>();
         private static readonly List<CreateObject> expired = new List<CreateObject>();
+        /// <summary>One chainsaw contact on an FSM-health target: the corpse-spawning actions and death compares captured before the hit.</summary>
         internal sealed class SawHit
         {
             internal GameObject Owner, Corpse; internal FsmFloat Health; internal float Before, Until;
@@ -29,80 +35,86 @@ namespace WildWasteland.Modules.NPC
             internal readonly List<FloatCompare> Death = new List<FloatCompare>();
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
+        /// <summary>Job "Compatibility.WeaponsPack.Cuts" (2 s, scaled time): forgets finished or stale chainsaw contacts.</summary>
         internal static void Tick()
         {
-            if (!installed && !unavailable) Install();
+            if (cuts.Count == 0) return;
             foreach (var pair in cuts)
                 if (pair.Value.Done || Time.time > pair.Value.Until) expired.Add(pair.Key);
             foreach (var action in expired) cuts.Remove(action);
             expired.Clear();
         }
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void Install()
+        /// <summary>Resolves the burning status and attack members, then patches them under the bridge scope (independent of the other parts).</summary>
+        internal static void Install(IModule owner, BepInEx.PluginInfo info)
         {
-            BepInEx.PluginInfo info;
-            if (!Chainloader.PluginInfos.TryGetValue("apocalypter.weaponspack", out info) || ReferenceEquals(info.Instance, null)) { unavailable = true; return; }
+            _owner = owner;
             try
             {
                 var plugin = info.Instance.GetType();
                 var status = plugin.Assembly.GetType("ChainsawPrototype.FlamethrowerIgniteStatus", true);
                 const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-                actor = status.GetField("actor", flags);
-                drawn = plugin.GetField("enabledPreview", flags);
+                var actorField = status.GetField("actor", flags);
+                var drawnField = plugin.GetField("enabledPreview", flags);
                 var equip = plugin.GetMethod("StartPreview", flags, null, Type.EmptyTypes, null);
                 var holster = plugin.GetMethod("StopPreview", flags, null, Type.EmptyTypes, null);
                 var touch = status.GetMethod("Touch", flags, null, new[] { typeof(float), typeof(float) }, null);
                 var end = status.GetMethod("BeginEnding", flags, null, new[] { typeof(float) }, null);
                 var destroy = status.GetMethod("OnDestroy", flags, null, Type.EmptyTypes, null);
                 var hit = plugin.GetMethod("ProcessHit", flags, null, new[] { typeof(RaycastHit), typeof(float), typeof(bool), typeof(float), typeof(bool) }, null);
-                if (actor == null || actor.FieldType != typeof(Transform) || drawn == null || drawn.FieldType != typeof(bool)
+                if (actorField == null || actorField.FieldType != typeof(Transform) || drawnField == null || drawnField.FieldType != typeof(bool)
                     || equip == null || holster == null || touch == null || touch.ReturnType != typeof(bool)
                     || end == null || end.ReturnType != typeof(void) || destroy == null || destroy.ReturnType != typeof(void) || hit == null)
                     throw new MissingMemberException("unsupported burning/attack contract");
-                bool ok = Core.Patches.Patch(NpcModule.Instance, touch, postfix: AccessTools.Method(typeof(WeaponsPackCompat), nameof(AfterTouch)));
-                ok &= Core.Patches.Patch(NpcModule.Instance, end, postfix: AccessTools.Method(typeof(WeaponsPackCompat), nameof(AfterBurnEnd)));
-                ok &= Core.Patches.Patch(NpcModule.Instance, destroy, postfix: AccessTools.Method(typeof(WeaponsPackCompat), nameof(AfterBurnEnd)));
-                ok &= Core.Patches.Patch(NpcModule.Instance, hit, prefix: AccessTools.Method(typeof(WeaponsPackCompat), nameof(BeforeSaw)), postfix: AccessTools.Method(typeof(WeaponsPackCompat), nameof(AfterSaw)));
-                ok &= Core.Patches.Patch(NpcModule.Instance, equip, postfix: AccessTools.Method(typeof(WeaponsPackCompat), nameof(AfterEquip)));
-                ok &= Core.Patches.Patch(NpcModule.Instance, holster, postfix: AccessTools.Method(typeof(WeaponsPackCompat), nameof(AfterHolster)));
-                installed = ok; unavailable = !ok;
-                ChainsawDrawn = ok && (bool)drawn.GetValue(info.Instance);
-                if (ok) Core.Log.Always("[NPC] Weapons Pack " + info.Metadata.Version + ": burning fear and chainsaw kills connected.");
+                actor = Access.Read<Transform>(actorField); drawn = Access.Read<bool>(drawnField);
+                bool ok = Core.Patches.Patch(owner, touch, postfix: AccessTools.Method(typeof(WeaponsPackFear), nameof(AfterTouch)));
+                ok &= Core.Patches.Patch(owner, end, postfix: AccessTools.Method(typeof(WeaponsPackFear), nameof(AfterBurnEnd)));
+                ok &= Core.Patches.Patch(owner, destroy, postfix: AccessTools.Method(typeof(WeaponsPackFear), nameof(AfterBurnEnd)));
+                ok &= Core.Patches.Patch(owner, hit, prefix: AccessTools.Method(typeof(WeaponsPackFear), nameof(BeforeSaw)), postfix: AccessTools.Method(typeof(WeaponsPackFear), nameof(AfterSaw)));
+                ok &= Core.Patches.Patch(owner, equip, postfix: AccessTools.Method(typeof(WeaponsPackFear), nameof(AfterEquip)));
+                ok &= Core.Patches.Patch(owner, holster, postfix: AccessTools.Method(typeof(WeaponsPackFear), nameof(AfterHolster)));
+                installed = ok;
+                ChainsawDrawn = ok && drawn(info.Instance);
+                if (ok) Log.Main(owner, "Weapons Pack " + info.Metadata.Version + ": burning fear and chainsaw kills connected.");
+                else Log.Warn(owner, "Weapons Pack fear/chainsaw hooks failed; NPCs ignore burning and chainsaw kills");
             }
-            catch (Exception e) { unavailable = true; Core.Log.Warn("[NPC] Weapons Pack integration unavailable: " + e.GetBaseException().Message); }
+            catch (Exception e) { installed = false; Log.Warn(owner, "Weapons Pack integration unavailable: " + e.GetBaseException().Message); }
         }
 
+        /// <summary>Postfix of FlamethrowerIgniteStatus.Touch (per flame contact): a newly burning NPC retreats from the player while it burns.</summary>
         private static void AfterTouch(object __instance, bool __result)
         {
-            if (!installed || !__result || !NpcModule.Running || !GameRefs.InGame || burning.ContainsKey(__instance)) return;
+            if (!installed || !__result || !CompatibilityHost.Npc.Running || !GameRefs.InGame || burning.ContainsKey(__instance)) return;
             try
             {
-                var target = actor.GetValue(__instance) as Transform;
+                var target = actor(__instance);
                 if (target == null) return;
                 burning[__instance] = target.gameObject;
                 var player = GameRefs.Player;
-                Brain.FireRetreat(target.gameObject, player != null ? player.transform.position : target.position, true);
+                Brain.FireRetreat(target.gameObject, player != null ? player.transform.position : target.position, true); // refs-ok: REFACTOR-REQUEST B17-2
             }
-            catch (Exception e) { Core.Log.Warn("[NPC] Burning fear: " + e.GetBaseException().Message); }
+            catch (Exception e) { Log.Warn(_owner, "Burning fear: " + e.GetBaseException().Message); }
         }
 
-        private static void AfterEquip(object __instance) { ChainsawDrawn = installed && (bool)drawn.GetValue(__instance); }
+        /// <summary>Postfix of the pack's StartPreview (chainsaw drawn).</summary>
+        private static void AfterEquip(object __instance) { ChainsawDrawn = installed && drawn(__instance); }
+        /// <summary>Postfix of the pack's StopPreview (chainsaw holstered).</summary>
         private static void AfterHolster() { ChainsawDrawn = false; }
 
+        /// <summary>Postfix of BeginEnding/OnDestroy of the burning status: the NPC stops its burning retreat.</summary>
         private static void AfterBurnEnd(object __instance)
         {
             GameObject target;
             if (!burning.TryGetValue(__instance, out target)) return;
             burning.Remove(__instance);
-            if (NpcModule.Running && target != null) Brain.FireRetreat(target, target.transform.position, false);
+            if (CompatibilityHost.Npc.Running && target != null) Brain.FireRetreat(target, target.transform.position, false); // refs-ok: REFACTOR-REQUEST B17-2
         }
 
+        /// <summary>Prefix of the pack's ProcessHit (per chainsaw contact): captures the target's corpse actions and death compares.</summary>
         private static void BeforeSaw(RaycastHit __0, float __1, out SawHit __state)
         {
             __state = null;
-            if (!installed || !NpcModule.Running || !GameRefs.InGame || __0.collider == null || !(__1 > 0f)) return;
+            if (!installed || !CompatibilityHost.Npc.Running || !GameRefs.InGame || __0.collider == null || !(__1 > 0f)) return;
             try
             {
                 PlayMakerFSM fsm = null;
@@ -138,9 +150,10 @@ namespace WildWasteland.Modules.NPC
                 foreach (var action in hit.Actions) cuts[action] = hit;
                 __state = hit;
             }
-            catch (Exception e) { Core.Log.Warn("[NPC] Chainsaw death capture: " + e.GetBaseException().Message); }
+            catch (Exception e) { Log.Warn(_owner, "Chainsaw death capture: " + e.GetBaseException().Message); }
         }
 
+        /// <summary>True when the hit lowered the health to 0 or past one of the captured death compares.</summary>
         private static bool Killed(SawHit hit)
         {
             if (!(hit.Health.Value < hit.Before)) return false;
@@ -150,6 +163,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
+        /// <summary>Postfix of ProcessHit: decides lethality; a corpse already created finishes the kill.</summary>
         private static void AfterSaw(SawHit __state)
         {
             if (__state == null) return;
@@ -159,12 +173,13 @@ namespace WildWasteland.Modules.NPC
                 if (!__state.Lethal) { foreach (var action in __state.Actions) cuts.Remove(action); return; }
                 if (__state.Corpse != null) FinishKill(__state);
             }
-            catch (Exception e) { Core.Log.Warn("[NPC] Chainsaw kill: " + e.GetBaseException().Message); }
+            catch (Exception e) { Log.Warn(_owner, "Chainsaw kill: " + e.GetBaseException().Message); }
         }
 
+        /// <summary>Core CreateObject.OnEnter postfix (every CreateObject action; early-out while no chainsaw contact is pending): links the corpse of a cut target.</summary>
         internal static void AfterCorpse(CreateObject action)
         {
-            if (cuts.Count == 0 || !NpcModule.Running) return;
+            if (cuts.Count == 0 || !CompatibilityHost.Npc.Running) return;
             SawHit hit;
             if (!cuts.TryGetValue(action, out hit) || hit.Done || Time.time > hit.Until || action.storeObject == null) return;
             var corpse = action.storeObject.Value;
@@ -173,14 +188,17 @@ namespace WildWasteland.Modules.NPC
             if (hit.Lethal || Killed(hit)) FinishKill(hit);
         }
 
+        /// <summary>Lets hostile humans that see the corpse flee (once per kill).</summary>
         private static void FinishKill(SawHit hit)
         {
             if (hit.Done) return;
             hit.Done = true;
-            Brain.ChainsawWitnesses(hit.Corpse);
+            Brain.ChainsawWitnesses(hit.Corpse); // refs-ok: REFACTOR-REQUEST B17-2
         }
 
+        /// <summary>Forgets cuts, burning NPCs and the drawn flag (load begin, scene change).</summary>
         internal static void Reset() { cuts.Clear(); expired.Clear(); burning.Clear(); ChainsawDrawn = false; }
-        internal static void Shutdown() { Reset(); installed = unavailable = false; actor = drawn = null; }
+        /// <summary>Clears all state and delegates; the scope removes the patches.</summary>
+        internal static void Shutdown() { Reset(); installed = false; actor = null; drawn = null; _owner = null; }
     }
 }

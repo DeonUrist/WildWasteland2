@@ -27,18 +27,17 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Registers the "Dialogue window" job (LateUpdateLast) of the Apocatalker mirror.</summary>
         partial void InitCompatibilityDialogueJob() { Scheduler.EveryFrame(this, "Dialogue window", TalkDialogue.Tick, Phase.LateUpdateLast); }
 
-        /// <summary>From the HUD attachment job: lazy Weapons Pack icon override and ChaseCamera install.</summary>
+        /// <summary>From the HUD attachment job: lazy ChaseCamera install (the Weapons Pack icon part moved to the Compatibility bridge, B17).</summary>
         partial void AttachCompatibility()
         {
-            WeaponsPackIcons.Ensure(this);
             ChaseCameraHud.Install(this);
         }
 
         /// <summary>Hides the Apocatalker window on scene load.</summary>
         partial void SceneLoadedCompatibility() { TalkDialogue.Hide(); }
 
-        /// <summary>Removes the Weapons Pack icon override.</summary>
-        partial void ShutdownCompatibilityEarly() { WeaponsPackIcons.Shutdown(); }
+        /// <summary>Empty (B17): the Weapons Pack icon override shuts down with the Compatibility bridge.</summary>
+        partial void ShutdownCompatibilityEarly() { }
 
         /// <summary>Clears the Vistas engine heat overlay state.</summary>
         partial void ShutdownCompatibilityVistas() { VistasEngineHud.Clear(); }

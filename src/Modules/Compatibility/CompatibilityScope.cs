@@ -6,8 +6,10 @@ namespace WildWasteland.Modules.Compatibility
     internal sealed class CompatibilityScope : ModuleBase
     {
         private readonly string _id;
+        /// <summary>Third-party mod name (config sub-section `[Compatibility / &lt;Mod&gt;]`).</summary>
+        internal readonly string Mod;
         /// <summary>Creates a stable child id so failed setup or per-mod disabling cannot remove sibling resources.</summary>
-        internal CompatibilityScope(string name) { _id = "Compatibility." + name; }
+        internal CompatibilityScope(string name) { Mod = name; _id = "Compatibility." + name; }
         /// <summary>Child resource identifier used by scheduler, patches and diagnostic records.</summary>
         public override string Id { get { return _id; } }
         /// <summary>Human-readable scope name.</summary>

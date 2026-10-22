@@ -12,13 +12,11 @@ namespace WildWasteland.Modules.PlayerBody
         partial void InitCompatibility()
         {
             ChaseCameraCompat.Init(this);
-            WeaponsPackShadows.Install(this);
         }
 
         /// <summary>Shutdown (first): Weapons Pack shadows removed, ChaseCamera adapter cleared.</summary>
         partial void ShutdownCompatibility()
         {
-            WeaponsPackShadows.Shutdown();
             ChaseCameraCompat.Clear();
         }
     }

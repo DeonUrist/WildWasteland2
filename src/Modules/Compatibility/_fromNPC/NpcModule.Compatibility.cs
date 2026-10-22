@@ -14,34 +14,19 @@ namespace WildWasteland.Modules.NPC
             DogCompanionCompat.Initialize(this);
         }
 
-        /// <summary>Registers the Weapons Pack bridge job (2 s, scaled time; between Brain and NPC.Rigs as before).</summary>
-        partial void InitCompatibilityJobs()
-        {
-            Scheduler.Interval(this, "Weapons Pack compatibility", 2f, WeaponsPackCompat.Tick, Phase.Update, true);
-        }
+        /// <summary>Empty (B17): the Weapons Pack cut sweep is the job "Compatibility.WeaponsPack.Cuts" of the Compatibility module.</summary>
+        partial void InitCompatibilityJobs() { }
 
-        /// <summary>Shutdown step "Weapons Pack".</summary>
-        static partial void ShutdownCompatibility()
-        {
-            Step("Weapons Pack", WeaponsPackCompat.Shutdown);
-        }
+        /// <summary>Empty (B17): the Weapons Pack bridge shuts down with its Compatibility switch/module.</summary>
+        static partial void ShutdownCompatibility() { }
 
-        /// <summary>ResetAll: the Weapons Pack chainsaw / burning state (first, as before).</summary>
-        static partial void ResetCompatibility()
-        {
-            WeaponsPackCompat.Reset();
-        }
+        /// <summary>Empty (B17): Compatibility resets the Weapons Pack state on scene load.</summary>
+        static partial void ResetCompatibility() { }
 
-        /// <summary>A save starts loading: the Weapons Pack state is reset.</summary>
-        static partial void LoadBeginCompatibility()
-        {
-            WeaponsPackCompat.Reset();
-        }
+        /// <summary>Empty (B17): Compatibility resets the Weapons Pack state on the Core LoadBegin event.</summary>
+        static partial void LoadBeginCompatibility() { }
 
-        /// <summary>CreateObject.OnEnter postfix: a chainsaw kill's corpse (WeaponsPackCompat.AfterCorpse; after Pounce as before).</summary>
-        partial void InstallHooksCompatibility()
-        {
-            Hooks.CreateObjectEnter.Postfix(this, WeaponsPackCompat.AfterCorpse);
-        }
+        /// <summary>Empty (B17): the chainsaw corpse postfix is subscribed by the Compatibility.WeaponsPack scope.</summary>
+        partial void InstallHooksCompatibility() { }
     }
 }

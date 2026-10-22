@@ -1,25 +1,23 @@
 using System;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using BepInEx.Bootstrap;
 using HarmonyLib;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Compatibility;
 
 namespace WildWasteland.Modules.CleanHUD
 {
+    /// <summary>
+    /// Weapons Pack part serving the HUD: the pack's own HUD icon is replaced by the shared white weapon silhouette (prefix of its
+    /// PackHudIcon), and <see cref="Model"/> tells the HUD icon renderer which pack model to draw. Acts only while the HUD (CleanHUD) runs.
+    /// </summary>
     internal static class WeaponsPackIcons
     {
-        private static bool checkedPack;
         private static Type chainsaw, flame;
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void Ensure(CleanHudModule module)
+        /// <summary>Resolves the pack's item types and patches PackHudIcon under <paramref name="scope"/>.</summary>
+        internal static void Install(IModule scope, BepInEx.PluginInfo info)
         {
-            if (checkedPack) return;
-            checkedPack = true;
-            BepInEx.PluginInfo info;
-            if (!Chainloader.PluginInfos.TryGetValue("apocalypter.weaponspack", out info) || ReferenceEquals(info.Instance, null)) return;
             try
             {
                 var type = info.Instance.GetType();
@@ -27,18 +25,20 @@ namespace WildWasteland.Modules.CleanHUD
                 flame = type.Assembly.GetType("ChainsawPrototype.FlamethrowerItem", true);
                 var icon = type.GetMethod("PackHudIcon", BindingFlags.Static | BindingFlags.NonPublic, null, new[] { typeof(GameObject), typeof(Texture2D).MakeByRefType() }, null);
                 if (icon == null || icon.ReturnType != typeof(bool)) throw new MissingMemberException("unsupported icon contract");
-                if (Core.Patches.Patch(module, icon, prefix: AccessTools.Method(typeof(WeaponsPackIcons), nameof(BeforePackIcon))))
-                    Core.Log.Always("[CleanHUD] Weapons Pack: shared white weapon silhouettes enabled.");
+                if (Core.Patches.Patch(scope, icon, prefix: AccessTools.Method(typeof(WeaponsPackIcons), nameof(BeforePackIcon))))
+                    Log.Main(scope, "Weapons Pack: shared white weapon silhouettes enabled.");
             }
-            catch (Exception e) { chainsaw = flame = null; Core.Log.Warn("[CleanHUD] Weapons Pack icons unavailable: " + e.GetBaseException().Message); }
+            catch (Exception e) { chainsaw = flame = null; Log.Warn(scope, "Weapons Pack icons unavailable: " + e.GetBaseException().Message); }
         }
 
+        /// <summary>Prefix of the pack's PackHudIcon (HUD refresh): while the HUD runs the pack draws no icon of its own.</summary>
         private static bool BeforePackIcon(ref bool __result)
         {
-            if (!CleanHudModule.Running) return true;
+            if (!CompatibilityHost.CleanHud.Running) return true;
             __result = true; return false; // let Assets.WeaponIcon render the same silhouette as other weapons
         }
 
+        /// <summary>The pack model under a chainsaw/flamethrower item (and its icon cache key), or null for any other item.</summary>
         internal static GameObject Model(GameObject item, out string key)
         {
             key = null;
@@ -55,6 +55,7 @@ namespace WildWasteland.Modules.CleanHUD
             return null;
         }
 
-        internal static void Shutdown() { checkedPack = false; chainsaw = flame = null; }
+        /// <summary>Forgets the pack types (no model lookups until the next install).</summary>
+        internal static void Shutdown() { chainsaw = flame = null; }
     }
 }
