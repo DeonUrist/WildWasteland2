@@ -24,6 +24,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<int, D> _byId = new Dictionary<int, D>();
         private static string[] _prefabs; private static string _src;
 
+        /// <summary>Scene load: dogs and their animation state dropped.</summary>
         internal static void OnSceneLoaded() { DogAnimations.OnSceneLoaded(); _list.Clear(); _byId.Clear(); }
 
         /// <summary>(WW) module shutdown: the dog animations release every dog (bones, culling, IK, waits, drag), the lunge's body jolt is undone</summary>
@@ -33,8 +34,10 @@ namespace WildWasteland.Modules.NPC
             foreach (var d in _list) if (d.Rig != null && d.Applied) { d.Rig.localPosition = d.RigBase; d.Applied = false; }
             _list.Clear(); _byId.Clear();
         }
+        /// <summary>Number of dogs handled.</summary>
         internal static int Count { get { return _list.Count; } }
 
+        /// <summary>True when the prefab is a dog ([Dogs] Prefabs, exact names; split once per value).</summary>
         private static bool Wanted(string prefab)
         {
             string cfg = NpcaiSettings.DogPrefabs.Value ?? "";

@@ -10,18 +10,21 @@ namespace WildWasteland.Modules.Patrols
     {
         internal static readonly List<TrafficActor> Actors=new List<TrafficActor>();
 
+        /// <summary>Tags an NPC as a faction actor (tag, TrafficActor component, foot target).</summary>
         internal static void Actor(GameObject npc,string faction)
         {
             if(npc==null)return;faction=Normalize(faction);npc.tag=faction;
             var actor=npc.GetComponent<TrafficActor>()??npc.AddComponent<TrafficActor>();actor.Faction=faction;
             if(npc.transform.parent==null)SimpleBanditBridge.Target(npc,FootTarget(faction,npc.transform.position));   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         }
+        /// <summary>Tags a car's driver, passenger and riders as actors of its faction (battle side copied).</summary>
         internal static void Crew(GameObject car,PatrolMarker marker)   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         {
             Actor(marker.Driver,marker.Faction);Actor(marker.Passenger,marker.Faction);
             foreach(var rider in marker.Riders)Actor(rider,marker.Faction);
             var battle=car.GetComponent<BattleCar>();if(battle!=null)foreach(var actor in car.GetComponentsInChildren<TrafficActor>(true)){actor.Battle=battle.Battle;actor.Side=battle.Side;}   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         }
+        /// <summary>A dismounted crew member becomes a faction actor of its car's faction.</summary>
         internal static void Dismount(GameObject npc,GameObject car)
         {
             Actor(npc,car!=null?car.GetComponent<PatrolMarker>()?.Faction:"Scrapyard");   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
@@ -38,6 +41,7 @@ namespace WildWasteland.Modules.Patrols
             float range=PatrolsModule.FootTargetRange!=null?PatrolsModule.FootTargetRange.Value:350f;
             return (player.position-position).sqrMagnitude<=range*range?player.gameObject:null;
         }
+        /// <summary>Nearest living actor of an opposed faction within 350 m.</summary>
         private static GameObject NearestOpposed(string faction,Vector3 position)
         {
             GameObject best=null;float distance=350f*350f;

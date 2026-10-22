@@ -13,8 +13,10 @@ namespace WildWasteland.Modules.Patrols
 
         private sealed class Entry { internal GameObject Car; internal Transform Engine; internal float Horsepower, Refresh; internal Light[] Lights = new Light[0]; }
         private static readonly Dictionary<int, Entry> _cache = new Dictionary<int, Entry>();
+        /// <summary>Forgets the per-car cache.</summary>
         internal static void Reset() { _cache.Clear(); }
         private static readonly List<int> _deadKeys = new List<int>();
+        /// <summary>Cache entry of a car (dead cars pruned when the cache grows).</summary>
         private static Entry Of(GameObject car)
         {
             if (car == null) return null;
@@ -26,6 +28,7 @@ namespace WildWasteland.Modules.Patrols
             }
             return e;
         }
+        /// <summary>Refreshes a car's lights and engine horsepower (every 5 s).</summary>
         private static void Refresh(Entry e)
         {
             if (Time.unscaledTime < e.Refresh) return;
@@ -39,6 +42,7 @@ namespace WildWasteland.Modules.Patrols
                 { e.Horsepower=hp;e.Engine=t;break; }
             }
         }
+        /// <summary>True when the player's flashlight or a car light (spot / headlight) is on.</summary>
         internal static bool LightsOn(GameObject car)
         {
             var cam=Core.GameRefs.MainCamera;var torch=cam!=null?cam.transform.Find("Flashlight"):null;if(torch!=null&&torch.gameObject.activeInHierarchy)return true;
@@ -46,6 +50,7 @@ namespace WildWasteland.Modules.Patrols
             foreach(var l in cache.Lights)if(l!=null&&l.enabled&&l.gameObject.activeInHierarchy&&l.intensity>0f)return true;
             return false;
         }
+        /// <summary>Engine noise distance of the player's car (0 when the engine is off or unknown).</summary>
         internal static float EngineDistance(GameObject car)
         {if(car==null||!Nwh.EngineRunning(car))return 0f;var cache=Of(car);Refresh(cache);return cache.Engine!=null&&cache.Engine.IsChildOf(car.transform)?TrafficRules.EngineRange(cache.Horsepower):0f;}   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
     }

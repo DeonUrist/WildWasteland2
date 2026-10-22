@@ -5,16 +5,20 @@ namespace WildWasteland.Modules.NPC
 {
     internal static partial class Senses
     {
+        /// <summary>A crew order waiting for its NPC to register: enemy, boarding flag, expiry.</summary>
         private sealed class CrewCommand { internal GameObject Npc,Enemy;internal bool Boarding;internal float Until; }
         private static readonly Dictionary<int,CrewCommand> _crewOrders=new Dictionary<int,CrewCommand>();
+        /// <summary>Drops expired / dead crew orders.</summary>
         private static void PruneCrewOrders(float now)
         {
             if(_crewOrders.Count==0)return;_dead.Clear();
             foreach(var p in _crewOrders)if(p.Value.Npc==null||now>p.Value.Until)_dead.Add(p.Key);
             for(int i=0;i<_dead.Count;i++)_crewOrders.Remove(_dead[i]);
         }
+        /// <summary>Applies a crew order that arrived before the agent registered.</summary>
         private static void RecallCrewOrder(Agent a)
         { CrewCommand c;if(!_crewOrders.TryGetValue(a.Owner.GetInstanceID(),out c))return;_crewOrders.Remove(a.Owner.GetInstanceID());if(c.Npc==a.Owner&&Time.time<=c.Until)CrewOrder(c.Npc,c.Enemy,c.Boarding); }
+        /// <summary>INpcApi.CrewOrder: assigns a crew's known attacker, or suspends combat while it boards; null / false releases the order.</summary>
         internal static bool CrewOrder(GameObject npc,GameObject enemy,bool boarding)
         {
             if(npc==null)return false;

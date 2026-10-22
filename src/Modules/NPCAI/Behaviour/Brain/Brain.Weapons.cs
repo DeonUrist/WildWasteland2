@@ -4,11 +4,13 @@ namespace WildWasteland.Modules.NPC
 {
     internal static partial class Brain
     {
+        /// <summary>True while a fright keeps the NPC in its retreat cover.</summary>
         internal static bool Retreating(GameObject owner)
         {
             Npc n;
             return On && owner != null && _npcs.TryGetValue(owner.GetInstanceID(), out n) && Time.time < n.FrightUntil && n.Mode == Mode.Cover;
         }
+        /// <summary>Weapons Pack burning fear: on = retreat to cover away from the threat until told otherwise; off = the burning fear ends (a chainsaw fright continues).</summary>
         internal static void FireRetreat(GameObject owner, Vector3 threat, bool burning)
         {
             if (!On || owner == null) return;
@@ -23,6 +25,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>A chainsaw kill was witnessed: hostile humans within 25 m with a line of sight to the corpse flee for 6 s.</summary>
         internal static void ChainsawWitnesses(GameObject corpse)
         {
             if (!On) return;
@@ -42,6 +45,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Frightens a brain: retreat away from the threat (6 s, or for ever while burning); a fresh fright thinks at once.</summary>
         private static void Frighten(Npc n, Vector3 threat, string why)
         {
             bool fresh = Time.time >= n.FrightUntil;
@@ -53,6 +57,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Fright think: finds cover away from the threat (camp cover objects, else a map spot) and runs there until the fright ends.</summary>
         private static bool FrightThink(Npc n, float now)
         {
             if (now >= n.FrightUntil) return false;

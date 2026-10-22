@@ -31,6 +31,7 @@ namespace WildWasteland.Modules.Towns
         private static readonly List<Transform> Dead = new List<Transform>();
         private const int Solid = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 14) | (1 << 16);
         private const int Floor = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14) | (1 << 16);
+        /// <summary>Installs the native-POI population hooks (EnterState prefix, CreateObject prefix/postfix) and the cache sweep job (owner NPCAI).</summary>
         internal static void Install(IModule module)
         {
             Clear(); Creatures.Clear(); Pools.Clear();
@@ -68,6 +69,7 @@ namespace WildWasteland.Modules.Towns
             if (!Pools.TryGetValue(faction, out pool)) Pools.Add(faction, pool = new List<Creature>());
             pool.Add(creature);
         }
+        /// <summary>Native POI site of an enemy spawner (one discovery scan per POI; town buildings excluded).</summary>
         private static Site Find(PlayMakerFSM f)
         {
             if (f == null || f.FsmName != "ItemSpawner" || !f.name.StartsWith("EnemySpawn", StringComparison.Ordinal) || !f.gameObject.scene.IsValid()) return null;
@@ -112,8 +114,10 @@ namespace WildWasteland.Modules.Towns
             return towns != null ? towns.IsTownBuilding(t) : TownMarkers.Owns(t);   // refs-ok: REFACTOR-REQUEST B07-9 (fallback until B13 provides ITownsApi)
         }
 
+        /// <summary>Integer FSM variable value (0 when missing).</summary>
         private static int Value(PlayMakerFSM f, string name)
         { var value = f.FsmVariables.FindFsmInt(name); return value == null ? 0 : value.Value; }
+        /// <summary>Rolls a site once per save seed: 15 % stay empty unless progress already exists.</summary>
         private static void Roll(Site site)
         {
             if (site.Rolled || site.Excluded) return;
@@ -127,6 +131,7 @@ namespace WildWasteland.Modules.Towns
             foreach (var f in site.Spawners) if (Value(f, "OnOff") > 0 || Value(f, "number") > 0) { site.Empty = false; break; }
             if (Core.Log.L1) NpcaiRuntime.Main("native population " + site.Root.name + " at " + world + ": " + (site.Empty ? "empty (15% roll)" : "occupied; same-category variety"));
         }
+        /// <summary>EnterState prefix: an empty site's spawner trigger completes at once (native progress saved as usual).</summary>
         private static bool Enter(Fsm fsm, FsmState state)
         {
             if (fsm.Name != "ItemSpawner" || state.Name != "trigger") return true;
@@ -138,6 +143,7 @@ namespace WildWasteland.Modules.Towns
             var done = f.FsmVariables.FindFsmInt("OnOff"); if (done == null || fsm.GetState("spawned") == null) return true;
             done.Value = 1; fsm.SetState("spawned"); return false;
         }
+        /// <summary>CreateObject prefix: the spawned creature becomes a random same-category creature of the site, placed on safe free floor near the spot.</summary>
         private static bool Creating(CreateObject action)
         {
             Spawn spawn;
@@ -166,6 +172,7 @@ namespace WildWasteland.Modules.Towns
             }
             return true; // No safe nearby point: retain the authored prefab and position together.
         }
+        /// <summary>True when the creature fits at the feet point (free capsule, clear path from the spot, floor under every edge).</summary>
         private static bool Clear(Vector3 from, Vector3 feet, Creature creature)
         {
             float radius = creature.Radius + .04f;
@@ -184,8 +191,10 @@ namespace WildWasteland.Modules.Towns
             }
             return true;
         }
+        /// <summary>CreateObject postfix: the authored spawn offset is restored.</summary>
         private static void Created(CreateObject action)
         { Spawn spawn; if (Actions.TryGetValue(action, out spawn)) action.position = spawn.Original; }
+        /// <summary>Job "NPCAI.Native POI spawn cache" (30 s): forgets sites whose root is gone.</summary>
         private static void Sweep()
         {
             Dead.Clear(); foreach (var pair in Sites) if (pair.Key == null) Dead.Add(pair.Key);
@@ -196,6 +205,7 @@ namespace WildWasteland.Modules.Towns
                 Sites.Remove(root);
             }
         }
+        /// <summary>Forgets every site and restores authored spawn offsets.</summary>
         internal static void Clear()
         { foreach (var pair in Actions) pair.Key.position = pair.Value.Original; Actions.Clear(); Groups.Clear(); Sites.Clear(); Dead.Clear(); }
     }

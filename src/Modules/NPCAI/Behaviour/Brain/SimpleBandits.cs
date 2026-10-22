@@ -8,21 +8,30 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<int,GameObject> Members=new Dictionary<int,GameObject>();
         private static readonly HashSet<int> Combat=new HashSet<int>();
         private static readonly Dictionary<int,GameObject> Targets=new Dictionary<int,GameObject>();
+        /// <summary>INpcApi: sets the goal of a simple convoy bandit.</summary>
         internal static void Target(GameObject npc,GameObject target){if(Has(npc))Targets[npc.GetInstanceID()]=target;}
+        /// <summary>The goal of a simple bandit (its set target, else the player).</summary>
         internal static GameObject Goal(GameObject npc){if(npc!=null&&Targets.TryGetValue(npc.GetInstanceID(),out var target))return target;return Senses.PlayerObj;}
+        /// <summary>INpcApi: marks / unmarks a simple convoy bandit (not fighting).</summary>
         internal static void Set(GameObject npc,bool enabled)
         {Set(npc,enabled,false);}
+        /// <summary>INpcApi: marks / unmarks a simple convoy bandit and its combat state.</summary>
         internal static void Set(GameObject npc,bool enabled,bool combat)
         {if(npc==null)return;int id=npc.GetInstanceID();if(enabled)Members[id]=npc;else{Members.Remove(id);Targets.Remove(id);}if(enabled&&combat)Combat.Add(id);else Combat.Remove(id);}
+        /// <summary>True when the NPC is a simple convoy bandit.</summary>
         internal static bool Has(GameObject npc)
         {return npc!=null&&Members.TryGetValue(npc.GetInstanceID(),out var member)&&member==npc;}
+        /// <summary>True while a simple bandit fights on foot (not seated).</summary>
         internal static bool Fighting(GameObject npc){return Has(npc)&&npc.transform.parent==null&&Combat.Contains(npc.GetInstanceID());}
+        /// <summary>Forgets every simple bandit (scene load).</summary>
         internal static void Clear(){Members.Clear();Combat.Clear();Targets.Clear();}
+        /// <summary>Forgets one simple bandit.</summary>
         internal static void Remove(GameObject npc){if(ReferenceEquals(npc,null))return;int id=npc.GetInstanceID();Members.Remove(id);Combat.Remove(id);Targets.Remove(id);}
     }
 
     internal static partial class Senses
     {
+        /// <summary>Look of a simple bandit (and the MutantSanity tag): engages its goal when it sees it or remembers fighting it, else idles.</summary>
         private static void SimpleLook(Agent a,float now)
         {
             float interval=0.8f+a.Stagger;
@@ -76,6 +85,7 @@ namespace WildWasteland.Modules.NPC
             a.MemTrack=false;a.UnseenSince=-1f;a.SeenFor=0f;
             return null;
         }
+        /// <summary>Simple line of sight from a transform to a target (blockers of the senses' sight).</summary>
         internal static bool SimpleSight(Transform from,GameObject owner,GameObject target)
         {
             var eye=from.position+Vector3.up*1.3f;var to=target.transform.position+Vector3.up-eye;

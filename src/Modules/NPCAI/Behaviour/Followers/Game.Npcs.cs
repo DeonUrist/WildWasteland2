@@ -85,6 +85,7 @@ namespace WildWasteland.Modules.Quests
 
         static float liveNamesAt = -10f;
 
+        /// <summary>Loaded NPCs by object name (anything with a Health FSM), rebuilt at most once a second and shared by every "is this NPC here?" question.</summary>
         public static Dictionary<string, Transform> LiveNames()
         {
             float now = Time.unscaledTime;

@@ -47,6 +47,7 @@ namespace WildWasteland.Modules.Quests
             return res;
         }
 
+        /// <summary>Load: saved walks are picked up again as the walkers' NPCs come back.</summary>
         public static void RestoreWalks(List<SavedWalk> saved)   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
         {
             walkers.Clear();
@@ -78,6 +79,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Sends a group of the winning faction's people from about SpawnDistance away to walk into the taken camp.</summary>
         static int SpawnGroup(Faction f, Vector3 campWorld, Vector3 campRel, System.Random rng, string campKey)
         {
             List<string> names = Game.FindNpcNames(f.Name);
@@ -144,6 +146,7 @@ namespace WildWasteland.Modules.Quests
         // (a camp held by four merchants would be odd). Quest givers are always brought back as what they were.
         static readonly string[] NonFighters = { "merchant", "trader", "elder", "chieftain" };
 
+        /// <summary>Names without merchants / traders / elders / chieftains (unless nobody else is there).</summary>
         static List<string> Fighters(List<string> names)
         {
             var res = new List<string>();
@@ -173,6 +176,7 @@ namespace WildWasteland.Modules.Quests
             return found;
         }
 
+        /// <summary>Prefab asset for a name, else a living object with that name to copy.</summary>
         static GameObject ScanForPrefab(string name)
         {
             GameObject living = null;
@@ -198,6 +202,7 @@ namespace WildWasteland.Modules.Quests
 
         // ---- walking in ----------------------------------------------------------------------------
 
+        /// <summary>The Movement FSM of an object (null when missing).</summary>
         static PlayMakerFSM MoveFsm(GameObject go)
         {
             PlayMakerFSM[] fsms = NpcWorld.Fsms(go);
@@ -212,6 +217,7 @@ namespace WildWasteland.Modules.Quests
 
         static bool solidMaskSet;
 
+        /// <summary>Layers that block a walker (everything except actors, items, player, water, UI).</summary>
         static int SolidMask()
         {
             if (!solidMaskSet)
@@ -394,6 +400,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Places an object on free ground 10-24 m around the camp.</summary>
         static void PlaceNear(GameObject go, Vector3 campWorld)
         {
             Vector3 g;
@@ -405,6 +412,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Spawns a garrison of the faction around the camp that patrols there.</summary>
         static int SpawnAround(Faction f, Vector3 campWorld, Vector3 campRel, int count, string campKey)
         {
             List<string> names = Game.FindNpcNames(f.Name);
@@ -438,6 +446,7 @@ namespace WildWasteland.Modules.Quests
             return made;
         }
 
+        /// <summary>A free ground spot between two radii around a centre (the centre when none).</summary>
         static Vector3 RandomSpotNear(Vector3 centre, float minR, float maxR)
         {
             for (int k = 0; k < 6; k++)

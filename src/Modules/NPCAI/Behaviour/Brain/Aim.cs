@@ -34,11 +34,13 @@ namespace WildWasteland.Modules.NPC
             public float LastLog;
         }
 
+        /// <summary>The RandomWait min/max of the Attack FSM's aim pause and their original values.</summary>
         private sealed class WaitRefs { public FsmFloat Min, Max, MyMin, MyMax; }
 
         private static readonly Dictionary<int, State> _states = new Dictionary<int, State>();
         private static readonly Dictionary<RandomWait, WaitRefs> _waits = new Dictionary<RandomWait, WaitRefs>();
 
+        /// <summary>Scene load: per-NPC aim state, wait refs and targets dropped.</summary>
         public static void OnSceneLoaded() { _states.Clear(); _waits.Clear(); _targets.Clear(); }
 
         /// <summary>(WW) module shutdown: every RangedAttackWait RandomWait gets its own min / max FsmFloats back (the vanilla pause)</summary>
@@ -51,6 +53,7 @@ namespace WildWasteland.Modules.NPC
         // drop entries of NPCs that no longer exist (the RandomWait action would keep its whole FSM alive)
         private static readonly List<RandomWait> _deadWaits = new List<RandomWait>();
         private static readonly List<int> _deadStates = new List<int>();
+        /// <summary>Job "NPCAI.Aim.Sweep" (10 s): forgets the aim state of NPCs that are gone.</summary>
         internal static void Sweep()      // (WW) a 10 s Interval job (was gated here; a few times a minute is plenty)
         {
             _deadWaits.Clear();
@@ -183,6 +186,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Aim state of an NPC (created on first use).</summary>
         private static State StateOf(GameObject owner)
         {
             State st;
@@ -194,6 +198,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>The NPC's current target: Detection FSM variable detectedObj (what the Attack / Damage Ranged FSMs read too). The variable reference is cached per owner (looked up with GetComponents once, not per burst check).</summary>
         private sealed class TargetRef { public GameObject Owner; public FsmGameObject Var; }
         private static readonly Dictionary<int, TargetRef> _targets = new Dictionary<int, TargetRef>();
+        /// <summary>The NPC's current Detection target (null when none).</summary>
         internal static GameObject TargetOf(GameObject owner)
         {
             int id = owner.GetInstanceID();

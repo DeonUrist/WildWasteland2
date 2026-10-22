@@ -9,7 +9,9 @@ namespace WildWasteland.Modules.Patrols
         private float _nextSense;
 
         /// <summary>Patrol sight (range by day/lights, 100 degree cone, raycast) and engine hearing of the player every 0.5 s; updates LastKnown/SeenUntil/Detection and the crew contact time.</summary>
-        partial void SensePlayer(TrafficJourney journey, bool hasPlayer, Vector3 player, GameObject car)   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+        partial void SensePlayer(
+            TrafficJourney journey,   // refs-ok: REFACTOR-REQUEST B07-12 - part of a Patrols traffic type, B11 moves callers to INpcControl.CanPerceivePlayer
+            bool hasPlayer, Vector3 player, GameObject car)
         {
             if (Time.time >= _nextSense)
             {

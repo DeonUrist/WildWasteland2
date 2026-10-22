@@ -15,8 +15,10 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<Senses.Agent> _list = new List<Senses.Agent>();
         private static string[] _prefabs; private static string _src;
 
+        /// <summary>Scene load: ambushers dropped.</summary>
         internal static void OnSceneLoaded() { _list.Clear(); }
 
+        /// <summary>True when the prefab lies in wait ([Ambush] Prefabs; split once per value).</summary>
         private static bool Wanted(string prefab)
         {
             string cfg = NpcaiSettings.AmbushPrefabs.Value ?? "";
@@ -33,12 +35,14 @@ namespace WildWasteland.Modules.NPC
             if (NpcaiSettings.AmbushEnabled.Value && a.AmbushDist <= 0f && a.State == Senses.State.Idle) a.AmbushDist = Roll();
         }
 
+        /// <summary>Random ambush distance for this settling ([Ambush] MinDistance..MaxDistance).</summary>
         private static float Roll()
         {
             float lo = Mathf.Max(0.5f, NpcaiSettings.AmbushMin.Value), hi = Mathf.Max(lo, NpcaiSettings.AmbushMax.Value);
             return UnityEngine.Random.Range(lo, hi);
         }
 
+        /// <summary>Job "NPCAI.Ambush" (0.5 s): idle ambushers settle with a fresh ambush distance; the senses hold them until a target comes that close.</summary>
         internal static void Tick()      // (WW) a 0.5 s Interval job (game time), was gated here
         {
             if (_list.Count == 0) return;

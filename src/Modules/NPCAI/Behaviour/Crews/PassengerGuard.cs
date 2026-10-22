@@ -40,11 +40,14 @@ namespace WildWasteland.Modules.Patrols
         private float _nextFireCheck; private bool _canFire;
         private GameObject _fireTarget;
         private bool _questFollower; private GameObject _questTarget; private float _questBlockedUntil;
+        /// <summary>Seated-combat target given by the caller (quest follower / ISeatedCombat); fire blocked until a time.</summary>
         internal void QuestTarget(GameObject target, float blockedUntil)
         { _questFollower = true; _questTarget = target; _questBlockedUntil = blockedUntil; }
+        /// <summary>Makes the guard a ranged, caller-targeted seated fighter.</summary>
         internal void QuestRanged() { _rangedPrefab = _ranged = true; _questFollower = true; _nextFireCheck = 0; }
         internal bool QuestCanFire { get { return _canFire && Time.time >= _questBlockedUntil; } }
         private static readonly RaycastHit[] AnswerHits=new RaycastHit[16];
+        /// <summary>True when this guard may answer an attacker right now (ranged, allowed, in the fire arc, clear line).</summary>
         internal bool CanAnswer(GameObject enemy)
         {
             if(!_ranged||!CombatAllowed||!_canFire||enemy==null||enemy!=_fireTarget)return false;
@@ -55,8 +58,10 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>True for a ranged human prefab that can fight from a seat.</summary>
         internal static bool IsRangedHuman(GameObject who) { return IsRanged(who); }
 
+        /// <summary>Prepares a passenger at spawn: ranged-only Attack, melee damage off, every non-combat AI FSM muted.</summary>
         internal static void Prepare(GameObject passenger, bool combatAllowed)
         {
             bool ranged = IsRanged(passenger);
@@ -68,6 +73,7 @@ namespace WildWasteland.Modules.Patrols
             Crew.MuteAi(passenger, ranged && combatAllowed ? CombatFsms : null);
         }
 
+        /// <summary>Mutes the non-combat AI of a passenger (its FSMs fetched now).</summary>
         private static void MuteNonCombatAi(GameObject passenger, bool combatAllowed)
         {
             MuteNonCombatAi(passenger.GetComponents<PlayMakerFSM>(), IsRanged(passenger), combatAllowed);
@@ -144,6 +150,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>any occupant: melee / fire-contact damage FSMs and the FireDamage hitbox off (a body that can be shot but hurts nobody by touch)</summary>
         internal static void NeutralizeContact(GameObject who) { NeutralizeMeleeDamage(who); }
 
+        /// <summary>Switches off melee / fire-contact damage FSM actions and the FireDamage hitbox of an occupant.</summary>
         private static void NeutralizeMeleeDamage(GameObject passenger)
         {
             int disabledActions = 0;
@@ -168,6 +175,7 @@ namespace WildWasteland.Modules.Patrols
                 + "; disabled " + disabledActions + " FSM action(s)" + (hitbox == null ? "; hitbox not found" : "; hitbox disabled"));
         }
 
+        /// <summary>True for a ranged human prefab with a RangedAttackWait FSM and a ranged attack raycast.</summary>
         private static bool IsRanged(GameObject passenger)
         {
             if (passenger == null) return false;
@@ -179,6 +187,7 @@ namespace WildWasteland.Modules.Patrols
             return wait && Patrol.FindChild(passenger.transform, "AttackRaycast_Ranged") != null;
         }
 
+        /// <summary>Per frame: combat allowed check, AI guard, target (caller, patrol faction or vanilla FSM), fire arc and range decision, driver bursts and the seat pose aim.</summary>
         private void Update()
         { if (!PatrolsModule.Running) return;
             if (_passenger == null || _car == null || _anchor == null) { Destroy(this); return; }
@@ -256,6 +265,7 @@ namespace WildWasteland.Modules.Patrols
             if (_pose != null) _pose.SetAim(aimPoint, target != null && inArc);
         }
 
+        /// <summary>Score of an FSM variable / field name as a target source (target &gt; player &gt; enemy &gt; closest).</summary>
         private static int ScoreOf(string name)
         {
             string n = (name ?? "").ToLowerInvariant();
@@ -294,6 +304,7 @@ namespace WildWasteland.Modules.Patrols
             if (Core.Log.L1) NpcaiRuntime.Main("Passenger: " + _passenger.name + " target sources: " + _targetVars.Length + " variables, " + _targetFields.Length + " action fields");
         }
 
+        /// <summary>The vanilla FSM's current target from the indexed variables and action fields (10 times a second).</summary>
         private GameObject FindVanillaTarget()
         {
             if (Time.time < _nextTargetSearch) return _lastTarget;     // 10× a second is plenty
@@ -319,6 +330,7 @@ namespace WildWasteland.Modules.Patrols
             return best;
         }
 
+        /// <summary>Keeps a candidate target when it beats the best score (never the passenger itself).</summary>
         private void Consider(GameObject candidate, int score, ref GameObject best, ref int bestScore)
         {
             if (candidate == null || candidate == _passenger || candidate.transform.IsChildOf(_passenger.transform)) return;

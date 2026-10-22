@@ -15,11 +15,13 @@ namespace WildWasteland.Modules.NPC
         {
             readonly Action<ToolLayout> _live;
             readonly ConfigPage _cfg;
+            /// <summary>Creates a page with live lines and an optional tools.cfg section list.</summary>
             public LivePage(IModule owner, string title, string intro, Action<ToolLayout> live, params string[] sections)
             {
                 Owner = owner; Group = ToolGroups.Npc; Title = title; _live = live;
                 if (sections != null && sections.Length > 0) _cfg = new ConfigPage(owner, ToolGroups.Npc, title, ((ModuleBase)owner).Config.Tools, sections) { Intro = intro };
             }
+            /// <summary>Draws the live lines (while the module runs) and the config sections.</summary>
             public override void Draw(ToolLayout l)
             {
                 if (_live != null)
@@ -76,7 +78,7 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Bake cost", F(Nav.MsPerCell, "0.000") + " ms per cell" + (Nav.Needed ? " (an NPC waits: x4 budget)" : Nav.Urgent ? " (player at it: x3 budget)" : ""));
                 l.Value("Idle controllers", I(Idle.Count) + " (" + I(Idle.Walking) + " walking)");
                 l.Value("Animation framework", ApBody.Available ? "in use (gunmen use the player's clips)" : "not available (game clips)");   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
-                l.Value("Guns integration", Services.Guns != null ? (WeaponRanges.ProjectilesEnabled ? "Guns module, projectiles on" : "Guns module, vanilla hitscan") : "off (fallback ranges)");
+                l.Value("Guns integration", ModApi.Get<IGunsApi>() != null ? (WeaponRanges.ProjectilesEnabled ? "Guns module, projectiles on" : "Guns module, vanilla hitscan") : "off (fallback ranges)");
 
             }));
 

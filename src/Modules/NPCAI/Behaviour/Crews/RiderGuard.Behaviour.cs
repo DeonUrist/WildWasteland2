@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Human turret decisions: throw/witness/leap choice per frame, "Witness me!" leap and flight, detonation, jump-off and combat dismount, landing as a free mob; NPCAI (Wave A split of Crews/Rider.cs).</summary>
     internal sealed partial class RiderGuard
     {
+        /// <summary>Per frame: the rider's decisions (face the target, throw the lance within range and angle, the "Witness me!" leap at a close car, bail off a bike that cannot turn).</summary>
         private void Update()
         { if (!PatrolsModule.Running) return;
             if (_mode == Mode.Done) return;
@@ -143,6 +144,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ "Witness me!"
 
+        /// <summary>Starts the "Witness me!" (wounded or a chance roll): the leap follows.</summary>
         private void StartWitness()
         {
             _mode = Mode.Witness; _modeStart = Time.time;
@@ -151,7 +153,9 @@ namespace WildWasteland.Modules.Patrols
             if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + name + " - WITNESS ME! (" + (Wounded() ? "wounded" : "chance roll") + ")");
         }
 
+        /// <summary>Leap start point (the rider's chest).</summary>
         private Vector3 LeapFrom() { return transform.position + Vector3.up * 0.9f; }
+        /// <summary>Leap aim point on the player's car.</summary>
         private static Vector3 LeapAim(GameObject tcar)
         {
             var tc = tcar.GetComponent<Rigidbody>();
@@ -187,6 +191,7 @@ namespace WildWasteland.Modules.Patrols
             if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + name + " leaps at the player's car, " + flight.ToString("0.00") + " s, " + Rider.Elevation(launch).ToString("0") + " deg up");
         }
 
+        /// <summary>The leap flight: carried toward the car; a hit detonates, a miss lands and fights on foot.</summary>
         private void Fly()
         {
             float dt = Time.deltaTime;
@@ -216,6 +221,7 @@ namespace WildWasteland.Modules.Patrols
             if (Time.time - _modeStart > 4f) Detonate(transform.position + Vector3.up * 0.9f);
         }
 
+        /// <summary>True when the collider belongs to the rider or his car.</summary>
         private bool Own(Collider c)
         {
             if (c.transform.IsChildOf(transform)) return true;
@@ -249,6 +255,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ dismount (the crew bails, the car is vacated or taken)
 
+        /// <summary>Jumps off the car (leap / bike bail) and fights on foot.</summary>
         internal void JumpOff(string why)
         {
             if (_mode == Mode.Flying || _mode == Mode.Dismount || _mode == Mode.Done || _car == null) return;
@@ -261,6 +268,7 @@ namespace WildWasteland.Modules.Patrols
             SpawnMob(transform.position, vel);
         }
 
+        /// <summary>Dismounts the rider into a foot fighter (crew return order handed over).</summary>
         internal void CombatDismount()
         {
             if(_mode==Mode.Flying||_mode==Mode.Dismount||_mode==Mode.Done||_car==null)return;
@@ -310,6 +318,7 @@ namespace WildWasteland.Modules.Patrols
             CrewReturn.Dismounted(owner, mob, CrewReturn.RoleTurret, _slot, identity, who, local, _standing);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
         }
 
+        /// <summary>A short hop off the car.</summary>
         private void Hop()
         {
             float dt = Time.deltaTime;

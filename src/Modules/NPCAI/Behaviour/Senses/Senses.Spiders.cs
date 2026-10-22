@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.NPC
         private static Transform _spiderFlashOf; private static Light _spiderFlash;
         private static GameObject _spiderCavePlayer; private static HutongGames.PlayMaker.FsmBool _spiderInside;
 
+        /// <summary>Scene load: spider light caches dropped.</summary>
         private static void ResetSpiderLights()
         {
             _hasSpiders = false; _spiderItems = null; _spiderFlashOf = null; _spiderFlash = null;
@@ -21,6 +22,7 @@ namespace WildWasteland.Modules.NPC
             _spiderCavePlayer = null; _spiderInside = null;
         }
 
+        /// <summary>True when a cave-web spider's player is outside the cave and beyond 3 m (noise ignored).</summary>
         private static bool OutsideCaveWeb(Agent a)
         {
             if (!a.CaveWeb || _player == null || (_player.transform.position - a.T.position).sqrMagnitude <= 9f) return false;
@@ -33,6 +35,7 @@ namespace WildWasteland.Modules.NPC
             return _spiderInside == null || !_spiderInside.Value;
         }
 
+        /// <summary>Once a second: the player's cave light and the tin-can light list (dead ones pruned, the item walk restarted).</summary>
         private static void RefreshSpiderLights()
         {
             if (!_hasSpiders) return;
@@ -59,6 +62,7 @@ namespace WildWasteland.Modules.NPC
         // second each item's name was read again). A new can light is found within items/256 frames.
         private static int _spiderItemPos = -1;
         private static readonly HashSet<int> _notCanLight = new HashSet<int>();
+        /// <summary>Walks 256 registered items per frame for tin can lights.</summary>
         private static void SpiderItemStep()
         {
             var items = _spiderItems != null ? _spiderItems.arrayList : null;
@@ -78,6 +82,7 @@ namespace WildWasteland.Modules.NPC
             _spiderItemPos = end >= items.Count ? -1 : end;
         }
 
+        /// <summary>Ambient light at a point (Cave Darkness query, else a sky ray).</summary>
         private static float SpiderAmbient(Vector3 p)
         {
             var ambient = Core.ModApi.Get<Core.ICaveAmbient>();
@@ -90,6 +95,7 @@ namespace WildWasteland.Modules.NPC
             return 1f;
         }
 
+        /// <summary>Refreshes a spider's cave light (every second).</summary>
         private static void SpiderCaveLight(Agent a, float now)
         {
             if (now < a.NextCaveLight) return;
@@ -97,6 +103,7 @@ namespace WildWasteland.Modules.NPC
             a.CaveLight = SpiderAmbient(Eye(a));
         }
 
+        /// <summary>Light on a sight target (the player's cave light, else full).</summary>
         private static float SpiderTargetLight(GameObject target)
         {
             if (target == _player) return _playerCaveLight;
@@ -106,8 +113,10 @@ namespace WildWasteland.Modules.NPC
             return a.CaveLight;
         }
 
+        /// <summary>True when a spider sits in the dark (not lit, light x cave light under 0.5).</summary>
         private static bool SpiderDark(Agent a) { return !a.Lit && LightLevel() * a.CaveLight < 0.5f; }
 
+        /// <summary>True when a light reaches the spider's eye (range, spot cone and a clear line).</summary>
         private static bool SpiderIlluminated(Agent a, Vector3 eye, Light l)
         {
             if (l == null || !l.isActiveAndEnabled || l.intensity <= 0f || (l.cullingMask & (1 << a.Owner.layer)) == 0) return false;
@@ -118,6 +127,7 @@ namespace WildWasteland.Modules.NPC
             return Clear(from, eye, a.T.root);
         }
 
+        /// <summary>Spider look: lit spiders wake, dark spiders wait (cave webs keep their 3 m rule).</summary>
         private static void SpiderLook(Agent a, float now)
         {
             SpiderCaveLight(a, now);

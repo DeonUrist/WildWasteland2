@@ -14,7 +14,9 @@ namespace WildWasteland.Modules.Guns
     // Above 100 % only an unhurt boss (Health = base) is raised, once per instance.
     internal static class Bosses
     {
+        /// <summary>A tracked human boss: object, name, base health and its Health FSM variable.</summary>
         private sealed class Boss { public GameObject Go; public string Name; public float Base; public FsmFloatRef Hp; }
+        /// <summary>The Health FSM and its "Health" float of a boss.</summary>
         private sealed class FsmFloatRef { public PlayMakerFSM Fsm; public HutongGames.PlayMaker.FsmFloat Var; }
 
         private static readonly Dictionary<string, float> Base = new Dictionary<string, float> { { "Duke_Ironjaw", 1500f }, { "Buzzgut", 600f } };
@@ -25,12 +27,15 @@ namespace WildWasteland.Modules.Guns
         private static float _next, _nextScan;
         private static int _scanBurst;
 
+        /// <summary>Scene load: tracked bosses forgotten; a short burst of scans follows (bosses restored from a save).</summary>
         public static void OnSceneLoaded() { _raised.Clear(); _bosses.Clear(); _detected.Clear(); _creates.Clear(); _next = 0f; _nextScan = Time.unscaledTime + 2f; _scanBurst = 4; }
 
+        /// <summary>Object name before "(".</summary>
         private static string Clean(string name) { int cut = name.IndexOf('('); return cut > 0 ? name.Substring(0, cut) : name; }
 
         /// (WW) the boss key for a prefab name, or null (GunsModule caches it per prefab: the CreateObject postfix runs for every spawn)
         internal static string BossName(string prefabName) { return prefabName != null && Base.ContainsKey(prefabName) ? prefabName : null; }
+        /// <summary>Number of tracked bosses.</summary>
         internal static int Count { get { return _bosses.Count; } }
         /// <summary>True when the object is a tracked human boss (INpcControl.IsBoss).</summary>
         internal static bool IsTracked(GameObject go) { return go != null && _bosses.ContainsKey(go.GetInstanceID()); }
@@ -54,6 +59,7 @@ namespace WildWasteland.Modules.Guns
             if (Base.TryGetValue(name, out b)) Add(owner, name, b);
         }
 
+        /// <summary>SensorGetDetections prefix: a boss's Detection FSM registers it once (no scene scans needed while detection runs).</summary>
         internal static bool BeforeGetDetections(Micosmo.SensorToolkit.PlayMaker.SensorGetDetections action)
         {
             if (!NpcaiSettings.BossHealth.Value) return true;
@@ -77,6 +83,7 @@ namespace WildWasteland.Modules.Guns
             Add(made, prefabName, b);
         }
 
+        /// <summary>Starts tracking a boss (once per instance).</summary>
         private static void Add(GameObject go, string name, float b)
         {
             int id = go.GetInstanceID();

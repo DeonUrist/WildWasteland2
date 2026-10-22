@@ -19,6 +19,7 @@ namespace WildWasteland.Modules.Towns
         internal readonly Dictionary<TownFaction, List<GameObject>> Population = new Dictionary<TownFaction, List<GameObject>>();   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         internal readonly List<GameObject> Hounds = new List<GameObject>();
         private readonly Dictionary<GameObject, bool> _bosses = new Dictionary<GameObject, bool>();
+        /// <summary>True for a boss prefab (name or BossUI FSM; cached per prefab).</summary>
         internal bool IsBoss(GameObject prefab)
         {
             bool boss; if (_bosses.TryGetValue(prefab, out boss)) return boss;
@@ -26,6 +27,7 @@ namespace WildWasteland.Modules.Towns
             foreach (var fsm in prefab.GetComponentsInChildren<PlayMakerFSM>(true)) if (fsm.FsmName == "BossUI") { boss = true; break; }
             _bosses[prefab] = boss; return boss;
         }
+        /// <summary>Catalogs the town population pools of a graph POI root (faction actors, Scrapyard hounds kept apart) and feeds the native-POI variety pools.</summary>
         private void CatalogPopulation(GameObject root)
         {
             foreach (var proxy in root.GetComponentsInChildren<PlayMakerArrayListProxy>(true))
