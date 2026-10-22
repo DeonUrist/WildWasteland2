@@ -6,7 +6,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using BepInEx;
 using BepInEx.Configuration;
-using BepInEx.Logging;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -16,7 +15,7 @@ namespace WildWasteland.Modules.Patrols
 {
     // Apocatemplater's vehicle recorder, hosted by Apocapatrol's persistent runner.
     // Uses the same TemplateFile schema as the loader; no separate plugin or hotkey by default.
-    internal sealed class TemplateExporter : MonoBehaviour
+    internal sealed partial class TemplateExporter : MonoBehaviour
     {
         private string _toast = "";
         private float _toastUntil;
@@ -206,17 +205,12 @@ namespace WildWasteland.Modules.Patrols
             return Prefabs.Exact(name);
         }
 
-        private static readonly Regex CloneSuffix = new Regex(@"(\(Clone\)\d*|\s\(\d+\))+$");
-        internal static string PrefabName(string instance) { return CloneSuffix.Replace(instance ?? "", "").Trim(); }
-
         private static bool IsPart(Transform t)
         {
             try { return VehicleAttachments.IsPart(t); } catch (Exception) { return false; }
         }
 
         private static bool IsMoving(string name) { return Has(name, Moving); }
-
-
 
         private static bool Has(string name, string[] words)
         {
@@ -320,19 +314,6 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
-        // items locked in the frame's PhysicsLock boxes (not the ones in a roof rack / crate part): "prefab:count;..."
-        private static string BedItems(Transform car, out int count)
-        {
-            count = 0;
-            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-            var order = new List<string>();
-            foreach (var pl in FrameChildren(car, "PhysicsLock"))
-                Items(pl, counts, order, ref count);
-            var sb = new StringBuilder();
-            foreach (var n in order) { if (sb.Length > 0) sb.Append(';'); sb.Append(n).Append(':').Append(counts[n]); }
-            return sb.ToString();
-        }
-
         private static IEnumerable<Transform> FrameChildren(Transform t, string name)
         {
             for (int i = 0; i < t.childCount; i++)
@@ -341,22 +322,6 @@ namespace WildWasteland.Modules.Patrols
                 if (IsPart(c)) continue;
                 if (c.name == name) yield return c;
                 else foreach (var r in FrameChildren(c, name)) yield return r;
-            }
-        }
-
-        private static void Items(Transform t, Dictionary<string, int> counts, List<string> order, ref int count)
-        {
-            for (int i = 0; i < t.childCount; i++)
-            {
-                var c = t.GetChild(i);
-                bool item = false;
-                foreach (var f in c.GetComponents<PlayMakerFSM>()) if (f.FsmName == "LockPhysics") { item = true; break; }
-                if (!item) { Items(c, counts, order, ref count); continue; }
-                string n = PrefabName(c.name);
-                int k;
-                if (!counts.TryGetValue(n, out k)) order.Add(n);
-                counts[n] = k + 1;
-                count++;
             }
         }
 

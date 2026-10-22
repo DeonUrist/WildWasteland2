@@ -11,25 +11,15 @@ namespace WildWasteland.Modules.Patrols
     {
         internal string Id, Name;
     }
-    internal static class PickupCatalog
+    /// <summary>Item list of the loot editor: every pickable item prefab (ID FSM, rigidbody root) with its display name; Loot (Wave A).</summary>
+    internal static partial class PickupCatalog
     {
         private static List<PickupItem> _items;
         internal static void Invalidate() { _items = null; }
         internal static List<PickupItem> All()
         {
             if (_items != null) return _items;
-            var names = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            string path = Path.Combine(Paths.ConfigPath, "com.denis.apocalypter.apocaspawner.cfg");
-            try
-            {
-                bool section = false;
-                if (File.Exists(path)) foreach (string line in File.ReadAllLines(path))
-                {
-                    string s = line.Trim(); if (s.StartsWith("[")) { section = s == "[Names]"; continue; }
-                    int eq = s.IndexOf('='); if (section && eq > 0 && !s.StartsWith("#")) names[s.Substring(0, eq).Trim()] = s.Substring(eq + 1).Trim();
-                }
-            }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Item names: " + e.Message); }
+            var names = ApocaspawnerNames();   // Compatibility part (PickupCatalog.Apocaspawner.cs)
             var items = new Dictionary<string, PickupItem>(StringComparer.OrdinalIgnoreCase);
             foreach (var fsm in Resources.FindObjectsOfTypeAll<PlayMakerFSM>())
             {
