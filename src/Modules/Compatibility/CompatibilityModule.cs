@@ -34,6 +34,8 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Declares the per-mod bridges in start order (README 6.12: one folder and one switch per third-party mod).</summary>
         public CompatibilityModule()
         {
+            _bridges.Add(new OptionalBridge(this, "SigmaMod", "SigmaMod", "Prepare native FSM states before SigmaMod reads inactive FSMs (only patched when SigmaMod is loaded).", SigmaFsmStates.Install, SigmaFsmStates.Clear));
+            _bridges.Add(new OptionalBridge(this, "VistasWorldGen", "Vistas World Gen", "Use Vistas World Gen roads, places and terrain with Wild Wasteland towns, traffic, HUD banners and weather.", VistasBridge.Start, VistasBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "BloodFX", "BloodFX", "Recover the optional BloodFX updater after scene destruction and suppress its F8 debug hit.", BloodFxCompat.Start, BloodFxCompat.Shutdown));
             _bridges.Add(new OptionalBridge(this, "ApocaDustStorm", "ApocaDustStorm", "War Rig tanks shelter from ApocaDustStorm storms, and its dust storms dim NPC sight and hearing like sandstorms.", ApocaDustStormBridge.Start, ApocaDustStormBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "Apocaspawner", "Apocaspawner", "List the War Rig and the Stew Pot in Apocaspawner and scale its crossbow damage like Wild Wasteland crossbows.", ApocaspawnerBridge.Start, ApocaspawnerBridge.Shutdown));
@@ -93,44 +95,23 @@ namespace WildWasteland.Modules.Compatibility
             ApocatalkerBridge.OnSceneLoaded();
         }
 
-        /// <summary>Exposes the per-mod Engine Sim switch in the shared settings shell.</summary>
+        /// <summary>Contributes every per-mod switch to the System page's Compatibility group.</summary>
         public override void Settings(SettingsShell shell) { foreach (var bridge in _bridges) bridge.Settings(shell); shell.Row(this, SettingsShell.Page.System, "Compatibility", _engineEnabled, "Engine Sim"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _languageEnabled, "ApocaLanguage"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _caveEnabled, "Cave Darkness"); }
 
-        /// <summary>Installs detected SigmaMod and Vistas hooks under this module's lifetime.</summary>
-        public override void Init() { SigmaFsmStates.Install(this); VistasWorldGen.Init(this); _running = true; foreach (var bridge in _bridges) bridge.Start(); if (_engineEnabled.Value) _engineSim.Init(); }
+        /// <summary>Starts every enabled per-mod bridge (SigmaMod and Vistas first, as before) and Engine Sim.</summary>
+        public override void Init() { _running = true; foreach (var bridge in _bridges) bridge.Start(); if (_engineEnabled.Value) _engineSim.Init(); }
 
         /// <summary>Registers the detected third-party vehicle owner before Core optimization starts.</summary>
         public override void ProvideApis()
         {
             ProvideLanguage(); ProvideCave();
-            if (VistasWorldGen.Present) ModApi.Provide<IWorldGenFacts>(this, new VistasFacts());
             var query = EngineSimVehicleOwnership.Create();
             var ownership = ModApi.Get<IVehicleOwnership>();
             if (query != null && ownership != null) ownership.Register(this, query);
         }
 
         /// <summary>Detaches external listeners and clears runtime state before Core removes this module's hooks.</summary>
-        public override void Shutdown() { _running = false; for (int i = _bridges.Count - 1; i >= 0; i--) _bridges[i].Stop(); if (_caveDiscovery != null) _caveDiscovery.Remove(); _caveDiscovery = null; ModApi.Withdraw<ICaveAmbient>(this); _cave = null; ModApi.Withdraw<ILanguageMenu>(this); _language = null; _engineSim.Shutdown(); VistasWorldGen.Shutdown(); SigmaFsmStates.Clear(); }
-
-        /// <summary>Publishes generation facts without exposing reflective third-party bridge state.</summary>
-        private sealed class VistasFacts : IWorldGenFacts
-        {
-            /// <summary>True while the detected World Amp bridge is installed.</summary>
-            public bool Present { get { return VistasWorldGen.Present; } }
-            /// <summary>Last place name reported by the native entry callback.</summary>
-            public string CurrentPlace { get { return VistasWorldGen.CurrentPlace; } }
-            /// <summary>Native place classification or landmark caption accompanying the entry callback.</summary>
-            public string CurrentPlaceKind { get { return VistasWorldGen.CurrentPlaceKind; } }
-            /// <summary>Revision changed whenever captured roads are replaced or cleared.</summary>
-            public int RoadRevision { get { return VistasWorldGen.RoadRevision; } }
-            /// <summary>Third-party assembly identity and terrain/road settings used by route-cache consumers.</summary>
-            public string RoadIdentity { get { return VistasWorldGen.RoadIdentity; } }
-            /// <summary>Configured banner height, with the native fallback when the setting is unavailable.</summary>
-            public float BannerHeight { get { return VistasWorldGen.BannerHeight; } }
-            /// <summary>Copies the retained road polylines into the consumer's reusable list.</summary>
-            public void RoadLines(System.Collections.Generic.List<UnityEngine.Vector3[]> into)
-            { into.Clear(); foreach (var line in VistasWorldGen.RoadLines) into.Add(line); }
-        }
+        public override void Shutdown() { _running = false; for (int i = _bridges.Count - 1; i >= 0; i--) _bridges[i].Stop(); if (_caveDiscovery != null) _caveDiscovery.Remove(); _caveDiscovery = null; ModApi.Withdraw<ICaveAmbient>(this); _cave = null; ModApi.Withdraw<ILanguageMenu>(this); _language = null; _engineSim.Shutdown(); }
     }
 }
 

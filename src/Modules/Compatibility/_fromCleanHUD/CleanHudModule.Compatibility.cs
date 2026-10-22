@@ -11,8 +11,8 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Empty (B17): the Apocapocket reader and the ChaseCamera observer are installed by their Compatibility bridges.</summary>
         partial void InitCompatibilityEarly() { }
 
-        /// <summary>Installs the Vistas World Gen engine heat overlay replacement.</summary>
-        partial void InitCompatibilityVistas() { VistasEngineHud.Install(this); }
+        /// <summary>Empty (B17): the Vistas engine-heat notices are installed by the Compatibility VistasWorldGen bridge.</summary>
+        partial void InitCompatibilityVistas() { }
 
         /// <summary>Installs the Apocasaver autosave screen and save-name popup hooks.</summary>
         partial void InitCompatibilityApocasaver() { ApocasaverLoading.Install(this, _loadingScreen); }
@@ -32,8 +32,8 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Empty (B17): the Weapons Pack icon override shuts down with the Compatibility bridge.</summary>
         partial void ShutdownCompatibilityEarly() { }
 
-        /// <summary>Clears the Vistas engine heat overlay state.</summary>
-        partial void ShutdownCompatibilityVistas() { VistasEngineHud.Clear(); }
+        /// <summary>Empty (B17): the Vistas engine-heat notices are cleared by their Compatibility bridge.</summary>
+        partial void ShutdownCompatibilityVistas() { }
 
         /// <summary>Empty (B17): the ChaseCamera observer and the Apocatalker mirror are released by their Compatibility bridges.</summary>
         partial void ShutdownCompatibilityChase() { }
