@@ -49,7 +49,6 @@ namespace WildWasteland.Modules.PlayerBody
         private static float _traceUntil, _traceNext;
         private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
-        internal static bool MissingWheel { get { return _removableWheel && _mount != null && FittedWheel(_mount) == null; } }
         private static Transform FittedWheel(Transform mount)
         {
             if (mount != null) for (int i = 0; i < mount.childCount; i++)
@@ -59,16 +58,6 @@ namespace WildWasteland.Modules.PlayerBody
             }
             return null;
         }
-        internal static void Patch(PlayerBodyModule owner)
-        {
-            Patches.Patch(owner, Patches.Method(typeof(Steering), "CalculateSteerAngles"), prefix: Patches.Method(typeof(WheelArms), "BeforeSteer"));
-        }
-        private static void BeforeSteer(Steering __instance)
-        {
-            if (!ReferenceEquals(__instance, _steering) || !MissingWheel) return;
-            _vehicle.input.Steering = 0f; // Native steering still owns smoothing and centering, after all keyboard/mouse input writers.
-        }
-
         internal static void Clear()
         {
             StopEditor();
@@ -354,27 +343,13 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         private static string FilePath { get { return Path.Combine(PlayerBodyModule.DataDir, "WheelGrips", _key + ".txt"); } }
-        private static string LoadPath()
-        {
-            string path = FilePath;
-            if (!_handlebars || File.Exists(path)) return path;
-            var folder = Path.GetDirectoryName(path);
-            if (!Directory.Exists(folder)) return path;
-            var newest = DateTime.MinValue;
-            foreach (var legacy in Directory.GetFiles(folder, "handlebars-*.txt"))
-            {
-                var written = File.GetLastWriteTimeUtc(legacy);
-                if (written > newest) { newest = written; path = legacy; }
-            }
-            return path;
-        }
         private static Setup Load(bool defaultsOnly = false)
         {
             var s = new Setup();
             try
             {
                 string text;
-                var path = defaultsOnly ? FilePath : LoadPath();
+                var path = FilePath;
                 if (!defaultsOnly && File.Exists(path)) text = File.ReadAllText(path);
                 else
                     using (var stream = WildWasteland.Core.DiskResources.Open("PlayerBody.WheelGrips." + _key + ".txt"))
@@ -384,7 +359,7 @@ namespace WildWasteland.Modules.PlayerBody
                         if (PlayerBodyModule.VerboseOn) PlayerBodyModule.Verbose("Wheel arms: built-in calibrated defaults " + _key);
                     }
                 var fields = text.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
-                if (fields.Length != 12 && fields.Length != 60 && !(_handlebars && fields.Length == 84) && fields.Length != s.V.Length) throw new FormatException("expected 12/60 legacy, 84 or 96 handlebar grip values");
+                if (fields.Length != s.V.Length) throw new FormatException("expected " + s.V.Length + " grip values");   // (WW2, D12) only the current 60 / 96-value format
                 for (int i = 0; i < fields.Length; i++)
                 {
                     float n;
@@ -400,54 +375,10 @@ namespace WildWasteland.Modules.PlayerBody
                     if (_handlebars && i >= 84) limit = i < 87 ? 50f : 60f;
                     s.V[i] = Mathf.Clamp(s.V[i], -limit, limit);
                 }
-                if (fields.Length == 12)
-                    for (int pose = 0; pose < 2; pose++) for (int arm = 0; arm < 2; arm++)
-                        for (int k = 0; k < 3; k++) s.V[PoseOffset(pose, arm) + 3 + k] = s.V[6 + arm * 3 + k];
-                if (_handlebars && fields.Length < 84)
-                    for (int pose = 1; pose < 3; pose++) Array.Copy(s.V, 12, s.V, PoseOffset(pose, 0), 24);
                 if (!_handlebars) for (int pose = 0; pose < 2; pose++) MirrorPose(s.V, pose, 1);
             }
             catch (Exception e) { PlayerBodyModule.Warn("Wheel grip setup " + _key + ": " + e.Message); return new Setup(); }
             return s;
-        }
-        private static void Save()
-        {
-            try
-            {
-                if (!_handlebars) for (int pose = 0; pose < 2; pose++) MirrorPose(_setup.V, pose, 1);
-                Directory.CreateDirectory(Path.GetDirectoryName(FilePath));
-                var fields = new string[_setup.V.Length];
-                for (int i = 0; i < fields.Length; i++) fields[i] = _setup.V[i].ToString("R", Inv);
-                File.WriteAllText(FilePath, string.Join(" ", fields)); _dirty = false;
-                PlayerBodyModule.Info("Wheel grip setup saved: " + FilePath);
-            }
-            catch (Exception e) { PlayerBodyModule.Warn("Saving wheel grip setup: " + e.Message); }
-        }
-
-        internal static void Draw(ToolLayout l)
-        {
-            l.Heading("Steering-wheel hands");
-            l.Text(_handlebars ? "One setup for all motorcycles, with independent left/right hand, wrist, shoulder and elbow calibration for each steering pose. Sitting offset applies to every turn; torso bend/rotation is saved for each steering pose." : "Each wheel's right-arm fit is mirrored to its left arm. Editing either side updates the mirrored pair; left-turn motion mirrors the right-turn sequence.");
-            l.Text(_handlebars ? "Start with the button below; numpad decimal stops the editor. Num9 selects STRAIGHT / LEFT TURN / RIGHT TURN; Num3 preview/live. Num0 selects left/right hand/shoulder/elbow, sitting offset, torso rotation/bend. Num5 hand move/rotate; 8/2 up/pitch, 6/4 right/yaw, 7/1 forward-back/roll. Enter saves." : "Per-wheel SIDE and TOP poses. Start with the button below; numpad decimal stops the editor. 0 selects hand/shoulder/elbow, 5 move/rotate, 9 side/top, 3 live steering. 8/2 up/down, 6/4 right/left, 7/1 toward/away. Numpad Enter saves. Edits also save on key release.");
-            l.Value("Wheel model / setup", _setup != null ? _name + " / " + _key : "no fitted wheel");
-            l.Value("Arm owner", _owner);
-            if (_setup == null || _mount == null || _wheel == null) return;
-            if (l.Button(_editor ? "Stop live wheel editor" : "START live numpad editor", true, true))
-            {
-                if (_editor) StopEditor(); else ToolWindow.CloseThen(StartEditor);
-            }
-            DrawPoseEditor(l);
-            var v = _setup.V;
-            if (!_handlebars) l.Value("Measured rim diameter (cm)", (200f * _radius.x * Mathf.Abs(_mount.lossyScale.x)).ToString("F1", Inv));
-            if (!_handlebars) v[0] = l.Slider("Rim radius (%)", _key + "/Radius", v[0] * 100f, 50f, 110f) * .01f;
-            v[1] = l.Slider(_handlebars ? "Palm lift above grip (cm)" : "Palm lift toward driver (cm)", _key + "/Lift", v[1] * 100f, -10f, 10f) * .01f;
-            v[2] = l.Slider("Palm reach", _key + "/Reach", v[2], 0f, 1.2f);
-            if (!_handlebars) v[3] = l.Slider("Grip elevation (degrees)", _key + "/Elevation", v[3], -35f, 35f);
-            v[4] = l.Slider("Elbow swing (degrees)", _key + "/Elbow", v[4], -60f, 60f);
-            if (!_handlebars) v[5] = l.Slider("Cross-wheel pull (degrees)", _key + "/Stroke", Mathf.Clamp(v[5] * 2f, 120f, 180f), 120f, 180f) * .5f;
-            int hit = l.Buttons("SAVE this wheel", "RESET this wheel");
-            if (hit == 0) Save();
-            else if (hit == 1) { _setup = Load(true); _setups[_key] = _setup; Save(); }
         }
     }
 }
