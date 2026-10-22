@@ -457,7 +457,6 @@ namespace WildWasteland.Modules.NPC
             public Vector3 Next; public bool HasNext; public readonly List<float> Suffix = new List<float>();
             public int DirectSurface = -1;
             public float Guided = -9f, LastCall = -9f, WatchSince; public Vector3 WatchPos;   // the stuck watchdog
-            public Vector3 GlideAt; public float GlideTime = -9f; public int Glides;
             public float FeetOff = float.NaN;                                                     // pivot height above the feet
         }
         private static readonly Dictionary<int, Route> _routes = new Dictionary<int, Route>();

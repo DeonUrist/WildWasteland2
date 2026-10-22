@@ -20,12 +20,13 @@ Reference DLLs for compile.sh: copy `Apocalypter_Data/Managed` and `BepInEx/core
 | C | C | | not started | | |
 
 ## Coordinator decisions
+- 2026-10-22: Denis authorized local continuation in WW2, starting with redundant navigation fields. Removed Route.GlideAt, Route.GlideTime and Route.Glides after confirming they have no readers or writers in WW1 or WW2. Windows `dotnet build WildWasteland.csproj -c Release -p:Deploy=false`: 0 warnings, 0 errors. No deployment. This is the latest local build result; the Wave A table retains its historical cloud compiler count. Existing CS0618 suppression remains until Wave C.
 - 2026-10-22: WW 1.0.10 MapFog AtomicFile fix ported (e942e98); rule D17 (no File.Replace / File.Move over existing files) added to README.
 - 2026-10-22: CS0618 suppressed in csproj until Wave C (W0-A request).
 - 2026-10-22: W0-B questions: KeyMap.FromKeyCodeName deleted in Wave C if unused (D12); broader WAV decoder accepted.
 
 ## Device mirror
-`V:\Repos\Apocalypter\WildWasteland2` is a git repo whose `refactor/main` is reset to the cloud branch at each checkpoint (git bundle via `.sync/`, ignored). Do not edit it while the refactor runs; edits there would be overwritten (tell the coordinator instead). Last mirrored: 67f9b61.
+Originally a cloud mirror; Denis authorized local continuation on 2026-10-22. Preserve local commits and changes when synchronizing with cloud work; do not reset this checkout to an older cloud checkpoint. Local continuation started from 473fef9 (Wave A merged). Wave B remains not started.
 
 ## Open questions for Denis
 (none)
