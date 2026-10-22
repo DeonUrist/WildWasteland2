@@ -1,0 +1,307 @@
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using WildWasteland.Core;
+
+namespace WildWasteland.Modules.Loot
+{
+    /// <summary>
+    /// Loot tables and their assignment (README 6.9), persisted in config/WildWasteland/Loot/LootTables.json (schema 1):
+    /// <c>tables</c> (id, name, kind, textureKey, default, spawnChance, entries[item, weight, min, max]), <c>poiTables</c>
+    /// (POI type -> table id) and <c>lotTables</c> ("townTemplate/lot" -> table id).
+    /// Copy-missing migration: the car/truck loot profiles of the Patrols editor file PatrolsAndLoot.json (schema 3, still authored
+    /// by the Patrols editor) are copied into LootTables.json when their table id is missing; existing tables are never overwritten
+    /// and PatrolsAndLoot.json is never modified. The import runs at Init and again at world ready when the Patrols file changed.
+    /// Runtime tables registered by other modules (<see cref="Register"/>) overlay the file tables and are not written.
+    /// Main thread only. No gameplay reads these tables yet (Patrols still rolls its own profiles); this is the data model behind
+    /// <see cref="ILootTables"/>.
+    /// </summary>
+    internal sealed class LootTableStore
+    {
+        private const int Schema = 1;
+        private readonly Dictionary<string, LootTable> _file = new Dictionary<string, LootTable>(StringComparer.OrdinalIgnoreCase);
+        private readonly List<string> _order = new List<string>();
+        private readonly Dictionary<string, LootTable> _runtime = new Dictionary<string, LootTable>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _poi = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _lots = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private string _path;
+        private string _importedFrom;
+        private DateTime _importedStamp;
+
+        /// <summary>Increments when tables or assignments change.</summary>
+        internal int Revision { get; private set; }
+
+        /// <summary>Number of tables (file + runtime overlay ids).</summary>
+        internal int Count { get { int n = _file.Count; foreach (var id in _runtime.Keys) if (!_file.ContainsKey(id)) n++; return n; } }
+
+        /// <summary>Path of LootTables.json (null before <see cref="Load"/>).</summary>
+        internal string FilePath { get { return _path; } }
+
+        /// <summary>Reads LootTables.json from <paramref name="dir"/> (an invalid file is preserved as LootTables.invalid-*.json and
+        /// replaced), then runs the copy-missing import of the PatrolsAndLoot.json loot part.</summary>
+        internal void Load(string dir)
+        {
+            _path = Path.Combine(dir, "LootTables.json");
+            _file.Clear(); _order.Clear(); _poi.Clear(); _lots.Clear();
+            _importedFrom = null; _importedStamp = DateTime.MinValue;
+            bool dirty = false;
+            if (File.Exists(_path))
+            {
+                try { Parse(File.ReadAllText(_path)); }
+                catch (Exception e)
+                {
+                    _file.Clear(); _order.Clear(); _poi.Clear(); _lots.Clear();
+                    try { File.Copy(_path, AuthoringFiles.UniquePath(dir, "LootTables.invalid-" + DateTime.Now.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture), ".json")); }
+                    catch (Exception copy) { Log.Warn(LootModule.Instance, "could not preserve the invalid LootTables.json: " + copy.Message); }
+                    Log.Warn(LootModule.Instance, "LootTables.json invalid; preserved a copy and rebuilt it: " + e.Message);
+                    dirty = true;
+                }
+            }
+            else dirty = true;
+            if (ImportPatrolsLoot()) dirty = true;
+            if (dirty) Save();
+            Revision++;
+            if (Log.L1) Log.Main(LootModule.Instance, "loot tables: " + _file.Count + " in " + _path + (_importedFrom != null ? " (profiles imported from " + _importedFrom + ")" : ""));
+        }
+
+        /// <summary>World ready: re-runs the copy-missing import when PatrolsAndLoot.json changed since the last import.</summary>
+        internal void Refresh()
+        {
+            if (_path == null) return;
+            string source = PatrolsLootPath();
+            if (source == null) return;
+            DateTime stamp;
+            try { stamp = File.GetLastWriteTimeUtc(source); } catch (Exception) { return; }
+            if (source == _importedFrom && stamp == _importedStamp) return;
+            if (ImportPatrolsLoot()) { Save(); Revision++; }
+        }
+
+        /// <summary>Drops runtime tables (module shutdown).</summary>
+        internal void ClearRuntime()
+        {
+            if (_runtime.Count == 0) return;
+            _runtime.Clear(); Revision++;
+        }
+
+        /// <summary>All table ids, file tables in file order then runtime-only ids (cleared first).</summary>
+        internal void TableIds(List<string> into)
+        {
+            into.Clear();
+            into.AddRange(_order);
+            foreach (var id in _runtime.Keys) if (!_file.ContainsKey(id)) into.Add(id);
+        }
+
+        /// <summary>Entries of a table (cleared first; runtime tables win over file tables); false when unknown.</summary>
+        internal bool TryGetTable(string tableId, List<LootEntry> into)
+        {
+            into.Clear();
+            var table = Find(tableId);
+            if (table == null) return false;
+            into.AddRange(table.Entries);
+            return true;
+        }
+
+        /// <summary>Table id assigned to a POI type (native PoiType name or custom POI id), or null.</summary>
+        internal string TableFor(string poiType)
+        {
+            string id;
+            return poiType != null && _poi.TryGetValue(poiType, out id) ? id : null;
+        }
+
+        /// <summary>Table id assigned to lot <paramref name="lot"/> of a town template, or null.</summary>
+        internal string TableForLot(string townTemplateId, int lot)
+        {
+            string id;
+            return townTemplateId != null && _lots.TryGetValue(LotKey(townTemplateId, lot), out id) ? id : null;
+        }
+
+        /// <summary>Rolls a table (see <see cref="LootTable"/> roll rule) into item keys (cleared first); false when unknown.</summary>
+        internal bool Roll(string tableId, System.Random random, List<string> itemKeys)
+        {
+            itemKeys.Clear();
+            var table = Find(tableId);
+            if (table == null || random == null) return false;
+            for (int i = 0; i < table.Entries.Count; i++)
+            {
+                var e = table.Entries[i];
+                if (string.IsNullOrEmpty(e.ItemKey)) continue;
+                int copies = Copies(e.Weight, random);
+                int min = Math.Max(1, e.Min), max = Math.Max(min, e.Max);
+                for (int c = 0; c < copies; c++)
+                {
+                    int n = min == max ? min : random.Next(min, max + 1);
+                    for (int k = 0; k < n; k++) itemKeys.Add(e.ItemKey);
+                }
+            }
+            return true;
+        }
+
+        /// <summary>Registers or replaces a runtime table of another module (overlays a file table with the same id; not saved).</summary>
+        internal void Register(IModule owner, string tableId, IList<LootEntry> entries)
+        {
+            if (string.IsNullOrEmpty(tableId)) throw new ArgumentException("Empty loot table id");
+            var table = new LootTable { Id = tableId, Name = tableId, Owner = owner };
+            if (entries != null) for (int i = 0; i < entries.Count; i++) table.Entries.Add(entries[i]);
+            _runtime[tableId] = table;
+            Revision++;
+            if (Log.L2) Log.Deep(LootModule.Instance, "loot table " + tableId + " registered by " + (owner != null ? owner.Id : "?") + " (" + table.Entries.Count + " entries)");
+        }
+
+        /// <summary>Runtime table first, then the file table; null when unknown.</summary>
+        private LootTable Find(string tableId)
+        {
+            if (string.IsNullOrEmpty(tableId)) return null;
+            LootTable table;
+            if (_runtime.TryGetValue(tableId, out table)) return table;
+            return _file.TryGetValue(tableId, out table) ? table : null;
+        }
+
+        /// <summary>Copies for a chance in percent: floor(percent/100) plus one with the remainder as probability (Patrols LootProfile.RollCount).</summary>
+        private static int Copies(double percent, System.Random random)
+        {
+            if (double.IsNaN(percent) || double.IsInfinity(percent) || percent <= 0) return 0;
+            double count = Math.Min(100000d, percent) / 100d;
+            int whole = (int)Math.Floor(count);
+            return whole + (count > whole && random.NextDouble() < count - whole ? 1 : 0);
+        }
+
+        /// <summary>Assignment key of a town template lot.</summary>
+        private static string LotKey(string template, int lot) { return template + "/" + lot.ToString(CultureInfo.InvariantCulture); }
+
+        /// <summary>Location of the Patrols editor file: config/WildWasteland/Patrols/ first, then the Patrols plugin folder
+        /// (where the Patrols module keeps it today); null when neither exists.</summary>
+        private static string PatrolsLootPath()
+        {
+            string config = Path.Combine(Path.Combine(Assets.ConfigDir, "Patrols"), "PatrolsAndLoot.json");
+            if (File.Exists(config)) return config;
+            string plugin = Path.Combine(Assets.ModuleDir("Patrols"), "PatrolsAndLoot.json");
+            return File.Exists(plugin) ? plugin : null;
+        }
+
+        /// <summary>Copy-missing import of the carLoot/truckLoot profiles; true when a table was added. Unreadable files or rows are
+        /// skipped with a warning (the Patrols module reports its own file errors).</summary>
+        private bool ImportPatrolsLoot()
+        {
+            string source = PatrolsLootPath();
+            if (source == null) return false;
+            Dictionary<string, object> root;
+            try
+            {
+                _importedStamp = File.GetLastWriteTimeUtc(source); _importedFrom = source;
+                root = Json.ParseObject(File.ReadAllText(source));
+            }
+            catch (Exception e) { Log.Warn(LootModule.Instance, "PatrolsAndLoot.json not imported: " + e.Message); return false; }
+            if (root == null) return false;
+            int added = ImportProfiles(root, "carLoot", "car") + ImportProfiles(root, "truckLoot", "truck");
+            if (added > 0 && Log.L1) Log.Main(LootModule.Instance, "copied " + added + " loot profile(s) from " + source + " into LootTables.json (source retained)");
+            return added > 0;
+        }
+
+        /// <summary>Adds the profiles of one PatrolsAndLoot.json list whose table id is missing; returns the number added. A car and a
+        /// truck profile with the same id: the second one gets the id "kind:id".</summary>
+        private int ImportProfiles(Dictionary<string, object> root, string key, string kind)
+        {
+            var rows = Json.Arr(root, key);
+            if (rows == null) return 0;
+            int added = 0;
+            foreach (var value in rows)
+            {
+                var row = value as Dictionary<string, object>;
+                string id = Json.Text(row, "id", "");
+                if (row == null || id.Length == 0) continue;
+                LootTable existing;
+                if (_file.TryGetValue(id, out existing))
+                {
+                    if (string.Equals(existing.Kind, kind, StringComparison.OrdinalIgnoreCase)) continue;
+                    id = kind + ":" + id;
+                    if (_file.ContainsKey(id)) continue;
+                }
+                var table = new LootTable
+                {
+                    Id = id, Kind = kind, Name = Json.Text(row, "name", ""), TextureKey = Json.Text(row, "textureKey", ""),
+                    Default = Json.Bool(row, "default", false), SpawnChance = Clamp(Json.Num(row, "spawnChance", 10f), 0f, 100f),
+                };
+                var items = Json.Arr(row, "items");
+                if (items != null) foreach (var itemValue in items)
+                {
+                    var item = itemValue as Dictionary<string, object>;
+                    string itemId = Json.Text(item, "id", "");
+                    if (itemId.Length == 0) continue;
+                    table.Entries.Add(new LootEntry { ItemKey = itemId, Weight = Clamp(Json.Num(item, "chance", 0f), 0f, 100000f), Min = 1, Max = 1 });
+                }
+                Add(table);
+                added++;
+            }
+            return added;
+        }
+
+        /// <summary>Clamps a parsed number (NaN -> min).</summary>
+        private static float Clamp(float value, float min, float max) { return float.IsNaN(value) ? min : Math.Max(min, Math.Min(max, value)); }
+
+        /// <summary>Adds a file table (keeps file order).</summary>
+        private void Add(LootTable table) { _file[table.Id] = table; _order.Add(table.Id); }
+
+        /// <summary>Parses LootTables.json (schema 1); throws on structural errors or duplicate ids.</summary>
+        private void Parse(string text)
+        {
+            var root = Json.ParseObject(text);
+            if (root == null) throw new FormatException("Expected a JSON object");
+            int schema = Json.Int(root, "schema", 0);
+            if (schema != Schema) throw new FormatException("Unsupported schema " + schema);
+            var tables = Json.Arr(root, "tables");
+            if (tables == null) throw new FormatException("Missing array: tables");
+            foreach (var value in tables)
+            {
+                var row = value as Dictionary<string, object>;
+                if (row == null) throw new FormatException("Invalid table object");
+                var table = new LootTable
+                {
+                    Id = Json.Text(row, "id", ""), Name = Json.Text(row, "name", ""), Kind = Json.Text(row, "kind", ""),
+                    TextureKey = Json.Text(row, "textureKey", ""), Default = Json.Bool(row, "default", false),
+                    SpawnChance = Clamp(Json.Num(row, "spawnChance", 10f), 0f, 100f),
+                };
+                if (table.Id.Length == 0 || _file.ContainsKey(table.Id)) throw new FormatException("Missing or duplicate table id");
+                var entries = Json.Arr(row, "entries");
+                if (entries != null) foreach (var entryValue in entries)
+                {
+                    var entry = entryValue as Dictionary<string, object>;
+                    if (entry == null) throw new FormatException("Invalid entry in " + table.Id);
+                    int min = Math.Max(0, Json.Int(entry, "min", 1));
+                    table.Entries.Add(new LootEntry
+                    {
+                        ItemKey = Json.Text(entry, "item", ""), Weight = Clamp(Json.Num(entry, "weight", 0f), 0f, 100000f),
+                        Min = min, Max = Math.Max(min, Json.Int(entry, "max", min)),
+                    });
+                }
+                Add(table);
+            }
+            ReadMap(Json.Obj(root, "poiTables"), _poi);
+            ReadMap(Json.Obj(root, "lotTables"), _lots);
+        }
+
+        /// <summary>Copies string members of an assignment object.</summary>
+        private static void ReadMap(Dictionary<string, object> source, Dictionary<string, string> into)
+        {
+            if (source == null) return;
+            foreach (var pair in source) { var id = pair.Value as string; if (!string.IsNullOrEmpty(id)) into[pair.Key] = id; }
+        }
+
+        /// <summary>Writes LootTables.json through a same-directory atomic replace (D17).</summary>
+        private void Save()
+        {
+            var tables = new List<object>();
+            foreach (var id in _order)
+            {
+                var t = _file[id];
+                var entries = new List<object>();
+                foreach (var e in t.Entries) entries.Add(Json.Object("item", e.ItemKey, "weight", e.Weight, "min", e.Min, "max", e.Max));
+                tables.Add(Json.Object("id", t.Id, "name", t.Name, "kind", t.Kind, "textureKey", t.TextureKey, "default", t.Default, "spawnChance", t.SpawnChance, "entries", entries));
+            }
+            var poi = new Dictionary<string, object>(); foreach (var pair in _poi) poi[pair.Key] = pair.Value;
+            var lots = new Dictionary<string, object>(); foreach (var pair in _lots) lots[pair.Key] = pair.Value;
+            try { AuthoringFiles.AtomicWrite(_path, Json.Write(Json.Object("schema", Schema, "tables", tables, "poiTables", poi, "lotTables", lots))); }
+            catch (Exception e) { Log.Warn(LootModule.Instance, "LootTables.json not written: " + e.Message); }
+        }
+    }
+}

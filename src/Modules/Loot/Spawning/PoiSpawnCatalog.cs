@@ -3,41 +3,66 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Loot;
 
 namespace WildWasteland.Modules.Towns
 {
-    // Native weighted selectors remain the source of truth. Profiles filter their existing indices, not item names supplied by a user.
+    /// <summary>
+    /// Spawn-profile catalog of POI layout markers (Loot, README 6.9): named item/monster lists built from the native weighted
+    /// selectors of the asset ItemSpawner templates (ItemSpawn_V1_All and the four wild/scrapyard/coyote EnemySpawn variants).
+    /// Native weighted selectors remain the source of truth: profiles filter their existing indices, not item names supplied by
+    /// a user. Built by a sliced POI job (<see cref="Step"/>, one asset FSM per step) over the shared Core prefab index
+    /// (<see cref="Core.PrefabCatalog.AssetFsms"/>) instead of its own Resources.FindObjectsOfTypeAll scan. Monster profiles are
+    /// consumed by the marker builder for NPC groups. Namespace kept for Wave C.
+    /// </summary>
     internal sealed class PoiSpawnCatalog
     {
+        /// <summary>One selectable list: native template FSM, kind (Items/CarParts/Monsters), name and the filtered selector rows.</summary>
         internal sealed class Profile
         {
+            /// <summary>Display name and marker kind.</summary>
             internal string Name, Kind;
+            /// <summary>Native ItemSpawner template FSM cloned by the marker.</summary>
             internal PlayMakerFSM Template;
+            /// <summary>Accepted native list indices.</summary>
             internal int[] Indices;
+            /// <summary>Their native weights.</summary>
             internal float[] Weights;
+            /// <summary>Number of accepted rows.</summary>
             internal int Count;
         }
+        /// <summary>Built profiles (sorted by name when ready).</summary>
         internal readonly List<Profile> Profiles = new List<Profile>();
         private PlayMakerFSM[] _scan;
         private int _next;
+        private PlayMakerArrayListProxy _itemList;
+        private bool _itemListSearched;
         private readonly HashSet<string> _names = new HashSet<string>(StringComparer.Ordinal);
         private readonly Dictionary<GameObject,bool> _safe = new Dictionary<GameObject,bool>();
+        /// <summary>True when every asset FSM has been visited.</summary>
         internal bool Ready;
+
+        /// <summary>Starts a scan (no-op while one runs or when ready): snapshot of the Core asset FSM list sorted by object name.</summary>
         internal void Start()
         {
             if (_scan != null || Ready) return;
-            _scan = Resources.FindObjectsOfTypeAll<PlayMakerFSM>();
+            _scan = Core.PrefabCatalog.AssetFsms.ToArray();
             Array.Sort(_scan, (a,b) => string.CompareOrdinal(a == null ? "" : a.name, b == null ? "" : b.name));
+            SpawnerProgress.ScanProgress = 0f;
         }
+        /// <summary>Profile of a kind by exact name, or null.</summary>
         internal Profile Find(string kind, string name)
         { foreach (var p in Profiles) if (p.Kind == kind && p.Name == name) return p; return null; }
+        /// <summary>Every profile of a kind (new list; editor use).</summary>
         internal List<Profile> For(string kind)
         { var result = new List<Profile>(); foreach (var p in Profiles) if (p.Kind == kind) result.Add(p); return result; }
+        /// <summary>Sliced step: visits one asset FSM; false when idle or finished (then sorts the profiles and sets <see cref="Ready"/>).</summary>
         internal bool Step()
         {
             if (_scan == null) return false;
-            if (_next >= _scan.Length) { _scan = null; Ready = true; Profiles.Sort((a,b) => string.CompareOrdinal(a.Name,b.Name)); return false; }
+            if (_next >= _scan.Length) { _scan = null; Ready = true; SpawnerProgress.ScanProgress = 1f; Profiles.Sort((a,b) => string.CompareOrdinal(a.Name,b.Name)); return false; }
             var f = _scan[_next++];
+            SpawnerProgress.ScanProgress = (float)_next / _scan.Length;
             if (f == null || f.gameObject.scene.IsValid() || f.FsmName != "ItemSpawner") return true;
             bool enemy = f.name == "EnemySpawn_Wild_V1" || f.name == "EnemySpawn_Wild_V2" || f.name == "EnemySpawn_Scrapyard_V1" || f.name == "EnemySpawn_Coyotes_V1";
             bool loot = f.name == "ItemSpawn_V1_All";
@@ -65,8 +90,7 @@ namespace WildWasteland.Modules.Towns
             }
             else
             {
-                PlayMakerArrayListProxy items = null;
-                foreach (var proxy in Resources.FindObjectsOfTypeAll<PlayMakerArrayListProxy>()) if (proxy.referenceName == "ItemList") { items = proxy; break; }
+                var items = ItemList();
                 if (items == null || items.preFillGameObjectList == null) return true;
                 var list = items.preFillGameObjectList;
                 Add(f, selector, "Items", "All loot", i => list[i] != null, list.Count);
@@ -76,6 +100,15 @@ namespace WildWasteland.Modules.Towns
             }
             return true;
         }
+        /// <summary>The native "ItemList" array proxy (game item list), looked up once per scan generation.</summary>
+        private PlayMakerArrayListProxy ItemList()
+        {
+            if (_itemListSearched && _itemList != null) return _itemList;
+            _itemListSearched = true; _itemList = null;
+            foreach (var proxy in Resources.FindObjectsOfTypeAll<PlayMakerArrayListProxy>()) if (proxy.referenceName == "ItemList") { _itemList = proxy; break; }
+            return _itemList;
+        }
+        /// <summary>Adds a profile once per kind:name from the selector rows <paramref name="accept"/> keeps (skipped when empty).</summary>
         private void Add(PlayMakerFSM f, SelectRandomInt select, string kind, string name, Func<int,bool> accept, int count)
         {
             if (_names.Contains(kind + ":" + name)) return;
@@ -91,6 +124,7 @@ namespace WildWasteland.Modules.Towns
             _names.Add(kind + ":" + name);
             Profiles.Add(new Profile { Template = f, Kind = kind, Name = name, Indices = indices.ToArray(), Weights = weights.ToArray(), Count = indices.Count });
         }
+        /// <summary>Coarse category of an item prefab (tags, layer and name words): Car parts, Weapons &amp; equipment, Items &amp; supplies.</summary>
         internal static string ItemCategory(GameObject root)
         {
             if (root == null) return "Other scenery";
@@ -101,8 +135,10 @@ namespace WildWasteland.Modules.Towns
             if (root.layer == 12 || Contains(name, "ammo_", "grenade", "rifle", "revolver", "shotgun", "crossbow", "m16", "akm", "rochester", "slamberg", "redmark", "blastlance")) return "Weapons & equipment";
             return "Items & supplies";
         }
+        /// <summary>True when <paramref name="text"/> contains any of the words (case-insensitive).</summary>
         internal static bool Contains(string text, params string[] words)
         { foreach (string word in words) if (text.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0) return true; return false; }
+        /// <summary>Creature prefab allowed in marker groups: no boss/merchant/mechanic name and no BossUI FSM (cached per prefab).</summary>
         private bool SafeCreature(GameObject prefab)
         {
             if (prefab == null) return false; bool safe; if (_safe.TryGetValue(prefab, out safe)) return safe;
@@ -110,6 +146,7 @@ namespace WildWasteland.Modules.Towns
             if (safe) foreach (var f in prefab.GetComponentsInChildren<PlayMakerFSM>(true)) if (f.FsmName == "BossUI") { safe = false; break; }
             _safe[prefab] = safe; return safe;
         }
-        internal void Clear() { Profiles.Clear(); _names.Clear(); _safe.Clear(); _scan = null; _next = 0; Ready = false; }
+        /// <summary>Forgets profiles and any running scan (new world / unload).</summary>
+        internal void Clear() { Profiles.Clear(); _names.Clear(); _safe.Clear(); _scan = null; _next = 0; Ready = false; _itemList = null; _itemListSearched = false; if (SpawnerProgress.ScanProgress < 1f) SpawnerProgress.ScanProgress = 1f; }
     }
 }
