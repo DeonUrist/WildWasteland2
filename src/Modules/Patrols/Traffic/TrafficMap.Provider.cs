@@ -7,11 +7,11 @@ namespace WildWasteland.Modules.Patrols
     public sealed partial class PatrolsModule : ITrafficMapSource
     {
         /// <summary>Returns the current authored War Rig notice deadline.</summary>
-        public float NoticeUntil { get { return WarRig.WorldSpawning.NaturalNoticeUntil; } }
+        public float NoticeUntil { get { return (ModApi.Get<IEncounterNotices>()?.NoticeUntil??0); } }
         /// <summary>Prunes destroyed rigs before exposing live map positions.</summary>
-        public int RigCount { get { var rigs = WarRig.WorldSpawning.NaturalRigs; for (int i = rigs.Count - 1; i >= 0; i--) if (rigs[i] == null) rigs.RemoveAt(i); return rigs.Count; } }
+        public int RigCount { get { return ModApi.Get<IEncounterNotices>()?.RigCount??0; } }
         /// <summary>Reads a live rig in stable world coordinates.</summary>
-        public Vector3 RigPosition(int index) { return Origin.World(WarRig.WorldSpawning.NaturalRigs[index].transform.position); }
+        public Vector3 RigPosition(int index) { return (ModApi.Get<IEncounterNotices>()?.RigPosition(index)??Vector3.zero); }
         /// <summary>Copies current simulation metadata without handing live patrol actors to HUD.</summary>
         public void Capture(TrafficMapSnapshot target)
         {

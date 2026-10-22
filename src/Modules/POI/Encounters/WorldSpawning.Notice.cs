@@ -1,14 +1,15 @@
-using System;
 using System.Collections.Generic;
-using ES3Internal;
 using UnityEngine;
-
-namespace WildWasteland.Modules.Patrols.WarRig
+using WildWasteland.Core;
+namespace WildWasteland.Modules.POI
 {
-    /// <summary>Natural War Rig map notice data (rig markers placed by the POI module, notice timer); POI part of WorldSpawning (Wave A split of Patrols WarRig/WorldSpawning.cs).</summary>
-    internal static partial class WorldSpawning
+    /// <summary>POI-owned encounter locations and notice deadline, queried by HUD through a typed service.</summary>
+    internal sealed class EncounterNotices:IEncounterNotices
     {
-        internal static readonly List<GameObject> NaturalRigs = new List<GameObject>();
-        internal static float NaturalNoticeUntil;
+        internal static readonly List<GameObject> Rigs=new List<GameObject>(); internal static float NoticeUntilValue;
+        public float NoticeUntil=>NoticeUntilValue;
+        public int RigCount {get{for(int i=Rigs.Count-1;i>=0;i--)if(Rigs[i]==null)Rigs.RemoveAt(i);return Rigs.Count;}}
+        public Vector3 RigPosition(int index)=>Origin.World(Rigs[index].transform.position);
+        internal static void Clear(){Rigs.Clear();NoticeUntilValue=0;}
     }
 }

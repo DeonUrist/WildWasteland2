@@ -140,6 +140,7 @@ namespace WildWasteland.Modules.Vehicles
         /// <summary>Provides the factory and cockpit APIs, claims module-built vehicles and registers the War Rig shelter with Survival.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<IWarRigWorld>(this,new WarRigWorldApi());
             ModApi.Provide<IVehicleAttachments>(this,new VehicleAttachmentsApi());
             ModApi.Provide<IVehicleDrive>(this,new VehicleDriveApi());
             ModApi.Provide<IVehicleAssembly>(this, new VehicleAssemblyApi());
