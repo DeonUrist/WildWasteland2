@@ -7,6 +7,7 @@ using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.PlayerBody;
 
 namespace WildWasteland.Modules.Quests
 {
@@ -162,7 +163,7 @@ namespace WildWasteland.Modules.Quests
                 if (shotAnim.Value)
                 {
                     if (npcAnim == null) npcAnim = npc.GetComponent<Animator>() ?? npc.GetComponentInChildren<Animator>(true);
-                    if (npcAnim != null) { QuestFollower.Play(npcAnim, "attack 2", 0, 0f); animBack = Time.time + 0.9f; }
+                    if (npcAnim != null) { if (ModAPI.Find(npcAnim) == null) npcAnim.Play("attack 2", 0, 0f); animBack = Time.time + 0.9f; }   // (B05) native clip only while the ModAPI body does not drive him (ex QuestFollower.Play)
                 }
             }
             catch (Exception e) { Plugin.LogOnce("HireShotAnim", e); }

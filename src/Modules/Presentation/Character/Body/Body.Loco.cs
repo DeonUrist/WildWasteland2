@@ -526,7 +526,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         private void LateMixamo(View view, float dt, Quaternion yaw, float camPitch)
         {
-            Vector3 v = Game.Velocity; v.y = 0f;
+            Vector3 v = PlayerState.Velocity; v.y = 0f;
             var local = Quaternion.Inverse(yaw) * v;
             float speed = v.magnitude;
             _speedSmooth = Mathf.Lerp(_speedSmooth, speed, 1f - Mathf.Exp(-dt * 10f));
@@ -549,7 +549,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Weapon: " + (weapon == "" ? "none" : weapon + " (" + kind + ")"));
             }
             SetPoseList(kind, weapon);
-            bool live = !Game.Paused;
+            bool live = !PlayerState.Paused;
 
             // WeaponAdjustment, Numpad 9/3: the selected clip plays standing still so its weapon pose can be tuned
             _previewName = GunPose.Preview;
@@ -622,10 +622,10 @@ namespace WildWasteland.Modules.PlayerBody
             // (2.1.2) the game's [Jump] FSM: Idle -> Jump (button) -> Idle on landing; Falling only when walking off an edge. Each jump clip's take-off,
             // apex and touch-down are measured once (JumpMarks); the clip starts just before its take-off, holds its apex while she is in the air,
             // and on landing fades straight back to the legs, without the recovery whose feet float above the physical ground.
-            string js = Game.JumpState;
+            string js = PlayerState.JumpState;
             bool air = js == "Jump" || js == "Falling";
             bool jumpPress = live && js == "Idle" && Input.GetButtonDown("Jump");
-            bool launched = js == "Falling" && _jumpState == "Idle" && Game.Velocity.y > 2f && Time.time > _jumpAt + 0.5f;
+            bool launched = js == "Falling" && _jumpState == "Idle" && PlayerState.Velocity.y > 2f && Time.time > _jumpAt + 0.5f;
             if (jumpPress || launched)
             {
                 _jumpAt = Time.time;
@@ -754,7 +754,7 @@ namespace WildWasteland.Modules.PlayerBody
                 Transform head;
                 if (Bones.TryGetValue("mixamorig:Head", out head))
                 {
-                    float top = Game.Player.transform.position.y + Game.StandingHeight * 0.5f;
+                    float top = PlayerState.Player.transform.position.y + PlayerState.StandingHeight * 0.5f;
                     Crouch(_crouch * _actionW, Mathf.Max(0f, head.position.y - (top - 0.14f)));
                 }
             }

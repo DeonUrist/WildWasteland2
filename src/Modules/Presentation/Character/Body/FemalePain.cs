@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.PlayerBody
             for (int i = 0; i < Names.Length; i++)
             {
                 if (Clips[i] != null) continue;
-                try { Clips[i] = Core.VoiceAudio.LoadWav(PresentationModule.AssetPath("Sounds/Female/" + Names[i] + ".wav"), Names[i]); if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Female pain loaded: " + Names[i]); }
+                try { Clips[i] = Audio.LoadWav(PresentationModule.AssetPath("Sounds/Female/" + Names[i] + ".wav"), Names[i]); if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Female pain loaded: " + Names[i]); }
                 catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Female pain " + Names[i] + ": " + e.Message); }
             }
             _pain = new FsmObject[Clips.Length]; _weights = new FsmFloat[Clips.Length];
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
             if (_death == null)
             {
-                try { _death = new FsmObject { ObjectType = typeof(AudioClip), Value = Core.VoiceAudio.LoadWav(PresentationModule.AssetPath("Sounds/Female/FEMDEATH.wav"), "FEMDEATH", 0.2f) }; Core.Log.Deep(PresentationModule.Instance, "Female death loaded: FEMDEATH"); }
+                try { _death = new FsmObject { ObjectType = typeof(AudioClip), Value = Audio.LoadWav(PresentationModule.AssetPath("Sounds/Female/FEMDEATH.wav"), "FEMDEATH", 0.2f) }; Core.Log.Deep(PresentationModule.Instance, "Female death loaded: FEMDEATH"); }
                 catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Female death: " + e.Message); }
             }
             for (int i = 0; i < Shouts.Length; i++)
@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.PlayerBody
                 string name = i == 0 ? "shout_male" : "shout_female";
                 try
                 {
-                    Shouts[i] = Core.VoiceAudio.LoadWav(PresentationModule.AssetPath("Sounds/" + name + ".wav"), name, 0.35f);
+                    Shouts[i] = Audio.LoadWav(PresentationModule.AssetPath("Sounds/" + name + ".wav"), name, 0.35f);
                     if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Shout sound loaded: " + name + ".wav");
                 }
                 catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Shout sound " + name + ": " + e.Message); }
@@ -74,7 +74,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (fsm != "DamageEffectSound" && fsm != "DamageEffectSound_InCar") return;
             var owner = __instance.Owner;
             if (owner == null) return;
-            bool player = Game.Player != null ? owner == Game.Player || owner.transform.IsChildOf(Game.Player.transform)
+            bool player = PlayerState.Player != null ? owner == PlayerState.Player || owner.transform.IsChildOf(PlayerState.Player.transform)
                 : owner.name == "Player" || owner.name == "head" && owner.transform.parent != null && owner.transform.parent.name == "Player";
             if (!player) return;
             __state.Clips = __instance.audioClips; __state.Weights = __instance.weights;
@@ -94,7 +94,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!PresentationModule.Running || !CharacterSettings.PainSounds.Value || !CharacterSettings.Female || _death == null || __instance.Fsm == null || __instance.audioClip == null) return;
             if (__instance.Fsm.Name != "Health" || __instance.Fsm.ActiveStateName != "playerDeath") return;
             var owner = __instance.Owner;
-            if (owner == null || (Game.Player != null ? owner != Game.Player : owner.name != "Player")) return;
+            if (owner == null || (PlayerState.Player != null ? owner != PlayerState.Player : owner.name != "Player")) return;
             __state = __instance.audioClip; __instance.audioClip = _death;
             PresentationEvents.Voice(Entities.Player, "FEMDEATH", owner.transform.position);
             Core.Log.Deep(PresentationModule.Instance, "Female death: FEMDEATH selected");

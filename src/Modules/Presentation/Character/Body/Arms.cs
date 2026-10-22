@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Modules.Presentation;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -20,11 +21,11 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (Time.unscaledTime < _next) return;
             _next = Time.unscaledTime + 3f;
-            if (Game.CameraHolder == null) return;
+            if (PlayerState.CameraHolder == null) return;
             var tex = Model.Arms();
             if (tex == null) return;
             int added = 0;
-            foreach (var smr in Game.CameraHolder.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            foreach (var smr in PlayerState.CameraHolder.GetComponentsInChildren<SkinnedMeshRenderer>(true))
             {
                 if (smr == null || _orig.ContainsKey(smr)) continue;
                 var m = smr.sharedMaterial;

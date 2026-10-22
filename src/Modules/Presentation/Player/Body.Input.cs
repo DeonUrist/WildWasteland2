@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             float known;
             _meleeStart = Time.time; _upperClip = ""; _meleeLen = _meleeLens.TryGetValue(weapon ?? "", out known) ? known : 0.5f; _meleeMeasuring = false; _meleeFp = null; _meleeFor = weapon ?? "";
-            var w = Game.WeaponsParent != null && !string.IsNullOrEmpty(weapon) ? Game.WeaponsParent.Find(weapon) : null;
+            var w = PlayerState.WeaponsParent != null && !string.IsNullOrEmpty(weapon) ? PlayerState.WeaponsParent.Find(weapon) : null;
             if (w != null) _meleeFp = w.GetComponentInChildren<Animator>();
             if (_meleeFp != null && _meleeFp.isActiveAndEnabled) { _meleeHash0 = _meleeFp.GetCurrentAnimatorStateInfo(0).fullPathHash; _meleeMeasuring = true; }
         }
@@ -165,7 +165,7 @@ namespace WildWasteland.Modules.PlayerBody
             _aimMeasured = true;
             Transform hand, chest;
             if (!Bones.TryGetValue("mixamorig:LeftHand", out hand) || !Bones.TryGetValue("mixamorig:Spine2", out chest)) return;
-            if (_throwSpawn == null && Game.PlayerCamera != null) _throwSpawn = Game.FindDeep(Game.PlayerCamera, "spawn throw");
+            if (_throwSpawn == null && PlayerState.PlayerCamera != null) _throwSpawn = Game.FindDeep(PlayerState.PlayerCamera, "spawn throw");
             var c = _anim.InverseTransformPoint(chest.position);
             var v = _anim.InverseTransformPoint(hand.position) - c;
             float tx = _throwSpawn != null ? (_anim.InverseTransformPoint(_throwSpawn.position) - c).x : 0f;   // the grenade's line, sideways from her chest
@@ -180,7 +180,7 @@ namespace WildWasteland.Modules.PlayerBody
         // learned per-blow offset is added on top so the fist lands on the middle line (measured against the aim, not the body)
         private void PunchAim()
         {
-            if (_strike == null || !_striking || Game.PlayerCamera == null) return;
+            if (_strike == null || !_striking || PlayerState.PlayerCamera == null) return;
             float el = Time.time - _strikeAt, w = Mathf.Min(CharacterSettings.StrikeWindup.Value, _strikeCycle * 0.4f), back = (_strikeCycle - w) * 0.5f;
             float k = el < w ? Mathf.Clamp01(el / Mathf.Max(0.001f, w * 0.5f)) : el < w + back ? 1f : Mathf.Clamp01(1f - (el - w - back) / Mathf.Max(0.01f, back));
             Transform s0, s1, s2, la, ra, chest;
@@ -188,7 +188,7 @@ namespace WildWasteland.Modules.PlayerBody
                 || !Bones.TryGetValue("mixamorig:LeftArm", out la) || !Bones.TryGetValue("mixamorig:RightArm", out ra)) return;
             chest = s2;
             Vector3 up = Root != null ? Root.transform.up : Vector3.up;
-            Vector3 aimF = Vector3.ProjectOnPlane(Game.PlayerCamera.forward, up);
+            Vector3 aimF = Vector3.ProjectOnPlane(PlayerState.PlayerCamera.forward, up);
             if (aimF.sqrMagnitude < 1e-4f) return;
             Vector3 face = Vector3.ProjectOnPlane(Vector3.Cross(ra.position - la.position, up), up);
             float square = face.sqrMagnitude > 1e-6f ? Vector3.SignedAngle(face, aimF, up) : 0f;   // turn that makes the chest face the aim

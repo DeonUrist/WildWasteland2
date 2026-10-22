@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 using WildWasteland.Modules.Presentation;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -33,13 +34,13 @@ namespace WildWasteland.Modules.PlayerBody
                 _jumpPhase = ""; _prone = 1; _crouch = 0; _inCar = false; _sway = Vector3.zero;
                 UpdateProp(""); StartPoseFade(.18f, false);
             }
-            Vector3 forward = Game.PlayerCamera.forward; forward.y = 0;
-            if (forward.sqrMagnitude < .001f) forward = Game.Player.transform.forward;
+            Vector3 forward = PlayerState.PlayerCamera.forward; forward.y = 0;
+            if (forward.sqrMagnitude < .001f) forward = PlayerState.Player.transform.forward;
             var yaw = Quaternion.LookRotation(forward.normalized, Vector3.up);
-            float speed = Vector3.Dot(Game.Velocity, yaw * Vector3.forward);
-            if (!Game.Paused && Mathf.Abs(speed) > .05f) _crawlTime = Mathf.Repeat(_crawlTime + dt * Mathf.Clamp(speed / .8f, -1.5f, 1.5f), Crawling.Clip.length);
+            float speed = Vector3.Dot(PlayerState.Velocity, yaw * Vector3.forward);
+            if (!PlayerState.Paused && Mathf.Abs(speed) > .05f) _crawlTime = Mathf.Repeat(_crawlTime + dt * Mathf.Clamp(speed / .8f, -1.5f, 1.5f), Crawling.Clip.length);
             _crawlClip.SetTime(_crawlTime); _animator.enabled = true;
-            Root.transform.SetPositionAndRotation(Game.Player.transform.position - Vector3.up * (Game.StandingHeight * .5f), yaw);
+            Root.transform.SetPositionAndRotation(PlayerState.Player.transform.position - Vector3.up * (PlayerState.StandingHeight * .5f), yaw);
             Root.transform.localScale = Vector3.one; _anim.localPosition = Vector3.zero; _anim.localRotation = Quaternion.identity;
             _graph.Evaluate(0); if (_rootMotion != null) _rootMotion.Take();
             _crawlBlend = Mathf.Min(1, _crawlBlend + dt / .18f);
@@ -48,7 +49,7 @@ namespace WildWasteland.Modules.PlayerBody
             Transform head;
             if (view == View.FirstPerson && Bones.TryGetValue("mixamorig:Head", out head))
             {
-                Vector3 offset = Game.PlayerCamera.position - yaw * Vector3.forward * CharacterSettings.BodyBack.Value - head.position;
+                Vector3 offset = PlayerState.PlayerCamera.position - yaw * Vector3.forward * CharacterSettings.BodyBack.Value - head.position;
                 offset.y = 0; Root.transform.position += offset;
             }
             return true;

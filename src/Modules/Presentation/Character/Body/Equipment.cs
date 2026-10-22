@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.PlayerBody
             public int Slot = -1;
             public float Depth;
             public Bounds Bounds;
-            public Vector3 Barrel, Magazine;
+            public Vector3 Barrel, Magazine;   // refs-ok: field name, not the Gunplay Magazine type
             public bool Lance;
             public float LanceRadius;
             // (WW) long guns: the posed bounds depend only on the visual and on whether a backpack is worn - computed once per change
@@ -90,7 +90,7 @@ namespace WildWasteland.Modules.PlayerBody
         public void Tick()
         {
             string drawn = Game.DrawnWeapon, state = _inventory.WeaponState;
-            var cam = Game.PlayerCamera;
+            var cam = PlayerState.PlayerCamera;
             float now = Time.unscaledTime;
             if (now >= _nextRead || !ReferenceEquals(drawn, _readDrawn) || !ReferenceEquals(state, _readState) || !ReferenceEquals(cam, _seenCamera))
             {
@@ -201,7 +201,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             get
             {
-                if (_gameFlashlight == null && Game.PlayerCamera != null) _gameFlashlight = Game.PlayerCamera.Find("Flashlight");
+                if (_gameFlashlight == null && PlayerState.PlayerCamera != null) _gameFlashlight = PlayerState.PlayerCamera.Find("Flashlight");
                 return _gameFlashlight != null && _gameFlashlight.gameObject.activeInHierarchy;
             }
         }

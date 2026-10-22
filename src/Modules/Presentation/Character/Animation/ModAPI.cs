@@ -111,9 +111,9 @@ namespace WildWasteland.Modules.PlayerBody
             Transform w = null;
             try
             {
-                if (Game.WeaponsParent != null)
+                if (PlayerState.WeaponsParent != null)
                     foreach (var name in new[] { key, key.Replace("_chopped", ""), key.Replace("_scoped", "") })
-                        if ((w = Game.WeaponsParent.Find(name)) != null) break;
+                        if ((w = PlayerState.WeaponsParent.Find(name)) != null) break;
             }
             catch (Exception) { w = null; }
             if (w == null)

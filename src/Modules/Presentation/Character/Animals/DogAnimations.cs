@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.NPC
         private sealed class Dog
         {
             public Senses.Agent Agent; public Animator Animator; public Rigidbody Body;
-            public DogCompanionCompat.Driver Companion;
+            public DogCompanionCompat.Driver Companion;   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
             public Dictionary<string, AnimationClip> Clips;
             public Transform[] Bones; public Vector3[] NativePosition, FadePosition;
             public Quaternion[] NativeRotation, FadeRotation;
@@ -123,16 +123,16 @@ namespace WildWasteland.Modules.NPC
             Core.SaveBus.StateChanged -= OnSaveState;
             foreach (var dog in Dogs.Values) { try { Release(dog); } catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Dog animations shutdown: " + e.Message); } }
             Dogs.Clear();
-            DogCompanionCompat.Shutdown();
+            DogCompanionCompat.Shutdown();   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
         }
 
         internal static void Register(Senses.Agent agent)
         { if (agent != null && agent.Owner != null) RegisterRig(agent, Senses.PrefabOf(agent.Owner).Replace(' ', '_'), null); }
 
-        internal static bool RegisterCompanion(Senses.Agent agent, DogCompanionCompat.Driver driver)
+        internal static bool RegisterCompanion(Senses.Agent agent, DogCompanionCompat.Driver driver)   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
         { RegisterRig(agent, "Wild_Hound", driver); return agent != null && agent.Owner != null && Dogs.ContainsKey(agent.Owner.GetInstanceID()); }
 
-        private static void RegisterRig(Senses.Agent agent, string prefab, DogCompanionCompat.Driver companion)
+        private static void RegisterRig(Senses.Agent agent, string prefab, DogCompanionCompat.Driver companion)   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
         {
             if (agent == null || agent.Owner == null) return;
             int id = agent.Owner.GetInstanceID(); if (Dogs.ContainsKey(id)) return;
@@ -270,7 +270,7 @@ namespace WildWasteland.Modules.NPC
         { Dog d; return owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d) && d.Dashing; }
         internal static void RemoveCompanion(GameObject owner)
         { Dog d; if (owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d)) { Release(d); Dogs.Remove(owner.GetInstanceID()); } }
-        internal static void OnSceneLoaded() { foreach (var dog in Dogs.Values) Release(dog); Dogs.Clear(); DogCompanionCompat.OnSceneLoaded(); }
+        internal static void OnSceneLoaded() { foreach (var dog in Dogs.Values) Release(dog); Dogs.Clear(); DogCompanionCompat.OnSceneLoaded(); }   // refs-ok: REFACTOR-REQUEST B05-2 (B17-13: quadruped companion API missing in the catalog)
 
         private static void Switch(Dog d, Pose pose, string clip)
         {

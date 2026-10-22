@@ -24,7 +24,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             position = Vector3.zero;
             var body = BodyRunner.PlayerBody;
-            return PresentationModule.Running && PlayerThirdPerson && !Game.Dead && body != null && body.Alive && body.TryWeaponMuzzle(out position);
+            return PresentationModule.Running && PlayerThirdPerson && !PlayerState.Dead && body != null && body.Alive && body.TryWeaponMuzzle(out position);
         }
         public string[] ClipNames() { return ModAPI.ClipNames(); }
         public bool IsPlayerClip(string name) { return ModAPI.IsPlayerClip(name); }

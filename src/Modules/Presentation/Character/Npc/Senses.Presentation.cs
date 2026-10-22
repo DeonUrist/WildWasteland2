@@ -10,6 +10,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
 using UnityEngine.SceneManagement;
 using WildWasteland.Modules.Presentation;
 
@@ -106,7 +107,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>A random raider shout clip for the player's shout (Animation PlayerShout or the Flexa clips).</summary>
         private static AudioClip Voice()
         {
-            var animation = Core.Services.Animation;
+            var animation = ModApi.Get<IAnimationApi>();
             if (animation != null && animation.PlayerShout != null) return animation.PlayerShout;
             if (_voice == null || _voice.Length == 0 || _voice[0] == null)
             {

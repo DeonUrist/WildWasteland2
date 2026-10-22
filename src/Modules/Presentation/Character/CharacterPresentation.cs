@@ -136,7 +136,7 @@ namespace WildWasteland.Modules.Presentation
                 var body = BodyRunner.PlayerBody;
                 if (!PlayerBodyAlive() || !body.TryWeaponMuzzle(out position)) return false;
                 var prop = body.HeldProp;
-                direction = prop != null ? prop.forward : Game.PlayerCamera != null ? Game.PlayerCamera.forward : Vector3.forward;
+                direction = prop != null ? prop.forward : PlayerState.PlayerCamera != null ? PlayerState.PlayerCamera.forward : Vector3.forward;
                 return true;
             }
             var e = Get(id);

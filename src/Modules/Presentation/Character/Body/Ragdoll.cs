@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -27,7 +28,7 @@ namespace WildWasteland.Modules.PlayerBody
             Add(bones, "RightUpLeg", "RightLeg", 0, 0.09f, 7f);
             Add(bones, "RightLeg", "RightFoot", 9, 0.07f, 4f);
 
-            var player = Game.Player != null ? Game.Player.GetComponentsInChildren<Collider>(true) : new Collider[0];
+            var player = PlayerState.Player != null ? PlayerState.Player.GetComponentsInChildren<Collider>(true) : new Collider[0];
             var vehicle = car != null ? car.GetComponentsInChildren<Collider>(true) : new Collider[0];
             for (int i = 0; i < _colliders.Count; i++)
             {

@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using WildWasteland.Modules.Presentation;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -15,7 +16,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal static bool TryPlayerJumpHead(GameObject player, out Vector3 position)
         {
             position = Vector3.zero;
-            if (!_jumpHeadReady || player != Game.Player || Game.Dead || _body == null || !_body.Alive || !_body.TryJumpHead(out position)) return false;
+            if (!_jumpHeadReady || player != PlayerState.Player || PlayerState.Dead || _body == null || !_body.Alive || !_body.TryJumpHead(out position)) return false;
             position += player.transform.position - _jumpHeadPlayerPosition;
             return true;
         }
@@ -44,9 +45,8 @@ namespace WildWasteland.Modules.PlayerBody
             ThirdPerson.Off();
             Game.Reset();
             Arms.OnSceneLoaded();
-            Car.Reset();
             Cave.Reset();
-            InventoryModel.Reset();
+            InventoryModel.Reset();   // refs-ok: REFACTOR-REQUEST B05-1 (HUD TAB picture; B10 drives it from CharacterModelChanged + its own job)
             Props.OnSceneLoaded();
         }
 
@@ -65,10 +65,9 @@ namespace WildWasteland.Modules.PlayerBody
             CarSeat.Detach();
             ThirdPerson.Off();
             Arms.Restore();
-            InventoryModel.Off();
+            InventoryModel.Off();   // refs-ok: REFACTOR-REQUEST B05-1 (HUD TAB picture; B10 drives it from CharacterModelChanged + its own job)
             OcclusionCutaway.Stop();
             ThirdPerson.EndOfFrame();
-            Car.Reset();
             Core.Log.Main(PresentationModule.Instance, "Disabled: the game's own player is back");
         }
 
@@ -82,7 +81,7 @@ namespace WildWasteland.Modules.PlayerBody
                 DestroyBody();
                 Model.Reset();
                 Arms.Restore();   // the next character's arms (or the game's for Male)
-                InventoryModel.CharacterChanged();
+                InventoryModel.CharacterChanged();   // refs-ok: REFACTOR-REQUEST B05-1 (HUD TAB picture; B10 drives it from CharacterModelChanged + its own job)
                 if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Character: " + CharacterSettings.Character.Value);
             }
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Character switch: " + e); }
@@ -103,12 +102,11 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 WheelArms.Tick();
                 if (!Game.Ready) { OcclusionCutaway.Stop(); if (_body != null) DestroyBody(); return; }   // (2.2.6) the cutaway taken down in menus / loading too
-                if (!Game.Dead) { _lastVelocity = Game.Velocity; _lastCar = Game.InCar ? Game.CarRoot : null; }
+                if (!PlayerState.Dead) { _lastVelocity = PlayerState.Velocity; _lastCar = PlayerState.InCar ? PlayerState.CarRoot : null; }
                 if (CharacterSettings.FemaleArms.Value && CharacterSettings.Female) Arms.Tick(); else Arms.Restore();
                 ThirdPerson.Tick();
-                Car.Tick();
                 GunPose.ClearHint();                       // set again in LateUpdate while a weapon is being adjusted
-                if (!ThirdPerson.On || Game.InCar) GunPose.Flush();
+                if (!ThirdPerson.On || PlayerState.InCar) GunPose.Flush();
             }
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Update: " + e); }
         }
@@ -118,9 +116,9 @@ namespace WildWasteland.Modules.PlayerBody
             try
             {
                 if (!Game.Ready) return;
-                InventoryModel.LateTick();
+                InventoryModel.LateTick();   // refs-ok: REFACTOR-REQUEST B05-1 (HUD TAB picture; B10 drives it from CharacterModelChanged + its own job)
                 ThirdPerson.LateCrosshair();
-                if (!Game.Dead && _body != null && _body.IsRagdoll) DestroyBody();
+                if (!PlayerState.Dead && _body != null && _body.IsRagdoll) DestroyBody();
                 if (_body == null || !_body.Alive)
                 {
                     _body = null;
@@ -131,13 +129,13 @@ namespace WildWasteland.Modules.PlayerBody
                 }
 
                 if (!Crawling.Active) _body.EndCrawl();
-                if (Game.Dead)
+                if (PlayerState.Dead)
                 {
                     _body.LateDead(_lastVelocity, _lastCar);
                     ThirdPerson.CarShift = false;
                     return;
                 }
-                bool inCar = Game.InCar;
+                bool inCar = PlayerState.InCar;
                 bool fpCam = Game.FirstPersonCameraOn;
                 ThirdPerson.CarShift = false;
                 string mode;
@@ -145,7 +143,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (inCar)
                 {
                     bool replace = CharacterSettings.ReplaceDriver.Value;
-                    bool seated = replace && CarSeat.Attach(Game.Player.transform);   // (2.2.7) the game's driver: no seat search every frame
+                    bool seated = replace && CarSeat.Attach(PlayerState.Player.transform);   // (2.2.7) the game's driver: no seat search every frame
                     if (!seated || !replace)
                     {
                         // no seat to copy (or the player wants the game's driver): no body in the car
@@ -156,8 +154,8 @@ namespace WildWasteland.Modules.PlayerBody
                     else
                     {
                         bool firstPerson = fpCam && (!ThirdPerson.On || ThirdPerson.Peek);   // binoculars: first person
-                        _body.LateCar(Game.Player.transform, firstPerson);
-                        if (firstPerson) _body.ShiftFirstPerson(Game.Player.transform.rotation, PlayerBodyModule.CarViewBase + new Vector3(PlayerBodyModule.FpCarCamX.Value, PlayerBodyModule.FpCarCamY.Value, PlayerBodyModule.FpCarCamZ.Value));
+                        _body.LateCar(PlayerState.Player.transform, firstPerson);
+                        if (firstPerson) _body.ShiftFirstPerson(PlayerState.Player.transform.rotation, PlayerBodyModule.CarViewBase + new Vector3(PlayerBodyModule.FpCarCamX.Value, PlayerBodyModule.FpCarCamY.Value, PlayerBodyModule.FpCarCamZ.Value));
                         _body.SetMesh(firstPerson, true, Game.DrawnWeapon != "");
                         _body.SetVisible(!firstPerson || CharacterSettings.BodyInCar, firstPerson && CharacterSettings.BodyInCar);
                         ThirdPerson.CarShift = firstPerson && CharacterSettings.BodyInCar && PlayerBodyModule.CarCameraForward.Value != 0f;
@@ -171,9 +169,9 @@ namespace WildWasteland.Modules.PlayerBody
                     CarSeat.Detach();
                     bool third = ThirdPerson.On && !ThirdPerson.Peek;   // binoculars raised: drawn as in first person
                     _body.LateFoot(third ? Body.View.ThirdPerson : Body.View.FirstPerson, Time.deltaTime);
-                    if (!third && Game.PlayerCamera != null)
-                        _body.ShiftFirstPerson(Quaternion.Euler(0f, Game.PlayerCamera.eulerAngles.y, 0f), new Vector3(CharacterSettings.FpCamX.Value, CharacterSettings.FpCamY.Value, CharacterSettings.FpCamZ.Value));
-                    _jumpHeadPlayerPosition = Game.Player.transform.position;
+                    if (!third && PlayerState.PlayerCamera != null)
+                        _body.ShiftFirstPerson(Quaternion.Euler(0f, PlayerState.PlayerCamera.eulerAngles.y, 0f), new Vector3(CharacterSettings.FpCamX.Value, CharacterSettings.FpCamY.Value, CharacterSettings.FpCamZ.Value));
+                    _jumpHeadPlayerPosition = PlayerState.Player.transform.position;
                     _jumpHeadReady = true;
                     _body.SetMesh(!third, false);
                     bool show = third || CharacterSettings.BodyFirstPerson.Value;
@@ -192,7 +190,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         internal static void WheelTick()
         {
-            if (_body != null && _body.Alive && Game.Ready && Game.InCar && !Game.Dead && CharacterSettings.ReplaceDriver.Value && CarSeat.Seat != null)
+            if (_body != null && _body.Alive && Game.Ready && PlayerState.InCar && !PlayerState.Dead && CharacterSettings.ReplaceDriver.Value && CarSeat.Seat != null)
                 _body.LateWheelArms();
         }
 

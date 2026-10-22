@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.PlayerBody
     /// </summary>
     internal static partial class Crawling
     {
-        internal static bool Active { get { return PresentationModule.Running && !Game.InCar && !Game.Dead && Game.MoveState == "Crawling"; } }
+        internal static bool Active { get { return PresentationModule.Running && !PlayerState.InCar && !PlayerState.Dead && PlayerState.MoveState == "Crawling"; } }
         static Transform _camera;
         static PlayMakerFSM _weapons, _inHand;
         static bool _holstered;
@@ -41,9 +41,9 @@ namespace WildWasteland.Modules.PlayerBody
         }
         static void Holster()
         {
-            if (_camera != Game.PlayerCamera)
+            if (_camera != PlayerState.PlayerCamera)
             {
-                _camera = Game.PlayerCamera; var weapons = _camera.Find("Weapons");
+                _camera = PlayerState.PlayerCamera; var weapons = _camera.Find("Weapons");
                 _weapons = weapons != null ? FsmUtil.Find(weapons.gameObject, "Weapons") : null;
                 _inHand = weapons != null ? FsmUtil.Find(weapons.gameObject, "WeaponInHand") : null;
                 _holstered = false;
@@ -54,25 +54,25 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
         static void Stance(Fsm fsm, FsmState state)
-        { if (Game.MovementFsm != null && fsm == Game.MovementFsm.Fsm && state.Name == "Crawling" && Game.Ready && !SaveBus.Busy) Holster(); }
+        { if (PlayerState.MovementFsm != null && fsm == PlayerState.MovementFsm.Fsm && state.Name == "Crawling" && Game.Ready && !SaveBus.Busy) Holster(); }
         static bool HeldButton(GetButton action)
         {
-            if (!Active || action.buttonName.Value != "Fire" || action.Owner == null || Game.PlayerCamera == null || !action.Owner.transform.IsChildOf(Game.PlayerCamera)) return true;
+            if (!Active || action.buttonName.Value != "Fire" || action.Owner == null || PlayerState.PlayerCamera == null || !action.Owner.transform.IsChildOf(PlayerState.PlayerCamera)) return true;
             if (action.storeResult != null && !action.storeResult.IsNone) action.storeResult.Value = false;
             return false;
         }
         static bool Velocity(SetVelocity action)
         {
-            if (Game.MovementFsm != null && action.Fsm == Game.MovementFsm.Fsm && Active && action.x != null) action.x.Value = 0f;
+            if (PlayerState.MovementFsm != null && action.Fsm == PlayerState.MovementFsm.Fsm && Active && action.x != null) action.x.Value = 0f;
             return true;
         }
         static bool Button(GetButtonDown action)
         {
             if (!Active) return true;
             var name = action.buttonName.Value;
-            if (action.Owner == Game.Player && (name == "Jump" || name == "Kick")) return false;
+            if (action.Owner == PlayerState.Player && (name == "Jump" || name == "Kick")) return false;
             if (name != "Weapon 1" && name != "Weapon 2" && name != "Weapon 3" && name != "Fire" && name != "Reload" && name != "Throw Grenade") return true;
-            return action.Owner == null || Game.PlayerCamera == null || !action.Owner.transform.IsChildOf(Game.PlayerCamera);
+            return action.Owner == null || PlayerState.PlayerCamera == null || !action.Owner.transform.IsChildOf(PlayerState.PlayerCamera);
         }
         static bool WeaponEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {

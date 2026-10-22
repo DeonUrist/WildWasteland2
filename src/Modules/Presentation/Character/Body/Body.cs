@@ -569,12 +569,12 @@ namespace WildWasteland.Modules.PlayerBody
         private void LateFootInner(View view, float dt)
         {
             if (_inCar) { _inCar = false; _animator.enabled = true; }
-            var player = Game.Player.transform;
-            Vector3 fwd = Game.PlayerCamera.forward; fwd.y = 0f;
+            var player = PlayerState.Player.transform;
+            Vector3 fwd = PlayerState.PlayerCamera.forward; fwd.y = 0f;
             if (fwd.sqrMagnitude < 1e-4f) fwd = player.forward;
             var yaw = Quaternion.LookRotation(fwd.normalized, Vector3.up);
-            float standH = Game.StandingHeight;
-            string mstate = Game.MoveState;
+            float standH = PlayerState.StandingHeight;
+            string mstate = PlayerState.MoveState;
             bool crawl = Crawling.Clip == null && (mstate.StartsWith("Crawl", StringComparison.Ordinal) || standH < 0.75f);
             bool crouch = !crawl && (mstate.StartsWith("Crouch", StringComparison.Ordinal) || standH < 1.4f);
             _crouch = Mathf.MoveTowards(_crouch, crouch ? 1f : 0f, dt * 4f);
@@ -583,7 +583,7 @@ namespace WildWasteland.Modules.PlayerBody
             // feet at the bottom of the capsule (the Movement FSM keeps the capsule centred on the Player, height = standingHeight)
             Vector3 feet = player.position - Vector3.up * (standH * 0.5f);
             Vector3 pos = feet;
-            float camPitch = Mathf.DeltaAngle(0f, Game.PlayerCamera.eulerAngles.x);   // + = looking down
+            float camPitch = Mathf.DeltaAngle(0f, PlayerState.PlayerCamera.eulerAngles.x);   // + = looking down
             var rot = yaw;
             if (_prone > 0f)
             {
@@ -600,7 +600,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_mixamo) { Sway(view, dt); LateMixamo(view, dt, yaw, camPitch); _snap = false; FitFirstPerson(view, yaw, camPitch); return; }
 
             // locomotion
-            Vector3 v = Game.Velocity; v.y = 0f;
+            Vector3 v = PlayerState.Velocity; v.y = 0f;
             var local = Quaternion.Inverse(yaw) * v;
             float speed = v.magnitude;
             _speedSmooth = Mathf.Lerp(_speedSmooth, speed, 1f - Mathf.Exp(-dt * 10f));
@@ -615,10 +615,10 @@ namespace WildWasteland.Modules.PlayerBody
             // weapon -> upper-body clip
             string weapon = Game.DrawnWeapon;
             var kind = Props.KindOf(weapon);
-            bool fire = !Game.Paused && Input.GetMouseButton(0);
+            bool fire = !PlayerState.Paused && Input.GetMouseButton(0);
             if (kind == Props.Kind.Melee || kind == Props.Kind.None || kind == Props.Kind.Throw)
             {
-                if (kind == Props.Kind.Melee && !Game.Paused && (Input.GetMouseButtonDown(0) || Input.GetMouseButton(0) && _meleeStart <= 0f)) StartMelee(weapon);
+                if (kind == Props.Kind.Melee && !PlayerState.Paused && (Input.GetMouseButtonDown(0) || Input.GetMouseButton(0) && _meleeStart <= 0f)) StartMelee(weapon);
                 if (UpdateMelee(CharacterSettings.MeleeClip.Value)) SetUpper(CharacterSettings.MeleeClip.Value, 1f, _meleeSpeed);
                 else SetUpper("", 0f, 0f);
             }
@@ -671,10 +671,10 @@ namespace WildWasteland.Modules.PlayerBody
         // looking down you see her whole body up to the collar, wherever the animation puts her head (crouch lean, walk bob)
         private void FitFirstPerson(View view, Quaternion yaw, float camPitch)
         {
-            if (view != View.FirstPerson || _prone > 0.01f || Game.PlayerCamera == null) return;
+            if (view != View.FirstPerson || _prone > 0.01f || PlayerState.PlayerCamera == null) return;
             Transform head;
             if (!Bones.TryGetValue("mixamorig:Head", out head)) return;
-            Vector3 want = Game.PlayerCamera.position - yaw * Vector3.forward * (CharacterSettings.BodyBack.Value + CharacterSettings.BodyBackDown.Value * Mathf.Clamp01(camPitch / 70f));
+            Vector3 want = PlayerState.PlayerCamera.position - yaw * Vector3.forward * (CharacterSettings.BodyBack.Value + CharacterSettings.BodyBackDown.Value * Mathf.Clamp01(camPitch / 70f));
             // a weapon drawn: the game's first-person arms hang right in front of the camera, where her chest is - lean her back and bend the
             // chest back (more the further you look down) so the arms don't sink into it. Moving HER back = the camera forward, without
             // touching the camera (which would also push the game's arms closer and distort them).
@@ -724,7 +724,7 @@ namespace WildWasteland.Modules.PlayerBody
         private void Sway(View view, float dt)
         {
             var d = _rootMotion != null ? _rootMotion.Take() : Vector3.zero;
-            bool still = view == View.ThirdPerson && _speedSmooth < 0.15f && Game.Velocity.sqrMagnitude < 0.04f;
+            bool still = view == View.ThirdPerson && _speedSmooth < 0.15f && PlayerState.Velocity.sqrMagnitude < 0.04f;
             if (still && _anim.parent != null)
             {
                 var l = _anim.parent.InverseTransformVector(d);
@@ -907,7 +907,7 @@ namespace WildWasteland.Modules.PlayerBody
         private void ShowProp(bool on)
         {
             if (_propBolt != null && _propBoltAmmo != null && _propBolt.gameObject.activeSelf != (_propBoltAmmo.Value > 0)) _propBolt.gameObject.SetActive(_propBoltAmmo.Value > 0);
-            bool shadow = !on && CharacterSettings.BodyFirstPerson.Value && (!Game.InCar || CharacterSettings.BodyInCar);
+            bool shadow = !on && CharacterSettings.BodyFirstPerson.Value && (!PlayerState.InCar || CharacterSettings.BodyInCar);
             if (_prop == null || _propShown == on && _propShadow == shadow) return;
             _propShown = on; _propShadow = shadow;
             var mode = on ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
@@ -946,7 +946,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (weapon.StartsWith("crossbow", StringComparison.OrdinalIgnoreCase))
             {
                 foreach (var t in _prop.GetComponentsInChildren<Transform>(true)) if (t.name == "arrow") { _propBolt = t; break; }
-                var w = Game.WeaponsParent != null ? Game.WeaponsParent.Find(weapon) : null;
+                var w = PlayerState.WeaponsParent != null ? PlayerState.WeaponsParent.Find(weapon) : null;
                 var reload = w != null ? Core.FsmUtil.Find(w.gameObject, "Reload") : null;
                 if (reload != null) _propBoltAmmo = reload.FsmVariables.GetFsmInt("ammo_in_gun");
             }
