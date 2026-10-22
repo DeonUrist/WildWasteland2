@@ -11,8 +11,8 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 5. Audio (WAV decode + Level + LoadAsync)
 - [x] 6. Textures (Load + cache + Destroy on shutdown)
 - [x] 7. Access (one accessor facade)
-- [ ] 8. KeyMap
-- [ ] 9. GameBindings
+- [x] 8. KeyMap
+- [x] 9. GameBindings
 - [ ] 10. WorldIndex
 - [ ] 11. WorldTiles
 - [ ] 12. FsmIndex
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-246f476 (COMPILE OK; state line updated in next commit)
+b52f114 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 8 KeyMap: diff PlayerBody/Quests KeyMap.
+Item 10 WorldIndex: read CleanHUD SceneCache, Quests QuestWorld, EngineDiscovery and the other walkers.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -45,3 +45,4 @@ Item 8 KeyMap: diff PlayerBody/Quests KeyMap.
 - Audio: DecodeWav = Guns/NPC Wav verbatim (broadest); LoadWav = VoiceAudio API (now accepts all formats); TryLoadWav = Rider (null on failure); NormalizePeak = Quests; Level/Process = NPC Women Level; LoadAsync(path, type, cb, decompress) returns cancellable Audio.Load.
 - Textures: TextureSettings expresses each old site exactly (defaults = Unity defaults); cache per (source,settings), negative cache, reloadIfChanged by write time, Release(owner) needs ModuleHost wiring (request W0B-1).
 - Access (src/Core/Util/Access/, partial static class Access): Call/Get (NativeAccess), Read/Call(MethodInfo) (OptionalAccess), FastReflect builders verbatim, FieldBatch (BatchCompiler), Queue (CompileQueue; job name <owner>.AccessCompile, Telemetry mark via Queue.OnFirstBatch). Old classes untouched (Wave A makes them wrappers).
+- KeyMap: identical copies ported. GameBindings: PlayerBody API + Held(); name->KeyAction cache per InputStorage instance/list/count (old Find was a linear scan per call). CleanHUD KeyCatalog is UI-specific and not merged.
