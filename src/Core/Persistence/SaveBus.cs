@@ -129,6 +129,7 @@ namespace WildWasteland.Core
         /// <summary>Handles a SaveLoadGame state change: StateChanged handlers, module hooks and typed save events.</summary>
         static void Changed(string prev, string now)
         {
+            Trace.Mark("SaveLoadGame." + now);
             if (Log.L1) Log.Main(null, "SaveLoadGame: " + (prev ?? "-") + " -> " + now);
             var h = StateChanged;
             if (h != null) foreach (StateChange d in h.GetInvocationList()) { try { d(prev, now); } catch (Exception e) { Log.Error("SaveBus.StateChanged handler " + d.Method.DeclaringType + "." + d.Method.Name, e); } }

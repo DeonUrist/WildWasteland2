@@ -38,7 +38,7 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $plugin 'WildWasteland.dll'))) { throw 'Wild Wasteland is not active in this game folder.' }
         $disabled = Join-Path $GameDir 'BepInEx/cache/Apocasetter/disabled'
         if (Get-ChildItem -LiteralPath $disabled -Filter manifest.json -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '[\\/]com\.denis\.apocalypter\.wildwasteland[\\/]' }) { throw 'Restore Wild Wasteland through Apocasetter before installing its LOD pack.' }
-        $destination = Join-Path $plugin 'Performance/LOD'
+        $destination = Join-Path $plugin 'Core/Optimization/LOD'
         New-Item -ItemType Directory -Path $destination -Force | Out-Null
         # Immutable, content-addressed payloads first. Publishing the catalog last commits the new pack.
         $payloads = Get-Content -LiteralPath (Join-Path $Output 'catalog.tsv') | Where-Object { $_.StartsWith("mesh`t") } | ForEach-Object { ($_ -split "`t")[2] } | Sort-Object -Unique

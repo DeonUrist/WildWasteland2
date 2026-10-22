@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT8 (plan §7, research B §3.7): every hit on a Coyote sends FactionCoyotesEnemy to __GameManager__ (weapon CheckFriendly,

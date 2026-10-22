@@ -5,7 +5,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// RC2 (research C §1 "Renderers", §2 Tier 1.4, §3). Only 60 prefab + 24 scene LODGroups exist for 11k renderers, so most props
@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.Performance
             // instances that inherited a group from an edited asset
             var all = Resources.FindObjectsOfTypeAll<LODGroup>();
             for (int i = 0; i < all.Length; i++) if (all[i] != null && all[i].gameObject.scene.IsValid() && Injected(all[i])) UnityEngine.Object.Destroy(all[i]);
-            for (int i = 0; i < _assetGroups.Count; i++) if (_assetGroups[i] != null) { try { UnityEngine.Object.DestroyImmediate(_assetGroups[i], true); } catch (Exception e) { Log.Warn("[Performance] RC2 asset restore: " + e.Message); } }
+            for (int i = 0; i < _assetGroups.Count; i++) if (_assetGroups[i] != null) { try { UnityEngine.Object.DestroyImmediate(_assetGroups[i], true); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "RC2 asset restore: " + e.Message); } }
             _assetGroups.Clear(); _instGroups.Clear(); _done.Clear();
         }
 
@@ -79,7 +79,7 @@ namespace WildWasteland.Modules.Performance
 
         internal static bool Owns(LODGroup group)
         {
-            var module = PerformanceModule.Instance;
+            var module = OptimizationRuntime.Instance;
             if (module != null) foreach (var feature in module.Features)
             { var cull = feature as CullLods; if (cull != null && cull.Injected(group)) return true; }
             return false;
@@ -95,7 +95,7 @@ namespace WildWasteland.Modules.Performance
             var go = root.gameObject;
             // RC9 supplies persistent flat wall panels; a cull-only parent would hide those as well.
             if (go.name.StartsWith("Towns perimeter ", StringComparison.Ordinal))
-                foreach (var feature in PerformanceModule.Instance.Features) if (feature is GeneratedLods && feature.IsOn) return;
+                foreach (var feature in OptimizationRuntime.Instance.Features) if (feature is GeneratedLods && feature.IsOn) return;
             if (!_done.Add(root.GetInstanceID())) return;
             if (!c.Asset && go.scene.buildIndex < 0) return;          // DontDestroyOnLoad / mod objects
             if (go.layer == 12) return;
@@ -135,7 +135,7 @@ namespace WildWasteland.Modules.Performance
             float h = (worldSize < 1f ? H1 : worldSize < 5f ? H2 : H3) * _usedScale;
             LODGroup g;
             try { g = go.AddComponent<LODGroup>(); }
-            catch (Exception e) { Failed++; Log.Warn("[Performance] RC2 AddComponent: " + e.Message); _keep.Clear(); return; }
+            catch (Exception e) { Failed++; Log.Warn(OptimizationRuntime.Instance, "RC2 AddComponent: " + e.Message); _keep.Clear(); return; }
             if (g == null) { Failed++; _keep.Clear(); return; }
             g.fadeMode = LODFadeMode.None;
             g.animateCrossFading = false;

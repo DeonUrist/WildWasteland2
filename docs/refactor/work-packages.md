@@ -16,7 +16,7 @@ Denis authorized continued work in `V:\Repos\Apocalypter\WildWasteland2` after W
 - On this PC use Windows PowerShell and `dotnet build WildWasteland.csproj -c Release -p:Deploy=false`. Never use WSL/Mono/cloud scripts here; do not deploy or launch the game.
 - Keep each package's state/report/request files and commit completed steps under D15. Run the applicable Python lints with `python -B`; run `check_partials.py` after every merge. Retain full build output and review every unsuppressed warning; the historical cloud warning count is not a Windows warning baseline. CS0618 remains the explicitly temporary suppression until Wave C.
 - D12/D18 override P1, migration tasks, old-schema preservation and old-assembly save aliases in the original briefs. Keep current WW2 formats/keys and live cross-module forwarders until their consumers are converted. D13 asset ownership and frozen ModAPI contracts still apply.
-- Start with B01 Core-Kernel after the pre-B cleanup checkpoint; the remaining packages and their acceptance gates are unchanged. See `STATUS.md` and `state/pre-B-cleanup.md`.
+- Execute waves in order with package agents working in parallel (Denis's explicit clarification). Start Wave B with B01/B02/B03, then dispatch queued packages as slots free up. The coordinator reviews cross-owner wiring requests, prevents concurrent ownership conflicts and asks Denis about uncovered design/behavior decisions. Implement final ownership rather than adding temporary scaffolding for intermediate tests; keep the package acceptance gates. See `STATUS.md` and each active worktree's state file.
 
 ### Historical cloud execution
 

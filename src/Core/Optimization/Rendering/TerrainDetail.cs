@@ -6,7 +6,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// EN4 (research C §2 Tier 2.7, §3). The MapMagic object's terrainSettings (scene values pixelError 1, baseMapDist 1000,
@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.Performance
     /// by TerrainSettings.ApplySettings (code/MapMagic/MapMagic.Terrains/TerrainSettings.cs: heightmapPixelError, basemapDistance
     /// = showBaseMap ? baseMapDist : int.MaxValue, detailObjectDistance, detailObjectDensity). We edit the shared settings (new
     /// tiles inherit them), push them to existing tiles with MapMagicObject.ApplyTerrainSettings() (no regeneration,
-    /// MapMagicObject.cs:L195-209) and set the four terrain properties on every applied tile (PerformanceModule.TileAppliedEvent).
+    /// MapMagicObject.cs:L195-209) and set the four terrain properties on every applied tile (OptimizationRuntime.TileAppliedEvent).
     /// No FSM touches terrainSettings; WW POI only adds graph generators (src/Modules/POI), no conflict.
     /// </summary>
     public sealed class TerrainDetail : Feature
@@ -43,20 +43,20 @@ namespace WildWasteland.Modules.Performance
 
         protected override void OnEnable(FeatureMode mode)
         {
-            PerformanceModule.TileAppliedEvent -= OnTile;
-            PerformanceModule.TileAppliedEvent += OnTile;
+            OptimizationRuntime.TileAppliedEvent -= OnTile;
+            OptimizationRuntime.TileAppliedEvent += OnTile;
             Find();
             Apply(true);
         }
 
         protected override void OnDisable()
         {
-            PerformanceModule.TileAppliedEvent -= OnTile;
+            OptimizationRuntime.TileAppliedEvent -= OnTile;
             if (_applied && _mm != null)
             {
                 var s = _mm.terrainSettings;
                 s.pixelError = _oPixel; s.baseMapDist = _oBase; s.detailDistance = _oDist; s.detailDensity = _oDensity;
-                try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn("[Performance] EN4 restore: " + e.Message); }
+                try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN4 restore: " + e.Message); }
             }
             _applied = false; _mm = null;
         }
@@ -88,7 +88,7 @@ namespace WildWasteland.Modules.Performance
             s.baseMapDist = Mathf.Max(0, _baseMap.Int);
             s.detailDistance = _detailDist.Value;
             s.detailDensity = Mathf.Clamp01(_density.Value);
-            if (pushToTiles) { try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn("[Performance] EN4 apply: " + e.Message); } }
+            if (pushToTiles) { try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN4 apply: " + e.Message); } }
         }
 
         void OnTile(TerrainTile tile)

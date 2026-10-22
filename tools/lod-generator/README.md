@@ -16,7 +16,7 @@ For a different game location:
 .\Generate.cmd -GameDir 'D:\SteamLibrary\steamapps\common\Apocalypter' -Install
 ```
 
-The command scans all native Unity asset files and active mod bundles under `BepInEx/plugins`, extracts each unique eligible mesh, and generates two lower-detail variants. It writes its working cache to `work/`, its pack and report to `output/`, and with `-Install` publishes the pack to `BepInEx/plugins/WildWasteland/Performance/LOD/`. Source assets, DLLs, game configuration and saves are not changed by this tool. Omit `-Install` to generate without installing.
+The command scans all native Unity asset files and active mod bundles under `BepInEx/plugins`, extracts each unique eligible mesh, and generates two lower-detail variants. It writes its working cache to `work/`, its pack and report to `output/`, and with `-Install` publishes the pack to `BepInEx/plugins/WildWasteland/Core/Optimization/LOD/`. Source assets, DLLs, game configuration and saves are not changed by this tool. Omit `-Install` to generate without installing.
 
 Launch the game yourself. Enable the Performance module, choose a non-Vanilla Performance preset, then enable **Generated mesh LODs** under Developer > Performance > Rendering. The feature is On by default within non-Vanilla presets. Look for `[Performance] RC9 ... generated meshes indexed` in `BepInEx/LogOutput.log`. The Developer stats show matched renderers, unmatched unique meshes, reserved cache bytes, read failures and zoom state. New tuning entries live in `WildWasteland/tools.cfg`; existing values are preserved.
 
@@ -27,7 +27,7 @@ The runtime swaps only `sharedMesh`, using projected size, LOD bias and transiti
 Models constructed by WW or another mod at runtime are not necessarily present in a Unity asset file. To include them:
 
 1. Load your game and let the relevant models appear. Native asset extraction does not require this step.
-2. Under the Generated mesh LODs stats, click **Export loaded models for LOD generator**. This also works before any pack is installed, with the feature enabled in a non-Vanilla preset. The sliced authoring capture writes readable originals to `Performance/LODInput/`; it does not modify them. Capture can cause brief pauses while serializing large meshes.
+2. Open the **Generated LOD export** tool page and click **Export loaded models for LOD generator**. Export is independent of optimization presets and works before a pack is installed. The sliced authoring capture writes readable originals to `Tools/LODInput/`; it does not modify them. Capture can cause brief pauses while serializing large meshes.
 3. Wait for `Exported ... meshes` in the stats/log, close the game, then rerun `Generate.cmd -Install` and restart. The generator automatically consumes those exports, preferring directly decoded native assets where available.
 
 Repeat the export after loading additional custom model types. It can only capture meshes that are loaded and CPU-readable. Unreadable native or bundle meshes are handled by offline extraction. A custom runtime mesh that is unreadable and absent from any source bundle stays original. After changing procedural/GLB model versions, move obsolete `LODInput` files out of that directory before capturing again; conflicting identities are deliberately excluded.

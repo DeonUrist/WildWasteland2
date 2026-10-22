@@ -4,7 +4,7 @@ using System.Reflection;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS4: exact C# copy of PlayMaker's private ActionData.LoadActionField (PlayMaker.dll, Sources

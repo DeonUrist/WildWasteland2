@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// EN3 (research C §2 Tier 1.3, §3). Ultra = sun shadows to 200 m, 4 cascades, VeryHigh, skinWeights 4 (Sources data/settings.md
@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Performance
     /// WW PlayerBody OcclusionCutaway lowers shadowDistance for its clear-camera pass and puts the read value back in the same frame,
     /// so it keeps working with the capped value.
     /// </summary>
-    public sealed class SunShadows : Feature
+    public sealed class SunShadows : Feature, IScanClient
     {
         public override string PlanId { get { return "EN3"; } }
         public override string Key { get { return "Sun shadows"; } }
@@ -38,18 +38,23 @@ namespace WildWasteland.Modules.Performance
         static readonly int[] Layers = { 9, 21, 12, 13, 10 };
         static readonly float[] Dists = { 30f, 20f, 20f, 40f, 60f };
         Light _sun; float[] _sunOrig; bool _sunSet;
-        Job _job;
+        bool _active;
+
+        /// <summary>Receives directional lights from the shared startup/incremental scan.</summary>
+        public ScanTypes Types { get { return ScanTypes.Lights; } }
 
         protected override void OnEnable(FeatureMode mode)
         {
             ApplyQuality();
-            _job = Scheduler.Interval(Module, "Performance.SunShadows", 5f, Tick);
-            Tick();
+            _active = true;
+            RenderScan.Register(this);
+            TryCurrentSun();
         }
 
         protected override void OnDisable()
         {
-            if (_job != null) { _job.Remove(); _job = null; }
+            _active = false;
+            RenderScan.Unregister(this);
             QualityGuard.Release(QualityGuard.Q.ShadowDistance);
             QualityGuard.Release(QualityGuard.Q.ShadowCascades);
             QualityGuard.Release(QualityGuard.Q.ShadowResolution);
@@ -57,9 +62,9 @@ namespace WildWasteland.Modules.Performance
             RestoreSun();
         }
 
-        public override void OnSettingsChanged() { ApplyQuality(); RestoreSun(); Tick(); }
-        public override void OnSceneLoaded() { _sun = null; _sunSet = false; _sunOrig = null; }
-        public override void OnWorldReady() { Tick(); }
+        public override void OnSettingsChanged() { ApplyQuality(); RestoreSun(); TryCurrentSun(); RenderScan.RequestFull(); }
+        public override void OnSceneLoaded() { RestoreSun(); RenderScan.RequestFull(); }
+        public override void OnWorldReady() { TryCurrentSun(); RenderScan.RequestFull(); }
 
         void ApplyQuality()
         {
@@ -71,16 +76,21 @@ namespace WildWasteland.Modules.Performance
             QualityGuard.Set(QualityGuard.Q.SkinWeights, s);
         }
 
-        void Tick()
+        /// <summary>Uses the renderer's selected sun without searching the scene.</summary>
+        void TryCurrentSun()
+        {
+            if (!_active) return;
+            var sun = RenderSettings.sun;
+            if (sun == null) return;
+            if (_sunSet && _sun != sun) RestoreSun();
+            ApplySun(sun);
+        }
+
+        /// <summary>Applies layer culling once to the active scene sun while preserving its exact original distances.</summary>
+        void ApplySun(Light sun)
         {
             if (_sunSet && _sun != null) return;
             _sunSet = false;
-            var sun = RenderSettings.sun;
-            if (sun == null)
-            {
-                var all = UnityEngine.Object.FindObjectsOfType<Light>();
-                for (int i = 0; i < all.Length; i++) if (all[i].type == LightType.Directional) { sun = all[i]; break; }
-            }
             if (sun == null) return;
             float scale = _layerScale.Value;
             if (scale <= 0f) return;
@@ -96,6 +106,26 @@ namespace WildWasteland.Modules.Performance
             sun.layerShadowCullDistances = d;
             _sunSet = true;
         }
+
+        /// <summary>Shared scan fallback for a scene directional light when RenderSettings has no sun reference yet.</summary>
+        public void OnLight(Light light, ref ScanCtx context)
+        {
+            if (!_active || context.Asset || light == null || light.type != LightType.Directional) return;
+            if (_sunSet && _sun != null) return;
+            var selected = RenderSettings.sun;
+            if (selected != null && selected != light) return;
+            ApplySun(light);
+        }
+        /// <summary>This client does not modify renderers.</summary>
+        public void OnRenderer(MeshRenderer renderer, ref ScanCtx context) { }
+        /// <summary>This client does not modify particle systems.</summary>
+        public void OnParticles(ParticleSystem particles, ref ScanCtx context) { }
+        /// <summary>This client does not modify animators.</summary>
+        public void OnAnimator(Animator animator, ref ScanCtx context) { }
+        /// <summary>This client does not need root geometry.</summary>
+        public void OnRoot(Transform root, ref ScanCtx context) { }
+        /// <summary>Rechecks the selected sun after a shared scan finishes.</summary>
+        public void OnPassDone() { TryCurrentSun(); }
 
         void RestoreSun()
         {

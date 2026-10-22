@@ -2,7 +2,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// RC8 (research C §0 "Textures", §2 Tier 2.12, §3). 38 textures at 4096 and 206 at 2048, no streaming mipmaps; Ultra forces

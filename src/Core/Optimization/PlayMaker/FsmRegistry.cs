@@ -6,7 +6,7 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>Reference-identity comparer (UnityEngine.Object.Equals goes native; the registry only needs identity).</summary>
     internal sealed class RefComparer<T> : IEqualityComparer<T> where T : class
@@ -35,9 +35,9 @@ namespace WildWasteland.Modules.Performance
         internal static int Count { get { return _stamps.Count; } }
         internal static long Rebuilds;
 
-        internal static void Acquire(PerformanceModule m)
+        internal static void Acquire(OptimizationRuntime m)
         {
-            if (!m.EnsurePatched(typeof(Patch))) throw new Exception("PlayMakerFSM OnEnable/OnDisable/OnDestroy patch failed");
+            Subscribe(m);
             if (_users++ == 0) Rebuild();
         }
         /// <summary>OnEnable goes through the shared Core.Hooks.FsmEnable postfix (Patrols also uses it). Called from SubscribeHooks.</summary>
@@ -47,6 +47,9 @@ namespace WildWasteland.Modules.Performance
             if (_subscribed) return;
             _subscribed = true;
             Hooks.FsmEnable.Postfix(m, OnEnablePost);
+            Hooks.FsmInnerEnable.Prefix(m, Shared.OnEnablePre);
+            Hooks.FsmDisable.Prefix(m, Shared.OnDisablePre);
+            Hooks.FsmDestroy.Prefix(m, Shared.OnDestroyPre);
             FsmIndex.SetProvider(IndexProvider.Instance);   // W0B-4: Core FsmIndex.ByOwner answers from PM1 while tracking
         }
         /// <summary>Module shutdown: the shared hook handlers are gone; Core FsmIndex falls back to GetComponents.</summary>
@@ -132,25 +135,24 @@ namespace WildWasteland.Modules.Performance
             if (knownAbsent) return;
             var list = PlayMakerFSM.FsmList;
             for (int i = list.Count - 1; i >= 0; i--)
-                if (ReferenceEquals(list[i], self)) { list.RemoveAt(i); Telemetry.FastRemovals++; return; }
+                if (ReferenceEquals(list[i], self)) { list.RemoveAt(i); OptimizationMetrics.FastRemovals++; return; }
         }
 
-        [HarmonyPatch]
-        internal static class Patch
+        /// <summary>Registry handlers hosted by the shared Core lifecycle dispatchers.</summary>
+        internal static class Shared
         {
             // PlayMakerFSM.OnEnable appends before calling this. Start/OnExit may immediately broadcast events or enable
             // more FSMs: indexing only in the component postfix misses this receiver and stamps nested enables out of order.
-            [HarmonyPatch(typeof(Fsm), "OnEnable"), HarmonyPrefix]
-            static void OnEnablePre(Fsm __instance)
+            internal static bool OnEnablePre(Fsm __instance)
             {
-                if (_users == 0) return;
+                if (_users == 0) return true;
                 var component = __instance.FsmComponent;
                 if (component != null && ReferenceEquals(_fsm(component), __instance)) Add(component);
+                return true;
             }
 
             // Exact copy of PlayMakerFSM.OnDisable with the O(N) Object.Equals Remove replaced (FastRemove on).
-            [HarmonyPatch(typeof(PlayMakerFSM), "OnDisable"), HarmonyPrefix]
-            static bool OnDisablePre(PlayMakerFSM __instance)
+            internal static bool OnDisablePre(PlayMakerFSM __instance)
             {
                 bool tracked = _users > 0;
                 if (!FastRemove && !tracked) return true;
@@ -164,8 +166,7 @@ namespace WildWasteland.Modules.Performance
             }
 
             // Exact copy of PlayMakerFSM.OnDestroy; after OnDisable the FSM is never in FsmList, so the scan is skipped when known.
-            [HarmonyPatch(typeof(PlayMakerFSM), "OnDestroy"), HarmonyPrefix]
-            static bool OnDestroyPre(PlayMakerFSM __instance)
+            internal static bool OnDestroyPre(PlayMakerFSM __instance)
             {
                 bool tracked = _users > 0;
                 bool inList = tracked && InList(__instance);

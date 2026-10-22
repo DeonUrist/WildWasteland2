@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT6 (plan §7, research B §2 #7): ~60 LightFlicker FSMs (and the identical "FSM" on the Light_Flicker prefab) compute
@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.Performance
             Apply();
             FsmEdits.Watch(this, "LightFlicker", null, Ready);
             FsmEdits.Watch(this, "FSM", null, Ready);      // generic name: Ready keeps only the exact flicker shape
-            _job = Scheduler.EveryFrame(Module, "Performance.LightFlicker", Tick);
+            _job = Scheduler.EveryFrame(Module, "Core.Optimization.LightFlicker", Tick);
         }
 
         void Apply()

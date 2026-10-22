@@ -14,7 +14,7 @@ using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 using Object = UnityEngine.Object;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// RC5 (plan §8, research C §2 #6): MapMagic tile streaming budget. Vanilla: ThreadManager.autoMaxThreads -> processorCount-1
@@ -131,7 +131,7 @@ namespace WildWasteland.Modules.Performance
         int _cursor; float _passStart;
         internal static long ToSpec, ToCont;
 
-        protected override void OnEnable(FeatureMode mode) { On = true; _job = Scheduler.Sliced(Module, "Performance.CcdSweep", 300, Step); }
+        protected override void OnEnable(FeatureMode mode) { On = true; _job = Scheduler.Sliced(Module, "Core.Optimization.CcdSweep", 300, Step); }
 
         protected override void OnDisable()
         {
@@ -257,7 +257,7 @@ namespace WildWasteland.Modules.Performance
         Job _job;
         internal static long Jumps;
 
-        protected override void OnEnable(FeatureMode mode) { Swap(); _job = Scheduler.Interval(Module, "Performance.OriginJump", 1f, Swap); }
+        protected override void OnEnable(FeatureMode mode) { Swap(); _job = Scheduler.Interval(Module, "Core.Optimization.OriginJump", 1f, Swap); }
         protected override void OnDisable()
         {
             if (_job != null) { _job.Remove(); _job = null; }
@@ -272,7 +272,7 @@ namespace WildWasteland.Modules.Performance
             if (fo == null) return;
             var before = AccessTools.Method(typeof(NwhOrigin), "BeforeJump");
             var after = AccessTools.Method(typeof(NwhOrigin), "AfterJump");
-            if (before == null || after == null) { Log.Warn("[Performance] EN6 origin: BeforeJump/AfterJump not found - left vanilla"); return; }
+            if (before == null || after == null) { Log.Warn(OptimizationRuntime.Instance, "EN6 origin: BeforeJump/AfterJump not found - left vanilla"); return; }
             _origBefore = (UnityAction)Delegate.CreateDelegate(typeof(UnityAction), fo, before);
             _origAfter = (UnityAction)Delegate.CreateDelegate(typeof(UnityAction), fo, after);
             fo.onBeforeJump.RemoveListener(_origBefore); fo.onAfterJump.RemoveListener(_origAfter);
@@ -371,7 +371,7 @@ namespace WildWasteland.Modules.Performance
                 if (fi == null) return null;
                 return Access.Getter<AzureWeatherController, bool>(typeof(AzureWeatherController), "m_isWeatherChanging");
             }
-            catch (Exception e) { Log.Warn("[Performance] EN7 weather: transition flag not readable (" + e.Message + ") - weather left vanilla"); return null; }
+            catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN7 weather: transition flag not readable (" + e.Message + ") - weather left vanilla"); return null; }
         }
         protected override void OnEnable(FeatureMode mode)
         {

@@ -6,7 +6,7 @@ using HutongGames.PlayMaker.Actions;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS3 (plan §4, research A §3 #25: CallMethod 107 uses). CallMethod.DoMethodCall (CallMethod.cs) calls
@@ -131,7 +131,7 @@ namespace WildWasteland.Modules.Performance
                     }
                     yield return ci;
                 }
-                if (replaced != 2) WildWasteland.Core.Log.Warn("[Performance] FS3: replaced " + replaced + " MethodBase.Invoke calls in CallMethod.DoMethodCall (expected 2)");
+                if (replaced != 2) WildWasteland.Core.Log.Warn(OptimizationRuntime.Instance, "FS3: replaced " + replaced + " MethodBase.Invoke calls in CallMethod.DoMethodCall (expected 2)");
             }
         }
     }

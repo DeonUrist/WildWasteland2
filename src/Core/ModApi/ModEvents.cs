@@ -105,6 +105,17 @@ namespace WildWasteland.Core
         /// <summary>Fills <paramref name="into"/> (not cleared) with one entry per subscribed handler of every event type.</summary>
         public static void Stats(List<HandlerStat> into) { for (int i = 0; i < _buses.Count; i++) _buses[i].Stats(into); }
 
+        /// <summary>Resets delivery counters without changing event subscriptions or transport policy.</summary>
+        public static void ResetStats()
+        {
+            var handlers = new List<HandlerStat>();
+            Stats(handlers);
+            for (int i = 0; i < handlers.Count; i++)
+            {
+                var stat = handlers[i]; stat.Calls = 0; stat.Ticks = 0; stat.Errors = 0;
+            }
+        }
+
         /// <summary>One static bus per event type: handler/owner/stat arrays swapped together as one snapshot.</summary>
         sealed class Bus<T> : IBus where T : struct, IModEvent
         {
