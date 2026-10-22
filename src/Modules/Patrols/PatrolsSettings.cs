@@ -14,8 +14,6 @@ namespace WildWasteland.Modules.Patrols
     //   [Keys]: Patrol editor, Template recorder, Bus passenger pose editor, Merchant item editor (all None by default).
     public sealed partial class PatrolsModule
     {
-        internal static ConfigEntry<Key> MenuKey, TemplateDumpKey, BusPassengerPoseEditorKey, MerchantEditorKey;
-        internal static ConfigEntry<bool> AllowDebugSpawns;
         internal static ConfigEntry<float> PatrolSizePercent;
         internal static ConfigEntry<float> MinPartHealth, MaxPartHealth, MinPartsFill, MaxPartsFill;
 
@@ -35,10 +33,9 @@ namespace WildWasteland.Modules.Patrols
 
         // [Combat]
         internal static ConfigEntry<bool> RangedCombat;
-        internal static ConfigEntry<int> AudioVoices;
         internal static ConfigEntry<float> FireArc, MaxAimPitch, AimTurnSpeed, FireBurstSeconds, FireIntervalMin, FireIntervalMax, ShootDistance;
         internal static ConfigEntry<bool> RamDamage, RamDamageInCar;
-        internal static ConfigEntry<float> RamDamageMultiplier, NpcRamDamageMultiplier, RamFullSpeedKmh, RamInCarFactor, RamPushStrength;
+        internal static ConfigEntry<float> RamDamageMultiplier, RamFullSpeedKmh, RamInCarFactor, RamPushStrength;
         internal static ConfigEntry<string> RamDamageByBody;
         // [Driving]
         internal static ConfigEntry<float> StuckPedalChance, BailChance, StuckBailChance;
@@ -46,21 +43,17 @@ namespace WildWasteland.Modules.Patrols
         internal static ConfigEntry<bool> SelfDestruct;
         internal static ConfigEntry<float> ExplodedLootPercent;
         // [AI]
-        internal static ConfigEntry<bool> AiInvertSteering, AiOverlay, CustomPaintjobs;
+        internal static ConfigEntry<bool> AiInvertSteering, CustomPaintjobs;
         internal static ConfigEntry<bool> RaidersOverheat;
-        internal static ConfigEntry<bool> RaiderMusic, RiderLances, HideFsmWarnings, TurretSpotEditor, FuryRoad, SuspensionLiftCenterOfMass;
-        internal static ConfigEntry<float> RiderRange, RiderIntervalMin, RiderIntervalMax, RiderLanceSpeed, RiderMaxThrowAngle, RiderJumpRange, WitnessMeChance, RiderLeapSpeed, RiderBlastDamage, RiderBlastRadius, TurretThigh, TurretKnee, TurretHipHeight, RiderLeapReachPercent, RiderBailRange;
-        internal static ConfigEntry<string> RiderLanceOffset, RiderLanceRotation;
+        internal static ConfigEntry<bool> RaiderMusic, RiderLances, FuryRoad;
+        internal static ConfigEntry<float> WitnessMeChance;
         internal static ConfigEntry<float> AiDriveByOffset;
         internal static ConfigEntry<float> AiThrottle, AiLeadTime, AiCommitSeconds, AiSteerRate, AiSteerAngle, AiMaxSteerAtSpeed, AiTurnSafeSpeed,
             AiRamDistance, AiPassWidth, AiRunOutMeters, AiRunOutMaxSeconds, AiReverseSeconds, AiReverseThrottle, AiStuckSeconds,
             AiRecoverWindow, AiMaxRecovers, AiWaitSeconds, AiFeelerRange, AiFeelerSpeedFactor, AiFrontOffset, AiMaxSlopeDeg, AiAvoidGain,
             AiIgnoreMassBelow, AiGiveUpDistance;
-        // [Debug]
-        internal static ConfigEntry<bool> BusPassengerPoseEditorEnabled, MerchantEditorEnabled;
-        internal static ConfigEntry<float> ExitSpeedKmh;
         // persistent world traffic
-        internal static ConfigEntry<bool> TrafficDebugMap, TacticalDriving, FactionBattles, Merchants;
+        internal static ConfigEntry<bool> TacticalDriving, FactionBattles, Merchants;
         internal static ConfigEntry<float> TrafficLoadRange, TrafficUnloadRange,
             TrafficDestinationGrace, TrafficPatrolSpeed, TrafficConvoySpeed, ConvoyGuardRange,
             PatrolMemorySeconds;
@@ -83,10 +76,6 @@ namespace WildWasteland.Modules.Patrols
         // [Convoy spawner]
         internal static ConfigEntry<bool> ConvoyEnabled;
         internal static ConfigEntry<float> ConvoySpawnDistance;
-        // pose settings (F7 "Patrols / Pose", "Patrols / Pose.<Human>"; were hidden behind PoseConfiguration = true)
-        internal static PoseFloat DriverOffsetX, DriverOffsetY, DriverOffsetZ;
-        internal static PoseBool PoseEnabled;
-        internal static PoseFloat PoseThigh, PoseKnee, PoseArm, PoseElbow, PoseLeftLegCloser, PoseRightLegCloser, PoseLeftArmCloser, PoseRightArmCloser, PoseBikeArm, PoseBikeArmSpread;
 
         // fixed values that used to be settings
         internal const float SpawnDistance = 8f;          // m in front of the player (template spawner)
@@ -94,9 +83,6 @@ namespace WildWasteland.Modules.Patrols
         internal const float EjectDistance = 0.3f;        // the carcass must be this far from the seat before the passenger climbs over
         internal const float EjectSpeed = 4f;             // m/s sideways (+ half of it up) given to the thrown carcass
         internal const float BailDistance = 0.5f;         // an occupant getting out appears this far beside its seat
-
-        internal static readonly Dictionary<string, ArmPoseProfile> HumanArmPoses = new Dictionary<string, ArmPoseProfile>(StringComparer.OrdinalIgnoreCase);
-        internal static readonly string[] HumanTypes = { "Boltjaw", "Flexa", "Lugnut", "Scrud", "Sprokka", "Scraffa", "Spanna" };
 
         // F7 section names (tools.cfg)
         internal const string TDebug = "Debug", TTraffic = "Traffic tuning", TCombat = "Combat tuning", TTurret = "Turret pose", TDriving = "Driving",
@@ -114,8 +100,7 @@ namespace WildWasteland.Modules.Patrols
             BindPoses(cfg);
             RaidersOverheat.SettingChanged += (s, e) => { if (Running) Crew.ApplyOverheatAll(); };
             SimpleConvoyBanditsAI.SettingChanged += (sender, args) => { if (Running) SimpleBanditBridge.RefreshAll(); };
-            QuietFsm.On = HideFsmWarnings.Value;
-            HideFsmWarnings.SettingChanged += (s, e) => QuietFsm.On = HideFsmWarnings.Value;
+            HookCoreSettings();
         }
 
         // ---------------------------------------------------------------- F6: one toggle per feature, in feature order
@@ -160,10 +145,7 @@ namespace WildWasteland.Modules.Patrols
             ReturnToCar = cfg.Player(null, "Return to car", true,
                 "Patrol, convoy and merchant crews reboard when their attacker dies or moves beyond 50 m from the car, then resume pursuit or their route. A surviving passenger or gunner can drive; fully stuck cars are abandoned");
             TacticalDriving = cfg.Player(null, "Tactical driving", true, "World traffic: varied attack runs and vehicle-checked camp approaches");
-            WarRig.S.SpawnEnabled = cfg.Player(null, "War Rig spawns", true,
-                "Allow the abandoned War Rig POI and manual War Rig spawns. World discovery chance is in POI / World. Existing rigs are unaffected");
-            WarRig.S.GroundRecoveryEnabled = cfg.Player(null, "War Rig ground recovery", false,
-                "Rescue a War Rig (with its truck and passengers) after a confirmed fall below the terrain. Off by default");
+            BindVehiclesToggles(cfg);
         }
 
         // ---------------------------------------------------------------- F6: player-facing values
@@ -188,8 +170,7 @@ namespace WildWasteland.Modules.Patrols
             MerchantCheckMinutes = cfg.Player(mc, "Merchant check interval (minutes)", 5f, "Check and adjust merchant route population this often, including replacing departed merchants. No immediate replacement when a route ends. Loaded merchants finish their visit before excess routes are removed.", new AcceptableValueRange<float>(1f, 60f));
 
             const string cb = "Combat";
-            NpcRamDamageMultiplier = cfg.Player(cb, "NPC ram damage multiplier", 4f,
-                "Damage multiplier when any car hits a creature other than the player, including NPC-driven cars: 4 = four times the game's bumper damage, 1 = vanilla, 0 = no damage", new AcceptableValueRange<float>(0f, 10f));
+            BindVehiclesCombat(cfg);
             ShootDistance = cfg.Player(cb, "ShootDistance", 40f, "Occupants only shoot at a target closer than this, m", new AcceptableValueRange<float>(1f, 200f));
             WitnessMeChance = cfg.Player(cb, "WitnessMeChance", 10f,
                 "% chance that an unhurt blast-lance rider screams \"Witness me!\" and leaps at your car when you drive close " +
@@ -208,30 +189,20 @@ namespace WildWasteland.Modules.Patrols
         // ---------------------------------------------------------------- [Keys]
         void BindKeys(ModuleConfig cfg)
         {
-            MenuKey = cfg.Hotkey("Patrol editor", Key.None, "Patrols: open the patrol / convoy / merchant / loot editor (also F7 > Patrols & vehicles > Patrol editor). None = unbound");
-            TemplateDumpKey = cfg.Hotkey("Template recorder", Key.None, "Patrols: save the vehicle you sit in as a template (only while seated; also F7 > Template recorder). None = unbound");
-            BusPassengerPoseEditorKey = cfg.Hotkey("Bus passenger pose editor", Key.None, "Patrols: toggle the bus passenger pose editor (also F7 > Seat & turret poses). None = unbound");
-            MerchantEditorKey = cfg.Hotkey("Merchant item editor", Key.None, "Patrols: toggle the merchant item placement editor (also F7 > Merchants). None = unbound");
+            BindToolsKeys(cfg);
+            BindDeveloperKeys(cfg);
         }
 
         // ---------------------------------------------------------------- F7 tools.cfg
         void BindTools(ModuleConfig cfg)
         {
-            // debug switches and editors
-            TurretSpotEditor = cfg.Tool(TDebug, "TurretSpotEditor", false,
-                "Glowing markers on the human turret spots of the nearest raider car and numpad keys to move them: 8/2 forward/back, 4/6 left/right, " +
-                "7/9 down/up (Shift = x5), 0 = next turret, 5 = save the spot into the car's template file, . = markers on/off");
-            BusPassengerPoseEditorEnabled = cfg.Tool(TDebug, "Bus passenger pose editor", false, "Live arm, leg and seat adjustment for the nearest bus passenger. Num0 selects joint, Num/ selects side, Num8/2 bends, Num4/6 swings sideways, Num7/9 twists, Num5 saves. Disable other numpad editors while using this tool.");
-            MerchantEditorEnabled = cfg.Tool(TDebug, "Merchant item editor", false, "The in-car merchant object editor (numpad). Disable TurretSpotEditor while using it.");
-            AllowDebugSpawns = cfg.Tool(TDebug, "AllowDebugSpawns", true, "Show Spawn Template, S group buttons and SPAWN in the patrol editor");
-            AiOverlay = cfg.Tool(TDebug, "AiOverlay", false, "On-screen line per AI car: state, speed, target angle, steering, feeler distances. With no raider car driving: the time until the next spawn roll");
-            HideFsmWarnings = cfg.Tool(TDebug, "Hide missing-FSM warnings", true, "The game's \"Could not find FSM: ID on GameObject: ...\" warnings are not printed (QuietFsm)");
-            ExitSpeedKmh = cfg.Tool(TDebug, "ExitSpeedKmh", 30f,
-                "You can leave your car below this speed (km/h). The game's own limit is 6 m/s = 21.6 km/h, too low to get out of a car a truck keeps shoving",
-                new AcceptableValueRange<float>(5f, 200f));
+            BindDeveloperDebug(cfg);
+            BindToolsDebug(cfg);
+            BindDebugOverlay(cfg);
+            BindCoreDebug(cfg);
+            BindVehiclesDebug(cfg);
 
-            // world traffic tuning + debug map
-            TrafficDebugMap = cfg.Tool(TTraffic, "DebugMap", true, "Draw traffic routes only on the game's debug map when it is open");
+            BindDebugMap(cfg);
             RealPatrolNames = cfg.Tool(TTraffic, "Real patrol names", true, "Use each group's actual name on the game debug map; off labels groups Patrol or Convoy");
             HideRouteType = cfg.Tool(TTraffic, "hide route type", false, "Draw every traffic route and marker gray and label it Distant traffic; overrides Real patrol names");
             TrafficRoadRouting = cfg.Tool(TTraffic, "FollowRoads", true, "Influence sparse patrol waypoints with cached road hints; missing hints use a cached snake route");
@@ -257,12 +228,7 @@ namespace WildWasteland.Modules.Patrols
             DismountMemorySeconds = cfg.Tool(TTraffic, "DismountMemorySeconds", 90f, "Crew that fought or detected the player from the car still know where he is this long after getting out, s", new AcceptableValueRange<float>(0f, 600f));
             FootTargetRange = cfg.Tool(TTraffic, "FootTargetRange", 350f, "On-foot crew and foot patrols are offered the player as a target only within this distance (they still need to see, hear or remember him), m", new AcceptableValueRange<float>(50f, 1000f));
 
-            // audio (startup)
-            AudioVoices = cfg.Tool(TAudio, "AudioVoices", 64,
-                "How many sounds the game can play at once (Unity's real voices; the game ships with 32). A firefight with several raider cars needs " +
-                "more: every shot and every hit is a sound, and beyond the limit sounds - the player's own shots too - cut out. 64 is a good value; " +
-                "0 leaves the game's own setting. Applied at game start (restart the game after a change)",
-                new AcceptableValueList<int>(0, 32, 48, 64, 96, 128));
+            BindCoreAudio(cfg);
 
             // combat tuning (was the hidden [Combat] block)
             FireArc = cfg.Tool(TCombat, "FireArcHalfAngle", 100f, "Occupants may fire this many degrees left or right of the car's forward direction", new AcceptableValueRange<float>(0f, 180f));
@@ -277,25 +243,11 @@ namespace WildWasteland.Modules.Patrols
             RamFullSpeedKmh = cfg.Tool(TCombat, "RamFullSpeedKmh", 30f, "Impact speed (km/h, relative) for the full damage. At half that speed the hit does half damage; below half it does nothing", new AcceptableValueRange<float>(5f, 200f));
             RamPushStrength = cfg.Tool(TCombat, "RamPushStrength", 1f, "A damaging hit also shoves you (on foot) in the car's direction: 1 = about the impact speed plus a hop; 0 = off", new AcceptableValueRange<float>(0f, 4f));
             RamInCarFactor = cfg.Tool(TCombat, "RamInCarFactor", 1f, "With Ram damage in car: damage factor while you sit in your own car (1 = same as on foot)", new AcceptableValueRange<float>(0f, 1f));
-            RiderRange = cfg.Tool(TCombat, "RiderRange", 35f, "A blast-lance rider throws at a target closer than this, m (and only when a flat throw reaches it)", new AcceptableValueRange<float>(5f, 150f));
-            RiderMaxThrowAngle = cfg.Tool(TCombat, "RiderMaxThrowAngle", 20f, "The rider only throws when the lance reaches the predicted spot with at most this many degrees up (a throw, not a lob)", new AcceptableValueRange<float>(0f, 45f));
-            RiderJumpRange = cfg.Tool(TCombat, "RiderJumpRange", 15f, "\"Witness me!\": the rider leaps when your car is closer than this, m", new AcceptableValueRange<float>(3f, 30f));
-            RiderIntervalMin = cfg.Tool(TCombat, "RiderIntervalMin", 5f, "Shortest pause between two of a rider's throws, s", new AcceptableValueRange<float>(1f, 60f));
-            RiderIntervalMax = cfg.Tool(TCombat, "RiderIntervalMax", 9f, "Longest pause between two of a rider's throws, s", new AcceptableValueRange<float>(1f, 120f));
-            RiderLeapReachPercent = cfg.Tool(TCombat, "RiderLeapReachPercent", 80f, "\"Witness me!\": the Warboy only leaps at a car within this % of his longest jump (RiderLeapSpeed x 1.2 s, the speeds of both cars counted)", new AcceptableValueRange<float>(10f, 100f));
-            RiderBailRange = cfg.Tool(TCombat, "RiderBailRange", 6f, "A Warboy on a motorcycle who cannot turn to you jumps off when you are closer than this, m", new AcceptableValueRange<float>(1f, 30f));
-            SuspensionLiftCenterOfMass = cfg.Tool(TCombat, "SuspensionLiftCenterOfMass", true, "A raider car with a suspension lift kit carries its centre of mass lower (0.3 m, plus 1.5 x any extra lift of the body), so tall cars on big wheels do not flip in turns (Part Adjustment uses the same rule)");
-            RiderLeapSpeed = cfg.Tool(TCombat, "RiderLeapSpeed", 11f, "\"Witness me!\": the leap's ground speed relative to the rider's car, m/s - a long, flat jump, no lob", new AcceptableValueRange<float>(5f, 40f));
-            RiderBlastDamage = cfg.Tool(TCombat, "RiderBlastDamage", 60f, "\"Witness me!\": damage of the rider's blast at its centre (in your car too); falls to a third at the edge", new AcceptableValueRange<float>(0f, 300f));
-            RiderBlastRadius = cfg.Tool(TCombat, "RiderBlastRadius", 7f, "\"Witness me!\": reach of the rider's blast, m (damage and the shove of your car)", new AcceptableValueRange<float>(1f, 20f));
-            RiderLanceSpeed = cfg.Tool(TCombat, "RiderLanceSpeed", 30f, "Throw speed of a rider's lance, m/s (the player's is 30)", new AcceptableValueRange<float>(5f, 80f));
+            BindNpcaiRiderTuning(cfg);
+            BindVehiclesTuning(cfg);
+            BindNpcaiRiderLeap(cfg);
 
-            // turret rider pose (crouched gunner + the Warboy's lance prop)
-            TurretThigh = cfg.Tool(TTurret, "TurretThigh", 80f, "Crouched human turret gunner: thigh angle forward, degrees", new AcceptableValueRange<float>(0f, 150f));
-            TurretKnee = cfg.Tool(TTurret, "TurretKnee", 130f, "Crouched human turret gunner: knee bend, degrees", new AcceptableValueRange<float>(0f, 170f));
-            TurretHipHeight = cfg.Tool(TTurret, "TurretHipHeight", 0.4f, "Crouched human turret gunner: hips above the spot (feet), m", new AcceptableValueRange<float>(0f, 1.2f));
-            RiderLanceOffset = cfg.Tool(TTurret, "RiderLanceOffset", "0, 0, 0", "Warboy's lance prop: position in the throwing hand, hand-local metres x, y, z");
-            RiderLanceRotation = cfg.Tool(TTurret, "RiderLanceRotation", "0, 0, 0", "Warboy's lance prop: rotation in the throwing hand, degrees x, y, z");
+            BindPresentationTurret(cfg);
 
             StuckPedalChance = cfg.Tool(TDriving, "StuckPedalChance", 5f, "% chance that a killed driver's gas pedal stays stuck; otherwise the gas is released and the car rolls to a stop", new AcceptableValueRange<float>(0f, 100f));
             BailChance = cfg.Tool(TDriving, "BailChance", 25f,
@@ -342,127 +294,40 @@ namespace WildWasteland.Modules.Patrols
             CleanupDistance = cfg.Tool(TCleanup, "MinDistance", 800f, "Cars closer than this are never removed (m)", new AcceptableValueRange<float>(100f, 5000f));
         }
 
-        // ---------------------------------------------------------------- F7 poses (always editable; the PoseConfiguration gate is gone)
-        void BindPoses(ModuleConfig cfg)
-        {
-            var offsetRange = new AcceptableValueRange<float>(-2f, 2f);
-            DriverOffsetX = PoseFloat.Create(cfg, TPose, "OffsetX", 0f, "Where each occupant's hips go: offset from its seat anchor, right (m)", offsetRange);
-            DriverOffsetY = PoseFloat.Create(cfg, TPose, "OffsetY", -0.3f, "Where each occupant's hips go: offset from its seat anchor, up (m)", offsetRange);
-            DriverOffsetZ = PoseFloat.Create(cfg, TPose, "OffsetZ", 0f, "Where each occupant's hips go: offset from its seat anchor, forward (m)", offsetRange);
-            PoseEnabled = PoseBool.Create(cfg, TPose, "Enabled", true, "Seated pose for live occupants");
-            var bodyRange = new AcceptableValueRange<float>(0f, 130f);
-            var closerRange = new AcceptableValueRange<float>(-60f, 60f);
-            PoseThigh = PoseFloat.Create(cfg, TPose, "ThighAngle", 85f, "Thigh angle", bodyRange);
-            PoseKnee = PoseFloat.Create(cfg, TPose, "KneeAngle", 30f, "Knee angle", bodyRange);
-            PoseArm = PoseFloat.Create(cfg, TPose, "ArmAngle", 65f, "Fallback arm angle", bodyRange);
-            PoseLeftLegCloser = PoseFloat.Create(cfg, TPose, "LeftLegCloser", 10f, "Left leg inward angle", closerRange);
-            PoseRightLegCloser = PoseFloat.Create(cfg, TPose, "RightLegCloser", 10f, "Right leg inward angle", closerRange);
-            PoseLeftArmCloser = PoseFloat.Create(cfg, TPose, "LeftArmCloser", 10f, "Fallback left arm inward angle", closerRange);
-            PoseRightArmCloser = PoseFloat.Create(cfg, TPose, "RightArmCloser", 10f, "Fallback right arm inward angle", closerRange);
-            PoseBikeArm = PoseFloat.Create(cfg, TPose, "BikeArmAngle", 55f, "Motorcycle riders (Motorcycle, Halfbreed): arm angle down to the handlebar", bodyRange);
-            PoseBikeArmSpread = PoseFloat.Create(cfg, TPose, "BikeArmSpread", 22f, "Motorcycle riders: each arm this far outward, hands on the handlebar grips", closerRange);
-            PoseElbow = PoseFloat.Create(cfg, TPose, "ElbowAngle", 25f, "Fallback elbow angle", bodyRange);
-
-            HumanArmPoses.Clear();
-            foreach (var human in HumanTypes)
-            {
-                var profile = ArmPoseProfile.Create(cfg, human, Array.IndexOf(PassengerGuard.RangedHumans, human) >= 0);
-                HumanArmPoses[human] = profile;
-            }
-        }
-    }
-
-    internal class BonePoseConfig
-    {
-        internal PoseFloat Vertical, Horizontal, Rotation;
-
-        internal static BonePoseConfig Create(ModuleConfig config, string section, string bone, float vertical, float horizontal, float twist)
-        {
-            var range = new AcceptableValueRange<float>(-180f, 180f);
-            return new BonePoseConfig
-            {
-                Vertical = PoseFloat.Create(config, section, bone + "Vertical", vertical, bone + " vertical angle: positive swings forward/up (degrees)", range),
-                Horizontal = PoseFloat.Create(config, section, bone + "Horizontal", horizontal, bone + " horizontal angle: positive turns toward the occupant's right (degrees)", range),
-                Rotation = PoseFloat.Create(config, section, bone + "Rotation", twist, bone + " axial rotation around the limb/joint (degrees)", range)
-            };
-        }
-    }
-
-    // WW: always backed by an F7 tools.cfg entry (the old in-memory default path for "PoseConfiguration = false" is gone)
-    internal class PoseFloat
-    {
-        internal readonly ConfigEntry<float> Entry;
-        internal float Value { get { return Entry.Value; } }
-        private PoseFloat(ConfigEntry<float> entry) { Entry = entry; }
-        internal static PoseFloat Create(ModuleConfig config, string sub, string key, float value, string description, AcceptableValueRange<float> range)
-        {
-            return new PoseFloat(config.Tool(sub, key, value, description, range));
-        }
-    }
-
-    internal class PoseBool
-    {
-        internal readonly ConfigEntry<bool> Entry;
-        internal bool Value { get { return Entry.Value; } }
-        private PoseBool(ConfigEntry<bool> entry) { Entry = entry; }
-        internal static PoseBool Create(ModuleConfig config, string sub, string key, bool value, string description)
-        {
-            return new PoseBool(config.Tool(sub, key, value, description));
-        }
-    }
-
-    internal class ArmPoseProfile
-    {
-        internal BonePoseConfig LeftArm, LeftElbow, LeftHand, RightArm, RightElbow, RightHand;
-        internal WeaponPoseConfig Weapon;
-
-        private static readonly Dictionary<string, float[]> Defaults = new Dictionary<string, float[]>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "Boltjaw", new[] { 80f,35f,-15.6f, 25f,0f,0f, 0f,0f,0f, -20f,50f,-20f, 125f,0f,25f, 0f,25f,-25f, 0f,0f,0f,-15f,20f,0f } },
-            { "Flexa", new[] { 80f,35f,-15.652f, 25f,0f,0f, 0f,0f,0f, 5f,-10f,0f, 120f,0f,0f, 0f,25f,-45f, 0f,0f,0f,-15f,20f,0f } },
-            { "Lugnut", new[] { 85f,34f,0f, 0f,0f,0f, 5f,15f,-10f, 80f,60f,20f, 20f,-140f,0f, -40f,50f,0f, 0f,-0.1f,0f,-15f,0f,0f } },
-            { "Scrud", new[] { 78f,20f,30f, 25f,0f,0f, 0f,0f,0f, 75f,-20f,-30f, 25f,0f,0f, 0f,0f,0f, 0f,0f,0f,-25f,35f,0f } },
-            { "Sprokka", new[] { 105f,10f,0f, 0f,0f,0f, 0f,0f,0f, 15f,-27f,-30f, 25f,0f,0f, 0f,0f,0f, 0f,0f,0.03f,0f,15f,0f } },
-            { "Scraffa", new[] { 65f,10f,0f, 25f,0f,0f, 0f,0f,0f, 65f,-10f,0f, 25f,0f,0f, 0f,0f,0f } },
-            { "Spanna", new[] { 65f,10f,0f, 25f,0f,0f, 0f,0f,0f, 65f,-10f,0f, 25f,0f,0f, 0f,0f,0f } }
-        };
-
-        // F7 section "Patrols / Pose.<Human>" (the old cfg section was [Pose.<Human>])
-        internal static ArmPoseProfile Create(ModuleConfig config, string human, bool ranged)
-        {
-            string section = "Pose." + human;
-            float[] d = Defaults[human];
-            return new ArmPoseProfile
-            {
-                LeftArm = BonePoseConfig.Create(config, section, "LeftArm", d[0], d[1], d[2]),
-                LeftElbow = BonePoseConfig.Create(config, section, "LeftElbow", d[3], d[4], d[5]),
-                LeftHand = BonePoseConfig.Create(config, section, "LeftHand", d[6], d[7], d[8]),
-                RightArm = BonePoseConfig.Create(config, section, "RightArm", d[9], d[10], d[11]),
-                RightElbow = BonePoseConfig.Create(config, section, "RightElbow", d[12], d[13], d[14]),
-                RightHand = BonePoseConfig.Create(config, section, "RightHand", d[15], d[16], d[17]),
-                Weapon = ranged ? WeaponPoseConfig.Create(config, section, d) : null
-            };
-        }
-    }
-
-    internal class WeaponPoseConfig
-    {
-        internal PoseFloat PositionX, PositionY, PositionZ;
-        internal PoseFloat RotationX, RotationY, RotationZ;
-
-        internal static WeaponPoseConfig Create(ModuleConfig config, string section, float[] d)
-        {
-            var positionRange = new AcceptableValueRange<float>(-2f, 2f);
-            var rotationRange = new AcceptableValueRange<float>(-180f, 180f);
-            return new WeaponPoseConfig
-            {
-                PositionX = PoseFloat.Create(config, section, "WeaponPositionX", d[18], "Weapon local position along the hand's X axis (m)", positionRange),
-                PositionY = PoseFloat.Create(config, section, "WeaponPositionY", d[19], "Weapon local position along the hand's Y axis (m)", positionRange),
-                PositionZ = PoseFloat.Create(config, section, "WeaponPositionZ", d[20], "Weapon local position along the hand's Z axis (m)", positionRange),
-                RotationX = PoseFloat.Create(config, section, "WeaponRotationX", d[21], "Weapon local rotation around its X axis (degrees)", rotationRange),
-                RotationY = PoseFloat.Create(config, section, "WeaponRotationY", d[22], "Weapon local rotation around its Y axis (degrees)", rotationRange),
-                RotationZ = PoseFloat.Create(config, section, "WeaponRotationZ", d[23], "Weapon local rotation around its Z axis (degrees)", rotationRange)
-            };
-        }
+        // ---------------------------------------------------------------- per-target parts (Wave A split; implemented in the target module folders)
+        /// <summary>Binds the War Rig F6 toggles (spawns, ground recovery) in their old position after the Patrols feature toggles. Implemented in Vehicles (_fromPatrols).</summary>
+        partial void BindVehiclesToggles(ModuleConfig cfg);
+        /// <summary>Binds the F6 Combat entry NPC ram damage multiplier (applies to every car, Vehicles rule). Implemented in Vehicles (_fromPatrols).</summary>
+        partial void BindVehiclesCombat(ModuleConfig cfg);
+        /// <summary>Binds the [Keys] entries of the patrol editor and the template recorder. Implemented in Tools (_fromPatrols).</summary>
+        partial void BindToolsKeys(ModuleConfig cfg);
+        /// <summary>Binds the [Keys] entries of the bus passenger pose editor and the merchant item editor. Implemented in Developer (_fromPatrols).</summary>
+        partial void BindDeveloperKeys(ModuleConfig cfg);
+        /// <summary>Binds the tools.cfg Debug switches of the turret spot, bus passenger pose and merchant item editors. Implemented in Developer (_fromPatrols).</summary>
+        partial void BindDeveloperDebug(ModuleConfig cfg);
+        /// <summary>Binds the tools.cfg Debug entry AllowDebugSpawns (patrol editor spawn controls). Implemented in Tools (_fromPatrols).</summary>
+        partial void BindToolsDebug(ModuleConfig cfg);
+        /// <summary>Binds the tools.cfg Debug entry AiOverlay (on-screen AI car lines). Implemented in Debug (_fromPatrols).</summary>
+        partial void BindDebugOverlay(ModuleConfig cfg);
+        /// <summary>Binds the tools.cfg Debug entry Hide missing-FSM warnings (drives Core QuietFsm). Implemented in Core (_fromPatrols).</summary>
+        partial void BindCoreDebug(ModuleConfig cfg);
+        /// <summary>Binds the tools.cfg Debug entry ExitSpeedKmh (player exit-speed rule). Implemented in Vehicles (_fromPatrols).</summary>
+        partial void BindVehiclesDebug(ModuleConfig cfg);
+        /// <summary>Binds the Traffic tuning entry DebugMap (routes on the game debug map). Implemented in Debug (_fromPatrols).</summary>
+        partial void BindDebugMap(ModuleConfig cfg);
+        /// <summary>Binds the tools.cfg Audio entry AudioVoices (read by Core at startup). Implemented in Core (_fromPatrols).</summary>
+        partial void BindCoreAudio(ModuleConfig cfg);
+        /// <summary>Binds the Combat tuning entries of the blast-lance rider decisions (range, throw angle, jump, intervals, leap reach, bail range). Implemented in NPCAI (_fromPatrols).</summary>
+        partial void BindNpcaiRiderTuning(ModuleConfig cfg);
+        /// <summary>Binds the Combat tuning entry SuspensionLiftCenterOfMass (lift-kit centre of mass). Implemented in Vehicles (_fromPatrols).</summary>
+        partial void BindVehiclesTuning(ModuleConfig cfg);
+        /// <summary>Binds the Combat tuning entries of the rider leap and lance (leap speed, blast damage/radius, lance speed). Implemented in NPCAI (_fromPatrols).</summary>
+        partial void BindNpcaiRiderLeap(ModuleConfig cfg);
+        /// <summary>Binds the Turret pose entries (crouched gunner pose and the Warboy lance prop). Implemented in Presentation (_fromPatrols).</summary>
+        partial void BindPresentationTurret(ModuleConfig cfg);
+        /// <summary>Wires the Core QuietFsm switch to its entry (initial value + live changes). Implemented in Core (_fromPatrols).</summary>
+        partial void HookCoreSettings();
+        /// <summary>Binds the seated-occupant pose entries (Pose, Pose.&lt;Human&gt;). Implemented in Presentation (_fromPatrols).</summary>
+        partial void BindPoses(ModuleConfig cfg);
     }
 }
