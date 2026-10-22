@@ -120,7 +120,7 @@ namespace WildWasteland.Modules.Patrols
             internal TrafficJourney Redirect;
         }
         private static WorldTraffic _instance;
-        private readonly List<TrafficJourney> _journeys = new List<TrafficJourney>();
+        private readonly JourneyIndex _journeys = new JourneyIndex();
         private readonly Dictionary<string, Live> _live = new Dictionary<string, Live>();
         private readonly Dictionary<bool, Departure> _departures = new Dictionary<bool, Departure>();
         private readonly Dictionary<string, RoadJob> _routeJobs = new Dictionary<string, RoadJob>();
@@ -133,7 +133,7 @@ namespace WildWasteland.Modules.Patrols
         private int _routeTowns = int.MinValue;
         private void Awake() { _instance = this; _generation = Patrol.SceneGen; }
         internal static TrafficJourney Find(string id)
-        {if(_instance==null)return null;foreach(var journey in _instance._journeys)if(journey.id==id)return journey;return null;}
+        { return _instance != null ? _instance._journeys.Find(id) : null; }
         internal static bool Owns(PatrolMarker marker)
         { return marker != null && marker.GetComponent<TrafficAgent>() != null && PatrolsModule.ConvoyEnabled.Value; }
         internal static bool CombatAllowed(GameObject car)
@@ -162,8 +162,7 @@ namespace WildWasteland.Modules.Patrols
             _instance._nearDepartures.Clear();_instance._nextMerchant=0f;_instance._hornFsm=null;_instance._hornCar=null;
             _instance._battles.Clear();_instance._battleLive.Clear();_instance._nextBattleScan=0f;
             _instance._elapsed = _instance._nextPopulation = 0f; _instance._generation = Patrol.SceneGen;
-            _instance._gameInkAt = 0f;
-            _instance._gameMap=null;_instance._gameMapImage=null;_instance._mapCheat=null;_instance._nextMapScan=0f;_instance._mapWasOpen=false;
+            _instance._gameMap=null;
             _instance._nextRoadRefresh = 0f;
             _instance._routeTowns = int.MinValue;
             _instance.ResetFoot();
@@ -177,7 +176,7 @@ namespace WildWasteland.Modules.Patrols
         internal void Tick()
         {
             if (_patrol == null) _patrol = GetComponent<Patrol>();
-            if (_patrol == null || !_patrol.InGame() || PatrolPersistence.Restoring || Core.SaveSystem.Busy) return;
+            if (_patrol == null || !_patrol.InGame() || PatrolPersistence.Restoring || Core.SaveBus.Busy) return;
             MerchantSignals();
             if (!PatrolsModule.ConvoyEnabled.Value)
             {
@@ -188,11 +187,8 @@ namespace WildWasteland.Modules.Patrols
                 ReleaseFoot("world traffic off");
                 StopAllCoroutines(); _live.Clear(); _journeys.Clear();_battleLive.Clear();_battles.Clear(); return;
             }
-            TrafficLocations.Tick();
-            TrafficCamps.Tick();
-            if (PatrolsModule.TrafficRoadRouting.Value) TrafficRoads.Tick();
             _elapsed += Time.deltaTime;
-            if (_elapsed < 0.25f) return;
+            if (_elapsed < .25f) return;
             float seconds = _elapsed; _elapsed = 0f;
             try { Tick(seconds); }
             catch (Exception e) { Core.Log.Error("[Patrols] " + "World traffic: " + e); }
@@ -389,7 +385,7 @@ namespace WildWasteland.Modules.Patrols
 
         private void RefreshRoadRoutes()
         {
-            var towns = Modules.Towns.TownsApi.Provider;
+            var towns = Core.ModApi.Get<Core.ITownTraffic>();
             int townRevision = towns == null ? 0 : towns.TravelRevision;
             townRevision = unchecked(townRevision * 397 ^ TrafficLocations.StartingRevision);
             if (_routeTowns != townRevision)

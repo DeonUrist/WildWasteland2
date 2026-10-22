@@ -11,9 +11,9 @@ using Log = WildWasteland.Core.Log;
 namespace WildWasteland.Modules.Towns
 {
     /// <summary>
-    /// Lifecycle of the town map labels. Wave A (A6): entry split of Towns/TownsModule.cs (HUD part, B10).
+    /// Lifecycle of the town map labels. Wave A (A6): entry split of Towns/TownRuntime.cs (HUD part, B10).
     /// </summary>
-    public sealed partial class TownsModule
+    internal sealed partial class TownRuntime
     {
         /// <summary>Installs the town map label/icon patches on CleanHUD (LocationMarkers.Observe, QuestMap.Tick).</summary>
         partial void InitHud() { TownMarkers.Install(this); }

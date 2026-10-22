@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>The running NPCAI module (owner of its jobs, hooks, events and log lines); null while off.</summary>
         internal static IModule Module;
 
-        /// <summary>config/WildWasteland/NPCAI: senses sidecars (Saves/), nest layouts, custom nav maps.</summary>
+        /// <summary>config/WildWasteland/NPCAI: authored navigation maps and reusable geometry caches.</summary>
         internal static string DataDir;
 
         /// <summary>Level-2 trace line owned by NPCAI (callers on hot paths check Log.L2 first).</summary>

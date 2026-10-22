@@ -49,13 +49,12 @@ namespace WildWasteland.Modules.HUD
         {
             Reset();
             _standDown = ImmersiveMapLoaded();
-            _saves = Path.Combine(Core.Assets.ModuleConfigDir("HUD"), "Saves");
             SaveBus.StateChanged -= SaveState; SaveBus.StateChanged += SaveState;
         }
 
         internal static void Reset()
         {
-            Chunks.Clear(); _loaded = false; _seed = int.MinValue; _window = false; _havePosition = false; _wasOpen = false; _idle = false; _painting = false;
+            Chunks.Clear(); _fogReadError = null; _loaded = false; _seed = int.MinValue; _window = false; _havePosition = false; _wasOpen = false; _idle = false; _painting = false;
             DropOverlay();
         }
 

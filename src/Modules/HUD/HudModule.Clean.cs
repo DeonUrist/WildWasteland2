@@ -38,8 +38,6 @@ namespace WildWasteland.Modules.HUD
 
         private void BindCleanConfig(ModuleConfig cfg)
         {
-            Sidecars.Register(this, "HUD/Saves/{slot}.fog.bin");
-            Sidecars.Register(this, "HUD/Saves/{slot}.locations.txt");
             Instance = this;
             CleanHudEnabled = cfg.Player("", "Clean HUD", true, "Replace the native HUD. Off restores it immediately.");
             ShowNeeds = cfg.Player("HUD", "ShowNeeds", true, "Show water, food and sleep beneath HP and armor.");
@@ -192,7 +190,6 @@ namespace WildWasteland.Modules.HUD
             _retry = 0; _attach.RunNow();
         }
         private void LoadBeginClean(string slot) { VantageDiscovery.Reset(); VistasBanners.Reset(); InventoryStyle.Restore(); LocationMarkers.Begin(false); MapFog.Reset(); QuestJournal.Hide(); _loadingScreen.Begin(); Release(); Bindings.Clear(); MessageHook.Clear(); Assets.SceneLoaded(); }
-        private void SaveEndClean(string slot) { LocationMarkers.SaveEnded(slot); }
         private void OriginShiftClean(Vector3 delta) { MapFog.OriginShifted(); VantageDiscovery.OriginShifted(delta); }
         private void WorldReadyClean() { LocationMarkers.WorldReady(SaveBus.Slot); WorldReadySaves(); WorldReadyCore(); _attach.RunNow(); }
         private void ShutdownClean()

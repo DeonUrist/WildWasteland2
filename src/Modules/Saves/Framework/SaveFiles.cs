@@ -11,7 +11,7 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Saves
 {
-    // Durable undo journal. No world/sidecar mutation is permitted until every old byte is backed up.
+    // Durable undo journal. No world mutation is permitted until every old byte is backed up.
     internal sealed class SaveFiles
     {
         /// <summary>Stores the exact participant path, hash and old timestamp required for rollback.</summary>
@@ -27,10 +27,6 @@ namespace WildWasteland.Modules.Saves
         internal static string BackupRoot { get { return Path.Combine(Root, "Backups"); } }
         /// <summary>Validates a supported WW2 slot identity before resolving its native world path.</summary>
         internal static string WorldPath(string file) { if (!SaveRuntime.IsSaveFile(file)) throw new IOException("Invalid save identity"); return Path.Combine(WorldRoot, file); }
-        /// <summary>Returns the unchanged published-save description path.</summary>
-        internal static string MetaPath(string file) { return WorldPath(file) + ".wwsave"; }
-        /// <summary>Returns the unchanged published-save thumbnail path.</summary>
-        internal static string ImagePath(string file) { return MetaPath(file) + ".png"; }
         /// <summary>Creates a uniquely named durable undo journal for the requested slot operation.</summary>
         internal SaveFiles(string slot, string operation)
         {
@@ -141,8 +137,7 @@ namespace WildWasteland.Modules.Saves
         {
             // Verify the complete backup before restoring any participant.
             for (int i = 0; i < Entries.Count; i++) if (Entries[i].Existed && Hash(Path.Combine(DirectoryPath, "old-" + i + ".bin")) != Entries[i].Hash) throw new IOException("Backup verification failed; recovery retained");
-            // Discovery captured all pre-existing slot companions. A new matching file belongs to the interrupted write.
-            // This also handles an optional module creating its first sidecar after the undo journal was prepared.
+            // Remove native recovery files created after the journal was prepared.
             var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase); foreach (var entry in Entries) known.Add(entry.Path);
             foreach (string path in Participants(Slot)) if (File.Exists(path) && known.Add(Path.GetFullPath(path))) Entries.Add(new Entry { Path = Path.GetFullPath(path), Existed = false });
             for (int i = 0; i < Entries.Count; i++)
@@ -196,22 +191,11 @@ namespace WildWasteland.Modules.Saves
             return name == file || name.StartsWith(file + ".", StringComparison.OrdinalIgnoreCase) || name.StartsWith(stem + ".", StringComparison.OrdinalIgnoreCase)
                 || name.StartsWith(stem + "_seed", StringComparison.OrdinalIgnoreCase);
         }
-        /// <summary>Discovers existing matching companions without traversing symbolic links.</summary>
-        static void Discover(string directory, string file, bool recurse, List<string> files)
-        {
-            if (!Directory.Exists(directory)) return;
-            foreach (string path in Directory.GetFiles(directory)) if (Matches(Path.GetFileName(path), file)) files.Add(path);
-            if (recurse) foreach (string child in Directory.GetDirectories(directory))
-                if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) == 0) Discover(child, file, true, files);
-        }
-        /// <summary>Combines native files, discovered companions and owner-registered future sidecar paths.</summary>
+        /// <summary>Includes the self-contained world file and native recovery files, never module config data.</summary>
         internal static List<string> Participants(string file)
         {
-            WorldPath(file); var result = new List<string> { WorldPath(file), MetaPath(file), ImagePath(file) };
-            Discover(WorldRoot, file, false, result);
-            Discover(Assets.ConfigDir, file, true, result);
+            WorldPath(file); var result = new List<string> { WorldPath(file) };
             for (int i = 1; i <= 10; i++) result.Add(WorldPath(file) + ".bak" + i);
-            Sidecars.PathsFor(file, result);
             return result;
         }
         /// <summary>Preserves companion suffixes when translating a source slot to a new snapshot identity.</summary>

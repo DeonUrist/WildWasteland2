@@ -58,16 +58,6 @@ namespace WildWasteland.Modules.Towns
             plan.Condition = plan.Owned && (plan.Faction == TownFaction.Coyotes || plan.Faction == TownFaction.Scrapyard)
                 ? TownCondition.Inhabited : TownCondition.Ruined;
         }
-        internal static void Legacy(TownPlan plan)
-        {
-            if (!plan.HasTown || plan.LotCount == 0) return;
-            var random = new System.Random(TownPlanner.Hash(plan.Key + "/population"));
-            plan.Faction = plan.Condition == TownCondition.Ruined ? (random.Next(2) == 0 ? TownFaction.Animals : TownFaction.Mutants)
-                : (random.Next(2) == 0 ? TownFaction.Scrapyard : TownFaction.Coyotes);
-            Assign(plan, new GenerationInput { RuinsMin = 3, RuinsMax = 6, HumansMin = 5, HumansMax = 9, LootMin = 12, LootMax = 20, PopulationPercent = 100, LootPercent = 100 },
-                random);
-            plan.PopulationMeasured = false;
-        }
         private static int Percentage(TownPlan plan, int min, int max, string kind)
         {
             int lo = Math.Min(min, max), hi = Math.Max(min, max);

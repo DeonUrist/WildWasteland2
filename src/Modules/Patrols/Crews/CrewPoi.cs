@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.Patrols
         {
             point = car.transform.position; float best = float.MaxValue;
             Vector3 townParking;
-            if (Modules.Towns.TownsApi.Provider != null && Modules.Towns.TownsApi.Provider.ParkingOutside(TrafficSpace.World(box.center), out townParking))
+            if (Core.ModApi.Get<Core.ITownTraffic>() != null && Core.ModApi.Get<Core.ITownTraffic>().ParkingOutside(TrafficSpace.World(box.center), out townParking))
             {
                 var p = TrafficSpace.Scene(townParking); RaycastHit floor;
                 if (!Physics.Raycast(p + Vector3.up * 80f, Vector3.down, out floor, 200f, 1 << 14, QueryTriggerInteraction.Ignore) || floor.normal.y < .94f) return false;

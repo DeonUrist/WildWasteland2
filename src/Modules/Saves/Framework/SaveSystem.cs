@@ -19,6 +19,8 @@ namespace WildWasteland.Modules.Saves
     internal static class SaveSystem
     {
         internal const string CommitKey = "WildWasteland.SaveCommit";
+        internal const string DescriptionKey = "WildWasteland.Saves.Description.v1";
+        internal const string PictureKey = "WildWasteland.Saves.Thumbnail.v1";
         internal sealed class SaveInfo
         {
             internal string File, Name, Kind, Date;
@@ -53,10 +55,11 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Returns the live selected world identity, falling back to the native save bus slot.</summary>
         internal static string ActiveFile { get { return SaveRuntime.ActiveFile ?? SaveBus.Slot; } }
         /// <summary>Resolves the current generation name from session metadata or the native seed.</summary>
-        internal static string CurrentWorldName { get { if (_localGeneration == SaveBus.Generation && _localWorldName != null) return _localWorldName; string file = ActiveFile; if (file != null && File.Exists(SaveFiles.MetaPath(file))) return Info(file).World; var seed = GameRefs.SaveLoadGame != null ? GameRefs.SaveLoadGame.FsmVariables.FindFsmInt("seed") : null; return seed != null ? "World " + seed.Value : "My world"; } }
+        internal static string CurrentWorldName { get { if (_localGeneration == SaveBus.Generation && _localWorldName != null) return _localWorldName; string file = ActiveFile; if (file != null && File.Exists(SaveFiles.WorldPath(file)) && ES3.KeyExists(DescriptionKey, SaveFiles.Disk(file))) return Info(file).World; var seed = GameRefs.SaveLoadGame != null ? GameRefs.SaveLoadGame.FsmVariables.FindFsmInt("seed") : null; return seed != null ? "World " + seed.Value : "My world"; } }
         internal static int CatalogueVersion;
         static bool _requested, _automatic, _quitting, _scheduled;
         static string _destination, _name, _error, _stamp;
+        static string _publishingTarget;
         static string _world;
         static string _localWorldName;
         static int _localGeneration = -1;
@@ -152,7 +155,7 @@ namespace WildWasteland.Modules.Saves
             if (file == null || !SaveRuntime.IsSaveFile(file)) return true;
             if (RecoveryError != null) return false;
             if (LocalWorld && file == ActiveFile) ProtectedSlots.Add(file);
-            return !ProtectedSlots.Contains(file) || Busy && file == ActiveFile;
+            return !ProtectedSlots.Contains(file) || Busy && (file == ActiveFile || file == _publishingTarget);
         }
         /// <summary>Clears stale state when the native save flow crosses a load or new-world boundary.</summary>
         static void StateChanged(string previous, string current)
@@ -186,14 +189,12 @@ namespace WildWasteland.Modules.Saves
 
         }
         
-        /// <summary>Reads the unchanged save-description format while retaining unreadable world files.</summary>
+        /// <summary>Reads the embedded save description while retaining unreadable world files.</summary>
         internal static SaveInfo Info(string file, string fallback = null)
         {
             var info = new SaveInfo { File = file, Name = fallback ?? Path.GetFileNameWithoutExtension(file), World = "World not recorded", Kind = "legacy", Date = "" };
-            string path = SaveFiles.MetaPath(file);
-            try { if (File.Exists(path))
+            try { var lines = DescriptionLines(SaveFiles.WorldPath(file)); if (lines != null)
             {
-                var lines = File.ReadAllLines(path);
                 if (lines.Length < 5 || lines[0] != "WW-SAVE-1") throw new IOException("Invalid save description: " + file);
                 info.Name = Encoding.UTF8.GetString(Convert.FromBase64String(lines[1])); info.Kind = lines[2]; info.Date = lines[3];
                 float km;
@@ -210,9 +211,28 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Resolves the original world lineage from published metadata.</summary>
         internal static string Lineage(string file)
         {
-            string path = SaveFiles.MetaPath(file);
-            if (File.Exists(path)) { var lines = File.ReadAllLines(path); if (lines.Length >= 5 && SaveRuntime.IsSaveFile(lines[4])) return lines[4]; }
+            var lines = DescriptionLines(SaveFiles.WorldPath(file));
+            if (lines != null && lines.Length >= 5 && SaveRuntime.IsSaveFile(lines[4])) return lines[4];
             return file;
+        }
+        /// <summary>Reads metadata from a world file or its retained journal copy without depending on companion files.</summary>
+        internal static string[] DescriptionLines(string path)
+        {
+            if (!File.Exists(path)) return null;
+            var disk = new ES3Settings(path) { location = ES3.Location.File };
+            return ES3.KeyExists(DescriptionKey, disk) ? ES3.Load<string>(DescriptionKey, disk).Split('\n') : null;
+        }
+        /// <summary>Publishes library metadata and its thumbnail into the same ES3 file as the world state.</summary>
+        static void WriteDescription(string file, string kind, string lineage)
+        {
+            var cache = new ES3Settings(file) { location = ES3.Location.Cache };
+            string description = Encoding.UTF8.GetString(Description(_name, kind, lineage));
+            string picture = _picture != null ? Convert.ToBase64String(_picture) : "";
+            ES3.Save<string>(DescriptionKey, description, cache); ES3.Save<string>(PictureKey, picture, cache);
+            ES3.StoreCachedFile(file);
+            var disk = SaveFiles.Disk(file);
+            if (ES3.Load<string>(DescriptionKey, disk) != description || ES3.Load<string>(PictureKey, disk) != picture)
+                throw new IOException("Embedded save description or thumbnail did not persist");
         }
         /// <summary>Encodes the existing WW-SAVE-1 metadata fields in their original order.</summary>
         static byte[] Description(string name, string kind, string lineage)
@@ -308,9 +328,7 @@ namespace WildWasteland.Modules.Saves
                 ES3.StoreCachedFile(source); Validate(source, _stamp);
                 if (target == source)
                 {
-                    SaveFiles.WriteDurable(SaveFiles.MetaPath(source), Description(_name, "manual", Lineage(source)));
-                    if (_picture != null) SaveFiles.WriteDurable(SaveFiles.ImagePath(source), _picture);
-                    else if (File.Exists(SaveFiles.ImagePath(source))) File.Delete(SaveFiles.ImagePath(source));
+                    WriteDescription(source, "manual", Lineage(source)); Validate(source, _stamp);
                     _transaction.Commit();
                 }
                 else
@@ -331,37 +349,38 @@ namespace WildWasteland.Modules.Saves
             }
             catch (Exception error) { Abort(error); return false; }
         }
-        /// <summary>Stages every included native and companion file before publishing a new save identity.</summary>
+        /// <summary>Stages the self-contained world file before publishing a new save identity.</summary>
         static void PublishSnapshot(string source, string target)
         {
             var copies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (string path in SaveFiles.Participants(source)) if (File.Exists(path))
             {
-                if (!CompanionPolicy.IncludeInSnapshot(path, source)) continue;
-                // Native .bak and checkpoint files are recovery history, not the new snapshot's authority.
-                if (path.EndsWith(".wwsave", StringComparison.Ordinal) || path.EndsWith(".wwsave.png", StringComparison.Ordinal) || Path.GetFileName(path).IndexOf(".bak", StringComparison.OrdinalIgnoreCase) >= 0 || path.EndsWith(".player-checkpoint.txt", StringComparison.Ordinal)) continue;
+                // Native .bak files are recovery history, not the new snapshot's authority.
+                if (path != SaveFiles.WorldPath(source)) continue;
                 copies[SaveFiles.Remap(path, source, target)] = path;
             }
             var participants = SaveFiles.Participants(target); foreach (string path in copies.Keys) participants.Add(path);
             var tx = new SaveFiles(target, _automatic ? "autosave" : "manual save"); tx.Prepare(participants);
             try
             {
+                _publishingTarget = target;
                 // Copy the whole snapshot into private staging before publishing any destination file.
                 int i = 0; var stages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var pair in copies)
                 {
                     string path = Path.Combine(tx.DirectoryPath, "new-" + i++ + ".bin"); SaveFiles.CopyVerified(pair.Value, path);
-                    CompanionPolicy.RemapStaged(pair.Value, path, source, target);
                     stages[pair.Key] = path;
                 }
                 foreach (var pair in stages) SaveFiles.Publish(pair.Value, pair.Key);
-                foreach (var entry in tx.Entries) if (!stages.ContainsKey(entry.Path) && entry.Path != SaveFiles.MetaPath(target) && entry.Path != SaveFiles.ImagePath(target) && File.Exists(entry.Path)) File.Delete(entry.Path);
-                SaveFiles.WriteDurable(SaveFiles.MetaPath(target), Description(_name, _automatic ? "auto" : "manual", Lineage(source)));
-                if (_picture != null) SaveFiles.WriteDurable(SaveFiles.ImagePath(target), _picture);
-                else if (File.Exists(SaveFiles.ImagePath(target))) File.Delete(SaveFiles.ImagePath(target));
+                foreach (var entry in tx.Entries) if (!stages.ContainsKey(entry.Path) && File.Exists(entry.Path)) File.Delete(entry.Path);
+                // Discard a cached older destination before opening the copied snapshot for metadata updates.
+                ES3File.cachedFiles.Remove(target);
+                ES3.CacheFile(target);
+                WriteDescription(target, _automatic ? "auto" : "manual", Lineage(source));
                 Validate(target, _stamp); tx.Commit();
             }
             catch { try { tx.Rollback(); } catch (Exception error) { RecoveryError = "Snapshot recovery required: " + error.Message; } throw; }
+            finally { _publishingTarget = null; }
         }
         /// <summary>Cancels native save state and rolls back all prepared participants after failure.</summary>
         internal static void Abort(Exception error)
@@ -439,9 +458,9 @@ namespace WildWasteland.Modules.Saves
         static void PruneAutosaves(string lineage, string newest)
         {
             var files = new List<string>();
-            foreach (string path in Directory.GetFiles(SaveFiles.WorldRoot, "WW_*.es3.wwsave"))
+            foreach (string path in Directory.GetFiles(SaveFiles.WorldRoot, "WW_*.es3"))
             {
-                string file = Path.GetFileName(path).Substring(0, Path.GetFileName(path).Length - 7);
+                string file = Path.GetFileName(path);
                 if (SaveRuntime.IsSaveFile(file) && Info(file).Automatic && Lineage(file) == lineage && File.Exists(SaveFiles.WorldPath(file))) files.Add(file);
             }
             files.Sort(CompareNewest); int kept = 0;

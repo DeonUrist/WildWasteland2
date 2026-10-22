@@ -7,17 +7,18 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Patches = WildWasteland.Core.Patches;
 
-namespace WildWasteland.Modules.Quests
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>Quests engine, HUD part (Wave A, from Quests/NativeConversation.cs; B10): the IMGUI fallback dialogue window and talk prompt, drawn only when CleanHUD does not style the conversation.</summary>
-    internal sealed partial class Plugin
+    internal sealed partial class QuestFallbackView
     {
         Vector2 _fallbackChat, _fallbackChoices;
 
         internal void DrawConversation()
         {
-            if (!ready) return;
-            if (!bridge.NativeOpen)
+            var api = Api; if (api == null || !api.Ready) return;
+            var bridge = api.Conversation;
+            if (!bridge.Open)
             {
                 if (bridge.Prompt.Length > 0 && !DialogueStyled && GameRefs.InGame)
                     GUI.Label(new Rect(Screen.width * .5f - 240, Screen.height * .65f, 480, 40), bridge.Prompt);

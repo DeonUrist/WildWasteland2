@@ -24,10 +24,8 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.HUD.HudModule());
             ModuleHost.Add(new Modules.Patrols.PatrolsModule());
             ModuleHost.Add(new Modules.POI.PoiModule());
-            ModuleHost.Add(new Modules.Weather.WeatherModule());
             ModuleHost.Add(new Modules.Quests.QuestsModule());
             ModuleHost.Add(new Modules.Survival.SurvivalModule());
-            ModuleHost.Add(new Modules.Towns.TownsModule());
             // Remaining target module entries are completed by their Wave B owners.
             ModuleHost.Add(new Modules.Vehicles.VehiclesModule());
             ModuleHost.Add(new Modules.Loot.LootModule());

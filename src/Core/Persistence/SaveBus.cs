@@ -14,7 +14,7 @@ namespace WildWasteland.Core
     ///    OnWorldReady (first isPlay after LoadGame / setSeed / a new scene).
     /// <see cref="AfterSave"/> runs a callback ~1 s after the save returned to isPlay (ES3 cache rule: writes done earlier are overwritten
     /// by the game's cache flush). Slot = ES3Settings.defaultSettings.path, valid when it matches SaveGameN.es3.
-    /// Module save data formats are kept verbatim from the source mods (save compatibility); see docs/decisions.md.
+    /// Persistent world records live inside the ES3 save; see refactor decision D20.
     /// </summary>
     public static class SaveBus
     {
@@ -45,7 +45,7 @@ namespace WildWasteland.Core
         /// <summary>Aborts the running native save and returns SaveLoadGame to isPlay.</summary>
         internal static void CancelSave()
         {
-            _after.Clear(); Saving = false; _saveSlot = null;
+            _after.Clear(); SaveKey.CancelPending(); Saving = false; _saveSlot = null;
             var cancel = SaveCancelled; if (cancel != null) cancel();
             var registry = GameRefs.NewGOArrayList != null ? FsmUtil.Find(GameRefs.NewGOArrayList, "Save_NewGO_ArrayList") : null;
             if (registry != null) registry.Fsm.SetState("off");
@@ -99,7 +99,7 @@ namespace WildWasteland.Core
         public static void AfterSave(Action a, float delay = 1f) { _after.Add(new KeyValuePair<float, Action>(-delay, a)); }
 
         /// <summary>Resets the watcher on scene load (new generation, world ready pending).</summary>
-        internal static void OnSceneLoaded() { Generation++; State = null; Saving = Loading = false; _pendingWorldReady = true; _after.Clear(); }
+        internal static void OnSceneLoaded() { Generation++; State = null; Saving = Loading = false; _pendingWorldReady = true; _after.Clear(); SaveKey.CancelPending(); }
 
         /// <summary>Called once per frame by Core (EarlyUpdate).</summary>
         internal static void Tick()
@@ -143,13 +143,14 @@ namespace WildWasteland.Core
                     break;
                 case "LoadGame":
                     Generation++;
-                    Loading = true; _pendingWorldReady = true; _after.Clear();
+                    Loading = true; _pendingWorldReady = true; _after.Clear(); SaveKey.CancelPending();
                     ModuleHost.Broadcast(ModuleHost.Event.LoadBegin, Slot);
                     if (ModEvents.HasListeners<LoadBegin>()) { var e = new LoadBegin { Slot = Slot, Generation = Generation }; ModEvents.Publish(ref e); }
                     break;
                 case "setSeed":
                 case "Start":
                     Generation++;
+                    _after.Clear(); SaveKey.CancelPending();
                     _pendingWorldReady = true;
                     break;
                 case "isPlay":

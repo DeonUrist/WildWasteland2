@@ -7,6 +7,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
+using WildWasteland.Core.Events;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -14,7 +15,7 @@ namespace WildWasteland.Modules.Patrols
     // AI-driven raider cars: templates assembled from the game's own frames and parts, live crews with a driving AI, ranged
     // passengers, human turrets, ram damage, loot trucks, a convoy spawner driven by the game's Distance Travelled, persistent world
     // traffic (camps, routes, faction battles, merchants), the editors, and the War Rig tanker trailer. Save data stays verbatim
-    // (ES3 key "Apocapatrol.Patrol", schema-14 sidecar, motorcycle / War Rig ES3 prefab ids).
+    // (ES3 key "Apocapatrol.Patrol", schema-14 embedded record, motorcycle / War Rig ES3 prefab ids).
     //
     // Runner: the old Apocapatrol.Runner MonoBehaviours (Patrol, TemplateMenu, TemplateExporter, TurretSpotter, BusPassengerPoseEditor,
     // Convoy, WorldTraffic, Cleanup + the MerchantEditor) sit on a module-owned child of Core.Runner.Host; their Update / LateUpdate /
@@ -51,11 +52,9 @@ namespace WildWasteland.Modules.Patrols
             Running = true;   // last: per-object loops only run once everything is in place
             Services.FollowerVehicles = new QuestFollowers();
             Services.Camps = new TrafficCamps.Status();
-            Services.VehicleCombatActive = VehicleCombatActive;
             Services.NpcHurt-=Crew.Attacked;Services.NpcHurt+=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;Services.VehiclePartHit+=Crew.PartHit;
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings; SaveBus.CleanupSettings += DrawSaveCleanupSettings;
-            SaveBus.SaveCancelled -= PatrolPersistence.CancelPendingSave; SaveBus.SaveCancelled += PatrolPersistence.CancelPendingSave;
             LoadingProgress.Register(this, VehicleBuildCache.LoadWork);
         }
 
@@ -66,12 +65,15 @@ namespace WildWasteland.Modules.Patrols
             l.Toggle(CleanupEnabled, "Abandoned patrol vehicles"); l.Entry(CleanupDistance); l.Entry(CleanupMinutes); l.Entry(CleanupMaxCars);
         }
 
+        /// <summary>Shares current combat eligibility with the typed patrol query provider.</summary>
+        internal static bool CombatActive { get { return Running && VehicleCombatActive(); } }
+
         static bool VehicleCombatActive()
         {
             foreach (var marker in PatrolMarker.All)
                 if (marker != null && marker.gameObject.activeInHierarchy && !marker.Exploded && !marker.SetupOnly
                     && marker.FactionTarget != null && marker.FactionTarget.activeInHierarchy && HasCombatCrew(marker)
-                    && ((PlayerRef.Player == null || marker.FactionTarget != PlayerRef.Player.gameObject) || Core.SaveRuntime.PlayerDistance(marker.transform.position, Core.GameRefs.Player != null ? Core.GameRefs.Player.transform : null) <= 600f)) return true;
+                    && ((PlayerRef.Player == null || marker.FactionTarget != PlayerRef.Player.gameObject) || (Core.GameRefs.Player != null ? Vector3.Distance(marker.transform.position, Core.GameRefs.Player.transform.position) : float.MaxValue) <= 600f)) return true;
             return false;
         }
 
@@ -88,9 +90,8 @@ namespace WildWasteland.Modules.Patrols
             DataDir = Dir;
             try { Directory.CreateDirectory(DataDir); } catch (Exception e) { Log.Warn("[Patrols] data folder: " + e.Message); }
 
-            // sidecars: BepInEx\config\WildWasteland\Patrols\Saves, road cache
+            // Derived road cache only; world state is embedded in the ES3 save.
             var cfgDir = Assets.ModuleConfigDir(Id);
-            PatrolPersistence.SavesDir = Path.Combine(cfgDir, "Saves");
             TrafficRoads.CacheDir = Path.Combine(cfgDir, "roads");
 
             // hooks (Core dispatchers) and module patches, each in its own try like the old Awake
@@ -115,7 +116,6 @@ namespace WildWasteland.Modules.Patrols
 
             // per-scene state (fresh start, or a restart after Shutdown)
             Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); PickupCatalog.Invalidate(); ExitSpeed.Restore();
-            PatrolPersistence.Install();
             _onSaveState = PatrolPersistence.OnStateChanged;
             SaveBus.StateChanged += _onSaveState;
 
@@ -127,12 +127,10 @@ namespace WildWasteland.Modules.Patrols
 
         public override void Shutdown()
         {
-            Services.VehicleCombatActive = null;
             Services.NpcHurt-=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;
             CrewReturn.Reset();
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings;
-            SaveBus.SaveCancelled -= PatrolPersistence.CancelPendingSave;
             Running = false;
             LoadingProgress.Remove(this);
             Try("build queue", BuildQueue.Reset);
@@ -143,7 +141,7 @@ namespace WildWasteland.Modules.Patrols
             TrafficCompass.Clear();
             Try("foot patrols", WorldTraffic.ReleaseFootAll);
             if (_onSaveState != null) { SaveBus.StateChanged -= _onSaveState; _onSaveState = null; }
-            Try("persistence flush", PatrolPersistence.Uninstall);
+            Try("persistence reset", PatrolPersistence.Uninstall);
             Try("road cache flush", () => { TrafficRoads.Flush(); TrafficRoads.Uninstall(); });
             Try("War Rig", WarRig.WarRigFeature.Uninstall);
             Try("exit speed", ExitSpeed.Restore);
@@ -202,12 +200,16 @@ namespace WildWasteland.Modules.Patrols
             Scheduler.EveryFrame(this, "Patrols.Vehicle load preparation", VehicleBuildCache.LoadBurst);
             TrafficCompass.Clear();
             Scheduler.Interval(this, "Compass markers", .5f, TrafficCompass.Tick);
-            Scheduler.EveryFrame(this, "Patrol.Tick", () => { if (_patrol != null) _patrol.Tick(); });
+            Scheduler.EveryFrame(this, "Patrols.Runtime", TickPatrol);
+            Scheduler.Interval(this, "Patrols.CombatActivity", .25f, PublishCombatActivity);
             RegisterToolsTicks();
             RegisterDeveloperSeatTicks();
-            Scheduler.EveryFrame(this, "Convoy.Tick", () => { if (_convoy != null) _convoy.Tick(); });
-            Scheduler.EveryFrame(this, "WorldTraffic.Tick", () => { if (_traffic != null) _traffic.Tick(); });
-            Scheduler.EveryFrame(this, "Cleanup.Tick", () => { if (_cleanup != null) _cleanup.Tick(); });
+            Scheduler.Interval(this, "Patrols.Progression", .25f, TickConvoy);
+            Scheduler.EveryFrame(this, "Patrols.Traffic", TickTraffic);
+            Scheduler.EveryFrame(this, "Patrols.Locations", TickLocations);
+            Scheduler.Interval(this, "Patrols.Camps", .25f, TickCamps);
+            Scheduler.Interval(this, "Patrols.Roads", .25f, TickRoads);
+            Scheduler.Interval(this, "Patrols.Cleanup", .25f, TickCleanup);
             RegisterDeveloperMerchantTick();
 
             RegisterToolsLateTicks();
@@ -215,7 +217,7 @@ namespace WildWasteland.Modules.Patrols
             // (WW perf) each with a predicate (built once here): IMGUI stops when none of them (and no other module) has anything to draw
             RegisterToolsGui();
             RegisterDeveloperSeatGui();
-            Scheduler.Gui(this, "WorldTraffic.Gui", () => { if (_traffic != null) _traffic.Gui(); }, () => _traffic != null && _traffic.GuiWanted());
+            Core.ModApi.Provide<Core.ITrafficMapSource>(this, this);
             RegisterDeveloperMerchantGui();
         }
 

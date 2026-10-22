@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.Towns
 {
     internal static class TownStore
     {
-        private const int Magic = 0x5757544E, Version = 6;
+        private const int Magic = 0x5757544E, Version = 7;
         internal static byte[] Serialize(Dictionary<string, TownRecord> records)
         {
             using (var stream = new MemoryStream())
@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.Towns
                 foreach (var record in records.Values)
                 {
                     var p = record.Plan;
-                    w.Write(p.Key); w.Write(p.HasTown); w.Write((int)p.Condition); V(w, p.WorldCenter);
+                    w.Write(p.Key); w.Write(p.TemplateId ?? p.Faction.ToString()); w.Write(p.HasTown); w.Write((int)p.Condition); V(w, p.WorldCenter);
                     w.Write(p.Yaw); w.Write(p.Radius); w.Write(p.Feather); w.Write(p.StreetWidth);
                     w.Write(p.OriginalRelief); w.Write(p.MaximumEarthwork); w.Write(p.Decision ?? "");
                     w.Write(p.LayoutVersion); w.Write((int)p.Faction); w.Write(p.Name ?? ""); w.Write(p.Discovered); w.Write(p.MainNodes);
@@ -53,48 +53,48 @@ namespace WildWasteland.Modules.Towns
             using (var r = new BinaryReader(new MemoryStream(bytes, false)))
             {
                 int magic = r.ReadInt32(), version = r.ReadInt32(), generator = r.ReadInt32();
-                if (magic != Magic || version < 1 || version > Version || generator < 1 || generator > TownPlan.GeneratorVersion)
+                if (magic != Magic || version != Version || generator != TownPlan.GeneratorVersion)
                     throw new InvalidDataException("Unsupported Towns save/generator version; preserve the file and matching DLL.");
                 int count = Count(r, 100000);
                 for (int i = 0; i < count; i++)
                 {
-                    var p = new TownPlan { Key = r.ReadString(), HasTown = r.ReadBoolean(), Condition = (TownCondition)r.ReadInt32(),
+                    var p = new TownPlan { Key = r.ReadString(), TemplateId = r.ReadString(), HasTown = r.ReadBoolean(), Condition = (TownCondition)r.ReadInt32(),
                         WorldCenter = V(r), Yaw = F(r), Radius = F(r), Feather = F(r), StreetWidth = F(r),
                         OriginalRelief = F(r), MaximumEarthwork = F(r), Decision = r.ReadString() };
                     if (!Enum.IsDefined(typeof(TownCondition), p.Condition)) throw new InvalidDataException("Town condition");
-                    p.LayoutVersion = version >= 2 ? r.ReadInt32() : 1;
-                    if (version >= 2)
+                    p.LayoutVersion = r.ReadInt32();
+                    
                     {
                         p.Faction = (TownFaction)r.ReadInt32(); p.Name = r.ReadString(); p.Discovered = r.ReadBoolean(); p.MainNodes = r.ReadInt32();
                         if (!Enum.IsDefined(typeof(TownFaction), p.Faction) || p.LayoutVersion < 1 || p.LayoutVersion > 8) throw new InvalidDataException("Town population/layout");
-                        if (version >= 6) { p.FactionMembers = Count(r, 100000); p.PopulationMeasured = r.ReadBoolean(); p.MerchantSeeded = r.ReadBoolean(); }
+                        { p.FactionMembers = Count(r, 100000); p.PopulationMeasured = r.ReadBoolean(); p.MerchantSeeded = r.ReadBoolean(); }
                     }
                     p.Lots = new TownLot[Count(r, 32)];
                     for (int j = 0; j < p.Lots.Length; j++)
                     {
                         var lot = new TownLot { Prefab = r.ReadString(), LocalPosition = V(r), Yaw = F(r), Role = (TownRole)r.ReadInt32(), BoundsCenter = V(r),
                             HalfX = F(r), HalfZ = F(r), Street = r.ReadInt32() };
-                        if (version >= 2)
+                        
                         {
                             lot.Entry = V(r); lot.HasEntry = r.ReadBoolean(); lot.EntryNode = r.ReadInt32();
                             lot.Actors = Count(r, 320); lot.Loot = Count(r, 320); lot.Vehicles = Count(r, 1);
                             lot.Hounds = r.ReadBoolean();
-                            if (version >= 5) lot.Skipped = r.ReadBoolean();
+                            lot.Skipped = r.ReadBoolean();
                         }
                         p.Lots[j] = lot;
                     }
-                    if (version == 1) TownPopulation.Legacy(p);
+                    
                     TownPopulation.Classify(p); // Saved faction defines the settlement even before its residents have spawned.
                     p.StreetNodes = new Vector3[Count(r, 2048)]; for (int j = 0; j < p.StreetNodes.Length; j++) p.StreetNodes[j] = V(r);
                     p.StreetEdges = new int[Count(r, 8192)];
                     for (int j = 0; j < p.StreetEdges.Length; j++)
                     { int e = r.ReadInt32(); if (e < 0 || e >= p.StreetNodes.Length) throw new InvalidDataException("Street index"); p.StreetEdges[j] = e; }
                     if ((p.StreetEdges.Length & 1) != 0) throw new InvalidDataException("Street edge pairs");
-                    if (version >= 3)
+                    
                     {
                         p.PathsVersion = Count(r, 7); p.PathWidth = F(r); p.AccessWidth = F(r);
                         p.AccessPath = new Vector3[Count(r, 2048)]; for (int j = 0; j < p.AccessPath.Length; j++) p.AccessPath[j] = V(r);
-                        if (version >= 4) p.GradeAccess = r.ReadBoolean();
+                        p.GradeAccess = r.ReadBoolean();
                         if (p.PathsVersion == 1 && (p.PathWidth < 1 || p.PathWidth > 9 || p.AccessWidth < 1 || p.AccessWidth > 12 || p.AccessPath.Length < 2))
                             throw new InvalidDataException("Town path surface/connection");
                     }

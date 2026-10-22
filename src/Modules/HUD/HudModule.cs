@@ -73,9 +73,14 @@ namespace WildWasteland.Modules.HUD
             HeadshotVolume.SettingChanged += (s, a) => { if (_running) HeadshotAudio.ApplyVolume(); };
         }
 
+        private TrafficMapView _trafficMap;
         public override void Init()
         {
             InitClean();
+            _trafficMap = new TrafficMapView();
+            Scheduler.Gui(this, "Traffic map", _trafficMap.Gui, _trafficMap.GuiWanted);
+            var questFallback = new QuestFallbackView();
+            Scheduler.Gui(this, "Quest fallback windows", questFallback.Render, questFallback.Wanted);
             SavingPresentation.Install(this);
             StandaloneNotices.Install(this);
             Instance = this;
@@ -93,7 +98,6 @@ namespace WildWasteland.Modules.HUD
             // old Runner: Update = crosshair + headshot audio, LateUpdate = VanillaHits.Flush + HitFeedbackOverlay.Flush, OnGUI = HitFeedbackOverlay.OnGUI
             _crosshairJob = Scheduler.Interval(this, "Crosshair", 0.25f, CrosshairController.Tick);
             Scheduler.EveryFrame(this, "Hit feedback flush", FlushHits, Phase.LateUpdate);
-            Scheduler.Gui(this, "Hit feedback draw", HitFeedbackOverlay.OnGUI, HitFeedbackOverlay.GuiWanted);   // (WW perf) IMGUI only while a number, line or marker shows
             _crosshairJob.RunNow();
             HeadshotAudio.Refresh();
             Core.Log.Info("[HUD] Combat HUD (ex Gunplay HUD 1.2.2) started");
@@ -112,6 +116,7 @@ namespace WildWasteland.Modules.HUD
         {
             SavingPresentation.Clear();
             SceneLoadedClean(scene, mode);
+            if (_trafficMap != null) _trafficMap.Reset();
             VanillaHits.Clear(); HitFeedbackOverlay.OnSceneLoaded(); CrosshairController.OnSceneLoaded(); HeadshotAudio.Stop();
             HeadshotAudio.Refresh();
             if (_crosshairJob != null) _crosshairJob.RunNow();
@@ -122,6 +127,7 @@ namespace WildWasteland.Modules.HUD
         public override void Shutdown()
         {
             SavingPresentation.Clear();
+            if (_trafficMap != null) _trafficMap.Dispose(); _trafficMap = null;
             ShutdownClean();
             _running = false;
             if (Services.Hud is HitFeedbackService) Services.Hud = null;
@@ -135,7 +141,6 @@ namespace WildWasteland.Modules.HUD
         }
 
         public override void OnLoadBegin(string slot) { SavingPresentation.Clear(); LoadBeginClean(slot); }
-        public override void OnSaveEnd(string slot) { SaveEndClean(slot); }
         public override void OnWorldReady() { WorldReadyClean(); }
 
         // ------------------------------------------------------------------ assets

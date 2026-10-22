@@ -7,10 +7,10 @@ namespace WildWasteland.Modules.HUD
 {
     // Hit feedback for the player's own bullets: damage numbers ([HUD] FloatingDamage 0 off / 1 a list top right / 2 floating at the hit
     // point; white = damage, red with "!" = headshot, light blue = % taken off a vehicle part) and a diagonal hit marker at the screen
-    // centre ([HUD] HitMarker; white, red on a headshot). Drawn with IMGUI from the Core runner's OnGUI (Scheduler.Gui job);
+    // centre ([HUD] HitMarker; white, red on a headshot). Drawn with a pooled uGUI overlay from the HUD LateUpdate job;
     // nothing is drawn (and the job returns at once) while there is nothing to show.
     // WW: lifetimes/limits/merge window come from tools.cfg ([HUD / Hit feedback], defaults = 1.2.2 constants), Camera.main is
-    // GameRefs.MainCamera, world points follow floating-origin jumps (Shift), Shutdown destroys the white texture.
+    // GameRefs.MainCamera, world points follow floating-origin jumps (Shift), Shutdown destroys its owned canvas and pooled graphics.
     internal static class HitFeedbackOverlay
     {
         private struct Pending { public GameObject Target; public Vector3 Point; public float Damage; public bool Head, Part; public float Time; }
@@ -21,8 +21,11 @@ namespace WildWasteland.Modules.HUD
         private static readonly List<Floater> _floaters = new List<Floater>();
         private static readonly List<Line> _lines = new List<Line>();
         private static float _markerUntil, _markerHeadUntil;
-        private static GUIStyle _floatStyle, _lineStyle;
-        private static Texture2D _white;
+        private static GameObject _canvas;
+        private static readonly List<UnityEngine.UI.Text> _texts = new List<UnityEngine.UI.Text>();
+        private static readonly List<UnityEngine.UI.Image> _bars = new List<UnityEngine.UI.Image>();
+        private static Font _font;
+        private static int _textCount;
 
         // called by the Guns module (Services.Hud) for every player bullet that hits a creature (damage < 0 in the game's convention)
         public static void PlayerHit(GameObject target, Vector3 point, float damage, bool head)
@@ -79,7 +82,7 @@ namespace WildWasteland.Modules.HUD
         // end of the frame's simulation: turn the merged hits into numbers / marker
         public static void Flush()
         {
-            if (_pending.Count == 0) return;
+            if (_pending.Count == 0) { Render(); return; }
             float now = Time.unscaledTime;
             int mode = HudModule.DamageNumbers.Value, maxLines = HudModule.ListLines.Value;
             float markerLife = HudModule.MarkerSeconds.Value;
@@ -103,9 +106,10 @@ namespace WildWasteland.Modules.HUD
                 }
             }
             _pending.Clear();
+            Render();
         }
 
-        public static void OnSceneLoaded() { _pending.Clear(); _floaters.Clear(); _lines.Clear(); _markerUntil = 0f; _markerHeadUntil = 0f; }
+        public static void OnSceneLoaded() { _pending.Clear(); _floaters.Clear(); _lines.Clear(); _markerUntil = 0f; _markerHeadUntil = 0f; if (_canvas != null) _canvas.SetActive(false); }
 
         /// <summary>FloatingOrigin jump: keep the numbers on their hit points.</summary>
         public static void Shift(Vector3 delta)
@@ -114,99 +118,95 @@ namespace WildWasteland.Modules.HUD
             for (int i = 0; i < _pending.Count; i++) { var p = _pending[i]; p.Point += delta; _pending[i] = p; }
         }
 
+        /// <summary>Destroys HUD-owned feedback graphics and releases scene-bound hit records.</summary>
         public static void Shutdown()
         {
             OnSceneLoaded();
-            if (_white != null) UnityEngine.Object.Destroy(_white);
-            _white = null; _floatStyle = null; _lineStyle = null;
+            if (_canvas != null) UnityEngine.Object.Destroy(_canvas);
+            _canvas = null; _texts.Clear(); _bars.Clear(); _font = null;
         }
 
-        private static void EnsureStyles()
+        /// <summary>Lazily creates a non-interactive pixel-sized overlay, matching the former feedback coordinates.</summary>
+        private static void EnsureCanvas()
         {
-            if (_white != null && _floatStyle != null) return;
-            if (_white == null)
+            if (_canvas != null) return;
+            _canvas = new GameObject("WW Hit Feedback", typeof(RectTransform), typeof(Canvas));
+            _canvas.hideFlags = HideFlags.HideAndDontSave;
+            _canvas.transform.SetParent(Runner.Host.transform, false);
+            var canvas = _canvas.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 32000;
+            _font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            for (int i = 0; i < 4; i++)
             {
-                _white = new Texture2D(1, 1, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
-                _white.SetPixel(0, 0, Color.white); _white.Apply();
+                var go = new GameObject("Marker " + i, typeof(RectTransform), typeof(UnityEngine.UI.Image));
+                go.transform.SetParent(_canvas.transform, false);
+                var image = go.GetComponent<UnityEngine.UI.Image>(); image.raycastTarget = false;
+                var rect = image.rectTransform; rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
+                rect.pivot = new Vector2(.5f, 0f); rect.localRotation = Quaternion.Euler(0f, 0f, -45f - 90f * i);
+                _bars.Add(image);
             }
-            _floatStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-            _lineStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.UpperRight, fontStyle = FontStyle.Bold };
         }
 
-        // OnGUI's own early-out (it also expires the floaters/lines, so it keeps running until both lists are empty); Flush fills them in LateUpdate
-        internal static bool GuiWanted() { return _floaters.Count > 0 || _lines.Count > 0 || Time.unscaledTime < _markerUntil; }
-        public static void OnGUI()
+        /// <summary>Obtains a reusable text graphic without adding components to any saved game object.</summary>
+        private static UnityEngine.UI.Text TextGraphic()
         {
-            if (Event.current.type != EventType.Repaint) return;
+            if (_textCount == _texts.Count)
+            {
+                var go = new GameObject("Damage " + _texts.Count, typeof(RectTransform), typeof(UnityEngine.UI.Text), typeof(UnityEngine.UI.Shadow));
+                go.transform.SetParent(_canvas.transform, false);
+                var text = go.GetComponent<UnityEngine.UI.Text>(); text.font = _font; text.fontStyle = FontStyle.Bold;
+                text.raycastTarget = false; text.horizontalOverflow = HorizontalWrapMode.Overflow; text.verticalOverflow = VerticalWrapMode.Overflow;
+                var shadow = go.GetComponent<UnityEngine.UI.Shadow>(); shadow.effectColor = new Color(0f, 0f, 0f, .8f); shadow.effectDistance = new Vector2(1f, -1f);
+                _texts.Add(text);
+            }
+            var result = _texts[_textCount++]; result.gameObject.SetActive(true); return result;
+        }
+
+        /// <summary>Draws active numbers and marker bars once per frame, retiring expired feedback even while hidden.</summary>
+        private static void Render()
+        {
             float now = Time.unscaledTime;
-            bool marker = now < _markerUntil;
-            if (!marker && _floaters.Count == 0 && _lines.Count == 0) return;
-            EnsureStyles();
+            _floaters.RemoveAll(f => now - f.Born > HudModule.NumberSeconds.Value);
+            _lines.RemoveAll(l => now - l.Born > HudModule.ListSeconds.Value);
+            bool wanted = _floaters.Count > 0 || _lines.Count > 0 || now < _markerUntil;
+            if (!wanted) { if (_canvas != null) _canvas.SetActive(false); return; }
+            EnsureCanvas(); _canvas.SetActive(true); _textCount = 0;
             var cam = GameRefs.MainCamera;
-            int fontSize = HudModule.DamageFontSize.Value;
-
-            if (_floaters.Count > 0)
+            foreach (var f in _floaters)
             {
-                float floatLife = HudModule.NumberSeconds.Value;
-                _floatStyle.fontSize = Mathf.Max(8, fontSize + 4);
-                for (int i = _floaters.Count - 1; i >= 0; i--)
-                {
-                    var f = _floaters[i];
-                    float age = now - f.Born;
-                    if (age > floatLife) { _floaters.RemoveAt(i); continue; }
-                    if (cam == null) continue;
-                    Vector3 sp = cam.WorldToScreenPoint(f.Point + Vector3.up * (0.3f + age * 0.8f));
-                    if (sp.z <= 0f) continue;
-                    float a = age < floatLife * 0.6f ? 1f : 1f - (age - floatLife * 0.6f) / (floatLife * 0.4f);
-                    var c = ColorOf(f.Head, f.Part, a);
-                    DrawText(new Rect(sp.x - 60f, Screen.height - sp.y - 14f, 120f, 28f), f.Text, _floatStyle, c);
-                }
+                if (cam == null) continue;
+                float age = now - f.Born, life = Mathf.Max(.01f, HudModule.NumberSeconds.Value);
+                var sp = cam.WorldToScreenPoint(f.Point + Vector3.up * (.3f + age * .8f)); if (sp.z <= 0f) continue;
+                float alpha = Mathf.Clamp01((life - age) / (life * .4f));
+                DrawText(new Rect(sp.x - 60f, Screen.height - sp.y - 14f, 120f, 28f), f.Text, Mathf.Max(8, HudModule.DamageFontSize.Value + 4), TextAnchor.MiddleCenter, ColorOf(f.Head, f.Part, alpha));
             }
-
-            if (_lines.Count > 0)
+            float y = 12f;
+            for (int i = _lines.Count - 1; i >= 0; i--)
             {
-                float lineLife = HudModule.ListSeconds.Value;
-                _lineStyle.fontSize = Mathf.Max(8, fontSize);
-                float y = 12f;
-                for (int i = _lines.Count - 1; i >= 0; i--)
-                {
-                    var l = _lines[i];
-                    float age = now - l.Born;
-                    if (age > lineLife) { _lines.RemoveAt(i); continue; }
-                    float a = age < lineLife * 0.7f ? 1f : 1f - (age - lineLife * 0.7f) / (lineLife * 0.3f);
-                    DrawText(new Rect(Screen.width - 320f, y, 300f, _lineStyle.fontSize + 6f), l.Text, _lineStyle, ColorOf(l.Head, l.Part, a));
-                    y += _lineStyle.fontSize + 4f;
-                }
+                var l = _lines[i]; float life = Mathf.Max(.01f, HudModule.ListSeconds.Value), age = now - l.Born;
+                int size = Mathf.Max(8, HudModule.DamageFontSize.Value);
+                DrawText(new Rect(Screen.width - 320f, y, 300f, size + 6f), l.Text, size, TextAnchor.UpperRight, ColorOf(l.Head, l.Part, Mathf.Clamp01((life - age) / (life * .3f))));
+                y += size + 4f;
             }
-
-            if (marker)
+            for (int i = _textCount; i < _texts.Count; i++) _texts[i].gameObject.SetActive(false);
+            float markerLife = Mathf.Max(.01f, HudModule.MarkerSeconds.Value), sizeMarker = Mathf.Max(6f, HudModule.HitMarkerSize.Value);
+            float gap = sizeMarker * .35f, thickness = Mathf.Max(1f, sizeMarker * .12f), a = Mathf.Clamp01((_markerUntil - now) / markerLife * 2f);
+            for (int i = 0; i < _bars.Count; i++)
             {
-                // a diagonal cross: four bars at 45 degrees around the centre, with a gap in the middle
-                float markerLife = Mathf.Max(0.01f, HudModule.MarkerSeconds.Value);
-                float size = Mathf.Max(6f, HudModule.HitMarkerSize.Value), gap = size * 0.35f, thick = Mathf.Max(1f, size * 0.12f);
-                float a = Mathf.Clamp01((_markerUntil - now) / markerLife * 2f);
-                Color c = now < _markerHeadUntil ? new Color(1f, 0.2f, 0.15f, a) : new Color(1f, 1f, 1f, a);
-                Vector2 centre = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
-                var old = GUI.color; GUI.color = c;
-                for (int k = 0; k < 4; k++)
-                {
-                    var m = GUI.matrix;
-                    GUIUtility.RotateAroundPivot(45f + 90f * k, centre);
-                    GUI.DrawTexture(new Rect(centre.x - thick * 0.5f, centre.y - size, thick, size - gap), _white);
-                    GUI.matrix = m;
-                }
-                GUI.color = old;
+                var image = _bars[i]; image.gameObject.SetActive(now < _markerUntil);
+                image.color = now < _markerHeadUntil ? new Color(1f, .2f, .15f, a) : new Color(1f, 1f, 1f, a);
+                image.rectTransform.sizeDelta = new Vector2(thickness, sizeMarker - gap);
+                float radians = (45f + 90f * i) * Mathf.Deg2Rad;
+                image.rectTransform.anchoredPosition = new Vector2(Mathf.Sin(radians), Mathf.Cos(radians)) * gap;
             }
         }
 
-        private static void DrawText(Rect r, string text, GUIStyle style, Color c)
+        /// <summary>Places one pooled label using top-left screen coordinates and the original feedback alignment.</summary>
+        private static void DrawText(Rect rect, string content, int size, TextAnchor alignment, Color color)
         {
-            var old = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, c.a * 0.8f);
-            GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), text, style);    // shadow
-            GUI.color = c;
-            GUI.Label(r, text, style);
-            GUI.color = old;
+            var text = TextGraphic(); text.text = content; text.fontSize = size; text.alignment = alignment; text.color = color;
+            var rt = text.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f); rt.pivot = new Vector2(0f, 1f);
+            rt.anchoredPosition = new Vector2(rect.x, -rect.y); rt.sizeDelta = rect.size;
         }
     }
 }

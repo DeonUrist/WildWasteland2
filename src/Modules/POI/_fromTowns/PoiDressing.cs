@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.Towns
             internal PoiDressProp[] Exits = new PoiDressProp[0];
         }
         private static PoiDressing _current;
-        private TownsModule _owner;
+        private TownRuntime _owner;
         internal readonly PoiPropCatalog Catalog = new PoiPropCatalog();
         internal readonly PoiDressMarkers Markers = new PoiDressMarkers();
         internal readonly List<Site> Sites = new List<Site>();
@@ -39,16 +39,16 @@ namespace WildWasteland.Modules.Towns
         private readonly List<NavStructure> _structures = new List<NavStructure>();
         private int _frame = -1;
         internal PoiDresser Editor;
-        internal void Install(TownsModule owner)
+        internal void Install(TownRuntime owner)
         {
             _current = this;
             _owner = owner;
             var nav = typeof(Services).Assembly.GetType("WildWasteland.Modules.NPC.Nav", true);
-            if (!Patches.Patch(owner, Patches.Method(nav, "Make"), prefix: typeof(PoiDressing).GetMethod("BeforeMap", BindingFlags.Static | BindingFlags.NonPublic)))
+            if (!Patches.Patch(owner.Owner, Patches.Method(nav, "Make"), prefix: typeof(PoiDressing).GetMethod("BeforeMap", BindingFlags.Static | BindingFlags.NonPublic)))
                 throw new InvalidOperationException("POI dressing navigation gate could not be installed");
-            Scheduler.Sliced(owner, "POI static dressing", 500, Step);
-            Scheduler.Interval(owner, "POI dressing cleanup", 5f, Sweep, Phase.Update, false);
-            Scheduler.Sliced(owner, "POI marker catalog", 500, Markers.Catalog.Step);
+            Scheduler.Sliced(owner.Owner, "POI static dressing", 500, Step);
+            Scheduler.Interval(owner.Owner, "POI dressing cleanup", 5f, Sweep, Phase.Update, false);
+            Scheduler.Sliced(owner.Owner, "POI marker catalog", 500, Markers.Catalog.Step);
         }
         private static bool Custom(Transform root)
         {

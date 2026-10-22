@@ -224,6 +224,7 @@ namespace WildWasteland.Modules.HUD
         private static void AddMods(List<KeyBind> all, ref int order)
         {
             var covered = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            AddRegisteredKeys(all, ref order);
             AddModEntries(all, ref order, covered);
             AddModFiles(all, ref order, covered);
         }
@@ -246,7 +247,7 @@ namespace WildWasteland.Modules.HUD
                     if (ReferenceEquals(info.Instance, null) || string.IsNullOrEmpty(g)) continue;
                     if (fn.Equals(g, StringComparison.OrdinalIgnoreCase) || fn.StartsWith(g + ".", StringComparison.OrdinalIgnoreCase)) { owner = info; break; }
                 }
-                if (owner == null) continue;
+                if (owner == null || owner.Metadata.GUID == global::WildWasteland.Plugin.GUID) continue;
                 string mod = (owner.Metadata.Name ?? owner.Metadata.GUID).ToUpperInvariant();
                 string[] lines;
                 try { lines = File.ReadAllLines(path); } catch { continue; }
@@ -275,12 +276,26 @@ namespace WildWasteland.Modules.HUD
             }
         }
 
+        /// <summary>Lists WW key settings from the registry instead of scanning its own assembly or configuration fields.</summary>
+        private static void AddRegisteredKeys(List<KeyBind> all, ref int order)
+        {
+            foreach (var binding in WildWasteland.Core.Hotkeys.Snapshot())
+            {
+                var entry = binding.Entry;
+                var row = new KeyBind { Tab = "MODS", Group = "WILD WASTELAND", Mod = true, Ctx = "global", Order = 20000 + order++, Label = Pretty(entry.Definition.Key), Mirror = Norm(entry.Definition.Key) };
+                KeyCode key; FromKeyName(entry.Value.ToString(), out key);
+                row.Slots.Add(new KeySlot { Key = key, Set = (k, modifiers) => { UnityEngine.InputSystem.Key parsed; if (!Enum.TryParse(ToKeyName(k), true, out parsed)) return "Unsupported key"; entry.Value = parsed; return null; } });
+                all.Add(row);
+            }
+        }
+
         private static void AddModEntries(List<KeyBind> all, ref int order, HashSet<string> covered)
         {
             var infos = new List<PluginInfo>(Chainloader.PluginInfos.Values);
             infos.Sort((a, b) => string.Compare(a.Metadata.Name, b.Metadata.Name, StringComparison.OrdinalIgnoreCase));
             foreach (var info in infos)
             {
+                if (info.Metadata.GUID == global::WildWasteland.Plugin.GUID) continue;
                 var inst = info.Instance;
                 if (ReferenceEquals(inst, null)) continue;
                 var files = new List<ConfigFile>();
@@ -396,7 +411,7 @@ namespace WildWasteland.Modules.HUD
             {
                 foreach (var info in Chainloader.PluginInfos.Values)
                 {
-                    if (info.Metadata.GUID == HudModule.GUID || string.IsNullOrEmpty(info.Location) || !File.Exists(info.Location)) continue;
+                    if (info.Metadata.GUID == global::WildWasteland.Plugin.GUID || string.IsNullOrEmpty(info.Location) || !File.Exists(info.Location)) continue;
                     var name = (info.Metadata.Name ?? info.Metadata.GUID).ToUpperInvariant();
                     bool dup = false; foreach (var j in jobs) if (j.Value == info.Location) dup = true;
                     if (!dup) jobs.Add(new KeyValuePair<string, string>(name, info.Location));

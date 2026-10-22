@@ -191,7 +191,7 @@ namespace WildWasteland.Modules.Patrols
 
     internal static class PatrolPersistence
     {
-        private const int SchemaVersion = 14;  // 14 = parked setup vehicles; older saves remain readable
+        private const int SchemaVersion = 14;  // Current WW2 schema: parked setup vehicles.
         private const int Magic = 0x434F5041; // "APOC" in little-endian; rejects unrelated/corrupt files.
         private const int MaxCarsPerSave = 1024;
         private static PlayMakerFSM _saveLoad, _newGoSave;
@@ -201,23 +201,9 @@ namespace WildWasteland.Modules.Patrols
         private static Coroutine _restore;
         internal static bool Restoring { get { return _restoreRunning; } }
         internal static float LoadFraction { get; private set; }
-        // 1.9.0: the same data also goes INTO the game's save file (Easy Save key EsKey, base64 of the sidecar bytes), so it travels with
-        // the save (Steam Cloud, copied saves). Written ~1 s after the save returns to isPlay, to the ES3 cache and the file (the game stores
-        // its cache to disk at the end of a save and would wipe a key written to the file mid-save). The BepInEx sidecar stays as a fallback.
         private const string EsKey = "Apocapatrol.Patrol";
-        private static string _pendingSlot, _pendingData;
-        private static float _flushAt = -1f;
-        private static bool _quitHooked;
-
-        // WW: the module's sidecar folder (BepInEx\config\WildWasteland\Patrols\Saves); the standalone mod's folder is read as a fallback
-        internal static string SavesDir;
-        internal static MonoBehaviour Runner;   // the Patrol runner component: restores run as its coroutines
-
-        // WW: every frame from the Patrol runner (was the whole SaveLoadGame watcher; the state changes now come from Core.SaveBus)
-        internal static void Tick()
-        {
-            if (_flushAt >= 0f && Time.unscaledTime >= _flushAt) FlushPending();
-        }
+        private static bool _readFailed;
+        internal static MonoBehaviour Runner;   // Restores run as coroutines owned by Patrols.
 
         static void RefreshRefs()
         {
@@ -229,8 +215,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
-        internal static void Install() { if (!_quitHooked) { _quitHooked = true; Application.quitting += FlushPending; } }
-        internal static void Uninstall() { ResetForScene(); if (_quitHooked) { _quitHooked = false; Application.quitting -= FlushPending; } }
+        internal static void Uninstall() { ResetForScene(); }
 
         // WW: Core.SaveBus.StateChanged (the only SaveLoadGame watcher); same transitions as the old per-frame poll
         internal static void OnStateChanged(string previous, string state)
@@ -245,7 +230,6 @@ namespace WildWasteland.Modules.Patrols
                 if (state == "SaveGame") Save(CurrentSaveSlot(), CurrentSeed());
                 if (state == "LoadGame") _loadSlot = CurrentSaveSlot();
                 if (state == "LoadGame" || state == "setSeed") WorldTraffic.ResetForScene();
-                if (state == "isPlay" && _pendingData != null) { _flushAt = Time.unscaledTime + 1f; Core.SaveBus.AfterSave(FlushPending); }
                 if ((state == "loaded" || state == "Wait for Terrain Gen" || state == "isPlay") && !string.IsNullOrEmpty(_loadSlot) && !_restoreRunning)
                 {
                     string slot = _loadSlot;
@@ -258,7 +242,7 @@ namespace WildWasteland.Modules.Patrols
 
         internal static void ResetForScene()
         {
-            FlushPending();   // saved and quit to the menu within the second: write it now
+            _readFailed = false;
             if (_restore != null && Runner != null) Runner.StopCoroutine(_restore);
             _restore = null;
             _saveLoad = null; _newGoSave = null; _lastState = null; _loadSlot = null;
@@ -294,8 +278,8 @@ namespace WildWasteland.Modules.Patrols
 
         private static void Save(string slot, int seed)
         {
-            string path;
-            if (!TryPath(slot, out path)) { Core.Log.Warn("[Patrols] " + "Persistence: invalid save slot " + slot); return; }
+            if (string.IsNullOrEmpty(slot) || _readFailed)
+            { Core.SaveBus.ReportFailure(PatrolsModule.Instance, "Patrol state could not be read or has no save slot; preserving the previous save."); return; }
             try
             {
                 var data = new PatrolSaveData { version = SchemaVersion, saveFile = Path.GetFileName(slot), worldSeed = seed, convoyCooldown = -1f, lastGroup = Convoy.LastGroup ?? "", trafficJson = WorldTraffic.SaveJson() };
@@ -304,11 +288,10 @@ namespace WildWasteland.Modules.Patrols
                     if (marker != null && !Register.Pending(marker.gameObject)) cars.Add(marker.Snapshot());   // still being built: not in the game's save either
                 data.cars = cars.ToArray();
                 var bytes = Serialize(data);
-                AtomicWrite(path, bytes);
-                _pendingSlot = Path.GetFileName(slot); _pendingData = Convert.ToBase64String(bytes); _flushAt = -1f;
+                Core.SaveBus.Key(EsKey).Write(PatrolsModule.Instance, slot, Convert.ToBase64String(bytes));
                 PatrolsModule.Verbose("Persistence: saved " + data.cars.Length + " patrol car(s) for " + data.saveFile);
             }
-            catch (Exception e) { Core.Log.Error("[Patrols] " + "Persistence save failed: " + e); }
+            catch (Exception e) { Core.SaveBus.ReportFailure(PatrolsModule.Instance, "Patrol save failed: " + e.Message); Core.Log.Error("[Patrols] Persistence save failed: " + e); }
         }
 
         private static IEnumerator RestoreTracked(string slot, int seed)
@@ -322,20 +305,19 @@ namespace WildWasteland.Modules.Patrols
         private static IEnumerator RestoreWhenReady(string slot, int seed)
         {
             _restoreRunning = true;
-            bool embedded;
-            PatrolSaveData data = Load(slot, out embedded);
+            PatrolSaveData data = Load(slot);
             if (data == null) { _restoreRunning = false; yield break; }
-            // embedded data belongs to the file it is in (a renamed / copied slot keeps it); the sidecar must name its slot
-            if (data.version < 1 || data.version > SchemaVersion || data.worldSeed != seed
-                || (!embedded && !string.Equals(data.saveFile, Path.GetFileName(slot), StringComparison.OrdinalIgnoreCase)))
+            // The record belongs to its containing save, including renamed or copied slots.
+            if (data.version != SchemaVersion || data.worldSeed != seed)
             {
-                Core.Log.Warn("[Patrols] " + "Persistence: sidecar version/slot/seed does not match " + slot + "; skipped");
+                _readFailed = true;
+                Core.Log.Warn("[Patrols] Persistence: embedded version/seed does not match " + slot + "; saving blocked");
                 _restoreRunning = false; yield break;
             }
 
             Convoy.LastGroup = data.lastGroup ?? "";
             try { WorldTraffic.RestoreJson(data.trafficJson); }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Persistence: world traffic skipped: " + e.Message); }
+            catch (Exception e) { _readFailed = true; Core.Log.Warn("[Patrols] Persistence: invalid traffic record; saving blocked: " + e.Message); }
             var savedCars = data.cars ?? new PatrolCarData[0];
             var pending = new List<PatrolCarData>(savedCars);
             float until = Time.realtimeSinceStartup + 15f;
@@ -469,89 +451,22 @@ namespace WildWasteland.Modules.Patrols
             Paint.RepairFrame(car, Prefabs.FindAny(body));
         }
 
-        private static void FlushPending()
+        /// <summary>Reads only the record in the selected world save. Invalid data blocks a subsequent save.</summary>
+        private static PatrolSaveData Load(string slot)
         {
-            if (_pendingData == null) return;
-            string slot = _pendingSlot, value = _pendingData;
-            _pendingData = null; _pendingSlot = null; _flushAt = -1f;
-            int ok = 0;
-            try { ES3.Save<string>(EsKey, value, EsSettings(slot, ES3.Location.Cache)); ok++; }
-            catch (Exception e) { Core.SaveBus.ReportFailure("Patrol cache write failed: " + e.Message); Core.Log.Warn("[Patrols] " + "Persistence: save into " + slot + " (cache): " + e.Message); }
-            try { ES3.Save<string>(EsKey, value, EsSettings(slot, ES3.Location.File)); ok++; }
-            catch (Exception e) { Core.SaveBus.ReportFailure("Patrol file write failed: " + e.Message); Core.Log.Warn("[Patrols] " + "Persistence: save into " + slot + " (file): " + e.Message); }
-            PatrolsModule.Verbose("Persistence: raider data written into " + slot + " (" + ok + "/2)");
-        }
-
-        internal static void CancelPendingSave() { _pendingData = _pendingSlot = null; _flushAt = -1f; }
-
-        private static ES3Settings EsSettings(string slot, ES3.Location loc)
-        {
-            var s = new ES3Settings(slot);
-            s.location = loc;
-            return s;
-        }
-
-        // the copy inside the game's save file (1.9.0+); note ES3.Load<string>(key, "", settings) would bind to the filePath overload
-        private static PatrolSaveData LoadEmbedded(string slot)
-        {
-            foreach (var loc in new[] { ES3.Location.File, ES3.Location.Cache })
+            if (string.IsNullOrEmpty(slot)) return null;
+            try
             {
-                try
-                {
-                    var st = EsSettings(slot, loc);
-                    if (loc == ES3.Location.File && !File.Exists(st.FullPath)) continue;
-                    if (!ES3.KeyExists(EsKey, st)) continue;
-                    var value = ES3.Load<string>(EsKey, st);
-                    if (string.IsNullOrEmpty(value)) continue;
-                    return Deserialize(Convert.FromBase64String(value));
-                }
-                catch (Exception e) { Core.Log.Warn("[Patrols] " + "Persistence: cannot read raider data in " + slot + " (" + loc + "): " + e.Message); }
+                var settings = new ES3Settings(slot) { location = ES3.Location.File };
+                if (!File.Exists(settings.FullPath) || !ES3.KeyExists(EsKey, settings)) return null;
+                return Deserialize(Convert.FromBase64String(ES3.Load<string>(EsKey, settings)));
             }
-            return null;
-        }
-
-        private static PatrolSaveData Load(string slot, out bool embedded)
-        {
-            embedded = true;
-            string name = Path.GetFileName(slot ?? "");
-            var inSave = string.IsNullOrEmpty(name) ? null : LoadEmbedded(name);
-            if (inSave != null) { PatrolsModule.Verbose("Persistence: raider data from inside " + name); return inSave; }
-            embedded = false;
-            string path;
-            if (!TryPath(slot, out path)) return null;
-            foreach (string candidate in new[] { path, path + ".bak" })
+            catch (Exception e)
             {
-                try
-                {
-                    if (!File.Exists(candidate)) continue;
-                    var data = Read(candidate);
-                    if (data != null) return data;
-                }
-                catch (Exception e) { Core.Log.Warn("[Patrols] " + "Persistence: cannot read " + candidate + ": " + e.Message); }
+                _readFailed = true;
+                Core.Log.Warn("[Patrols] Cannot read embedded patrol state; saving blocked: " + e.Message);
+                return null;
             }
-            PatrolsModule.Verbose("Persistence: no patrol sidecar for " + slot);
-            return null;
-        }
-
-        private static bool TryPath(string slot, out string path)
-        {
-            path = null;
-            string name = Path.GetFileName(slot ?? "");
-            if (Core.SaveRuntime.IsSaveFile(name)) { path = Path.Combine(SavesDir ?? Path.Combine(Paths.ConfigPath, "Apocapatrol", "Saves"), name + ".bin"); return true; }
-            if (string.IsNullOrEmpty(name) || !name.StartsWith("SaveGame", StringComparison.OrdinalIgnoreCase)
-                || !name.EndsWith(".es3", StringComparison.OrdinalIgnoreCase)) return false;
-            foreach (char c in name) if (!(char.IsLetterOrDigit(c) || c == '.')) return false;
-            path = Path.Combine(SavesDir ?? Path.Combine(Paths.ConfigPath, "Apocapatrol", "Saves"), name + ".bin");
-            return true;
-        }
-
-        private static void AtomicWrite(string path, byte[] bytes)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            string temp = path + ".tmp", backup = path + ".bak";
-            File.WriteAllBytes(temp, bytes);
-            if (File.Exists(path)) File.Replace(temp, path, backup);
-            else File.Move(temp, path);
         }
 
         private static byte[] Serialize(PatrolSaveData data)
@@ -574,8 +489,6 @@ namespace WildWasteland.Modules.Patrols
                 return stream.ToArray();
             }
         }
-
-        private static PatrolSaveData Read(string path) { return Deserialize(File.ReadAllBytes(path)); }
 
         private static PatrolSaveData Deserialize(byte[] bytes)
         {

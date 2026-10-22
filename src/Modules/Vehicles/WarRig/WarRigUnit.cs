@@ -67,7 +67,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         /// <summary>Registers the rig and schedules the fast visual checks.</summary>
         private void OnEnable() { if (!All.Contains(this)) All.Add(this); fastVisualUntil = Time.unscaledTime + 15f; nextVisualCheck = 0f; }
         /// <summary>Unregisters the rig; the last one gone restores the storm dust (storm protection).</summary>
-        private void OnDisable() { groundRecovery.Reset(); All.Remove(this); if (All.Count == 0) NativeStormProtection.Restore(); }
+        private void OnDisable() { groundRecovery.Reset(); All.Remove(this); }
 
         private Transform leg, leg2;
 
@@ -82,7 +82,6 @@ namespace WildWasteland.Modules.Patrols.WarRig
         {
             if (!VehiclesModule.Running) return;
             if (!gameObject.scene.IsValid()) return;
-            NativeStormProtection.Tick();   // Survival part: REFACTOR-REQUEST B12-4 (Survival should drive its own dust tick)
             if (leg == null) { leg = transform.Find("leg"); leg2 = transform.Find("leg2"); att = transform.Find("attacher"); rb = GetComponent<Rigidbody>(); }
             if (leg != null && leg2 != null && leg2.gameObject.activeSelf != leg.gameObject.activeSelf) leg2.gameObject.SetActive(leg.gameObject.activeSelf);
             GateAttacher();
