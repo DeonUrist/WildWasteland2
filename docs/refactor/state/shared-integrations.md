@@ -1,0 +1,11 @@
+# Shared integrations handoff
+
+This is the next phase after the remaining Wave B owned packages. Denis requested stopping before starting it. Source/package acceptance is separate from full-port and in-game acceptance.
+
+1. Consolidate the distributed player/NPC character driver and seated crew/perception/follower behavior. Existing Crew, PassengerGuard, RiderGuard, QuestFollower, Hire and Takeover partials still cross physical owners and share private state. Preserve actual movement, seats, attacks/reloads, actor identity, expiry and teardown; close these with real typed providers and coherent lifecycle ownership. See reports/B11.md and state/B18.md.
+2. Consolidate remaining Core/Compatibility legacy module-entry adapters, especially HUD theme/settings/menu/session hooks and TalkBridge conversation state. Verify provider withdrawal, restart, scene/load/save behavior and hook/job ownership before deleting the adapters. See state/B10.md and the prior B01/B17 requests.
+3. Retire obsolete Services/event forwarders and old PlayerBody/NPC/Guns entry points only after all actual consumers have converted. Review reverse partial ownership explicitly: the zero-finding owner-folder scans intentionally do not certify shared private partials.
+4. Complete Wave C global namespace/ownership/file-map checks, resource and release packaging, build/tooling updates, current module documentation and removal of the temporary CS0618 suppression. D12/D20 override old migration/sidecar requirements in historical plan text.
+5. Merge all work before Denis performs the combined in-game acceptance from package reports. No intermediate game/harness/deployment is authorized by this handoff.
+
+Preserve D20 throughout: all persistent world records, descriptions and thumbnails stay in the selected ES3 save under its verified transaction. External authored files, settings, derived geometry and recovery journals are separate. Do not reintroduce old sidecars from historical branches.
