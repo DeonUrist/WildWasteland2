@@ -11,8 +11,10 @@ namespace WildWasteland.Modules.Patrols
         private static Dictionary<string, MethodInfo> _byName;
         private static int _assemblyCount;
 
+        /// <summary>Rescans when the loaded assembly count changed (or never scanned).</summary>
         internal static void Refresh() { if (_byName == null || _assemblyCount != AppDomain.CurrentDomain.GetAssemblies().Length) Scan(); }
 
+        /// <summary>Finds third-party Factory types (static string Name + static GameObject Template()) outside WW and the absorbed mods; invalidates the prefab cache when the set changed.</summary>
         private static void Scan()
         {
             var previous = _byName;
@@ -43,7 +45,7 @@ namespace WildWasteland.Modules.Patrols
             if (!changed && previous != null)
                 foreach (var pair in _byName)
                 { MethodInfo old; if (!previous.TryGetValue(pair.Key, out old) || old != pair.Value) { changed = true; break; } }
-            if (changed) Prefabs.Invalidate();
+            if (changed) Prefabs.Invalidate(); // refs-ok: REFACTOR-REQUEST B17-15
         }
     }
 }

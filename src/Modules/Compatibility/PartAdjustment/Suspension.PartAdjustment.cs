@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Patrols
     {
         private static bool _apiLooked; private static MethodInfo _apiSet, _apiGet;
 
+        /// <summary>Resolves PartAdjustment.SuspensionApi Set(car, width, height) / Get(car, out width, out height) once (assembly scan).</summary>
         private static void LookForApi()
         {
             if (_apiLooked) return;

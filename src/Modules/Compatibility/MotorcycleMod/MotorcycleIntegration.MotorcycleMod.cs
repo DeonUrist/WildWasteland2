@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.Patrols
         {
             if (__result == null) return;
             TrimRearCollision(__result);
-            if (__result.GetComponent<MotorcycleRearAccess>() == null) __result.AddComponent<MotorcycleRearAccess>();
+            if (__result.GetComponent<MotorcycleRearAccess>() == null) __result.AddComponent<MotorcycleRearAccess>(); // refs-ok: REFACTOR-REQUEST B17-15
         }
     }
 }
