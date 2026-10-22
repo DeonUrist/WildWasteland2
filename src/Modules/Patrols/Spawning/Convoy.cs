@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.Patrols
     // roster and allowed cargo loaded from the editor, the spot ahead of (or behind) the player, and the staggered builds.
     // (WW) The old automatic spawn clock (cooldown raids) was removed: automatic raiders come from the world traffic.
 
-    internal class Convoy : MonoBehaviour
+    internal partial class Convoy : MonoBehaviour
     {
         private static Convoy _inst;
         private PlayMakerFSM _distanceFsm;
@@ -97,73 +97,6 @@ namespace WildWasteland.Modules.Patrols
         }
         private static bool CoyoteRoster(SpawnGroup group)=>group.Templates.Any(n=>{var t=CarTemplate.Find(n);return t!=null&&t.Available&&CrewFactions.Compatible(t,"Coyotes");});
         internal static bool HasTrafficFaction(string faction)=>_inst!=null&&EditorStore.Data.Patrols.Any(g=>TrafficFactions.Normalize(g.Faction)==faction&&g.Eligible(_inst.RollKm,_inst.RollBosses)&&(faction!="Coyotes"||CoyoteRoster(g)));
-
-        internal static int BossKills()
-        {
-            int n = 0;
-            try
-            {
-                foreach (var b in FsmVariables.GlobalVariables.BoolVariables)
-                    if (b != null && b.Name != null && b.Name.StartsWith("Boss_") && b.Value) n++;
-            }
-            catch (Exception) { }
-            return n;
-        }
-
-        // Apocasaver (optional, by reflection): true while it autosaves, or when its next autosave is due within `within` s. An autosave
-        // that is overdue (it waits for the player to be on foot) does not block spawns - the builds themselves wait out a running save.
-        private static bool _asResolved;
-        private static FieldInfo _asCurrent, _asLast, _asArmed;
-        private static PropertyInfo _asSaving;
-        private static BepInEx.Configuration.ConfigEntry<float> _asInterval;
-        private static BepInEx.Configuration.ConfigEntry<bool> _asEnabled;
-        internal static bool AutosaveSoon(float within)
-        {
-            try
-            {
-                if (!_asResolved)
-                {
-                    _asResolved = true;
-                    var asm = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "Apocasaver");
-                    var plugin = asm != null ? asm.GetType("Apocasaver.Plugin") : null;
-                    var runner = asm != null ? asm.GetType("Apocasaver.Runner") : null;
-                    if (plugin == null || runner == null) return false;
-                    const BindingFlags S = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic, I = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-                    _asCurrent = plugin.GetField("Current", S);
-                    var iv = plugin.GetField("IntervalMinutes", S); _asInterval = iv != null ? iv.GetValue(null) as BepInEx.Configuration.ConfigEntry<float> : null;
-                    var en = plugin.GetField("Enabled", S); _asEnabled = en != null ? en.GetValue(null) as BepInEx.Configuration.ConfigEntry<bool> : null;
-                    _asLast = runner.GetField("_lastSave", I); _asArmed = runner.GetField("_armed", I); _asSaving = runner.GetProperty("IsAutosaving", I);
-                    PatrolsModule.Verbose("Convoy: Apocasaver found, spawns wait for its autosaves" + (_asCurrent != null && _asLast != null && _asInterval != null ? "" : " (timer not readable)"));
-                }
-                if (_asCurrent == null) return false;
-                var r = _asCurrent.GetValue(null) as UnityEngine.Object;
-                if (r == null) return false;
-                if (_asSaving != null && _asSaving.GetValue(r, null) is bool && (bool)_asSaving.GetValue(r, null)) return true;
-                if (_asLast == null || _asInterval == null || (_asEnabled != null && !_asEnabled.Value)) return false;
-                if (_asArmed != null && _asArmed.GetValue(r) is bool && !(bool)_asArmed.GetValue(r)) return false;
-                float remaining = _asInterval.Value * 60f - (Time.realtimeSinceStartup - (float)_asLast.GetValue(r));
-                return remaining > -3f && remaining < within;
-            }
-            catch (Exception e) { PatrolsModule.Verbose("Convoy: Apocasaver timer: " + e.Message); _asCurrent = null; return false; }
-        }
-
-        // the editor's random test spawn: 80 % patrols, 20 % convoys when both have eligible groups
-        private const float DebugPatrolPercent = 80f;
-
-        internal void DebugSpawn(SpawnGroup group, bool convoy)
-        {
-            if (!PatrolsModule.AllowDebugSpawns.Value) return;
-            UpdateHeat(); Launch(group, convoy, true);
-        }
-
-        internal void DebugRoll()
-        {
-            if (!PatrolsModule.AllowDebugSpawns.Value) return;
-            UpdateHeat(); bool convoy;
-            var group = EditorStore.Roll(RollKm, RollBosses, DebugPatrolPercent, () => UnityEngine.Random.value, out convoy);
-            if (group != null) Launch(group, convoy, true);
-            else Core.Log.Info("[Patrols] " + "Test spawning: no eligible groups with a positive chance");
-        }
 
         private bool Launch(SpawnGroup definition, bool convoy, bool debug)
         {
