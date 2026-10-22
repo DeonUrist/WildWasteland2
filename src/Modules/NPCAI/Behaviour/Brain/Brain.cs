@@ -194,7 +194,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (ApBody.Available) RegisterPending();        // spawned gunmen get their rig before they ever engage   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
             bool on = On;
-            float turn = Mathf.Max(10f, NpcaiSettings.TurnRate.Value) * dt;
+            float turn = Mover.TurnStep(dt);
             // (perf) per-frame think cap: the engaged NPCs' average thinks per frame + 1; one over the cap keeps its overdue NextTick and
             // thinks next frame (an alert no longer runs every overdue think in one frame)
             int engagedPrev = _engagedFrame; _engagedFrame = 0;
@@ -666,12 +666,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // speed while turning: 1 within 30 deg of the wanted heading, down to 0.1 at 120 deg and beyond (also used by Idle)
-        internal static float TurnSpeedFactor(float offDeg)
-        {
-            float a0 = NpcaiSettings.MoveFullSpeedAngle.Value, a1 = Mathf.Max(a0 + 1f, NpcaiSettings.MoveSlowestAngle.Value);
-            if (offDeg <= a0) return 1f;
-            return Mathf.Lerp(1f, Mathf.Clamp01(NpcaiSettings.MoveSlowestSpeed.Value), Mathf.Clamp01((offDeg - a0) / (a1 - a0)));
-        }
+        internal static float TurnSpeedFactor(float offDeg) { return Mover.SpeedFactor(offDeg); }
 
         // (1.4.7) Blocked: over BlockedSeconds the body covered less than BlockedRatio of the distance it was driven (running in place against
         // something, grinding along a wall) -> the same answer as a stuck: hop, or a step back and another way (on a map route the blocked
@@ -1538,7 +1533,7 @@ namespace WildWasteland.Modules.NPC
                     // deliberate movement only: no heading yet (the first think after the alert) -> stand; facing away from the heading -> slow
                     // down while turning (full speed within 30 deg, 40 % at 90, 10 % from 120: a big turn is made nearly on the spot, not as an arc)
                     // (WW) on a POI route the body goes straight along it at full speed; only the turn it shows is smoothed
-                    poi = speed > 0f && PoiNav.SteerDir(n.Owner, n.T.position, out poiDir);
+                    poi = speed > 0f && Mover.PoiDirection(n.Owner, n.T.position, out poiDir);
                     if (poi) { if (poiDir == Vector3.zero) speed = 0f; else { n.Heading = Mathf.Atan2(poiDir.x, poiDir.z) * Mathf.Rad2Deg; n.HasHeading = true; } }
                     else if (!n.HasHeading) speed = 0f;
                     else if (n.StrafeDev == 0f) speed *= TurnSpeedFactor(Mathf.Abs(Mathf.DeltaAngle(n.T.eulerAngles.y, n.Heading)));
@@ -1547,11 +1542,9 @@ namespace WildWasteland.Modules.NPC
                 if (n.BoostUntil > 0f && speed > 0f) { if (Time.time < n.BoostUntil) speed *= n.Boost; else n.BoostUntil = 0f; }   // (1.7.0) a nest alarm
                 n.CmdSpeed = Mathf.Max(0f, speed);
                 // (1.1.1) strafing round a small detour: the legs go along the heading while the body faces the target
-                if (poi) { if (!PoiNav.Walk(n.Owner, n.CmdSpeed, poiDir)) { Vector3 pv = poiDir * speed; pv.y = n.Rb.velocity.y; n.Rb.velocity = pv; } return false; }   // (WW) carried along the POI route
+                if (poi) { if (!Mover.CarryOnPoiRoute(n.Owner, n.CmdSpeed, poiDir)) Mover.Push(n.Rb, poiDir * speed); return false; }   // (WW) carried along the POI route
                 Vector3 fwd = poi ? poiDir : n.StrafeDev != 0f && n.HasHeading ? Quaternion.Euler(0f, n.Heading, 0f) * Vector3.forward : n.T.forward;
-                Vector3 v = fwd * speed;
-                v.y = n.Rb.velocity.y;
-                n.Rb.velocity = v;
+                Mover.Push(n.Rb, fwd * speed);
                 return false;
             }
             catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }

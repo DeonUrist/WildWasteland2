@@ -324,7 +324,7 @@ namespace WildWasteland.Modules.NPC
                 if (c.Moving) Drive(c, dt, now);
                 else if (c.Turning)
                 {
-                    float y = Mathf.MoveTowardsAngle(a.T.eulerAngles.y, c.LookYaw, Mathf.Max(10f, NpcaiSettings.TurnRate.Value) * 0.5f * dt);
+                    float y = Mathf.MoveTowardsAngle(a.T.eulerAngles.y, c.LookYaw, Mover.TurnStep(dt) * 0.5f);
                     a.T.rotation = Quaternion.Euler(0f, y, 0f);
                     if (Mathf.Abs(Mathf.DeltaAngle(y, c.LookYaw)) < 1f) c.Turning = false;
                 }
@@ -713,7 +713,7 @@ namespace WildWasteland.Modules.NPC
             {
                 PoiNav.StopGuiding(c.A.Owner);
                 if (c.Anim != null) { c.Anim.speed = 1f; if (playIdle) c.Anim.Play("idle", 0, 0f); }
-                if (c.Rb != null) { var v = c.Rb.velocity; c.Rb.velocity = new Vector3(0f, v.y, 0f); }
+                if (c.Rb != null) Mover.Halt(c.Rb);
             }
             c.Moving = false; c.Leg = Leg.None; c.Turning = false;
         }
@@ -748,13 +748,11 @@ namespace WildWasteland.Modules.NPC
                 }
             }
             float chosen = want + c.FanOff;
-            float yaw = Mathf.MoveTowardsAngle(t.eulerAngles.y, chosen, Mathf.Max(10f, NpcaiSettings.TurnRate.Value) * dt);
-            t.rotation = Quaternion.Euler(0f, yaw, 0f);
-            Vector3 v = t.forward * (c.Speed * Brain.TurnSpeedFactor(Mathf.Abs(Mathf.DeltaAngle(yaw, chosen))));   // slows down while turning: no arcs
-            Vector3 poiDir; PoiNav.SteerDir(c.A.Owner, t.position, out poiDir);
-            if (PoiNav.Walk(c.A.Owner, c.Speed, poiDir)) return;          // (WW) a POI route: carried along it (no body physics), the turn only shown
-            v.y = c.Rb.velocity.y;
-            c.Rb.velocity = v;
+            float yaw = Mover.TurnToward(t, chosen, dt);
+            Vector3 v = t.forward * (c.Speed * Mover.SpeedFactor(Mathf.Abs(Mathf.DeltaAngle(yaw, chosen))));   // slows down while turning: no arcs
+            Vector3 poiDir; Mover.PoiDirection(c.A.Owner, t.position, out poiDir);
+            if (Mover.CarryOnPoiRoute(c.A.Owner, c.Speed, poiDir)) return;          // (WW) a POI route: carried along it (no body physics), the turn only shown
+            Mover.Push(c.Rb, v);
         }
         private const int FeelMask = (1 << 0) | (1 << 8) | (1 << 11);     // Default (walls, rock, props), Car, Door - not Ground (slopes)
 
