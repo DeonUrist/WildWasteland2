@@ -4,45 +4,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Patrols
 {
-    public sealed class LootItem
-    {
-        public string Id = "";
-        public float Chance;
-    }
-
-    public sealed class LootProfile
-    {
-        public string Id = "", Name = "", TextureKey = "";
-        public bool Default;
-        public float SpawnChance = 10;
-        public List<LootItem> Items = new List<LootItem>();
-
-        public static int RollCount(double percent, Func<double> random)
-        {
-            if (double.IsNaN(percent) || double.IsInfinity(percent) || percent <= 0) return 0;
-            double count = Math.Min(100000d, percent) / 100d;
-            int whole = (int)Math.Floor(count);
-            return whole + (count > whole && random() < count - whole ? 1 : 0);
-        }
-
-        public Dictionary<string, int> Roll(Func<double> random)
-        {
-            var result = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            foreach (var item in Items)
-            {
-                int count = RollCount(item.Chance, random);
-                if (count <= 0 || string.IsNullOrWhiteSpace(item.Id)) continue;
-                int previous; result.TryGetValue(item.Id, out previous);
-                result[item.Id] = previous + count;
-            }
-            return result;
-        }
-
-
-    }
 
     public sealed class SpawnGroup
     {
@@ -157,36 +122,9 @@ namespace WildWasteland.Modules.Patrols
 
         public string ToJson()
         {
-            Func<SpawnGroup, object> group = g => StoreJson.Object("id", g.Id, "name", g.Name,"faction",g.Faction, "minKm", g.MinKm, "minBosses", g.MinBosses, "chance", g.Chance, "uniformCargo", g.UniformCargo, "templates", g.Templates, "allowedCargo", g.AllowedCargo,"merchantTypes",Merchants.Contains(g)?MerchantCatalog.Selection(g.MerchantTypes).ToList():g.MerchantTypes);
-            Func<LootProfile, object> loot = p => StoreJson.Object("id", p.Id, "name", p.Name, "textureKey", p.TextureKey, "default", p.Default, "spawnChance", p.SpawnChance, "items", p.Items.Select(i => StoreJson.Object("id", i.Id, "chance", i.Chance)).ToList());
-            return StoreJson.Write(StoreJson.Object("schema", 3, "patrols", Patrols.Select(group).ToList(), "convoys", Convoys.Select(group).ToList(),"merchants",Merchants.Select(group).ToList(), "carLoot", CarLoot.Select(loot).ToList(), "truckLoot", TruckLoot.Select(loot).ToList(), "templateOrder", TemplateOrder));
-        }
-    }
-
-    internal static class StoreJson
-    {
-        internal static Dictionary<string, object> Object(params object[] values)
-        {
-            var result = new Dictionary<string, object>();
-            for (int i = 0; i < values.Length; i += 2) result[(string)values[i]] = values[i + 1];
-            return result;
-        }
-        internal static string Write(object value) { var b = new StringBuilder(); Append(b, value, 0); return b.Append('\n').ToString(); }
-        private static void Append(StringBuilder b, object value, int depth)
-        {
-            if (value == null) { b.Append("null"); return; }
-            if (value is string) { Json.Str(b, (string)value); return; }
-            if (value is bool) { b.Append((bool)value ? "true" : "false"); return; }
-            var dict = value as Dictionary<string, object>;
-            if (dict != null)
-            {
-                b.Append("{\n"); int n = 0;
-                foreach (var pair in dict) { if (n++ > 0) b.Append(",\n"); b.Append(' ', (depth + 1) * 2); Json.Str(b, pair.Key); b.Append(": "); Append(b, pair.Value, depth + 1); }
-                b.Append('\n').Append(' ', depth * 2).Append('}'); return;
-            }
-            var list = value as IEnumerable;
-            if (list != null) { b.Append('['); int n = 0; foreach (var item in list) { if (n++ > 0) b.Append(", "); Append(b, item, depth + 1); } b.Append(']'); return; }
-            b.Append(Convert.ToString(value, CultureInfo.InvariantCulture));
+            Func<SpawnGroup, object> group = g => Json.Object("id", g.Id, "name", g.Name,"faction",g.Faction, "minKm", g.MinKm, "minBosses", g.MinBosses, "chance", g.Chance, "uniformCargo", g.UniformCargo, "templates", g.Templates, "allowedCargo", g.AllowedCargo,"merchantTypes",Merchants.Contains(g)?MerchantCatalog.Selection(g.MerchantTypes).ToList():g.MerchantTypes);
+            Func<LootProfile, object> loot = p => Json.Object("id", p.Id, "name", p.Name, "textureKey", p.TextureKey, "default", p.Default, "spawnChance", p.SpawnChance, "items", p.Items.Select(i => Json.Object("id", i.Id, "chance", i.Chance)).ToList());
+            return Json.Write(Json.Object("schema", 3, "patrols", Patrols.Select(group).ToList(), "convoys", Convoys.Select(group).ToList(),"merchants",Merchants.Select(group).ToList(), "carLoot", CarLoot.Select(loot).ToList(), "truckLoot", TruckLoot.Select(loot).ToList(), "templateOrder", TemplateOrder));
         }
     }
 }

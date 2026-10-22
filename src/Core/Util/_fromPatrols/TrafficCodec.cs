@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -11,9 +12,9 @@ namespace WildWasteland.Modules.Patrols
     // Use the existing template JSON parser/writer and only public DTO fields; never serialize Unity objects/properties.
     internal static class TrafficCodec
     {
-        internal static string Write(TrafficSave save) { return StoreJson.Write(Encode(save, 0)); }
+        internal static string Write(TrafficSave save) { return Json.Write(Encode(save, 0)); }
         internal static TrafficSave Read(string json) { return (TrafficSave)Decode(Json.Parse(json), typeof(TrafficSave), 0); }
-        internal static string WriteRecord(object record) { return StoreJson.Write(Encode(record, 0)); }
+        internal static string WriteRecord(object record) { return Json.Write(Encode(record, 0)); }
         internal static T ReadRecord<T>(string json) { return (T)Decode(Json.Parse(json), typeof(T), 0); }
 
         private static object Encode(object value, int depth)
