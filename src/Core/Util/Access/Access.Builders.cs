@@ -80,6 +80,7 @@ namespace WildWasteland.Core
             Action<Delegate> _sink;
             Mono.Cecil.MethodDefinition _open;   // defined but not (yet) registered
             static int _serial;
+            /// <summary>Methods registered in this batch.</summary>
             internal int Count { get { return _defs.Count; } }
 
             /// <summary>Creates the in-memory Cecil assembly and its holder type.</summary>
@@ -116,7 +117,7 @@ namespace WildWasteland.Core
             /// <summary>Runs <paramref name="build"/> in batch mode; <paramref name="assign"/> receives the delegate after Build.</summary>
             internal void Add<T>(Func<T> build, Action<T> assign) where T : class
             {
-                Action<Delegate> sink = d => assign(d as T);
+                var sink = (Action<Delegate>)(d => assign(d as T));
                 var prev = _batch;
                 _batch = this; _sink = sink;
                 try { build(); }

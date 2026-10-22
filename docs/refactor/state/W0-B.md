@@ -25,16 +25,18 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 19. Factions
 - [x] 20. CameraArbiter
 - [x] 21. PlayerState
-- [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
+- [x] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-db0e176 (COMPILE OK; state line updated in next commit)
+90e430d (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 22: run check_comments + check_ownership, write reports/W0-B.md.
+Done. Coordinator: merge after W0-A; see reports/W0-B.md and requests/W0-B.md.
 
 ## Blockers / questions for Denis
-(none yet)
+1. KeyMap.FromKeyCodeName is migration-only (D12): kept; delete in Wave C if unused?
+2. Audio.LoadWav accepts more WAV formats than VoiceAudio did (no failure where it used to throw). OK?
+3. (coordinator) tools/refactor/compile.sh prints COMPILE OK from a stale dll when compilation fails in a reused outdir (request W0B-7).
 
 ## Notes for a resuming agent
 - Compile: sh tools/refactor/compile.sh /tmp/w0b-build
@@ -58,3 +60,4 @@ Item 22: run check_comments + check_ownership, write reports/W0-B.md.
 - Factions: Stance enum, symmetric owned relations Set/SetPlayer/Relation/ToPlayer/Hostile, IFactionSource membership chain Of(go), RemoveAll(owner); no data until Quests/Patrols feed it (Wave B).
 - CameraArbiter: Projection/View/Fov channels, priority order, first claim wins, restore in onPostRender (Ironsights/Binoculars semantics), persistent view option (ThirdPerson); hooks Unity callbacks only while writers exist.
 - PlayerState: PlayerBody Game rig/FSM/Dead/MoveState/JumpState/StandingHeight/Velocity/CarRoot/CarFsm/DriveUse + Patrols PlayerRef Car/CarRigidbody/GodMode/Target/Kind/HasVehicleController + Quests UnderPlayer; on-foot velocity in Origin world space (no OnOriginShift wiring needed); weapon/arms queries stay in Gunplay/Presentation.
+- Final: check_comments 0 missing, check_ownership 0 outside (restore tools/refactor/__pycache__ after running scripts, or run python3 -B).
