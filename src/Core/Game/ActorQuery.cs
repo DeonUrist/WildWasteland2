@@ -6,15 +6,24 @@ using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Guns
+namespace WildWasteland.Core
 {
     /// <summary>Actor and part classification used by the projectiles (Wave A split of Tracers.cs; B01 merges it into a Core ActorQuery service shared with HUD VanillaHits and NPC): creature root, owning vehicle part, corpse/bodypart/head tests and the Health variable.</summary>
-    internal static partial class Tracers
+    public static class ActorQuery
     {
+        /// <summary>Clears classifications and native references at a scene boundary.</summary>
+        internal static void Reset() { _isPart.Clear(); _health.Clear(); _creature.Clear(); }
+        /// <summary>Drops destroyed health roots and short-lived classification caches at the existing projectile sweep.</summary>
+        public static void Sweep()
+        {
+            _dead.Clear(); foreach (var pair in _health) if (pair.Value.Root == null) _dead.Add(pair.Key);
+            foreach (int key in _dead) _health.Remove(key); _isPart.Clear(); _creature.Clear();
+        }
+        private static readonly List<int> _dead = new List<int>();
         // (1.5.2) A dead NPC is a separate "<Name>_Dead" ragdoll (layer Item, limbs on Default with Bodypart FSMs that add to a Health
         // the corpse doesn't have): a Bodypart on a body with no Health FSM. The game picks the hit effect by layer (Actor = blood), so
         // its limbs got the ground's dust; and our creature test showed damage numbers on it.
-        private static bool IsCorpse(GameObject go)
+        public static bool IsCorpse(GameObject go)
         {
             if (go == null || IsPlayerObj(go)) return false;
             if (OwningPart(go.transform) != null || go.CompareTag("vehPartRemoved") || IsVehiclePart(go)) return false;
@@ -22,21 +31,21 @@ namespace WildWasteland.Modules.Guns
             return float.IsNaN(HealthOf(go));
         }
 
-        private static bool HasBodypart(GameObject go)
+        public static bool HasBodypart(GameObject go)
         {
             foreach (var f in go.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "Bodypart") return true;
             return false;
         }
 
 
-        private static bool IsPlayerObj(GameObject go)
+        public static bool IsPlayerObj(GameObject go)
         {
             for (var t = go.transform; t != null; t = t.parent) if (t.CompareTag("Player")) return true;
             return false;
         }
 
         // the hit object is a creature's head when it is a child with its own Bodypart FSM (the player's "head", NPC mixamorig:Head)
-        private static bool col_isHead(GameObject go)
+        public static bool IsHead(GameObject go)
         {
             return go.transform.parent != null && HasBodypart(go);
         }
@@ -45,7 +54,7 @@ namespace WildWasteland.Modules.Guns
         // their Condition (an akms round = -23 %). With [Tracers] VehicleDamage on, the mod's VehicleDamagePer1 rule replaces that: the vanilla
         // Damage event / Bodypart.Damage write are not replayed for a part (the other hit actions - effect, HitEffect, DamageFlammable, CheckFriendly - are).
         private static readonly Dictionary<int, bool> _isPart = new Dictionary<int, bool>();
-        private static bool IsVehiclePart(GameObject go)
+        public static bool IsVehiclePart(GameObject go)
         {
             bool part;
             int id = go.GetInstanceID();
@@ -61,7 +70,7 @@ namespace WildWasteland.Modules.Guns
         // the creature's Health variable, found once per root (a full hierarchy scan) and cached by root object
         private sealed class HealthRef { public GameObject Root; public FsmFloat Var; }
         private static readonly Dictionary<int, HealthRef> _health = new Dictionary<int, HealthRef>();
-        private static float HealthOf(GameObject go)
+        public static float HealthOf(GameObject go)
         {
             if (go == null) return float.NaN;
             var root = RootOf(go.transform).gameObject;
@@ -83,7 +92,7 @@ namespace WildWasteland.Modules.Guns
         // without one (a ragdoll corpse, the player's parts) the highest object with a Bodypart FSM or on the NPC layer (10). null = not a creature.
         private sealed class CreatureRef { public Transform From; public Transform Root; public bool Found; }
         private static readonly Dictionary<int, CreatureRef> _creature = new Dictionary<int, CreatureRef>();
-        private static Transform Creature(Transform t)
+        public static Transform Creature(Transform t)
         {
             if (t == null) return null;
             int id = t.GetInstanceID();
@@ -108,13 +117,13 @@ namespace WildWasteland.Modules.Guns
             return root;
         }
         // the creature's root when the collider is part of one, else the hierarchy root as before
-        private static Transform RootOf(Transform t)
+        public static Transform RootOf(Transform t)
         {
             var c = Creature(t);
             return c != null ? c : t.root;
         }
 
-        private static Transform OwningPart(Transform t)
+        public static Transform OwningPart(Transform t)
         {
             if (Creature(t) != null) return null;           // (1.0.1) a creature seated under a car part is never the part
             for (; t != null; t = t.parent) if (t.CompareTag("vehPart")) return t;

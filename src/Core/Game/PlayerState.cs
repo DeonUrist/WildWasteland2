@@ -112,6 +112,21 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Whether the native InCar FSM is in any transitional or seated state other than OnFoot (save eligibility).</summary>
+        public static bool InVehicleTransition { get { Resolve(); return _inCar != null && _inCar.ActiveStateName != "OnFoot"; } }
+
+        /// <summary>Current player health, or zero until the native Health variable is available.</summary>
+        public static float Health
+        {
+            get
+            {
+                Resolve();
+                if (_health == null) return 0f;
+                if (_healthVar == null) _healthVar = FsmIndex.Float(_health, "Health");
+                return _healthVar != null ? _healthVar.Value : 0f;
+            }
+        }
+
         /// <summary>Movement FSM state: Standing / Running / Crouching / Crawling (+ checkAbove*); "" when unknown or disabled.</summary>
         public static string MoveState
         {

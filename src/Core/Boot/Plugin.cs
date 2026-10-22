@@ -156,6 +156,9 @@ namespace WildWasteland
             Core.GameRefs.OnSceneLoaded(s, m);
             Core.Entities.OnSceneLoaded();
             Core.Origin.Reset();
+            Core.SceneLookup.Reset();
+            Core.ActorQuery.Reset();
+            Core.ItemSpawner.ResetRegistrations();
             Core.SaveBus.OnSceneLoaded();
             Core.UI.EditorSession.CancelAll();
             Core.Log.ResetRateLimits();

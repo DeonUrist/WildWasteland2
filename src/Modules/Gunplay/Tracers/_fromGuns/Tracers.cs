@@ -102,7 +102,7 @@ namespace WildWasteland.Modules.Guns
             _counts.Clear();
             _rangedHit = null; _metalImpact = null; _effectsLooked = false;
             _carRoots.Clear();
-            _isPart.Clear(); _headMul.Clear(); _health.Clear(); _creature.Clear();
+            _headMul.Clear(); 
             _reported.Clear();
             _guns.Clear();
             _notGun.Clear();
@@ -239,10 +239,9 @@ namespace WildWasteland.Modules.Guns
             foreach (var kv in _heads) if (kv.Value == null) _dead.Add(kv.Key);
             foreach (var k in _dead) _heads.Remove(k);
             _dead.Clear();
-            foreach (var kv in _health) if (kv.Value.Root == null) _dead.Add(kv.Key);
-            foreach (var k in _dead) _health.Remove(k);
+            ActorQuery.Sweep();
             // instance-id keyed yes/no caches: cheap to rebuild, so they are simply emptied every sweep instead of growing all session
-            _counts.Clear(); _isPart.Clear(); _headMul.Clear(); _carRoots.Clear(); _isMelee.Clear(); _creature.Clear();
+            _counts.Clear(); _headMul.Clear(); _carRoots.Clear(); _isMelee.Clear(); 
             _forceFree.RemoveWhere(IsNull);
             SweepOrbs();
             // (WW) swing caches keyed by weapon / FSM instance ids

@@ -6,16 +6,14 @@ using System.IO;
 using System.Reflection;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Core
 {
     // This game's Unity JSON serializer omits arrays of nested mod-defined records (also seen in car templates).
     // Use the existing template JSON parser/writer and only public DTO fields; never serialize Unity objects/properties.
-    internal static class TrafficCodec
+    public static class RecordJson
     {
-        internal static string Write(TrafficSave save) { return Json.Write(Encode(save, 0)); }
-        internal static TrafficSave Read(string json) { return (TrafficSave)Decode(Json.Parse(json), typeof(TrafficSave), 0); }
-        internal static string WriteRecord(object record) { return Json.Write(Encode(record, 0)); }
-        internal static T ReadRecord<T>(string json) { return (T)Decode(Json.Parse(json), typeof(T), 0); }
+        public static string WriteRecord(object record) { return Json.Write(Encode(record, 0)); }
+        public static T ReadRecord<T>(string json) { return (T)Decode(Json.Parse(json), typeof(T), 0); }
 
         private static object Encode(object value, int depth)
         {
