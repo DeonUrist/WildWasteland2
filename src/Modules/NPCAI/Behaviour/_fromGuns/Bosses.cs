@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -24,7 +25,7 @@ namespace WildWasteland.Modules.Guns
         private static float _next, _nextScan;
         private static int _scanBurst;
 
-        public static void OnSceneLoaded() { _raised.Clear(); _bosses.Clear(); _detected.Clear(); _next = 0f; _nextScan = Time.unscaledTime + 2f; _scanBurst = 4; }
+        public static void OnSceneLoaded() { _raised.Clear(); _bosses.Clear(); _detected.Clear(); _creates.Clear(); _next = 0f; _nextScan = Time.unscaledTime + 2f; _scanBurst = 4; }
 
         private static string Clean(string name) { int cut = name.IndexOf('('); return cut > 0 ? name.Substring(0, cut) : name; }
 
@@ -35,7 +36,7 @@ namespace WildWasteland.Modules.Guns
         internal static void Describe(List<string> into)
         {
             into.Clear();
-            float pct = Mathf.Max(1f, GunsModule.BossHpPercent.Value) / 100f;
+            float pct = Mathf.Max(1f, NpcaiSettings.BossHpPercent.Value) / 100f;
             foreach (var bo in _bosses.Values)
             {
                 if (bo.Go == null) continue;
@@ -53,7 +54,7 @@ namespace WildWasteland.Modules.Guns
 
         internal static bool BeforeGetDetections(Micosmo.SensorToolkit.PlayMaker.SensorGetDetections action)
         {
-            if (!GunsModule.BossHealth.Value) return true;
+            if (!NpcaiSettings.BossHealth.Value) return true;
             var fsm = action.Fsm;
             if (fsm == null || fsm.Name != "Detection") return true;
             var owner = fsm.GameObject;
@@ -80,14 +81,20 @@ namespace WildWasteland.Modules.Guns
             if (!_bosses.ContainsKey(id)) _bosses[id] = new Boss { Go = go, Name = name, Base = b };
         }
 
+        /// <summary>
+        /// Registers every live BossUI FSM owner with a known base health (bosses restored from a save) and forgets destroyed detections.
+        /// Reads the shared Core FsmIndex "BossUI" list (sliced FsmList walk) instead of a FindObjectsOfType scene scan (README 8 #5).
+        /// </summary>
         private static void Scan()
         {
             _dead.Clear();
             foreach (var kv in _detected) if (kv.Value == null) _dead.Add(kv.Key);
             foreach (var id in _dead) _detected.Remove(id);
-            foreach (var f in UnityEngine.Object.FindObjectsOfType<PlayMakerFSM>())
+            var list = FsmIndex.ByName("BossUI");
+            for (int i = 0; i < list.Count; i++)
             {
-                if (f == null || f.FsmName != "BossUI") continue;
+                var f = list[i];
+                if (f == null) continue;
                 var go = f.gameObject;
                 string name = Clean(go.name);
                 float b;
@@ -95,10 +102,36 @@ namespace WildWasteland.Modules.Guns
             }
         }
 
+        // prefab instance id -> boss name (null = not a boss): GameObject.name allocates, so it is read once per prefab
+        static readonly Dictionary<int, string> _creates = new Dictionary<int, string>();
+
+        /// <summary>Starts tracking the BossUI FSMs in the Core FsmIndex (module start).</summary>
+        internal static void Install(IModule owner) { FsmIndex.Track(owner, "BossUI"); }
+
+        /// <summary>CreateObject.OnEnter postfix: registers spawned human bosses (prefab name read once per prefab).</summary>
+        internal static void AfterCreateObject(HutongGames.PlayMaker.Actions.CreateObject __instance)
+        {
+            if (!NpcaiRuntime.Running || __instance.storeObject == null || __instance.gameObject == null || !NpcaiSettings.BossHealth.Value) return;
+            GameObject prefab = __instance.gameObject.Value, made = __instance.storeObject.Value;
+            if (prefab == null || made == null) return;
+            // ItemSpawner uses the same variable for the prefab and the created instance.
+            if (ReferenceEquals(prefab, made)) { Registered(made); return; }
+            string boss;
+            int id = prefab.GetInstanceID();
+            if (!_creates.TryGetValue(id, out boss)) { boss = BossName(prefab.name); _creates[id] = boss; }
+            if (boss != null) Spawned(made, boss);
+        }
+
+        /// <summary>Job "NPCAI.Bosses" (0.5 s): the boss health cap; exceptions are logged and the next tick runs.</summary>
+        internal static void Job()
+        {
+            try { Tick(); } catch (Exception e) { NpcaiRuntime.Error("Bosses", e); }
+        }
+
         // (WW) scheduler job "Guns.Bosses" (Interval 0.5 s; the 3 s / 5 s / 60 s gates below are unchanged)
         public static void Tick()
         {
-            if (!GunsModule.BossHealth.Value) return;
+            if (!NpcaiSettings.BossHealth.Value) return;
             float now = Time.unscaledTime;
             if (now >= _nextScan)
             {
@@ -108,7 +141,7 @@ namespace WildWasteland.Modules.Guns
             }
             if (now < _next || _bosses.Count == 0) return;
             _next = now + 3f;
-            float pct = Mathf.Max(1f, GunsModule.BossHpPercent.Value) / 100f;
+            float pct = Mathf.Max(1f, NpcaiSettings.BossHpPercent.Value) / 100f;
             _dead.Clear();
             foreach (var kv in _bosses)
             {
@@ -132,13 +165,13 @@ namespace WildWasteland.Modules.Guns
                 int id = kv.Key;
                 if (v.Value > target + 0.5f)
                 {
-                    if (Core.Log.Verbose) GunsModule.Verbose("Bosses: " + bo.Go.name + " health " + v.Value.ToString("0") + " -> " + target.ToString("0") + " (" + (pct * 100f).ToString("0") + " % of " + b.ToString("0") + ")");
+                    if (Core.Log.L1) NpcaiRuntime.Main("Bosses: " + bo.Go.name + " health " + v.Value.ToString("0") + " -> " + target.ToString("0") + " (" + (pct * 100f).ToString("0") + " % of " + b.ToString("0") + ")");
                     v.Value = target;
                 }
                 else if (pct > 1f && !_raised.Contains(id) && Mathf.Abs(v.Value - b) <= 0.5f)
                 {
                     v.Value = target;
-                    if (Core.Log.Verbose) GunsModule.Verbose("Bosses: " + bo.Go.name + " health raised to " + target.ToString("0"));
+                    if (Core.Log.L1) NpcaiRuntime.Main("Bosses: " + bo.Go.name + " health raised to " + target.ToString("0"));
                 }
                 _raised.Add(id);
             }

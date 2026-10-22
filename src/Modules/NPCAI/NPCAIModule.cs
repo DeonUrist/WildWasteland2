@@ -6,7 +6,10 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
+using WildWasteland.Modules.Guns;
 using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.Patrols;
+using WildWasteland.Modules.Towns;
 
 namespace WildWasteland.Modules.NPCAI
 {
@@ -68,6 +71,9 @@ namespace WildWasteland.Modules.NPCAI
 
             InstallHooks();
             InstallPatches();
+            SeatedLosGuard.Install(this);                  // seated crews' target-less LOS actions (ex Patrols; after Senses on the same dispatchers)
+            Bosses.Install(this);                          // human boss health: FsmIndex "BossUI" tracking (ex Guns entry)
+            InteriorPopulation.Install(this);              // interior / native-POI population rules (ex Towns entry): hooks + jobs
 
             // the old NPCAI.Runner, in its order (load-bearing: Brain/Idle body hand-over, DogAnimations restore in Update / sample in LateUpdate)
             Scheduler.EveryFrame(this, "NPCAI.Senses", Senses.Tick);
@@ -81,6 +87,7 @@ namespace WildWasteland.Modules.NPCAI
             Scheduler.Interval(this, "NPCAI.Ambush", 0.5f, Ambush.Tick, Phase.Update, true);
             Scheduler.EveryFrame(this, "NPCAI.DogBite", DogBite.Tick);
             Scheduler.Interval(this, "NPCAI.Aim.Sweep", 10f, Aim.Sweep);
+            Scheduler.Interval(this, "NPCAI.Bosses", 0.5f, Bosses.Job);
 
             // [Keys] Shout: Core owns the input (modifier blocks the game's buttons), NPCAI reacts to the PlayerShout event
             new PlayerShoutInput(this, NpcaiSettings.ShoutKey, NpcaiSettings.ShoutModifier, NpcaiSettings.ShoutBlocksButtons, NpcaiSettings.ShoutCooldown, NpcaiSettings.PlayerShoutRange, IsRunning);
@@ -106,6 +113,7 @@ namespace WildWasteland.Modules.NPCAI
                 SaveBus.StateChanged -= Senses.OnSaveLoadState;
                 _subscribed = false;
             }
+            Step("Population", InteriorPopulation.ReleaseDeferred);   // deferred native spawn events run before the hooks go (ex Towns shutdown)
             Step("Navigation", ShutdownNavigation);
             Step("Pounce", Pounce.Shutdown);
             Step("Burrow", Burrow.Shutdown);
@@ -130,6 +138,7 @@ namespace WildWasteland.Modules.NPCAI
         {
             Aim.OnSceneLoaded(); Brain.OnSceneLoaded(); Senses.OnSceneLoaded(); Idle.OnSceneLoaded();
             Burrow.OnSceneLoaded(); Pounce.OnSceneLoaded(); Webs.OnSceneLoaded(); Nests.OnSceneLoaded(); Ambush.OnSceneLoaded(); DogBite.OnSceneLoaded();
+            Bosses.OnSceneLoaded();
         }
 
         /// <summary>Scene load: every behaviour registry reset, then the Navigation part.</summary>
@@ -196,6 +205,7 @@ namespace WildWasteland.Modules.NPCAI
             // CreateObject.OnEnter postfixes: Senses (structures, pending rigs, blasts), Idle (camp spawn points)
             Hooks.CreateObjectEnter.Postfix(this, Senses.AfterCreateObject);
             Hooks.CreateObjectEnter.Postfix(this, Idle.AfterCreateObject);
+            Hooks.CreateObjectEnter.Postfix(this, Bosses.AfterCreateObject);   // spawned human bosses (ex Guns entry)
             // SetFsmFloat.OnEnter postfix: a real dog bite -> DogBite's lunge (vanilla hits are Gunplay's, subscribed by GunplayModule)
             Hooks.SetFsmFloatEnter.Postfix(this, DogBite.AfterSetFsmFloat);
             // Raycast.DoRaycast = the Attack FSM's bumper rays
@@ -205,6 +215,7 @@ namespace WildWasteland.Modules.NPCAI
             Hooks.ActivateGameObjectEnter.Postfix(this, Brain.AfterActivate);
             // SensorToolkit: the Detection FSM (registers agents), the burst LOS
             Hooks.SensorDetectionsDo.Prefix(this, Senses.BeforeGetDetections);
+            Hooks.SensorDetectionsDo.Prefix(this, Bosses.BeforeGetDetections);   // boss registration by detection (ex Guns entry)
             Hooks.LosEnter3D.Prefix(this, Senses.BeforeLosResult);
             Hooks.LosUpdate3D.Prefix(this, Senses.BeforeLosResult);
         }

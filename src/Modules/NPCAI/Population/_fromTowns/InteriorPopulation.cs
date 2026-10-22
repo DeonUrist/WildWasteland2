@@ -27,14 +27,14 @@ namespace WildWasteland.Modules.Towns
         private static int _next, _near;
         private static Vector3 _player;
         private static bool _havePlayer;
-        internal static void Install(TownsModule module)
+        internal static void Install(IModule module)
         {
             NativePoiPopulation.Install(module);
             _releaseNative = false;
             Hooks.ProcessEvent.Prefix(module, SpawnEvent);
             Hooks.FsmEnable.Postfix(module, Enabled); Hooks.CreateObjectEnter.Postfix(module, Created);
-            Scheduler.Sliced(module, "Interior pre-spawn", 700, Step);
-            Scheduler.Interval(module, "Interior hearing", .25f, Hearing);
+            Scheduler.Sliced(module, "NPCAI.Interior pre-spawn", 700, Step);
+            Scheduler.Interval(module, "NPCAI.Interior hearing", .25f, Hearing);
         }
         internal static void DiscoverExisting()
         { foreach (var f in PlayMakerFSM.FsmList) if (f != null) Enabled(f); }

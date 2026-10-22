@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
+using WildWasteland.Modules.Guns;
 
 namespace WildWasteland.Modules.NPC
 {

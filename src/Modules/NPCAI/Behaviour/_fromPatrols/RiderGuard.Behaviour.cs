@@ -6,6 +6,7 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -65,12 +66,12 @@ namespace WildWasteland.Modules.Patrols
                 return;
             }
 
-            Face(has && dist < PatrolsModule.RiderRange.Value * 1.5f && to.sqrMagnitude > 0.01f ? to : _car.transform.forward);
+            Face(has && dist < NpcaiSettings.RiderRange.Value * 1.5f && to.sqrMagnitude > 0.01f ? to : _car.transform.forward);
 
             // on a motorcycle he can only turn BikeArc degrees from the bike's nose: the player close by and out of that arc for a second
             // (beside or behind him) -> he jumps off and fights on foot
             bool inArc = !_bike || !has || ArcOff(to) <= Rider.BikeArc;
-            if (_bike && PatrolsModule.RiderLances.Value && has && !inArc && dist <= PatrolsModule.RiderBailRange.Value && _mode == Mode.Riding)
+            if (_bike && PatrolsModule.RiderLances.Value && has && !inArc && dist <= NpcaiSettings.RiderBailRange.Value && _mode == Mode.Riding)
             {
                 _outOfArc += Time.deltaTime;
                 if (_outOfArc > 1f) { JumpOff("cannot turn to the player"); return; }
@@ -83,7 +84,7 @@ namespace WildWasteland.Modules.Patrols
             if (PatrolsModule.RiderLances.Value && has && tcar != null && _mode == Mode.Riding)
             {
                 float near = (LeapAim(tcar) - transform.position).magnitude;
-                if (near <= PatrolsModule.RiderRange.Value)
+                if (near <= NpcaiSettings.RiderRange.Value)
                 {
                     if (!_inClose) { _inClose = true; _kamikazeArmed = UnityEngine.Random.Range(0f, 100f) < PatrolsModule.WitnessMeChance.Value; }
                     if (_kamikazeArmed || Wounded())
@@ -91,23 +92,23 @@ namespace WildWasteland.Modules.Patrols
                         Escort();
                         Vector3 launch; float flight;
                         // only a car well inside his reach: the jump (both cars' speeds counted) takes at most RiderLeapReachPercent of the longest
-                        if (inArc && near <= PatrolsModule.RiderJumpRange.Value && Time.time >= _nextWitness && CanLeap(tvel, tcar, out launch, out flight)
-                            && flight <= Rider.MaxLeapTime * PatrolsModule.RiderLeapReachPercent.Value / 100f) { StartWitness(); return; }
+                        if (inArc && near <= NpcaiSettings.RiderJumpRange.Value && Time.time >= _nextWitness && CanLeap(tvel, tcar, out launch, out flight)
+                            && flight <= Rider.MaxLeapTime * NpcaiSettings.RiderLeapReachPercent.Value / 100f) { StartWitness(); return; }
                     }
                 }
-                else if (near > PatrolsModule.RiderRange.Value + 8f) _inClose = false;
+                else if (near > NpcaiSettings.RiderRange.Value + 8f) _inClose = false;
             }
             else _inClose = false;
 
             if (!PatrolsModule.RiderLances.Value) { Blend(0, 0.15f); return; }
 
-            if (_mode == Mode.Riding && has && inArc && dist > 3f && dist <= PatrolsModule.RiderRange.Value && Time.time >= _nextThrow && (_marker == null || !_marker.Exploded))
+            if (_mode == Mode.Riding && has && inArc && dist > 3f && dist <= NpcaiSettings.RiderRange.Value && Time.time >= _nextThrow && (_marker == null || !_marker.Exploded))
             {
                 // only within the lance's real reach: a flat throw (<= RiderMaxThrowAngle up) at the lance's speed must hit the predicted spot
                 Vector3 launch; float flight;
                 var from = HandPos();
-                if (Rider.Solve(from, CarVel(), tpos + Vector3.up * 0.9f, tvel, PatrolsModule.RiderLanceSpeed.Value, out launch, out flight)
-                    && Rider.Elevation(launch) <= PatrolsModule.RiderMaxThrowAngle.Value)
+                if (Rider.Solve(from, CarVel(), tpos + Vector3.up * 0.9f, tvel, NpcaiSettings.RiderLanceSpeed.Value, out launch, out flight)
+                    && Rider.Elevation(launch) <= NpcaiSettings.RiderMaxThrowAngle.Value)
                 {
                     _mode = Mode.Throwing; _released = false; _modeStart = Time.time;
                     Play(1);
@@ -124,7 +125,7 @@ namespace WildWasteland.Modules.Patrols
                 {
                     _mode = Mode.Riding;
                     if (_graphOk) _throw.Pause();
-                    _nextThrow = Time.time + UnityEngine.Random.Range(PatrolsModule.RiderIntervalMin.Value, Mathf.Max(PatrolsModule.RiderIntervalMin.Value, PatrolsModule.RiderIntervalMax.Value));
+                    _nextThrow = Time.time + UnityEngine.Random.Range(NpcaiSettings.RiderIntervalMin.Value, Mathf.Max(NpcaiSettings.RiderIntervalMin.Value, NpcaiSettings.RiderIntervalMax.Value));
                     _lanceBackAt = Time.time + 1.2f;   // "picks the next lance up"
                 }
             }
@@ -172,7 +173,7 @@ namespace WildWasteland.Modules.Patrols
             if (tcar == null) return false;
             var cv = CarVel(); cv.y = 0f; var pv = tvel; pv.y = 0f;
             if (cv.magnitude > 3f && pv.magnitude > 3f && Vector3.Angle(cv, pv) > 60f) return false;
-            return Rider.FlatLeap(LeapFrom(), CarVel(), LeapAim(tcar), tvel, PatrolsModule.RiderLeapSpeed.Value, out launch, out flight);
+            return Rider.FlatLeap(LeapFrom(), CarVel(), LeapAim(tcar), tvel, NpcaiSettings.RiderLeapSpeed.Value, out launch, out flight);
         }
 
         // off the roof in a long flat jump on the intercept course to the player's car, as a live bomb. His FSMs are off for the flight: the

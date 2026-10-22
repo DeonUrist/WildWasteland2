@@ -30,12 +30,12 @@ namespace WildWasteland.Modules.Towns
         private static readonly List<Transform> Dead = new List<Transform>();
         private const int Solid = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 14) | (1 << 16);
         private const int Floor = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14) | (1 << 16);
-        internal static void Install(TownsModule module)
+        internal static void Install(IModule module)
         {
             Clear(); Creatures.Clear(); Pools.Clear();
             Hooks.EnterState.Prefix(module, Enter);
             Hooks.CreateObjectEnter.Prefix(module, Creating); Hooks.CreateObjectEnter.Postfix(module, Created);
-            Scheduler.Interval(module, "Native POI spawn cache", 30f, Sweep);
+            Scheduler.Interval(module, "NPCAI.Native POI spawn cache", 30f, Sweep);
         }
         internal static void Catalog(GameObject prefab, TownFaction faction)
         {
