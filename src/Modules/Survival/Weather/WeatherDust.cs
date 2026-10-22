@@ -3,7 +3,7 @@ using ES3Internal;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Borrow the installed game's Sand Player visual, retaining its cloud motion and animated material.
     internal sealed class WeatherDust : IDisposable

@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     internal sealed class WeatherVisuals : IDisposable
     {
@@ -117,7 +117,7 @@ namespace WildWasteland.Modules.Weather
             bool paletteChanged = _paletteRevision != WeatherPalette.Revision;
             if (Time.unscaledTime < _nextColor && !paletteChanged) return;
             _nextColor = Time.unscaledTime + .5f;
-            
+
             _paletteRevision = WeatherPalette.Revision;
             var sun = RenderSettings.sun;
             Vector3 direction = sun != null ? -sun.transform.forward : (Vector3)Shader.GetGlobalVector(AzureSun);

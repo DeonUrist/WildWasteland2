@@ -27,7 +27,6 @@ namespace WildWasteland.Modules.Patrols.WarRig
         [Obsolete("refactor: the Vehicles module starts the War Rig (WarRigFeature.Start); owners install their own War Rig parts")]
         internal static void Install(IModule owner, string dir)
         {
-            NativeStormProtection.Install(owner);                 // refs-ok: REFACTOR-REQUEST B12-4 (Survival storm protection)
             SpawnerIntegration.Install(owner);                    // refs-ok: REFACTOR-REQUEST B12-5 (Compatibility Apocaspawner bridge)
             DustStormBridge.Install(owner);                       // refs-ok: REFACTOR-REQUEST B12-5 (Compatibility ApocaDustStorm bridge)
             PoiEncounter.InstallRetention(owner);                 // refs-ok: REFACTOR-REQUEST B12-6 (POI War Rig encounter)
@@ -43,12 +42,11 @@ namespace WildWasteland.Modules.Patrols.WarRig
             Services.PoiChanged -= PoiEncounter.Register;         // refs-ok: REFACTOR-REQUEST B12-6
             if (Services.Poi != null) Services.Poi.Remove("WarRig");   // refs-ok: REFACTOR-REQUEST B12-6
             PoiEncounter.Reset();                                 // refs-ok: REFACTOR-REQUEST B12-6
-            try { NativeStormProtection.Restore(); } catch (Exception e) { Log.Warn(VehiclesModule.Instance, "War Rig storm restore: " + e.Message); }   // refs-ok: REFACTOR-REQUEST B12-4
         }
 
         /// <summary>Old Patrols scene entry point: per-scene reset of the transitional foreign parts (the Vehicles module resets the War Rig itself).</summary>
         [Obsolete("refactor: the Vehicles module resets the War Rig per scene (WarRigFeature.ResetForScene); owners reset their own parts")]
-        internal static void OnSceneLoaded() { NativeStormProtection.ResetForScene(); PoiEncounter.ResetForScene(); }   // refs-ok: REFACTOR-REQUEST B12-4, B12-6
+        internal static void OnSceneLoaded() { PoiEncounter.ResetForScene(); }   // refs-ok: REFACTOR-REQUEST B12-4, B12-6
 
         /// <summary>Installs the War Rig prefab-id resolver and registers the rig as a template body.</summary>
         internal static void Start(IModule owner, string dir)

@@ -3,7 +3,7 @@ using ES3Internal;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Visual-only native stones: bounded pools, no rigidbodies, collisions, damage or managed particle loop.
     internal sealed class WeatherDebris : IDisposable
@@ -32,7 +32,7 @@ namespace WildWasteland.Modules.Weather
         }
         internal void Draw(int key, Vector3 position, Quaternion rotation, WeatherVisualDetail detail)
         {
-            
+
             int slot = -1;
             for (int i=0;i<_limit;i++) if (_keys[i] == key) { slot=i; break; }
             if (slot < 0) for (int i=0;i<_limit;i++) if (!_used[i]) { slot=i; break; }

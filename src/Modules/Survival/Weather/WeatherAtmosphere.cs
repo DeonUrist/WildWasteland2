@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // One camera command buffer; no component is added to a saved player/vehicle object.
     internal sealed class WeatherAtmosphere : IDisposable

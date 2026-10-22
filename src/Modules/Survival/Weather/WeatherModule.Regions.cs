@@ -2,13 +2,13 @@ using System.Globalization;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     /// <summary>
     /// Survival part of the Weather entry (Wave A split, owner B14): up to four storm regions (manual previews and natural
     /// encounters), their per-frame movement/presentation tick, the hurricane hazard tick, column layout and asset preparation.
     /// </summary>
-    public sealed partial class WeatherModule
+    internal sealed partial class WeatherRuntime
     {
         /// <summary>Spawns a manual storm preview ahead of or around the player (not saved); up to four regions.</summary>
         private void Spawn(bool hurricane, bool here)

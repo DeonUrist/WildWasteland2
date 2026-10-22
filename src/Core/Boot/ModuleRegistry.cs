@@ -25,7 +25,6 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.CleanHUD.CleanHudModule());
             ModuleHost.Add(new Modules.Patrols.PatrolsModule());
             ModuleHost.Add(new Modules.POI.PoiModule());
-            ModuleHost.Add(new Modules.Weather.WeatherModule());
             ModuleHost.Add(new Modules.Quests.QuestsModule());
             ModuleHost.Add(new Modules.Survival.SurvivalModule());
             ModuleHost.Add(new Modules.Towns.TownsModule());

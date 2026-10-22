@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.Survival
         {
             layout.Heading("Storm tuning");
             foreach (var key in Plugin.Settings.Keys)
-                if (key.Section == "Weather / Storms" && (key.Key == "Hurricanes per km²" || key.Key == "Front width (km)" || key.Key == "Depth (km)")) layout.Entry(Plugin.Settings[key]);
+                if (key.Section == "Survival / Storms" && (key.Key == "Hurricanes per km²" || key.Key == "Front width (km)" || key.Key == "Depth (km)")) layout.Entry(Plugin.Settings[key]);
         }
     }
 }

@@ -4,11 +4,11 @@ using HarmonyLib;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols.WarRig
+namespace WildWasteland.Modules.Survival
 {
     // Native SandStorm prefab identity, verified against the installed game's assets.
     // Player-only filtering: the storm still affects the surrounding world normally.
-    internal static partial class NativeStormProtection
+    internal static class NativeStormProtection
     {
         internal const long StormPrefabId = 5697600806714206537L;
         private static GameObject player;
@@ -16,6 +16,16 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static readonly HashSet<ParticleSystem> dust = new HashSet<ParticleSystem>();
         private static readonly Dictionary<ParticleSystem, bool> emission = new Dictionary<ParticleSystem, bool>();
 
+        /// <summary>Queries active shelter geometry without depending on a vehicle implementation.</summary>
+        private static bool Protected(GameObject target)
+        {
+            var actor = Player;
+            return actor != null && target != null && (target == actor || target.transform.IsChildOf(actor.transform))
+                && WildWasteland.Core.ModApi.Get<WildWasteland.Core.IShelterRegistry>() != null
+                && WildWasteland.Core.ModApi.Get<WildWasteland.Core.IShelterRegistry>().IsSheltered(actor);
+        }
+        /// <summary>No shelter provider can protect actors while the registry is absent.</summary>
+        private static bool NoRigs { get { var registry = WildWasteland.Core.ModApi.Get<WildWasteland.Core.IShelterRegistry>() as ShelterRegistry; return registry == null || !registry.AnyProviders; } }
         private static GameObject Player
         {
             get { if (player == null || !player.activeInHierarchy) player = Core.GameRefs.Player; return player; }
@@ -50,7 +60,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         {
             if (lastFrame == Time.frameCount) return; lastFrame = Time.frameCount;
             dust.RemoveWhere(x => x == null);
-            bool inside = DustStormBridge.Inside(Player);
+            bool inside = Protected(Player);
             if (!inside) { Restore(); return; }
             foreach (var ps in dust)
             {

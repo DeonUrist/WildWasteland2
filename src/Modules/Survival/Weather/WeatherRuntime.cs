@@ -6,12 +6,12 @@ using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Native encounters keep their save anchors; Weather owns presentation and annular hazards.
-    // Wave A split (refactor): storm regions/tick/hazards live in src/Modules/Survival/Weather/_fromWeather/WeatherModule.Regions.cs,
-    // diagnostic snapshot in src/Modules/Debug/_fromWeather/WeatherModule.Debug.cs, the F3 preview page in src/Modules/Tools/_fromWeather/WeatherModule.Tools.cs.
-    public sealed partial class WeatherModule : ModuleBase, IWeatherRegions
+    // Wave A split (refactor): storm regions/tick/hazards live in src/Modules/Survival/Weather/_fromWeather/WeatherRuntime.Regions.cs,
+    // diagnostic snapshot in src/Modules/Debug/_fromWeather/WeatherRuntime.Debug.cs, the F3 preview page in src/Modules/Tools/_fromWeather/WeatherRuntime.Tools.cs.
+    internal sealed partial class WeatherRuntime : ModuleBase, IWeatherRegions
     {
         private readonly WeatherRegion[] _regions = new WeatherRegion[4];
         private readonly float[] _ages = new float[4];
@@ -31,13 +31,15 @@ namespace WildWasteland.Modules.Weather
         private Job _draw;
         private bool _running;
         private bool _nativeAssetsReady;
-        public override string Id { get { return "Weather"; } }
-        public override string DisplayName { get { return "Weather"; } }
+        public override string Id { get { return "Survival.Weather"; } }
+        public override string DisplayName { get { return "Survival.Weather"; } }
         public int Count { get { return _count; } }
         public bool MapAreas { get { return _mapAreas.Value; } set { _mapAreas.Value = value; } }
         public float HurricaneDensity { get { return _density.Value; } set { _density.Value = value; } }
         public float FrontWidthKm { get { return _width.Value; } set { _width.Value = value; } }
         public float DepthKm { get { return _depth.Value; } set { _depth.Value = value; } }
+
+        internal void Bind(ModuleConfig cfg) { Config = cfg; BindConfig(cfg); }
 
         public override void BindConfig(ModuleConfig cfg)
         {
@@ -55,10 +57,10 @@ namespace WildWasteland.Modules.Weather
             if (!Core.Patches.Patch(this,Core.Patches.Method(typeof(UnityEngine.AzureSky.AzureFogScattering),"OnRenderImage"),
                 prefix: Core.Patches.Method(typeof(WeatherSky),"NativeFogBefore"), finalizer: Core.Patches.Method(typeof(WeatherSky),"NativeFogAfter")))
                 throw new System.InvalidOperationException("Weather requires the native Azure fog scope.");
-            _audio = new WeatherAudio(System.IO.Path.Combine(Dir,"sound","sandstorm.wav"));
+            _audio = new WeatherAudio(System.IO.Path.Combine(Core.Assets.ModuleDir("Survival"),"sound","sandstorm.wav"));
             PrepareAssets();
             Scheduler.Interval(this,"Weather.PrepareNativeAssets",1,PrepareNativeAssets);
-            Services.Weather = this;
+
             _draw = Scheduler.EveryFrame(this, "Moving storm visuals", Tick, Phase.LateUpdateLast);
             _draw.Enabled = false;
             _native = new WeatherNative(this); _hazards = new WeatherHazards();
@@ -80,9 +82,10 @@ namespace WildWasteland.Modules.Weather
         {
             _running = false; Clear();
             if (_native!=null) _native.Dispose(); _native=null; _hazards=null;
-            if (ReferenceEquals(Services.Weather, this)) Services.Weather = null;
+
             if (_visuals != null) _visuals.Dispose(); _visuals = null; _draw = null;
             if (_audio != null) _audio.Dispose(); _audio = null;
+            Scheduler.RemoveAll(this); Hooks.RemoveAll(this); Core.Patches.Unpatch(this); ModApi.RemoveAll(this);
         }
     }
 }

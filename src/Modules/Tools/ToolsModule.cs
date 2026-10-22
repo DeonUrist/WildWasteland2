@@ -36,6 +36,7 @@ namespace WildWasteland.Modules.Tools
         public override IEnumerable<ToolPage> ToolPages()
         {
             yield return new ActionPage(this, ToolGroups.Debug, "Generated LOD export", DrawLodExport) { IsTool = true };
+            yield return new WeatherPreviewPage(this);
         }
 
         /// <summary>Shows capture progress and explicit start/stop actions without changing optimization settings.</summary>
