@@ -32,6 +32,10 @@ namespace WildWasteland.Modules.POI
                 PopulationMin = Number(d, "PopulationMinPercent", 10, 0, 500), PopulationMax = Number(d, "PopulationMaxPercent", 20, 0, 500),
                 LootMin = Number(d, "LootMinPercent", 5, 0, 500), LootMax = Number(d, "LootMaxPercent", 10, 0, 500), Data = d };
             if (t.MinLots > t.MaxLots || t.PopulationMin > t.PopulationMax || t.LootMin > t.LootMax) throw new FormatException("Template ranges are reversed");
+            if (t.ExternalParkingPois.Length > 29 || new HashSet<string>(t.ExternalParkingPois, StringComparer.Ordinal).Count != t.ExternalParkingPois.Length)
+                throw new FormatException("External parking companions must be unique and leave at least three interior lots");
+            if (!t.UseGlobalLotRange && t.MaxLots + t.ExternalParkingPois.Length > 32)
+                throw new FormatException("Maximum lots plus external parking companions exceeds 32");
             d["Id"] = id; d["Faction"] = faction.ToString(); return t;
         }
         /// <summary>Reads an optional text field.</summary>

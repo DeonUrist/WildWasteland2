@@ -38,6 +38,7 @@ namespace WildWasteland.Modules.POI
             int choice = random.Next(weight); TownTemplate template = templates[0];
             foreach (var t in templates) { choice -= t.Weight; if (choice < 0) { template = t; break; } }
             plan.TemplateId = template.Id; plan.TemplateJson = Core.Json.Write(template.Data); plan.Rules = TownTemplate.Parse(template.Id, plan.TemplateJson); if (!template.UseGlobalLotRange) count = random.Next(template.MinLots, template.MaxLots + 1);
+            if (input.ParkingCompanions) count = Math.Min(count, 32 - template.ExternalParkingPois.Length);
             if (template.AllowedPois.Length > 0) { var allowed = new HashSet<string>(template.AllowedPois, StringComparer.Ordinal); var specs = new List<BuildingSpec>(); foreach (var spec in input.Buildings) if (allowed.Contains(spec.Name) || Array.IndexOf(template.ExternalParkingPois,spec.Name)>=0) specs.Add(spec); input.Buildings = specs.ToArray(); }
             for (int attempt = 0; attempt < 2; attempt++)
             {
