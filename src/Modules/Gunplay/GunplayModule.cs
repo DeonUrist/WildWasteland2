@@ -78,6 +78,9 @@ namespace WildWasteland.Modules.Gunplay
             Patch(typeof(GetLayer), "OnEnter", "AfterGetLayer", false);
             Patch(typeof(SetAudioClip), "OnEnter", "AfterSetAudioClip", false);
             Patch(typeof(TranslatePosition), "OnFixedUpdate", "BeforeTranslatePosition", true);
+            Core.Patches.ApplyClass(this, typeof(MagazineSavePatch));
+            Core.Patches.ApplyClass(this, typeof(MagazineLoadPatch));
+            Core.Patches.ApplyClass(this, typeof(MagazineStorePatch));
             Core.Patches.ApplyClass(this, typeof(AmmoCapacityPatch));
             Core.Patches.ApplyClass(this, typeof(ArmorCapacityPatch));
             Core.Patches.ApplyClass(this, typeof(BackpackSlotPatch));

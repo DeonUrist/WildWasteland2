@@ -1,10 +1,11 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.NPC
 {
     /// <summary>Crew orchestration of PassengerGuard: attach as passenger, turret gunner or burst-firing driver; Patrols part (Wave A split of Crews/Passenger.cs).</summary>
     internal partial class PassengerGuard
@@ -36,18 +37,18 @@ namespace WildWasteland.Modules.Patrols
             _anchor = sit;
             _driverMode = true; _nextCombatCheck = 0f;
             _shooting = false;
-            _ranged = _rangedPrefab && PatrolsModule.RangedCombat.Value;
+            _ranged = _rangedPrefab && Policy.Ranged;
             if (_ranged) foreach (var fsm in _combat) if (fsm != null) fsm.enabled = true;
             if (_attack != null) _attack.enabled = false;
             if (_pose != null) { _pose?.SetShooting(false); _pose.SetAim(Vector3.zero, false); }
             ScheduleBurst();
-            PatrolsModule.Verbose("Driver: " + _passenger.name + (_ranged ? " shoots in bursts every " + PatrolsModule.FireIntervalMin.Value + "-" + PatrolsModule.FireIntervalMax.Value + " s" : " does not shoot"));
+            NpcaiRuntime.Main("Driver: " + _passenger.name + (_ranged ? " shoots in bursts every " + Policy.IntervalMin + "-" + Policy.IntervalMax + " s" : " does not shoot"));
         }
 
         /// <summary>Schedules burst for the current passenger guard.</summary>
         private void ScheduleBurst()
         {
-            _nextBurst = Time.time + UnityEngine.Random.Range(PatrolsModule.FireIntervalMin.Value, Mathf.Max(PatrolsModule.FireIntervalMin.Value, PatrolsModule.FireIntervalMax.Value));
+            _nextBurst = Time.time + UnityEngine.Random.Range(Policy.IntervalMin, Mathf.Max(Policy.IntervalMin, Policy.IntervalMax));
         }
 
         /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
@@ -58,7 +59,7 @@ namespace WildWasteland.Modules.Patrols
             guard._car = car;
             guard._anchor = anchor; guard._nextCombatCheck = 0f;
             guard._rangedPrefab = IsRanged(passenger);
-            guard._ranged = guard._rangedPrefab && PatrolsModule.RangedCombat.Value;
+            guard._ranged = guard._rangedPrefab && Policy.Ranged;
             guard._combat = Array.FindAll(passenger.GetComponents<PlayMakerFSM>(), f => Array.IndexOf(CombatFsms, f.FsmName) >= 0);
             guard._attack = Array.Find(guard._combat, f => f.FsmName == "Attack");
             guard._fsms = passenger.GetComponents<PlayMakerFSM>();
@@ -70,9 +71,9 @@ namespace WildWasteland.Modules.Patrols
             guard.HideMeleeWeapons();
             guard._pose = Core.ModApi.Get<Core.ICrewSeats>()?.Find(passenger);
             if (guard._pose != null) guard._pose.ConfigurePassengerAim();
-            MuteNonCombatAi(passenger, PatrolsModule.RangedCombat.Value);
-            PatrolsModule.Verbose("Passenger: " + passenger.name + " fixed in driver pose; "
-                + (guard._ranged ? "vanilla ranged fire and Sound2 enabled in +/-" + PatrolsModule.FireArc.Value + " degree arc" : "passive"));
+            MuteNonCombatAi(passenger, Policy.Ranged);
+            NpcaiRuntime.Main("Passenger: " + passenger.name + " fixed in driver pose; "
+                + (guard._ranged ? "vanilla ranged fire and Sound2 enabled in +/-" + Policy.FireArc + " degree arc" : "passive"));
         }
     }
 }

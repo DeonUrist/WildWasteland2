@@ -5,7 +5,7 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 
 ## Current local execution (2026-10-22, resumed)
 
-Denis requested completion of the remaining owned packages, then a stop **before Shared integrations**. All work remains local in `refactor/main`. In-game acceptance is deferred until all refactor work is merged; no game, harness, deployment, push or release is part of this iteration.
+Denis authorized proceeding through Shared implementation and source cleanup in one session **without subagents**. All work remains local in `refactor/main`. In-game acceptance is deferred until all refactor work is merged; no game, harness, deployment, push or release is part of this iteration.
 
 **D20 remains authoritative:** persistent world state, save descriptions and thumbnails live inside ES3. No module world-state sidecars or external fallback readers. Authored data/settings/derived geometry caches and recovery journals remain external. See `reports/save-file-only.md`.
 
@@ -29,7 +29,7 @@ Shared integrations remain explicit: distributed character/crew/Hire/Takeover/Ta
 1. Read this current section, the relevant `state/Bxx.md` and `reports/Bxx.md`. Historical sections below do not override it or D20.
 2. Reuse existing worktrees: B11 `../WW2-B11`, B13 `../WW2-B13`, B16 `../WW2-B16`. Preserve their local edits and completed commits. Root handles integration, B14/B18 and focused typed-provider extensions.
 3. Owned work through B18 is complete and merged. Resume from `state/shared-integrations.md` when authorized to proceed; do not restart completed packages. Final combined build and B16 source checks pass. No stubs or new blanket refs-ok exceptions.
-4. Stop before Shared integrations after this iteration is complete. Do not start a game, harness, deployment or release. All earlier historical requests for staged intermediate testing are superseded by Denis's deferred acceptance instruction.
+4. Continue Shared implementation from its current checkpoint without restarting completed packages. Do not start a game, harness, deployment or release. All earlier historical requests for staged intermediate testing are superseded by Denis's deferred acceptance instruction.
 
 ## Local pre-B checkpoint (2026-10-22)
 - Cleanup complete; see `reports/pre-B-cleanup.md` and `state/pre-B-cleanup.md`. Windows Release/Deploy=false: **0 warnings, 0 errors** with the existing warning settings.

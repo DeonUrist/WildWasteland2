@@ -44,7 +44,6 @@ namespace WildWasteland.Modules.NPC
         private static void Register(Agent a)
         {
             _agents[a.Owner.GetInstanceID()] = a;
-            Gungirl.Registered(a.Owner);   // refs-ok: REFACTOR-REQUEST B07-8 (Presentation re-dresses saved females from NpcSpawned)
             PublishSpawned(a);
             Handover(a);
             Recall(a);

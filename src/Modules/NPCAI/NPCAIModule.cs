@@ -259,6 +259,7 @@ namespace WildWasteland.Modules.NPCAI
             ModApi.Provide<INpcApi>(this, api);
             ModApi.Provide<INpcControl>(this, api);
             ModApi.Provide<ISeatedCombat>(this, new SeatedCombatApi());
+            ModApi.Provide<IOccupantCombat>(this, new OccupantCombatApi());
             ModApi.Provide<IFollowers>(this, new Hire.FollowersApi());
             ModApi.Provide<IQuestFollowerBody>(this, new QuestFollower.BodyApi());
             ModApi.Provide<IPopulation>(this, new PopulationApi());

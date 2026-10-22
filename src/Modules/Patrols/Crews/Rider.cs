@@ -24,7 +24,7 @@ namespace WildWasteland.Modules.Patrols
         // what the editors offer: a Warboy (blast lances, "Witness me!") or a ranged crew human (a gunner); "None" first, the rest A-Z
         internal static readonly string[] TurretChoices = { "None", "Boltjaw", "Flexa", "Gungirl", "Lugnut", "Scrud", "Shoota", "Sprokka", Warboy, "Bodyguard", "Bolter", "Gunnar", "Lugger", "Mechanic", "Merchant", "Organic_Mechanic", "Pistoleer", "Pup" };
         /// <summary>Checks whether the current value represents gunner for the current rider.</summary>
-        internal static bool IsGunner(string who) { return !string.IsNullOrEmpty(who) && Array.Exists(PassengerGuard.RangedHumans, n => string.Equals(n, CrewLooks.BasePrefab(who.Trim()), StringComparison.OrdinalIgnoreCase)); }
+        internal static bool IsGunner(string who) { return !string.IsNullOrEmpty(who) && Core.ModApi.Get<Core.IOccupantCombat>()?.IsRangedName(CrewLooks.BasePrefab(who.Trim()))==true; }
         // a stored value as the editors show it: "" = None, a ranged human as is, anything else (Warboy, the 2.1.x "Scraffa") = Warboy
         /// <summary>a stored value as the editors show it: "" = None, a ranged human as is, anything else (Warboy, the 2.1.x "Scraffa") = Warboy</summary>
         internal static bool IsWarboy(string who)=>string.Equals(who,Warboy,StringComparison.OrdinalIgnoreCase)||string.Equals(who,"Scraffa",StringComparison.OrdinalIgnoreCase);
@@ -62,9 +62,9 @@ namespace WildWasteland.Modules.Patrols
             SimpleBanditBridge.Mark(go);
             TrafficFactions.Actor(go,marker!=null?marker.Faction:"Scrapyard");
             go.SetActive(true);
-            if (gunner) PassengerGuard.Prepare(go, !marker.SetupOnly&&PatrolsModule.RangedCombat.Value);   // setup actors never run combat
+            if (gunner) Core.ModApi.Get<Core.IOccupantCombat>()?.Prepare(go, !marker.SetupOnly&&PatrolsModule.RangedCombat.Value);   // setup actors never run combat
             else Crew.MuteAi(go);                  // no mover / detection / attack FSMs: the guard does the throwing
-            PassengerGuard.NeutralizeContact(go);  // melee / fire-contact damage FSMs and hitbox off (a passive body that can be shot)
+            Core.ModApi.Get<Core.IOccupantCombat>()?.NeutralizeContact(go);  // melee / fire-contact damage FSMs and hitbox off (a passive body that can be shot)
             go.name = prefab.name + "(Rider)";
             CrewLooks.Dress(go, prefabName, randomize);
             // no per-pair IgnoreCollision with the car (thousands of PhysX pair rebuilds per seat): the body is all triggers (NoContacts)
@@ -77,7 +77,7 @@ namespace WildWasteland.Modules.Patrols
             var riderGuard = go.AddComponent<RiderGuard>();
             riderGuard.Init(car, marker, anchor, prefab.name, slot, gunner, bike,standing);
             var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Apply(go, anchor, prefab.name);
-            if(gunner)PassengerGuard.AttachTurret(go, car, anchor, bike ? BikeArc : 0f);
+            if(gunner)Core.ModApi.Get<Core.IOccupantCombat>()?.Attach(go, car, anchor,turret:true,arc:bike ? BikeArc : 0f);
             pose?.ConfigureTurret(standing,bike,IsWarboy(who));
             Core.ModApi.Get<Core.ICrewSeats>()?.Anchor(go,anchor,true,()=>riderGuard!=null&&riderGuard.Mounted);
             MerchantGuards.Attach(car,go,slot);

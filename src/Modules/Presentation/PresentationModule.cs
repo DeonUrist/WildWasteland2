@@ -95,8 +95,13 @@ namespace WildWasteland.Modules.Presentation
             InitCharacterJobs();
             InitNpcVisuals();
             WomenFeature.Initialize(this);
+            ModEvents.Subscribe<Core.Events.NpcSpawned>(this, OnNpcSpawned);
             Log.Always(this, "Player body & animation (Apocaplayer " + SourceVersion + ") ready; assets in " + AssetDir);
         }
+
+        /// <summary>Restores female presentation for registered native actors through the typed spawn event.</summary>
+        private static void OnNpcSpawned(ref Core.Events.NpcSpawned spawned)
+        { Gungirl.Registered(Entities.Find(spawned.Npc)); }
 
         /// <summary>Init step: clean body state, default pose profiles, weapon poses, aim lift, pain sounds and the ADS / pain-sound patches.</summary>
         void InitCharacterData()
@@ -211,6 +216,7 @@ namespace WildWasteland.Modules.Presentation
             ModApi.Provide<IBusPassengerAuthoring>(this,new BusPassengerAuthoring());
             ModApi.Provide<IVehicleVisuals>(this,new VehicleVisuals());
             ModApi.Provide<ICrewSeats>(this,new CrewSeats());
+            ModApi.Provide<IFollowerSeatPresentation>(this,new FollowerSeatPresentation());
             ModApi.Provide<ICrewAppearance>(this,new CrewAppearance());
             ModApi.Provide<IAnimationApi>(this, _animation);
             ModApi.Provide<ICharacterPresentation>(this, _characters);

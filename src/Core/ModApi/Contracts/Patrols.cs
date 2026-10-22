@@ -35,7 +35,7 @@ namespace WildWasteland.Core
         /// <summary>True when the seated NPC may fire now.</summary>
         bool CanFire(GameObject npc);
         /// <summary>Legacy Quests binds these types by reflection; the provider owns the mapping.</summary>
-        Type ResolveType(string name);
+        
         /// <summary>Includes dismounted crew while their existing runtime tags are present.</summary>
         bool IsCrew(GameObject npc);
         /// <summary>Enables/disables seated animation.</summary>

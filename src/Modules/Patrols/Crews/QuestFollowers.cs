@@ -9,17 +9,6 @@ namespace WildWasteland.Modules.Patrols
     {
         /// <summary>Checks whether the current value represents seated for the current quest followers.</summary>
         public bool IsSeated(GameObject npc) { return npc != null && npc.transform.parent != null && Core.ModApi.Get<Core.ICrewSeats>()?.Find(npc) != null; }
-        /// <summary>Resolves type for the current quest followers.</summary>
-        public Type ResolveType(string name)
-        {
-            switch (name)
-            {
-                case "Apocapatrol.Plugin": return typeof(PatrolsModule);
-                case "Apocapatrol.PassengerGuard": return typeof(PassengerGuard);
-                case "Apocapatrol.Pose": return Core.ModApi.Get<Core.ICrewSeats>()?.LegacyPoseType;
-                default: return null;
-            }
-        }
         /// <summary>Checks whether the current value represents crew for the current quest followers.</summary>
         public bool IsCrew(GameObject npc)
         { return npc != null && (npc.GetComponent<SimpleBanditTag>() != null || Core.ModApi.Get<Core.ICrewSeats>()?.Find(npc) != null || (Settled.Count > 0 && Settled.Contains(npc.GetInstanceID()))); }

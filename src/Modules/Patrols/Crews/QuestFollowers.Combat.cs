@@ -9,25 +9,23 @@ namespace WildWasteland.Modules.Patrols
     internal sealed partial class QuestFollowers
     {
         /// <summary>Seated shooting distance ([Patrols / Combat] ShootDistance).</summary>
-        public float ShootDistance { get { return PatrolsModule.ShootDistance.Value; } }
+        public float ShootDistance { get { return Core.ModApi.Get<Core.ISeatedCombat>()?.ShootDistance ?? 60f; } }
 
         /// <summary>Seats a quest follower for combat (PassengerGuard, ranged, caller-targeted).</summary>
         public Component SeatCombat(GameObject npc, GameObject car, Transform seat)
         {
-            Hired.Add(npc.GetInstanceID()); PassengerGuard.Attach(npc, car, seat);
-            var guard = npc.GetComponent<PassengerGuard>(); guard.QuestRanged(); return guard;
+            Hired.Add(npc.GetInstanceID());return ModApi.Get<IOccupantCombat>()?.Follow(npc,car,seat);
         }
 
         /// <summary>True when the seated follower has a clear shot now.</summary>
         public bool CanFire(GameObject npc)
-        { var guard = npc != null ? npc.GetComponent<PassengerGuard>() : null; return guard != null && guard.QuestCanFire; }
+        { return ModApi.Get<ISeatedCombat>()?.CanFire(npc)==true; }
 
         /// <summary>Gives the seated follower its target; fire blocked until a time.</summary>
         public void Combat(GameObject npc, GameObject target, float blockedUntil)
         {
             if (npc != null) Hired.Add(npc.GetInstanceID());
-            var guard = npc != null ? npc.GetComponent<PassengerGuard>() : null;
-            if (guard != null) guard.QuestTarget(target, blockedUntil);
+            ModApi.Get<ISeatedCombat>()?.SetTarget(npc,target,blockedUntil);
         }
     }
 }

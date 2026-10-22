@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -5,13 +6,17 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.NPC
 {
     // Ranged passengers retain vanilla detection and firing, but never receive movement or animation FSMs. Their
     // visible body always uses the exact same fixed Pose component as the driver. Sound2 preserves weapon audio.
     /// <summary>Seated ranged combat of vehicle occupants and quest followers (vanilla Attack FSM gating, target search, ranged-only, AI muting); NPCAI part of PassengerGuard (Wave A split of Patrols Crews/Passenger.cs).</summary>
     internal partial class PassengerGuard : MonoBehaviour
     {
+        /// <summary>Current traffic policy is looked up live so withdrawal never leaves a stale authority.</summary>
+        internal static IOccupantCombatPolicy Policy => ModApi.Get<IOccupantCombatPolicy>();
+        /// <summary>Finds the actual ranged-attack anchor in the actor hierarchy.</summary>
+        private static Transform FindChild(Transform root,string name){if(root.name==name)return root;for(int i=0;i<root.childCount;i++){var found=FindChild(root.GetChild(i),name);if(found!=null)return found;}return null;}
         internal static readonly string[] CombatFsms = { "Detection", "Attack", "RangedAttackWait", "Damage Ranged", "WeaponType", "Sound2" };
         private static readonly string[] TargetFsms = { "Detection", "Attack", "RangedAttackWait", "Damage Ranged", "WeaponType" };
         internal static readonly string[] RangedHumans = { "Boltjaw", "Flexa", "Lugnut", "Scrud", "Sprokka", "Bolter", "Gunnar", "Lugger", "Pistoleer" };
@@ -23,7 +28,7 @@ namespace WildWasteland.Modules.Patrols
         private GameObject[] _meleeWeapons;
         private Renderer[] _meleeRenderers = new Renderer[0];
         private Collider[] _meleeColliders = new Collider[0];
-        private WildWasteland.Core.ICrewSeatPose _pose;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+        private WildWasteland.Core.ICrewSeatPose _pose;
         private bool _rangedPrefab, _ranged, _targetDiagnosticLogged, _targetAcquired;
         // target sources, resolved once by reflection (was: every frame): FsmGameObject variables and action fields whose
         // name suggests a target, with their score
@@ -45,7 +50,7 @@ namespace WildWasteland.Modules.Patrols
         { _questFollower = true; _questTarget = target; _questBlockedUntil = blockedUntil; }
         /// <summary>Makes the guard a ranged, caller-targeted seated fighter.</summary>
         internal void QuestRanged() { _rangedPrefab = _ranged = true; _questFollower = true; _nextFireCheck = 0; }
-        internal bool QuestCanFire { get { return _canFire && Time.time >= _questBlockedUntil; } }
+        internal bool QuestCanFire { get { return NpcaiRuntime.Running && Policy!=null && Policy.Running && _canFire && Time.time >= _questBlockedUntil; } }
         private static readonly RaycastHit[] AnswerHits=new RaycastHit[16];
         /// <summary>True when this guard may answer an attacker right now (ranged, allowed, in the fire arc, clear line).</summary>
         internal bool CanAnswer(GameObject enemy)
@@ -70,7 +75,7 @@ namespace WildWasteland.Modules.Patrols
                 ForceRangedOnly(passenger);
                 NeutralizeMeleeDamage(passenger);
             }
-            Crew.MuteAi(passenger, ranged && combatAllowed ? CombatFsms : null);
+            NpcSeatState.MuteAi(passenger, ranged && combatAllowed ? CombatFsms : null);
         }
 
         /// <summary>Mutes the non-combat AI of a passenger (its FSMs fetched now).</summary>
@@ -85,20 +90,20 @@ namespace WildWasteland.Modules.Patrols
             if (ranged)
                 foreach (var fsm in fsms)
                     if (fsm != null && fsm.FsmName == "Damage" && fsm.enabled) fsm.enabled = false;
-            Crew.MuteAi(fsms, ranged && combatAllowed ? CombatFsms : null);
+            NpcSeatState.MuteAi(fsms, ranged && combatAllowed ? CombatFsms : null);
         }
 
         // a human turret gunner (2.2.0) also needs [Combat] HumanTurrets
         private bool _turret; private float _turretArc;   // arc 0 = all around (roof); a motorcycle seat: BikeArc
         // Perf: verdict + car marker cached for 0.25 s (random first phase per guard), was ~8 GetComponent + journey scan per frame
-        private float _nextCombatCheck; private bool _combatAllowed, _combatPhased; private PatrolMarker _marker;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+        private float _nextCombatCheck; private bool _combatAllowed, _combatPhased; private bool _traffic;
         private bool CombatAllowed
         {
             get
             {
                 if (Time.time < _nextCombatCheck) return _combatAllowed;
                 _nextCombatCheck = Time.time + (_combatPhased ? 0.25f : 0.25f * UnityEngine.Random.value); _combatPhased = true;
-                _marker = _car != null ? _car.GetComponent<PatrolMarker>() : null;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+                _traffic = Policy != null && Policy.HasTraffic(_car);
                 _combatAllowed = CombatAllowedNow; return _combatAllowed;
             }
         }
@@ -106,9 +111,7 @@ namespace WildWasteland.Modules.Patrols
         {
             get
             {
-                var traffic = WorldTraffic.AgentOf(_car);
-                if (traffic != null && _driverMode && traffic.Truck && WorldTraffic.Find(traffic.Journey)?.convoy == true) return false;
-                return PatrolsModule.RangedCombat.Value && (!_turret || PatrolsModule.RiderLances.Value) && WorldTraffic.CombatAllowed(_car);
+                return Policy != null && Policy.Allowed(_car,_driverMode,_turret);
             }
         }
 
@@ -167,7 +170,7 @@ namespace WildWasteland.Modules.Patrols
                 fsm.enabled = false;
             }
 
-            var hitbox = Patrol.FindChild(passenger.transform, "FireDamageCollider");
+            var hitbox = FindChild(passenger.transform, "FireDamageCollider");
             if (hitbox != null)
                 foreach (var collider in hitbox.GetComponents<Collider>()) collider.enabled = false;
 
@@ -181,15 +184,16 @@ namespace WildWasteland.Modules.Patrols
             if (passenger == null) return false;
             string name = passenger.name;
             int suffix = name.IndexOf('('); if (suffix >= 0) name = name.Substring(0, suffix);
-            name = CrewLooks.BasePrefab(name);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
+            name = ModApi.Get<ICrewAppearance>()?.BasePrefab(name) ?? name;
             if (Array.FindIndex(RangedHumans, n => string.Equals(n, name, StringComparison.OrdinalIgnoreCase)) < 0) return false;
             bool wait = Array.Exists(passenger.GetComponents<PlayMakerFSM>(), f => f.FsmName == "RangedAttackWait");
-            return wait && Patrol.FindChild(passenger.transform, "AttackRaycast_Ranged") != null;
+            return wait && FindChild(passenger.transform, "AttackRaycast_Ranged") != null;
         }
 
         /// <summary>Per frame: combat allowed check, AI guard, target (caller, patrol faction or vanilla FSM), fire arc and range decision, driver bursts and the seat pose aim.</summary>
         private void Update()
-        { if (!PatrolsModule.Running) return;
+        {
+            if(!NpcaiRuntime.Running || Policy==null || !Policy.Running){SuspendCombat();return;}
             if (_passenger == null || _car == null || _anchor == null) { Destroy(this); return; }
             if (Time.timeScale <= 0f) return;
 
@@ -209,7 +213,7 @@ namespace WildWasteland.Modules.Patrols
                 return;
             }
 
-            GameObject target = _questFollower ? _questTarget : _marker!=null?TrafficFactions.ForCar(_car,_marker):FindVanillaTarget();
+            GameObject target = _questFollower ? _questTarget : _traffic?Policy.Target(_car):FindVanillaTarget();
             if(_targetVars!=null)for(int i=0;i<_targetVars.Length;i++)_targetVars[i].Value=target;
             if (_turret && target != null && Core.PlayerState.Transform != null && target == Core.PlayerState.Transform.gameObject && Core.PlayerState.GodMode) target = null;   // a human turret leaves a god-mode player alone
             Vector3 aimPoint = Vector3.zero;
@@ -224,15 +228,15 @@ namespace WildWasteland.Modules.Patrols
                     var flat = Vector3.ProjectOnPlane(aimPoint - _passenger.transform.position, _car.transform.up);
                     var facing = _anchor != null ? _anchor.forward : _car.transform.forward;   // the seat's facing (the bus chair looks sideways)
                     if (flat.sqrMagnitude > 0.001f)
-                        ok = ((_turret && _turretArc <= 0f) || Mathf.Abs(Vector3.SignedAngle(facing, flat, _car.transform.up)) <= (_turret ? _turretArc : PatrolsModule.FireArc.Value))
-                          && (aimPoint - _passenger.transform.position).magnitude <= PatrolsModule.ShootDistance.Value;
+                        ok = ((_turret && _turretArc <= 0f) || Mathf.Abs(Vector3.SignedAngle(facing, flat, _car.transform.up)) <= (_turret ? _turretArc : Policy.FireArc))
+                          && (aimPoint - _passenger.transform.position).magnitude <= Policy.ShootDistance;
                 }
                 _canFire = ok;
             }
             if (_questFollower && Time.time < _questBlockedUntil) _canFire = false;
             bool inArc = _canFire;   // held for the interval (the aim itself still follows the target every frame)
             // awareness handover at dismount (CrewReturn): this crew is engaging the player
-            if (inArc && _marker != null && !_questFollower && target != null) { var pl = Core.PlayerState.Transform; if (pl != null && ReferenceEquals(target, pl.gameObject)) _marker.PlayerContactAt = Time.time; }
+            if (inArc && _traffic && !_questFollower && target != null) { var pl = Core.PlayerState.Transform; if (pl != null && ReferenceEquals(target, pl.gameObject)) Policy.PlayerContact(_car); }
 
             if (_driverMode)
             {
@@ -240,9 +244,9 @@ namespace WildWasteland.Modules.Patrols
                 if (!_shooting && Time.time >= _nextBurst && target != null && inArc)
                 {
                     _shooting = true;
-                    _burstUntil = Time.time + PatrolsModule.FireBurstSeconds.Value;
+                    _burstUntil = Time.time + Policy.BurstSeconds;
                     if (_pose != null) _pose.SetShooting(true);
-                    if (Core.Log.L1) NpcaiRuntime.Main("Driver: " + _passenger.name + " opens fire for " + PatrolsModule.FireBurstSeconds.Value + " s");
+                    if (Core.Log.L1) NpcaiRuntime.Main("Driver: " + _passenger.name + " opens fire for " + Policy.BurstSeconds + " s");
                 }
                 else if (_shooting && (Time.time >= _burstUntil || target == null))
                 {
@@ -264,6 +268,11 @@ namespace WildWasteland.Modules.Patrols
             if (_attack != null && (_targetAcquired || target != null)) _attack.enabled = target != null && inArc;
             if (_pose != null) _pose.SetAim(aimPoint, target != null && inArc);
         }
+
+        /// <summary>Removes active fire and pose intent whenever either actual owner withdraws.</summary>
+        private void SuspendCombat(){_canFire=false;_shooting=false;_nextCombatCheck=0f;if(_attack!=null)_attack.enabled=false;if(_pose!=null){_pose.SetShooting(false);_pose.SetAim(Vector3.zero,false);}}
+        /// <summary>Stops native fire immediately when the runtime component is released.</summary>
+        private void OnDisable(){SuspendCombat();}
 
         /// <summary>Score of an FSM variable / field name as a target source (target &gt; player &gt; enemy &gt; closest).</summary>
         private static int ScoreOf(string name)

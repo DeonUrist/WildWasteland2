@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.Patrols
                 var person=i==-2?_driver:i==-1?Marker.Passenger:Marker.Riders[i];if(person==null)continue;
                 var health=CrewReturn.HealthVar(person);if(health!=null&&health.Value<=0f)continue;
                 alive=true;if((person.transform.position-enemy.transform.position).sqrMagnitude<12.25f)close=true;
-                var gun=person.GetComponent<PassengerGuard>();if(gun!=null&&gun.CanAnswer(enemy))answer=true;
+                if(Core.ModApi.Get<Core.IOccupantCombat>()?.CanAnswer(person,enemy)==true)answer=true;
             }
             if(!alive||(!close&&answer&&!MerchantWaiting&&!TownParking))return false;
             BusDefence=Marker.Faction=="Coyotes"&&(MerchantWaiting||TownParking);

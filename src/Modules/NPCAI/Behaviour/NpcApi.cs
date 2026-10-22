@@ -50,7 +50,7 @@ namespace WildWasteland.Modules.NPC
         // ------------------------------------------------------------------ INpcControl
 
         /// <summary>Seated crew AI: mutes the AI / mover FSMs of a seated NPC (Patrols Crew.MuteAi rule) or switches them back on.</summary>
-        public void SetSeated(GameObject npc, bool seated) { Crew.SetSeated(npc, seated); }
+        public void SetSeated(GameObject npc, bool seated) { NpcSeatState.SetSeated(npc, seated); }
         /// <summary>Retreat from a threat for seconds (infinity = until told otherwise, 0 = ends the fright).</summary>
         public void Frighten(GameObject npc, Vector3 threatScene, float seconds, string cause) { Brain.FrightenFor(npc, threatScene, seconds, cause); }
         /// <summary>Player perception from an arbitrary eye (sight by light/storm/FOV/line, hearing of a moving player or his engine).</summary>

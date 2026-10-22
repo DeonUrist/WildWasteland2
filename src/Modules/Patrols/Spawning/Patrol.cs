@@ -414,7 +414,7 @@ namespace WildWasteland.Modules.Patrols
             var drv = SeatOccupant(car, prefabName, sit, "Driver", false, health, randomize);
             if (drv == null) return null;
             SimpleBanditBridge.Mark(drv);
-            if (PatrolsModule.RangedCombat.Value && PassengerGuard.IsRangedHuman(drv)) PassengerGuard.AttachDriver(drv, car, sit);
+            if (PatrolsModule.RangedCombat.Value && Core.ModApi.Get<Core.IOccupantCombat>()?.IsRanged(drv)==true) Core.ModApi.Get<Core.IOccupantCombat>()?.Attach(drv, car, sit,driver:true);
             var crew = phase == CrewPhase.Waiting && seated <= 0f ? Crew.Attach(car, drv) : Crew.Restore(car, drv, phase, seated);
             crew.Hold = hold;
             crew.MuteAi();
@@ -449,7 +449,7 @@ namespace WildWasteland.Modules.Patrols
             if (pax == null) { UnityEngine.Object.Destroy(anchor.gameObject); return null; }
             if(chair!=null||string.Equals(TemplateExporter.PrefabName(car.name),"Rustliner",System.StringComparison.OrdinalIgnoreCase))
                 Core.ModApi.Get<Core.ICrewSeats>()?.Find(pax)?.ConfigureBusPassenger();
-            PassengerGuard.Attach(pax, car, anchor);
+            Core.ModApi.Get<Core.IOccupantCombat>()?.Attach(pax, car, anchor);
             return pax;
         }
 
@@ -469,8 +469,8 @@ namespace WildWasteland.Modules.Patrols
             var go = UnityEngine.Object.Instantiate(prefab, pos, rot);
             SimpleBanditBridge.Mark(go);
             go.SetActive(true);
-            if (passenger) PassengerGuard.Prepare(go, PatrolsModule.RangedCombat.Value);
-            else if (PatrolsModule.RangedCombat.Value) PassengerGuard.Prepare(go, true);   // ranged-only rewiring + mute, before the FSMs' Start
+            if (passenger) Core.ModApi.Get<Core.IOccupantCombat>()?.Prepare(go, PatrolsModule.RangedCombat.Value);
+            else if (PatrolsModule.RangedCombat.Value) Core.ModApi.Get<Core.IOccupantCombat>()?.Prepare(go, true);   // ranged-only rewiring + mute, before the FSMs' Start
             else Crew.MuteAi(go);
             go.name = prefab.name + "(" + role + ")";
             CrewLooks.Dress(go, prefabName, randomize);
@@ -604,10 +604,11 @@ namespace WildWasteland.Modules.Patrols
         {
             var sit = FindChild(car.transform, "sitPos") ?? FindChild(car.transform, "hinge_seat_driver");
             if (sit == null || pax == null) return null;
-            var guard = pax.GetComponent<PassengerGuard>();
+            var combat = Core.ModApi.Get<Core.IOccupantCombat>();
+            bool guard = combat?.Engaged(pax)==true;
             var oldAnchor = pax.transform.parent;
-            if (guard != null && PatrolsModule.RangedCombat.Value) Crew.MuteAi(pax, PassengerGuard.CombatFsms);
-            else { if (guard != null) UnityEngine.Object.Destroy(guard); guard = null; Crew.MuteAi(pax); }
+            if (guard && PatrolsModule.RangedCombat.Value) combat.Mute(pax,true);
+            else { if (guard) combat.Release(pax); guard = false; Crew.MuteAi(pax); }
             var off = new Vector3(PatrolsModule.DriverOffsetX.Value, PatrolsModule.DriverOffsetY.Value, PatrolsModule.DriverOffsetZ.Value);
             pax.transform.SetParent(sit, true);
             pax.transform.position = sit.position + car.transform.right * off.x + car.transform.up * off.y + car.transform.forward * off.z;
@@ -615,7 +616,7 @@ namespace WildWasteland.Modules.Patrols
             var pose = Core.ModApi.Get<Core.ICrewSeats>()?.Find(pax);
             if (pose != null) pose.Reseat(sit);
             pax.name = pax.name.Replace("(Passenger)", "(Driver)");
-            if (guard != null) guard.SetDriverMode(sit);
+            if (guard) combat.Promote(pax,sit);
             Rider.KeepNoContacts(pax);   // already contact-free from its seat; covers props it picked up since
             if (Core.Log.Verbose) PatrolsModule.Verbose("Takeover: " + pax.name + " on " + sit.name);
             if (oldAnchor != null && oldAnchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(oldAnchor.gameObject);
