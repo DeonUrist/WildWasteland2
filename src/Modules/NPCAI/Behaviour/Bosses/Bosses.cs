@@ -32,6 +32,8 @@ namespace WildWasteland.Modules.Guns
         /// (WW) the boss key for a prefab name, or null (GunsModule caches it per prefab: the CreateObject postfix runs for every spawn)
         internal static string BossName(string prefabName) { return prefabName != null && Base.ContainsKey(prefabName) ? prefabName : null; }
         internal static int Count { get { return _bosses.Count; } }
+        /// <summary>True when the object is a tracked human boss (INpcControl.IsBoss).</summary>
+        internal static bool IsTracked(GameObject go) { return go != null && _bosses.ContainsKey(go.GetInstanceID()); }
         /// F7: "name: health / cap" per tracked boss
         internal static void Describe(List<string> into)
         {

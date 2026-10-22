@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.Towns
             internal bool Excluded, Rolled, Empty; internal System.Random Random;
         }
         private sealed class Creature
-        { internal GameObject Prefab; internal TownFaction Faction; internal float Radius, Height, Bottom; }
+        { internal GameObject Prefab; internal string Faction; internal float Radius, Height, Bottom; }
         private sealed class Spawn
         {
             internal Site Site; internal FsmVector3 Original, Offset = new FsmVector3();
@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Towns
         private static readonly Dictionary<PlayMakerFSM, Site> Groups = new Dictionary<PlayMakerFSM, Site>();
         private static readonly Dictionary<CreateObject, Spawn> Actions = new Dictionary<CreateObject, Spawn>();
         private static readonly Dictionary<GameObject, Creature> Creatures = new Dictionary<GameObject, Creature>();
-        private static readonly Dictionary<TownFaction, List<Creature>> Pools = new Dictionary<TownFaction, List<Creature>>();
+        private static readonly Dictionary<string, List<Creature>> Pools = new Dictionary<string, List<Creature>>(StringComparer.Ordinal);   // faction group ("Mutants", "Animals", "Scrapyard", "Coyotes") -> creatures
         private static readonly List<Transform> Dead = new List<Transform>();
         private const int Solid = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 14) | (1 << 16);
         private const int Floor = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14) | (1 << 16);
@@ -37,7 +37,17 @@ namespace WildWasteland.Modules.Towns
             Hooks.CreateObjectEnter.Prefix(module, Creating); Hooks.CreateObjectEnter.Postfix(module, Created);
             Scheduler.Interval(module, "NPCAI.Native POI spawn cache", 30f, Sweep);
         }
-        internal static void Catalog(GameObject prefab, TownFaction faction)
+        /// <summary>Catalogs a native creature prefab by its own tag group (IPopulation.RegisterCatalog); untagged prefabs are ignored.</summary>
+        internal static void CatalogTagged(GameObject prefab)
+        {
+            if (prefab == null) return;
+            string group = prefab.CompareTag("Mutant") ? "Mutants" : prefab.CompareTag("Carnivore") || prefab.CompareTag("Herbivore") ? "Animals"
+                : prefab.CompareTag("Scrapyard") ? "Scrapyard" : prefab.CompareTag("Coyotes") ? "Coyotes" : null;
+            if (group != null) Catalog(prefab, group);
+        }
+
+        /// <summary>Catalogs a creature prefab of a faction group: its upright collider volume, once per prefab (POI catalog pass).</summary>
+        internal static void Catalog(GameObject prefab, string faction)
         {
             if (Creatures.ContainsKey(prefab) || prefab.name.IndexOf("Merchant", StringComparison.OrdinalIgnoreCase) >= 0
                 || prefab.name.IndexOf("Mechanic", StringComparison.OrdinalIgnoreCase) >= 0
@@ -64,7 +74,7 @@ namespace WildWasteland.Modules.Towns
             Transform root = null;
             for (var t = f.transform.parent; t != null; t = t.parent)
             {
-                if (TownMarkers.Owns(t) || t.name.IndexOf(" (Towns ", StringComparison.Ordinal) >= 0) return null;
+                if (TownBuilding(t) || t.name.IndexOf(" (Towns ", StringComparison.Ordinal) >= 0) return null;
                 if (t.name.StartsWith("Building_", StringComparison.Ordinal) || t.name.StartsWith("Camp_", StringComparison.Ordinal)
                     || t.name.StartsWith("Cave_", StringComparison.Ordinal) || t.name.StartsWith("Wreck_", StringComparison.Ordinal)) root = t;
             }
@@ -90,6 +100,17 @@ namespace WildWasteland.Modules.Towns
             }
             site.Spawners = spawners.ToArray(); Sites.Add(root, site); return site;
         }
+        /// <summary>FNV-1a string hash (identical to the POI town planner's, so native population rolls stay the same per site and seed).</summary>
+        private static int Hash(string s)
+        { uint h = 2166136261; foreach (char c in s) h = unchecked((h ^ c) * 16777619); return (int)(h & 0x7fffffff); }
+
+        /// <summary>True when the transform is a Towns building root (ITownsApi; the POI marker registry until POI provides the contract).</summary>
+        internal static bool TownBuilding(Transform t)
+        {
+            var towns = ModApi.Get<ITownsApi>();
+            return towns != null ? towns.IsTownBuilding(t) : TownMarkers.Owns(t);   // refs-ok: REFACTOR-REQUEST B07-9 (fallback until B13 provides ITownsApi)
+        }
+
         private static int Value(PlayMakerFSM f, string name)
         { var value = f.FsmVariables.FindFsmInt(name); return value == null ? 0 : value.Value; }
         private static void Roll(Site site)
@@ -98,7 +119,7 @@ namespace WildWasteland.Modules.Towns
             site.Rolled = true;
             var world = Origin.World(site.Root.position); var save = GameRefs.SaveLoadGame;
             var seed = save == null ? null : save.FsmVariables.FindFsmInt("seed");
-            int hash = TownPlanner.Hash(site.Root.name + "/native-population");
+            int hash = Hash(site.Root.name + "/native-population");
             unchecked { hash = hash * 397 ^ Mathf.RoundToInt(world.x * 4); hash = hash * 397 ^ Mathf.RoundToInt(world.z * 4); hash = hash * 397 ^ (seed == null ? 0 : seed.Value); }
             site.Random = new System.Random(hash); site.Empty = site.Random.Next(100) < 15;
             // Existing progress belongs to the save: never thin a partially populated location.

@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Towns
                     else if (prefab.CompareTag("Scrapyard")) faction = TownFaction.Scrapyard;
                     else if (prefab.CompareTag("Coyotes")) faction = TownFaction.Coyotes;
                     else continue;
-                    NativePoiPopulation.Catalog(prefab, faction);
+                    NativePoiPopulation.Catalog(prefab, faction.ToString());
                     if (faction == TownFaction.Scrapyard || faction == TownFaction.Coyotes)
                     {
                         // Keep accompanying Yard Hounds separate so a base cannot roll only dogs.

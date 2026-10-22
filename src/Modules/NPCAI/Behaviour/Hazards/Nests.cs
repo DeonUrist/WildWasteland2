@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.NPC
     // A spider that notices something itself drops from its web and fights as usual.
     // Built in slices of at most [Nests] FrameBudgetMs (1 ms) a frame while you are still far away; the same layout every visit (seeded by
     // the place). Webs are never saved (not registered with the game) and are rebuilt when you come back / after a load.
-    internal static class Nests
+    internal static partial class Nests
     {
         private sealed class Cand { public Vector3 Hub, N; public float Score; }
         private sealed class Sit { public Senses.Agent A; public Webs.Web W; public Rigidbody Rb; public bool WasKinematic; }
@@ -197,7 +197,7 @@ namespace WildWasteland.Modules.NPC
                 n.Spiders.RemoveAll(a => a == null || a.Owner == null);
                 if (n.Poi == null || !n.Poi.gameObject.activeInHierarchy || Flat(n.C - pp) > NpcaiSettings.NestFreeRange.Value)
                 {
-                    Free(n, true); _nests.RemoveAt(i);
+                    Free(n, true); _nests.RemoveAt(i); PublishFreed(n);
                     foreach (var a in n.Spiders) if (a != null && a.Owner != null && !_pending.Contains(a)) _pending.Add(a);     // (1.7.1) the nest comes back when you do
                     if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Nests: " + n.Name + " nest freed (place gone or far)");
                 }
@@ -333,6 +333,7 @@ namespace WildWasteland.Modules.NPC
                 foreach (var w in n.Ground) n.Radius = Mathf.Max(n.Radius, Flat(w.Center - n.C) + w.R + 2f);
                 NpcaiRuntime.Deep("Nests: " + n.Name + " is a spider nest: " + n.Hanging.Count + " hanging + " + n.Ground.Count + " ground webs, " + n.Spiders.Count + " spider(s), built in " + n.BuildMs.ToString("0.0") + " ms over " + n.Frames + " frames (at most " + n.MaxFrameMs.ToString("0.00") + " ms in one)");
                 SeatAll(n);
+                PublishBuilt(n);
                 NpcaiRuntime.Deep("Nests: " + n.Name + ": " + n.Sitters.Count + " big spider(s) sit in its webs" + (n.SpiderSpots ? " (webs placed around the spiders' own spots)" : ""));
             }
         }
@@ -617,6 +618,7 @@ namespace WildWasteland.Modules.NPC
                     if (Senses.Alert(a.Owner, player)) { Brain.Boost(a.Owner, NpcaiSettings.NestAlarmSpeed.Value, NpcaiSettings.NestAlarmSeconds.Value); c++; }
                 }
                 for (int i = n.Sitters.Count - 1; i >= 0; i--) { Drop(n.Sitters[i], player); n.Sitters.RemoveAt(i); }
+                PublishTouched(n, hit.Center, player);
                 NpcaiRuntime.Deep("Nests: you touched a " + (hit.Orb ? "hanging" : "ground") + " web at " + n.Name + " - " + c + " spider(s) come at you");
             }
         }

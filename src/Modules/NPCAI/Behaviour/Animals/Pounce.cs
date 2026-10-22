@@ -210,6 +210,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 f = Flat(aim - start); if (f.sqrMagnitude > 0.0001f) p.T.rotation = Quaternion.LookRotation(f.normalized, Vector3.up);
             p.Phase = Phase.Air; p.Since = now; p.FlightT = t; p.PitchGoal = Mathf.Clamp(NpcaiSettings.PouncePitch.Value, 0f, 110f);
             Play(p, _hashAttack, _hashAttack);
+            AnimalEvents.Leap(p.A != null ? p.A.Owner : null, player, start, aim);
             Log(p, "leaps (" + Flat(aim - start).magnitude.ToString("0.0") + " m, " + t.ToString("0.00") + " s)");
         }
 

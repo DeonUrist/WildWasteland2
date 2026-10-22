@@ -108,7 +108,7 @@ namespace WildWasteland.Modules.NPC
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Damage" || fsm.GameObject == null) return;
                 D d;
-                if (!DogAnimations.Owns(fsm.GameObject) && _byId.TryGetValue(fsm.GameObject.GetInstanceID(), out d) && NpcaiSettings.DogBiteEnabled.Value) d.BiteT = 0f;
+                if (!DogAnimations.Owns(fsm.GameObject) && _byId.TryGetValue(fsm.GameObject.GetInstanceID(), out d) && NpcaiSettings.DogBiteEnabled.Value) { d.BiteT = 0f; AnimalEvents.Bite(fsm.GameObject, d.A != null ? d.A.Target : null, fsm.GameObject.transform.position); }
             }
             catch (Exception) { }
         }

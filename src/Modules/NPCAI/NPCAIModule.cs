@@ -9,6 +9,7 @@ using WildWasteland.Core.UI;
 using WildWasteland.Modules.Guns;
 using WildWasteland.Modules.NPC;
 using WildWasteland.Modules.Patrols;
+using WildWasteland.Modules.Quests;
 using WildWasteland.Modules.Towns;
 
 namespace WildWasteland.Modules.NPCAI
@@ -93,6 +94,7 @@ namespace WildWasteland.Modules.NPCAI
             // [Keys] Shout: Core owns the input (modifier blocks the game's buttons), NPCAI reacts to the PlayerShout event
             new PlayerShoutInput(this, NpcaiSettings.ShoutKey, NpcaiSettings.ShoutModifier, NpcaiSettings.ShoutBlocksButtons, NpcaiSettings.ShoutCooldown, NpcaiSettings.PlayerShoutRange, IsRunning);
             ModEvents.Subscribe<Core.Events.PlayerShout>(this, Senses.OnPlayerShout);
+            ModEvents.Subscribe<Core.Events.NpcFrightened>(this, Brain.OnFrightened);   // Weapons Pack fire / chainsaw fear (B17-2)
 
             NpcaiRuntime.Running = true;
             NpcaiRuntime.Main("NPC Overhaul 1.9.15 port started");
@@ -243,7 +245,12 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Registers ModAPI providers: the NPC API, the private diagnostics source for Debug, then the Navigation part.</summary>
         public override void ProvideApis()
         {
-            ModApi.Provide<INpcApi>(this, new NpcApi());
+            var api = new NpcApi();
+            ModApi.Provide<INpcApi>(this, api);
+            ModApi.Provide<INpcControl>(this, api);
+            ModApi.Provide<ISeatedCombat>(this, new SeatedCombatApi());
+            ModApi.Provide<IFollowers>(this, new Hire.FollowersApi());
+            ModApi.Provide<IPopulation>(this, new PopulationApi());
             ModApi.Provide<INpcDiagnosticSource>(this, new NpcDiagnosticSource());
             ProvideApisNavigation();
         }

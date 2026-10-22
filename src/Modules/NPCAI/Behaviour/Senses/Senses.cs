@@ -84,6 +84,7 @@ namespace WildWasteland.Modules.NPC
             public readonly Dictionary<int, float> Done = new Dictionary<int, float>();   // ghosts it reached (id -> the ghost's Moved then): never given again unless the ghost has newer news
             public readonly HashSet<int> Heard = new HashSet<int>();   // ghosts it already got from a friend's shout, and enemy shouters (instance ids, negated) it already went to: a shout never re-sends them
             public GameObject Fought; public float FoughtUntil; public bool MemTrack, Crew;   // (crew AI) whom it fought (the player), until when it knows where he is, sight lost but kept by that memory
+            public Core.EntityId Id; public Core.NpcMode Published; public string PrefabName; public Vector3 LastPos;   // (WW) ModAPI events: entity id, last published mode, prefab and position for NpcDespawned
         }
 
         private static readonly Dictionary<int, Agent> _agents = new Dictionary<int, Agent>();
@@ -180,7 +181,7 @@ namespace WildWasteland.Modules.NPC
                 float pd = (a.T.position - ppos).sqrMagnitude;
                 if (pd > far4) interval *= 4f; else if (pd > far2) interval *= 2f;
                 a.NextLook += interval + a.Stagger; if (a.NextLook < now) a.NextLook = now + UnityEngine.Random.value * (interval + a.Stagger);     // long skipped (seated, underground): a fresh phase (the stagger stays in the period, as before: same look rate, same SeenFor build-up)
-                try { Look(a, interval, now); }
+                try { Look(a, interval, now); PublishState(a); }
                 catch (Exception e) { NpcaiRuntime.Error("Senses: " + e); }
             }
             if (now >= _nextEngine) { _nextEngine = now + 0.5f; try { Engine(now); } catch (Exception e) { NpcaiRuntime.Error("Senses engine: " + e); } }
@@ -200,7 +201,7 @@ namespace WildWasteland.Modules.NPC
                 int key = _maintKeys[_maintPos];
                 Agent a;
                 if (!_agents.TryGetValue(key, out a)) continue;
-                if (a.Owner == null) { if (a.Ghost != null) { a.Ghost.Holders.Remove(a); } if (a.FlankObj != null) UnityEngine.Object.Destroy(a.FlankObj); _dead.Add(key); }
+                if (a.Owner == null) { if (a.Ghost != null) { a.Ghost.Holders.Remove(a); } if (a.FlankObj != null) UnityEngine.Object.Destroy(a.FlankObj); _dead.Add(key); PublishDespawned(a); }
                 else
                 {
                     if(SimpleBandits.Has(a.Owner)){if(on&&!a.SensorsOff)Sensors(a,false);_presentNext.Add(a.Tag);continue;}
@@ -208,6 +209,7 @@ namespace WildWasteland.Modules.NPC
                     else if (on && !a.SensorsOff) Sensors(a, false);        // switched back on: the game's sensors go quiet again
                     if (a.PlayerIsEnemy != null||a.Owner.CompareTag("Coyotes")) Relation(a, true);
                     if (a.Done.Count > 16) PruneDone(a);
+                    a.LastPos = a.T.position; PublishState(a);
                     _presentNext.Add(a.Tag);
                     a.InStorm = Storm.Any && Storm.In(a.T.position);
                     bool blown = Storm.AnyFunnel && Storm.InBlast(a.T.position);
@@ -957,6 +959,7 @@ namespace WildWasteland.Modules.NPC
         private static void Noise(GameObject source, Vector3 pos, float radius, Src src, string about, Func<Agent, bool> filter, Func<Agent, Vector3> at, GameObject subject = null, Action<Agent> told1 = null)
         {
             if (radius <= 0f || !On) return;
+            PublishNoise(source, pos, radius, src);
             float now = Time.time;
             // a gunshot / blast does not pull a whole camp: the nearest GunshotResponders go (and everyone within GunshotNearRange); the rest
             // only hear it (nothing for them yet)
@@ -1473,7 +1476,8 @@ namespace WildWasteland.Modules.NPC
         private static void Register(Agent a)
         {
             _agents[a.Owner.GetInstanceID()] = a;
-            Gungirl.Registered(a.Owner);
+            Gungirl.Registered(a.Owner);   // refs-ok: REFACTOR-REQUEST B07-8 (Presentation re-dresses saved females from NpcSpawned)
+            PublishSpawned(a);
             Handover(a);
             Recall(a);
             RecallCrewOrder(a);
@@ -1498,7 +1502,7 @@ namespace WildWasteland.Modules.NPC
                 if (f.FsmName == "Detection") det = f; else if (f.FsmName == "Attack") att = f;
             }
             if (det == null || att == null || det.Fsm == null || !det.Fsm.Initialized) return null;
-            var a = new Agent { Owner = owner, T = owner.transform, Col = owner.GetComponent<Collider>(), Detection = det, Attack = att };
+            var a = new Agent { Owner = owner, T = owner.transform, Col = owner.GetComponent<Collider>(), Detection = det, Attack = att, PrefabName = PrefabOf(owner), LastPos = owner.transform.position };
             a.DetectedVar = det.FsmVariables.FindFsmGameObject("detectedObj");
             a.Tag = owner.tag;
             var behaviours = owner.GetComponentsInChildren<Behaviour>(true);

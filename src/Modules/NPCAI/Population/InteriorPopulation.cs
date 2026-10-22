@@ -48,7 +48,7 @@ namespace WildWasteland.Modules.Towns
         private static void Enabled(PlayMakerFSM f)
         {
             if (!f.gameObject.scene.IsValid() || !Interior(f)) return;
-            for (var t = f.transform; t != null; t = t.parent) if (TownMarkers.Owns(t)) return;
+            for (var t = f.transform; t != null; t = t.parent) if (NativePoiPopulation.TownBuilding(t)) return;
             Add(f, null);
         }
         private static void Add(PlayMakerFSM f, TownSite town, Transform markerRoot = null)
@@ -72,6 +72,32 @@ namespace WildWasteland.Modules.Towns
             }
             group = new Group { Fsm = f, Town = town, Location = location }; location.Groups.Add(group); Groups.Add(f, group); Pending.Add(group);
         }
+        /// <summary>IPopulation.RegisterInterior: every interior EnemySpawn ItemSpawner under <paramref name="root"/> joins one location keyed by the root.</summary>
+        internal static void RegisterRoot(Transform root)
+        {
+            if (root == null) return;
+            foreach (var f in root.GetComponentsInChildren<PlayMakerFSM>(true))
+                if (f != null && f.FsmName == "ItemSpawner" && f.name.StartsWith("EnemySpawn", StringComparison.Ordinal)) Add(f, null, root);
+        }
+
+        /// <summary>IPopulation.UnregisterInterior: drops the location of <paramref name="root"/> and its pending groups (native FSMs keep their state).</summary>
+        internal static void UnregisterRoot(Transform root)
+        {
+            Location location;
+            if (root == null || !Locations.TryGetValue(root, out location)) return;
+            foreach (var group in location.Groups) { Groups.Remove(group.Fsm); Pending.Remove(group); if (group.Suspended && group.Fsm != null) group.Fsm.enabled = true; }
+            Locations.Remove(root);
+        }
+
+        /// <summary>IPopulation.IsPopulated: the root's location exists and none of its groups is still waiting to spawn.</summary>
+        internal static bool IsPopulated(Transform root)
+        {
+            Location location;
+            if (root == null || !Locations.TryGetValue(root, out location)) return false;
+            foreach (var group in location.Groups) if (Pending.Contains(group)) return false;
+            return true;
+        }
+
         internal static void OwnMarker(PlayMakerFSM f, PoiDressing.Site site)
         { Add(f, site.Town, site.Town == null ? site.Root : null); Groups[f].Dressing = site; Groups[f].Suspended = true; f.enabled = false; }
         internal static void OwnTown(TownSite site, int lot)

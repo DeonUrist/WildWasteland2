@@ -1,3 +1,4 @@
+using WildWasteland.Core.Events;
 using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
@@ -161,7 +162,7 @@ namespace WildWasteland.Modules.NPC
                         if (hunting) { if (Within(b, HuntMax)) StartHunt(b, now); else Go(b, Phase.Rising, true); break; }
                         if (aware) { Go(b, Phase.Rising, true); break; }
                         b.Amount = Mathf.MoveTowards(b.Amount, 1f, dt / (Mathf.Max(0.1f, NpcaiSettings.BurrowSeconds.Value) * Slow(b)));
-                        if (b.Amount >= 1f) { b.Phase = Phase.Under; b.A.Burrowed = true; b.NextToggle = now + Calm(); }
+                        if (b.Amount >= 1f) { b.Phase = Phase.Under; b.A.Burrowed = true; b.NextToggle = now + Calm(); Publish(b, BurrowState.Underground); }
                         break;
                     case Phase.Under:
                         b.A.Burrowed = true;
@@ -171,7 +172,7 @@ namespace WildWasteland.Modules.NPC
                         break;
                     case Phase.Rising:
                         b.Amount = Mathf.MoveTowards(b.Amount, 0f, dt * (b.RiseRate > 0f ? b.RiseRate : 1f / (Mathf.Max(0.1f, b.Fast ? NpcaiSettings.RiseSeconds.Value * 0.5f : NpcaiSettings.RiseSeconds.Value) * Slow(b))));
-                        if (b.Amount <= 0f) { b.Phase = Phase.Out; b.NextToggle = now + Calm(); if (b.Hunted) EndHunt(b, now); }
+                        if (b.Amount <= 0f) { b.Phase = Phase.Out; b.NextToggle = now + Calm(); if (b.Hunted) EndHunt(b, now); Publish(b, BurrowState.Out); }
                         break;
                     case Phase.Diving:
                         if (!b.Held) b.Held = Brain.SetTravel(b.A.Owner, true);     // not known to the brain when the dive began: hold it now
@@ -187,6 +188,13 @@ namespace WildWasteland.Modules.NPC
                 if (b.A.Burrowed || b.A.Travel) hidden++;
             }
             Hidden = hidden;
+        }
+
+        /// <summary>BurrowChanged for this creature (target = its target, else the hunt destination).</summary>
+        private static void Publish(B b, BurrowState state)
+        {
+            if (b.A == null || b.A.Owner == null) return;
+            AnimalEvents.Burrow(b.A.Owner, state, b.T.position, b.A.Target != null ? b.A.Target.transform.position : b.Dest);
         }
 
         private static float Slow(B b) { return b.Hunter ? Mathf.Clamp(NpcaiSettings.HuntBurrowFactor.Value, 0.25f, 10f) : 1f; }
@@ -219,6 +227,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (p == Phase.Rising) { b.A.AmbushDist = 0f; b.A.Burrowed = false; }      // eyes were at the surface all along; the 360 degree look ends when it comes out
             Fx(b, b.T.position);
+            Publish(b, p == Phase.Burrowing ? BurrowState.Burrowing : BurrowState.Rising);
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + b.A.Owner.name + (p == Phase.Burrowing ? " burrows (" + (b.Hunter ? "hunts within " : "ambush at ") + b.A.AmbushDist.ToString("0.0") + " m)" : fast ? " is alerted, comes up" : " comes up"));
         }
 
@@ -245,6 +254,7 @@ namespace WildWasteland.Modules.NPC
             b.Held = Brain.SetTravel(b.A.Owner, true);       // stands still from now on: no pedal, no thinking, no stuck judgement
             Fx(b, b.T.position);
             b.Phase = Phase.Diving;
+            Publish(b, BurrowState.Burrowing);
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + b.A.Owner.name + " dives after " + b.A.Target.name + (b.Fallback ? " (no room behind it: comes back up here in " + b.TravelEnd.ToString("0.0") + " s)" : ", travels " + b.TravelEnd.ToString("0.0") + " s at " + RunSpeed(b).ToString("0.0") + " m/s"));
         }
 
