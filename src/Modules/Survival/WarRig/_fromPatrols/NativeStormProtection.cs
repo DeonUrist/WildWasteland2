@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
 {
     // Native SandStorm prefab identity, verified against the installed game's assets.
     // Player-only filtering: the storm still affects the surrounding world normally.
-    internal static class NativeStormProtection
+    internal static partial class NativeStormProtection
     {
         internal const long StormPrefabId = 5697600806714206537L;
         private static GameObject player;
@@ -19,11 +19,6 @@ namespace WildWasteland.Modules.Patrols.WarRig
         private static GameObject Player
         {
             get { if (player == null || !player.activeInHierarchy) player = Core.GameRefs.Player; return player; }
-        }
-        internal static bool Protected(GameObject target)
-        {
-            var actor = Player;
-            return actor != null && target != null && (target == actor || target.transform.IsChildOf(actor.transform)) && DustStormBridge.Inside(actor);
         }
         internal static Transform StormRoot(Transform source)
         {
@@ -47,7 +42,6 @@ namespace WildWasteland.Modules.Patrols.WarRig
         }
         internal static void ResetForScene() { player = null; lastFrame = -1; dust.Clear(); emission.Clear(); stormTornado.Clear(); }
         private static readonly Dictionary<int, bool> stormTornado = new Dictionary<int, bool>();
-        private static bool NoRigs { get { return WarRigUnit.All.Count == 0; } }
 
         private static bool StormAction(HutongGames.PlayMaker.FsmStateAction action)
         { return action != null && action.Owner != null && StormRoot(action.Owner.transform) != null; }
@@ -137,4 +131,3 @@ namespace WildWasteland.Modules.Patrols.WarRig
         { internal static bool Prefix(SendEvent __instance) { return NoRigs || !BlockDamage(__instance); } }
     }
 }
-
