@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.NPC
                     if (p.Rig != null) p.Rig.localRotation = p.RigLocal;
                     p.Pitch = 0f; p.Tilted = false;
                 }
-                catch (Exception e) { NpcModule.Warn("Pounce shutdown: " + e.Message); }
+                catch (Exception e) { NpcaiRuntime.Warn("Pounce shutdown: " + e.Message); }
             }
             _list.Clear(); Airborne = 0;
         }
@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.NPC
 
         private static bool Wanted(string prefab)
         {
-            string cfg = NpcModule.PouncePrefabs.Value ?? "";
+            string cfg = NpcaiSettings.PouncePrefabs.Value ?? "";
             if (_prefabs == null || _prefabsSrc != cfg) { _prefabsSrc = cfg; _prefabs = cfg.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries); for (int i = 0; i < _prefabs.Length; i++) _prefabs[i] = _prefabs[i].Trim(); }
             foreach (var p in _prefabs) if (p.Length > 0 && string.Equals(prefab, p, StringComparison.OrdinalIgnoreCase)) return true;
             return false;
@@ -97,14 +97,14 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
             p.NextTry = Time.time + 1f;
             _list.Add(p);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Pounce: " + a.Owner.name + " can pounce (bite " + p.Damage.ToString("0") + ", body " + p.BodyH.ToString("0.00") + " m)");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Pounce: " + a.Owner.name + " can pounce (bite " + p.Damage.ToString("0") + ", body " + p.BodyH.ToString("0.00") + " m)");
         }
 
         internal static void Tick()
         {
             if (_list.Count == 0) { Airborne = 0; return; }
             float now = Time.time, dt = Time.deltaTime;
-            bool on = NpcModule.PounceEnabled.Value && Senses.On && Brain.On;
+            bool on = NpcaiSettings.PounceEnabled.Value && Senses.On && Brain.On;
             var player = Senses.PlayerObj;
             if (player != null && dt > 0f)
             {
@@ -130,7 +130,7 @@ namespace WildWasteland.Modules.NPC
                         case Phase.Flee: Flee(p, now); break;
                     }
                 }
-                catch (Exception e) { NpcModule.Log.LogError("Pounce: " + e); End(p, now, 3f, "error"); }
+                catch (Exception e) { NpcaiRuntime.Error("Pounce: " + e); End(p, now, 3f, "error"); }
                 if (p.Phase == Phase.Air || p.Phase == Phase.Bite) air++;
             }
             Airborne = air;
@@ -146,8 +146,8 @@ namespace WildWasteland.Modules.NPC
             if (p.Trigger <= 0f)
             {
                 // per try: where the zigzag starts (8-11 m) and where it leaps (5-6 m), the zigzag always at least a metre before the leap
-                p.LeapD = UnityEngine.Random.Range(Mathf.Max(0.5f, NpcModule.PounceLeapMin.Value), Mathf.Max(NpcModule.PounceLeapMin.Value, NpcModule.PounceLeapMax.Value));
-                p.Trigger = Mathf.Max(p.LeapD + 1f, UnityEngine.Random.Range(Mathf.Max(1f, NpcModule.PounceZigMin.Value), Mathf.Max(NpcModule.PounceZigMin.Value, NpcModule.PounceZigMax.Value)));
+                p.LeapD = UnityEngine.Random.Range(Mathf.Max(0.5f, NpcaiSettings.PounceLeapMin.Value), Mathf.Max(NpcaiSettings.PounceLeapMin.Value, NpcaiSettings.PounceLeapMax.Value));
+                p.Trigger = Mathf.Max(p.LeapD + 1f, UnityEngine.Random.Range(Mathf.Max(1f, NpcaiSettings.PounceZigMin.Value), Mathf.Max(NpcaiSettings.PounceZigMin.Value, NpcaiSettings.PounceZigMax.Value)));
             }
             float d = Flat(player.transform.position - p.T.position).magnitude, leap = p.LeapD;
             if (d > p.Trigger) return;                                   // cheap: nothing else is checked out of the window
@@ -174,20 +174,20 @@ namespace WildWasteland.Modules.NPC
                 if (pc != null && LineClear(p, pc)) Leap(p, player, pc, now); else End(p, now, 2f, "no clear leap");
                 return;
             }
-            if (now >= p.ZigSwitch) { p.ZigSide = -p.ZigSide; p.ZigSwitch = now + UnityEngine.Random.Range(NpcModule.PounceZigSeconds.Value * 0.7f, NpcModule.PounceZigSeconds.Value * 1.3f); }
+            if (now >= p.ZigSwitch) { p.ZigSide = -p.ZigSide; p.ZigSwitch = now + UnityEngine.Random.Range(NpcaiSettings.PounceZigSeconds.Value * 0.7f, NpcaiSettings.PounceZigSeconds.Value * 1.3f); }
             Vector3 dir = d > 0.01f ? to / d : p.T.forward;
-            Vector3 head = Quaternion.Euler(0f, p.ZigSide * NpcModule.PounceZigAngle.Value, 0f) * dir;
+            Vector3 head = Quaternion.Euler(0f, p.ZigSide * NpcaiSettings.PounceZigAngle.Value, 0f) * dir;
             if (now >= p.NextProbe)
             {
                 p.NextProbe = now + 0.1f;
                 if (Blocked(p, head, 0.6f))
                 {
-                    p.ZigSide = -p.ZigSide; head = Quaternion.Euler(0f, p.ZigSide * NpcModule.PounceZigAngle.Value, 0f) * dir;
-                    p.ZigSwitch = now + NpcModule.PounceZigSeconds.Value;
+                    p.ZigSide = -p.ZigSide; head = Quaternion.Euler(0f, p.ZigSide * NpcaiSettings.PounceZigAngle.Value, 0f) * dir;
+                    p.ZigSwitch = now + NpcaiSettings.PounceZigSeconds.Value;
                     if (Blocked(p, head, 0.6f)) { End(p, now, 2f, "blocked"); return; }
                 }
             }
-            Drive(p, head, Run(p) * Mathf.Max(0.5f, NpcModule.PounceZigSpeed.Value));
+            Drive(p, head, Run(p) * Mathf.Max(0.5f, NpcaiSettings.PounceZigSpeed.Value));
         }
 
         private static void Drive(P p, Vector3 head, float speed)
@@ -200,7 +200,7 @@ namespace WildWasteland.Modules.NPC
         {
             Vector3 start = p.T.position;
             Vector3 aim = pc.bounds.center - Vector3.up * (pc.bounds.extents.y * 0.15f);       // the chest / belly of the player
-            float t = Mathf.Clamp(Flat(aim - start).magnitude / Mathf.Max(1f, NpcModule.PounceLeapSpeed.Value), 0.22f, 1f);
+            float t = Mathf.Clamp(Flat(aim - start).magnitude / Mathf.Max(1f, NpcaiSettings.PounceLeapSpeed.Value), 0.22f, 1f);
             Vector3 pv = Flat(_pVel); if (pv.sqrMagnitude > 49f) pv = pv.normalized * 7f;
             aim += pv * t;
             Vector3 v = (aim - start) / t - 0.5f * Physics.gravity * t;
@@ -208,7 +208,7 @@ namespace WildWasteland.Modules.NPC
             p.Rb.velocity = v;
             p.LeapH = Flat(v); p.Carry = true;          // the flight speed is held until it touches something: no FSM / drag cuts the jump short
             Vector3 f = Flat(aim - start); if (f.sqrMagnitude > 0.0001f) p.T.rotation = Quaternion.LookRotation(f.normalized, Vector3.up);
-            p.Phase = Phase.Air; p.Since = now; p.FlightT = t; p.PitchGoal = Mathf.Clamp(NpcModule.PouncePitch.Value, 0f, 110f);
+            p.Phase = Phase.Air; p.Since = now; p.FlightT = t; p.PitchGoal = Mathf.Clamp(NpcaiSettings.PouncePitch.Value, 0f, 110f);
             Play(p, _hashAttack, _hashAttack);
             Log(p, "leaps (" + Flat(aim - start).magnitude.ToString("0.0") + " m, " + t.ToString("0.00") + " s)");
         }
@@ -264,13 +264,13 @@ namespace WildWasteland.Modules.NPC
             Vector3 away = player != null ? Flat(p.T.position - player.transform.position) : -p.T.forward;
             away = away.sqrMagnitude > 0.0001f ? away.normalized : -p.T.forward;
             p.FleeDir = Quaternion.Euler(0f, UnityEngine.Random.Range(-35f, 35f), 0f) * away;
-            p.Phase = Phase.Flee; p.Until = now + UnityEngine.Random.Range(Mathf.Max(0.2f, NpcModule.PounceFleeMin.Value), Mathf.Max(NpcModule.PounceFleeMin.Value, NpcModule.PounceFleeMax.Value));
+            p.Phase = Phase.Flee; p.Until = now + UnityEngine.Random.Range(Mathf.Max(0.2f, NpcaiSettings.PounceFleeMin.Value), Mathf.Max(NpcaiSettings.PounceFleeMin.Value, NpcaiSettings.PounceFleeMax.Value));
             Play(p, _hashRun, _hashRun);
         }
 
         private static void Flee(P p, float now)
         {
-            if (now >= p.Until) { End(p, now, UnityEngine.Random.Range(NpcModule.PounceCooldownMin.Value, Mathf.Max(NpcModule.PounceCooldownMin.Value, NpcModule.PounceCooldownMax.Value)), "ran off, chases again"); return; }
+            if (now >= p.Until) { End(p, now, UnityEngine.Random.Range(NpcaiSettings.PounceCooldownMin.Value, Mathf.Max(NpcaiSettings.PounceCooldownMin.Value, NpcaiSettings.PounceCooldownMax.Value)), "ran off, chases again"); return; }
             if (now >= p.NextProbe)
             {
                 p.NextProbe = now + 0.1f;
@@ -280,7 +280,7 @@ namespace WildWasteland.Modules.NPC
                     if (!Blocked(p, l, 0.6f)) p.FleeDir = l; else if (!Blocked(p, r, 0.6f)) p.FleeDir = r; else p.FleeDir = -p.FleeDir;
                 }
             }
-            Drive(p, p.FleeDir, Run(p) * Mathf.Max(0.5f, NpcModule.PounceZigSpeed.Value));
+            Drive(p, p.FleeDir, Run(p) * Mathf.Max(0.5f, NpcaiSettings.PounceZigSpeed.Value));
         }
 
         // back to the brain: the vanilla bite ray, the drag, the run animation and the chase
@@ -374,6 +374,6 @@ namespace WildWasteland.Modules.NPC
             return f;
         }
 
-        private static void Log(P p, string s) { if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Pounce: " + (p.A != null && p.A.Owner != null ? p.A.Owner.name : "?") + " " + s); }
+        private static void Log(P p, string s) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Pounce: " + (p.A != null && p.A.Owner != null ? p.A.Owner.name : "?") + " " + s); }
     }
 }

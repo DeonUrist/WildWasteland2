@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.NPC
         public void Shot(GameObject shooter, Vector3 position, int weaponKind, bool player)
         { if (weaponKind >= 0 && weaponKind <= 5) Senses.Shot(shooter, position, (WeaponRanges.Kind)weaponKind, player); }
         public void Hurt(GameObject victim, GameObject attacker) { Senses.Hurt(victim, attacker); }
-        public float SpreadFactor(float distance) { return NpcModule.AimEnabled.Value ? Aim.SpreadFactor(distance) : 1f; }
+        public float SpreadFactor(float distance) { return NpcaiSettings.AimEnabled.Value ? Aim.SpreadFactor(distance) : 1f; }
         public void Inform(GameObject npc, GameObject target) { Senses.Inform(npc, target); }
         public void SetFollowerDriven(GameObject npc, bool enabled, float reloadUntil = 0f) { Brain.SetFollowerDriven(npc, enabled, reloadUntil); Idle.SetFollowerDriven(npc, enabled); }
         public void Structures(List<NavStructure> into) { Nav.Structures(into); }

@@ -15,10 +15,10 @@ namespace WildWasteland.Modules.NPC
             {
                 // your own voice: a 2D source on the camera, so it stays with you (PlayClipAtPoint left it hanging in the air where you shouted)
                 var src = VoiceSource();
-                if (src != null) src.PlayOneShot(clip, Mathf.Clamp01(NpcModule.ShoutVolume.Value));
+                if (src != null) src.PlayOneShot(clip, Mathf.Clamp01(NpcaiSettings.ShoutVolume.Value));
             }
             Noise(_player, Core.Origin.Scene(shout.WorldPos), shout.Radius, Src.Shout, "the player shouting", a => a.Hostile.Contains("Player"), null, _player);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Senses: the player shouts (" + shout.Radius.ToString("0") + " m)" + (clip == null ? ", no voice clip found" : ""));
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: the player shouts (" + shout.Radius.ToString("0") + " m)" + (clip == null ? ", no voice clip found" : ""));
         }
     }
 }

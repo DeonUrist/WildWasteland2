@@ -37,7 +37,7 @@ namespace WildWasteland.Modules.NPC
 
         private static bool Wanted(string prefab)
         {
-            string cfg = NpcModule.DogPrefabs.Value ?? "";
+            string cfg = NpcaiSettings.DogPrefabs.Value ?? "";
             if (_prefabs == null || _src != cfg) { _src = cfg; _prefabs = cfg.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries); for (int i = 0; i < _prefabs.Length; i++) _prefabs[i] = _prefabs[i].Trim(); }
             foreach (var p in _prefabs) if (p.Length > 0 && string.Equals(prefab, p, StringComparison.OrdinalIgnoreCase)) return true;
             return false;
@@ -67,7 +67,7 @@ namespace WildWasteland.Modules.NPC
             }
             d.Bones = bones.ToArray();
             _list.Add(d); _byId[a.Owner.GetInstanceID()] = d;
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("DogBite: " + a.Owner.name + " reach " + d.Reach.ToString("0.0") + " m, " + d.Bones.Length + " head/neck bone(s)");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("DogBite: " + a.Owner.name + " reach " + d.Reach.ToString("0.0") + " m, " + d.Bones.Length + " head/neck bone(s)");
         }
 
         // per frame, after the brain: in reach -> stand and face the target fast
@@ -76,7 +76,7 @@ namespace WildWasteland.Modules.NPC
             DogAnimations.Tick();
             if (_list.Count == 0) return;
             float dt = Time.deltaTime;
-            bool on = NpcModule.DogBiteEnabled.Value && Senses.On;
+            bool on = NpcaiSettings.DogBiteEnabled.Value && Senses.On;
             for (int i = _list.Count - 1; i >= 0; i--)
             {
                 var d = _list[i];
@@ -102,13 +102,13 @@ namespace WildWasteland.Modules.NPC
         // a real bite (the Damage FSM sets the target's Bodypart.Damage): the lunge
         public static void AfterSetFsmFloat(SetFsmFloat __instance)
         {
-            if (_list.Count == 0 || !NpcModule.Running) return;
+            if (_list.Count == 0 || !NpcaiRuntime.Running) return;
             try
             {
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Damage" || fsm.GameObject == null) return;
                 D d;
-                if (!DogAnimations.Owns(fsm.GameObject) && _byId.TryGetValue(fsm.GameObject.GetInstanceID(), out d) && NpcModule.DogBiteEnabled.Value) d.BiteT = 0f;
+                if (!DogAnimations.Owns(fsm.GameObject) && _byId.TryGetValue(fsm.GameObject.GetInstanceID(), out d) && NpcaiSettings.DogBiteEnabled.Value) d.BiteT = 0f;
             }
             catch (Exception) { }
         }

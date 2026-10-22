@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.NPC
         {
             try
             {
-                if (!NpcModule.Running || !NpcModule.AimEnabled.Value) return true;                        // (WW) static flags first: SendEvent is everywhere
+                if (!NpcaiRuntime.Running || !NpcaiSettings.AimEnabled.Value) return true;                        // (WW) static flags first: SendEvent is everywhere
                 if (__instance.sendEvent == null || __instance.sendEvent.Name != "Activate") return true;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "RangedAttackWait") return true;
@@ -103,7 +103,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 float d = Vector3.Distance(owner.transform.position, target.transform.position);
                 float reach = WeaponRanges.RangeOf(kind);
-                float engage = reach * Mathf.Clamp(NpcModule.EngagePercent.Value, 1f, 100f) / 100f;
+                float engage = reach * Mathf.Clamp(NpcaiSettings.EngagePercent.Value, 1f, 100f) / 100f;
                 bool hold;
                 if (d > reach) { hold = true; st.HoldSince = -1f; }
                 else if (d > engage)
@@ -118,19 +118,19 @@ namespace WildWasteland.Modules.NPC
                 {
                     // the brain turns the body at a limited rate: no burst until it actually faces the target
                     float err = Brain.FacingError(owner);
-                    if (err > Mathf.Max(0f, NpcModule.FacingTolerance.Value)) { hold = true; st.Turning = true; Brain.FaceTarget(owner, 0.6f); }   // the brain turns the body to the target now (not the steered heading)
+                    if (err > Mathf.Max(0f, NpcaiSettings.FacingTolerance.Value)) { hold = true; st.Turning = true; Brain.FaceTarget(owner, 0.6f); }   // the brain turns the body to the target now (not the steered heading)
                 }
                 if (hold && Time.time - st.LastLog > 5f)
                 {
                     st.LastLog = Time.time;
-                    NpcModule.Verbose("Aim: " + owner.name + " holds fire at " + d.ToString("0") + " m (" + kind + " reach " + reach.ToString("0") + " m, engages at " + engage.ToString("0") + " m)");
+                    NpcaiRuntime.Deep("Aim: " + owner.name + " holds fire at " + d.ToString("0") + " m (" + kind + " reach " + reach.ToString("0") + " m, engages at " + engage.ToString("0") + " m)");
                 }
                 if (hold) __instance.Finish();     // the action is done (nothing sent); the state's NextFrameEvent moves on
                 return !hold;
             }
             catch (Exception e)
             {
-                NpcModule.Log.LogError("Aim: " + e);
+                NpcaiRuntime.Error("Aim: " + e);
                 return true;
             }
         }
@@ -138,7 +138,7 @@ namespace WildWasteland.Modules.NPC
         // Harmony prefix on HutongGames.PlayMaker.Actions.RandomWait.OnEnter: the pause between bursts.
         public static bool BeforeRandomWait(RandomWait __instance)
         {
-            if (!NpcModule.Running) return true;
+            if (!NpcaiRuntime.Running) return true;
             try
             {
                 var fsm = __instance.Fsm;
@@ -150,7 +150,7 @@ namespace WildWasteland.Modules.NPC
                     _waits[__instance] = w;
                 }
                 float baseMin = w.Min != null ? w.Min.Value : 3f, baseMax = w.Max != null ? w.Max.Value : 5f;
-                if (!NpcModule.AimEnabled.Value)
+                if (!NpcaiSettings.AimEnabled.Value)
                 { __instance.min = w.Min; __instance.max = w.Max; return true; }   // vanilla pause
 
                 var owner = fsm.GameObject;
@@ -170,7 +170,7 @@ namespace WildWasteland.Modules.NPC
                     var target = owner != null ? TargetOf(owner) : null;
                     if (target != null)
                         extra = Steps(Vector3.Distance(owner.transform.position, target.transform.position)) * DelayPer5m;
-                    float scale = Mathf.Clamp(NpcModule.AimTimeScale.Value, 1f, 300f) / 100f;    // [NpcAim] AimTimeScale: 50 % = twice as fast between bursts
+                    float scale = Mathf.Clamp(NpcaiSettings.AimTimeScale.Value, 1f, 300f) / 100f;    // [NpcAim] AimTimeScale: 50 % = twice as fast between bursts
                     w.MyMin.Value = (baseMin + extra) * scale; w.MyMax.Value = (baseMax + extra) * scale;
                 }
                 __instance.min = w.MyMin; __instance.max = w.MyMax;
@@ -178,7 +178,7 @@ namespace WildWasteland.Modules.NPC
             }
             catch (Exception e)
             {
-                NpcModule.Log.LogError("Aim: " + e);
+                NpcaiRuntime.Error("Aim: " + e);
                 return true;
             }
         }

@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.NPC
             if (fresh)
             {
                 n.NextFrightCover = 0f; n.NextTick = 0f;
-                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " retreat: " + why);
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " retreat: " + why);
             }
         }
 
@@ -60,7 +60,7 @@ namespace WildWasteland.Modules.NPC
             if (n.Mode != Mode.Cover && now >= n.NextFrightCover)
             {
                 n.NextFrightCover = now + 2f;
-                float range = NpcModule.CoverRange.Value, best = range * range;
+                float range = NpcaiSettings.CoverRange.Value, best = range * range;
                 float clearance = Mathf.Max(25f, (n.T.position - n.FrightFrom).sqrMagnitude);
                 Vector3 spot = Vector3.zero; bool found = false;
                 NearestHide(n.T.position, range);

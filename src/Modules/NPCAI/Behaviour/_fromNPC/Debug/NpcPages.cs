@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.NPC
             {
                 if (_live != null)
                 {
-                    if (!NpcModule.Running) l.Text("The NPC module is not running: no live values (switch it on in F6 or Wild Wasteland > Modules).");
+                    if (!NpcaiRuntime.Running) l.Text("The NPC AI module is not running: no live values (switch it on in F6 or Wild Wasteland > Modules).");
                     else _live(l);
                 }
                 if (_cfg != null) _cfg.Draw(l);
@@ -34,8 +34,10 @@ namespace WildWasteland.Modules.NPC
         static string I(int v) { return v.ToString(CultureInfo.InvariantCulture); }
         /// <summary>Invariant number text with a format.</summary>
         static string F(double v, string fmt) { return v.ToString(fmt, CultureInfo.InvariantCulture); }
-        /// <summary>Full section name "NPC / s".</summary>
+        /// <summary>Full section name "NPC / s" of the old entry shell (Presentation part pages).</summary>
         static string Sec(string s) { return "NPC / " + s; }
+        /// <summary>Full section name "NPCAI / s".</summary>
+        static string NSec(string s) { return "NPCAI / " + s; }
 
         // ---- pages / page parts owned by other target modules (Wave A split); called where the moved lines were
         /// <summary>Presentation: the "Female appearance & voices" config page.</summary>
@@ -45,13 +47,22 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Tools: the "POI pathfinding" page (editor / setup).</summary>
         static partial void AddToolsPages(NpcModule m, List<ToolPage> pages);
 
-        /// <summary>The module's F7 pages in their old order (target parts are partial calls).</summary>
-        internal static IEnumerable<ToolPage> Build(NpcModule m)
+        /// <summary>F7 pages of the old NPC entry shell: NPC population (Women of Wasteland config), then the Presentation and Tools pages.</summary>
+        internal static IEnumerable<ToolPage> BuildShell(NpcModule m)
         {
             var pages = new List<ToolPage>();
             pages.Add(new ConfigPage(m, ToolGroups.Npc, "NPC population", m.Config.Main, Sec("Women of Wasteland"))
             { Intro = "Female Flexa/Sprokka population and crew conversion. Existing females retain their identity when new conversion is off. Disable standalone Women of Wasteland and restart to use these built-in controls." });
             AddPresentationPages(m, pages);
+            pages.Add(new ConfigPage(m, ToolGroups.Npc, "NPC visuals", m.Config.Tools, Sec("Brain"), Sec("NpcAim"), Sec("Behaviour"))
+            { Intro = "Gunman animation (Apocaplayer clips, aim pose), reload sounds and the lying-dog pose. These entries stay in the old [NPC / ...] sections until Presentation takes them over." });
+            AddToolsPages(m, pages);
+            return pages;
+        }
+
+        /// <summary>The NPCAI module's F7 pages (live values on top, tuning sections below) in their old order.</summary>
+        internal static void Build(IModule m, List<ToolPage> pages)
+        {
 
             pages.Add(new LivePage(m, "AI overview", null, l =>
             {
@@ -72,11 +83,11 @@ namespace WildWasteland.Modules.NPC
             {
                 l.Value("Agents / alert / ghosts", I(Senses.AgentCount) + " / " + I(Senses.AlertCount) + " / " + I(Senses.GhostCount));
                 l.Value("Light now", F(Senses.LightLevel(), "0.00") + " (sight " + F(Senses.SightRange(), "0") + " m)");
-                l.Value("Storms", NpcModule.StormsEnabled.Value ? I(Storm.StormCount) + " sandstorm(s), " + I(Storm.FunnelCount) + " funnel(s)" + (Storm.DustBridge ? (Storm.Dust ? ", ApocaDustStorm dust active" : ", ApocaDustStorm bridge on") : "") : "off (F6 Storms)");
-                l.Value("Shout", NpcModule.ShoutModifier.Value + " + " + NpcModule.ShoutKey.Value + " ([Keys] Shout)");
-            }, Sec("Detection"), Sec("Senses")));
+                l.Value("Storms", NpcaiSettings.StormsEnabled.Value ? I(Storm.StormCount) + " sandstorm(s), " + I(Storm.FunnelCount) + " funnel(s)" + (Storm.DustBridge ? (Storm.Dust ? ", ApocaDustStorm dust active" : ", ApocaDustStorm bridge on") : "") : "off (F6 Storms)");
+                l.Value("Shout", NpcaiSettings.ShoutModifier.Value + " + " + NpcaiSettings.ShoutKey.Value + " ([Keys] Shout)");
+            }, NSec("Detection"), NSec("Senses")));
 
-            pages.Add(new LivePage(m, "Navigation & baking", "Vanilla POI maps load from the shipped pack. Custom or missing maps bake once and persist in config/WildWasteland/NPC/NavMaps/Custom. Reset/export controls are on the NPC Debug page.", l =>
+            pages.Add(new LivePage(m, "Navigation & baking", "Vanilla POI maps load from the shipped pack. Custom or missing maps bake once and persist in config/WildWasteland/NPCAI/NavMaps/Custom. Reset/export controls are on the NPC Debug page.", l =>
             {
                 l.Value("Structures", I(Nav.StructureCount) + " found, " + I(Nav.BakedCount) + " baked");
                 l.Value("Loaded maps", I(Nav.LoadedMapCount) + " (" + I(Nav.VanillaMapCount) + " vanilla / " + I(Nav.LoadedMapCount - Nav.VanillaMapCount) + " custom cache)");
@@ -84,18 +95,18 @@ namespace WildWasteland.Modules.NPC
                 l.Value("ms per cell", F(Nav.MsPerCell, "0.000"));
                 l.Value("Exit picks", I(Nav.PickQueued) + " queued / running (1 ms a frame); move masks " + I(Nav.MaskedCount) + " of " + I(Nav.BakedCount) + " baked maps");
                 l.Value("Friends passing through", I(Passthrough.Pairs) + " pair(s)");
-            }, Sec("Nav")));
+            }, NSec("Nav")));
 
             pages.Add(new LivePage(m, "Brain & combat", "How NPCs steer, hold, kneel, take cover and pace their bursts; magazines and reloads.", l =>
             {
                 l.Value("Brains", I(Brain.Count) + " registered, " + I(Brain.EngagedCount) + " engaged");
-                l.Value("Think interval", F(Brain.Interval, "0.00") + " s" + (NpcModule.ScaleWithActors.Value ? " (scales with engaged NPCs)" : ""));
-            }, Sec("Brain"), Sec("NpcAim")));
+                l.Value("Think interval", F(Brain.Interval, "0.00") + " s" + (NpcaiSettings.ScaleWithActors.Value ? " (scales with engaged NPCs)" : ""));
+            }, NSec("Brain"), NSec("NpcAim")));
 
             pages.Add(new LivePage(m, "Idle & movement", "Camp raiders' way home, camp walks and search rounds; the speed rules while turning and the blocked check.", l =>
             {
                 l.Value("Idle controllers", I(Idle.Count) + " (" + I(Idle.Walking) + " walking)");
-            }, Sec("Idle"), Sec("Movement")));
+            }, NSec("Idle"), NSec("Movement")));
 
             pages.Add(new LivePage(m, "Animals", "Burrowing / hunting scorpions, ambush predators, pouncing spiders, dogs (bites, retargeted animations, Dog Companion). The feature switches are in F6.", l =>
             {
@@ -103,18 +114,16 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Pouncers", I(Pounce.Count) + " (" + I(Pounce.Airborne) + " in the air)");
                 l.Value("Dogs", I(DogBite.Count) + " (" + I(DogAnimations.DogCount) + " animated)");
                 l.Value("Dog animation bundle", DogAnimations.BundleLoaded ? I(DogAnimations.ClipCount) + " clips (NPC/Models/npcai_dogs.bundle)" : "not loaded - procedural bite");
-                l.Value("Dog Companion", DogCompanionCompat.Present ? (NpcModule.DogCompanionCompatEnabled.Value ? I(DogCompanionCompat.Count) + " companion(s) driven" : "installed, compatibility off (F6)") : "not installed");
-            }, Sec("Behaviour"), Sec("Burrow"), Sec("Hunt"), Sec("Ambush"), Sec("Pounce"), Sec("Dogs")));
+                l.Value("Dog Companion", DogCompanionCompat.Present ? (NpcaiSettings.DogCompanionCompatEnabled.Value ? I(DogCompanionCompat.Count) + " companion(s) driven" : "installed, compatibility off (F6)") : "not installed");
+            }, NSec("Behaviour"), NSec("Burrow"), NSec("Hunt"), NSec("Ambush"), NSec("Pounce"), NSec("Dogs")));
 
-            pages.Add(new LivePage(m, "Hazards (nests, webs, storms)", "Spider nests and their webs (built in slices while you are far away, layouts kept in config/WildWasteland/NPC/nest-layouts.txt) and sandstorms.", l =>
+            pages.Add(new LivePage(m, "Hazards (nests, webs, storms)", "Spider nests and their webs (built in slices while you are far away, layouts kept in config/WildWasteland/NPCAI/nest-layouts.txt) and sandstorms.", l =>
             {
                 l.Value("Nests", I(Nests.Count) + " (" + I(Nests.Ready) + " built), " + I(Nests.Pending) + " spider(s) not placed yet");
                 l.Value("Webs", I(Webs.Count));
-                l.Value("Storms", NpcModule.StormsEnabled.Value ? I(Storm.StormCount) + " sandstorm(s), " + I(Storm.FunnelCount) + " funnel(s)" : "off (F6 Storms)");
-            }, Sec("Nests"), Sec("Webs")));
+                l.Value("Storms", NpcaiSettings.StormsEnabled.Value ? I(Storm.StormCount) + " sandstorm(s), " + I(Storm.FunnelCount) + " funnel(s)" : "off (F6 Storms)");
+            }, NSec("Nests"), NSec("Webs")));
 
-            AddToolsPages(m, pages);
-            return pages;
         }
     }
 }

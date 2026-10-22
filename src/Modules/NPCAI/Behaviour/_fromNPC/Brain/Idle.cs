@@ -83,7 +83,7 @@ namespace WildWasteland.Modules.NPC
             if (!_travel.TryGetValue(id, out o) || !ReferenceEquals(o.Npc, npc)) { o = new Order { Npc = npc }; _travel[id] = o; }
             else if (o.State != 1 || Flat(o.Point - point.Value) > 4f) { o.Tries = 0; o.Best = float.MaxValue; }   // a new goal: tries count again
             o.Point = point.Value; o.Radius = Mathf.Max(0.3f, radius); o.State = 1; o.Touched = Time.time;
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Idle: " + npc.name + " sent to travel " + Flat(npc.transform.position - o.Point).ToString("0") + " m (arrive within " + o.Radius.ToString("0.0") + " m)");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Idle: " + npc.name + " sent to travel " + Flat(npc.transform.position - o.Point).ToString("0") + " m (arrive within " + o.Radius.ToString("0.0") + " m)");
         }
 
         internal static int TravelState(GameObject npc)
@@ -105,7 +105,7 @@ namespace WildWasteland.Modules.NPC
         private static int _thinkers, _thinkCap = 1, _thinksNow;
         private static readonly int RunHash = Animator.StringToHash("run");
 
-        internal static bool On { get { return NpcModule.IdleEnabled != null && NpcModule.IdleEnabled.Value && Senses.On; } }
+        internal static bool On { get { return NpcaiSettings.IdleEnabled != null && NpcaiSettings.IdleEnabled.Value && Senses.On; } }
 
         public static void OnSceneLoaded() { _ctl.Clear(); _spawnOf.Clear(); _spots.Clear(); _claimed.Clear(); _travel.Clear(); }
 
@@ -136,7 +136,7 @@ namespace WildWasteland.Modules.NPC
         // postfix on CreateObject.OnEnter (its own; Senses' and Gungirl's postfixes are separate): a camp spawner made an NPC at a spawn point
         public static void AfterCreateObject(CreateObject __instance)
         {
-            if (!NpcModule.Running) return;
+            if (!NpcaiRuntime.Running) return;
             try
             {
                 if (__instance.spawnPoint == null || __instance.storeObject == null) return;
@@ -148,7 +148,7 @@ namespace WildWasteland.Modules.NPC
                 if ((!scrap && !coy) || n.IndexOf("Attack", StringComparison.Ordinal) >= 0) return;
                 _spawnOf[made.GetInstanceID()] = new Spot { T = at.transform, Coyotes = coy };
             }
-            catch (Exception e) { NpcModule.Log.LogError("Idle: " + e); }
+            catch (Exception e) { NpcaiRuntime.Error("Idle: " + e); }
         }
 
         // the spawn points of a structure: children of each spawn_locations_enemy* that follows an EnemySpawn_Scrapyard / _Coyotes spawner
@@ -173,7 +173,7 @@ namespace WildWasteland.Modules.NPC
             return list;
         }
 
-        private static bool Wanted(Spot s) { return s != null && s.T != null && (!s.Coyotes || NpcModule.IdleCoyotes.Value); }
+        private static bool Wanted(Spot s) { return s != null && s.T != null && (!s.Coyotes || NpcaiSettings.IdleCoyotes.Value); }
 
         private static Vector3 FloorUnder(Vector3 p)
         {
@@ -184,7 +184,7 @@ namespace WildWasteland.Modules.NPC
         private static void Resolve(Ctl c, float now)
         {
             var a = c.A;
-            if (a.Tag != "Scrapyard" && (a.Tag != "Coyotes" || !NpcModule.IdleCoyotes.Value)) { c.Excluded = true; c.Resolved = true; return; }
+            if (a.Tag != "Scrapyard" && (a.Tag != "Coyotes" || !NpcaiSettings.IdleCoyotes.Value)) { c.Excluded = true; c.Resolved = true; return; }
             Spot spot;
             if (_spawnOf.TryGetValue(a.Owner.GetInstanceID(), out spot))
             {
@@ -260,7 +260,7 @@ namespace WildWasteland.Modules.NPC
                     continue;
                 }
                 if (ord != null && (simple || c.Excluded || !idleOn)) { TravelTick(c, ord, now, dt); continue; }   // only the travel (and the brain for the fight)
-                if (!c.Resolved && now >= c.NextResolve) { try { Resolve(c, now); } catch (Exception e) { NpcModule.Log.LogError("Idle: " + e); c.Excluded = true; continue; } if (c.Excluded) continue; }
+                if (!c.Resolved && now >= c.NextResolve) { try { Resolve(c, now); } catch (Exception e) { NpcaiRuntime.Error("Idle: " + e); c.Excluded = true; continue; } if (c.Excluded) continue; }
                 bool searching = a.State == Senses.State.Search && a.Target == null && a.T.parent == null;
                 // (1.6.0) going to check a ghost: walked like the way home (camp map to its exit, then straight), the brain stands aside
                 var gh = a.Ghost;
@@ -285,7 +285,7 @@ namespace WildWasteland.Modules.NPC
                     if (Due(c, now, 1))
                     {
                         try { InvestigateThink(c, now); }
-                        catch (Exception e) { NpcModule.Log.LogError("Idle ghost walk: " + e); Stop(c, false); c.Inv = false; c.SkipGhost = gh.Id; c.SkipPos = gh.Pos; }
+                        catch (Exception e) { NpcaiRuntime.Error("Idle ghost walk: " + e); Stop(c, false); c.Inv = false; c.SkipGhost = gh.Id; c.SkipPos = gh.Pos; }
                     }
                     if (c.Leg == Leg.Investigate && !Brain.IsWalk(a.Owner)) { Stop(c, false); c.WaitUntil = 0f; }   // the brain took the body back: no two drivers
                     if (c.Moving) Drive(c, dt, now);
@@ -299,7 +299,7 @@ namespace WildWasteland.Modules.NPC
                     c.BusyAt = now; c.LastWasSearch = true; c.Fresh = false; c.Tries = 0; c.PendingBack = false; c.AtHome = false;
                     if (Due(c, now, 2))
                     {
-                        try { SearchThink(c, now); } catch (Exception e) { NpcModule.Log.LogError("Idle search: " + e); Stop(c, false); c.InSearch = false; }
+                        try { SearchThink(c, now); } catch (Exception e) { NpcaiRuntime.Error("Idle search: " + e); Stop(c, false); c.InSearch = false; }
                     }
                     if (c.Moving) Drive(c, dt, now);
                     continue;
@@ -314,17 +314,17 @@ namespace WildWasteland.Modules.NPC
                 }
                 if (ord != null)
                 {
-                    if (ord.State == 1 && Due(c, now, 4)) { try { TravelThink(c, ord, now); } catch (Exception e) { NpcModule.Log.LogError("Idle travel: " + e); Stop(c); ord.State = 3; } }
+                    if (ord.State == 1 && Due(c, now, 4)) { try { TravelThink(c, ord, now); } catch (Exception e) { NpcaiRuntime.Error("Idle travel: " + e); Stop(c); ord.State = 3; } }
                 }
                 else if (Due(c, now, 3))
                 {
-                    try { Think(c, now); } catch (Exception e) { NpcModule.Log.LogError("Idle: " + e); Stop(c); c.Excluded = true; }
+                    try { Think(c, now); } catch (Exception e) { NpcaiRuntime.Error("Idle: " + e); Stop(c); c.Excluded = true; }
                 }
                 if (!c.Moving && !c.Turning && now >= c.NextAnimCheck) { c.NextAnimCheck = now + 0.5f; RunInPlace(c); }
                 if (c.Moving) Drive(c, dt, now);
                 else if (c.Turning)
                 {
-                    float y = Mathf.MoveTowardsAngle(a.T.eulerAngles.y, c.LookYaw, Mathf.Max(10f, NpcModule.TurnRate.Value) * 0.5f * dt);
+                    float y = Mathf.MoveTowardsAngle(a.T.eulerAngles.y, c.LookYaw, Mathf.Max(10f, NpcaiSettings.TurnRate.Value) * 0.5f * dt);
                     a.T.rotation = Quaternion.Euler(0f, y, 0f);
                     if (Mathf.Abs(Mathf.DeltaAngle(y, c.LookYaw)) < 1f) c.Turning = false;
                 }
@@ -392,7 +392,7 @@ namespace WildWasteland.Modules.NPC
                 c.ThinkKind = 0; c.WaitUntil = 0f;
                 return;
             }
-            if (ord.State == 1 && Due(c, now, 4)) { try { TravelThink(c, ord, now); } catch (Exception e) { NpcModule.Log.LogError("Idle travel: " + e); Stop(c); ord.State = 3; } }
+            if (ord.State == 1 && Due(c, now, 4)) { try { TravelThink(c, ord, now); } catch (Exception e) { NpcaiRuntime.Error("Idle travel: " + e); Stop(c); ord.State = 3; } }
             if (!c.Moving && !c.Turning && now >= c.NextAnimCheck) { c.NextAnimCheck = now + 0.5f; RunInPlace(c); }
             if (c.Moving) Drive(c, dt, now);
         }
@@ -415,7 +415,7 @@ namespace WildWasteland.Modules.NPC
             float left = Flat(pos - ord.Point);
             if (left <= ord.Radius) { ord.State = 2; c.Tries = 0; Log(c, "is there (travel, " + left.ToString("0.0") + " m)"); return; }
             c.Ord = ord;
-            float runBeyond = Mathf.Max(0f, NpcModule.TravelRunBeyond.Value);
+            float runBeyond = Mathf.Max(0f, NpcaiSettings.TravelRunBeyond.Value);
             StartLeg(c, Leg.Travel, ord.Point, now, left > runBeyond ? 5f : 2.5f);
         }
 
@@ -443,7 +443,7 @@ namespace WildWasteland.Modules.NPC
             if (c.Excluded || !c.HasHome || c.Forgotten) return;
             Vector3 pos = c.A.T.position;
             // after a search: home at once; after a fight that ended some other way: a moment where it is first
-            if (!c.LastWasSearch && now - c.BusyAt < Mathf.Max(0f, NpcModule.IdleReturnDelay.Value)) return;
+            if (!c.LastWasSearch && now - c.BusyAt < Mathf.Max(0f, NpcaiSettings.IdleReturnDelay.Value)) return;
 
             if (c.Leg != Leg.None) { LegThink(c, now, pos); return; }
             if (now < c.WaitUntil) { LookAround(c, now); return; }
@@ -455,7 +455,7 @@ namespace WildWasteland.Modules.NPC
             // at home: the base walk, near the camera only
             if (!c.AtHome) { c.AtHome = true; c.WaitUntil = now + (c.Fresh ? UnityEngine.Random.Range(1f, 4f) : UnityEngine.Random.Range(10f, 25f)); c.Fresh = false; return; }   // just loaded: the first round soon
             var cam = Core.GameRefs.MainCamera;
-            if (cam == null || Flat(cam.transform.position - pos) > NpcModule.IdleWalkRadius.Value) return;
+            if (cam == null || Flat(cam.transform.position - pos) > NpcaiSettings.IdleWalkRadius.Value) return;
             if (c.PointsState != 1 && now >= c.NextPoints)
             {
                 if (c.Points == null) c.Points = new List<Vector3>();
@@ -583,7 +583,7 @@ namespace WildWasteland.Modules.NPC
             }
             else { c.Steer = c.Goal; }
             if (c.Leg == Leg.Home && left <= 25f && c.Speed > 2.5f) Go(c, 2.5f);      // slows to a walk near home
-            else if (travel && c.Speed > 2.5f && left <= NpcModule.TravelRunBeyond.Value) Go(c, 2.5f);
+            else if (travel && c.Speed > 2.5f && left <= NpcaiSettings.TravelRunBeyond.Value) Go(c, 2.5f);
             if (inv)
             {
                 // map path left and straight distance are two measures: each counts against its own best (switching between them is no
@@ -639,7 +639,7 @@ namespace WildWasteland.Modules.NPC
                 float left = Flat(c.A.T.position - o.Point);
                 if (left < o.Best - 10f) { o.Best = left; o.Tries = 0; }      // 10 m nearer than ever before: bumps on a long way don't add up
                 o.Tries++;
-                int max = Math.Max(1, NpcModule.IdleReturnTries.Value);
+                int max = Math.Max(1, NpcaiSettings.IdleReturnTries.Value);
                 if (o.Tries >= max) { o.State = 3; Log(c, "gets nowhere on its travel after " + o.Tries + " tries, gives up (" + left.ToString("0") + " m left)"); return; }
                 Hop(c, now);
                 c.WaitUntil = now + 1f;
@@ -672,9 +672,9 @@ namespace WildWasteland.Modules.NPC
             if (leg == Leg.Home)
             {
                 c.Tries++;
-                int max = Math.Max(1, NpcModule.IdleReturnTries.Value);
+                int max = Math.Max(1, NpcaiSettings.IdleReturnTries.Value);
                 if (c.Tries >= max) { c.Forgotten = true; _claimed.Remove(c.SpotId); Log(c, "can't get home after " + c.Tries + " tries, forgets it"); return; }
-                c.WaitUntil = now + Mathf.Max(0f, NpcModule.IdleRetrySeconds.Value);
+                c.WaitUntil = now + Mathf.Max(0f, NpcaiSettings.IdleRetrySeconds.Value);
                 Log(c, "gets nowhere going home (try " + c.Tries + "/" + max + "), waits");
             }
             else
@@ -748,7 +748,7 @@ namespace WildWasteland.Modules.NPC
                 }
             }
             float chosen = want + c.FanOff;
-            float yaw = Mathf.MoveTowardsAngle(t.eulerAngles.y, chosen, Mathf.Max(10f, NpcModule.TurnRate.Value) * dt);
+            float yaw = Mathf.MoveTowardsAngle(t.eulerAngles.y, chosen, Mathf.Max(10f, NpcaiSettings.TurnRate.Value) * dt);
             t.rotation = Quaternion.Euler(0f, yaw, 0f);
             Vector3 v = t.forward * (c.Speed * Brain.TurnSpeedFactor(Mathf.Abs(Mathf.DeltaAngle(yaw, chosen))));   // slows down while turning: no arcs
             Vector3 poiDir; PoiNav.SteerDir(c.A.Owner, t.position, out poiDir);
@@ -762,7 +762,7 @@ namespace WildWasteland.Modules.NPC
 
         private static void Log(Ctl c, string msg)
         {
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Idle: " + (c.A.Owner != null ? c.A.Owner.name : "?") + " " + msg);
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Idle: " + (c.A.Owner != null ? c.A.Owner.name : "?") + " " + msg);
         }
     }
 }

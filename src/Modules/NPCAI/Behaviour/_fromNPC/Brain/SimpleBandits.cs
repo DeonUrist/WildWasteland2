@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.NPC
         {
             var p=_player;
             bool fighting=(a.State==State.Combat||a.State==State.Hide)&&a.Target==p;
-            float sr=NpcModule.SightRange.Value;
+            float sr=NpcaiSettings.SightRange.Value;
             Vector3 to=p.transform.position-a.T.position;
             bool vis=to.sqrMagnitude<=sr*sr&&Visible(a,Eye(a),p,true,_playerInStorm);
             if(vis)
@@ -72,7 +72,7 @@ namespace WildWasteland.Modules.NPC
             }
             if(!fighting)return null;
             float unseen=now-a.UnseenSince;
-            if(unseen<Mathf.Max(0f,NpcModule.LoseSeconds.Value))return p;
+            if(unseen<Mathf.Max(0f,NpcaiSettings.LoseSeconds.Value))return p;
             a.UnseenFor=unseen;
             if(WildWasteland.Core.Log.L2)Log(a,SightLossText(a,p)+(a.MemTrack?" - its memory of fighting the player is over":"")+" - convoy crew on foot: drops him, idle");
             a.MemTrack=false;a.UnseenSince=-1f;a.SeenFor=0f;

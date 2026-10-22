@@ -10,26 +10,27 @@ namespace WildWasteland.Modules.NPC
     /// </summary>
     public sealed partial class NpcModule
     {
+        /// <summary>[Obsolete] Old NPCAI log adapter, kept for readers outside NPCAI; forwards to the NPCAI-owned level lines.</summary>
+        [Obsolete("refactor: Log.Deep/Warn/Error with the NPCAI owner")]
         internal static readonly LogAdapter Log = new LogAdapter();
 
-        /// <summary>Info line: always written when [NPC / Debug] VerboseLog is on, else through the global verbose switch.</summary>
-        internal static void Verbose(string s) { if (Core.Log.L2) Core.Log.Deep(null, "[NPCAI] " + s);  }
-        /// <summary>Warning line (always written, rate-limited by Core).</summary>
-        internal static void Warn(string s) { Core.Log.Warn("[NPC] " + s); }
+        /// <summary>[Obsolete] Level-2 NPCAI line.</summary>
+        [Obsolete("refactor: Log.Deep with the NPCAI owner")]
+        internal static void Verbose(string s) { NpcaiRuntime.Deep(s); }
+        /// <summary>[Obsolete] NPCAI warning (always written, rate-limited by Core).</summary>
+        [Obsolete("refactor: Log.Warn with the NPCAI owner")]
+        internal static void Warn(string s) { NpcaiRuntime.Warn(s); }
 
-        /// <summary>Plugin.Log of NPCAI: info lines are written when the module's own VerboseLog or the global one is on.</summary>
+        /// <summary>Plugin.Log of NPCAI: forwards to the NPCAI-owned level lines.</summary>
         internal sealed class LogAdapter
         {
-            /// <summary>Info line (module VerboseLog: always; else only with the global verbose switch).</summary>
-            public void LogInfo(string s) { if (Core.Log.L2) Core.Log.Deep(null, "[NPCAI] " + s);  }
+            /// <summary>Level-2 line.</summary>
+            public void LogInfo(string s) { NpcaiRuntime.Deep(s); }
             /// <summary>Warning line.</summary>
-            public void LogWarning(string s) { Core.Log.Warn("[NPC] " + s); }
+            public void LogWarning(string s) { NpcaiRuntime.Warn(s); }
             /// <summary>Error line.</summary>
-            public void LogError(string s) { Core.Log.Error("[NPC] " + s); }
+            public void LogError(string s) { NpcaiRuntime.Error(s); }
         }
-
-        /// <summary>Provides copied NPC diagnostics to Debug without exposing private runtime types.</summary>
-        public override void ProvideApis() { ModApi.Provide<INpcDiagnosticSource>(this, new NpcDiagnosticSource()); }
     }
 
     /// <summary>Copies private NPC state only when Debug explicitly asks for it.</summary>
@@ -38,13 +39,13 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Collects the existing ghost, idle and navigation primitives into a caller-owned buffer.</summary>
         public void CollectMarkers(System.Collections.Generic.List<DiagnosticMarker> into)
         {
-            if (!NpcModule.Running || !NavigationDiagnosticState.Overlay) return;
+            if (!NpcaiRuntime.Running || !NavigationDiagnosticState.Overlay) return;
             Senses.CollectDebug(into); Idle.CollectDebug(into); Nav.CollectDebug(into);
         }
         /// <summary>Formats current state for explicit status requests.</summary>
         public string Status { get { return "senses " + Senses.Status() + "; brain " + Brain.Status() + "; nav " + Nav.Status() + "; baking " + Nav.BakingText + "; nests " + Nests.Count + "; webs " + Webs.Count; } }
         /// <summary>Requests copies of currently baked navigation grids.</summary>
-        public void CaptureMaps() { if (NpcModule.Running) Nav.CaptureDebugMaps(); }
+        public void CaptureMaps() { if (NpcaiRuntime.Running) Nav.CaptureDebugMaps(); }
     }
 
     /// <summary>Creates copied overlay values while private selectors retain their existing range and label rules.</summary>

@@ -1,24 +1,15 @@
-using WildWasteland.Core;
-
 namespace WildWasteland.Modules.NPC
 {
     /// <summary>
-    /// NpcModule part owned by Core (Hotkeys) (Wave A split): the player's shout key and the GetButton* prefixes that block the game's
-    /// buttons while the shout modifier is held. Partial methods are called from the NPC entry where the moved lines were.
+    /// Former Core (Hotkeys) part of the old NPC entry: the shout input is created by NPCAIModule since B07 (PlayerShoutInput + the
+    /// PlayerShout event); the partial methods stay empty until Wave C deletes the shell.
     /// </summary>
     public sealed partial class NpcModule
     {
-        /// <summary>Registers [Keys] Shout (fires Senses.ShoutPressed when ShoutAllowed: module on and the modifier held).</summary>
-        partial void InitCoreShout()
-        {
-            new PlayerShoutInput(this, ShoutKey, ShoutModifier, ShoutBlocksButtons, ShoutCooldown, PlayerShoutRange, () => Running);
-            Core.ModEvents.Subscribe<Core.Events.PlayerShout>(this, Senses.OnPlayerShout);
-        }
+        /// <summary>Empty (B07): NPCAIModule creates the shout input and subscribes Senses.OnPlayerShout.</summary>
+        partial void InitCoreShout() { }
 
-        /// <summary>GetButtonDown / GetButton / GetButtonUp prefixes: the shout modifier blocks the game's Kick / ShiftDown buttons.</summary>
-        partial void InstallHooksCore()
-        {
-            // Input ownership and button guards are installed together by PlayerShoutInput.
-        }
+        /// <summary>Empty: PlayerShoutInput installs the button guards together with the input.</summary>
+        partial void InstallHooksCore() { }
     }
 }

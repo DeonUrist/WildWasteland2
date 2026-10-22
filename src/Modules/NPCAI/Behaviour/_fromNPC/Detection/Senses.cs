@@ -110,7 +110,7 @@ namespace WildWasteland.Modules.NPC
 
         internal static GameObject PlayerObj { get { return _player; } }
         internal static bool PlayerInCar { get { return PlayerCar() != null; } }       // (1.5.0) Pounce: no leaping at a car   // (1.4.0) Burrow: "behind the player" is behind the camera
-        internal static bool On { get { return NpcModule.Running && NpcModule.SensesEnabled.Value; } }
+        internal static bool On { get { return NpcaiRuntime.Running && NpcaiSettings.SensesEnabled.Value; } }
 
         public static void OnSceneLoaded()
         {
@@ -133,7 +133,7 @@ namespace WildWasteland.Modules.NPC
             if (now >= _nextMaint)
             {
                 _nextMaint = now + 1f;
-                if (_player != null && NpcModule.StormsEnabled.Value) Storm.Refresh(); else Storm.Reset();      // menu / loading / (WW) storms toggle off: no storms, no lookups
+                if (_player != null && NpcaiSettings.StormsEnabled.Value) Storm.Refresh(); else Storm.Reset();      // menu / loading / (WW) storms toggle off: no storms, no lookups
                 _playerInStorm = _player != null && Storm.In(_player.transform.position);
                 // (perf) the per-agent part runs as a round robin over the next 8 frames (MaintStep): every agent is still visited once a
                 // second, the factions present are swapped in when the round is complete
@@ -161,11 +161,11 @@ namespace WildWasteland.Modules.NPC
             if (!on) return;
             if (_player == null) return;
 
-            float baseLook = Mathf.Max(0.05f, NpcModule.LookInterval.Value);
+            float baseLook = Mathf.Max(0.05f, NpcaiSettings.LookInterval.Value);
             int looks = 0, lookCap = Mathf.Max(1, Mathf.CeilToInt(_agents.Count * dt / baseLook) + 1);
             Vector3 ppos = _player.transform.position;
             { Vector3 mv = ppos - _playerPrev; mv.y = 0f; float sp = dt > 0f ? mv.magnitude / dt : 0f; _playerMoving = sp > 0.3f && sp < 30f && _playerCar == null; _playerPrev = ppos; }   // (WW) footsteps: a teleport / origin jump does not count, nor driving
-            float sr = Mathf.Max(NpcModule.SightRange.Value, NpcModule.DarkSightRange.Value), f2 = Mathf.Max(80f, sr + 20f), f4 = Mathf.Max(150f, sr + 50f), far2 = f2 * f2, far4 = f4 * f4;
+            float sr = Mathf.Max(NpcaiSettings.SightRange.Value, NpcaiSettings.DarkSightRange.Value), f2 = Mathf.Max(80f, sr + 20f), f4 = Mathf.Max(150f, sr + 50f), far2 = f2 * f2, far4 = f4 * f4;
             foreach (var kv in _agents)
             {
                 var a = kv.Value;
@@ -181,10 +181,10 @@ namespace WildWasteland.Modules.NPC
                 if (pd > far4) interval *= 4f; else if (pd > far2) interval *= 2f;
                 a.NextLook += interval + a.Stagger; if (a.NextLook < now) a.NextLook = now + UnityEngine.Random.value * (interval + a.Stagger);     // long skipped (seated, underground): a fresh phase (the stagger stays in the period, as before: same look rate, same SeenFor build-up)
                 try { Look(a, interval, now); }
-                catch (Exception e) { NpcModule.Log.LogError("Senses: " + e); }
+                catch (Exception e) { NpcaiRuntime.Error("Senses: " + e); }
             }
-            if (now >= _nextEngine) { _nextEngine = now + 0.5f; try { Engine(now); } catch (Exception e) { NpcModule.Log.LogError("Senses engine: " + e); } }
-            try { Thrown(now, dt); } catch (Exception e) { NpcModule.Log.LogError("Senses throw: " + e); }
+            if (now >= _nextEngine) { _nextEngine = now + 0.5f; try { Engine(now); } catch (Exception e) { NpcaiRuntime.Error("Senses engine: " + e); } }
+            try { Thrown(now, dt); } catch (Exception e) { NpcaiRuntime.Error("Senses throw: " + e); }
         }
 
         // (perf) D5: the per-agent second's maintenance, _maintPer agents a frame (was all of them in one frame)
@@ -247,15 +247,15 @@ namespace WildWasteland.Modules.NPC
                 if (to.magnitude <= Brain.ArriveFor(a.Owner)) Arrived(a, now);
                 // no searching on the way: only a ghost nobody has refreshed for GhostTimeout seconds (since it was given to this NPC or last
                 // moved/renewed) lets the NPC settle for searching where it got to
-                else if (now >= Mathf.Max(a.InvestigateSince, a.Ghost.Moved) + Mathf.Max(5f, NpcModule.GhostTimeout.Value))
-                { if (WildWasteland.Core.Log.L2) Log(a, "ghost #" + a.Ghost.Id + " went stale (" + NpcModule.GhostTimeout.Value.ToString("0") + " s without news, " + to.magnitude.ToString("0") + " m left), searches from here"); Arrived(a, now); }
+                else if (now >= Mathf.Max(a.InvestigateSince, a.Ghost.Moved) + Mathf.Max(5f, NpcaiSettings.GhostTimeout.Value))
+                { if (WildWasteland.Core.Log.L2) Log(a, "ghost #" + a.Ghost.Id + " went stale (" + NpcaiSettings.GhostTimeout.Value.ToString("0") + " s without news, " + to.magnitude.ToString("0") + " m left), searches from here"); Arrived(a, now); }
             }
             if ((a.State == State.Combat || a.State == State.Hide) && a.Target == null) { a.State = State.Idle; Log(a, "target gone"); }
             if (a.Flanking && a.State == State.Investigate && (a.FlankPos - a.T.position).sqrMagnitude <= 9f) EndFlank(a);   // at the flank point: on to the ghost itself
             if (a.Spider) SpiderLook(a, now);
 
             // candidates: the player (if this faction hunts players) and every other NPC of a hostile faction
-            float d2max = NpcModule.SightRange.Value * NpcModule.SightRange.Value;
+            float d2max = NpcaiSettings.SightRange.Value * NpcaiSettings.SightRange.Value;
             a.SightMiss = "outside maximum sight range or no hostile candidate";
             Vector3 eye = Eye(a);
             GameObject best = null; float bestD = float.MaxValue;
@@ -300,7 +300,7 @@ namespace WildWasteland.Modules.NPC
                 bool seen = best == a.Target || Visible(a, eye, a.Target, a.Target == _player, InStormOf(a.Target));
                 if (seen) { a.UnseenSince = -1f; a.UnseenFor = 0f; a.LastSeen = a.Target.transform.position; a.LastSeenVel = VelocityOf(a.Target); if (a.Target == _player) { FoughtFor(a, _player, now, "fights him"); a.MemTrack = false; } }
                 else { if (a.UnseenSince < 0f) a.UnseenSince = now; a.UnseenFor = now - a.UnseenSince; }
-                if (!seen && a.UnseenFor >= Mathf.Max(0f, NpcModule.LoseSeconds.Value))
+                if (!seen && a.UnseenFor >= Mathf.Max(0f, NpcaiSettings.LoseSeconds.Value))
                 {
                     // (crew AI) it fought the player: out of sight he is not dropped while it remembers - it follows his real position (as a
                     // tracker does), out of a cave too; the memory over, the usual loss (ghost where it last had him, guesses). Not a cave-web spider
@@ -319,8 +319,8 @@ namespace WildWasteland.Modules.NPC
         // twice that in full darkness
         private static float NoticeNeed(float d)
         {
-            float range = Mathf.Max(16f, NpcModule.SightRange.Value);
-            float need = Mathf.Lerp(Mathf.Max(0f, NpcModule.NoticeSeconds.Value), Mathf.Max(NpcModule.NoticeSeconds.Value, NpcModule.NoticeFar.Value), Mathf.Clamp01((d - 15f) / (range - 15f)));
+            float range = Mathf.Max(16f, NpcaiSettings.SightRange.Value);
+            float need = Mathf.Lerp(Mathf.Max(0f, NpcaiSettings.NoticeSeconds.Value), Mathf.Max(NpcaiSettings.NoticeSeconds.Value, NpcaiSettings.NoticeFar.Value), Mathf.Clamp01((d - 15f) / (range - 15f)));
             return need * (2f - LightLevel());
         }
 
@@ -360,12 +360,12 @@ namespace WildWasteland.Modules.NPC
             Vector3 tp = target.transform.position;
             Vector3 flat = tp - a.T.position; flat.y = 0f;
             float d = flat.magnitude;
-            float range = isPlayer && FlashlightOn() ? NpcModule.SightRange.Value : SightRange();
+            float range = isPlayer && FlashlightOn() ? NpcaiSettings.SightRange.Value : SightRange();
             if (a.Spider)
             {
                 float light = LightLevel() * Mathf.Min(a.CaveLight, SpiderTargetLight(target));
-                range = Mathf.Lerp(NpcModule.DarkSightRange.Value, NpcModule.SightRange.Value, light);
-                if (a.Lit || (isPlayer && FlashlightOn())) range = NpcModule.SightRange.Value;
+                range = Mathf.Lerp(NpcaiSettings.DarkSightRange.Value, NpcaiSettings.SightRange.Value, light);
+                if (a.Lit || (isPlayer && FlashlightOn())) range = NpcaiSettings.SightRange.Value;
             }
             if (a.InStorm || targetInStorm) range *= Storm.SightFactor;     // sand in the air between them
             // (1.3.3) a burrowed creature (only its tail shows) is noticed by other NPCs only from close by
@@ -376,13 +376,13 @@ namespace WildWasteland.Modules.NPC
                 if (_agents.TryGetValue(target.GetInstanceID(), out tb))
                 {
                     if (tb.Travel) return false;
-                    if (tb.Burrowed) range = Mathf.Min(range, NpcModule.BurrowSeenFrom.Value);
+                    if (tb.Burrowed) range = Mathf.Min(range, NpcaiSettings.BurrowSeenFrom.Value);
                 }
             }
             if (a.CaveWeb) { if ((tp - a.T.position).sqrMagnitude > 9f) return false; range = Mathf.Max(range, 3f); }
             // (WW) footsteps: the player walking within [Detection] FootstepRadius is heard whatever way the NPC faces and whatever the light,
             // as long as the usual sight lines are clear (the same obstruction check: a wall still hides him)
-            bool steps = isPlayer && _playerMoving && d <= NpcModule.FootstepRadius.Value * (WeaponsPackCompat.ChainsawDrawn ? 3f : 1f) && !a.CaveWeb;
+            bool steps = isPlayer && _playerMoving && d <= NpcaiSettings.FootstepRadius.Value * (WeaponsPackCompat.ChainsawDrawn ? 3f : 1f) && !a.CaveWeb;
             if (d > range && !steps) { if (tracked) a.SightMiss = "outside light/storm sight range"; return false; }
             if (!tracked && !steps && Vector3.Angle(a.T.forward, flat) > Mathf.Clamp(ConeOf(a), 10f, 360f) * 0.5f) return false;
             Transform troot = target.transform.root;
@@ -416,12 +416,12 @@ namespace WildWasteland.Modules.NPC
             if (a.Burrowed || a.Spider) return 360f;
             switch (a.Cone)
             {
-                case 1: return NpcModule.SightConeInsects.Value;
-                case 2: return NpcModule.SightConeBeasts.Value;
-                case 3: return NpcModule.SightConeBrutes.Value;
-                case 4: return NpcModule.SightConeBosses.Value;
-                case 5: return NpcModule.SightConeBurrowers.Value;
-                default: return NpcModule.SightCone.Value;
+                case 1: return NpcaiSettings.SightConeInsects.Value;
+                case 2: return NpcaiSettings.SightConeBeasts.Value;
+                case 3: return NpcaiSettings.SightConeBrutes.Value;
+                case 4: return NpcaiSettings.SightConeBosses.Value;
+                case 5: return NpcaiSettings.SightConeBurrowers.Value;
+                default: return NpcaiSettings.SightCone.Value;
             }
         }
 
@@ -440,10 +440,10 @@ namespace WildWasteland.Modules.NPC
         {
             foreach (var f in owner.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "BossUI") return 4;
             string p = PrefabOf(owner);
-            if (NameIn(p, NpcModule.ConeBurrowers.Value)) return 5;
-            if (NameIn(p, NpcModule.ConeBrutes.Value)) return 3;
-            if (NameIn(p, NpcModule.ConeInsects.Value)) return 1;
-            if (NameIn(p, NpcModule.ConeBeasts.Value)) return 2;
+            if (NameIn(p, NpcaiSettings.ConeBurrowers.Value)) return 5;
+            if (NameIn(p, NpcaiSettings.ConeBrutes.Value)) return 3;
+            if (NameIn(p, NpcaiSettings.ConeInsects.Value)) return 1;
+            if (NameIn(p, NpcaiSettings.ConeBeasts.Value)) return 2;
             return 0;
         }
 
@@ -476,7 +476,7 @@ namespace WildWasteland.Modules.NPC
         internal static float SightRange()
         {
             float L = LightLevel();
-            float dark = Mathf.Max(0.5f, NpcModule.DarkSightRange.Value), max = Mathf.Max(dark, NpcModule.SightRange.Value);
+            float dark = Mathf.Max(0.5f, NpcaiSettings.DarkSightRange.Value), max = Mathf.Max(dark, NpcaiSettings.SightRange.Value);
             return dark + (max - dark) * L;
         }
 
@@ -496,19 +496,19 @@ namespace WildWasteland.Modules.NPC
                 var az = Azure();
                 if (az != null) { hour = _azureCall != null ? _azureCall(az) : Convert.ToSingle(_azureTime.Invoke(az, null)); level = NightTable(hour); }
             }
-            catch (Exception e) { NpcModule.Verbose("Senses: clock read failed: " + e.Message); }
+            catch (Exception e) { NpcaiRuntime.Deep("Senses: clock read failed: " + e.Message); }
             _lightCache = level;
             if (WildWasteland.Core.Log.L2 && Time.time >= _nextLightLog)
             {
                 _nextLightLog = Time.time + 60f;
-                NpcModule.Log.LogInfo("Senses: light " + level.ToString("0.00") + (hour >= 0f ? " at " + hour.ToString("0.0") + " h" : " (no clock)") + " -> sight " + SightRange().ToString("0") + " m");
+                NpcaiRuntime.Deep("Senses: light " + level.ToString("0.00") + (hour >= 0f ? " at " + hour.ToString("0.0") + " h" : " (no clock)") + " -> sight " + SightRange().ToString("0") + " m");
             }
             return level;
         }
 
         private static float NightTable(float hour)
         {
-            string cfg = NpcModule.NightHours.Value ?? "";
+            string cfg = NpcaiSettings.NightHours.Value ?? "";
             if (_nightH == null || _nightSrc != cfg)
             {
                 _nightSrc = cfg;
@@ -553,7 +553,7 @@ namespace WildWasteland.Modules.NPC
                         var call = System.Linq.Expressions.Expression.Call(System.Linq.Expressions.Expression.Convert(p, _azureType), _azureTime);
                         _azureCall = System.Linq.Expressions.Expression.Lambda<Func<object, float>>(System.Linq.Expressions.Expression.Convert(call, typeof(float)), p).Compile();
                     }
-                    catch (Exception e) { _azureCall = null; NpcModule.Verbose("Senses: clock call not compiled (" + e.Message + "), reflection used"); }
+                    catch (Exception e) { _azureCall = null; NpcaiRuntime.Deep("Senses: clock call not compiled (" + e.Message + "), reflection used"); }
             }
             if (_azureType == null || Time.unscaledTime < _nextAzureFind) return null;
             _nextAzureFind = Time.unscaledTime + 10f;
@@ -625,7 +625,7 @@ namespace WildWasteland.Modules.NPC
             a.State = State.Idle;
             Assign(a, g, Src.Vision, now);
             a.Pursue = target;
-            a.Pursuits = a.PursuitsTotal = Mathf.Max(0, NpcModule.Guesses.Value);
+            a.Pursuits = a.PursuitsTotal = Mathf.Max(0, NpcaiSettings.Guesses.Value);
             if (WildWasteland.Core.Log.L2) Log(a, "lost sight of " + Name(target) + ", goes where it was (ghost #" + g.Id + ", will " + (a.Tracker ? "track it" : "guess") + " " + a.Pursuits + " more time(s))");
         }
 
@@ -639,7 +639,7 @@ namespace WildWasteland.Modules.NPC
         // Set when an NPC engages the player, is hit by him, hears his shots while fighting him (convoy crews on foot: also when they hear
         // them at all), or is told by Patrols (Services.Npc.Remember: its car's crew fought him); refreshed by every sight of him while
         // fighting him. While it lasts ([Senses] FoughtMemorySeconds after the last contact) losing sight does not drop him.
-        internal static float FoughtSeconds { get { return Mathf.Clamp(NpcModule.FoughtMemorySeconds.Value, 10f, 600f); } }
+        internal static float FoughtSeconds { get { return Mathf.Clamp(NpcaiSettings.FoughtMemorySeconds.Value, 10f, 600f); } }
         private static void FoughtFor(Agent a, GameObject target, float now, string why) { FoughtUntil(a, target, now + FoughtSeconds, why); }
         private static void FoughtUntil(Agent a, GameObject target, float until, string why)
         {
@@ -728,8 +728,8 @@ namespace WildWasteland.Modules.NPC
                 a.State = State.Idle;
                 if (Assign(a, g, Src.Vision, now)) { if (WildWasteland.Core.Log.L2) Log(a, "reached ghost without seeing " + Name(a.Pursue) + ", " + (a.Tracker ? "follows to where it is now" : "guesses where it went (" + Vector3.Distance(spot, real).ToString("0") + " m off)") + " (ghost #" + g.Id + ", " + a.Pursuits + " left)"); return; }
             }
-            a.State = State.Search; a.SearchUntil = now + Mathf.Max(0f, NpcModule.SearchSeconds.Value);
-            if (WildWasteland.Core.Log.L2) Log(a, "reached ghost #" + (a.Ghost != null ? a.Ghost.Id.ToString() : "?") + ", looks around for " + NpcModule.SearchSeconds.Value.ToString("0") + " s");
+            a.State = State.Search; a.SearchUntil = now + Mathf.Max(0f, NpcaiSettings.SearchSeconds.Value);
+            if (WildWasteland.Core.Log.L2) Log(a, "reached ghost #" + (a.Ghost != null ? a.Ghost.Id.ToString() : "?") + ", looks around for " + NpcaiSettings.SearchSeconds.Value.ToString("0") + " s");
             if (a.Ghost != null) RetireIfSearched(a.Ghost);
         }
 
@@ -738,7 +738,7 @@ namespace WildWasteland.Modules.NPC
         {
             vel.y = 0f;
             if (vel.sqrMagnitude > 1f) real += vel.normalized * Mathf.Min(vel.magnitude, 8f) * 1.5f;
-            float r = Mathf.Max(0f, NpcModule.GuessRadius.Value) * Mathf.Max(1, k);
+            float r = Mathf.Max(0f, NpcaiSettings.GuessRadius.Value) * Mathf.Max(1, k);
             Vector2 off = UnityEngine.Random.insideUnitCircle * r;
             return OnGround(real + new Vector3(off.x, 0f, off.y), real.y);
         }
@@ -775,7 +775,7 @@ namespace WildWasteland.Modules.NPC
             var g = a.Ghost;
             Vector3 spot = g != null ? g.Pos : a.T.position;
             GiveUp(a, why);
-            float range = NpcModule.AllClearRange.Value;
+            float range = NpcaiSettings.AllClearRange.Value;
             if (!a.Human || g == null || range <= 0f) return;
             int told = 0;
             foreach (var kv in _agents)
@@ -790,7 +790,7 @@ namespace WildWasteland.Modules.NPC
                 GiveUp(f, "told by " + Name(a.Owner) + " there's nothing at ghost #" + fg.Id);
                 told++;
             }
-            if (told > 0 && WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Senses: " + Name(a.Owner) + " found nothing at ghost #" + g.Id + ", tells " + told + " friend(s) to go back");
+            if (told > 0 && WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: " + Name(a.Owner) + " found nothing at ghost #" + g.Id + ", tells " + told + " friend(s) to go back");
         }
 
         // Idle: the search round is walked (or there was none and it looked around) - the search ends now, not when SearchSeconds run out
@@ -843,15 +843,15 @@ namespace WildWasteland.Modules.NPC
         private static void StartFlank(Agent a, Ghost g)
         {
             a.Flanking = false;
-            if (!a.Human || a.Tracker || NpcModule.FlankWidth.Value <= 0f) return;
+            if (!a.Human || a.Tracker || NpcaiSettings.FlankWidth.Value <= 0f) return;
             Vector3 to = g.Pos - a.T.position; to.y = 0f;
             float d = to.magnitude;
-            if (d < Mathf.Max(5f, NpcModule.FlankDistance.Value)) return;
+            if (d < Mathf.Max(5f, NpcaiSettings.FlankDistance.Value)) return;
             Vector3 side = new Vector3(to.z, 0f, -to.x) / d * ((a.Owner.GetInstanceID() & 1) == 0 ? 1f : -1f);
-            Vector3 p = OnGround(a.T.position + to * 0.6f + side * NpcModule.FlankWidth.Value, g.Pos.y);
+            Vector3 p = OnGround(a.T.position + to * 0.6f + side * NpcaiSettings.FlankWidth.Value, g.Pos.y);
             if (a.FlankObj == null) { a.FlankObj = new GameObject("NPCAI.Flank") { hideFlags = HideFlags.HideAndDontSave }; if (_ghostRoot != null) a.FlankObj.transform.SetParent(_ghostRoot, false); }
             a.FlankObj.transform.position = p; a.FlankPos = p; a.Flanking = true;
-            if (WildWasteland.Core.Log.L2) Log(a, "flanks ghost #" + g.Id + " via a point " + NpcModule.FlankWidth.Value.ToString("0") + " m to the " + (side.x * to.z - side.z * to.x > 0f ? "right" : "left"));
+            if (WildWasteland.Core.Log.L2) Log(a, "flanks ghost #" + g.Id + " via a point " + NpcaiSettings.FlankWidth.Value.ToString("0") + " m to the " + (side.x * to.z - side.z * to.x > 0f ? "right" : "left"));
         }
         private static void EndFlank(Agent a) { a.Flanking = false; }
 
@@ -868,7 +868,7 @@ namespace WildWasteland.Modules.NPC
         // time allowed to reach a ghost before searching from wherever the NPC got to (unreachable spots, a cave with no way out)
         private static void Budget(Agent a, Ghost g)
         {
-            a.InvestigateUntil = Time.time + Mathf.Max(5f, NpcModule.GhostTimeout.Value);
+            a.InvestigateUntil = Time.time + Mathf.Max(5f, NpcaiSettings.GhostTimeout.Value);
             a.InvestigateSince = Time.time;
         }
 
@@ -905,7 +905,7 @@ namespace WildWasteland.Modules.NPC
             if (g.Retired) return;
             foreach (var h in g.Holders) if (h.State == State.Investigate) return;
             g.Retired = true;
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Senses: ghost #" + g.Id + " searched by " + g.Holders.Count + ", retired");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: ghost #" + g.Id + " searched by " + g.Holders.Count + ", retired");
         }
 
         private static Ghost GetOrMake(Src src, Vector3 pos, GameObject source, string about, float mergeRadius, float mergeSeconds, float now)
@@ -927,7 +927,7 @@ namespace WildWasteland.Modules.NPC
             n.Obj.transform.SetParent(_ghostRoot, false);
             n.Obj.transform.position = pos;
             _ghosts.Add(n);
-            if (WildWasteland.Core.Log.L2 && (src == Src.Vision || src == Src.Hit)) NpcModule.Log.LogInfo("Senses: ghost #" + n.Id + " " + src + " (" + n.About + ") at " + pos);
+            if (WildWasteland.Core.Log.L2 && (src == Src.Vision || src == Src.Hit)) NpcaiRuntime.Deep("Senses: ghost #" + n.Id + " " + src + " (" + n.About + ") at " + pos);
             return n;
         }
 
@@ -961,17 +961,17 @@ namespace WildWasteland.Modules.NPC
             // a gunshot / blast does not pull a whole camp: the nearest GunshotResponders go (and everyone within GunshotNearRange); the rest
             // only hear it (nothing for them yet)
             HashSet<Agent> allowed = null;
-            if (src == Src.Gunshot && NpcModule.GunshotResponders.Value > 0)
+            if (src == Src.Gunshot && NpcaiSettings.GunshotResponders.Value > 0)
             {
                 _responders.Clear();
-                float near2 = NpcModule.GunshotNearRange.Value * NpcModule.GunshotNearRange.Value, r2a = radius * radius;
+                float near2 = NpcaiSettings.GunshotNearRange.Value * NpcaiSettings.GunshotNearRange.Value, r2a = radius * radius;
                 foreach (var kv in _agents) { var a = kv.Value; if (a.Owner != null && !a.Spider && (!SimpleBandits.Has(a.Owner)||SimpleBandits.Fighting(a.Owner)) && a.T.parent == null && (a.T.position - pos).sqrMagnitude <= r2a && (filter == null || filter(a))) _responders.Add(a); }
-                if (_responders.Count > NpcModule.GunshotResponders.Value)
+                if (_responders.Count > NpcaiSettings.GunshotResponders.Value)
                 {
                     ByDistance.Pos = pos;           // (perf) a static comparer and a reused set: no closure / HashSet per shot
                     _responders.Sort(ByDistance.Instance);
                     allowed = _allowed; allowed.Clear();
-                    for (int i = 0; i < _responders.Count; i++) if (i < NpcModule.GunshotResponders.Value || (_responders[i].T.position - pos).sqrMagnitude <= near2) allowed.Add(_responders[i]);
+                    for (int i = 0; i < _responders.Count; i++) if (i < NpcaiSettings.GunshotResponders.Value || (_responders[i].T.position - pos).sqrMagnitude <= near2) allowed.Add(_responders[i]);
                 }
             }
             Transform sroot = source != null ? source.transform.root : null;
@@ -1006,7 +1006,7 @@ namespace WildWasteland.Modules.NPC
                 if (Assign(a, g, src, now)) { told++; if (told1 != null) told1(a); }
             }
             if (shared != null && shared.Holders.Count == 0) { int i = _ghosts.IndexOf(shared); if (i >= 0) KillGhost(i); }
-            if (WildWasteland.Core.Log.L2 && told > 0) NpcModule.Log.LogInfo("Senses: " + src + " (" + about + ") within " + radius.ToString("0") + " m alerts " + told + (shared != null ? " -> ghost #" + shared.Id : ""));
+            if (WildWasteland.Core.Log.L2 && told > 0) NpcaiRuntime.Deep("Senses: " + src + " (" + about + ") within " + radius.ToString("0") + " m alerts " + told + (shared != null ? " -> ghost #" + shared.Id : ""));
         }
 
         private static bool IsPlayer(GameObject go)
@@ -1053,19 +1053,19 @@ namespace WildWasteland.Modules.NPC
         {
             switch (k)
             {
-                case WeaponRanges.Kind.Pistol: return NpcModule.ShotRangePistol.Value;
-                case WeaponRanges.Kind.Smg: return NpcModule.ShotRangeSmg.Value;
-                case WeaponRanges.Kind.Sniper: return NpcModule.ShotRangeSniper.Value;
-                case WeaponRanges.Kind.Shotgun: return NpcModule.ShotRangeShotgun.Value;
-                case WeaponRanges.Kind.Crossbow: return NpcModule.ShotRangeCrossbow.Value;
-                default: return NpcModule.ShotRangeRifle.Value;
+                case WeaponRanges.Kind.Pistol: return NpcaiSettings.ShotRangePistol.Value;
+                case WeaponRanges.Kind.Smg: return NpcaiSettings.ShotRangeSmg.Value;
+                case WeaponRanges.Kind.Sniper: return NpcaiSettings.ShotRangeSniper.Value;
+                case WeaponRanges.Kind.Shotgun: return NpcaiSettings.ShotRangeShotgun.Value;
+                case WeaponRanges.Kind.Crossbow: return NpcaiSettings.ShotRangeCrossbow.Value;
+                default: return NpcaiSettings.ShotRangeRifle.Value;
             }
         }
 
         private static Dictionary<string, float> _npcShot; private static string _npcShotSrc;
         private static float NpcShotRange(GameObject shooter, WeaponRanges.Kind k)
         {
-            string cfg = NpcModule.NpcShotRanges.Value ?? "";
+            string cfg = NpcaiSettings.NpcShotRanges.Value ?? "";
             if (_npcShot == null || _npcShotSrc != cfg)
             {
                 _npcShotSrc = cfg; _npcShot = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
@@ -1089,7 +1089,7 @@ namespace WildWasteland.Modules.NPC
         private static HashSet<string> _blastNames; private static string _blastSrc;
         public static void AfterCreateObject(CreateObject __instance)
         {
-            if (!NpcModule.Running) return;
+            if (!NpcaiRuntime.Running) return;
             try
             {
                 if (__instance.gameObject == null) return;
@@ -1099,8 +1099,8 @@ namespace WildWasteland.Modules.NPC
                 var made = __instance.storeObject != null ? __instance.storeObject.Value : null;
                 if (made != null && Nav.On && pname.Length > 5 && (pname[0] == 'C' || pname[0] == 'B')) Nav.Spawned(made);   // Camp_N / Cave_N / Building_N
                 if (made != null && Brain.On) Brain.Spawned(made);      // (1.1.1) gunmen get Apocaplayer's clips from their first frames
-                if (!On || NpcModule.BlastRange.Value <= 0f) return;
-                string cfg = NpcModule.BlastPrefabs.Value ?? "";
+                if (!On || NpcaiSettings.BlastRange.Value <= 0f) return;
+                string cfg = NpcaiSettings.BlastPrefabs.Value ?? "";
                 if (_blastNames == null || _blastSrc != cfg)
                 {
                     _blastSrc = cfg; _blastNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1116,9 +1116,9 @@ namespace WildWasteland.Modules.NPC
                     if (__instance.position != null && !__instance.position.IsNone) pos += __instance.position.Value;
                 }
                 var owner = __instance.Fsm != null ? __instance.Fsm.GameObject : null;
-                Noise(owner, pos, NpcModule.BlastRange.Value, Src.Gunshot, (owner != null ? Prefab(owner.name) : "something") + " exploding", null, null);
+                Noise(owner, pos, NpcaiSettings.BlastRange.Value, Src.Gunshot, (owner != null ? Prefab(owner.name) : "something") + " exploding", null, null);
             }
-            catch (Exception e) { NpcModule.Log.LogError("Senses: " + e); }
+            catch (Exception e) { NpcaiRuntime.Error("Senses: " + e); }
         }
 
         // Tracers: a bullet hit a creature - it knows where that came from
@@ -1181,7 +1181,7 @@ namespace WildWasteland.Modules.NPC
                 // its own ghost (source = the horn object): it follows the car while the horn sounds and then stays where it last sounded,
                 // so NPCs it reached beyond the engine's range walk there. NPCs within the engine's range keep the engine ghost.
                 _hornPos = cpos; _hornEr2 = er * er;        // (perf) a static filter, no closure every 0.5 s
-                Noise(_hornFsm.GameObject, cpos, NpcModule.EngineMaxRange.Value + 50f, Src.Engine, "horn", engineOn ? _beyondEngine : null, null, _player);
+                Noise(_hornFsm.GameObject, cpos, NpcaiSettings.EngineMaxRange.Value + 50f, Src.Engine, "horn", engineOn ? _beyondEngine : null, null, _player);
             }
         }
 
@@ -1200,16 +1200,16 @@ namespace WildWasteland.Modules.NPC
                     if (float.TryParse(t.name.Substring(j + 1, i - j - 1), NumberStyles.Float, CultureInfo.InvariantCulture, out v) && v > 0f) { hp = v; break; }
                 }
                 _hpOf[car.GetInstanceID()] = hp;
-                NpcModule.Verbose("Senses: " + car.name + " engine " + (hp > 0f ? hp + " HP" : "unknown"));
+                NpcaiRuntime.Deep("Senses: " + car.name + " engine " + (hp > 0f ? hp + " HP" : "unknown"));
             }
-            float lo = NpcModule.EngineMinHp.Value, hi = Mathf.Max(lo + 1f, NpcModule.EngineMaxHp.Value);
+            float lo = NpcaiSettings.EngineMinHp.Value, hi = Mathf.Max(lo + 1f, NpcaiSettings.EngineMaxHp.Value);
             float k = hp > 0f ? Mathf.Clamp01((hp - lo) / (hi - lo)) : 0.5f;
-            float radius = Mathf.Lerp(NpcModule.EngineMinRange.Value, NpcModule.EngineMaxRange.Value, k);
+            float radius = Mathf.Lerp(NpcaiSettings.EngineMinRange.Value, NpcaiSettings.EngineMaxRange.Value, k);
             if (!ReferenceEquals(_engineRbCar, car)) { _engineRbCar = car; _engineRb = car.GetComponent<Rigidbody>(); }     // (perf) per car, not per tick
             var rb = _engineRb;
             float speed = rb != null ? rb.velocity.magnitude : 0f;
             float thr = Nwh.Throttle(car);
-            if (speed < 1.5f && thr < 0.05f) radius *= Mathf.Clamp01(NpcModule.EngineIdleFactor.Value / 100f);
+            if (speed < 1.5f && thr < 0.05f) radius *= Mathf.Clamp01(NpcaiSettings.EngineIdleFactor.Value / 100f);
             if (!_engineAbout.TryGetValue(car.GetInstanceID(), out about)) { about = "engine " + (hp > 0f ? hp + " HP" : ""); _engineAbout[car.GetInstanceID()] = about; }
             return radius;
         }
@@ -1228,7 +1228,7 @@ namespace WildWasteland.Modules.NPC
                     if (h.Owner == null) { g.Holders.Remove(h); continue; }
                     Log(h, "lost the engine sound, searches here");
                     h.Ghost = null; h.GhostPrio = Src.None; g.Holders.Remove(h);
-                    h.State = State.Search; h.SearchUntil = now + Mathf.Max(0f, NpcModule.SearchSeconds.Value);
+                    h.State = State.Search; h.SearchUntil = now + Mathf.Max(0f, NpcaiSettings.SearchSeconds.Value);
                 }
                 if (g.Holders.Count == 0) { int i = _ghosts.IndexOf(g); if (i >= 0) KillGhost(i); }
                 break;
@@ -1255,14 +1255,14 @@ namespace WildWasteland.Modules.NPC
                 {
                     _thrown = _grabItemVar.Value.GetComponent<Rigidbody>();
                     _thrownSince = now; _thrownRest = 0f;
-                    if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Senses: " + Name(_grabItemVar.Value) + " thrown");
+                    if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: " + Name(_grabItemVar.Value) + " thrown");
                 }
             }
             if (_thrown == null) return;
             if (_thrown.velocity.magnitude < 0.5f) _thrownRest += dt; else _thrownRest = 0f;
             if (_thrownRest > 0.3f || now - _thrownSince > 6f)
             {
-                Noise(_thrown.gameObject, _thrown.position, NpcModule.ThrowRange.Value, Src.Thrown, "thrown " + Prefab(_thrown.name), null, null, _player);
+                Noise(_thrown.gameObject, _thrown.position, NpcaiSettings.ThrowRange.Value, Src.Thrown, "thrown " + Prefab(_thrown.name), null, null, _player);
                 _thrown = null;
             }
         }
@@ -1288,7 +1288,7 @@ namespace WildWasteland.Modules.NPC
                 else if (__instance.noneDetectedEvent != null) fsm.Event(__instance.noneDetectedEvent);
                 return false;
             }
-            catch (Exception e) { NpcModule.Log.LogError("Senses: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Senses: " + e); return true; }
         }
 
         // the burst's line-of-sight check (Attack FSM "ranged" state): a target the NPC sees right now, never a ghost
@@ -1309,7 +1309,7 @@ namespace WildWasteland.Modules.NPC
                 if (__instance.storeIsVisible != null && !__instance.storeIsVisible.IsNone) __instance.storeIsVisible.Value = vis;
                 return false;
             }
-            catch (Exception e) { NpcModule.Log.LogError("Senses: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Senses: " + e); return true; }
         }
 
         // the target is in sight right now: seen within the last two looks and a clear line from the eyes to its head or body
@@ -1394,7 +1394,7 @@ namespace WildWasteland.Modules.NPC
             try
             {
                 if(SimpleBandits.Has(__result))return;
-                if (!On || !NpcModule.BailOutAware.Value || __result == null) return;
+                if (!On || !NpcaiSettings.BailOutAware.Value || __result == null) return;
                 GameObject target = null;
                 if (pax != null)
                     foreach (var f in pax.GetComponents<PlayMakerFSM>())
@@ -1407,10 +1407,10 @@ namespace WildWasteland.Modules.NPC
                 if (target == null || (_playerCar != null && target == _playerCar)) { FindPlayer(); target = _player; }
                 if (target == null) return;
                 Vector3 from = car != null ? car.transform.position : __result.transform.position;
-                if (target == _player && (target.transform.position - from).magnitude > NpcModule.BailOutAwareRange.Value) return;
+                if (target == _player && (target.transform.position - from).magnitude > NpcaiSettings.BailOutAwareRange.Value) return;
                 Inform(__result, target);
             }
-            catch (Exception e) { NpcModule.Log.LogError("Senses: bail-out handover: " + e); }
+            catch (Exception e) { NpcaiRuntime.Error("Senses: bail-out handover: " + e); }
         }
 
         // (WW) Core.Services.VehicleExploded (raised by the Patrols module in Explode.Blast)
@@ -1418,10 +1418,10 @@ namespace WildWasteland.Modules.NPC
         {
             try
             {
-                if (!On || car == null || NpcModule.ExplosionRange.Value <= 0f) return;
-                Noise(car, car.transform.position, NpcModule.ExplosionRange.Value, Src.Gunshot, Prefab(car.name) + " exploding", null, null);
+                if (!On || car == null || NpcaiSettings.ExplosionRange.Value <= 0f) return;
+                Noise(car, car.transform.position, NpcaiSettings.ExplosionRange.Value, Src.Gunshot, Prefab(car.name) + " exploding", null, null);
             }
-            catch (Exception e) { NpcModule.Log.LogError("Senses: explosion noise: " + e); }
+            catch (Exception e) { NpcaiRuntime.Error("Senses: explosion noise: " + e); }
         }
 
         // tell an NPC (now, or the moment it registers) that it knows about target
@@ -1533,7 +1533,7 @@ namespace WildWasteland.Modules.NPC
             Nests.Register(a);
             Ambush.Register(a);
             DogBite.Register(a);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Senses: " + owner.name + " (" + a.Tag + (a.Human ? ", human" : "") + ") hunts " + string.Join("/", new List<string>(a.Hostile).ToArray()) + (a.Head != null ? ", eyes at the head" : ""));
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: " + owner.name + " (" + a.Tag + (a.Human ? ", human" : "") + ") hunts " + string.Join("/", new List<string>(a.Hostile).ToArray()) + (a.Head != null ? ", eyes at the head" : ""));
             return a;
         }
 
@@ -1570,7 +1570,7 @@ namespace WildWasteland.Modules.NPC
         private static string[] _trackers; private static string _trackersSrc;
         private static bool IsTracker(string prefab)
         {
-            string cfg = NpcModule.Trackers.Value ?? "";
+            string cfg = NpcaiSettings.Trackers.Value ?? "";
             if (_trackers == null || _trackersSrc != cfg) { _trackersSrc = cfg; _trackers = cfg.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries); for (int i = 0; i < _trackers.Length; i++) _trackers[i] = _trackers[i].Trim(); }
             foreach (var t in _trackers) if (t.Length > 0 && prefab.IndexOf(t, StringComparison.OrdinalIgnoreCase) >= 0) return true;
             return false;
@@ -1578,7 +1578,7 @@ namespace WildWasteland.Modules.NPC
 
         private static bool IsHuman(string tag)
         {
-            foreach (var p in (NpcModule.HumanFactions.Value ?? "").Split(',')) if (p.Trim() == tag) return true;
+            foreach (var p in (NpcaiSettings.HumanFactions.Value ?? "").Split(',')) if (p.Trim() == tag) return true;
             return false;
         }
 
@@ -1602,7 +1602,7 @@ namespace WildWasteland.Modules.NPC
                     break;
                 }
             }
-            catch (Exception e) { NpcModule.Verbose("Senses: tag filter of " + owner.name + ": " + e.Message); }
+            catch (Exception e) { NpcaiRuntime.Deep("Senses: tag filter of " + owner.name + ": " + e.Message); }
             if (set.Count == 0)
             {
                 // the game's own table, for a prefab without a readable filter
@@ -1702,7 +1702,7 @@ namespace WildWasteland.Modules.NPC
         // (WW) Core.SaveBus.StateChanged: the SaveLoadGame state changes the old Persist.Tick polled for itself (same reactions, same order)
         internal static void OnSaveLoadState(string previous, string current)
         {
-            if (!NpcModule.Running || current == null) return;
+            if (!NpcaiRuntime.Running || current == null) return;
             Persist.OnState(current);
         }
 
@@ -1736,7 +1736,7 @@ namespace WildWasteland.Modules.NPC
                         if (!string.IsNullOrEmpty(s)) _co = Core.Scheduler.StartCoroutine(Restore(s));
                     }
                 }
-                catch (Exception e) { Core.SaveBus.ReportFailure("NPC senses persistence failed: " + e.Message); NpcModule.Log.LogError("Senses persistence: " + e); }
+                catch (Exception e) { Core.SaveBus.ReportFailure("NPC senses persistence failed: " + e.Message); NpcaiRuntime.Error("Senses persistence: " + e); }
             }
 
             private static string Slot()
@@ -1751,10 +1751,10 @@ namespace WildWasteland.Modules.NPC
             {
                 path = null;
                 string name = Path.GetFileName(slot ?? "");
-                if (Core.SaveRuntime.IsSaveFile(name)) { path = Path.Combine(Path.Combine(NpcModule.DataDir ?? Core.Assets.ModuleConfigDir("NPC"), "Saves"), name + ".senses.txt"); return true; }
+                if (Core.SaveRuntime.IsSaveFile(name)) { path = Path.Combine(Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "Saves"), name + ".senses.txt"); return true; }
                 if (string.IsNullOrEmpty(name) || !name.StartsWith("SaveGame", StringComparison.OrdinalIgnoreCase)) return false;
                 foreach (char c in name) if (!(char.IsLetterOrDigit(c) || c == '.')) return false;
-                path = Path.Combine(Path.Combine(NpcModule.DataDir ?? Core.Assets.ModuleConfigDir("NPC"), "Saves"), name + ".senses.txt");
+                path = Path.Combine(Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "Saves"), name + ".senses.txt");
                 return true;
             }
 
@@ -1768,7 +1768,7 @@ namespace WildWasteland.Modules.NPC
             private static void Save(string slot)
             {
                 string path;
-                if (!TryPath(slot, out path)) { NpcModule.Log.LogWarning("Senses: no save slot to write the senses for (" + slot + ")"); return; }
+                if (!TryPath(slot, out path)) { NpcaiRuntime.Warn("Senses: no save slot to write the senses for (" + slot + ")"); return; }
                 var sb = new StringBuilder();
                 var ci = CultureInfo.InvariantCulture;
                 float now = Time.time;
@@ -1790,7 +1790,7 @@ namespace WildWasteland.Modules.NPC
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
                 File.WriteAllText(path + ".tmp", sb.ToString());
                 Core.AtomicFile.Replace(path + ".tmp", path);   // (D17) same-directory replace, no Delete + Move window
-                NpcModule.Verbose("Senses: saved " + _ghosts.Count + " ghost(s), " + n + " alert NPC(s) for " + Path.GetFileName(slot));
+                NpcaiRuntime.Deep("Senses: saved " + _ghosts.Count + " ghost(s), " + n + " alert NPC(s) for " + Path.GetFileName(slot));
             }
 
             private static IEnumerator Restore(string slot)
@@ -1800,10 +1800,10 @@ namespace WildWasteland.Modules.NPC
                 if (!TryPath(slot, out path)) { _restoring = false; yield break; }
                 if (!File.Exists(path)) { _restoring = false; yield break; }
                 string[] lines;
-                try { lines = File.ReadAllLines(path); } catch (Exception e) { NpcModule.Log.LogWarning("Senses: cannot read " + path + ": " + e.Message); _restoring = false; yield break; }
+                try { lines = File.ReadAllLines(path); } catch (Exception e) { NpcaiRuntime.Warn("Senses: cannot read " + path + ": " + e.Message); _restoring = false; yield break; }
                 if (lines.Length == 0 || !lines[0].StartsWith("v1 ")) { _restoring = false; yield break; }
                 if (!string.Equals(lines[0].Substring(3).Trim(), Path.GetFileName(slot), StringComparison.OrdinalIgnoreCase))
-                { NpcModule.Log.LogWarning("Senses: " + path + " was written for another slot, not restored"); _restoring = false; yield break; }
+                { NpcaiRuntime.Warn("Senses: " + path + " was written for another slot, not restored"); _restoring = false; yield break; }
                 Clear();
                 int gen = _gen;
                 _nextPlayerFind = 0f; FindPlayer();
@@ -1828,7 +1828,7 @@ namespace WildWasteland.Modules.NPC
                         }
                         else if (p[0] == "agent" && p.Length >= 10) pending.Add(p);
                     }
-                    catch (Exception e) { NpcModule.Log.LogWarning("Senses: bad line in " + path + ": " + e.Message); }
+                    catch (Exception e) { NpcaiRuntime.Warn("Senses: bad line in " + path + ": " + e.Message); }
                 }
                 float until = Time.realtimeSinceStartup + 20f;
                 var byName = new Dictionary<string, Agent>();
@@ -1862,13 +1862,13 @@ namespace WildWasteland.Modules.NPC
                             }
                             restored++;
                         }
-                        catch (Exception e) { NpcModule.Log.LogWarning("Senses: restore of " + p[1] + " failed: " + e.Message); }
+                        catch (Exception e) { NpcaiRuntime.Warn("Senses: restore of " + p[1] + " failed: " + e.Message); }
                     }
                     if (pending.Count > 0) yield return new WaitForSecondsRealtime(0.5f);
-                    if (gen != _gen) { NpcModule.Verbose("Senses: restore of " + Path.GetFileName(slot) + " cancelled"); _restoring = false; yield break; }   // a new load / reset happened meanwhile
+                    if (gen != _gen) { NpcaiRuntime.Deep("Senses: restore of " + Path.GetFileName(slot) + " cancelled"); _restoring = false; yield break; }   // a new load / reset happened meanwhile
                 }
                 for (int i = _ghosts.Count - 1; i >= 0; i--) if (_ghosts[i].Holders.Count == 0) KillGhost(i);
-                NpcModule.Verbose("Senses: restored " + restored + " alert NPC(s), " + _ghosts.Count + " ghost(s) from " + Path.GetFileName(slot) + (pending.Count > 0 ? "; " + pending.Count + " NPC(s) not found" : ""));
+                NpcaiRuntime.Deep("Senses: restored " + restored + " alert NPC(s), " + _ghosts.Count + " ghost(s) from " + Path.GetFileName(slot) + (pending.Count > 0 ? "; " + pending.Count + " NPC(s) not found" : ""));
                 _restoring = false; _co = null;
             }
         }

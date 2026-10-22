@@ -137,7 +137,7 @@ namespace WildWasteland.Modules.NPC
             {
                 var n = kv.Value;
                 if (n.Owner == null) { if (n.Body != null) { try { ApBody.Detach(n.Body); } catch (Exception) { } n.Body = null; } continue; }
-                try { if (n.Mode != Mode.Off) SetMode(n, Mode.Off, "module off"); } catch (Exception e) { NpcModule.Warn("Brain shutdown of " + n.Owner.name + ": " + e.Message); }
+                try { if (n.Mode != Mode.Off) SetMode(n, Mode.Off, "module off"); } catch (Exception e) { NpcaiRuntime.Warn("Brain shutdown of " + n.Owner.name + ": " + e.Message); }
                 try { Unfreeze(n); Crouch(n, false); if (n.Anim != null && n.Anim.speed == 0f) n.Anim.speed = 1f; } catch (Exception) { }
                 n.Halted = false; n.Travel = false; n.BoostUntil = 0f;
                 if (n.Body != null) { try { ApBody.Detach(n.Body); } catch (Exception) { } n.Body = null; }
@@ -160,10 +160,10 @@ namespace WildWasteland.Modules.NPC
         internal static int EngagedCount { get { return _active; } }
         internal static float Interval { get { return _interval; } }
 
-        internal static bool On { get { return NpcModule.Running && NpcModule.BrainEnabled.Value; } }
+        internal static bool On { get { return NpcaiRuntime.Running && NpcaiSettings.BrainEnabled.Value; } }
         // [Brain] ReactionTime %: every wait of the brain (think interval, back-up, rest, side lock, no-progress, memory, LOS tolerance,
         // hold rechecks) is multiplied by this; 100 = the defaults, 50 = twice as quick, 500 = five times slower
-        internal static float R { get { return Mathf.Clamp(NpcModule.ReactionTime.Value, 1f, 500f) / 100f; } }
+        internal static float R { get { return Mathf.Clamp(NpcaiSettings.ReactionTime.Value, 1f, 500f) / 100f; } }
 
         // ---------- per frame ----------
         public static void Tick()
@@ -190,11 +190,11 @@ namespace WildWasteland.Modules.NPC
                 }
                 foreach (var k in _dead) _npcs.Remove(k);
                 _active = n;
-                _interval = (NpcModule.ScaleWithActors.Value ? (n <= 5 ? 0.1f : n <= 10 ? 0.2f : n <= 20 ? 0.3f : 0.5f) : 0.1f) * R;
+                _interval = (NpcaiSettings.ScaleWithActors.Value ? (n <= 5 ? 0.1f : n <= 10 ? 0.2f : n <= 20 ? 0.3f : 0.5f) : 0.1f) * R;
             }
             if (ApBody.Available) RegisterPending();        // spawned gunmen get their rig before they ever engage
             bool on = On;
-            float turn = Mathf.Max(10f, NpcModule.TurnRate.Value) * dt;
+            float turn = Mathf.Max(10f, NpcaiSettings.TurnRate.Value) * dt;
             // (perf) per-frame think cap: the engaged NPCs' average thinks per frame + 1; one over the cap keeps its overdue NextTick and
             // thinks next frame (an alert no longer runs every overdue think in one frame)
             int engagedPrev = _engagedFrame; _engagedFrame = 0;
@@ -242,7 +242,7 @@ namespace WildWasteland.Modules.NPC
                     try { Think(n, now); }
                     catch (Exception e)
                     {
-                        NpcModule.Log.LogError("Brain: " + e);
+                        NpcaiRuntime.Error("Brain: " + e);
                         try { SetMode(n, Mode.Off, "error"); } catch (Exception) { n.Mode = Mode.Off; try { Unfreeze(n); Crouch(n, false); } catch (Exception) { } }
                         continue;
                     }
@@ -282,7 +282,7 @@ namespace WildWasteland.Modules.NPC
                         if (tt.sqrMagnitude > 0.01f)
                         {
                             float dev = Mathf.DeltaAngle(Quaternion.LookRotation(tt, Vector3.up).eulerAngles.y, n.Heading);
-                            if (Mathf.Abs(dev) <= NpcModule.StrafeAngle.Value) { to = tt; n.StrafeDev = dev; }
+                            if (Mathf.Abs(dev) <= NpcaiSettings.StrafeAngle.Value) { to = tt; n.StrafeDev = dev; }
                         }
                     }
                 }
@@ -367,7 +367,7 @@ namespace WildWasteland.Modules.NPC
                 if (n.Mode != Mode.Walk) SetMode(n, Mode.Walk, "Idle walks it to the ghost");
                 return;
             }
-            if (d > NpcModule.MaxDistance.Value) { if (n.Mode != Mode.Off) SetMode(n, Mode.Off, "far"); return; }
+            if (d > NpcaiSettings.MaxDistance.Value) { if (n.Mode != Mode.Off) SetMode(n, Mode.Off, "far"); return; }
             if (!n.Ranged && now < n.MadeAt + 10f && now >= n.NextRangedCheck)     // a gun that was not in the hand at the spawn frame
             {
                 n.NextRangedCheck = now + 1f;
@@ -402,7 +402,7 @@ namespace WildWasteland.Modules.NPC
                 if (los) { n.Los = true; n.LosLostAt = -1f; n.LosLooks++; }
                 else { if (n.Los) { n.Los = false; n.LosLostAt = now; } n.LosLooks = 0; }
                 float reach = WeaponRanges.RangeOf(n.Kind);
-                float engage = reach * Mathf.Clamp(NpcModule.EngagePercent.Value, 1f, 100f) / 100f;
+                float engage = reach * Mathf.Clamp(NpcaiSettings.EngagePercent.Value, 1f, 100f) / 100f;
                 bool good = los && d <= engage;
                 if (n.Mode == Mode.Hold)
                 {
@@ -412,12 +412,12 @@ namespace WildWasteland.Modules.NPC
                     {
                         n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;
                         // advances more when the target has not fired for 8 s (reloading, hiding), never when hurt (below CoverBelow)
-                        float adv = NpcModule.AdvanceChance.Value;
+                        float adv = NpcaiSettings.AdvanceChance.Value;
                         if (Time.time - Senses.LastPlayerShotAt > 8f) adv *= 2.5f;
-                        if (n.HpVar != null && n.HpMax > 0f && NpcModule.CoverBelow.Value > 0f && n.HpVar.Value < n.HpMax * NpcModule.CoverBelow.Value / 100f) adv = 0f;
+                        if (n.HpVar != null && n.HpMax > 0f && NpcaiSettings.CoverBelow.Value > 0f && n.HpVar.Value < n.HpMax * NpcaiSettings.CoverBelow.Value / 100f) adv = 0f;
                         if (UnityEngine.Random.Range(0f, 100f) < adv && d > 3f)
                         {
-                            n.ModeUntil = now + UnityEngine.Random.Range(NpcModule.AdvanceMin.Value, Mathf.Max(NpcModule.AdvanceMin.Value, NpcModule.AdvanceMax.Value));
+                            n.ModeUntil = now + UnityEngine.Random.Range(NpcaiSettings.AdvanceMin.Value, Mathf.Max(NpcaiSettings.AdvanceMin.Value, NpcaiSettings.AdvanceMax.Value));
                             SetMode(n, Mode.Advance, "feels like it");
                         }
                         else return;
@@ -465,7 +465,7 @@ namespace WildWasteland.Modules.NPC
                 n.NextTraceLog = now + 1f;
                 Vector3 vel = n.Rb != null ? n.Rb.velocity : Vector3.zero; vel.y = 0f;
                 Vector3 fp = n.Col != null ? n.Col.bounds.min : n.T.position;
-                NpcModule.Log.LogInfo("Trace: " + n.Owner.name + " " + n.Mode + " at " + n.T.position.x.ToString("0.0") + "," + n.T.position.z.ToString("0.0") + " feet y " + fp.y.ToString("0.0")
+                NpcaiRuntime.Deep("Trace: " + n.Owner.name + " " + n.Mode + " at " + n.T.position.x.ToString("0.0") + "," + n.T.position.z.ToString("0.0") + " feet y " + fp.y.ToString("0.0")
                     + " speed " + vel.magnitude.ToString("0.0") + " goal " + d.ToString("0") + " m | "
                     + (!asked ? "MAP OFF " + (n.NavOffUntil - now).ToString("0") + " s more"
                        : n.OnNav ? "MAP " + trace + (hopLeg ? " HOP" : "") + " wp " + Vector3.Distance(new Vector3(navNext.x, 0f, navNext.z), new Vector3(n.T.position.x, 0f, n.T.position.z)).ToString("0.0") + " m away"
@@ -476,7 +476,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2 && !n.OnNav && Nav.LastReason != n.NavReason)
             {
                 n.NavReason = Nav.LastReason;
-                if (n.NavReason.Length > 0) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " no map route: " + n.NavReason + Nav.Probe(n.T.position));
+                if (n.NavReason.Length > 0) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " no map route: " + n.NavReason + Nav.Probe(n.T.position));
             }
             if (n.OnNav != n.WasOnNav) { n.WasOnNav = n.OnNav; n.BestDist = float.MaxValue; n.NoProgressSince = now; }   // map path length and straight distance don't compare
             if (n.OnNav) NavProgress(n, pathLeft, now);         // may switch the map off for a moment (full feelers then)
@@ -491,8 +491,8 @@ namespace WildWasteland.Modules.NPC
             {
                 Vector3 w = n.Waypoint - n.T.position; w.y = 0f;
                 float wd = w.magnitude;
-                if (wd < 1.2f || now > n.WaypointUntil) { n.HasWaypoint = false; if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + (wd < 1.2f ? " reached the corner" : " gives up the corner")); }
-                else if (DirectClear(n, tp, d)) { n.HasWaypoint = false; if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " has a clear line, drops the corner"); }
+                if (wd < 1.2f || now > n.WaypointUntil) { n.HasWaypoint = false; if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + (wd < 1.2f ? " reached the corner" : " gives up the corner")); }
+                else if (DirectClear(n, tp, d)) { n.HasWaypoint = false; if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " has a clear line, drops the corner"); }
                 else { goal = w; gd = wd; }
             }
             if (n.OnNav) NavSteer(n, goal, now);                // on a map route: straight at the waypoint, short front feelers, steps over low stuff
@@ -501,7 +501,7 @@ namespace WildWasteland.Modules.NPC
             {
                 float want = Mathf.Atan2(goal.x, goal.z) * Mathf.Rad2Deg;
                 float off = Mathf.DeltaAngle(want, n.Heading);
-                if (Mathf.Abs(off) > 30f) NpcModule.Log.LogInfo("Trace: " + n.Owner.name + " feelers turn " + off.ToString("0") + " deg off the " + (n.OnNav ? "map waypoint" : n.HasWaypoint ? "corner" : "straight line"));
+                if (Mathf.Abs(off) > 30f) NpcaiRuntime.Deep("Trace: " + n.Owner.name + " feelers turn " + off.ToString("0") + " deg off the " + (n.OnNav ? "map waypoint" : n.HasWaypoint ? "corner" : "straight line"));
             }
         }
 
@@ -526,19 +526,19 @@ namespace WildWasteland.Modules.NPC
                 if (h != null && (h.transform.position - n.T.position).sqrMagnitude <= 60f * 60f) { StartCover(n, h.transform.position, now, 60f, true, "the game's hide: " + h.name); return; }
                 return;
             }
-            float below = NpcModule.CoverBelow.Value;
+            float below = NpcaiSettings.CoverBelow.Value;
             if (below <= 0f || kind != 1 || now < n.NextCoverCheck || now < n.CoverCooldownUntil || n.HpVar == null) return;
             n.NextCoverCheck = now + 3f;
             float hp = n.HpVar.Value;
             if (hp > n.HpMax) n.HpMax = hp;
             if (n.HpMax <= 0f || hp >= n.HpMax * below / 100f) return;
-            float range = NpcModule.CoverRange.Value;
+            float range = NpcaiSettings.CoverRange.Value;
             Vector3 spot; string what;
             var hide = NearestHide(n.T.position, range);
             if (hide != null && (hide.transform.position - tp).sqrMagnitude > 16f) { spot = hide.transform.position; what = "cover object " + hide.name; }
             else if (Nav.CoverSpot(n.T.position, tp, range, out spot)) what = "a spot out of sight on the map";
             else { n.NextCoverCheck = now + 10f; return; }
-            StartCover(n, spot, now, UnityEngine.Random.Range(NpcModule.CoverMin.Value, Mathf.Max(NpcModule.CoverMin.Value, NpcModule.CoverMax.Value)), false, "health " + hp.ToString("0") + "/" + n.HpMax.ToString("0") + ", " + what);
+            StartCover(n, spot, now, UnityEngine.Random.Range(NpcaiSettings.CoverMin.Value, Mathf.Max(NpcaiSettings.CoverMin.Value, NpcaiSettings.CoverMax.Value)), false, "health " + hp.ToString("0") + "/" + n.HpMax.ToString("0") + ", " + what);
         }
 
         private static GameObject DrivingHide(Npc n, float now)
@@ -569,7 +569,7 @@ namespace WildWasteland.Modules.NPC
             if (threat == null) return;
             foreach (var fsm in n.Owner.GetComponents<PlayMakerFSM>()) if (fsm.FsmName == "BossUI") return;
             Vector3 dogPos = threat.transform.position, spot = Vector3.zero;
-            float range = NpcModule.CoverRange.Value, best = range * range; bool found = false;
+            float range = NpcaiSettings.CoverRange.Value, best = range * range; bool found = false;
             NearestHide(n.T.position, range); // refresh the existing shared Hide cache
             foreach (var hide in _hides)
             {
@@ -615,8 +615,8 @@ namespace WildWasteland.Modules.NPC
             {
                 n.CoverArrived = true; n.HasHeading = false;
                 Move(n, false);
-                if (n.Ranged) { Aim(n); if (NpcModule.CrouchChance.Value > 0f && UnityEngine.Random.Range(0f, 100f) < NpcModule.CrouchChance.Value * 1.5f) Crouch(n, true); }
-                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " in cover, " + td.ToString("0") + " m from its target");
+                if (n.Ranged) { Aim(n); if (NpcaiSettings.CrouchChance.Value > 0f && UnityEngine.Random.Range(0f, 100f) < NpcaiSettings.CrouchChance.Value * 1.5f) Crouch(n, true); }
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " in cover, " + td.ToString("0") + " m from its target");
                 return;
             }
             MoveToward(n, n.CoverPos, c3, cd, now);
@@ -633,7 +633,7 @@ namespace WildWasteland.Modules.NPC
                 float now = Time.time;
                 if (now < n.MakeWayUntil + 1.5f) return;
                 if (n.Crouched) Crouch(n, false);
-                else if (n.Ranged && NpcModule.CrouchChance.Value > 0f && UnityEngine.Random.Range(0f, 100f) < NpcModule.CrouchChance.Value * 2f) Crouch(n, true);
+                else if (n.Ranged && NpcaiSettings.CrouchChance.Value > 0f && UnityEngine.Random.Range(0f, 100f) < NpcaiSettings.CrouchChance.Value * 2f) Crouch(n, true);
                 if (n.Body == null) return;       // no strafe clips (Apocaplayer not installed): no sidestep - sliding without an animation looks wrong
                 bool left = UnityEngine.Random.value < 0.5f;
                 Vector3 dir = n.T.right * (left ? -1f : 1f);
@@ -641,16 +641,16 @@ namespace WildWasteland.Modules.NPC
                 if (Physics.Raycast(origin, dir, 2.5f, PathMask, QueryTriggerInteraction.Ignore)) { dir = -dir; left = !left; }      // a wall that way: the other way
                 n.MakeWayDir = dir; n.MakeWaySpeed = 2.2f; n.MakeWayUntil = now + 0.9f;
                 StrafeClip(n, left);
-                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " is hit, sidesteps " + (left ? "left" : "right"));
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " is hit, sidesteps " + (left ? "left" : "right"));
             }
         }
 
         // speed while turning: 1 within 30 deg of the wanted heading, down to 0.1 at 120 deg and beyond (also used by Idle)
         internal static float TurnSpeedFactor(float offDeg)
         {
-            float a0 = NpcModule.MoveFullSpeedAngle.Value, a1 = Mathf.Max(a0 + 1f, NpcModule.MoveSlowestAngle.Value);
+            float a0 = NpcaiSettings.MoveFullSpeedAngle.Value, a1 = Mathf.Max(a0 + 1f, NpcaiSettings.MoveSlowestAngle.Value);
             if (offDeg <= a0) return 1f;
-            return Mathf.Lerp(1f, Mathf.Clamp01(NpcModule.MoveSlowestSpeed.Value), Mathf.Clamp01((offDeg - a0) / (a1 - a0)));
+            return Mathf.Lerp(1f, Mathf.Clamp01(NpcaiSettings.MoveSlowestSpeed.Value), Mathf.Clamp01((offDeg - a0) / (a1 - a0)));
         }
 
         // (1.4.7) Blocked: over BlockedSeconds the body covered less than BlockedRatio of the distance it was driven (running in place against
@@ -662,7 +662,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<int, float> _arrive = new Dictionary<int, float>();
         internal static float ArriveFor(GameObject owner)
         {
-            float cfg = Mathf.Max(0.5f, NpcModule.ArriveDistance.Value);
+            float cfg = Mathf.Max(0.5f, NpcaiSettings.ArriveDistance.Value);
             if (owner == null) return cfg;
             int id = owner.GetInstanceID(); float v;
             if (_arrive.TryGetValue(id, out v)) return v;
@@ -692,13 +692,13 @@ namespace WildWasteland.Modules.NPC
             if (moving) { string ast = AttackState(n); if (ast != null && !ChaseState(ast)) moving = false; }
             if (!moving || dt > 1f || Senses.Blown(n.Owner) || n.Rb == null) { BlkReset(n, now); return false; }
             n.BlkDriven += n.CmdSpeed * dt;
-            if (now - n.BlkSince < Mathf.Max(0.2f, NpcModule.BlockedSeconds.Value)) return false;
+            if (now - n.BlkSince < Mathf.Max(0.2f, NpcaiSettings.BlockedSeconds.Value)) return false;
             Vector3 mv = n.T.position - n.BlkPos; mv.y = 0f;
             float driven = n.BlkDriven, covered = mv.magnitude;
             BlkReset(n, now);
-            if (driven < 0.6f || covered >= driven * NpcModule.BlockedRatio.Value) return false;
+            if (driven < 0.6f || covered >= driven * NpcaiSettings.BlockedRatio.Value) return false;
             if (PoiNav.Guiding(n.Owner)) return false;     // (WW) on a POI route its own watchdog slides the body on (no step back, no feelers)
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " blocked (covered " + covered.ToString("0.0") + " of " + driven.ToString("0.0") + " m)" + (n.OnNav ? " on its map route" : ""));
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " blocked (covered " + covered.ToString("0.0") + " of " + driven.ToString("0.0") + " m)" + (n.OnNav ? " on its map route" : ""));
             OnStuck(n);
             return true;
         }
@@ -753,7 +753,7 @@ namespace WildWasteland.Modules.NPC
             n.LastStep = now;
             Vector3 v = n.Rb.velocity;
             if (v.y < 2.4f) n.Rb.AddForce(Vector3.up * (2.4f - Mathf.Max(0f, v.y)) + fwd * 0.6f, ForceMode.VelocityChange);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " steps over " + h.collider.name + " (" + (h.point.y - b.min.y).ToString("0.00") + " m)");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " steps over " + h.collider.name + " (" + (h.point.y - b.min.y).ToString("0.00") + " m)");
         }
 
         // progress on a map route (path length left): 2.5 s without getting nearer -> a hop; 5 s -> full feelers for 3 s, then the map again
@@ -765,7 +765,7 @@ namespace WildWasteland.Modules.NPC
             if (stall >= 5f * R)
             {
                 n.NavOffUntil = now + 3f * R; n.OnNav = false; n.NoProgressSince = now;
-                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " gets nowhere on its map route, full feelers for " + (3f * R).ToString("0") + " s");
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " gets nowhere on its map route, full feelers for " + (3f * R).ToString("0") + " s");
             }
             else if (stall >= 2.5f * R) TryHop(n, now, true);
         }
@@ -786,15 +786,15 @@ namespace WildWasteland.Modules.NPC
 
         private static void Steer(Npc n, Vector3 toTarget, float dist, float now, Vector3 toReal)
         {
-            int count = Mathf.Clamp(NpcModule.FeelerCount.Value, 3, 31);
+            int count = Mathf.Clamp(NpcaiSettings.FeelerCount.Value, 3, 31);
             if (count % 2 == 0) count++;
-            float half = Mathf.Clamp(NpcModule.FeelerAngle.Value, 10f, 170f);
+            float half = Mathf.Clamp(NpcaiSettings.FeelerAngle.Value, 10f, 170f);
             if (_angles.Length != count)
             {
                 _angles = new float[count];
                 for (int i = 0; i < count; i++) _angles[i] = -half + half * 2f * i / (count - 1);   // symmetric, 0 in the middle
             }
-            float len = Mathf.Max(0.5f, n.Ranged && !n.ToGhost ? NpcModule.FeelerLength.Value : NpcModule.MeleeFeelerLength.Value);
+            float len = Mathf.Max(0.5f, n.Ranged && !n.ToGhost ? NpcaiSettings.FeelerLength.Value : NpcaiSettings.MeleeFeelerLength.Value);
             if (dist < len && !n.OnNav) len = Mathf.Max(0.5f, dist);     // close to the target: don't "see" it as a wall (a map waypoint is no object)
             Vector3 origin = n.Col != null ? n.Col.bounds.center : n.T.position;
             float targetYaw = Mathf.Atan2(toTarget.x, toTarget.z) * Mathf.Rad2Deg;
@@ -873,7 +873,7 @@ namespace WildWasteland.Modules.NPC
                             side = Mathf.Abs(facing) > 0.05f ? (facing > 0f ? 1 : -1) : (UnityEngine.Random.value < 0.5f ? -1 : 1);
                         }
                         n.Side = side; n.SideUntil = now + SideLock * R; n.ClearLooks = 0;
-                        if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " goes around on the " + (side > 0 ? "right" : "left") + " (free L " + fl.ToString("0.0") + " / R " + fr.ToString("0.0") + ")");
+                        if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " goes around on the " + (side > 0 ? "right" : "left") + " (free L " + fl.ToString("0.0") + " / R " + fr.ToString("0.0") + ")");
                     }
                 }
                 else
@@ -897,7 +897,7 @@ namespace WildWasteland.Modules.NPC
                 _scores[i] = score;
                 if (score > bestScore) { bestScore = score; best = i; }
             }
-            if (NpcModule.DropCheck.Value && best >= 0)
+            if (NpcaiSettings.DropCheck.Value && best >= 0)
             {
                 // a short look for ground 1.5 m along the winner; a cliff or roof edge there -> the next best direction
                 for (int tries = 0; tries < 3 && best >= 0; tries++)
@@ -935,7 +935,7 @@ namespace WildWasteland.Modules.NPC
                         {
                             n.Side = -n.Side; n.SideUntil = now + SideLock * 2f * R; n.ClearLooks = 0; n.NextScout = 0f;
                             heading = Mathf.Atan2(-tangent.x, -tangent.z) * Mathf.Rad2Deg;
-                            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " dead end, turns around");
+                            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " dead end, turns around");
                         }
                     }
                 }
@@ -959,7 +959,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 fwd = Quaternion.Euler(0f, heading, 0f) * Vector3.forward;
             var tgt = n.Target.Value; Transform troot = tgt != null ? tgt.transform.root : null;
             float push = 0f; bool passing = false;
-            string myTag = NpcModule.FriendsPassThrough.Value ? Senses.TagOf(n.Owner) : null;
+            string myTag = NpcaiSettings.FriendsPassThrough.Value ? Senses.TagOf(n.Owner) : null;
             foreach (var a in Senses.AllAgents)
             {
                 if (a.Owner == null || a.T == n.T || a.T.parent != null || (troot != null && a.T == troot)) continue;
@@ -1021,7 +1021,7 @@ namespace WildWasteland.Modules.NPC
         private static bool FriendInTheWay(Npc n)
         {
             Vector3 me = n.T.position, fwd = n.T.forward; fwd.y = 0f;
-            string myTag = NpcModule.FriendsPassThrough.Value ? Senses.TagOf(n.Owner) : null;
+            string myTag = NpcaiSettings.FriendsPassThrough.Value ? Senses.TagOf(n.Owner) : null;
             foreach (var a in Senses.AllAgents)
             {
                 if (a.Owner == null || a.T == n.T || a.T.parent != null) continue;
@@ -1078,7 +1078,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (bestCost == float.MaxValue) return false;
             n.Waypoint = bestEnd; n.HasWaypoint = true; n.WaypointUntil = now + 8f * R;
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " scouts a corner " + (bestAngle < 0f ? "left" : "right") + " " + Mathf.Abs(bestAngle) + " deg, " + (bestEnd - origin).magnitude.ToString("0.0") + " m away (path " + bestCost.ToString("0.0") + " m, straight " + dReal.ToString("0.0") + ")");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " scouts a corner " + (bestAngle < 0f ? "left" : "right") + " " + Mathf.Abs(bestAngle) + " deg, " + (bestEnd - origin).magnitude.ToString("0.0") + " m away (path " + bestCost.ToString("0.0") + " m, straight " + dReal.ToString("0.0") + ")");
             return true;
         }
 
@@ -1115,7 +1115,7 @@ namespace WildWasteland.Modules.NPC
                 n.Flipped = true;
                 n.Side = n.Side != 0 ? -n.Side : (UnityEngine.Random.value < 0.5f ? -1 : 1);
                 n.SideUntil = now + SideLock * 2f * R; n.ClearLooks = 0;
-                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " gets nowhere, tries the " + (n.Side > 0 ? "right" : "left"));
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " gets nowhere, tries the " + (n.Side > 0 ? "right" : "left"));
                 return true;
             }
             n.Flipped = false; n.Side = 0; n.BestDist = float.MaxValue;
@@ -1161,16 +1161,16 @@ namespace WildWasteland.Modules.NPC
             if (m == Mode.Hold)
             {
                 Aim(n);
-                if (was != Mode.Hold && n.Ranged && NpcModule.CrouchChance.Value > 0f)
+                if (was != Mode.Hold && n.Ranged && NpcaiSettings.CrouchChance.Value > 0f)
                 {
                     float t = Time.time;
-                    if (t - n.CrouchRolledAt > 5f) { n.CrouchRoll = UnityEngine.Random.Range(0f, 100f) < NpcModule.CrouchChance.Value; n.CrouchRolledAt = t; }
+                    if (t - n.CrouchRolledAt > 5f) { n.CrouchRoll = UnityEngine.Random.Range(0f, 100f) < NpcaiSettings.CrouchChance.Value; n.CrouchRolledAt = t; }
                     if (n.CrouchRoll) Crouch(n, true);
                 }
             }
             else { Unfreeze(n); Crouch(n, false); }
             if (WildWasteland.Core.Log.L2 && (m != was))
-                NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " " + was + " -> " + m + " (" + why + ", " + n.Dist.ToString("0") + " m" + (n.Ranged ? ", " + n.Kind : "") + ")");
+                NpcaiRuntime.Deep("Brain: " + n.Owner.name + " " + was + " -> " + m + " (" + why + ", " + n.Dist.ToString("0") + " m" + (n.Ranged ? ", " + n.Kind : "") + ")");
         }
 
         // Movement FSM: Animal_Run (run animation + forward velocity) or Animal_Idle (idle animation, velocity zero), only while the Attack
@@ -1187,7 +1187,7 @@ namespace WildWasteland.Modules.NPC
         // machete ...): the rig re-finds the held weapon on its next frame. One dictionary lookup, only when the game toggles something.
         public static void AfterActivate(FsmStateAction __instance)
         {
-            if (_npcs.Count == 0 || !NpcModule.Running) return;
+            if (_npcs.Count == 0 || !NpcaiRuntime.Running) return;
             try
             {
                 var fsm = __instance.Fsm;
@@ -1234,7 +1234,7 @@ namespace WildWasteland.Modules.NPC
             if (h.point.y - b.min.y <= 0.6f && !Physics.Raycast(new Vector3(b.center.x, b.min.y + 0.65f, b.center.z), d.normalized, h.distance + r + 0.3f, NavGateMask, QueryTriggerInteraction.Ignore))
                 return true;                                                          // ankle-high clutter with nothing at the knee: stepped over
             n.LegBlock = h.collider.name + " [" + LayerMask.LayerToName(h.collider.gameObject.layer) + "] " + (h.point.y - b.min.y).ToString("0.00") + " m above the feet, " + h.distance.ToString("0.00") + " m ahead" + (hopLeg ? ", hop leg" : "");
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " map waypoint blocked by " + n.LegBlock + ", steers without the map");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " map waypoint blocked by " + n.LegBlock + ", steers without the map");
             return false;
         }
 
@@ -1255,7 +1255,7 @@ namespace WildWasteland.Modules.NPC
                 // stuck on a map route: hop / step back and keep the route; 3 times within 8 s -> full feelers for 3 s, then the map again
                 if (now - n.NavStuckSince > 8f) { n.NavStuckSince = now; n.NavStucks = 0; }
                 n.NavStucks++;
-                n.BlockedYaw = n.T.eulerAngles.y; n.BlockedUntil = now + Mathf.Max(0f, NpcModule.BlockedMemory.Value) * R;
+                n.BlockedYaw = n.T.eulerAngles.y; n.BlockedUntil = now + Mathf.Max(0f, NpcaiSettings.BlockedMemory.Value) * R;
                 if (WildWasteland.Core.Log.L2) LogAhead(n);
                 if (n.NavStucks < 3)
                 {
@@ -1265,7 +1265,7 @@ namespace WildWasteland.Modules.NPC
                     return;
                 }
                 n.NavStucks = 0; n.NavOffUntil = now + 3f * R; n.OnNav = false;
-                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " stuck 3x on a map route at " + n.T.position.x.ToString("0.0") + "," + n.T.position.z.ToString("0.0") + ", full feelers for " + (3f * R).ToString("0") + " s");
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " stuck 3x on a map route at " + n.T.position.x.ToString("0.0") + "," + n.T.position.z.ToString("0.0") + ", full feelers for " + (3f * R).ToString("0") + " s");
             }
             if (now - n.FirstStuck > StuckWindow * R) { n.FirstStuck = now; n.Stucks = 0; }
             n.Stucks++;
@@ -1276,7 +1276,7 @@ namespace WildWasteland.Modules.NPC
                 SetMode(n, Mode.Hold, "stuck, shoots from here");
                 return;
             }
-            if (n.Stucks >= Mathf.Max(1, NpcModule.StuckGiveUpCount.Value))
+            if (n.Stucks >= Mathf.Max(1, NpcaiSettings.StuckGiveUpCount.Value))
             {
                 n.Stucks = 0;
                 n.ModeUntil = now + RestSeconds * R;
@@ -1285,14 +1285,14 @@ namespace WildWasteland.Modules.NPC
                 return;
             }
             float yaw = n.T.eulerAngles.y;
-            n.BlockedYaw = yaw; n.BlockedUntil = now + Mathf.Max(0f, NpcModule.StuckMemorySeconds.Value) * R;
+            n.BlockedYaw = yaw; n.BlockedUntil = now + Mathf.Max(0f, NpcaiSettings.StuckMemorySeconds.Value) * R;
             n.HasWaypoint = false; n.NextScout = 0f;
             // the body hit something the feelers did not see (or saw too late): commit to the freer side now and keep it through the back-up
             if (n.Side == 0) n.Side = n.FreeRight >= n.FreeLeft ? 1 : -1;
             n.SideUntil = now + SideLock * 2f * R; n.ClearLooks = 0;
             if (WildWasteland.Core.Log.L2) LogAhead(n);
             if (TryHop(n, now, true)) return;       // stuck: a low edge is hopped even when its face is sloped (only gentle terrain is not)
-            n.ModeUntil = now + Mathf.Max(0.1f, NpcModule.StuckBackupSeconds.Value) * R;
+            n.ModeUntil = now + Mathf.Max(0.1f, NpcaiSettings.StuckBackupSeconds.Value) * R;
             SetMode(n, Mode.BackUp, WildWasteland.Core.Log.L2 ? "stuck " + n.Stucks + "x, backs up" : "");
         }
 
@@ -1315,7 +1315,7 @@ namespace WildWasteland.Modules.NPC
             n.LastHop = now;
             n.Rb.AddForce(Vector3.up * 3.2f + fwd * 1.5f, ForceMode.VelocityChange);
             if (n.Body != null && !ApBody.Suspended(n.Body)) ApBody.Jump(n.Body);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " hops over a low edge (" + h.collider.name + ")");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " hops over a low edge (" + h.collider.name + ")");
             return true;
         }
 
@@ -1481,7 +1481,7 @@ namespace WildWasteland.Modules.NPC
                         }
                     }
             }
-            catch (Exception e) { NpcModule.Verbose("Brain: no aim pose for " + owner.name + ": " + e.Message); }
+            catch (Exception e) { NpcaiRuntime.Deep("Brain: no aim pose for " + owner.name + ": " + e.Message); }
         
         }
 
@@ -1534,7 +1534,7 @@ namespace WildWasteland.Modules.NPC
                 n.Rb.velocity = v;
                 return false;
             }
-            catch (Exception e) { NpcModule.Log.LogError("Brain: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
         // Rotate.DoRotate: the Rotate FSM's random yaw and the Attack FSM's run / rotate / turn states
@@ -1549,7 +1549,7 @@ namespace WildWasteland.Modules.NPC
                 if (name != "Rotate" && name != "Attack") return true;
                 return NpcOf(fsm, name) == null;
             }
-            catch (Exception e) { NpcModule.Log.LogError("Brain: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
         // Raycast.DoRaycast: the Attack FSM's two 1.2 m bumper rays report "clear" (the feelers see 3-4 m)
@@ -1565,7 +1565,7 @@ namespace WildWasteland.Modules.NPC
                 if (__instance.storeDidHit != null && !__instance.storeDidHit.IsNone) __instance.storeDidHit.Value = false;
                 return false;
             }
-            catch (Exception e) { NpcModule.Log.LogError("Brain: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
         // LookAt.DoLookAt: the Attack FSM's instant snap of the body toward the target (burst state) -> our turn rate instead
@@ -1579,7 +1579,7 @@ namespace WildWasteland.Modules.NPC
                 if (__instance.gameObject == null || __instance.gameObject.OwnerOption != OwnerDefaultOption.UseOwner) return true;   // the sensor children: vanilla
                 return NpcOf(fsm, "Attack") == null;
             }
-            catch (Exception e) { NpcModule.Log.LogError("Brain: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
         // SmoothLookAt.DoSmoothLookAt: the melee Attack FSMs (Scraffa, Spanna, the animals) turn the body toward the target every frame in the
@@ -1600,7 +1600,7 @@ namespace WildWasteland.Modules.NPC
                 if (st == "hide") return false;     // the brain owns facing in cover, chase and ghost walks; the game's shelter turn must not compete
                 return !ChaseState(st);
             }
-            catch (Exception e) { NpcModule.Log.LogError("Brain: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
         // SendEvent.OnEnter: Attack's Animal_Run while holding -> Animal_Idle; Unstuck's Animal_rotateRandom -> our stuck handling
@@ -1644,7 +1644,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 return true;
             }
-            catch (Exception e) { NpcModule.Log.LogError("Brain: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
         // AddForce.DoAddForce (Unstuck): no hop
@@ -1652,7 +1652,7 @@ namespace WildWasteland.Modules.NPC
         {
             if (_npcs.Count == 0 || !On) return true;
             try { return NpcOf(__instance.Fsm, "Unstuck") == null; }
-            catch (Exception e) { NpcModule.Log.LogError("Brain: " + e); return true; }
+            catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
         // For Aim: how far the body still has to turn to face its target, degrees; -1 when the brain is not steering this NPC (the game

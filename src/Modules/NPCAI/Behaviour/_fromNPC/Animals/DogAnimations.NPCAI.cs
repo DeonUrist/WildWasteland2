@@ -123,7 +123,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Wait.OnEnter prefix: the Damage FSM's wait of a driven dog follows the animation.</summary>
         public static void BeforeDamageWait(Wait __instance)
         {
-            if (Dogs.Count == 0 || !NpcModule.Running) return;      // (WW) cheap filter: Wait.OnEnter runs everywhere
+            if (Dogs.Count == 0 || !NpcaiRuntime.Running) return;      // (WW) cheap filter: Wait.OnEnter runs everywhere
             var fsm = __instance.Fsm; Dog d;
             if (fsm == null || fsm.Name != "Damage" || fsm.ActiveStateName != "attack" || fsm.GameObject == null || !Dogs.TryGetValue(fsm.GameObject.GetInstanceID(), out d) || !Eligible(d) || __instance.time == null) return;
             if (!d.OriginalWaits.ContainsKey(__instance)) d.OriginalWaits[__instance] = __instance.time.Value;
@@ -133,7 +133,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Fsm.ProcessEvent prefix: native damage events of driven dogs only when the bite really connects.</summary>
         public static bool BeforeDamageEvent(Fsm __instance, FsmEvent fsmEvent, FsmEventData eventData)
         {
-            if (Dogs.Count == 0 || !NpcModule.Running) return true;      // (WW) Fsm.ProcessEvent is the hottest method in the game: no dog, no string compare
+            if (Dogs.Count == 0 || !NpcaiRuntime.Running) return true;      // (WW) Fsm.ProcessEvent is the hottest method in the game: no dog, no string compare
             if (__instance == null || fsmEvent == null || fsmEvent.Name != "attack" || __instance.Name != "Damage" || __instance.GameObject == null) return true;
             Dog d;
             if (!Dogs.TryGetValue(__instance.GameObject.GetInstanceID(), out d) || !Eligible(d) || d.Committing) return true;
@@ -162,7 +162,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>SetVelocity.DoSetVelocity prefix: held / dashing dogs are moved by this module, not the FSM.</summary>
         public static bool BeforeSetVelocity(SetVelocity __instance)
         {
-            if (Dogs.Count == 0 || !NpcModule.Running) return true;
+            if (Dogs.Count == 0 || !NpcaiRuntime.Running) return true;
             var fsm = __instance.Fsm; Dog d;
             return fsm == null || fsm.Name != "Movement" || fsm.GameObject == null || !Dogs.TryGetValue(fsm.GameObject.GetInstanceID(), out d) || !Eligible(d) || (!d.Held && !d.Dashing);
         }

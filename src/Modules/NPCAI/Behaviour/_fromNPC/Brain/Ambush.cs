@@ -19,7 +19,7 @@ namespace WildWasteland.Modules.NPC
 
         private static bool Wanted(string prefab)
         {
-            string cfg = NpcModule.AmbushPrefabs.Value ?? "";
+            string cfg = NpcaiSettings.AmbushPrefabs.Value ?? "";
             if (_prefabs == null || _src != cfg) { _src = cfg; _prefabs = cfg.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries); for (int i = 0; i < _prefabs.Length; i++) _prefabs[i] = _prefabs[i].Trim(); }
             foreach (var p in _prefabs) if (p.Length > 0 && string.Equals(prefab, p, StringComparison.OrdinalIgnoreCase)) return true;
             return false;
@@ -30,19 +30,19 @@ namespace WildWasteland.Modules.NPC
         {
             if (a == null || a.Owner == null || !Wanted(Senses.PrefabOf(a.Owner))) return;
             _list.Add(a);
-            if (NpcModule.AmbushEnabled.Value && a.AmbushDist <= 0f && a.State == Senses.State.Idle) a.AmbushDist = Roll();
+            if (NpcaiSettings.AmbushEnabled.Value && a.AmbushDist <= 0f && a.State == Senses.State.Idle) a.AmbushDist = Roll();
         }
 
         private static float Roll()
         {
-            float lo = Mathf.Max(0.5f, NpcModule.AmbushMin.Value), hi = Mathf.Max(lo, NpcModule.AmbushMax.Value);
+            float lo = Mathf.Max(0.5f, NpcaiSettings.AmbushMin.Value), hi = Mathf.Max(lo, NpcaiSettings.AmbushMax.Value);
             return UnityEngine.Random.Range(lo, hi);
         }
 
         internal static void Tick()      // (WW) a 0.5 s Interval job (game time), was gated here
         {
             if (_list.Count == 0) return;
-            bool on = NpcModule.AmbushEnabled.Value;
+            bool on = NpcaiSettings.AmbushEnabled.Value;
             for (int i = _list.Count - 1; i >= 0; i--)
             {
                 var a = _list[i];

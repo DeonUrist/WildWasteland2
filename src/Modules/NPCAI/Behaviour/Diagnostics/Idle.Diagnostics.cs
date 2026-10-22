@@ -35,14 +35,14 @@ namespace WildWasteland.Modules.NPC
                 }
                 else if (a.State == Senses.State.Idle)
                 {
-                    if (c.Leg == Leg.Home) { s = "RETURNING " + Flat(a.T.position - c.Home).ToString("0") + " m (try " + (c.Tries + 1) + "/" + NpcModule.IdleReturnTries.Value + ")"; col = Color.yellow; }
+                    if (c.Leg == Leg.Home) { s = "RETURNING " + Flat(a.T.position - c.Home).ToString("0") + " m (try " + (c.Tries + 1) + "/" + NpcaiSettings.IdleReturnTries.Value + ")"; col = Color.yellow; }
                     else if (c.Forgotten) { s = "IDLE - home forgotten"; col = Color.gray; }
                     else if (!c.HasHome) s = "IDLE - no home";
                     else if (c.Leg == Leg.ToPoint) s = "IDLE walk -> point " + c.PointIdx;
                     else if (c.Leg == Leg.Back) s = "IDLE walk -> home";
                     else if (c.PendingBack) s = "IDLE at point " + c.PointIdx + ", looks";
-                    else if (c.Tries > 0 && now < c.WaitUntil) { s = "WAITS to return (" + c.Tries + "/" + NpcModule.IdleReturnTries.Value + " failed)"; col = new Color(1f, 0.7f, 0.2f); }
-                    else if (!c.LastWasSearch && now - c.BusyAt < NpcModule.IdleReturnDelay.Value && Flat(a.T.position - c.Home) > 2.5f) { s = "IDLE - returns in " + (NpcModule.IdleReturnDelay.Value - (now - c.BusyAt)).ToString("0") + " s"; col = new Color(1f, 0.9f, 0.4f); }
+                    else if (c.Tries > 0 && now < c.WaitUntil) { s = "WAITS to return (" + c.Tries + "/" + NpcaiSettings.IdleReturnTries.Value + " failed)"; col = new Color(1f, 0.7f, 0.2f); }
+                    else if (!c.LastWasSearch && now - c.BusyAt < NpcaiSettings.IdleReturnDelay.Value && Flat(a.T.position - c.Home) > 2.5f) { s = "IDLE - returns in " + (NpcaiSettings.IdleReturnDelay.Value - (now - c.BusyAt)).ToString("0") + " s"; col = new Color(1f, 0.9f, 0.4f); }
                     else s = "IDLE at home" + (c.PointsState == 1 ? " (" + (c.Points != null ? c.Points.Count : 0) + " patrol pts)" : c.PointsState == -1 ? " (no map yet)" : "");
                 }
                 if (c.Leg == Leg.Travel) { s = "TRAVEL " + Flat(a.T.position - c.Goal).ToString("0") + " m" + (c.Ord != null && c.Ord.Tries > 0 ? " (try " + (c.Ord.Tries + 1) + ")" : ""); col = Color.cyan; }

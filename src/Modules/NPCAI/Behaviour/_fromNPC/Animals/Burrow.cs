@@ -72,7 +72,7 @@ namespace WildWasteland.Modules.NPC
                     if (b.Rig != null) b.Rig.localPosition = b.RigBase;
                     b.A.Burrowed = false; b.A.AmbushDist = 0f;
                 }
-                catch (Exception e) { NpcModule.Warn("Burrow shutdown: " + e.Message); }
+                catch (Exception e) { NpcaiRuntime.Warn("Burrow shutdown: " + e.Message); }
             }
             _list.Clear(); Hidden = 0;
             foreach (var fx in _fxLive) if (fx != null) UnityEngine.Object.Destroy(fx);
@@ -95,10 +95,10 @@ namespace WildWasteland.Modules.NPC
         // Senses.Make: every registered NPC passes here once
         internal static void Register(Senses.Agent a)
         {
-            if (!NpcModule.BurrowEnabled.Value || a == null || a.Owner == null) return;
+            if (!NpcaiSettings.BurrowEnabled.Value || a == null || a.Owner == null) return;
             string prefab = Senses.PrefabOf(a.Owner);
-            bool hunter = In(prefab, NpcModule.HuntPrefabs.Value, ref _hunters, ref _huntersSrc);
-            if (!hunter && !In(prefab, NpcModule.BurrowPrefabs.Value, ref _prefabs, ref _prefabsSrc)) return;
+            bool hunter = In(prefab, NpcaiSettings.HuntPrefabs.Value, ref _hunters, ref _huntersSrc);
+            if (!hunter && !In(prefab, NpcaiSettings.BurrowPrefabs.Value, ref _prefabs, ref _prefabsSrc)) return;
             Transform rig = a.T.Find("Rig");
             if (rig == null) { var an = a.Owner.GetComponentInChildren<Animator>(true); if (an != null && an.transform != a.T) rig = an.transform; }
             if (rig == null) return;
@@ -109,7 +109,7 @@ namespace WildWasteland.Modules.NPC
                 if (!any) { bb = r.bounds; any = true; } else bb.Encapsulate(r.bounds);
             }
             float h = any ? bb.size.y : 0.15f;
-            var n = new B { A = a, T = a.T, Rig = rig, RigBase = rig.localPosition, Depth = Mathf.Clamp(h * Mathf.Clamp(NpcModule.BurrowDepth.Value, 0.2f, 1f), 0.04f, 0.5f) };
+            var n = new B { A = a, T = a.T, Rig = rig, RigBase = rig.localPosition, Depth = Mathf.Clamp(h * Mathf.Clamp(NpcaiSettings.BurrowDepth.Value, 0.2f, 1f), 0.04f, 0.5f) };
             n.Height = Mathf.Max(0.1f, h);
             n.Deep = Mathf.Max(n.Depth, h + 0.2f);       // a hunter's dive: the whole body and the tail under, with a margin for slopes
             n.Radius = Mathf.Clamp(any ? Mathf.Max(bb.extents.x, bb.extents.z) * 0.6f : 0.3f, 0.15f, 1.2f);
@@ -128,7 +128,7 @@ namespace WildWasteland.Modules.NPC
             n.Hunter = hunter;
             n.NextToggle = 0f;      // spawned: burrows at once, if it stands on sand and nothing alerts it
             _list.Add(n);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: " + a.Owner.name + (hunter ? " hunts underground" : " can burrow") + " (depth " + n.Depth.ToString("0.00") + " m, body " + h.ToString("0.00") + " m, radius " + n.Radius.ToString("0.00") + " m)");
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + a.Owner.name + (hunter ? " hunts underground" : " can burrow") + " (depth " + n.Depth.ToString("0.00") + " m, body " + h.ToString("0.00") + " m, radius " + n.Radius.ToString("0.00") + " m)");
         }
 
         internal static void Tick()
@@ -136,7 +136,7 @@ namespace WildWasteland.Modules.NPC
             if (_fxLive.Count > 0) FxRecycle(Time.time);
             if (_list.Count == 0) { Hidden = 0; return; }
             float now = Time.time, dt = Time.deltaTime;
-            bool on = NpcModule.BurrowEnabled.Value && Senses.On;
+            bool on = NpcaiSettings.BurrowEnabled.Value && Senses.On;
             int hidden = 0;
             for (int i = _list.Count - 1; i >= 0; i--)
             {
@@ -160,7 +160,7 @@ namespace WildWasteland.Modules.NPC
                     case Phase.Burrowing:
                         if (hunting) { if (Within(b, HuntMax)) StartHunt(b, now); else Go(b, Phase.Rising, true); break; }
                         if (aware) { Go(b, Phase.Rising, true); break; }
-                        b.Amount = Mathf.MoveTowards(b.Amount, 1f, dt / (Mathf.Max(0.1f, NpcModule.BurrowSeconds.Value) * Slow(b)));
+                        b.Amount = Mathf.MoveTowards(b.Amount, 1f, dt / (Mathf.Max(0.1f, NpcaiSettings.BurrowSeconds.Value) * Slow(b)));
                         if (b.Amount >= 1f) { b.Phase = Phase.Under; b.A.Burrowed = true; b.NextToggle = now + Calm(); }
                         break;
                     case Phase.Under:
@@ -170,13 +170,13 @@ namespace WildWasteland.Modules.NPC
                         else if (now >= b.NextToggle) Go(b, Phase.Rising, false);
                         break;
                     case Phase.Rising:
-                        b.Amount = Mathf.MoveTowards(b.Amount, 0f, dt * (b.RiseRate > 0f ? b.RiseRate : 1f / (Mathf.Max(0.1f, b.Fast ? NpcModule.RiseSeconds.Value * 0.5f : NpcModule.RiseSeconds.Value) * Slow(b))));
+                        b.Amount = Mathf.MoveTowards(b.Amount, 0f, dt * (b.RiseRate > 0f ? b.RiseRate : 1f / (Mathf.Max(0.1f, b.Fast ? NpcaiSettings.RiseSeconds.Value * 0.5f : NpcaiSettings.RiseSeconds.Value) * Slow(b))));
                         if (b.Amount <= 0f) { b.Phase = Phase.Out; b.NextToggle = now + Calm(); if (b.Hunted) EndHunt(b, now); }
                         break;
                     case Phase.Diving:
                         if (!b.Held) b.Held = Brain.SetTravel(b.A.Owner, true);     // not known to the brain when the dive began: hold it now
                         if (!on) { Emerge(b, b.Origin); break; }
-                        b.Amount = Mathf.MoveTowards(b.Amount, 2f, dt * 2f / Mathf.Max(0.1f, NpcModule.HuntDiveSeconds.Value));
+                        b.Amount = Mathf.MoveTowards(b.Amount, 2f, dt * 2f / Mathf.Max(0.1f, NpcaiSettings.HuntDiveSeconds.Value));
                         if (b.Amount >= 2f) BeginTravel(b, now);
                         break;
                     case Phase.Travel:
@@ -189,10 +189,10 @@ namespace WildWasteland.Modules.NPC
             Hidden = hidden;
         }
 
-        private static float Slow(B b) { return b.Hunter ? Mathf.Clamp(NpcModule.HuntBurrowFactor.Value, 0.25f, 10f) : 1f; }
-        private static float Calm() { float lo = Mathf.Max(1f, NpcModule.BurrowMin.Value), hi = Mathf.Max(lo, NpcModule.BurrowMax.Value); return UnityEngine.Random.Range(lo, hi); }
-        private static float HuntRange { get { return Mathf.Max(2f, NpcModule.HuntRange.Value); } }
-        private static float HuntMax { get { return Mathf.Max(HuntRange, NpcModule.HuntMaxDistance.Value); } }
+        private static float Slow(B b) { return b.Hunter ? Mathf.Clamp(NpcaiSettings.HuntBurrowFactor.Value, 0.25f, 10f) : 1f; }
+        private static float Calm() { float lo = Mathf.Max(1f, NpcaiSettings.BurrowMin.Value), hi = Mathf.Max(lo, NpcaiSettings.BurrowMax.Value); return UnityEngine.Random.Range(lo, hi); }
+        private static float HuntRange { get { return Mathf.Max(2f, NpcaiSettings.HuntRange.Value); } }
+        private static float HuntMax { get { return Mathf.Max(HuntRange, NpcaiSettings.HuntMaxDistance.Value); } }
 
         private static bool Within(B b, float r)
         {
@@ -215,11 +215,11 @@ namespace WildWasteland.Modules.NPC
                 b.RiseRate = 0f;
                 // lying in wait: a small one lets you come within a distance chosen now (AmbushMin..AmbushMax m) before it comes up and attacks;
                 // a hunter engages anything within HuntRange and goes for it underground
-                b.A.AmbushDist = b.Hunter ? HuntRange : UnityEngine.Random.Range(Mathf.Max(0.5f, NpcModule.BurrowAmbushMin.Value), Mathf.Max(NpcModule.BurrowAmbushMin.Value, NpcModule.BurrowAmbushMax.Value));
+                b.A.AmbushDist = b.Hunter ? HuntRange : UnityEngine.Random.Range(Mathf.Max(0.5f, NpcaiSettings.BurrowAmbushMin.Value), Mathf.Max(NpcaiSettings.BurrowAmbushMin.Value, NpcaiSettings.BurrowAmbushMax.Value));
             }
             if (p == Phase.Rising) { b.A.AmbushDist = 0f; b.A.Burrowed = false; }      // eyes were at the surface all along; the 360 degree look ends when it comes out
             Fx(b, b.T.position);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + (p == Phase.Burrowing ? " burrows (" + (b.Hunter ? "hunts within " : "ambush at ") + b.A.AmbushDist.ToString("0.0") + " m)" : fast ? " is alerted, comes up" : " comes up"));
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + b.A.Owner.name + (p == Phase.Burrowing ? " burrows (" + (b.Hunter ? "hunts within " : "ambush at ") + b.A.AmbushDist.ToString("0.0") + " m)" : fast ? " is alerted, comes up" : " comes up"));
         }
 
         // ---------- (1.4.0) the underground hunt ----------
@@ -240,12 +240,12 @@ namespace WildWasteland.Modules.NPC
             else
             {
                 b.Fallback = true; b.Dest = b.Origin;
-                b.TravelEnd = UnityEngine.Random.Range(Mathf.Max(0f, NpcModule.HuntFallbackMin.Value), Mathf.Max(NpcModule.HuntFallbackMin.Value, NpcModule.HuntFallbackMax.Value));
+                b.TravelEnd = UnityEngine.Random.Range(Mathf.Max(0f, NpcaiSettings.HuntFallbackMin.Value), Mathf.Max(NpcaiSettings.HuntFallbackMin.Value, NpcaiSettings.HuntFallbackMax.Value));
             }
             b.Held = Brain.SetTravel(b.A.Owner, true);       // stands still from now on: no pedal, no thinking, no stuck judgement
             Fx(b, b.T.position);
             b.Phase = Phase.Diving;
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + " dives after " + b.A.Target.name + (b.Fallback ? " (no room behind it: comes back up here in " + b.TravelEnd.ToString("0.0") + " s)" : ", travels " + b.TravelEnd.ToString("0.0") + " s at " + RunSpeed(b).ToString("0.0") + " m/s"));
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + b.A.Owner.name + " dives after " + b.A.Target.name + (b.Fallback ? " (no room behind it: comes back up here in " + b.TravelEnd.ToString("0.0") + " s)" : ", travels " + b.TravelEnd.ToString("0.0") + " s at " + RunSpeed(b).ToString("0.0") + " m/s"));
         }
 
         private static void BeginTravel(B b, float now)
@@ -301,9 +301,9 @@ namespace WildWasteland.Modules.NPC
                 for (int i = 0; i < b.Cols.Length; i++) if (b.ColOn[i] && b.Cols[i] != null) b.Cols[i].enabled = true;
                 b.A.Travel = false;
             }
-            b.RiseRate = Mathf.Max(0.05f, b.Amount) / Mathf.Max(0.1f, NpcModule.HuntRiseSeconds.Value);      // bursts out
+            b.RiseRate = Mathf.Max(0.05f, b.Amount) / Mathf.Max(0.1f, NpcaiSettings.HuntRiseSeconds.Value);      // bursts out
             Go(b, Phase.Rising, true);
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + " bursts out " + (b.Fallback || at == b.Origin ? "where it went down" : (Vector3.Distance(at, b.Origin).ToString("0.0") + " m away")));
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + b.A.Owner.name + " bursts out " + (b.Fallback || at == b.Origin ? "where it went down" : (Vector3.Distance(at, b.Origin).ToString("0.0") + " m away")));
         }
 
         private static void EndHunt(B b, float now)
@@ -311,11 +311,11 @@ namespace WildWasteland.Modules.NPC
             b.Hunted = false; b.RiseRate = 0f;
             if (b.Rb != null && b.Rb.isKinematic && !b.WasKinematic) { b.Rb.isKinematic = false; b.Rb.velocity = Vector3.zero; }
             Brain.SetTravel(b.A.Owner, false); b.Held = false;
-            b.NextHunt = now + Mathf.Max(0f, NpcModule.HuntCooldown.Value);
+            b.NextHunt = now + Mathf.Max(0f, NpcaiSettings.HuntCooldown.Value);
         }
 
         // underground it goes TravelSpeedFactor (2) times faster than it runs
-        private static float RunSpeed(B b) { float s = Brain.RunSpeed(b.A.Owner); return Mathf.Max(0.5f, s > 0f ? s : NpcModule.HuntSpeed.Value) * Mathf.Clamp(NpcModule.HuntTravelFactor.Value, 0.25f, 10f); }
+        private static float RunSpeed(B b) { float s = Brain.RunSpeed(b.A.Owner); return Mathf.Max(0.5f, s > 0f ? s : NpcaiSettings.HuntSpeed.Value) * Mathf.Clamp(NpcaiSettings.HuntTravelFactor.Value, 0.25f, 10f); }
 
         // behind the target (behind where it looks: the camera for the player), else one other spot back and to a side
         private static bool Pick(B b, out Vector3 spot)
@@ -329,7 +329,7 @@ namespace WildWasteland.Modules.NPC
             if (fwd.sqrMagnitude < 0.01f) { fwd = tp - b.T.position; fwd.y = 0f; }
             if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
             fwd.Normalize();
-            float dist = Mathf.Max(b.Radius + 0.5f, NpcModule.HuntBehind.Value);
+            float dist = Mathf.Max(b.Radius + 0.5f, NpcaiSettings.HuntBehind.Value);
             spot = tp - fwd * dist;
             if (Room(b, spot)) return true;
             float ang = (UnityEngine.Random.value < 0.5f ? -1f : 1f) * UnityEngine.Random.Range(50f, 80f);
@@ -372,14 +372,14 @@ namespace WildWasteland.Modules.NPC
                 if (!Physics.Raycast(p + Vector3.up * 0.5f, Vector3.down, out h, 3f, (1 << 0) | (1 << 14) | (1 << 8) | (1 << 11) | (1 << 16), QueryTriggerInteraction.Ignore)) return false;
                 var tc = h.collider as TerrainCollider;
                 if (tc == null) return false;                       // standing on any other object (rock, floor, road mesh, car, wreck): not sand
-                if (!NpcModule.BurrowUseLayers.Value) return true;     // the open ground itself (terrain) is sand
+                if (!NpcaiSettings.BurrowUseLayers.Value) return true;     // the open ground itself (terrain) is sand
                 Terrain terrain; int tid = tc.GetInstanceID();
                 if (!_terrainOf.TryGetValue(tid, out terrain) || terrain == null) { terrain = h.collider.GetComponent<Terrain>(); if (_terrainOf.Count > 256) _terrainOf.Clear(); _terrainOf[tid] = terrain; }
-                if (terrain == null || terrain.terrainData == null) return NpcModule.BurrowTerrainIsSand.Value;
+                if (terrain == null || terrain.terrainData == null) return NpcaiSettings.BurrowTerrainIsSand.Value;
                 var d = terrain.terrainData;
                 bool[] sand;
                 if (!_sandLayers.TryGetValue(d, out sand)) { sand = Classify(d); if (_sandLayers.Count > 64) _sandLayers.Clear(); _sandLayers[d] = sand; }
-                if (sand == null || d.alphamapLayers == 0) return NpcModule.BurrowTerrainIsSand.Value;
+                if (sand == null || d.alphamapLayers == 0) return NpcaiSettings.BurrowTerrainIsSand.Value;
                 Vector3 lp = h.point - terrain.transform.position;
                 int ax = Mathf.Clamp((int)(lp.x / d.size.x * d.alphamapWidth), 0, d.alphamapWidth - 1);
                 int az = Mathf.Clamp((int)(lp.z / d.size.z * d.alphamapHeight), 0, d.alphamapHeight - 1);
@@ -395,7 +395,7 @@ namespace WildWasteland.Modules.NPC
                 tx.Sand[texel] = verdict;
                 return verdict;
             }
-            catch (Exception e) { NpcModule.Verbose("Burrow: sand check: " + e.Message); return NpcModule.BurrowTerrainIsSand.Value; }
+            catch (Exception e) { NpcaiRuntime.Deep("Burrow: sand check: " + e.Message); return NpcaiSettings.BurrowTerrainIsSand.Value; }
         }
 
         // per layer: a sand keyword in its name / texture name; null when no layer matches at all (then TerrainIsSand decides)
@@ -403,7 +403,7 @@ namespace WildWasteland.Modules.NPC
         {
             var layers = d.terrainLayers;
             if (layers == null || layers.Length == 0) return null;
-            var keys = (NpcModule.BurrowSandKeywords.Value ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            var keys = (NpcaiSettings.BurrowSandKeywords.Value ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
             var res = new bool[layers.Length]; bool any = false;
             for (int i = 0; i < layers.Length; i++)
             {
@@ -411,7 +411,7 @@ namespace WildWasteland.Modules.NPC
                 string n = (l.name ?? "") + "|" + (l.diffuseTexture != null ? l.diffuseTexture.name : "");
                 foreach (var k in keys) { string kk = k.Trim(); if (kk.Length > 0 && n.IndexOf(kk, StringComparison.OrdinalIgnoreCase) >= 0) { res[i] = true; any = true; break; } }
             }
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: terrain layers " + string.Join(", ", Array.ConvertAll(layers, l => l == null ? "-" : l.name)) + (any ? "" : " (no sand-named layer: TerrainIsSand rules)"));
+            if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: terrain layers " + string.Join(", ", Array.ConvertAll(layers, l => l == null ? "-" : l.name)) + (any ? "" : " (no sand-named layer: TerrainIsSand rules)"));
             return any ? res : null;
         }
     }

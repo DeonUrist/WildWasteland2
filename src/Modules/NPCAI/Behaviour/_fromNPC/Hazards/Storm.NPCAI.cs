@@ -9,8 +9,8 @@ namespace WildWasteland.Modules.NPC
     internal static partial class Storm
     {
         /// <summary>Sight range factor inside a storm ([Senses] StormSight %).</summary>
-        internal static float SightFactor { get { return Mathf.Clamp01(NpcModule.StormSight.Value / 100f); } }
+        internal static float SightFactor { get { return Mathf.Clamp01(NpcaiSettings.StormSight.Value / 100f); } }
         /// <summary>Hearing range factor inside a storm ([Senses] StormHearing %).</summary>
-        internal static float HearingFactor { get { return Mathf.Clamp01(NpcModule.StormHearing.Value / 100f); } }
+        internal static float HearingFactor { get { return Mathf.Clamp01(NpcaiSettings.StormHearing.Value / 100f); } }
     }
 }
