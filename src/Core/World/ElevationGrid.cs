@@ -2,7 +2,7 @@ using System;
 using Den.Tools.Matrices;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Core
 {
     // Immutable, MapMagic-local samples. Workers never touch Terrain/Physics to choose a route.
     internal sealed class ElevationGrid

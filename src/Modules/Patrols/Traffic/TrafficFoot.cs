@@ -315,7 +315,7 @@ namespace WildWasteland.Modules.Patrols
                 return true;
             }
             bool[] roads;
-            var route = RoadPlanner.Build(journey.position, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, journey.id.GetHashCode(), out roads);
+            var route = Core.RouteGeometry.Build(journey.position, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, journey.id.GetHashCode(), out roads);
             if (route == null || route.Length < 2)
             {
                 if (!live) { Remove(journey); return false; }
@@ -397,7 +397,7 @@ namespace WildWasteland.Modules.Patrols
             var camp = NearestCamp(first.Faction, start, null);
             if (camp == null) { if (Core.Log.Verbose) PatrolsModule.Verbose("Foot patrols: no " + first.Faction + " camp known; " + group.Count + " stranded crew stay where they are"); return; }
             bool[] roads;
-            var route = RoadPlanner.Build(start, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, unchecked(first.Body.GetInstanceID() * 397), out roads);
+            var route = Core.RouteGeometry.Build(start, camp.apron, NoHints, TrafficLocations.Blocks(), 0f, unchecked(first.Body.GetInstanceID() * 397), out roads);
             if (route == null || route.Length < 2) return;
             var walkers = new TrafficWalker[group.Count];
             var fl = new FootLive { NextOrder = Time.time + UnityEngine.Random.Range(0.2f, 1f) };

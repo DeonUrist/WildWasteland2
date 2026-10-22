@@ -37,7 +37,7 @@ namespace WildWasteland.Modules.Patrols
                 Rotation = rotation, Menu = menu, Hold = hold, Done = done, Generation = Patrol.SceneGen });
         }
 
-        /// <summary>Old Patrols job step ("Patrols.Build"): drives the queue only while the Vehicles module is off (one driver per frame).</summary>
+        /// <summary>Patrols orchestration driver: holds queued work until actual Vehicles providers are available.</summary>
                 internal static bool Step() { return StepCore(); }
 
         /// <summary>Sliced job "Vehicles.Build queue" (1 ms): steps the queue while the Vehicles module runs.</summary>
