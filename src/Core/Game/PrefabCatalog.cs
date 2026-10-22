@@ -30,6 +30,7 @@ namespace WildWasteland.Core
         static int[] _managerCounts;
         static int _goIndex, _fsmIndex;
         static bool _ready, _building, _installed;
+        static bool _prefabHook, _managerHook;
 
         /// <summary>Incremented on every invalidation (consumers re-resolve cached prefab references when it changes).</summary>
         public static int Generation;
@@ -108,10 +109,27 @@ namespace WildWasteland.Core
             foreach (var pair in _exact) if (pair.Value != null) into.Add(pair.Value);
         }
 
-        /// <summary>Subscribes the scene-load invalidation and registers the sliced job once.</summary>
+        /// <summary>Tracks native prefab-list registration without visiting scene objects or loading assets.</summary>
+        public static void TrackRegistrations()
+        {
+            if (!_prefabHook) _prefabHook = Patches.Patch(null, Patches.Method(typeof(ES3ReferenceMgrBase), "AddPrefab", new[] { typeof(ES3Prefab) }),
+                postfix: Patches.Method(typeof(PrefabCatalog), "AfterAddPrefab"));
+            if (!_managerHook) _managerHook = Patches.Patch(null, Patches.Method(typeof(ES3ReferenceMgrBase), "Awake"),
+                postfix: Patches.Method(typeof(PrefabCatalog), "AfterManagerAwake"));
+            if (!_prefabHook || !_managerHook) throw new InvalidOperationException("Core prefab registration hooks failed");
+        }
+
+        /// <summary>Invalidates names and derived module indexes when a prefab was successfully registered.</summary>
+        private static void AfterAddPrefab(bool __result) { if (__result) Invalidate(); }
+
+        /// <summary>A new native manager may contribute prefab identities absent from the previous snapshot.</summary>
+        private static void AfterManagerAwake() { Invalidate(); }
+
+        /// <summary>Subscribes registration/scene invalidation and registers the sliced job once.</summary>
         static void Install()
         {
             if (_installed) return;
+            TrackRegistrations();
             _installed = true;
             SceneManager.sceneLoaded += SceneLoaded;
             Scheduler.Sliced(null, "Core.PrefabCatalog", 500, Step);

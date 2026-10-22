@@ -2,6 +2,7 @@ using BepInEx.Bootstrap;
 using HarmonyLib;
 using HutongGames.PlayMaker;
 using WildWasteland.Core;
+using Patches = WildWasteland.Core.Patches;
 
 namespace WildWasteland.Modules.Compatibility
 {
