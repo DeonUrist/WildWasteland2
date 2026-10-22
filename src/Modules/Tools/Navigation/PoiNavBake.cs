@@ -41,6 +41,7 @@ namespace WildWasteland.Modules.Tools
         private readonly RaycastHit[] _hits = new RaycastHit[8];
         private string _sig = "";
 
+        /// <summary>Captures the POI root, prior manual links and configured sampling density.</summary>
         internal PoiNavBake(Transform root, PoiNavData previous)
         {
             Root = root; Poi = NavigationTools.Source.TypeOf(root.name); _keep = previous;
@@ -76,9 +77,11 @@ namespace WildWasteland.Modules.Tools
             return !Done;
         }
 
+        /// <summary>Ends the bake with an error and matching progress text.</summary>
         void Fail(string why) { Error = why; Status = "failed: " + why; Done = true; }
 
         // ---------- 0: footprint ----------
+        /// <summary>Measures solid static colliders and allocates the expanded footprint grid.</summary>
         void Setup()
         {
             var cols = Root.GetComponentsInChildren<Collider>();
@@ -106,9 +109,11 @@ namespace WildWasteland.Modules.Tools
             _phase = 1; _i = 0;
         }
 
+        /// <summary>Returns the POI-local centre of a sampling column at the requested height.</summary>
         Vector3 Local(int x, int z, float y) { return new Vector3(_min.x + (x + .5f) * Cell, y, _min.z + (z + .5f) * Cell); }
 
         // ---------- 1: every standable surface in each column, top to bottom ----------
+        /// <summary>Samples standable surfaces down one grid column until terrain is reached.</summary>
         void Column()
         {
             if (_i >= _w * _h) { _phase = 2; _i = 0; return; }
@@ -133,12 +138,14 @@ namespace WildWasteland.Modules.Tools
             Status = "surfaces " + (100 * _i / (_w * _h)) + "%";
         }
 
+        /// <summary>Tests whether a standing capsule fits above the candidate surface.</summary>
         static bool Standable(Vector3 p)
         {
             return !Physics.CheckCapsule(p + Vector3.up * (Radius + .08f), p + Vector3.up * (Height - Radius), Radius, Mask, QueryTriggerInteraction.Ignore);
         }
 
         // ---------- 2: walks between neighbouring samples ----------
+        /// <summary>Finds unobstructed neighbouring walks and builds adjacency when sampling finishes.</summary>
         void Edges()
         {
             if (_i >= _s.Count) { _phase = 3; _i = 0; _adj = new List<int>[_s.Count]; for (int k = 0; k + 1 < _edges.Count; k += 2) { Adj(_edges[k], _edges[k + 1]); Adj(_edges[k + 1], _edges[k]); } return; }
@@ -160,9 +167,11 @@ namespace WildWasteland.Modules.Tools
             }
             Status = "walks " + (100 * _i / Mathf.Max(1, _s.Count)) + "%";
         }
+        /// <summary>Adds one directed sample adjacency entry.</summary>
         void Adj(int a, int b) { if (_adj[a] == null) _adj[a] = new List<int>(4); _adj[a].Add(b); }
 
         // ---------- 3: connected surfaces (tiny islands dropped) ----------
+        /// <summary>Labels connected walkable surfaces and discards islands smaller than four samples.</summary>
         void Components()
         {
             var q = new Queue<int>(); var sizes = new List<int>();
@@ -183,9 +192,11 @@ namespace WildWasteland.Modules.Tools
             for (int i = 0; i < _s.Count; i++) { var s = _s[i]; s.Comp = map[s.Comp]; _s[i] = s; }
             _phase = 4; _i = 0;
         }
+        /// <summary>Updates the connected-surface label of one stored sample.</summary>
         void Set(int i, int c) { var s = _s[i]; s.Comp = c; _s[i] = s; }
 
         // ---------- 4: ledges between surfaces: climb up (with the drop back), and longer drops down ----------
+        /// <summary>Tests nearby disconnected surfaces for climb and drop candidates.</summary>
         void Climbs()
         {
             if (_i >= _s.Count) { foreach (var l in _bestClimb.Values) _links.Add(l); _phase = 5; _i = 0; return; }
@@ -212,6 +223,7 @@ namespace WildWasteland.Modules.Tools
             Status = "ledges " + (100 * _i / Mathf.Max(1, _s.Count)) + "%";
         }
 
+        /// <summary>Tests for a near-vertical face at knee or hip height ahead.</summary>
         bool Face(Vector3 from, Vector3 dirW, float dist)
         {
             // a face in front at knee or hip height (rounded car sides and crates count)
@@ -223,6 +235,7 @@ namespace WildWasteland.Modules.Tools
             return false;
         }
 
+        /// <summary>Keeps a clear climb and reverse drop when it improves the ledge bucket.</summary>
         void TryClimb(Sample sa, Sample sb, Vector3 dirW, float dy)
         {
             float flat = new Vector2(sb.World.x - sa.World.x, sb.World.z - sa.World.z).magnitude;
@@ -243,6 +256,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // too high to climb back: a drop only (off the edge, straight down onto the lower surface)
+        /// <summary>Keeps the shortest clear one-way drop for its ledge bucket.</summary>
         void TryDrop(Sample upper, Sample lower, float dy)
         {
             Vector3 edge = new Vector3(lower.World.x, upper.World.y + .5f, lower.World.z);
@@ -258,6 +272,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // one link per kind per pair of surfaces per 2 m of ledge (at the start sample)
+        /// <summary>Groups links by kind, surface pair and two-metre start region.</summary>
         long BucketKey(Sample from, Sample to, int kind)
         {
             Vector3 l = from.Local;
@@ -265,6 +280,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // ---------- 5: native ladders: every surface the rung line passes links to the next ones up ----------
+        /// <summary>Finds native ladder triggers and advances the bake to graph construction.</summary>
         void Ladders()
         {
             foreach (var c in Root.GetComponentsInChildren<Collider>())
@@ -275,6 +291,7 @@ namespace WildWasteland.Modules.Tools
             _phase = 6; _i = 0;
         }
 
+        /// <summary>Builds ladder transitions between reachable surfaces while preserving authored side overrides.</summary>
         void LadderLinks(Collider ladder)
         {
             var box = ladder as BoxCollider; var t = ladder.transform;
@@ -361,6 +378,7 @@ namespace WildWasteland.Modules.Tools
         // 1. a leaning ladder is climbed on the side away from what it leans on; 2. the side opposite the floor at its top;
         // 3. the side its trigger sticks out to from its solid body; 4. away from the structure it is mounted on;
         // 5. the side with clearly more room for a body; 6. away from the POI centre. Every decision is logged.
+        /// <summary>Chooses the climbing side from ladder lean, nearby floors, body clearance and host geometry.</summary>
         Vector3 ClimbSide(Collider ladder, Vector3 center, Vector3 axisUp, Vector3 through, float bottomY, float topY)
         {
             string name = ladder.transform.parent != null ? ladder.transform.parent.name + "/" + ladder.name : ladder.name;
@@ -418,6 +436,7 @@ namespace WildWasteland.Modules.Tools
         {
             { "Camp_13|ladder_collider/ladder_trigger", new Vector3(0f, 0f, 1f) },     // the radio tower (22 m, middle floor at 10.8 m)
         };
+        /// <summary>Looks up an explicit local climbing direction for a known ladder.</summary>
         Vector3 Hardcoded(Collider ladder)
         {
             string name = ladder.transform.parent != null ? ladder.transform.parent.name + "/" + ladder.name : ladder.name;
@@ -425,6 +444,7 @@ namespace WildWasteland.Modules.Tools
         }
         private readonly HashSet<PoiNavLink> _hardcodedYaw = new HashSet<PoiNavLink>();
 
+        /// <summary>Logs the selected ladder side and returns its world direction.</summary>
         Vector3 Said(string ladder, string why, Vector3 side)
         {
             Vector3 l = Root.InverseTransformDirection(side);
@@ -432,12 +452,14 @@ namespace WildWasteland.Modules.Tools
             return side;
         }
 
+        /// <summary>Projects the ladder axis to the requested world height.</summary>
         static Vector3 OnAxis(Vector3 center, Vector3 up, float y) { var p = center + up * ((y - center.y) / Mathf.Max(.2f, up.y)); p.y = y; return p; }
 
         // ---------- 6: the node graph (one node per surface per 2 m square), straight walks between neighbouring nodes ----------
         // streamline: one climb / drop per pair of surfaces per 4 m of edge (the cleanest), none that duplicate another's start and
         // landing, and none onto (or off) a scrap of surface smaller than a body needs to stand and turn on (a wall top, a junk pile)
         int _thinned;
+        /// <summary>Removes redundant ledge links and unsuitable tiny-surface transitions.</summary>
         void Thin()
         {
             var size = new Dictionary<int, int>();
@@ -469,8 +491,10 @@ namespace WildWasteland.Modules.Tools
             _thinned = _links.Count - kept.Count;
             _links.Clear(); _links.AddRange(kept);
         }
+        /// <summary>Measures the horizontal distance between a link start and landing.</summary>
         static float Flat(PoiNavLink l) { return new Vector2(l.To.x - l.From.x, l.To.z - l.From.z).magnitude; }
 
+        /// <summary>Builds coarse walk nodes and merges baked links with retained manual overrides.</summary>
         void Graph()
         {
             Thin();
@@ -567,9 +591,11 @@ namespace WildWasteland.Modules.Tools
             int ladders = 0, climbs = 0; foreach (var l in data.Links) { if (l.Kind == PoiLinkKind.Ladder) ladders++; else if (l.Kind == PoiLinkKind.Climb) climbs++; }
             Status = "done: " + data.Nodes.Count + " nodes (" + endNodes + " link ends, " + isolated + " unreachable) on " + data.Surfaces + " surfaces, " + (data.Edges.Count / 2) + " walks, " + ladders + " ladders, " + climbs + " climbs (" + _thinned + " redundant links left out)";
         }
+        /// <summary>Packs a surface and coarse grid coordinates into a graph lookup key.</summary>
         static long Key(int comp, int sx, int sz) { return ((long)comp << 40) | ((long)(sx + 512) << 20) | (long)(uint)(sz + 512); }
 
         // a straight walk between two samples of one surface: every half cell along the line stands on that surface within a step
+        /// <summary>Checks continuous same-surface footing and body-height clearance between samples.</summary>
         bool WalkClear(int a, int b)
         {
             var sa = _s[a]; var sb = _s[b];

@@ -38,10 +38,14 @@ namespace WildWasteland.Modules.Tools
         const float W = 1600f, H = 900f, Left = 300f, Right = 300f, Top = 52f, Bottom = 48f, HandleR = 15f;
 
         internal static bool Opened { get { return _root != null; } }
+        /// <summary>Allows closing the editor or opening during developer gameplay.</summary>
         internal static bool CanToggle() { return Opened || GameRefs.InPlay && Plugin.EnableDebug.Value && Plugin.DeveloperMode.Value; }
+        /// <summary>Requests navigation editor GUI only while a root is open.</summary>
         internal static bool WantsGui() { return Opened; }
+        /// <summary>Opens the navigation editor or closes the active session.</summary>
         internal static void Toggle() { if (Opened) Close(); else Open(); }
 
+        /// <summary>Acquires an editing session for the nearest POI and captures camera restoration state.</summary>
         internal static void Open()
         {
             if (NavigationTools.Source == null || Opened || !GameRefs.InPlay || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value) return;
@@ -60,6 +64,7 @@ namespace WildWasteland.Modules.Tools
             }
             catch { if (Opened) Close(true); else _session.Close(true); throw; }
         }
+        /// <summary>Chooses the nearest eligible live or setup POI root.</summary>
         static Transform NearestRoot(Vector3 from)
         {
             NavigationTools.Source.Roots(_roots); PoiNavSetup.Roots(_roots);
@@ -72,6 +77,7 @@ namespace WildWasteland.Modules.Tools
             return nearest;
         }
 
+        /// <summary>Loads a detached navigation draft and exposes it to the overlay renderer.</summary>
         static void Load()
         {
             _base = NavigationTools.Source.Get(_poi);
@@ -81,6 +87,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // ------------------------------------------------------------------ per frame
+        /// <summary>Processes free-camera motion, link dragging and navigation editor shortcuts.</summary>
         internal static void Tick()
         {
             if (!Opened) return;
@@ -122,21 +129,30 @@ namespace WildWasteland.Modules.Tools
             }
             PoiNavView.Selected = _selected;
         }
+        /// <summary>Applies the navigation editor free-camera pose during late update.</summary>
         internal static void CameraTick() { if (Opened && _camera != null) _camera.transform.SetPositionAndRotation(_view, Quaternion.Euler(_pitch, _yaw, 0)); }
+        /// <summary>Tests whether a screen point lies between the editor sidebars and toolbars.</summary>
         static bool InViewport(Vector2 point) { Vector2 g = Gui(point); return g.x > Left && g.x < W - Right && g.y > Top && g.y < H - Bottom; }
+        /// <summary>Converts screen pixels into the scaled editor GUI coordinate space.</summary>
         static Vector2 Gui(Vector2 screen) { return new Vector2(screen.x / Screen.width * W, (Screen.height - screen.y) / Screen.height * H); }
+        /// <summary>Moves free-camera and restoration positions with a floating-origin shift.</summary>
         internal static void Shift(Vector3 delta) { if (!Opened) return; _view += delta; _cameraPosition += delta; if (_cameraParent == null) _cameraLocal += delta; }
+        /// <summary>Toggles the editor session pause state and updates its status text.</summary>
         static void TogglePause() { _session.SetPause(!_session.Paused); _status = _session.Paused ? "World paused." : "World running: test NPCs move while you edit."; }
 
         // ------------------------------------------------------------------ edits
+        /// <summary>Stores a detached navigation draft with a bounded undo history.</summary>
         static void RecordUndo() { if (_draft == null) return; if (_undo.Count >= 64) _undo.Clear(); _undo.Push(_draft.Copy()); }
+        /// <summary>Restores the previous navigation draft and clears stale selection state.</summary>
         static void Undo()
         {
             if (_undo.Count == 0) return;
             _draft = _undo.Pop(); PoiNavView.EditData = _draft; _selected = -1; _mode = Mode.Select; _dragLink = -1; _dirty = true; Ledger.ClearNumbers();
         }
+        /// <summary>Marks a link as manually authored and the draft as unsaved.</summary>
         static void Changed(PoiNavLink l) { l.Manual = true; _dirty = true; }
         // every ladder link on the same rung line (all its floors) turns to the other side; they become editor links, so rebakes keep them
+        /// <summary>Flips every ladder link sharing the selected rung line and records undo.</summary>
         static void FlipSide(PoiNavLink sel)
         {
             RecordUndo(); int n = 0;
@@ -150,6 +166,7 @@ namespace WildWasteland.Modules.Tools
             Ledger.ClearNumbers();
             _status = "Ladder flipped: " + n + " link(s) now climbed from the other side (SAVE to keep).";
         }
+        /// <summary>Deletes a manual link or toggles a baked link off while preserving rebake intent.</summary>
         static void Delete()
         {
             if (_selected < 0 || _selected >= _draft.Links.Count) return;
@@ -159,6 +176,7 @@ namespace WildWasteland.Modules.Tools
             else { l.Off = !l.Off; _status = l.Off ? "Baked link switched off (stays off after rebakes)." : "Baked link switched on."; }
             _dirty = true; Ledger.ClearNumbers();
         }
+        /// <summary>Moves a link endpoint or rung line and invalidates surface attachments as needed.</summary>
         static void MovePart(PoiNavLink l, int part, Vector3 local)
         {
             if (part == 0) l.From = local;
@@ -168,6 +186,7 @@ namespace WildWasteland.Modules.Tools
             Changed(l); Ledger.ClearNumbers();
         }
         // derived parts: a new link faces its direction of travel; a new ladder's rung line stands half a metre in front of its foot
+        /// <summary>Updates link facing and derived rung geometry after placement or endpoint edits.</summary>
         static void Shape(PoiNavLink l, bool fresh)
         {
             Vector3 dir = l.To - l.From; dir.y = 0f;
@@ -181,6 +200,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // a click in the 3D view that is not on a handle
+        /// <summary>Handles empty-viewport selection, test actor commands and two-click link placement.</summary>
         static void Click(Vector2 screen)
         {
             if (_mode == Mode.Select) { _selected = -1; Ledger.ClearNumbers(); return; }
@@ -210,6 +230,7 @@ namespace WildWasteland.Modules.Tools
             }
         }
 
+        /// <summary>Publishes navigation data, refreshes the live cache and replaces the editor draft.</summary>
         static void Save()
         {
             try
@@ -223,6 +244,7 @@ namespace WildWasteland.Modules.Tools
             catch (Exception e) { _status = "Save failed: " + e.Message; Log.Warn("[NPC] POI navigation editor: " + _status); }
         }
 
+        /// <summary>Restores the camera, clears overlay references and releases the editor session.</summary>
         internal static void Close(bool immediate = false)
         {
             if (!Opened) return;
@@ -237,13 +259,16 @@ namespace WildWasteland.Modules.Tools
         }
 
         // ------------------------------------------------------------------ the window
+        /// <summary>Returns the link-kind colour, using grey for disabled links.</summary>
         static Color KindColor(PoiNavLink l)
         {
             if (l.Off) return new Color(.5f, .5f, .5f);
             return l.Kind == PoiLinkKind.Ladder ? new Color(0f, .85f, 1f) : l.Kind == PoiLinkKind.Climb ? new Color(1f, .6f, .1f) : new Color(1f, .25f, .2f);
         }
+        /// <summary>Returns the compact ladder, climb or drop handle label.</summary>
         static string KindLetter(PoiLinkKind k) { return k == PoiLinkKind.Ladder ? "L" : k == PoiLinkKind.Climb ? "C" : "D"; }
 
+        /// <summary>Draws the navigation editor while restoring the caller GUI state afterward.</summary>
         internal static void Draw()
         {
             if (!Opened) return;
@@ -286,6 +311,7 @@ namespace WildWasteland.Modules.Tools
             finally { GUI.skin = skin; GUI.matrix = matrix; GUI.depth = depth; }
         }
 
+        /// <summary>Projects visible link endpoints and the selected rung line into pickable handles.</summary>
         static void BuildHandles()
         {
             _handles.Clear();
@@ -299,6 +325,7 @@ namespace WildWasteland.Modules.Tools
                 if (l.Kind == PoiLinkKind.Ladder && i == _selected) Add(i, 2, (l.LineBottom + l.LineTop) * .5f, eye);
             }
         }
+        /// <summary>Adds one projected handle when it is near and in front of the editor camera.</summary>
         static void Add(int link, int part, Vector3 local, Vector3 eye)
         {
             Vector3 w = _root.TransformPoint(local) + Vector3.up * .15f;
@@ -307,6 +334,7 @@ namespace WildWasteland.Modules.Tools
             _handles.Add(new Handle { Link = link, Part = part, At = Gui(new Vector2(s.x, s.y)) });
         }
 
+        /// <summary>Draws start, end and rung handles with selection and jump indicators.</summary>
         static void DrawHandles()
         {
             for (int i = 0; i < _handles.Count; i++)
@@ -334,6 +362,7 @@ namespace WildWasteland.Modules.Tools
             }
         }
 
+        /// <summary>Draws pause, rebake, undo, save and close controls.</summary>
         static void DrawTop()
         {
             Ledger.Panel(new Rect(0, 0, W, Top));
@@ -347,12 +376,14 @@ namespace WildWasteland.Modules.Tools
             if (Ledger.Button(new Rect(x + 600, 9, 190, 34), _dirty ? "CLOSE / DISCARD" : "CLOSE")) Close();
         }
 
+        /// <summary>Draws a display-filter toggle with an optional colour swatch.</summary>
         static bool Check(float y, string label, bool value, Color? swatch = null)
         {
             if (swatch.HasValue) Ledger.Fill(new Rect(Left - 34, y + 7, 18, 18), swatch.Value);
             return Ledger.Toggle(new Rect(12, y, Left - 50, 32), value, label);
         }
 
+        /// <summary>Draws navigation filters, link lists, creation tools and test-actor controls.</summary>
         static void DrawLeft()
         {
             Ledger.Panel(new Rect(0, Top + 2, Left, H - Top - Bottom - 4));
@@ -393,12 +424,14 @@ namespace WildWasteland.Modules.Tools
             y += 38;
             if (Ledger.Button(new Rect(12, y, Left - 24, 32), "REMOVE TEST NPCs", PoiNavSetup.Tests > 0)) { PoiNavSetup.ClearTests(); _status = "Test NPCs removed."; }
         }
+        /// <summary>Starts two-click placement of the selected traversal link kind.</summary>
         static void Begin(PoiLinkKind kind)
         {
             _newKind = kind; _mode = Mode.NewStart; _selected = -1;
             _status = "Click where the " + kind + " starts (" + (kind == PoiLinkKind.Ladder ? "the floor at its foot" : kind == PoiLinkKind.Climb ? "below the ledge" : "the edge to jump from") + ").";
         }
         // fly the camera to look at a link chosen in the list
+        /// <summary>Moves the editor camera to frame the selected traversal link.</summary>
         static void FocusOn(PoiNavLink l)
         {
             Vector3 mid = _root.TransformPoint((l.From + l.To) * .5f);
@@ -408,6 +441,7 @@ namespace WildWasteland.Modules.Tools
             if (_pitch > 180) _pitch -= 360;
         }
 
+        /// <summary>Draws editable coordinates, facing and ladder options for the selected link.</summary>
         static void DrawRight()
         {
             float x = W - Right + 12, w = Right - 24;
@@ -446,6 +480,7 @@ namespace WildWasteland.Modules.Tools
                 : l.Kind == PoiLinkKind.Climb ? "Climb: START below the ledge, END on top. Facing points at the wall."
                 : "Drop: START at the edge, END where they land.", Ledger.Small, Ledger.Muted);
         }
+        /// <summary>Draws the three local-coordinate fields using the undo callback.</summary>
         static Vector3 Fields(float x, float y, string label, string key, Vector3 v)
         {
             Ledger.Label(new Rect(x, y, 276, 24), label, Ledger.Small);
@@ -454,6 +489,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // ------------------------------------------------------------------ F3 Debug page
+        /// <summary>Draws navigation setup, overlay and editor launch controls on the Tools page.</summary>
         internal static void DrawPage(ToolLayout l)
         {
             l.Heading("POI pathfinding");
@@ -475,6 +511,7 @@ namespace WildWasteland.Modules.Tools
             l.Value("Files", NavigationTools.Source.ConfigDir);
             if (!string.IsNullOrEmpty(_status)) l.Text(_status);
         }
+        /// <summary>Queues a navigation bake for the nearest eligible POI.</summary>
         static void BakeNearest()
         {
             var cam = GameRefs.MainCamera; if (cam == null) return;

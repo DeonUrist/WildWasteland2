@@ -24,15 +24,21 @@ namespace WildWasteland.Modules.Tools
         private string _hoverMissing = "";
         private Vector2 _groupScrollOrigin;
         private Rect _lastFactionAnchor;
+        /// <summary>Resolves the current group faction or the active tab default.</summary>
         private string ListFaction=>PatrolEditor.Source.NormalizeFaction(Selected?.Faction??(_tab==2?"Coyotes":"Scrapyard"));
+        /// <summary>Filters detached templates by body class, availability and runtime faction eligibility.</summary>
         internal static PatrolTemplateInfo[] VisibleTemplates(bool truck,string faction)=>PatrolEditor.Park.Where(t=>t.IsTruck==truck&&PatrolEditor.Source.Compatible(t.Name,faction)).OrderBy(t=>t.Name,StringComparer.OrdinalIgnoreCase).ToArray();
+        /// <summary>Formats the selected authored template name for the ledger.</summary>
         private static string TemplateCaption(PatrolTemplateInfo t)=>t.Name=="Coyote_Trader"?"Coyote Trader bus":t.Name.Replace('_',' ');
+        /// <summary>Offers canonical factions and queues a change that preserves crew eligibility.</summary>
         private void OpenFaction(AuthoringGroup group,Rect anchor)
         {_dropdown.Open(anchor,Options(new[]{"Scrapyard","Coyotes"}),group.Faction,v=>{group.Faction=v;group.Templates.RemoveAll(n=>{var t=PatrolEditor.Find(n);return t!=null&&!PatrolEditor.Source.Compatible(t.Name,v);});_selectedTemplate="";Dirty();},_rect.height-84);}
+        /// <summary>Changes the authored merchant category using the runtime normalization rules.</summary>
         private void SelectMerchantType(AuthoringGroup group,string type)
         {if(EditorMerchants.Known(type))Queue(()=>group.MerchantTypes=new List<string>{type});}
 
         // the editor's template order: EditorData.TemplateOrder first, then the unlisted ones (defaults first, by name)
+        /// <summary>Orders detached templates using authored order and built-in/favorite rules.</summary>
         private static PatrolTemplateInfo[] Ordered(bool truck)
         {
             var order = PatrolEditor.Data.TemplateOrder;
@@ -41,28 +47,34 @@ namespace WildWasteland.Modules.Tools
                 .OrderBy(x => x.i < 0 ? 1 : 0).ThenBy(x => x.i).ThenBy(x => x.t.IsDefault ? 0 : 1).ThenBy(x => x.t.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.t).ToArray();
         }
+        /// <summary>Moves one ledger entry only when both source and destination indices are valid.</summary>
         private static void Move<T>(List<T> list, int index, int delta)
         {
             int to = index + delta; if (index < 0 || index >= list.Count || to < 0 || to >= list.Count) return;
             var item = list[index]; list.RemoveAt(index); list.Insert(to, item);
         }
+        /// <summary>Builds matching value/label pairs for a ledger dropdown.</summary>
         private static List<KeyValuePair<string, string>> Options(IEnumerable<string> values) { return values.Select(v => new KeyValuePair<string, string>(v, v)).ToList(); }
 
         // writes driver / passenger / loot option into the template's file (BaseTemplates or PlayerTemplates) and reloads the park
+        /// <summary>Submits detached crew, faction and cargo metadata to the validating template owner.</summary>
         private static void SaveTemplateEdit(PatrolTemplateInfo t, string driver, string passenger, string loot, string[] turrets, string[] trailerTurrets = null,float explodeChance=50f,string faction=null,bool[] standing=null,bool[] trailerStanding=null)
         {
             PatrolEditor.Source.Edit(new PatrolTemplateEdit { Name=t.Name,Driver=driver,Passenger=passenger,Loot=loot,Turrets=turrets,TrailerTurrets=trailerTurrets,ExplodeChance=explodeChance,Faction=faction,Standing=standing,TrailerStanding=trailerStanding });
             PatrolEditor.Refresh(true);
         }
+        /// <summary>Formats occupied vehicle and trailer turret slots for the ledger.</summary>
         private static string TurretSummary(PatrolTemplateInfo t)
         {
             var on = t.Turrets.Where(v => !string.IsNullOrEmpty(v)).Select(PatrolEditor.Source.TurretDisplay).ToArray();
             return (on.Length > 0 ? " ● turrets " + string.Join(", ", on) : "") + (t.Trailer != null ? " ● trailer " + t.Trailer.Body + " (" + t.Trailer.Turrets.Count(v => !string.IsNullOrEmpty(v)) + "/4 turrets)" : "");
         }
+        /// <summary>Queues a modal transition and clears its previous input state.</summary>
         private void ShowModal(string kind, object target = null)
         {
             Queue(() => { _target = target; _modal = kind; _name = ""; _deleteCustom = false; _modalScroll = Vector2.zero; }, false);
         }
+        /// <summary>Draws ledger tabs, active editor sections and deferred modal controls.</summary>
         private void DrawWindow(int id)
         {
             _dropdown.Before(); bool modal = _modal.Length > 0, enabled = GUI.enabled;
@@ -94,6 +106,7 @@ namespace WildWasteland.Modules.Tools
             if (modal) DrawLedgerModal();
             _dropdown.Draw();
         }
+        /// <summary>Draws supported seated recording actions and existing template metadata controls.</summary>
         private void DrawTemplateTab()
         {
             Ledger.Panel(new Rect(26,143,_rect.width-52,_rect.height-230));
@@ -102,6 +115,7 @@ namespace WildWasteland.Modules.Tools
             DrawTemplateLedger(false,new Rect(48,278,(_rect.width-120)*.5f,300),ref _carScroll);
             DrawTemplateLedger(true,new Rect(_rect.width*.5f+12,278,(_rect.width-120)*.5f,300),ref _truckScroll);
         }
+        /// <summary>Draws role groups alongside their eligible template choices.</summary>
         private void DrawGroupsLedger()
         {
             float gap = 16, available = _rect.width - 52, leftWidth = (available - gap) * 1.65f / 2.65f;
@@ -133,17 +147,20 @@ namespace WildWasteland.Modules.Tools
             if (Ledger.Button(new Rect(rx, actions + 13, rw, 34), _tab==2?"+  Add template to merchant":_tab == 1 ? "+  Add template to convoy" : "+  Add template to patrol", canAdd, true)) Queue(() => { selected.Templates.Add(chosen.Name); _status = "Added one copy of " + chosen.Name; });
             if (ToolsModule.AllowDebugSpawns.Value && Ledger.Button(new Rect(rx, actions + 54, rw, 34), "Spawn template", chosen != null && chosen.Available)) Queue(() => { Schedule(() => PatrolEditor.Source.SpawnTemplate(chosen.Name,_tab,selected?.Id,chosen.IsTruck && _tab==1 ? selected?.AllowedCargo.ToArray() : null)); }, false);
         }
+        /// <summary>Calculates the expanded group height from roster and role-specific controls.</summary>
         private float GroupHeight(AuthoringGroup group)
         {
             if (!_expanded.Contains(group.Id)) return 73;
             int rows = group.Templates.Count; bool fallback = !group.Templates.Any(n => { var t = PatrolEditor.Find(n); return t != null && t.Available && (_tab != 1 || t.IsTruck); });
             return 73 + 12 + 63 + 14 + 56 + 22 + (rows + (fallback&&_tab!=2 ? 1 : 0)) * 36 + (_tab == 1 ? 79 : _tab==2?126:0) + 36 + 12;
         }
+        /// <summary>Counts eligible authored vehicles including the runtime fallback slot.</summary>
         private static int VehicleCount(AuthoringGroup group, bool convoy)
         {
             var list = group.Templates.Select(PatrolEditor.Find).Where(t => t != null && t.Available && PatrolEditor.Source.Compatible(t.Name,group.Faction)).ToList();
             return list.Count + ((convoy && !list.Any(t => t.IsTruck)) || (!convoy && list.Count == 0) ? 1 : 0);
         }
+        /// <summary>Draws one group roster, progression gates and role-specific controls.</summary>
         private void DrawLedgerGroup(AuthoringGroup group, int index, Rect r)
         {
             bool open = _expanded.Contains(group.Id); int count = _tab==2?group.Templates.Count(n=>PatrolEditor.Find(n)?.Available==true):VehicleCount(group, _tab == 1);
@@ -206,6 +223,7 @@ namespace WildWasteland.Modules.Tools
             }
             if (Ledger.Icon(new Rect(r.xMax - 35, headerY + 21, 30, 30), "trash-2", color: Ledger.Danger)) ShowModal("deleteGroup", group);
         }
+        /// <summary>Draws scrollable detached vehicle templates and their assignment actions.</summary>
         private void DrawTemplateLedger(bool truck, Rect r, ref Vector2 scroll)
         {
             Ledger.Panel(r); var templates = VisibleTemplates(truck,ListFaction);
@@ -231,6 +249,7 @@ namespace WildWasteland.Modules.Tools
                 }
             });
         }
+        /// <summary>Draws the car and truck cargo profile sections.</summary>
         private void DrawLootLedger()
         {
             float height = LootHeight(false) + 16 + LootHeight(true);
@@ -240,13 +259,16 @@ namespace WildWasteland.Modules.Tools
                 DrawLootLedgerSection(true, new Rect(0, LootHeight(false) + 16, width, LootHeight(true)));
             });
         }
+        /// <summary>Resolves the active cargo profile and repairs stale selection state.</summary>
         private LootProfile CurrentLoot(bool truck)
         {
             int i = truck ? 1 : 0; var profiles = truck ? PatrolEditor.Data.TruckLoot : PatrolEditor.Data.CarLoot;
             var selected = profiles.FirstOrDefault(p => p.Id == _lootSelected[i]) ?? profiles.FirstOrDefault();
             _lootSelected[i] = selected != null ? selected.Id : ""; return selected;
         }
+        /// <summary>Resolves the active cargo profile and repairs stale selection state.</summary>
         private float LootHeight(bool truck) { var p = CurrentLoot(truck); return 14 + 34 + 12 + 34 + 10 + (truck ? 96 : 0) + Mathf.Max(1, p == null ? 0 : p.Items.Count) * 46 + 34 + 10 + 20 + 14; }
+        /// <summary>Draws cargo profile choices, probability and editable weighted item rows.</summary>
         private void DrawLootLedgerSection(bool truck, Rect r)
         {
             var profiles = truck ? PatrolEditor.Data.TruckLoot : PatrolEditor.Data.CarLoot; var profile = CurrentLoot(truck); int category = truck ? 1 : 0;
@@ -290,6 +312,7 @@ namespace WildWasteland.Modules.Tools
             if (Ledger.Button(new Rect(x, y, 157, 34), "+  Add game item", profile != null)) Queue(() => { _target = profile; _search = _item = ""; _itemChance = 100; _modalScroll = Vector2.zero; Ledger.ClearNumbers(); _modal = "items"; EditorItems.All(); }, false);
             Ledger.Label(new Rect(x, y + 44, width, 20), "Absolute chance per item: 100% = 1 · 150% = 1 + 50% for a second · 200% = 2", Ledger.Small, Ledger.Muted);
         }
+        /// <summary>Draws and validates the active create, delete or rename modal action.</summary>
         private void DrawLedgerModal()
         {
             Ledger.Fill(_rect, new Color(0, 0, 0, .6f));
@@ -351,6 +374,7 @@ namespace WildWasteland.Modules.Tools
             }
         }
         // the "E" of a template row: driver, passenger and the loot option (cars) / a fixed cargo option (trucks); written into the template file
+        /// <summary>Draws current template crew, standing, faction and cargo metadata controls.</summary>
         private void DrawEditTemplate(Rect box)
         {
             var t = (PatrolTemplateInfo)_target; float x = box.x + 22, w = box.width - 44, input = x + 150, iw = w - 150, bottom = _rect.height - 84;
@@ -409,6 +433,7 @@ namespace WildWasteland.Modules.Tools
             Ledger.Label(new Rect(x,box.y+452,140,34),"Explode chance · %");
             _editExplodeChance=Ledger.Number(new Rect(input,box.y+452,iw,34),"template.explode",_editExplodeChance,0f,100f,()=>{});
         }
+        /// <summary>Draws the searchable Loot item catalog for the selected cargo profile.</summary>
         private void DrawLedgerItems(Rect box)
         {
             var profile = (LootProfile)_target; float x = box.x + 22, w = box.width - 44;
@@ -426,12 +451,14 @@ namespace WildWasteland.Modules.Tools
             Ledger.Label(new Rect(x + 158, box.y + 356, w - 158, 34), Ledger.Quantity(_itemChance), Ledger.Small, Ledger.Muted);
             ModalButtons(box, "Add item", () => { profile.Items.Add(new LootItem { Id = _item, Chance = _itemChance }); }, _item.Length > 0);
         }
+        /// <summary>Queues a confirmed modal operation and provides cancellation.</summary>
         private void ModalButtons(Rect box, string confirm, Action action, bool enabled = true)
         {
             Ledger.Rule(box.x + 22, box.yMax - 73, box.width - 44);
             if (Ledger.Button(new Rect(box.xMax - 219, box.yMax - 55, 86, 34), "Cancel")) Queue(() => _modal = "", false);
             if (Ledger.Button(new Rect(box.xMax - 125, box.yMax - 55, 103, 34), confirm, enabled, true)) Queue(() => { action(); _modal = ""; });
         }
+        /// <summary>Draws the convoy cargo allow-list and available truck profiles.</summary>
         private void DrawAllowedCargo()
         {
             var group = (AuthoringGroup)_target; var box = new Rect((_rect.width - 850) / 2, 135, 850, 474); Ledger.Panel(box);

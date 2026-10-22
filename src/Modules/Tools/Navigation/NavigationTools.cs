@@ -7,6 +7,7 @@ namespace WildWasteland.Modules.Tools
     /// editor key and the offline baker tuning (bound from PoiNav.Bind in the original order).</summary>
     internal static class NavigationTools
     {
+        /// <summary>Resolves the currently running navigation authoring provider.</summary>
         internal static INavigationAuthoring Source { get { return ModApi.Get<INavigationAuthoring>(); } }
         internal static ConfigEntry<bool> Setup, DisplayGraphs;
         internal static ConfigEntry<float> BakeBudgetMs, BakeCell;
