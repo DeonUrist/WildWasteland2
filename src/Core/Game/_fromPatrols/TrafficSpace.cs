@@ -10,7 +10,6 @@ namespace WildWasteland.Modules.Patrols
         internal static Vector3 Origin { get { return Core.Origin.Anchor; } }
         internal static Vector3 World(Vector3 scene) { return Core.Origin.World(scene); }
         internal static Vector3 Scene(Vector3 world) { return Core.Origin.Scene(world); }
-        internal static void Reset() { }   // Core.Origin resets its anchor on scene load
 
         // delta = oldTotalOffset - newTotalOffset (the old FloatingOrigin.Jump postfix's "shift")
         internal static void OriginShift(Vector3 shift)

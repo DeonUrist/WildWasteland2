@@ -40,14 +40,6 @@ namespace WildWasteland.Modules.Patrols
                 .OrderBy(x => x.i < 0 ? 1 : 0).ThenBy(x => x.i).ThenBy(x => x.t.IsDefault ? 0 : 1).ThenBy(x => x.t.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(x => x.t).ToArray();
         }
-        private static void MoveTemplate(bool truck, int index, int delta)
-        {
-            var list = Ordered(truck).ToList(); int to = index + delta;
-            if (index < 0 || index >= list.Count || to < 0 || to >= list.Count) return;
-            var t = list[index]; list.RemoveAt(index); list.Insert(to, t);
-            // both lists are kept in one order list: the cars first, then the trucks
-            EditorStore.Data.TemplateOrder = (truck ? Ordered(false) : list.ToArray()).Concat(truck ? list.ToArray() : Ordered(true)).Select(c => c.Name).ToList();
-        }
         private static void Move<T>(List<T> list, int index, int delta)
         {
             int to = index + delta; if (index < 0 || index >= list.Count || to < 0 || to >= list.Count) return;

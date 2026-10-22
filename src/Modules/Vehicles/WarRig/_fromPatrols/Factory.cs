@@ -8,6 +8,7 @@ using NWH.VehiclePhysics2;
 using NWH.VehiclePhysics2.Powertrain;
 using NWH.VehiclePhysics2.Powertrain.Wheel;
 using UnityEngine;
+using WildWasteland.Core;
 using Object = UnityEngine.Object;
 
 namespace WildWasteland.Modules.Patrols.WarRig

@@ -190,7 +190,6 @@ namespace WildWasteland.Modules.Patrols
             EventBudget.Reset();
             RoadPlanner.Reset();
             TrafficRoads.Reset();
-            TrafficSpace.Reset();
             CrewReturn.Reset();
             if (_instance == null) return;
             _instance.StopAllCoroutines(); _instance._journeys.Clear(); _instance._live.Clear();
