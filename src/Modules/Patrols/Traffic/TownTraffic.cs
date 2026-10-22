@@ -54,7 +54,7 @@ namespace WildWasteland.Modules.Patrols
         {
             if (Time.time < _nextTownStops) return;
             _nextTownStops = Time.time + 2f; _townStops.Clear();
-            if (TownTravel) TownsApi.Provider.TravelStops(_townStops);
+            if (TownTravel) { var stops = new List<Core.TownTrafficStop>(); TownsApi.Provider.TravelStops(stops); foreach (var stop in stops) _townStops.Add(new TownStop { Id = stop.Id, Name = stop.Name, Faction = stop.Faction, Center = stop.Center, Parking = stop.Parking, Heading = stop.Heading, RoadApproach = stop.RoadApproach, Radius = stop.Radius, CanTravel = stop.CanTravel, MerchantSeeded = stop.MerchantSeeded, Lane = stop.Lane }); }
         }
         private void ResetTownTraffic()
         { _townDepartures.Clear(); _townStops.Clear(); _townGuards.Clear(); _townGuardOrders.Clear(); _townGuardJourneys.Clear(); _townRetry.Clear(); _nextTownStops = _nextResident = 0f; }

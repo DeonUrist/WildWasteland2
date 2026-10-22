@@ -52,6 +52,7 @@ namespace WildWasteland.Modules.POI
             _chance = cfg.Player("World", "Spawn chance (%)", 2,
                 "Chance for each added POI in each generated 5 km terrain slice. 100 guarantees one site per slice for debugging. Changes affect newly generated slices.", new AcceptableValueRange<int>(0, 100));
         }
+        public override void ProvideApis() { ModApi.Provide<IPoiApi>(this, this); ModApi.Provide<ITownsApi>(this, _towns); ModApi.Provide<ITownTraffic>(this, _towns); }
         public override void Init()
         {
             _saves = Path.Combine(Assets.ModuleConfigDir(Id), "Saves");

@@ -48,6 +48,7 @@ namespace WildWasteland.Modules.Towns
         public const int GeneratorVersion = 9;
         internal int LayoutVersion = 8;
         public string Key { get; internal set; }
+        internal string TemplateId;
         public bool HasTown { get; internal set; }
         public TownCondition Condition { get; internal set; }
         public TownFaction Faction { get; internal set; }
@@ -89,6 +90,7 @@ namespace WildWasteland.Modules.Towns
     internal sealed class GenerationInput
     {
         internal string Key;
+        internal TownTemplate[] Templates;
         internal int Seed, Min, Max, Chance, Inhabited;
         internal float StreetWidth, Setback, Jitter, MaxRelief, MaxEarthwork, MaxGrade, Feather;
         internal float Gap;
@@ -96,7 +98,6 @@ namespace WildWasteland.Modules.Towns
         internal TownPlan Saved;
         internal string Error;
         internal int RuinsMin, RuinsMax, HumansMin, HumansMax, LootMin, LootMax;
-        internal int PopulationPercent, LootPercent;
         internal float PathWidth, AccessWidth, AccessLength;
         internal bool EnsureTown;
         internal TownLoading.Work Progress;

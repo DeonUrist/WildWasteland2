@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.Patrols
         internal static TrafficBase[] PatrolBases()
         {
             var bases = Known.Values.Where(c => c.faction != "Coyotes" && !c.cleared && !TownInterior(c.center)).ToList();
-            if (Modules.Towns.TownsApi.Provider != null) Modules.Towns.TownsApi.Provider.PatrolBases(bases);
+            if (Modules.Towns.TownsApi.Provider != null) { var towns = new List<Core.TownPatrolBase>(); Modules.Towns.TownsApi.Provider.PatrolBases(towns); foreach (var town in towns) bases.Add(new TrafficBase { id = town.Id, name = town.Name, faction = town.Faction, center = town.Center, apron = town.Apron, gate = town.Gate, size = town.Size }); }
             return bases.ToArray();
         }
         internal static bool BaseLoaded(string id)

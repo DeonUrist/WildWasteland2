@@ -52,6 +52,7 @@ namespace WildWasteland.Modules.Towns
         }
         private readonly TownSettings _settings = new TownSettings();
         private readonly TownNames _names = new TownNames();
+        internal readonly TownTemplates TemplateStore = new TownTemplates();
         private TownGasStation _gasStation;
         private PoiDressing _dressing;
         private readonly Dictionary<Graph, Registration> _graphs = new Dictionary<Graph, Registration>();
@@ -111,7 +112,7 @@ namespace WildWasteland.Modules.Towns
             if (_running) return;
             _running = true; TownsApi.Provider = this;
             _gasStation = new TownGasStation(_settings);
-            _names.Load(); _names.Begin(_records);
+            TemplateStore.Load(); _names.Load(); _names.Begin(_records);
             InitNavigation();
             _dressing = new PoiDressing(); _dressing.Install(this);
             InitTools();
@@ -196,6 +197,7 @@ namespace WildWasteland.Modules.Towns
                 string key = ChunkKey(seed, tile.coord.x, tile.coord.z);
                 TownRecord record; _records.TryGetValue(key, out record);
                 var input = _settings.Snapshot(key, seed, registration.Assets.Specs, record == null ? null : record.Plan);
+                input.Templates = TemplateStore.Snapshot;
                 input.ExcludeStartingChunk = tile.coord.x == 0 && tile.coord.z == 0 && !_settings.PoiNearSpawn.Value;
                 if (input.ExcludeStartingChunk && (input.Saved == null || !input.Saved.HasTown)) input.Chance = 0;
 
@@ -436,8 +438,9 @@ namespace WildWasteland.Modules.Towns
             }
             return false;
         }
+        private bool TemplateWalls(TownPlan plan) { foreach (var template in TemplateStore.Snapshot) if (template.Id == plan.TemplateId) return template.Walls; return false; }
         private bool NeedsWalls(Live live)
-        { return !live.WallFailed && _settings.Walls.Value && TownPerimeter.Allegiance(live.Site.Plan) && live.Registration.Assets.WallKit.Available
+        { return !live.WallFailed && _settings.Walls.Value && TemplateWalls(live.Site.Plan) && TownPerimeter.Allegiance(live.Site.Plan) && live.Registration.Assets.WallKit.Available
             && (live.Site.Walls == null || !live.Site.Walls.Prepared); }
         private static void Finish(Live live, string reason)
         {
