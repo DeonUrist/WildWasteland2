@@ -40,14 +40,16 @@ namespace WildWasteland.Modules.POI
         private readonly Vector3[] _lines = new Vector3[16];
         internal bool Opened { get { return _site != null; } }
         private bool Ready { get { return _draft != null && _built >= _draft.Props.Count; } }
-        internal PoiDresser(PoiDressing runtime) { _runtime = runtime; runtime.Editor = this; _beforeNumber = RecordUndo; }
+        internal PoiDresser(PoiDressing runtime) { _runtime = runtime; _beforeNumber = RecordUndo; }
         internal void Install(IModule owner, TownSettings settings)
         {
+            runtimeSession(owner);
             Hotkeys.Register(owner, settings.PoiDresserKey, Toggle, CanToggle, true);
             Scheduler.EveryFrame(owner, "POI dresser input", Tick);
             Scheduler.EveryFrame(owner, "POI dresser camera", CameraTick, Phase.LateUpdateLast);
             Scheduler.Gui(owner, "POI dresser", Draw, WantsGui);
         }
+        private void runtimeSession(IModule owner){_runtime.Authoring.RegisterSession(owner,BuildPreview,()=>Close(true));}
         private bool WantsGui() { return Opened; }
         private bool CanToggle() { return Opened || GameRefs.InPlay && Plugin.EnableDebug.Value && Plugin.DeveloperMode.Value; }
         internal void Toggle() { if (Opened) Close(); else Open(); }

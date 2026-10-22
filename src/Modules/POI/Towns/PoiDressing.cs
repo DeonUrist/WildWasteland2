@@ -39,7 +39,6 @@ namespace WildWasteland.Modules.POI
         private readonly Queue<Site> _pending = new Queue<Site>();
         private readonly List<NavStructure> _structures = new List<NavStructure>();
         private int _frame = -1;
-        internal PoiDresser Editor;
         internal PoiAuthoringApi Authoring;
         internal void Install(TownRuntime owner)
         {
@@ -98,7 +97,6 @@ namespace WildWasteland.Modules.POI
         {
             // Catalog enumeration is cheap and may use the rest of the scheduler slice. Object activation is capped separately.
             if (Authoring != null && Authoring.BuildPreview()) return true;
-            if (Editor != null && Editor.Opened && Editor.BuildPreview()) return true;
             if (_frame != Time.frameCount && !SaveBus.Saving)
             {
                 int left = _pending.Count;
@@ -165,7 +163,6 @@ namespace WildWasteland.Modules.POI
         internal void Clear()
         {
             Authoring?.Close();
-            if (Editor != null) Editor.Close(true);
             Markers.Clear(false);
             foreach (var site in Sites) if (site.Dressing != null)
             { if (site.Root != null) PoiDressNavigation.Forget(site.Root); site.Dressing.SetActive(false); Object.Destroy(site.Dressing); }

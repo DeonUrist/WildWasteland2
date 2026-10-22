@@ -7,6 +7,8 @@ namespace WildWasteland.Modules.NPC
     /// <summary>Owns live street routes, per-instance overlays and NPC entrance decisions for supplied town geometry.</summary>
     internal sealed class TownNavigationApi : ITownNavigation,IForcedWaypointProvider
     {
+        private sealed class Isolated:IIsolatedNavWork{private readonly Nav.IsolatedBake _bake;internal Isolated(GameObject p){_bake=new Nav.IsolatedBake(p);}public bool Ready=>_bake.Ready;public float Progress=>_bake.Progress;public string MapFile=>_bake.MapFile;public void Step()=>_bake.Step();public void Dispose()=>_bake.Release();}
+        public IIsolatedNavWork CreateIsolated(GameObject prefab)=>new Isolated(prefab);
         private sealed class Routing:ITownNavWork
         {internal TownNavigation Route;public bool Ready=>Route.Ready;public bool Failed=>Route.Failed;public float Progress=>Route.Progress;public bool Step()=>Route.Step();public void Dispose(){} }
         private sealed class Overlay:ITownOverlayWork

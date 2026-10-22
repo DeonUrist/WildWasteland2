@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
+
 
 namespace WildWasteland.Modules.POI
 {
@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.POI
     /// </summary>
     internal sealed partial class TownTowerKit
     {
-        private Nav.IsolatedBake _bake;
+        private IIsolatedNavWork _bake;
 
         /// <summary>The tower's reusable map is published (or navigation is off).</summary>
         internal bool Ready { get; private set; }
@@ -24,12 +24,12 @@ namespace WildWasteland.Modules.POI
         {
             if (Ready || !Available) return false;
             if (!TownBakeBridge.Enabled) { Ready = true; return true; }
-            if (_bake == null) _bake = new Nav.IsolatedBake(Prefab);
+            if (_bake == null) _bake = ModApi.Get<ITownNavigation>().CreateIsolated(Prefab);
             _bake.Step();
             if (_bake.Ready)
             {
                 Ready = true;
-                if (Log.L1) Log.Main(NavRuntime.Owner, "isolated small-tower navigation ready; shared reusable map: " + _bake.MapFile);
+                if (Log.L1) Log.Main(null, "isolated small-tower navigation ready; shared reusable map: " + _bake.MapFile);
                 _bake = null;
             }
             return true;
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.POI
         /// <summary>Drops a running isolated bake (kit disposed).</summary>
         private void ReleaseBake()
         {
-            if (_bake != null) _bake.Release();
+            if (_bake != null) _bake.Dispose();
             _bake = null;
         }
     }

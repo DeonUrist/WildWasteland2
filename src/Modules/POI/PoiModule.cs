@@ -140,7 +140,7 @@ namespace WildWasteland.Modules.POI
                         locations.Avoid = avoid.ToArray(); locations.Radius = definition.Radius;
                         int seed = 17; foreach (char c in definition.Id) seed = unchecked(seed * 31 + c); locations.Seed = seed & 32767;
                         graph.Add(locations); registration.Added.Add(locations); graph.Link(before, locations.Heights);
-                        if (!VistasWorldGen.Present)
+                        if (!WorldGeneration.Present)
                         {
                             var pad = (Flatten200)Generator.Create(typeof(Flatten200));
                             pad.radius = definition.Radius; pad.hardness = 1f; pad.noiseFallof = false;

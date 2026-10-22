@@ -8,15 +8,13 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.POI
 {
-    internal sealed class CampResident : MonoBehaviour
+    /// <summary>Managed observation of a saved native actor; never adds a component to that actor.</summary>
+    internal sealed class CampResident
     {
-        internal string Camp;
-        internal FsmFloat Health;
-        internal bool Dead,Lost,WasAlive;
-        internal bool CallRolled;
-        internal FsmGameObject Target;
-        private void Start(){if(Health!=null&&Health.Value>0f)WasAlive=true;}
-        private void OnDestroy(){Dead=WasAlive&&Health!=null&&Health.Value<=0f;Lost=!Dead;TrafficCamps.Check(Camp);}
+        internal string Camp; internal GameObject Owner; internal FsmFloat Health; internal FsmGameObject Target;
+        internal bool WasAlive,CallRolled;
+        internal bool Dead=>WasAlive&&Health!=null&&Health.Value<=0;
+        internal bool Lost=>Owner==null&&!Dead;
     }
     /// <summary>Camp state (sites, residents, loaded/ready/cleared, ICampStatus provider, EnemySpawn CreateObject hook); POI world-locations part (Wave A split of Patrols Traffic/TrafficCamps.cs).</summary>
     internal static partial class TrafficCamps
@@ -105,11 +103,11 @@ namespace WildWasteland.Modules.POI
         internal static void Bind(string id,GameObject npc,FsmFloat health=null)
         {
             if(npc==null||!Sites.TryGetValue(id,out var site))return;
-            var existing=npc.GetComponent<CampResident>();if(existing!=null){if(existing.Camp==id&&!site.Residents.Contains(existing))site.Residents.Add(existing);return;}
+            var existing=site.Residents.Find(row=>row.Owner==npc);if(existing!=null){if(existing.Camp==id&&!site.Residents.Contains(existing))site.Residents.Add(existing);return;}
             if(health==null)
             {Fs.Clear();npc.GetComponents(Fs);foreach(var f in Fs)if(f!=null&&f.FsmName=="Health"){health=f.FsmVariables.GetFsmFloat("Health");break;}}
             if(health==null)return;
-            var tag=npc.AddComponent<CampResident>();tag.Camp=id;tag.Health=health;tag.WasAlive=health.Value>0f;site.Residents.Add(tag);
+            var tag=new CampResident{Owner=npc};tag.Camp=id;tag.Health=health;tag.WasAlive=health.Value>0f;site.Residents.Add(tag);
             Fs.Clear();npc.GetComponents(Fs);foreach(var f in Fs)if(f!=null&&f.FsmName=="Detection"){tag.Target=f.FsmVariables.FindFsmGameObject("detectedObj");break;}
         }
         internal static bool Check(string id)
@@ -127,8 +125,8 @@ namespace WildWasteland.Modules.POI
             camp.cleared=true;TrafficLocations.Changed();Core.Log.Warn("Camp cleared: "+camp.name+" "+camp.id);return true;
         }
         internal static void Residents(List<CampResidentInfo> into)
-        { into.Clear(); foreach(var pair in Sites) foreach(var r in pair.Value.Residents) if(r!=null) into.Add(new CampResidentInfo { Camp=pair.Key,Actor=r.gameObject,Target=r.Target?.Value,Health=r.Health?.Value??0,CallRolled=r.CallRolled }); }
-        internal static void MarkCallRolled(GameObject actor) { if(actor!=null) { var r=actor.GetComponent<CampResident>(); if(r!=null) r.CallRolled=true; } }
+        { into.Clear(); foreach(var pair in Sites) foreach(var r in pair.Value.Residents) if(r!=null) into.Add(new CampResidentInfo { Camp=pair.Key,Actor=r.Owner,Target=r.Target?.Value,Health=r.Health?.Value??0,CallRolled=r.CallRolled }); }
+        internal static void MarkCallRolled(GameObject actor) { if(actor!=null) { foreach(var site in Sites.Values)foreach(var r in site.Residents)if(r.Owner==actor)r.CallRolled=true; } }
         private static class SpawnHook
         {
             internal static void Postfix(CreateObject __instance)

@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.POI
                     _segments.Add(previous); _segments.Add(point); previous = point;
                 }
             }
-            if (Core.VistasWorldGen.Present) foreach (var line in Core.VistasWorldGen.RoadLines)
+            if (WorldGeneration.Present) foreach (var line in WorldGeneration.RoadLines)
                 for (int i = 1; i < line.Length; i++)
                 {
                     var a = line[i - 1]; var b = line[i]; a.y = b.y = 0;
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.POI
                     for (int s = 0; s < samples; s++)
                     { _segments.Add(Vector3.Lerp(a, b, s / (float)samples)); _segments.Add(Vector3.Lerp(a, b, (s + 1) / (float)samples)); }
                 }
-            if (!Core.VistasWorldGen.Present) return;
+            if (!WorldGeneration.Present) return;
             // Vistas publishes roads from workers. Stable ordering keeps site selection reproducible.
             var segments = new List<Vector3[]>();
             for (int i = 0; i < _segments.Count; i += 2) segments.Add(new[] { _segments[i], _segments[i + 1] });
