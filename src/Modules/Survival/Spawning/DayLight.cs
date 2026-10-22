@@ -7,19 +7,21 @@ using ES3Internal;
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.Survival
 {
     // =============================================================== daylight
     // Is it dark outside? The game's sky is Azure[Sky] Dynamic Skybox (AzureTimeController; __GameManager__ [DayTime] reads its timeline
     // from there): dark while the sun is below the horizon (GetSunElevation < 0), light again once it is clearly up (> 0.05) - a small
     // hysteresis so the lights do not flicker at dawn. Without Azure: __GameManager__ [DayTime].Time, dark before 6:00 and from 19:30.
-    internal static class DayLight
+    internal static class DaylightState
     {
         private static UnityEngine.AzureSky.AzureTimeController _azure;
         private static PlayMakerFSM _dayTime;
         private static float _nextFind, _nextEval;
         private static bool _dark, _known;
 
+        /// <summary>Captures the native sky controller from the shared component walker.</summary>
+        internal static void Observe(Transform node, string name, Component component) { _azure = component as UnityEngine.AzureSky.AzureTimeController; }
         internal static void Reset() { _azure = null; _dayTime = null; _nextFind = 0f; _nextEval = 0f; _known = false; }
 
         internal static bool Dark
@@ -39,9 +41,6 @@ namespace WildWasteland.Modules.Patrols
             if (_azure == null && Time.unscaledTime >= _nextFind)
             {
                 _nextFind = Time.unscaledTime + 10f;
-                var go = GameObject.Find("Azure[Sky] Dynamic Skybox");
-                _azure = go != null ? go.GetComponent<UnityEngine.AzureSky.AzureTimeController>() : null;
-                if (_azure == null) _azure = UnityEngine.Object.FindObjectOfType<UnityEngine.AzureSky.AzureTimeController>();
                 if (_azure == null && (_dayTime == null || _dayTime.gameObject == null))
                 {
                     _dayTime = null;
@@ -63,7 +62,7 @@ namespace WildWasteland.Modules.Patrols
                 _dark = t.Value < 6f || t.Value >= 19.5f;
                 _known = true;
             }
-            if (_known && was != _dark) PatrolsModule.Verbose("DayLight: " + (_dark ? "dark" : "light") + (_azure != null ? " (sun elevation " + _azure.GetSunElevation().ToString("0.00") + ")" : " (DayTime fallback)"));
+            if (_known && was != _dark && Core.Log.L2) Core.Log.Deep(null,"DayLight: " + (_dark ? "dark" : "light") + (_azure != null ? " (sun elevation " + _azure.GetSunElevation().ToString("0.00") + ")" : " (DayTime fallback)"));
         }
     }
 }

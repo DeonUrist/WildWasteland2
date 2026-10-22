@@ -6,7 +6,7 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Native roots remain the encounter/save/movement anchors. Only WW draws and applies hazards.
     internal sealed class WeatherNative : IDisposable
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Weather
         }
         internal struct Switch { internal Behaviour Behaviour; internal Collider Collider; internal bool Enabled; }
         private static WeatherNative _active;
-        private readonly WeatherModule _owner;
+        private readonly WeatherRuntime _owner;
         internal readonly Storm[] Storms = new Storm[64];
         private readonly List<PlayMakerFSM> _fsms = new List<PlayMakerFSM>(8);
         private readonly List<ParticleSystem> _systems = new List<ParticleSystem>(4);
@@ -54,7 +54,7 @@ namespace WildWasteland.Modules.Weather
         internal readonly Func<Explosion,GameObject,bool> AllowsForce;
         internal bool Saving { get { return _saving; } }
 
-        internal WeatherNative(WeatherModule owner)
+        internal WeatherNative(WeatherRuntime owner)
         {
             _owner=owner; _active=this;
             for (int i=0;i<Storms.Length;i++) Storms[i]=new Storm();
@@ -145,7 +145,7 @@ namespace WildWasteland.Modules.Weather
             if (action.Fsm.Name!="Move") return true;
             Storm storm;
             if (!_roots.TryGetValue(action.Owner.GetInstanceID(),out storm)) return true;
-            if (storm.Owned || WeatherDiagnosticState.Frozen || !GameRefs.InGame)
+            if (storm.Owned || !GameRefs.InGame)
             { if (storm.Body!=null && !storm.Body.isKinematic) storm.Body.velocity=Vector3.zero; return false; }
             return true;
         }
@@ -254,7 +254,7 @@ namespace WildWasteland.Modules.Weather
         }
         private void Reconcile()
         {
-            if (!GameRefs.InPlay || _saving || WeatherDiagnosticState.Frozen) return;
+            if (!GameRefs.InPlay || _saving) return;
             _deadFsms.Clear();
             foreach (var pair in _nativeFsms) if (pair.Key.Owner==null) _deadFsms.Add(pair.Key);
             for (int i=0;i<_deadFsms.Count;i++) _nativeFsms.Remove(_deadFsms[i]);

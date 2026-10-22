@@ -1,7 +1,7 @@
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Weather
+namespace WildWasteland.Modules.Survival
 {
     // Cached arc-length layout on the same 64-point boundary used by the map.
     internal sealed class WeatherPerimeter

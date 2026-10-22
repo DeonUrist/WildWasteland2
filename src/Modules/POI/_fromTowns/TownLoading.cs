@@ -4,7 +4,7 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Towns
 {
-    // Log timings only. TownsModule holds the existing native handoff until loaded towns are ready.
+    // Log timings only. TownRuntime holds the existing native handoff until loaded towns are ready.
     internal static class TownLoading
     {
         private static readonly ConcurrentDictionary<string, Work> WorkItems = new ConcurrentDictionary<string, Work>();
