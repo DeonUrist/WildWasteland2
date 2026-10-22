@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.Guns
             }
         }
 
-        // NPC detection registered an NPC (every boss has a Detection FSM): no scene scans needed while detection is on
+        /// <summary>NPC detection registered an NPC (every boss has a Detection FSM): no scene scans needed while detection is on</summary>
         internal static void Registered(GameObject owner)
         {
             if (owner == null) return;
@@ -69,7 +69,7 @@ namespace WildWasteland.Modules.Guns
             return true;
         }
 
-        // from the CreateObject postfix: prefab name already known (cached), the instance is what was made
+        /// <summary>from the CreateObject postfix: prefab name already known (cached), the instance is what was made</summary>
         internal static void Spawned(GameObject made, string prefabName)
         {
             float b;
@@ -130,7 +130,7 @@ namespace WildWasteland.Modules.Guns
             try { Tick(); } catch (Exception e) { NpcaiRuntime.Error("Bosses", e); }
         }
 
-        // (WW) scheduler job "Guns.Bosses" (Interval 0.5 s; the 3 s / 5 s / 60 s gates below are unchanged)
+        /// <summary>(WW) scheduler job "Guns.Bosses" (Interval 0.5 s; the 3 s / 5 s / 60 s gates below are unchanged)</summary>
         public static void Tick()
         {
             if (!NpcaiSettings.BossHealth.Value) return;

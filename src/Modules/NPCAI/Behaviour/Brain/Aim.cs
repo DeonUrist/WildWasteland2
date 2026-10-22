@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.NPC
 
         public static void OnSceneLoaded() { _states.Clear(); _waits.Clear(); _targets.Clear(); }
 
-        // (WW) module shutdown: every RangedAttackWait RandomWait gets its own min / max FsmFloats back (the vanilla pause)
+        /// <summary>(WW) module shutdown: every RangedAttackWait RandomWait gets its own min / max FsmFloats back (the vanilla pause)</summary>
         internal static void Shutdown()
         {
             foreach (var kv in _waits) { if (kv.Key == null) continue; kv.Key.min = kv.Value.Min; kv.Key.max = kv.Value.Max; }
@@ -70,7 +70,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // Harmony prefix on HutongGames.PlayMaker.Actions.SendEvent.OnEnter. false = the Activate is not sent (no burst this cycle).
+        /// <summary>Harmony prefix on HutongGames.PlayMaker.Actions.SendEvent.OnEnter. false = the Activate is not sent (no burst this cycle).</summary>
         public static bool BeforeSendEvent(SendEvent __instance)
         {
             try
@@ -135,7 +135,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // Harmony prefix on HutongGames.PlayMaker.Actions.RandomWait.OnEnter: the pause between bursts.
+        /// <summary>Harmony prefix on HutongGames.PlayMaker.Actions.RandomWait.OnEnter: the pause between bursts.</summary>
         public static bool BeforeRandomWait(RandomWait __instance)
         {
             if (!NpcaiRuntime.Running) return true;
@@ -191,8 +191,7 @@ namespace WildWasteland.Modules.NPC
             return st;
         }
 
-        // The NPC's current target: Detection FSM variable detectedObj (what the Attack / Damage Ranged FSMs read too). The variable
-        // reference is cached per owner (looked up with GetComponents once, not per burst check).
+        /// <summary>The NPC's current target: Detection FSM variable detectedObj (what the Attack / Damage Ranged FSMs read too). The variable reference is cached per owner (looked up with GetComponents once, not per burst check).</summary>
         private sealed class TargetRef { public GameObject Owner; public FsmGameObject Var; }
         private static readonly Dictionary<int, TargetRef> _targets = new Dictionary<int, TargetRef>();
         internal static GameObject TargetOf(GameObject owner)

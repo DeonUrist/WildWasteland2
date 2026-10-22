@@ -33,8 +33,10 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<int> _t = new List<int>(12288);
         private static Vector3 _origin;
 
+        /// <summary>Scene load: forgets every web and the flashlight light.</summary>
         internal static void OnSceneLoaded() { _all.Clear(); _flOf = null; _flLight = null; }
 
+        /// <summary>Job "NPCAI.Webs" (every frame): the flashlight glint on the webs near the player.</summary>
         internal static void Tick()
         {
             float now = Time.time;
@@ -42,9 +44,10 @@ namespace WildWasteland.Modules.NPC
             if (_all.Count > 0) { if (now >= _nextTint) { _nextTint = now + 1f; Tint(); } else if (now >= _nextFlash) { _nextFlash = now + 1f / 15f; Flash(false); } }
         }
 
+        /// <summary>Number of live webs.</summary>
         internal static int Count { get { return _all.Count; } }
 
-        // (WW) module shutdown: every web (test and nests) destroyed with its mesh; the shared material and thread texture too
+        /// <summary>(WW) module shutdown: every web (test and nests) destroyed with its mesh; the shared material and thread texture too</summary>
         internal static void Shutdown()
         {
             for (int i = _all.Count - 1; i >= 0; i--) Kill(_all[i]);
@@ -54,14 +57,14 @@ namespace WildWasteland.Modules.NPC
             _flOf = null; _flLight = null;
         }
 
-        // (WW) floating origin: the web objects are scene roots (the game moves them); their centres are kept as scene-space points
+        /// <summary>(WW) floating origin: the web objects are scene roots (the game moves them); their centres are kept as scene-space points</summary>
         internal static void Shift(Vector3 d) { foreach (var w in _all) w.Center += d; }
 
+        /// <summary>Removes and destroys one web (object and mesh).</summary>
         internal static void Kill(Web w) { _all.Remove(w); if (w.Go != null) UnityEngine.Object.Destroy(w.Go); if (w.Mesh != null) UnityEngine.Object.Destroy(w.Mesh); }
 
         // ---------- the orb web ----------
-        // spokes from the hub in the plane (normal n); a spoke that reaches a surface within MaxR is tied to it. Needs 3 tied spokes around
-        // the hub (no gap over 150 degrees between them), else null.
+        /// <summary>spokes from the hub in the plane (normal n); a spoke that reaches a surface within MaxR is tied to it. Needs 3 tied spokes around the hub (no gap over 150 degrees between them), else null.</summary>
         internal static Web Orb(Vector3 hub, Vector3 n)
         {
             n.Normalize();
@@ -133,8 +136,7 @@ namespace WildWasteland.Modules.NPC
             return web;
         }
 
-        // (1.7.0) a cheap look at a spot before building there: 8 rays in the plane; how many reach a surface within 2.6 m, the widest gap
-        // between them (degrees) and their mean length
+        /// <summary>(1.7.0) a cheap look at a spot before building there: 8 rays in the plane; how many reach a surface within 2.6 m, the widest gap between them (degrees) and their mean length</summary>
         internal static int Probe(Vector3 hub, Vector3 n, out float maxGap, out float mean)
         {
             n.Normalize();
@@ -156,15 +158,18 @@ namespace WildWasteland.Modules.NPC
             return hits;
         }
 
+        /// <summary>Length of the nearest tied neighbour spoke (a missing spoke takes its neighbour's reach, at most 1.2 x the fallback).</summary>
         private static float NeighbourReach(bool[] tied, float[] len, int i, int S, float fallback)
         {
             for (int k = 1; k < S; k++) { if (tied[(i + k) % S]) return Mathf.Min(len[(i + k) % S], fallback * 1.2f); if (tied[(i - k + S) % S]) return Mathf.Min(len[(i - k + S) % S], fallback * 1.2f); }
             return fallback;
         }
 
+        /// <summary>Direction at an angle in the plane of two axes.</summary>
         private static Vector3 Dir(Vector3 u, Vector3 v, float deg) { float r = deg * Mathf.Deg2Rad; return u * Mathf.Cos(r) + v * Mathf.Sin(r); }
 
         // ---------- the sheet web on the ground ----------
+        /// <summary>Builds a ground sheet web at a point, following the terrain height under it.</summary>
         internal static Web Sheet(Vector3 center)
         {
             float R = UnityEngine.Random.Range(0.7f, 1.3f);
@@ -215,6 +220,7 @@ namespace WildWasteland.Modules.NPC
             return sheet;
         }
 
+        /// <summary>One ground thread between two points of the sheet, raised over the sampled ground heights.</summary>
         private static void GroundStrand(Vector3 center, Vector3 corner, float cell, float[,] hgt, int G, Vector2 a, Vector2 b, float la, float lb, Color32 col)
         {
             float d = (b - a).magnitude;
@@ -232,6 +238,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Interpolated ground height of the sheet grid at a point.</summary>
         private static float Height(Vector3 corner, float cell, float[,] h, int G, float x, float z)
         {
             float fx = Mathf.Clamp((x - corner.x) / cell, 0f, G - 1.001f), fz = Mathf.Clamp((z - corner.z) / cell, 0f, G - 1.001f);
@@ -240,11 +247,13 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- mesh bits ----------
+        /// <summary>Thread colour: near-white with a randomised alpha.</summary>
         private static Color32 A(float alpha) { float a = Mathf.Clamp01(alpha * UnityEngine.Random.Range(0.75f, 1.15f)); byte w = (byte)UnityEngine.Random.Range(225, 256); return new Color32(w, w, w, (byte)(a * 255f)); }
 
+        /// <summary>Starts a new web mesh at an origin (buffers cleared).</summary>
         private static void Begin(Vector3 origin) { _origin = origin; _v.Clear(); _uv.Clear(); _c.Clear(); _t.Clear(); }
 
-        // a thread a -> b sagging by `sag` m in the middle, in `pieces` straight pieces
+        /// <summary>a thread a -&gt; b sagging by `sag` m in the middle, in `pieces` straight pieces</summary>
         private static void Strand(Vector3 a, Vector3 b, Vector3 n, float w, Color32 col, float sag, int pieces)
         {
             Vector3 prev = a;
@@ -256,9 +265,10 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>A thread through a middle point (two flat strips).</summary>
         private static void Strand2(Vector3 a, Vector3 m, Vector3 b, Vector3 n, float w, Color32 col) { Quad(a, m, n, w, col); Quad(m, b, n, w, col); }
 
-        // one flat strip in the plane with normal n (the texture's soft edge across its width)
+        /// <summary>one flat strip in the plane with normal n (the texture's soft edge across its width)</summary>
         private static void Quad(Vector3 a, Vector3 b, Vector3 n, float w, Color32 col)
         {
             if (_v.Count > 64000) return;
@@ -273,6 +283,7 @@ namespace WildWasteland.Modules.NPC
             _t.Add(i0); _t.Add(i0 + 1); _t.Add(i0 + 2); _t.Add(i0); _t.Add(i0 + 2); _t.Add(i0 + 3);
         }
 
+        /// <summary>Finishes the web mesh into a GameObject (shared material, bounds) and registers it.</summary>
         private static Web End(string name)
         {
             if (_v.Count == 0) return null;
@@ -294,8 +305,7 @@ namespace WildWasteland.Modules.NPC
             return web;
         }
 
-        // one shared material for every web: an alpha-blended, double-sided, unlit shader the game ships (Sprites/Default), the colour
-        // set from the game's light level once a second (dim grey at night, pale white by day)
+        /// <summary>one shared material for every web: an alpha-blended, double-sided, unlit shader the game ships (Sprites/Default), the colour set from the game's light level once a second (dim grey at night, pale white by day)</summary>
         private static Material Mat()
         {
             if (_mat != null) return _mat;
@@ -306,6 +316,7 @@ namespace WildWasteland.Modules.NPC
             return _mat;
         }
 
+        /// <summary>The thread texture (soft-edged strip), made once.</summary>
         private static Texture2D Tex()
         {
             if (_tex != null) return _tex;
@@ -322,9 +333,7 @@ namespace WildWasteland.Modules.NPC
             return _tex;
         }
 
-        // (1.7.3) how bright a web is: the game's day/night light (dim at night), times how much open sky is above it (a cave's inside or under
-        // a roof: dark), and the player's flashlight on top (a lit web is as bright as by day). The shared material stays white; each web gets
-        // its brightness through a property block (set once a second, and while the flashlight is on only when a web's brightness changes).
+        /// <summary>(1.7.3) how bright a web is: the game's day/night light (dim at night), times how much open sky is above it (a cave's inside or under a roof: dark), and the player's flashlight on top (a lit web is as bright as by day). The shared material stays white; each web gets its brightness through a property block (set once a second, and while the flashlight is on only when a web's brightness changes).</summary>
         internal static void Tint()
         {
             if (_mat != null) _mat.color = Color.white;
@@ -333,8 +342,10 @@ namespace WildWasteland.Modules.NPC
             Flash(true);
         }
 
+        /// <summary>Brightness of a web for the current light and its sky exposure.</summary>
         private static float Level(Web w) { return _k * (0.12f + 0.88f * w.Sky); }
 
+        /// <summary>Applies the flashlight glint to the webs it lights (all of them when forced).</summary>
         private static void Flash(bool all)
         {
             var fl = Senses.Flashlight;
@@ -375,6 +386,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Sets a web's renderer brightness (skips unchanged values unless forced).</summary>
         private static void Apply(Web w, float v, bool force)
         {
             if (w.Rend == null) return;
@@ -385,7 +397,7 @@ namespace WildWasteland.Modules.NPC
             w.Shown = v;
         }
 
-        // the share of the sky open above p: 7 rays (straight up and 6 at 50 degrees), 80 m
+        /// <summary>the share of the sky open above p: 7 rays (straight up and 6 at 50 degrees), 80 m</summary>
         internal static float SkyOpen(Vector3 p)
         {
             int open = 0;

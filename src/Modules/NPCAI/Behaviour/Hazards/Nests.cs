@@ -14,7 +14,9 @@ namespace WildWasteland.Modules.NPC
     // the place). Webs are never saved (not registered with the game) and are rebuilt when you come back / after a load.
     internal static partial class Nests
     {
+        /// <summary>A candidate spot for a hanging web: its hub, facing normal and score.</summary>
         private sealed class Cand { public Vector3 Hub, N; public float Score; }
+        /// <summary>A big spider sitting in a hanging web (its Rigidbody held kinematic while it sits).</summary>
         private sealed class Sit { public Senses.Agent A; public Webs.Web W; public Rigidbody Rb; public bool WasKinematic; }
 
         private sealed class Nest
@@ -43,8 +45,9 @@ namespace WildWasteland.Modules.NPC
         // BepInEx/config/WildWasteland/NPC/nest-layouts.txt: a nest is rebuilt exactly the same after a load, a restart or a return - and at once,
         // without looking for spots again. Keyed by the map tile, the place's name and its position in the tile.
         private static Dictionary<string, string> _layouts;
-        // (WW) config/WildWasteland/NPC/nest-layouts.txt
+        /// <summary>(WW) config/WildWasteland/NPC/nest-layouts.txt</summary>
         private static string LayoutFile { get { return System.IO.Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "nest-layouts.txt"); } }
+        /// <summary>Loads config/WildWasteland/NPCAI/nest-layouts.txt once (nest key -&gt; remembered web spots).</summary>
         private static void LoadLayouts()
         {
             if (_layouts != null) return;
@@ -57,6 +60,7 @@ namespace WildWasteland.Modules.NPC
             }
             catch (Exception e) { NpcaiRuntime.Warn("Nests: layouts not read: " + e.Message); }
         }
+        /// <summary>Writes the remembered nest layouts (temp file + atomic replace).</summary>
         private static void SaveLayouts()
         {
             try
@@ -67,7 +71,9 @@ namespace WildWasteland.Modules.NPC
             }
             catch (Exception e) { NpcaiRuntime.Warn("Nests: layouts not written: " + e.Message); }
         }
+        /// <summary>Invariant "x,y,z" text of a vector (layout file).</summary>
         private static string F(Vector3 v) { return v.x.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," + v.y.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + "," + v.z.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture); }
+        /// <summary>Parses an "x,y,z" layout vector.</summary>
         private static bool P(string s, out Vector3 v)
         {
             v = Vector3.zero; var p = s.Split(','); if (p.Length != 3) return false;
@@ -75,13 +81,14 @@ namespace WildWasteland.Modules.NPC
             if (!float.TryParse(p[0], System.Globalization.NumberStyles.Float, ci, out x) || !float.TryParse(p[1], System.Globalization.NumberStyles.Float, ci, out y) || !float.TryParse(p[2], System.Globalization.NumberStyles.Float, ci, out z)) return false;
             v = new Vector3(x, y, z); return true;
         }
+        /// <summary>Stable key of a nest place: its tile, name and local position (layouts survive reloads).</summary>
         private static string KeyOf(Transform poi)
         {
             string tile = poi.parent != null && poi.parent.parent != null ? poi.parent.parent.name : "-";
             Vector3 l = poi.localPosition;
             return tile + "|" + poi.name + "|" + Mathf.RoundToInt(l.x) + "," + Mathf.RoundToInt(l.y) + "," + Mathf.RoundToInt(l.z);
         }
-        // "H:hub;normal|hub;normal...  G:centre|centre..." in the place's local space
+        /// <summary>"H:hub;normal|hub;normal...  G:centre|centre..." in the place's local space</summary>
         private static void Remember(Nest n)
         {
             if (n.Poi == null || n.Key == null || n.Hanging.Count + n.Ground.Count == 0) return;
@@ -92,6 +99,7 @@ namespace WildWasteland.Modules.NPC
             _layouts[n.Key] = sb.ToString();
             SaveLayouts();
         }
+        /// <summary>Rebuilds a nest's web spots from its remembered layout (false when there is none).</summary>
         private static bool Recall(Nest n)
         {
             string v; if (n.Key == null || !_layouts.TryGetValue(n.Key, out v)) return false;
@@ -111,9 +119,10 @@ namespace WildWasteland.Modules.NPC
             return n.Chosen.Count + n.CachedGround.Count > 0;
         }
 
+        /// <summary>Scene load: every nest freed (webs destroyed), pending spiders and places forgotten.</summary>
         internal static void OnSceneLoaded() { foreach (var n in _nests) Free(n, false); _nests.Clear(); _pending.Clear(); _pois.Clear(); _mapMagic = null; _nextMap = 0f; _nextPois = 0f; }
 
-        // (WW) module shutdown: sitting spiders drop from their webs (not kinematic, brain hold lifted), every nest web is destroyed
+        /// <summary>(WW) module shutdown: sitting spiders drop from their webs (not kinematic, brain hold lifted), every nest web is destroyed</summary>
         internal static void Shutdown()
         {
             foreach (var n in _nests) { try { Free(n, true); } catch (Exception e) { NpcaiRuntime.Warn("Nests shutdown: " + e.Message); } }
@@ -122,6 +131,7 @@ namespace WildWasteland.Modules.NPC
 
         // (WW) floating origin: nest centres, floor points, spot candidates and the cached ground spots are scene space (the webs: Webs.Shift)
         private static readonly HashSet<Cand> _shifted = new HashSet<Cand>();
+        /// <summary>Floating origin: nest centres, web spots and webs move with the world.</summary>
         internal static void Shift(Vector3 d)
         {
             _shifted.Clear();
@@ -135,10 +145,13 @@ namespace WildWasteland.Modules.NPC
             }
             _shifted.Clear();
         }
+        /// <summary>Number of nests.</summary>
         internal static int Count { get { return _nests.Count; } }
         internal static int Ready { get { int k = 0; foreach (var n in _nests) if (n.Phase >= 5) k++; return k; } }
+        /// <summary>Spiders not yet assigned to a nest place.</summary>
         internal static int Pending { get { return _pending.Count; } }
 
+        /// <summary>True when the prefab name contains a word of a config list (split once per value).</summary>
         private static bool In(string prefab, string cfg, ref string[] cache, ref string src)
         {
             cfg = cfg ?? "";
@@ -147,7 +160,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // Senses.Make: every registered NPC passes here once
+        /// <summary>Senses.Make: every registered NPC passes here once</summary>
         internal static void Register(Senses.Agent a)
         {
             if (a == null || a.Owner == null || !In(Senses.PrefabOf(a.Owner), NpcaiSettings.NestPrefabs.Value, ref _prefabs, ref _prefabsSrc)) return;
@@ -156,8 +169,10 @@ namespace WildWasteland.Modules.NPC
             _pending.Add(a);
         }
 
+        /// <summary>True when the spider type sits in hanging webs ([Nests] Sitters).</summary>
         private static bool CanSit(Senses.Agent a) { return a != null && a.Owner != null && In(Senses.PrefabOf(a.Owner), NpcaiSettings.NestSitters.Value, ref _sitters, ref _sittersSrc); }
 
+        /// <summary>Job "NPCAI.Nests" (every frame): nests near the player are kept / freed, pending spiders placed, nests built in slices within the frame budget, sitters and web touches checked.</summary>
         internal static void Tick()
         {
             float now = Time.time;
@@ -186,9 +201,11 @@ namespace WildWasteland.Modules.NPC
             if (now >= _nextSit) { _nextSit = now + 0.2f; Sitters(player, now); }
         }
 
+        /// <summary>Horizontal length of a vector.</summary>
         private static float Flat(Vector3 v) { v.y = 0f; return v.magnitude; }
 
         // ---------- which nests exist ----------
+        /// <summary>Frees nests whose place is gone or far, then assigns pending spiders to the nearest cave / wreck / camp (a new nest when needed).</summary>
         private static void Maintain(Vector3 pp, float now)
         {
             for (int i = _nests.Count - 1; i >= 0; i--)
@@ -227,6 +244,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Creates a nest at a place (its layout key; remembered layouts load lazily).</summary>
         private static Nest Make(Transform poi)
         {
             LoadLayouts();
@@ -237,7 +255,7 @@ namespace WildWasteland.Modules.NPC
             return n;
         }
 
-        // the places: children of MapMagic/Tile */Objects named Camp_ / Cave_ / Wreck_ / Building_
+        /// <summary>the places: children of MapMagic/Tile */Objects named Camp_ / Cave_ / Wreck_ / Building_</summary>
         private static void Pois()
         {
             if (_mapMagic == null && Time.time >= _nextMap) { _nextMap = Time.time + 10f; var mm0 = Core.Origin.AnchorTransform; _mapMagic = mm0 != null ? mm0.gameObject : null; }      // (WW) Core's MapMagic lookup
@@ -257,13 +275,14 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // Cave_3(Clone), Wreck_6, Camp_12 ...: the prefix and then a digit (not a prop called Camp_fire)
+        /// <summary>Cave_3(Clone), Wreck_6, Camp_12 ...: the prefix and then a digit (not a prop called Camp_fire)</summary>
         private static bool IsPlace(string nm)
         {
             int k = nm.StartsWith("Cave_") ? 5 : nm.StartsWith("Wreck_") ? 6 : nm.StartsWith("Camp_") ? 5 : nm.StartsWith("Building_") ? 9 : -1;
             return k > 0 && nm.Length > k && char.IsDigit(nm[k]);
         }
 
+        /// <summary>The nearest known nest place within PlaceRadius of a point.</summary>
         private static Transform PoiAt(Vector3 p)
         {
             Transform best = null; float bd = NpcaiSettings.NestPoiRadius.Value;
@@ -274,6 +293,7 @@ namespace WildWasteland.Modules.NPC
         // (1.7.1) fallback: the place whose own geometry is around the spider (a collider within 15 m whose ancestors include a
         // Camp_ / Cave_ / Wreck_ / Building_ object) - works whatever the scene hierarchy looks like
         private static readonly Collider[] _near = new Collider[48];
+        /// <summary>A nest place found from the solid colliders around a point (when the place list missed it).</summary>
         private static Transform PoiByColliders(Vector3 p)
         {
             int n = Physics.OverlapSphereNonAlloc(p, 15f, _near, Solid, QueryTriggerInteraction.Ignore);
@@ -289,6 +309,7 @@ namespace WildWasteland.Modules.NPC
             return null;
         }
 
+        /// <summary>Frees a nest: sitters released (optionally dropped), webs destroyed.</summary>
         private static void Free(Nest n, bool drop)
         {
             foreach (var s in n.Sitters) if (s.A != null) s.A.CaveWeb = false;
@@ -300,7 +321,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- building, sliced ----------
-        // 0 centre, 1 spot search (rays), 2 choose, 3 hanging webs (one mesh per step), 4 ground webs, 5 ready
+        /// <summary>0 centre, 1 spot search (rays), 2 choose, 3 hanging webs (one mesh per step), 4 ground webs, 5 ready</summary>
         private static void Build(Nest n, float now)
         {
             float budget = Mathf.Max(0.2f, NpcaiSettings.NestFrameBudgetMs.Value);
@@ -338,6 +359,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>One build step of a nest: candidate spots, hanging and ground webs, the layout check and remembering, then seating the sitters.</summary>
         private static void Step(Nest n)
         {
             switch (n.Phase)
@@ -511,8 +533,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // (1.7.4) a floor point in the same open space as one of the nest's spiders (within r m, nothing solid between): inside a cave
-        // even without its map - never in the rock between its walls, never outside
+        /// <summary>(1.7.4) a floor point in the same open space as one of the nest's spiders (within r m, nothing solid between): inside a cave even without its map - never in the rock between its walls, never outside</summary>
         private static bool SpiderFloor(Nest n, float r, out Vector3 floor)
         {
             floor = Vector3.zero;
@@ -530,6 +551,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- big spiders in the hanging webs ----------
+        /// <summary>Seats the nest's sitter spiders in its hanging webs, one per web.</summary>
         private static void SeatAll(Nest n)
         {
             foreach (var w in n.Hanging)
@@ -549,6 +571,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Seats one spider in a web (kinematic body, brain held, cave-web sight rule).</summary>
         private static void Seat(Nest n, Senses.Agent a, Webs.Web w)
         {
             var rb = a.Owner.GetComponent<Rigidbody>();
@@ -569,6 +592,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Nests: " + a.Owner.name + " sits in a web at " + n.Name);
         }
 
+        /// <summary>Sitting spiders drop and attack when the player (or a shot) comes within SitterReach.</summary>
         private static void Sitters(GameObject player, float now)
         {
             foreach (var n in _nests)
@@ -583,7 +607,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // off the web: upright again, facing what it goes for, and falls to the ground under the web
+        /// <summary>off the web: upright again, facing what it goes for, and falls to the ground under the web</summary>
         private static void Drop(Sit s, GameObject player)
         {
             if (s.A != null) s.A.CaveWeb = false;
@@ -599,6 +623,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- touching a web ----------
+        /// <summary>The player touched a web: the nest's spiders are alerted and run faster, sitters drop.</summary>
         private static void Touch(GameObject player, Vector3 pp, float now)
         {
             if (Senses.PlayerInCar) return;
@@ -623,6 +648,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>True when a point lies within a hanging web's disc.</summary>
         private static bool InOrb(Webs.Web w, Vector3 q)
         {
             Vector3 d = q - w.Center; float off = Vector3.Dot(d, w.N);

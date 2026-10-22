@@ -133,7 +133,7 @@ namespace WildWasteland.Modules.Patrols
             Blend(_mode == Mode.Throwing ? 1 : 0, 0.15f);
         }
 
-        // degrees between the vehicle's nose and a direction, about the vehicle's up
+        /// <summary>degrees between the vehicle's nose and a direction, about the vehicle's up</summary>
         private float ArcOff(Vector3 dir)
         {
             var up = _car.transform.up;
@@ -158,15 +158,14 @@ namespace WildWasteland.Modules.Patrols
             return (tc != null ? tc.worldCenterOfMass : tcar.transform.position) + Vector3.up * 0.4f;
         }
 
-        // the driver helps: Pilot drives alongside the player while this is refreshed
+        /// <summary>the driver helps: Pilot drives alongside the player while this is refreshed</summary>
         private void Escort()
         {
             if (_pilot == null && _car != null) _pilot = (_marker != null ? _marker.gameObject : _car).GetComponent<Pilot>();   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
             if (_pilot != null) _pilot.EscortUntil = Time.time + 0.6f;
         }
 
-        // a jump that lands: both cars not going opposite ways or apart (> 60 degrees between their headings, both moving), and a flat jump
-        // at RiderLeapSpeed meets the player's car on its predicted course
+        /// <summary>a jump that lands: both cars not going opposite ways or apart (&gt; 60 degrees between their headings, both moving), and a flat jump at RiderLeapSpeed meets the player's car on its predicted course</summary>
         private bool CanLeap(Vector3 tvel, GameObject tcar, out Vector3 launch, out float flight)
         {
             launch = Vector3.zero; flight = 0f;
@@ -176,8 +175,7 @@ namespace WildWasteland.Modules.Patrols
             return Rider.FlatLeap(LeapFrom(), CarVel(), LeapAim(tcar), tvel, NpcaiSettings.RiderLeapSpeed.Value, out launch, out flight);
         }
 
-        // off the roof in a long flat jump on the intercept course to the player's car, as a live bomb. His FSMs are off for the flight: the
-        // game cannot kill and swap him for a corpse mid-air (2.1.3's "the boy died, nothing blew up")
+        /// <summary>off the roof in a long flat jump on the intercept course to the player's car, as a live bomb. His FSMs are off for the flight: the game cannot kill and swap him for a corpse mid-air (2.1.3's "the boy died, nothing blew up")</summary>
         private void Leap(Vector3 launch, float flight)
         {
             _vel = launch + CarVel();
@@ -226,7 +224,7 @@ namespace WildWasteland.Modules.Patrols
             return Lance != null && c.transform.IsChildOf(Lance);
         }
 
-        // the blast (Rider.Kaboom: no lance physics), the rider's carcass thrown
+        /// <summary>the blast (Rider.Kaboom: no lance physics), the rider's carcass thrown</summary>
         private void Detonate(Vector3 at)
         {
             _mode = Mode.Done;
@@ -274,7 +272,7 @@ namespace WildWasteland.Modules.Patrols
             if(mob!=null)Dismounted(mob);
         }
 
-        // the fresh mob that replaces this body (jump-off), with the given velocity; this body is removed
+        /// <summary>the fresh mob that replaces this body (jump-off), with the given velocity; this body is removed</summary>
         private void SpawnMob(Vector3 at, Vector3 vel)
         {
             _mode = Mode.Done;
@@ -301,7 +299,7 @@ namespace WildWasteland.Modules.Patrols
             Destroy(gameObject);
         }
 
-        // awareness handover + return-to-car membership: the turret spot (anchor local position, standing pose) is kept for re-seating
+        /// <summary>awareness handover + return-to-car membership: the turret spot (anchor local position, standing pose) is kept for re-seating</summary>
         private void Dismounted(GameObject mob)
         {
             var owner = _marker != null ? _marker.gameObject : _car;
@@ -330,7 +328,7 @@ namespace WildWasteland.Modules.Patrols
             if (landed || Time.time - _modeStart > 2.5f) Land(landed ? ground : transform.position);
         }
 
-        // on the ground: a free mob of the same kind with the same health takes over (AI on), like the game's bail-out
+        /// <summary>on the ground: a free mob of the same kind with the same health takes over (AI on), like the game's bail-out</summary>
         private void Land(Vector3 at)
         {
             _mode = Mode.Done;

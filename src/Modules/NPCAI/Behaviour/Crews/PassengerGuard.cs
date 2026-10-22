@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.Patrols
             MuteNonCombatAi(passenger.GetComponents<PlayMakerFSM>(), IsRanged(passenger), combatAllowed);
         }
 
-        // the periodic guard: the FSM array and the ranged verdict are resolved once at Attach, not every half second
+        /// <summary>the periodic guard: the FSM array and the ranged verdict are resolved once at Attach, not every half second</summary>
         private static void MuteNonCombatAi(PlayMakerFSM[] fsms, bool ranged, bool combatAllowed)
         {
             if (ranged)
@@ -106,9 +106,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
-        // Ranged enemies normally switch to their separate melee Damage FSM when Attack's distance FloatCompare emits
-        // d_melee. Redirect every melee event output to the same ranged event already used by that FSM, then keep the
-        // melee damage FSM disabled. This preserves native targeting, cadence, projectile damage and Sound2 at all ranges.
+        /// <summary>Ranged enemies normally switch to their separate melee Damage FSM when Attack's distance FloatCompare emits d_melee. Redirect every melee event output to the same ranged event already used by that FSM, then keep the melee damage FSM disabled. This preserves native targeting, cadence, projectile damage and Sound2 at all ranges.</summary>
         private static void ForceRangedOnly(GameObject passenger)
         {
             var attack = Array.Find(passenger.GetComponents<PlayMakerFSM>(), f => f.FsmName == "Attack");
@@ -143,7 +141,7 @@ namespace WildWasteland.Modules.Patrols
                 + redirected + " melee event output(s)" + (rangedEvent == null ? " (ranged event not found)" : " to " + rangedEvent.Name));
         }
 
-        // any occupant: melee / fire-contact damage FSMs and the FireDamage hitbox off (a body that can be shot but hurts nobody by touch)
+        /// <summary>any occupant: melee / fire-contact damage FSMs and the FireDamage hitbox off (a body that can be shot but hurts nobody by touch)</summary>
         internal static void NeutralizeContact(GameObject who) { NeutralizeMeleeDamage(who); }
 
         private static void NeutralizeMeleeDamage(GameObject passenger)
@@ -264,7 +262,7 @@ namespace WildWasteland.Modules.Patrols
             return n.Contains("target") ? 5 : n.Contains("player") ? 4 : n.Contains("enemy") ? 3 : n.Contains("closest") ? 2 : 0;
         }
 
-        // One reflection pass over the combat FSMs: remember every FsmGameObject variable / action field that can hold a target.
+        /// <summary>One reflection pass over the combat FSMs: remember every FsmGameObject variable / action field that can hold a target.</summary>
         private void IndexTargetSources()
         {
             var vars = new List<FsmGameObject>(); var varScores = new List<int>();

@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.NPC
 
         internal static void OnSceneLoaded() { DogAnimations.OnSceneLoaded(); _list.Clear(); _byId.Clear(); }
 
-        // (WW) module shutdown: the dog animations release every dog (bones, culling, IK, waits, drag), the lunge's body jolt is undone
+        /// <summary>(WW) module shutdown: the dog animations release every dog (bones, culling, IK, waits, drag), the lunge's body jolt is undone</summary>
         internal static void Shutdown()
         {
             DogAnimations.Shutdown();
@@ -43,7 +43,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // Senses.Make: every registered NPC passes here once
+        /// <summary>Senses.Make: every registered NPC passes here once</summary>
         internal static void Register(Senses.Agent a)
         {
             if (a == null || a.Owner == null || !Wanted(Senses.PrefabOf(a.Owner))) return;
@@ -70,7 +70,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("DogBite: " + a.Owner.name + " reach " + d.Reach.ToString("0.0") + " m, " + d.Bones.Length + " head/neck bone(s)");
         }
 
-        // per frame, after the brain: in reach -> stand and face the target fast
+        /// <summary>per frame, after the brain: in reach -&gt; stand and face the target fast</summary>
         internal static void Tick()
         {
             DogAnimations.Tick();
@@ -99,7 +99,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // a real bite (the Damage FSM sets the target's Bodypart.Damage): the lunge
+        /// <summary>a real bite (the Damage FSM sets the target's Bodypart.Damage): the lunge</summary>
         public static void AfterSetFsmFloat(SetFsmFloat __instance)
         {
             if (_list.Count == 0 || !NpcaiRuntime.Running) return;

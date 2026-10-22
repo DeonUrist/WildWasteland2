@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.NPC
     // are paused and no other NPC can see it.
     internal static partial class Burrow
     {
+        /// <summary>Burrowing phase: out, sinking, under the sand, coming up, diving for a hunt, travelling underground.</summary>
         private enum Phase { Out, Burrowing, Under, Rising, Diving, Travel }
 
         private sealed class B
@@ -48,11 +49,10 @@ namespace WildWasteland.Modules.NPC
         // (1.4.0) NPCs burrowed or travelling right now: Senses.Visible looks a target up in the agent table only while there is any
         internal static int Hidden;
 
-        // (WW perf) _effect is a prefab asset, not a scene object: it survives scene loads (unloaded -> Unity-null -> found again), no new FSM scan per scene
+        /// <summary>(WW perf) _effect is a prefab asset, not a scene object: it survives scene loads (unloaded -&gt; Unity-null -&gt; found again), no new FSM scan per scene</summary>
         internal static void OnSceneLoaded() { _list.Clear(); if (_effect == null) { _effect = null; _clip = null; } _nextFind = 0f; _sandLayers.Clear(); _terrainOf.Clear(); _sandAt.Clear(); _fxFree.Clear(); _fxLive.Clear(); _fxUntil.Clear(); Hidden = 0; }
 
-        // (WW) module shutdown: a hunter under the ground comes back up where it dived (colliders on, not kinematic), every body is raised
-        // to its rig's own position, the brain's hold is released
+        /// <summary>(WW) module shutdown: a hunter under the ground comes back up where it dived (colliders on, not kinematic), every body is raised to its rig's own position, the brain's hold is released</summary>
         internal static void Shutdown()
         {
             foreach (var b in _list)
@@ -81,10 +81,12 @@ namespace WildWasteland.Modules.NPC
             _fxLive.Clear(); _fxUntil.Clear(); _fxFree.Clear(); _terrainOf.Clear(); _sandAt.Clear();
         }
 
-        // (WW) floating origin: the dive spot and the destination are scene space
+        /// <summary>(WW) floating origin: the dive spot and the destination are scene space</summary>
         internal static void Shift(Vector3 d) { foreach (var b in _list) { b.Origin += d; b.Dest += d; } }
+        /// <summary>Number of burrowers.</summary>
         internal static int Count { get { return _list.Count; } }
 
+        /// <summary>True when the prefab name contains a word of a config list (split once per value).</summary>
         private static bool In(string prefab, string cfg, ref string[] cache, ref string src)
         {
             cfg = cfg ?? "";
@@ -93,7 +95,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // Senses.Make: every registered NPC passes here once
+        /// <summary>Senses.Make: every registered NPC passes here once</summary>
         internal static void Register(Senses.Agent a)
         {
             if (!NpcaiSettings.BurrowEnabled.Value || a == null || a.Owner == null) return;
@@ -132,6 +134,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + a.Owner.name + (hunter ? " hunts underground" : " can burrow") + " (depth " + n.Depth.ToString("0.00") + " m, body " + h.ToString("0.00") + " m, radius " + n.Radius.ToString("0.00") + " m)");
         }
 
+        /// <summary>Job "NPCAI.Burrow" (every frame): puff recycling, then each burrower's phase (burrow when calm on sand, rise when alerted or after a while, the hunter's dive / travel / rise behind its target).</summary>
         internal static void Tick()
         {
             if (_fxLive.Count > 0) FxRecycle(Time.time);
@@ -197,17 +200,23 @@ namespace WildWasteland.Modules.NPC
             AnimalEvents.Burrow(b.A.Owner, state, b.T.position, b.A.Target != null ? b.A.Target.transform.position : b.Dest);
         }
 
+        /// <summary>Slow-down of a hunter's ordinary burrowing ([Hunt] BurrowSlowdown), 1 for small burrowers.</summary>
         private static float Slow(B b) { return b.Hunter ? Mathf.Clamp(NpcaiSettings.HuntBurrowFactor.Value, 0.25f, 10f) : 1f; }
+        /// <summary>Random calm time before the next burrow / rise ([Burrow] MinSeconds..MaxSeconds).</summary>
         private static float Calm() { float lo = Mathf.Max(1f, NpcaiSettings.BurrowMin.Value), hi = Mathf.Max(lo, NpcaiSettings.BurrowMax.Value); return UnityEngine.Random.Range(lo, hi); }
+        /// <summary>Hunt engage range ([Hunt] Range, at least 2 m).</summary>
         private static float HuntRange { get { return Mathf.Max(2f, NpcaiSettings.HuntRange.Value); } }
+        /// <summary>Farthest target a hunter dives after ([Hunt] MaxDistance, at least the engage range).</summary>
         private static float HuntMax { get { return Mathf.Max(HuntRange, NpcaiSettings.HuntMaxDistance.Value); } }
 
+        /// <summary>True when the target is within a flat distance of the burrower.</summary>
         private static bool Within(B b, float r)
         {
             Vector3 d = b.A.Target.transform.position - b.T.position; d.y = 0f;
             return d.sqrMagnitude <= r * r;
         }
 
+        /// <summary>True when the target is beyond the engage range but within the hunt maximum (a dive is worth it).</summary>
         private static bool Far(B b)
         {
             Vector3 d = b.A.Target.transform.position - b.T.position; d.y = 0f;
@@ -215,6 +224,7 @@ namespace WildWasteland.Modules.NPC
             return s > r * r && s <= m * m;
         }
 
+        /// <summary>Starts burrowing or rising (ambush distance chosen on burrowing), puff and BurrowChanged.</summary>
         private static void Go(B b, Phase p, bool fast)
         {
             b.Phase = p; b.Fast = fast;
@@ -232,6 +242,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- (1.4.0) the underground hunt ----------
+        /// <summary>Starts an underground hunt: the destination behind the target (or a fallback rise in place), the brain holds the body, the dive begins.</summary>
         private static void StartHunt(B b, float now)
         {
             b.Hunted = true; b.Extensions = 0; b.Fallback = false; b.RiseRate = 0f;
@@ -258,6 +269,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + b.A.Owner.name + " dives after " + b.A.Target.name + (b.Fallback ? " (no room behind it: comes back up here in " + b.TravelEnd.ToString("0.0") + " s)" : ", travels " + b.TravelEnd.ToString("0.0") + " s at " + RunSpeed(b).ToString("0.0") + " m/s"));
         }
 
+        /// <summary>The dive is complete: the body goes kinematic and collider-less and travels underground.</summary>
         private static void BeginTravel(B b, float now)
         {
             b.Phase = Phase.Travel;
@@ -269,6 +281,7 @@ namespace WildWasteland.Modules.NPC
             b.A.Travel = true; b.A.Burrowed = true;
         }
 
+        /// <summary>Travel time over: comes up behind the target's current position (or where it dived on a fallback).</summary>
         private static void Arrive(B b, float now)
         {
             if (!b.Fallback && b.A.Target != null)
@@ -293,6 +306,7 @@ namespace WildWasteland.Modules.NPC
             Emerge(b, b.Dest);
         }
 
+        /// <summary>Comes up at a point: body back to physics and colliders, rising begins.</summary>
         private static void Emerge(B b, Vector3 at)
         {
             if (b.A.Travel)
@@ -316,6 +330,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: " + b.A.Owner.name + " bursts out " + (b.Fallback || at == b.Origin ? "where it went down" : (Vector3.Distance(at, b.Origin).ToString("0.0") + " m away")));
         }
 
+        /// <summary>The hunt is over: the brain gets the body back, cooldown before the next dive.</summary>
         private static void EndHunt(B b, float now)
         {
             b.Hunted = false; b.RiseRate = 0f;
@@ -324,10 +339,10 @@ namespace WildWasteland.Modules.NPC
             b.NextHunt = now + Mathf.Max(0f, NpcaiSettings.HuntCooldown.Value);
         }
 
-        // underground it goes TravelSpeedFactor (2) times faster than it runs
+        /// <summary>underground it goes TravelSpeedFactor (2) times faster than it runs</summary>
         private static float RunSpeed(B b) { float s = Brain.RunSpeed(b.A.Owner); return Mathf.Max(0.5f, s > 0f ? s : NpcaiSettings.HuntSpeed.Value) * Mathf.Clamp(NpcaiSettings.HuntTravelFactor.Value, 0.25f, 10f); }
 
-        // behind the target (behind where it looks: the camera for the player), else one other spot back and to a side
+        /// <summary>behind the target (behind where it looks: the camera for the player), else one other spot back and to a side</summary>
         private static bool Pick(B b, out Vector3 spot)
         {
             spot = Vector3.zero;
@@ -347,7 +362,7 @@ namespace WildWasteland.Modules.NPC
             return Room(b, spot);
         }
 
-        // open ground (the terrain, not an object), not too steep, and room for the body
+        /// <summary>open ground (the terrain, not an object), not too steep, and room for the body</summary>
         private static bool Room(B b, Vector3 p)
         {
             RaycastHit g;
@@ -364,16 +379,14 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
+        /// <summary>Ground hit under a point (3 m above, 6 m down, ground layers).</summary>
         private static bool Ground(Vector3 p, out RaycastHit h)
         {
             return Physics.Raycast(p + Vector3.up * 3f, Vector3.down, out h, 6f, GroundMask, QueryTriggerInteraction.Ignore);
         }
 
         // ---------- sand ----------
-        // The ground under p is "sand" when it is the terrain itself and not any other object (the default). With [Burrow] UseTextureLayers on,
-        // only terrain whose texture layers at that spot are mostly layers named like a sand keyword
-        // (layer name or its diffuse texture's name contains one of [Burrow] SandKeywords). A terrain with no such layer at all (the keyword
-        // never matches, or no readable layers) is judged by [Burrow] TerrainIsSand; meshes (rock, floors, roads, cars) are not sand.
+        /// <summary>The ground under p is "sand" when it is the terrain itself and not any other object (the default). With [Burrow] UseTextureLayers on, only terrain whose texture layers at that spot are mostly layers named like a sand keyword (layer name or its diffuse texture's name contains one of [Burrow] SandKeywords). A terrain with no such layer at all (the keyword never matches, or no readable layers) is judged by [Burrow] TerrainIsSand; meshes (rock, floors, roads, cars) are not sand.</summary>
         internal static bool OnSand(Vector3 p)
         {
             try
@@ -408,7 +421,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: sand check: " + e.Message); return NpcaiSettings.BurrowTerrainIsSand.Value; }
         }
 
-        // per layer: a sand keyword in its name / texture name; null when no layer matches at all (then TerrainIsSand decides)
+        /// <summary>per layer: a sand keyword in its name / texture name; null when no layer matches at all (then TerrainIsSand decides)</summary>
         private static bool[] Classify(TerrainData d)
         {
             var layers = d.terrainLayers;

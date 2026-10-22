@@ -29,8 +29,7 @@ namespace WildWasteland.Modules.Patrols
             if(battle!=null&&actor!=null){actor.Battle=battle.Battle;actor.Side=battle.Side;}
         }
 
-        // On-foot crew / foot patrols (simple bandits): faction targets as above, but the player is only offered as a goal while hostile and
-        // within FootTargetRange; the NPC module then decides whether the bandit actually knows about him (senses or fought-memory).
+        /// <summary>On-foot crew / foot patrols (simple bandits): faction targets as above, but the player is only offered as a goal while hostile and within FootTargetRange; the NPC module then decides whether the bandit actually knows about him (senses or fought-memory).</summary>
         internal static GameObject FootTarget(string faction,Vector3 position)
         {
             var best=NearestOpposed(faction,position);

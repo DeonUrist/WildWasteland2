@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.NPC
     // bite ray is shortened to nothing, so the game does not bite on top of the pounce.
     internal static partial class Pounce
     {
+        /// <summary>Pounce phase of a spider: ready, zigzagging in, in the air, biting, running off.</summary>
         private enum Phase { Ready, Zig, Air, Bite, Flee }
 
         private sealed class P
@@ -37,9 +38,10 @@ namespace WildWasteland.Modules.NPC
 
         internal static int Airborne;      // spiders in the air right now: the CreateObject hook does nothing while there is none
 
+        /// <summary>Scene load: every pouncer and cache dropped.</summary>
         internal static void OnSceneLoaded() { _list.Clear(); _bodypart.Clear(); _pcolOf = null; _pcol = null; Airborne = 0; }
 
-        // (WW) module shutdown: a spider mid-pounce gets its bite ray, drag and brain back; the rig stands straight again
+        /// <summary>(WW) module shutdown: a spider mid-pounce gets its bite ray, drag and brain back; the rig stands straight again</summary>
         internal static void Shutdown()
         {
             float now = Time.time;
@@ -57,10 +59,12 @@ namespace WildWasteland.Modules.NPC
             _list.Clear(); Airborne = 0;
         }
 
-        // (WW) floating origin: the player's last position (for the velocity estimate)
+        /// <summary>(WW) floating origin: the player's last position (for the velocity estimate)</summary>
         internal static void Shift(Vector3 d) { _pLast += d; }
+        /// <summary>Number of pouncers.</summary>
         internal static int Count { get { return _list.Count; } }
 
+        /// <summary>True when the prefab pounces ([Pounce] Prefabs; split once per value).</summary>
         private static bool Wanted(string prefab)
         {
             string cfg = NpcaiSettings.PouncePrefabs.Value ?? "";
@@ -69,7 +73,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // Senses.Make: every registered NPC passes here once
+        /// <summary>Senses.Make: every registered NPC passes here once</summary>
         internal static void Register(Senses.Agent a)
         {
             if (a == null || a.Owner == null || !Wanted(Senses.PrefabOf(a.Owner))) return;
@@ -100,6 +104,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Pounce: " + a.Owner.name + " can pounce (bite " + p.Damage.ToString("0") + ", body " + p.BodyH.ToString("0.00") + " m)");
         }
 
+        /// <summary>Job "NPCAI.Pounce" (every frame): each spider's pounce phase (ready check, zigzag, flight, bite, run-off); counts the ones in the air.</summary>
         internal static void Tick()
         {
             if (_list.Count == 0) { Airborne = 0; return; }
@@ -136,9 +141,12 @@ namespace WildWasteland.Modules.NPC
             Airborne = air;
         }
 
+        /// <summary>Run speed of the spider (the brain's measured pedal, else 3 m/s).</summary>
         private static float Run(P p) { float s = Brain.RunSpeed(p.A.Owner); return s > 0f ? s : 3f; }
+        /// <summary>Vector with the vertical part removed.</summary>
         private static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
 
+        /// <summary>Ready: a spider fighting the player on open ground within ZigzagFrom m starts its zigzag (rechecked twice a second; cooldowns respected).</summary>
         private static void Ready(P p, bool ok, GameObject player, float now)
         {
             if (!ok || now < p.NextTry || now < p.NextCheck) return;
@@ -161,6 +169,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) Log(p, "zigzags in from " + d.ToString("0.0") + " m");
         }
 
+        /// <summary>Zigzag: legs off the straight line at ZigzagSpeed until LeapFrom m, then the leap (or an end when the line is blocked).</summary>
         private static void Zig(P p, bool ok, GameObject player, float now)
         {
             if (!p.Held) p.Held = Brain.SetTravel(p.A.Owner, true);
@@ -190,12 +199,14 @@ namespace WildWasteland.Modules.NPC
             Drive(p, head, Run(p) * Mathf.Max(0.5f, NpcaiSettings.PounceZigSpeed.Value));
         }
 
+        /// <summary>Drives the body along a heading at a speed (vertical speed kept).</summary>
         private static void Drive(P p, Vector3 head, float speed)
         {
             Vector3 v = head * speed; v.y = p.Rb.velocity.y; p.Rb.velocity = v;
             if (head.sqrMagnitude > 0.0001f) p.T.rotation = Quaternion.RotateTowards(p.T.rotation, Quaternion.LookRotation(head, Vector3.up), 900f * Time.deltaTime);
         }
 
+        /// <summary>The leap: a ballistic flight at the player's chest / belly, aimed ahead of his motion; publishes PounceLeap.</summary>
         private static void Leap(P p, GameObject player, Collider pc, float now)
         {
             Vector3 start = p.T.position;
@@ -214,6 +225,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) Log(p, "leaps (" + Flat(aim - start).magnitude.ToString("0.0") + " m, " + t.ToString("0.00") + " s)");
         }
 
+        /// <summary>In the air: the flight speed is held until it touches something; a hit on the player bites, a miss lands and runs off.</summary>
         private static void Air(P p, GameObject player, float now)
         {
             float el = now - p.Since;
@@ -237,6 +249,7 @@ namespace WildWasteland.Modules.NPC
             if (landed || el > 4f) End(p, now, UnityEngine.Random.Range(2f, 3f), "missed, landed " + el.ToString("0.00") + " s after the leap");
         }
 
+        /// <summary>The bite: native damage on the target's Bodypart (or the player), then the run-off.</summary>
         private static void Bite(P p, GameObject player, float now)
         {
             var target = p.A.DetectedVar != null && p.A.DetectedVar.Value != null ? p.A.DetectedVar.Value : player;
@@ -259,6 +272,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) Log(p, "bites the player (" + p.Damage.ToString("0") + (bp == null ? ", no Bodypart found!" : "") + ")");
         }
 
+        /// <summary>Starts the run-off away from the player for RunOff s.</summary>
         private static void StartFlee(P p, GameObject player, float now)
         {
             if (p.Rb.drag != p.Drag) p.Rb.drag = p.Drag;
@@ -269,6 +283,7 @@ namespace WildWasteland.Modules.NPC
             Play(p, _hashRun, _hashRun);
         }
 
+        /// <summary>Run-off: away from the player until the time is over, then back to normal chasing for Cooldown s.</summary>
         private static void Flee(P p, float now)
         {
             if (now >= p.Until) { End(p, now, UnityEngine.Random.Range(NpcaiSettings.PounceCooldownMin.Value, Mathf.Max(NpcaiSettings.PounceCooldownMin.Value, NpcaiSettings.PounceCooldownMax.Value)), "ran off, chases again"); return; }
@@ -284,7 +299,7 @@ namespace WildWasteland.Modules.NPC
             Drive(p, p.FleeDir, Run(p) * Mathf.Max(0.5f, NpcaiSettings.PounceZigSpeed.Value));
         }
 
-        // back to the brain: the vanilla bite ray, the drag, the run animation and the chase
+        /// <summary>back to the brain: the vanilla bite ray, the drag, the run animation and the chase</summary>
         private static void End(P p, float now, float cooldown, string why)
         {
             if (p.Ray != null && p.RayLen > 0f) { p.Ray.Length = p.RayLen; p.RayLen = 0f; }
@@ -297,12 +312,14 @@ namespace WildWasteland.Modules.NPC
             Log(p, why);
         }
 
+        /// <summary>The spider's Movement FSM (null when missing).</summary>
         private static PlayMakerFSM Movement(P p)
         {
             foreach (var f in p.A.Owner.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "Movement") return f;
             return null;
         }
 
+        /// <summary>Plays an animator state (fallback state when the wanted one is missing).</summary>
         private static void Play(P p, int want, int fallback)
         {
             if (p.An == null || !p.An.isActiveAndEnabled) return;
@@ -310,7 +327,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- room ----------
-        // open ground straight to the player and a body length to either side (the zigzag), no drop, no wall, no big height difference
+        /// <summary>open ground straight to the player and a body length to either side (the zigzag), no drop, no wall, no big height difference</summary>
         private static bool Clear(P p, GameObject player, float d)
         {
             Vector3 from = p.T.position, to = player.transform.position;
@@ -331,6 +348,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
+        /// <summary>True when a ray from a point hits something other than the player.</summary>
         private static bool RayBlocked(P p, Vector3 o, Vector3 dir, float len, GameObject player)
         {
             RaycastHit h;
@@ -341,12 +359,14 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
+        /// <summary>True when a low ray along a direction is blocked for the body.</summary>
         private static bool Blocked(P p, Vector3 dir, float len)
         {
             float h = Mathf.Clamp(p.BodyH * 0.7f, 0.08f, 0.5f);
             return RayBlocked(p, p.T.position + Vector3.up * h, dir, len, Senses.PlayerObj);
         }
 
+        /// <summary>True when the spider has a clear low line to the player's collider.</summary>
         private static bool LineClear(P p, Collider pc)
         {
             Vector3 o = p.T.position + Vector3.up * Mathf.Clamp(p.BodyH * 0.7f, 0.08f, 0.5f);
@@ -354,6 +374,7 @@ namespace WildWasteland.Modules.NPC
             return len < 0.05f || !RayBlocked(p, o, d / len, len, pc.gameObject);
         }
 
+        /// <summary>The player's main collider (cached per player object).</summary>
         private static Collider PlayerCollider(GameObject player)
         {
             if (_pcolOf == player && _pcol != null) return _pcol;
@@ -363,6 +384,7 @@ namespace WildWasteland.Modules.NPC
             return _pcol;
         }
 
+        /// <summary>The Bodypart FSM of a hit object (cached per object).</summary>
         private static PlayMakerFSM BodypartOf(GameObject go)
         {
             if (go == null) return null;
@@ -375,6 +397,7 @@ namespace WildWasteland.Modules.NPC
             return f;
         }
 
+        /// <summary>Level-2 line about one pouncer (callers check Log.L2 before building the text).</summary>
         private static void Log(P p, string s) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Pounce: " + (p.A != null && p.A.Owner != null ? p.A.Owner.name : "?") + " " + s); }
     }
 }

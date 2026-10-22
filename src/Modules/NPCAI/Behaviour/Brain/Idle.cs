@@ -27,6 +27,7 @@ namespace WildWasteland.Modules.NPC
     // Gait: humans have only idle / run / attack clips - "walking" is the run clip at half speed (2.5 m/s); full run when far from home.
     internal static partial class Idle
     {
+        /// <summary>What an Idle walk is for: home, a patrol point and back, a search round, a ghost, or a travel order.</summary>
         private enum Leg { None, Home, ToPoint, Back, SearchOut, SearchBack, Investigate, Travel }
 
         private sealed class Ctl
@@ -59,9 +60,11 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<int, Order> _travel = new Dictionary<int, Order>();
         private static bool _idleWas = true;
 
+        /// <summary>A camp spawn point (an NPC's home) and whether it belongs to a peaceful Coyote town.</summary>
         private sealed class Spot { public Transform T; public bool Coyotes; }
 
         private static readonly Dictionary<int, Ctl> _ctl = new Dictionary<int, Ctl>();
+        /// <summary>INpcApi.SetFollowerDriven (Idle part): a follower driver moves the NPC; any Idle walk stops.</summary>
         internal static void SetFollowerDriven(GameObject npc, bool enabled)
         {
             Ctl c;
@@ -69,6 +72,7 @@ namespace WildWasteland.Modules.NPC
             { if (enabled && !c.Excluded) Stop(c, true); c.Excluded = enabled || c.Merchant; c.Follower = enabled; }
         }
 
+        /// <summary>INpcApi.Travel: walks the NPC to a scene point (the order survives combat; null cancels).</summary>
         internal static void Travel(GameObject npc, Vector3? point, float radius)
         {
             if (npc == null) return;
@@ -86,6 +90,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Idle: " + npc.name + " sent to travel " + Flat(npc.transform.position - o.Point).ToString("0") + " m (arrive within " + o.Radius.ToString("0.0") + " m)");
         }
 
+        /// <summary>INpcApi.TravelState: 0 none, 1 walking (3 when nobody drives it for 5 s), 2 arrived, 3 failed.</summary>
         internal static int TravelState(GameObject npc)
         {
             Order o;
@@ -107,16 +112,17 @@ namespace WildWasteland.Modules.NPC
 
         internal static bool On { get { return NpcaiSettings.IdleEnabled != null && NpcaiSettings.IdleEnabled.Value && Senses.On; } }
 
+        /// <summary>Scene load: every controller, spawn point, claim and travel order dropped.</summary>
         public static void OnSceneLoaded() { _ctl.Clear(); _spawnOf.Clear(); _spots.Clear(); _claimed.Clear(); _travel.Clear(); }
 
-        // (WW) module shutdown: every walk stops (idle clip, velocity zeroed) - the game's own idle again
+        /// <summary>(WW) module shutdown: every walk stops (idle clip, velocity zeroed) - the game's own idle again</summary>
         internal static void Shutdown()
         {
             foreach (var kv in _ctl) { var c = kv.Value; if (c.A != null && c.A.Owner != null) { try { Stop(c, true); } catch (Exception) { } } }
             _ctl.Clear(); _claimed.Clear(); _spawnOf.Clear(); _spots.Clear(); _travel.Clear();
         }
 
-        // (WW) floating origin: homes, legs, patrol / search points are scene space
+        /// <summary>(WW) floating origin: homes, legs, patrol / search points are scene space</summary>
         internal static void Shift(Vector3 d)
         {
             foreach (var kv in _ctl)
@@ -129,11 +135,12 @@ namespace WildWasteland.Modules.NPC
             foreach (var kv in _travel) kv.Value.Point += d;      // (crew AI) travel goals are scene space too
         }
 
+        /// <summary>Number of Idle controllers.</summary>
         internal static int Count { get { return _ctl.Count; } }
         internal static int Walking { get { int n = 0; foreach (var kv in _ctl) if (kv.Value.Moving) n++; return n; } }
 
         // ---------- spawn points ----------
-        // postfix on CreateObject.OnEnter (its own; Senses' and Gungirl's postfixes are separate): a camp spawner made an NPC at a spawn point
+        /// <summary>postfix on CreateObject.OnEnter (its own; Senses' and Gungirl's postfixes are separate): a camp spawner made an NPC at a spawn point</summary>
         public static void AfterCreateObject(CreateObject __instance)
         {
             if (!NpcaiRuntime.Running) return;
@@ -151,7 +158,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Idle: " + e); }
         }
 
-        // the spawn points of a structure: children of each spawn_locations_enemy* that follows an EnemySpawn_Scrapyard / _Coyotes spawner
+        /// <summary>the spawn points of a structure: children of each spawn_locations_enemy* that follows an EnemySpawn_Scrapyard / _Coyotes spawner</summary>
         private static List<Spot> SpotsOf(Transform root)
         {
             List<Spot> list;
@@ -173,14 +180,17 @@ namespace WildWasteland.Modules.NPC
             return list;
         }
 
+        /// <summary>True when the spawn point may be someone's home ([NPCAI] CoyotesIdle for Coyote towns).</summary>
         private static bool Wanted(Spot s) { return s != null && s.T != null && (!s.Coyotes || NpcaiSettings.IdleCoyotes.Value); }
 
+        /// <summary>Floor point under a position (Default / Ground layers), else the position.</summary>
         private static Vector3 FloorUnder(Vector3 p)
         {
             RaycastHit h;
             return Physics.Raycast(p + Vector3.up * 0.5f, Vector3.down, out h, 6f, (1 << 0) | (1 << 14), QueryTriggerInteraction.Ignore) ? h.point : p;
         }
 
+        /// <summary>First think of a controller: only Scrapyard (and Coyote) NPCs get a home, the nearest unclaimed spawn point of their structure.</summary>
         private static void Resolve(Ctl c, float now)
         {
             var a = c.A;
@@ -209,6 +219,7 @@ namespace WildWasteland.Modules.NPC
             SetHome(c, best);
         }
 
+        /// <summary>Claims a spawn point as the controller's home (floor point under it).</summary>
         private static void SetHome(Ctl c, Spot s)
         {
             c.Home = FloorUnder(s.T.position); c.HasHome = true; c.SpotId = s.T.GetInstanceID(); _claimed.Add(c.SpotId);
@@ -216,8 +227,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- per frame ----------
-        // (crew AI) the idle behaviour off ([Idle] EnableIdleBehavior): no camp logic, but travel orders and the convoy crews' run check go on
-        // (as long as the senses run)
+        /// <summary>(crew AI) the idle behaviour off ([Idle] EnableIdleBehavior): no camp logic, but travel orders and the convoy crews' run check go on (as long as the senses run)</summary>
         public static void Tick()
         {
             if (!Senses.On) { if (_ctl.Count > 0) { foreach (var kv in _ctl) Stop(kv.Value, true); _ctl.Clear(); _claimed.Clear(); } _idleWas = true; return; }
@@ -356,6 +366,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Builds a controller for an agent (Rigidbody, run clip animator, staggered first think).</summary>
         private static Ctl Make(Senses.Agent a, float now)
         {
             var c = new Ctl { A = a, Rb = a.Owner.GetComponent<Rigidbody>(), BusyAt = -1000f, Fresh = true, NextThink = now + (_stagger++ % 10) * 0.02f };   // never busy yet: no return delay after a load
@@ -367,9 +378,7 @@ namespace WildWasteland.Modules.NPC
             return c;
         }
 
-        // (crew AI) a convoy crew member (simple convoy bandit) on foot with nothing to fight: nobody drives its body any more (the brain let
-        // go), so the game's Movement FSM left in Run would run it forward for good - the same check as an idle camp NPC's, twice a second
-        // (the first 2 s after it registers skipped: a jump off the car)
+        /// <summary>(crew AI) a convoy crew member (simple convoy bandit) on foot with nothing to fight: nobody drives its body any more (the brain let go), so the game's Movement FSM left in Run would run it forward for good - the same check as an idle camp NPC's, twice a second (the first 2 s after it registers skipped: a jump off the car)</summary>
         private static void SimpleIdle(Senses.Agent a, int id, float now)
         {
             if (a.T.parent != null || a.Blown || a.Target != null || a.Ghost != null || (a.DetectedVar != null && a.DetectedVar.Value != null)) return;
@@ -380,8 +389,7 @@ namespace WildWasteland.Modules.NPC
             if (now >= c.NextAnimCheck) { c.NextAnimCheck = now + 0.5f; RunInPlace(c); }
         }
 
-        // (crew AI) an NPC with a travel order that Idle does not run otherwise (a convoy crew member, an NPC without camp behaviour, the idle
-        // behaviour off): it travels while idle; with a target / ghost / search the brain and the senses have it and the walk waits
+        /// <summary>(crew AI) an NPC with a travel order that Idle does not run otherwise (a convoy crew member, an NPC without camp behaviour, the idle behaviour off): it travels while idle; with a target / ghost / search the brain and the senses have it and the walk waits</summary>
         private static void TravelTick(Ctl c, Order ord, float now, float dt)
         {
             var a = c.A;
@@ -397,6 +405,7 @@ namespace WildWasteland.Modules.NPC
             if (c.Moving) Drive(c, dt, now);
         }
 
+        /// <summary>Travel order think: start / follow the travel leg, slow to a walk near the goal, report arrival or failure to the order.</summary>
         private static void TravelThink(Ctl c, Order ord, float now)
         {
             Vector3 pos = c.A.T.position;
@@ -419,7 +428,7 @@ namespace WildWasteland.Modules.NPC
             StartLeg(c, Leg.Travel, ord.Point, now, left > runBeyond ? 5f : 2.5f);
         }
 
-        // a think is due for this NPC (and this frame still has room for it); kind = the thinking state it is in
+        /// <summary>a think is due for this NPC (and this frame still has room for it); kind = the thinking state it is in</summary>
         private static bool Due(Ctl c, float now, byte kind)
         {
             _thinkers++;
@@ -438,6 +447,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
+        /// <summary>Idle think of a camp NPC: after losing everything it waits ReturnDelay, then runs home; at home it walks a short round over its camp's patrol points.</summary>
         private static void Think(Ctl c, float now)
         {
             if (c.Excluded || !c.HasHome || c.Forgotten) return;
@@ -478,6 +488,7 @@ namespace WildWasteland.Modules.NPC
             StartLeg(c, Leg.ToPoint, c.Points[pick], now, 2.5f);
         }
 
+        /// <summary>Search think: walks a few points around the searched spot and back (map points when on a camp map), then ends the search early.</summary>
         private static void SearchThink(Ctl c, float now)
         {
             Vector3 pos = c.A.T.position;
@@ -511,24 +522,24 @@ namespace WildWasteland.Modules.NPC
             c.WaitUntil = now + 1f;
         }
 
-        // for the brain: this NPC is walking its search round (the brain leaves the body's facing to it while it does)
-        // walking home or on a search round (Passthrough keeps friends' bodies apart only once this is over)
+        /// <summary>for the brain: this NPC is walking its search round (the brain leaves the body's facing to it while it does) walking home or on a search round (Passthrough keeps friends' bodies apart only once this is over)</summary>
         internal static bool Busy(GameObject owner)
         {
             Ctl c;
             return owner != null && _ctl.TryGetValue(owner.GetInstanceID(), out c) && (c.InSearch || c.Leg == Leg.Home || c.Leg == Leg.Travel || c.Inv);
         }
 
-        // (1.6.0) for the brain: Idle has this NPC's walk to a ghost (the brain switches to Mode Walk and stands aside)
+        /// <summary>(1.6.0) for the brain: Idle has this NPC's walk to a ghost (the brain switches to Mode Walk and stands aside)</summary>
         internal static bool WalksToGhost(GameObject owner)
         {
             Ctl c;
             return On && owner != null && _ctl.TryGetValue(owner.GetInstanceID(), out c) && c.Inv;
         }
 
+        /// <summary>The ghost walk runs while the brain does (the brain stands aside in Walk mode).</summary>
         private static bool InvestigateOn { get { return Brain.On; } }
 
-        // the walk to a ghost: starts once the brain has stood aside, follows the ghost when it moves, arrival -> the senses' search
+        /// <summary>the walk to a ghost: starts once the brain has stood aside, follows the ghost when it moves, arrival -&gt; the senses' search</summary>
         private static void InvestigateThink(Ctl c, float now)
         {
             var a = c.A; var g = a.Ghost;
@@ -550,12 +561,14 @@ namespace WildWasteland.Modules.NPC
             StartLeg(c, Leg.Investigate, goal, now, 5f);
         }
 
+        /// <summary>True while the NPC walks its search round.</summary>
         internal static bool SearchWalking(GameObject owner)
         {
             Ctl c;
             return owner != null && _ctl.TryGetValue(owner.GetInstanceID(), out c) && c.InSearch && c.Moving;
         }
 
+        /// <summary>Starts a walk leg toward a goal at a speed (and thinks it at once).</summary>
         private static void StartLeg(Ctl c, Leg leg, Vector3 goal, float now, float speed)
         {
             c.Leg = leg; c.Goal = goal; c.LegStart = now; c.ProgressAt = now; c.BestLeft = float.MaxValue; c.Speed = speed;
@@ -565,6 +578,7 @@ namespace WildWasteland.Modules.NPC
             if (c.Leg != Leg.None) Go(c, speed);
         }
 
+        /// <summary>Leg think: arrival (flat distance / caller radius / same POI floor), map route next point, hops, slowing near home or the travel goal, and the no-progress patience.</summary>
         private static void LegThink(Ctl c, float now, Vector3 pos)
         {
             float left = Flat(pos - c.Goal);
@@ -597,7 +611,7 @@ namespace WildWasteland.Modules.NPC
             if (now - c.ProgressAt > patience) Failed(c, now);
         }
 
-        // a small hop over a low lip ahead (same impulse as the brain's): low ray hits something, knee-high ray doesn't; once per 2 s
+        /// <summary>a small hop over a low lip ahead (same impulse as the brain's): low ray hits something, knee-high ray doesn't; once per 2 s</summary>
         private static void Hop(Ctl c, float now)
         {
             if (c.Rb == null || now - c.LastHop < 2f) return;
@@ -615,6 +629,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) Log(c, "hops over a low edge (" + h.collider.name + ")");
         }
 
+        /// <summary>A leg arrived: travel order done, ghost reached (the senses search), search point reached, home or patrol point reached.</summary>
         private static void Arrived(Ctl c, float now)
         {
             var leg = c.Leg;
@@ -628,6 +643,7 @@ namespace WildWasteland.Modules.NPC
             else { c.AtHome = true; c.WaitUntil = now + UnityEngine.Random.Range(10f, 25f); }
         }
 
+        /// <summary>A leg got nowhere: travel retries / give-up, ghost walk retries then hands the ghost to the brain, search point dropped, home retries then forgets the home.</summary>
         private static void Failed(Ctl c, float now)
         {
             var leg = c.Leg;
@@ -685,6 +701,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>At a patrol point: looks around (a random turn every 1.5-3 s).</summary>
         private static void LookAround(Ctl c, float now)
         {
             if (!c.PendingBack || now < c.NextLook) return;       // looks around at the patrol point only (at home it just stands, as vanilla)
@@ -694,6 +711,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- the body ----------
+        /// <summary>Starts / changes the walk speed (run clip at a matching speed).</summary>
         private static void Go(Ctl c, float speed)
         {
             c.Speed = speed;
@@ -706,7 +724,9 @@ namespace WildWasteland.Modules.NPC
             c.Moving = true;
         }
 
+        /// <summary>Stops the walk (idle clip).</summary>
         private static void Stop(Ctl c) { Stop(c, true); }
+        /// <summary>Stops the walk: POI guiding off, idle clip (optional), planar velocity zeroed, no leg.</summary>
         private static void Stop(Ctl c, bool playIdle)
         {
             if (c.Moving)
@@ -719,9 +739,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         private static readonly float[] Fan = { 0f, -35f, 35f, -70f, 70f };
-        // (WW perf, D1) the run-clip check every 0.25 s (state hash, no string), the feeler fan (1-5 capsule casts) at 10 Hz per walker or at once
-        // when the wanted heading turns > 15 deg; turning and velocity stay per frame. Worst case: the fan's answer is 0.1 s old (0.25-0.5 m
-        // of walking against a 1.2 m feeler), a run clip knocked off by something else comes back within 0.25 s.
+        /// <summary>(WW perf, D1) the run-clip check every 0.25 s (state hash, no string), the feeler fan (1-5 capsule casts) at 10 Hz per walker or at once when the wanted heading turns &gt; 15 deg; turning and velocity stay per frame. Worst case: the fan's answer is 0.1 s old (0.25-0.5 m of walking against a 1.2 m feeler), a run clip knocked off by something else comes back within 0.25 s.</summary>
         private static void Drive(Ctl c, float dt, float now)
         {
             if (c.Rb == null) { Stop(c); return; }
@@ -756,8 +774,10 @@ namespace WildWasteland.Modules.NPC
         }
         private const int FeelMask = (1 << 0) | (1 << 8) | (1 << 11);     // Default (walls, rock, props), Car, Door - not Ground (slopes)
 
+        /// <summary>Horizontal length of a vector.</summary>
         private static float Flat(Vector3 v) { v.y = 0f; return v.magnitude; }
 
+        /// <summary>Level-2 line about one controller (callers check Log.L2 before building the text).</summary>
         private static void Log(Ctl c, string msg)
         {
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Idle: " + (c.A.Owner != null ? c.A.Owner.name : "?") + " " + msg);

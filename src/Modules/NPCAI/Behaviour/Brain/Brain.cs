@@ -43,6 +43,7 @@ namespace WildWasteland.Modules.NPC
     //   AddForce.DoAddForce (Unstuck) - no hop.
     internal static partial class Brain
     {
+        /// <summary>What the brain does with an engaged NPC: off (vanilla), chase, hold a shooting position, advance, back up, rest, look around at a ghost, stand aside while Idle walks it, or take cover.</summary>
         internal enum Mode { Off, Chase, Hold, Advance, BackUp, Rest, Search, Walk, Cover }   // Walk (1.6.0): Idle walks it to a ghost, the brain stands aside; Cover (1.1.0): runs to cover, fights from there
 
         internal sealed class Npc
@@ -103,6 +104,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         private static readonly Dictionary<int, Npc> _npcs = new Dictionary<int, Npc>();
+        /// <summary>INpcApi.SetFollowerDriven: a follower driver (Quests hire) moves this NPC instead of the brain (the brain lets go and keeps its magazine count only while driven).</summary>
         internal static void SetFollowerDriven(GameObject npc, bool enabled, float reloadUntil)
         {
             Npc n;
@@ -126,10 +128,10 @@ namespace WildWasteland.Modules.NPC
         private static readonly float[] _scores = new float[32];
         private static readonly float[] _blocks = new float[32];
 
+        /// <summary>Scene load: rigs and animated bodies released, every brain, pending spawn and reload-sound cache dropped.</summary>
         public static void OnSceneLoaded() { ClearRigs(); foreach (var kv in _npcs) if (kv.Value.Body != null) ApBody.Detach(kv.Value.Body); _npcs.Clear(); _ignored.Clear(); _arrive.Clear(); _active = 0; ReloadSounds.Clear(); _pending.Clear(); _pendingAt.Clear(); ApBody.Reset(); }   // refs-ok: REFACTOR-REQUEST B07-13 (Presentation ApBody/ReloadSounds: NPC animation framework hooks missing from ICharacterPresentation)
 
-        // (WW) module shutdown: every brain lets go (the game's pedal, facing, Unstuck and animation again), kneeling gunmen stand up, frozen
-        // aim poses play on, bodies animated by the player animation framework are handed back
+        /// <summary>(WW) module shutdown: every brain lets go (the game's pedal, facing, Unstuck and animation again), kneeling gunmen stand up, frozen aim poses play on, bodies animated by the player animation framework are handed back</summary>
         internal static void Shutdown()
         {
             ClearRigs();
@@ -145,7 +147,7 @@ namespace WildWasteland.Modules.NPC
             _npcs.Clear(); _pending.Clear(); _pendingAt.Clear(); _ignored.Clear();
         }
 
-        // (WW) floating origin: the scene-space points a brain keeps across thinks
+        /// <summary>(WW) floating origin: the scene-space points a brain keeps across thinks</summary>
         internal static void Shift(Vector3 d)
         {
             foreach (var kv in _npcs)
@@ -156,16 +158,20 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Number of NPCs with a brain.</summary>
         internal static int Count { get { return _npcs.Count; } }
+        /// <summary>Number of brains engaged with a target this second.</summary>
         internal static int EngagedCount { get { return _active; } }
+        /// <summary>Current think interval, s (scales with engaged NPCs when [Brain] ScaleWithActors).</summary>
         internal static float Interval { get { return _interval; } }
 
+        /// <summary>The brain runs: module on and [NPCAI] EnableNpcPathfinding on.</summary>
         internal static bool On { get { return NpcaiRuntime.Running && NpcaiSettings.BrainEnabled.Value; } }
-        // [Brain] ReactionTime %: every wait of the brain (think interval, back-up, rest, side lock, no-progress, memory, LOS tolerance,
-        // hold rechecks) is multiplied by this; 100 = the defaults, 50 = twice as quick, 500 = five times slower
+        /// <summary>[Brain] ReactionTime %: every wait of the brain (think interval, back-up, rest, side lock, no-progress, memory, LOS tolerance, hold rechecks) is multiplied by this; 100 = the defaults, 50 = twice as quick, 500 = five times slower</summary>
         internal static float R { get { return Mathf.Clamp(NpcaiSettings.ReactionTime.Value, 1f, 500f) / 100f; } }
 
         // ---------- per frame ----------
+        /// <summary>Job "NPCAI.Brain" (every frame): registration of spawned gunmen, the engaged count and think interval, capped per-NPC thinks and the per-frame body turn toward the heading / target.</summary>
         public static void Tick()
         {
             if (_npcs.Count == 0) return;
@@ -293,12 +299,10 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // the Attack FSM's chase states: "trigger" (every human and most animals), "trigger 2" (Nightwalker; probe 2026-10-06) and the
-        // random-yaw "run" the game enters from it. The brain drives the pedal and the facing only in these.
+        /// <summary>the Attack FSM's chase states: "trigger" (every human and most animals), "trigger 2" (Nightwalker; probe 2026-10-06) and the random-yaw "run" the game enters from it. The brain drives the pedal and the facing only in these.</summary>
         private static bool ChaseState(string s) { return s == "trigger" || s == "run" || s == "trigger 2"; }
 
-        // the brain is in charge only while the Attack FSM runs with a target, the NPC stands on its own (not seated in a car) and is near
-        // the Attack FSM's state when it exists (engaged or not; null when it is not initialised)
+        /// <summary>the brain is in charge only while the Attack FSM runs with a target, the NPC stands on its own (not seated in a car) and is near the Attack FSM's state when it exists (engaged or not; null when it is not initialised)</summary>
         private static string AttackState(Npc n)
         {
             var fsm = n.Attack != null ? n.Attack.Fsm : null;
@@ -312,12 +316,14 @@ namespace WildWasteland.Modules.NPC
         // kept new NPCs out); a dropped NPC still registers on its first Movement SetVelocity as before
         private static readonly List<GameObject> _pending = new List<GameObject>();
         private static readonly List<float> _pendingAt = new List<float>();
+        /// <summary>CreateObject spawn of a possible NPC (root Rigidbody): queued so gunmen get their animation body before they engage.</summary>
         internal static void Spawned(GameObject made)
         {
             if (made == null || made.transform.parent != null || made.GetComponent<Rigidbody>() == null) return;
             if (_pending.Count >= 200) { _pending.RemoveAt(0); _pendingAt.RemoveAt(0); }
             _pending.Add(made); _pendingAt.Add(-1f);
         }
+        /// <summary>Registers the queued spawns whose FSMs are ready (gunmen get their animation body early); drops stale entries.</summary>
         private static void RegisterPending()
         {
             if (_pending.Count == 0) return;
@@ -333,6 +339,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>True when the NPC fights: Attack FSM on with a detected target; returns the Attack state name.</summary>
         private static bool Engaged(Npc n, out string state)
         {
             state = null;
@@ -344,6 +351,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
+        /// <summary>One think of an engaged NPC: fright and simple-bandit orders first, then target distance, line of sight, cover, hold / chase / advance / back-up / rest decisions and the steering toward the target or along a map route.</summary>
         private static void Think(Npc n, float now)
         {
             if (FrightThink(n, now)) return;
@@ -442,7 +450,7 @@ namespace WildWasteland.Modules.NPC
             MoveToward(n, tp, d3, d, now);
         }
 
-        // moving (Chase, Advance, Cover on the way): the map's waypoint or the feelers toward tp, d3 = flat vector to it, d its length
+        /// <summary>moving (Chase, Advance, Cover on the way): the map's waypoint or the feelers toward tp, d3 = flat vector to it, d its length</summary>
         private static void MoveToward(Npc n, Vector3 tp, Vector3 d3, float d, float now)
         {
             if (Blocked(n, now)) return;
@@ -535,6 +543,7 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
+        /// <summary>Low-health cover decision (and the game's own hide state): a camp cover object or a map spot out of the target's sight within CoverRange.</summary>
         private static void CoverCheck(Npc n, float now, string ast, int kind, Vector3 tp)
         {
             // the game's hide: its own FindClosest result (the Attack FSM's Hide variable), while it is in that state
@@ -561,6 +570,7 @@ namespace WildWasteland.Modules.NPC
             StartCover(n, spot, now, UnityEngine.Random.Range(NpcaiSettings.CoverMin.Value, Mathf.Max(NpcaiSettings.CoverMin.Value, NpcaiSettings.CoverMax.Value)), false, "health " + hp.ToString("0") + "/" + n.HpMax.ToString("0") + ", " + what);
         }
 
+        /// <summary>The game's hide against a player in a car: the nearest camp cover object within 60 m (humans with melee only), re-picked once a second.</summary>
         private static GameObject DrivingHide(Npc n, float now)
         {
             var agent = Senses.AgentFor(n.Owner);
@@ -579,6 +589,7 @@ namespace WildWasteland.Modules.NPC
             return n.VehicleHide != null && (n.VehicleHide.transform.position - n.T.position).sqrMagnitude <= 60f * 60f ? n.VehicleHide : null;
         }
 
+        /// <summary>A human fighting the player with a Dog Companion close by runs to cover away from the dog.</summary>
         private static void CompanionCoverCheck(Npc n, float now)
         {
             if (now < n.NextDogCoverCheck || now < n.DogCoverRetry || n.T.parent != null) return;
@@ -605,6 +616,7 @@ namespace WildWasteland.Modules.NPC
             n.DogCoverThreat = threat; n.DogCoverRetry = now + 12f;
         }
 
+        /// <summary>Starts a cover stay: spot, duration, cooldown; the NPC runs there.</summary>
         private static void StartCover(Npc n, Vector3 spot, float now, float seconds, bool fromHide, string why)
         {
             n.CoverPos = spot; n.CoverArrived = false; n.CoverFromHide = fromHide; n.CoverSince = now; n.CoverUntil = now + seconds;
@@ -612,6 +624,7 @@ namespace WildWasteland.Modules.NPC
             SetMode(n, Mode.Cover, WildWasteland.Core.Log.L2 ? why + ", " + Vector3.Distance(spot, n.T.position).ToString("0") + " m away" : "");
         }
 
+        /// <summary>Cover stay: run to the spot, fight from it, leave early when the target comes close or the stay is over.</summary>
         private static void CoverThink(Npc n, float now, string ast, int kind, Vector3 tp)
         {
             Vector3 c3 = n.CoverPos - n.T.position; c3.y = 0f;
@@ -642,7 +655,7 @@ namespace WildWasteland.Modules.NPC
             MoveToward(n, n.CoverPos, c3, cd, now);
         }
 
-        // Senses: hit by something - a holding gunman steps aside and (maybe) kneels
+        /// <summary>Senses: hit by something - a holding gunman steps aside and (maybe) kneels</summary>
         internal static void Hit(GameObject owner)
         {
             var n = Get(owner);
@@ -665,7 +678,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // speed while turning: 1 within 30 deg of the wanted heading, down to 0.1 at 120 deg and beyond (also used by Idle)
+        /// <summary>speed while turning: 1 within 30 deg of the wanted heading, down to 0.1 at 120 deg and beyond (also used by Idle)</summary>
         internal static float TurnSpeedFactor(float offDeg) { return Mover.SpeedFactor(offDeg); }
 
         // (1.4.7) Blocked: over BlockedSeconds the body covered less than BlockedRatio of the distance it was driven (running in place against
@@ -675,6 +688,7 @@ namespace WildWasteland.Modules.NPC
         // that bites with a short AttackRaycast (a small scorpion: 0.3 m) must come to half its reach, else it stops 1.5 m short of the
         // player's exact position, "searches" there and never bites
         private static readonly Dictionary<int, float> _arrive = new Dictionary<int, float>();
+        /// <summary>How close to a remembered spot counts as arrived: [Senses] ArriveDistance for people, half the bite reach for creatures with a short attack ray.</summary>
         internal static float ArriveFor(GameObject owner)
         {
             float cfg = Mathf.Max(0.5f, NpcaiSettings.ArriveDistance.Value);
@@ -699,6 +713,7 @@ namespace WildWasteland.Modules.NPC
             return v;
         }
 
+        /// <summary>Blocked check: over BlockedSeconds the body covered less than BlockedRatio of the distance it was driven (running in place, grinding along a wall).</summary>
         private static bool Blocked(Npc n, float now)
         {
             float dt = now - n.BlkLastThink; n.BlkLastThink = now;
@@ -717,6 +732,7 @@ namespace WildWasteland.Modules.NPC
             OnStuck(n);
             return true;
         }
+        /// <summary>Starts a new blocked-check window at the current position.</summary>
         private static void BlkReset(Npc n, float now) { n.BlkSince = now; n.BlkDriven = 0f; n.BlkPos = n.T.position; }
 
         // ---------- walking a map route (1.4.5) ----------
@@ -726,6 +742,7 @@ namespace WildWasteland.Modules.NPC
         // are stepped over with a small lift.
         private static readonly float[] NavFan = { 0f, -30f, 30f, -60f, 60f };
         private static readonly int NavFeelMask = PathMask & ~(1 << 9);      // walls, rock, props, cars - not loose items
+        /// <summary>Steering on a map route: straight at the waypoint with a short front check, the blocked heading skipped for BlockedMemory s.</summary>
         private static void NavSteer(Npc n, Vector3 toWp, float now)
         {
             float want = Mathf.Atan2(toWp.x, toWp.z) * Mathf.Rad2Deg, chosen = want;
@@ -753,7 +770,7 @@ namespace WildWasteland.Modules.NPC
             StepOver(n, now);
         }
 
-        // something ankle-high right ahead (a lip, debris, a kerb) and nothing at the knee: a small lift over it (at most every 0.6 s)
+        /// <summary>something ankle-high right ahead (a lip, debris, a kerb) and nothing at the knee: a small lift over it (at most every 0.6 s)</summary>
         private static void StepOver(Npc n, float now)
         {
             if (n.Rb == null || n.Col == null || now - n.LastStep < 0.6f || now - n.LastHop < 0.6f) return;
@@ -771,7 +788,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: " + n.Owner.name + " steps over " + h.collider.name + " (" + (h.point.y - b.min.y).ToString("0.00") + " m)");
         }
 
-        // progress on a map route (path length left): 2.5 s without getting nearer -> a hop; 5 s -> full feelers for 3 s, then the map again
+        /// <summary>progress on a map route (path length left): 2.5 s without getting nearer -&gt; a hop; 5 s -&gt; full feelers for 3 s, then the map again</summary>
         private static void NavProgress(Npc n, float pathLeft, float now)
         {
             if (PoiNav.Guiding(n.Owner)) { n.BestDist = pathLeft; n.NoProgressSince = now; return; }   // (WW) no hops / map-off on a POI route
@@ -799,6 +816,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly Collider[] _touch = new Collider[16];
         private static readonly Vector3[] _touchAway = new Vector3[16];   // per touching collider: the horizontal direction from it to the body (unit), or zero
 
+        /// <summary>Feeler steering toward the target: a fan of FeelerCount casts over +-FeelerAngle, side commitment and wall following for melee, plain rays for gunmen, the drop check and remembered stuck headings.</summary>
         private static void Steer(Npc n, Vector3 toTarget, float dist, float now, Vector3 toReal)
         {
             int count = Mathf.Clamp(NpcaiSettings.FeelerCount.Value, 3, 31);
@@ -960,13 +978,7 @@ namespace WildWasteland.Modules.NPC
             n.HasHeading = true;
         }
 
-        // Other NPCs are not in the feelers' mask (Actor layer): without this they ran into each other, the bump counted as "stuck" and
-        // switched the map off for 10 s. Now, for every NPC within 3 m:
-        // - ahead (+-60 deg) and going the same way (a brain NPC moving within 45 deg of this heading): queue behind it - slow down, never push;
-        // - ahead and standing / coming the other way, within 2.5 m: pass it on one side (the side away from it; dead ahead: decided by
-        //   instance id so two NPCs pick opposite sides), the side kept 1 s; if that way is blocked, the other side; neither: wait;
-        //   a brain NPC standing still (hold / rest / search) within 1.6 m steps aside for 0.6 s;
-        // - beside within 1 m: a small push apart.
+        /// <summary>Other NPCs are not in the feelers' mask (Actor layer): without this they ran into each other, the bump counted as "stuck" and switched the map off for 10 s. Now, for every NPC within 3 m: - ahead (+-60 deg) and going the same way (a brain NPC moving within 45 deg of this heading): queue behind it - slow down, never push; - ahead and standing / coming the other way, within 2.5 m: pass it on one side (the side away from it; dead ahead: decided by instance id so two NPCs pick opposite sides), the side kept 1 s; if that way is blocked, the other side; neither: wait; a brain NPC standing still (hold / rest / search) within 1.6 m steps aside for 0.6 s; - beside within 1 m: a small push apart.</summary>
         private static float AvoidFriends(Npc n, float heading, Vector3 origin, Vector3 p1, Vector3 p2, float radius, int mask, float now)
         {
             n.SpeedScale = 1f;
@@ -1022,6 +1034,7 @@ namespace WildWasteland.Modules.NPC
             return heading;
         }
 
+        /// <summary>True when a body-wide cast along a heading is free for the feeler length (and there is ground ahead with DropCheck).</summary>
         private static bool WayFree(Npc n, float yaw, Vector3 origin, Vector3 p1, Vector3 p2, float radius, int mask)
         {
             Vector3 dir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
@@ -1032,7 +1045,7 @@ namespace WildWasteland.Modules.NPC
             return Nav.IsFloor(h.collider, h.normal, h.point.y, feetY);
         }
 
-        // a bump into another NPC is no reason to call itself stuck
+        /// <summary>a bump into another NPC is no reason to call itself stuck</summary>
         private static bool FriendInTheWay(Npc n)
         {
             Vector3 me = n.T.position, fwd = n.T.forward; fwd.y = 0f;
@@ -1057,6 +1070,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly float[] _scoutAngles = { -15f, 15f, -40f, 40f, -65f, 65f, -90f, 90f, -115f, 115f, -140f, 140f };
         private const float ScoutLength = 10f;
 
+        /// <summary>Scouts a corner with a clear line to the target (a waypoint kept for a while) when the direct way is blocked.</summary>
         private static bool Scout(Npc n, Vector3 origin, Vector3 p1, Vector3 p2, float radius, int mask, Vector3 toReal, Transform troot, float now)
         {
             float yaw0 = Mathf.Atan2(toReal.x, toReal.z) * Mathf.Rad2Deg;
@@ -1097,7 +1111,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // the straight line to the target is free for the body (one sweep)
+        /// <summary>the straight line to the target is free for the body (one sweep)</summary>
         private static bool DirectClear(Npc n, Vector3 tp, float dist)
         {
             if (n.Col == null) return true;
@@ -1117,7 +1131,7 @@ namespace WildWasteland.Modules.NPC
             return Nav.IsFloor(hit.collider, hit.normal, hit.point.y, b.min.y);
         }
 
-        // moving modes: is the NPC getting anywhere? (called from Think) - 5 s without coming nearer flips the side once, then rests
+        /// <summary>moving modes: is the NPC getting anywhere? (called from Think) - 5 s without coming nearer flips the side once, then rests</summary>
         private static bool Progress(Npc n, float d, float now)
         {
             if (Senses.Blown(n.Owner)) { n.NoProgressSince = now; n.BestDist = Mathf.Min(n.BestDist, d); return true; }   // pushed by a tornado: no judgement
@@ -1142,6 +1156,7 @@ namespace WildWasteland.Modules.NPC
 
         private const float SideLock = 1.2f, NoProgressSeconds = 2.5f, RestSeconds = 1f, StuckWindow = 10f;
 
+        /// <summary>True when the line from the NPC's eyes to the target's chest is clear of walls and terrain.</summary>
         private static bool LineOfSight(Npc n, GameObject target, Vector3 tp)
         {
             Vector3 eye = n.Col != null ? n.Col.bounds.center + Vector3.up * n.Col.bounds.extents.y * 0.6f : n.T.position + Vector3.up * 1.5f;
@@ -1152,6 +1167,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- modes ----------
+        /// <summary>Changes the brain mode: animation clip and pose side effects, trail bookkeeping and the level-2 mode log.</summary>
         private static void SetMode(Npc n, Mode m, string why)
         {
             Mode was = n.Mode;
@@ -1188,8 +1204,7 @@ namespace WildWasteland.Modules.NPC
                 NpcaiRuntime.Deep("Brain: " + n.Owner.name + " " + was + " -> " + m + " (" + why + ", " + n.Dist.ToString("0") + " m" + (n.Ranged ? ", " + n.Kind : "") + ")");
         }
 
-        // Movement FSM: Animal_Run (run animation + forward velocity) or Animal_Idle (idle animation, velocity zero), only while the Attack
-        // FSM is in its chase state (during a burst / swing the Attack FSM re-sends Animal_Run on its way back; see BeforeSendEvent).
+        /// <summary>Movement FSM: Animal_Run (run animation + forward velocity) or Animal_Idle (idle animation, velocity zero), only while the Attack FSM is in its chase state (during a burst / swing the Attack FSM re-sends Animal_Run on its way back; see BeforeSendEvent).</summary>
         private static void Move(Npc n, bool run)
         {
             if (n.Movement == null || n.Attack == null || n.Attack.Fsm == null) return;
@@ -1198,8 +1213,7 @@ namespace WildWasteland.Modules.NPC
             n.Movement.SendEvent(run ? "Animal_Run" : "Animal_Idle");
         }
 
-        // ActivateGameObject(s).OnEnter postfix: the game toggled an object of this NPC (the WeaponType FSM's gun models, the melee
-        // machete ...): the rig re-finds the held weapon on its next frame. One dictionary lookup, only when the game toggles something.
+        /// <summary>ActivateGameObject(s).OnEnter postfix: the game toggled an object of this NPC (the WeaponType FSM's gun models, the melee machete ...): the rig re-finds the held weapon on its next frame. One dictionary lookup, only when the game toggles something.</summary>
         public static void AfterActivate(FsmStateAction __instance)
         {
             if (_npcs.Count == 0 || !NpcaiRuntime.Running) return;
@@ -1230,7 +1244,9 @@ namespace WildWasteland.Modules.NPC
         // a map waypoint is taken only when the first metre toward it is free for the body (walls, rock, baked props - not loose items or cars,
         // the feelers steer round those); otherwise this look runs without the map, as before maps existed
         private static readonly int NavGateMask = PathMask & ~((1 << 8) | (1 << 9));
+        /// <summary>True when the leg to the next map waypoint is clear for the body (no hop leg).</summary>
         private static bool NavLegClear(Npc n, Vector3 next) { return NavLegClear(n, next, false); }
+        /// <summary>True when the leg to the next map waypoint is clear for the body; a hop leg allows a low lip.</summary>
         private static bool NavLegClear(Npc n, Vector3 next, bool hopLeg)
         {
             if (n.Col == null) return true;
@@ -1253,6 +1269,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
+        /// <summary>The Unstuck FSM's stuck verdict: a gunman with a clear shot holds, else back up and avoid the heading; StuckGiveUpCount stucks in 10 s rest a second.</summary>
         private static void OnStuck(Npc n)
         {
             float now = Time.time;      // (crew AI) convoy crews on foot walk with MoveToward now: the full stuck handling (SimpleThink keeps BackUp / Rest)
@@ -1311,9 +1328,9 @@ namespace WildWasteland.Modules.NPC
             SetMode(n, Mode.BackUp, WildWasteland.Core.Log.L2 ? "stuck " + n.Stucks + "x, backs up" : "");
         }
 
-        // Stuck on something low (a rock lip, a kerb, a pipe on the floor) with nothing above it: the game's own Unstuck would hop here (we
-        // block its AddForce while steering) - give one small hop forward instead of backing up. At most one hop per 2 s.
+        /// <summary>Stuck on something low (a rock lip, a kerb, a pipe on the floor) with nothing above it: the game's own Unstuck would hop here (we block its AddForce while steering) - give one small hop forward instead of backing up. At most one hop per 2 s.</summary>
         private static bool TryHop(Npc n, float now) { return TryHop(n, now, false); }
+        /// <summary>A small hop over a low lip ahead (low ray blocked, knee ray free), at most once per 2 s.</summary>
         private static bool TryHop(Npc n, float now, bool lip)
         {
             if (n.Rb == null || n.Col == null || now - n.LastHop < 2f) return false;
@@ -1334,9 +1351,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // The horizontal direction from a touching collider to the body. Collider.ClosestPoint only works for convex shapes: for a
-        // non-convex MeshCollider (cave rock, building walls) and terrain it returns the query point itself, so those use ComputePenetration
-        // against the NPC's own (convex) collider instead.
+        /// <summary>The horizontal direction from a touching collider to the body. Collider.ClosestPoint only works for convex shapes: for a non-convex MeshCollider (cave rock, building walls) and terrain it returns the query point itself, so those use ComputePenetration against the NPC's own (convex) collider instead.</summary>
         private static bool TouchDir(Npc n, Collider c, Vector3 origin, out Vector3 away, out float contactY)
         {
             away = Vector3.zero; contactY = origin.y;
@@ -1362,7 +1377,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // (1.6.0) Idle: the brain has stood aside for its ghost walk (Mode Walk) - only then does Idle move the body
+        /// <summary>(1.6.0) Idle: the brain has stood aside for its ghost walk (Mode Walk) - only then does Idle move the body</summary>
         internal static bool IsWalk(GameObject owner)
         {
             if (!On) return false;
@@ -1370,15 +1385,16 @@ namespace WildWasteland.Modules.NPC
             return n != null && n.Mode == Mode.Walk;
         }
 
-        // Aim decided to fire but the body is turned away (steering around something): face the target for a moment
+        /// <summary>Aim decided to fire but the body is turned away (steering around something): face the target for a moment</summary>
         internal static void FaceTarget(GameObject owner, float seconds)
         {
             var n = Get(owner);
             if (n != null) n.FaceTargetUntil = Time.time + seconds;
         }
 
-        // (1.4.0) Burrow: a hunter dives (held still, no thinking) / is up again (the stuck and progress judgements start over)
+        /// <summary>(1.4.0) Burrow: a hunter dives (held still, no thinking) / is up again (the stuck and progress judgements start over)</summary>
         internal static bool IsRanged(GameObject owner) { var n = Get(owner); return n != null && n.Ranged; }
+        /// <summary>Burrow / Pounce take the NPC over (or give it back): no pedal, no thinking, no stuck judgement while travelling.</summary>
         internal static bool SetTravel(GameObject owner, bool on)
         {
             var n = Get(owner);
@@ -1390,7 +1406,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // (1.8.0) DogBite: a dog in reach of its target stands still (no running circles round it) / runs again
+        /// <summary>(1.8.0) DogBite: a dog in reach of its target stands still (no running circles round it) / runs again</summary>
         internal static void Halt(GameObject owner, bool on)
         {
             var n = Get(owner);
@@ -1399,7 +1415,7 @@ namespace WildWasteland.Modules.NPC
             if (!on) { BlkReset(n, Time.time); n.NoProgressSince = Time.time; }
         }
 
-        // (1.7.0) Nests: an alarmed spider runs `mult` times faster for `seconds`
+        /// <summary>(1.7.0) Nests: an alarmed spider runs `mult` times faster for `seconds`</summary>
         internal static void Boost(GameObject owner, float mult, float seconds)
         {
             var n = Get(owner);
@@ -1407,17 +1423,18 @@ namespace WildWasteland.Modules.NPC
             n.Boost = Mathf.Clamp(mult, 0.1f, 5f); n.BoostUntil = Time.time + Mathf.Max(0f, seconds);
         }
 
-        // (1.4.0) the run speed the game's Movement FSM gives this NPC (0 = not seen yet)
+        /// <summary>(1.4.0) the run speed the game's Movement FSM gives this NPC (0 = not seen yet)</summary>
         internal static float RunSpeed(GameObject owner) { var n = Get(owner); return n != null ? n.RunZ : 0f; }
 
         // ---------- NPC registry ----------
+        /// <summary>The brain of an object or null.</summary>
         private static Npc Get(GameObject owner)
         {
             Npc n;
             return owner != null && _npcs.TryGetValue(owner.GetInstanceID(), out n) ? n : null;
         }
 
-        // the first Movement SetVelocity of an NPC registers it (every ground NPC with a target runs that action every frame)
+        /// <summary>the first Movement SetVelocity of an NPC registers it (every ground NPC with a target runs that action every frame)</summary>
         private static Npc Of(GameObject owner)
         {
             if (owner == null) return null;
@@ -1433,6 +1450,7 @@ namespace WildWasteland.Modules.NPC
         }
         private static bool _retry;      // Make: not ready yet (Detection FSM not initialised) - asked again next time, not ignored for good
 
+        /// <summary>Builds a brain for a ground NPC (root object with Movement/Attack/Detection FSMs and a gravity Rigidbody); flyers and parented objects are left alone.</summary>
         private static Npc Make(GameObject owner)
         {
             if (owner.transform.parent != null) return null;         // seated in a car (Apocapatrol), or a part of something
@@ -1474,7 +1492,7 @@ namespace WildWasteland.Modules.NPC
             return n;
         }
 
-        // a gunman's aim pose (the Movement FSM's AttackRanged animator state); also run later for one whose gun showed up after its spawn
+        /// <summary>a gunman's aim pose (the Movement FSM's AttackRanged animator state); also run later for one whose gun showed up after its spawn</summary>
         private static void SetupRanged(Npc n)
         {
             var owner = n.Owner; var movement = n.MovementFsm;
@@ -1500,6 +1518,7 @@ namespace WildWasteland.Modules.NPC
         
         }
 
+        /// <summary>The brain behind an FSM of the given name (null when the FSM is not that NPC's or has no brain).</summary>
         private static Npc NpcOf(Fsm fsm, string fsmName)
         {
             if (fsm == null || fsm.Name != fsmName) return null;
@@ -1508,7 +1527,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- hooks ----------
-        // SetVelocity.DoSetVelocity (Movement FSM): the pedal
+        /// <summary>SetVelocity.DoSetVelocity (Movement FSM): the pedal</summary>
         public static bool BeforeSetVelocity(SetVelocity __instance)
         {
             try
@@ -1550,7 +1569,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
-        // Rotate.DoRotate: the Rotate FSM's random yaw and the Attack FSM's run / rotate / turn states
+        /// <summary>Rotate.DoRotate: the Rotate FSM's random yaw and the Attack FSM's run / rotate / turn states</summary>
         public static bool BeforeRotate(Rotate __instance)
         {
             if (_npcs.Count == 0 || !On) return true;      // (WW) no brain at all: nothing to check (NpcOf would say no)
@@ -1565,7 +1584,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
-        // Raycast.DoRaycast: the Attack FSM's two 1.2 m bumper rays report "clear" (the feelers see 3-4 m)
+        /// <summary>Raycast.DoRaycast: the Attack FSM's two 1.2 m bumper rays report "clear" (the feelers see 3-4 m)</summary>
         public static bool BeforeRaycast(Raycast __instance)
         {
             if (_npcs.Count == 0 || !On) return true;
@@ -1581,7 +1600,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
-        // LookAt.DoLookAt: the Attack FSM's instant snap of the body toward the target (burst state) -> our turn rate instead
+        /// <summary>LookAt.DoLookAt: the Attack FSM's instant snap of the body toward the target (burst state) -&gt; our turn rate instead</summary>
         public static bool BeforeLookAt(LookAt __instance)
         {
             if (_npcs.Count == 0 || !On) return true;
@@ -1595,9 +1614,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
-        // SmoothLookAt.DoSmoothLookAt: the melee Attack FSMs (Scraffa, Spanna, the animals) turn the body toward the target every frame in the
-        // chase state itself (LateUpdate, after our rotation) - that is what kept a melee NPC running straight into the thing the feelers had
-        // told it to go around. Skipped while the brain steers (chase states only; the swing's own facing stays).
+        /// <summary>SmoothLookAt.DoSmoothLookAt: the melee Attack FSMs (Scraffa, Spanna, the animals) turn the body toward the target every frame in the chase state itself (LateUpdate, after our rotation) - that is what kept a melee NPC running straight into the thing the feelers had told it to go around. Skipped while the brain steers (chase states only; the swing's own facing stays).</summary>
         public static bool BeforeSmoothLookAt(SmoothLookAt __instance)
         {
             if (_npcs.Count == 0 || !On) return true;
@@ -1616,7 +1633,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
-        // SendEvent.OnEnter: Attack's Animal_Run while holding -> Animal_Idle; Unstuck's Animal_rotateRandom -> our stuck handling
+        /// <summary>SendEvent.OnEnter: Attack's Animal_Run while holding -&gt; Animal_Idle; Unstuck's Animal_rotateRandom -&gt; our stuck handling</summary>
         internal static bool BeforeDrivingHide(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             if (_npcs.Count == 0 || !On || ev == null || ev.Name != "hide" || fsm == null || fsm.Name != "Attack" || fsm.ActiveStateName != "trigger") return true;
@@ -1624,6 +1641,7 @@ namespace WildWasteland.Modules.NPC
             return n == null || (Time.time >= n.CoverCooldownUntil && DrivingHide(n, Time.time) != null);
         }
 
+        /// <summary>SendEvent.OnEnter prefix: an NPC holding its position does not run off on Animal_Run, and the Unstuck spin goes to the brain's stuck handling.</summary>
         public static bool BeforeSendEvent(SendEvent __instance)
         {
             if (_npcs.Count == 0 || !On) return true;      // (WW) SendEvent runs everywhere: a static check before the event name
@@ -1660,7 +1678,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
-        // AddForce.DoAddForce (Unstuck): no hop
+        /// <summary>AddForce.DoAddForce (Unstuck): no hop</summary>
         public static bool BeforeAddForce(AddForce __instance)
         {
             if (_npcs.Count == 0 || !On) return true;
@@ -1668,8 +1686,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Brain: " + e); return true; }
         }
 
-        // For Aim: how far the body still has to turn to face its target, degrees; -1 when the brain is not steering this NPC (the game
-        // snaps it to the target itself then). A burst is held until this is within [NpcAim] FacingTolerance.
+        /// <summary>For Aim: how far the body still has to turn to face its target, degrees; -1 when the brain is not steering this NPC (the game snaps it to the target itself then). A burst is held until this is within [NpcAim] FacingTolerance.</summary>
         internal static float FacingError(GameObject owner)
         {
             if (!On) return -1f;

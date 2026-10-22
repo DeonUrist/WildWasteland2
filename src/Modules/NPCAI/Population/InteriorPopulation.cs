@@ -14,8 +14,10 @@ namespace WildWasteland.Modules.Towns
     internal static class InteriorPopulation
     {
         private sealed class Location { internal Transform Root; internal readonly List<Group> Groups = new List<Group>(); internal bool Arrived; }
+        /// <summary>A native interior spawn group (ItemSpawner FSM): its town / dressing site, location, start attempts, suspension and the deferred native event.</summary>
         private sealed class Group { internal PlayMakerFSM Fsm; internal TownSite Town; internal PoiDressing.Site Dressing; internal Location Location; internal bool Started, Suspended; internal int Attempts; internal float StartedAt; internal FsmEvent Deferred; internal FsmState DeferredState; }   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         private static readonly Dictionary<object, Location> Locations = new Dictionary<object, Location>();
+        /// <summary>A population member: the spawned NPC, its health, its senses agent and saved name.</summary>
         private sealed class Member { internal GameObject Owner; internal FsmFloat Health; internal Senses.Agent Agent; internal string Name; }
         private static readonly Dictionary<PlayMakerFSM, Group> Groups = new Dictionary<PlayMakerFSM, Group>();
         private static readonly List<Group> Pending = new List<Group>();
@@ -27,6 +29,7 @@ namespace WildWasteland.Modules.Towns
         private static int _next, _near;
         private static Vector3 _player;
         private static bool _havePlayer;
+        /// <summary>Installs the interior and native-POI population rules: ProcessEvent / FsmEnable / CreateObject hooks and the pre-spawn and hearing jobs (owner NPCAI).</summary>
         internal static void Install(IModule module)
         {
             NativePoiPopulation.Install(module);
@@ -36,8 +39,10 @@ namespace WildWasteland.Modules.Towns
             Scheduler.Sliced(module, "NPCAI.Interior pre-spawn", 700, Step);
             Scheduler.Interval(module, "NPCAI.Interior hearing", .25f, Hearing);
         }
+        /// <summary>Registers every interior group already enabled in the loaded scene.</summary>
         internal static void DiscoverExisting()
         { foreach (var f in PlayMakerFSM.FsmList) if (f != null) Enabled(f); }
+        /// <summary>True for an interior enemy spawner: an ItemSpawner on an EnemySpawn object with a small enabled trigger collider.</summary>
         private static bool Interior(PlayMakerFSM f)
         {
             if (f == null || f.FsmName != "ItemSpawner" || !f.name.StartsWith("EnemySpawn", StringComparison.Ordinal)) return false;
@@ -45,12 +50,14 @@ namespace WildWasteland.Modules.Towns
                 if (collider.isTrigger && collider.enabled && (!(collider is SphereCollider) || collider.bounds.extents.magnitude < 70)) return true;
             return false;
         }
+        /// <summary>FsmEnable postfix: a newly enabled interior spawner outside a town building joins its location.</summary>
         private static void Enabled(PlayMakerFSM f)
         {
             if (!f.gameObject.scene.IsValid() || !Interior(f)) return;
             for (var t = f.transform; t != null; t = t.parent) if (NativePoiPopulation.TownBuilding(t)) return;
             Add(f, null);
         }
+        /// <summary>Adds a spawner group to its location (town, dressing marker root or the enclosing native structure) and queues it for the arrival pre-spawn.</summary>
         private static void Add(PlayMakerFSM f, TownSite town, Transform markerRoot = null)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
             Transform root = town == null ? f.transform : town.Anchor;
@@ -99,8 +106,10 @@ namespace WildWasteland.Modules.Towns
             return true;
         }
 
+        /// <summary>A POI dressing marker spawner joins the population (suspended until the dressing is ready).</summary>
         internal static void OwnMarker(PlayMakerFSM f, PoiDressing.Site site)
         { Add(f, site.Town, site.Town == null ? site.Root : null); Groups[f].Dressing = site; Groups[f].Suspended = true; f.enabled = false; }
+        /// <summary>The enemy spawners of a town lot join the population (suspended when the lot's saved count is already spawned; Coyote shopkeepers too).</summary>
         internal static void OwnTown(TownSite site, int lot)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
             for (int n = 0; n < site.Spawners[lot].Length; n++)
@@ -118,8 +127,10 @@ namespace WildWasteland.Modules.Towns
                 }
             }
         }
+        /// <summary>Integer FSM variable value (0 when missing).</summary>
         private static int Value(PlayMakerFSM f, string name)
         { var value = f.FsmVariables.FindFsmInt(name); return value == null ? 0 : value.Value; }
+        /// <summary>True when the player has arrived at the spawner's location (town radius + 50 m, else 50 m); arrival sticks per location.</summary>
         private static bool Near(PlayMakerFSM f)
         {
             Group group; if (Groups.TryGetValue(f, out group) && group.Location.Arrived) return true;
@@ -134,6 +145,7 @@ namespace WildWasteland.Modules.Towns
             if (near && group != null) group.Location.Arrived = true;
             return near;
         }
+        /// <summary>ProcessEvent prefix: a tracked spawner's trigger / spawn transition waits until the player arrived and a world-work slot is free (one actor per 0.15 s).</summary>
         private static bool SpawnEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             if (Groups.Count == 0 || _releaseNative || ev == null || fsm.Name != "ItemSpawner") return true;   // (perf, README 8 #1) no tracked group: nothing to defer
@@ -148,6 +160,7 @@ namespace WildWasteland.Modules.Towns
             }
             return true;
         }
+        /// <summary>True when none of the town's tracked spawner groups is still waiting near the player.</summary>
         internal static bool TownReady(TownSite site)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
             foreach (var group in Pending) if (group.Town == site && group.Fsm != null && Near(group.Fsm) && group.Fsm.gameObject.activeInHierarchy && (group.Fsm.enabled || group.Suspended) && Value(group.Fsm, "OnOff") == 0) return false;
@@ -157,12 +170,12 @@ namespace WildWasteland.Modules.Towns
         {
             get { foreach (var group in Pending) if (group.Fsm != null && Near(group.Fsm) && group.Fsm.gameObject.activeInHierarchy && (group.Fsm.enabled || group.Suspended) && Value(group.Fsm, "OnOff") == 0) return false; return true; }
         }
-        // SaveSystem.Busy (the WW save transaction lock) has no exact contract equivalent: ISaves.Busy / SaveBus.Busy also cover
-        // loading and "Wait for Terrain Gen", where population must keep running (B04-8 answered in reports/B07.md)
+        /// <summary>SaveSystem.Busy (the WW save transaction lock) has no exact contract equivalent: ISaves.Busy / SaveBus.Busy also cover loading and "Wait for Terrain Gen", where population must keep running (B04-8 answered in reports/B07.md)</summary>
         private static bool CanRun()
         { return !SaveSystem.Busy && !SaveBus.Saving && (GameRefs.InGame || GameRefs.SaveLoadState == "Wait for Terrain Gen"); }   // refs-ok: REFACTOR-REQUEST B07-6
         private static float _spawnAfter, _actorAfter;
         private static int _actorFrame = -1;
+        /// <summary>Sliced job "NPCAI.Interior pre-spawn": runs the authored native trigger sequence of arrived groups, one group per 0.15 s, honouring completed bosses and stalled groups.</summary>
         private static bool Step()
         {
             if (Pending.Count == 0 || !CanRun() || Time.unscaledTime < _spawnAfter) return false;
@@ -213,6 +226,7 @@ namespace WildWasteland.Modules.Towns
             }
             return false;
         }
+        /// <summary>CreateObject postfix: a spawned interior NPC is tracked (town population, health, agent; interior hearing set at once).</summary>
         private static void Created(CreateObject action)
         {
             if (Groups.Count == 0 || action.Fsm == null || action.storeObject == null || action.Fsm.Name != "ItemSpawner") return;   // (perf) cheap filters first
@@ -225,6 +239,7 @@ namespace WildWasteland.Modules.Towns
             Members[made.GetInstanceID()] = new Member { Owner = made, Health = health.FsmVariables.FindFsmFloat("Health"), Agent = agent };
             if (agent != null) { agent.Interior = true; agent.AmbushDist = 0f; agent.Deaf = !_havePlayer || _near >= 3 || (made.transform.position - _player).sqrMagnitude > 2500f; }
         }
+        /// <summary>The population member of a senses agent (created on first sight).</summary>
         private static Member Observe(Senses.Agent agent)
         {
             var owner = agent.Owner; if (owner == null) return null;
@@ -238,14 +253,17 @@ namespace WildWasteland.Modules.Towns
             if (member.Name == null) member.Name = owner.name;
             member.Agent = agent; return member;
         }
+        /// <summary>True for NPCs spawned by tracked interior groups (this session or by saved name).</summary>
         private static bool Tracked(Member member)
         { return member.Owner != null && (Fresh.Contains(member.Owner.GetInstanceID()) || member.Name != null && Names.Contains(member.Name)); }
+        /// <summary>A tracked NPC is deaf unless the player is close and fewer than 3 hostiles are near him.</summary>
         private static bool Deaf(Member member)
         {
             if (!Tracked(member)) return false;
             // Far interior groups remain quiet; only the player's immediate encounter unlocks hearing.
             return !_havePlayer || _near >= 3 || (member.Owner.transform.position - _player).sqrMagnitude > 2500;
         }
+        /// <summary>Job "NPCAI.Interior hearing" (0.25 s): counts hostiles near the player and applies the interior deafness to tracked NPCs.</summary>
         private static void Hearing()
         {
             var player = GameRefs.Player; _havePlayer = player != null;
@@ -269,20 +287,24 @@ namespace WildWasteland.Modules.Towns
             if ((previous >= 3) != (_near >= 3) && Names.Count > 0)
                 if (Core.Log.L1) NpcaiRuntime.Main("interior hearing: " + (_near >= 3 ? "3+ enemies within 50 m; sounds ignored" : _near + " enemies within 50 m; nearby hearing enabled"));
         }
+        /// <summary>Forgets every group, location and member (deafness / interior flags of known agents cleared).</summary>
         internal static void Clear()
         {
             foreach (var member in Members.Values) if (member.Agent != null) { member.Agent.Deaf = false; member.Agent.Interior = false; }
             NativePoiPopulation.Clear(); Groups.Clear(); Locations.Clear(); Pending.Clear(); Members.Clear(); Fresh.Clear(); Names.Clear(); _next = _near = 0; _havePlayer = false;
             _spawnAfter = _actorAfter = 0f; _actorFrame = -1;
         }
+        /// <summary>Module stop: deferred native spawn events run now so no spawner is left waiting.</summary>
         internal static void ReleaseDeferred()
         {
             _releaseNative = true;
             foreach (var group in new List<Group>(Groups.Values)) if (group.Deferred != null && group.Fsm != null && group.Fsm.enabled && group.Fsm.Fsm.ActiveState == group.DeferredState)
             { var ev = group.Deferred; group.Deferred = null; group.Fsm.Fsm.Event(ev); }
         }
+        /// <summary>Load: the saved names of interior NPCs (kept in the POI town record) become tracked again.</summary>
         internal static void RestoreNames(string[] names)
         { Clear(); foreach (string name in names) if (!string.IsNullOrEmpty(name)) Names.Add(name); }
+        /// <summary>Save: names of the tracked interior NPCs, sorted.</summary>
         internal static string[] CaptureNames()
         {
             foreach (var member in Members.Values) if (Tracked(member)) Names.Add(member.Owner.name);

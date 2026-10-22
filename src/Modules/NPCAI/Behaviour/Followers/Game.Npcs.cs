@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.Quests
     /// <summary>Quests world helpers, NPCAI part (Wave A, from Quests/Game.cs; B07 turns these into population queries): living people/enemies/bodies near a point, the shared live-name index and the game's PlayerIsEnemy switch.</summary>
     internal static partial class Game
     {
-        // Base names of the living people (Health FSM in state "health") that carry this faction tag.
+        /// <summary>Base names of the living people (Health FSM in state "health") that carry this faction tag.</summary>
         public static List<string> FindNpcNames(string faction)
         {
             var names = new List<string>();
@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.Quests
             return names;
         }
 
-        // Turns the game's own hostility switch on or off for one NPC. Returns true when it changed something.
+        /// <summary>Turns the game's own hostility switch on or off for one NPC. Returns true when it changed something.</summary>
         public static bool SetPlayerEnemy(GameObject go, bool enemy)
         {
             if (go == null) return false;
@@ -43,7 +43,7 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
-        // The game's own "is this one hostile to the player?" switch: FSM PlayerIsEnemy, state PlayerEnemy or PlayerFriendly.
+        /// <summary>The game's own "is this one hostile to the player?" switch: FSM PlayerIsEnemy, state PlayerEnemy or PlayerFriendly.</summary>
         public static bool IsPlayerEnemy(GameObject go)
         {
             if (go == null) return false;
@@ -53,7 +53,7 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
-        // Living enemies (objects whose Health FSM is still in its "health" state) within radius of center.
+        /// <summary>Living enemies (objects whose Health FSM is still in its "health" state) within radius of center.</summary>
         public static List<EnemyInfo> FindEnemies(Vector3 center, float radius)   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
         {
             var list = new List<EnemyInfo>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
@@ -105,7 +105,7 @@ namespace WildWasteland.Modules.Quests
             return liveNames;
         }
 
-        // The Transform of a loaded NPC by object name, or null.
+        /// <summary>The Transform of a loaded NPC by object name, or null.</summary>
         public static Transform FindLive(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;
@@ -113,11 +113,10 @@ namespace WildWasteland.Modules.Quests
             return LiveNames().TryGetValue(name, out t) && t != null ? t : null;
         }
 
-        // Forget the shared list (after something was spawned or renamed), so the next question sees the change.
+        /// <summary>Forget the shared list (after something was spawned or renamed), so the next question sees the change.</summary>
         public static void InvalidateLiveNames() { liveNamesAt = -10f; }
 
-        // Everything alive and named like one of the keywords (NPCs and people-type enemies), found live through the
-        // PlayMaker FSM list so NPCs that spawn later are picked up the next time this is called.
+        /// <summary>Everything alive and named like one of the keywords (NPCs and people-type enemies), found live through the PlayMaker FSM list so NPCs that spawn later are picked up the next time this is called.</summary>
         public static List<EnemyInfo> FindPeople(string[] keywords)   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
         {
             var list = new List<EnemyInfo>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
@@ -147,8 +146,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // ---- bodies of killed enemies ---------------------------------------------------------------
-        // A dead enemy leaves a "<Name>_Dead" object (an item with an ID FSM, saved with the game) that can be carried.
-        // Bodies within radius of center, nearest first.
+        /// <summary>A dead enemy leaves a "&lt;Name&gt;_Dead" object (an item with an ID FSM, saved with the game) that can be carried. Bodies within radius of center, nearest first.</summary>
         public static List<GameObject> FindBodies(Vector3 center, float radius)
         {
             var list = new List<GameObject>();

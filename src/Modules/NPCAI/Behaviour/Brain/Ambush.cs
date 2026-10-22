@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // Senses.Make: every registered NPC passes here once
+        /// <summary>Senses.Make: every registered NPC passes here once</summary>
         internal static void Register(Senses.Agent a)
         {
             if (a == null || a.Owner == null || !Wanted(Senses.PrefabOf(a.Owner))) return;

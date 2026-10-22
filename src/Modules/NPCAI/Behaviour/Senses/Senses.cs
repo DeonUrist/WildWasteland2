@@ -40,10 +40,10 @@ namespace WildWasteland.Modules.NPC
     internal static partial class Senses
     {
         internal enum Src { None = 0, Engine = 1, Thrown = 2, Gunshot = 3, Shout = 4, Hit = 5, Vision = 6 }
+        /// <summary>What an agent is doing: idle, fighting a seen target, going to check a ghost, searching around it, or hiding in cover (keeps its target, takes no ghosts).</summary>
         internal enum State { Idle, Combat, Investigate, Search, Hide }   // Hide (1.1.0): in cover - keeps its target, takes no ghosts until the brain ends the cover
 
-        // Ranks (1.1.0, two classes): SEEN (a sighting, a hit) beats HEARD (a gunshot, an explosion, a shout, an engine, a thrown item);
-        // within a class the newest news wins (Assign). A shout passes on a HEARD-class ghost.
+        /// <summary>Ranks (1.1.0, two classes): SEEN (a sighting, a hit) beats HEARD (a gunshot, an explosion, a shout, an engine, a thrown item); within a class the newest news wins (Assign). A shout passes on a HEARD-class ghost.</summary>
         internal static int Rank(Src s)
         {
             switch (s) { case Src.None: return 0; case Src.Vision: case Src.Hit: return 2; default: return 1; }
@@ -89,7 +89,9 @@ namespace WildWasteland.Modules.NPC
 
         private static readonly Dictionary<int, Agent> _agents = new Dictionary<int, Agent>();
         internal static Dictionary<int, Agent>.ValueCollection AllAgents { get { return _agents.Values; } }   // read-only use (Idle)
+        /// <summary>Faction tag of a registered agent (null when the object is not one).</summary>
         internal static string TagOf(GameObject owner) { Agent a; return owner != null && _agents.TryGetValue(owner.GetInstanceID(), out a) ? a.Tag : null; }
+        /// <summary>True while the agent stands in a tornado funnel's shove radius (refreshed once a second).</summary>
         internal static bool Blown(GameObject owner) { Agent a; return owner != null && _agents.TryGetValue(owner.GetInstanceID(), out a) && a.Blown; }
         private static readonly HashSet<int> _ignored = new HashSet<int>();
         private static readonly List<Ghost> _ghosts = new List<Ghost>();
@@ -109,10 +111,14 @@ namespace WildWasteland.Modules.NPC
         private const int Blockers = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 11) | (1 << 14);   // Default, Car, Item, Door, Ground (the game's bullet obstruction set)
         private const int SightBlockers = Blockers & ~(1 << 8);   // cars do not hide the player or enemy NPCs
 
+        /// <summary>The player's root object as found by the senses (null in menus).</summary>
         internal static GameObject PlayerObj { get { return _player; } }
+        /// <summary>True while the player drives a car (Pounce: no leaping at a car; Burrow: "behind the player" is behind the camera).</summary>
         internal static bool PlayerInCar { get { return PlayerCar() != null; } }       // (1.5.0) Pounce: no leaping at a car   // (1.4.0) Burrow: "behind the player" is behind the camera
+        /// <summary>The senses run: module on and [NPCAI] EnableNpcDetection on.</summary>
         internal static bool On { get { return NpcaiRuntime.Running && NpcaiSettings.SensesEnabled.Value; } }
 
+        /// <summary>Scene load: every agent, ghost, cache and storm reading is dropped, the senses persistence is reset.</summary>
         public static void OnSceneLoaded()
         {
             SimpleBandits.Clear();
@@ -128,6 +134,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- per frame ----------
+        /// <summary>Job "NPCAI.Senses" (every frame): the once-a-second maintenance (storms, ghosts, memories, factions present), the capped per-NPC looks, the engine / horn and the thrown-item noises.</summary>
         public static void Tick()
         {
             float now = Time.time, dt = Time.deltaTime;
@@ -194,6 +201,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<int> _maintKeys = new List<int>();
         private static int _maintPos, _maintPer = 1;
         private static HashSet<string> _presentNext = new HashSet<string>();
+        /// <summary>One slice of the per-agent maintenance round (vanilla sensors on/off, Coyote relation, done-ghost pruning, storm and funnel flags, mode events).</summary>
         private static void MaintStep(bool on)
         {
             int end = Mathf.Min(_maintKeys.Count, _maintPos + _maintPer);
@@ -227,6 +235,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- sight ----------
+        /// <summary>One look of an NPC: crew orders and simple bandits first, tornado reset, search/investigate progress, then sight of the player and of hostile NPCs (nearest visible first) with the notice delay and the ambush hold, and target loss after LoseSeconds.</summary>
         private static void Look(Agent a, float interval, float now)
         {
             if (a.Interior) a.AmbushDist = 0f;
@@ -335,8 +344,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // noticing takes longer at a distance and in the dark: NoticeSeconds up close (<= 15 m), NoticeFar at the edge of sight, and up to
-        // twice that in full darkness
+        /// <summary>noticing takes longer at a distance and in the dark: NoticeSeconds up close (&lt;= 15 m), NoticeFar at the edge of sight, and up to twice that in full darkness</summary>
         private static float NoticeNeed(float d)
         {
             float range = Mathf.Max(16f, NpcaiSettings.SightRange.Value);
@@ -344,6 +352,7 @@ namespace WildWasteland.Modules.NPC
             return need * (2f - LightLevel());
         }
 
+        /// <summary>True when the object (player, agent or anything) stands inside a sandstorm for the senses.</summary>
         private static bool InStormOf(GameObject go)
         {
             if (go == null || !Storm.AnyForSenses) return false;
@@ -353,6 +362,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         private static readonly List<int> _pruneIds = new List<int>();
+        /// <summary>Forgets reached-ghost entries of ghosts that no longer exist.</summary>
         private static void PruneDone(Agent a)
         {
             _pruneIds.Clear();
@@ -390,12 +400,14 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>True when a faction this agent hunts has a registered NPC around (last maintenance round).</summary>
         private static bool HostileNpcAround(Agent a)
         {
             foreach (var t in a.Hostile) if (t != "Player" && _presentTags.Contains(t)) return true;
             return false;
         }
 
+        /// <summary>Sight test: God Mode, light / flashlight / spider cave light / storm range, burrowed or travelling targets, cave-web reach, footsteps, the field of view and a clear line from the eyes to the target's head or body.</summary>
         private static bool Visible(Agent a, Vector3 eye, GameObject target, bool isPlayer, bool targetInStorm)
         {
             // the game's God Mode (F11, Player [GODMODE]) moves the Player, camera holder and head to layer 5 (UI) - the vanilla sensors never
@@ -438,6 +450,7 @@ namespace WildWasteland.Modules.NPC
             return clear;
         }
 
+        /// <summary>True when nothing but the target (or the player's car around the player) blocks the line from one point to another.</summary>
         private static bool Clear(Vector3 from, Vector3 to, Transform targetRoot)
         {
             RaycastHit hit;
@@ -450,12 +463,10 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // (1.2.1) the eye / head point sits `want` m below the top of the collider (15 cm for a human), but never lower than a quarter of the
-        // body height: a 14 cm scorpion's "eye" was at its feet (top - 15 cm), grass and bumps blocked every sight line and it lost the player
-        // 1 m in front of it. Creatures get the same distance from the top, kept between the top and the bottom of their height.
+        /// <summary>(1.2.1) the eye / head point sits `want` m below the top of the collider (15 cm for a human), but never lower than a quarter of the body height: a 14 cm scorpion's "eye" was at its feet (top - 15 cm), grass and bumps blocked every sight line and it lost the player 1 m in front of it. Creatures get the same distance from the top, kept between the top and the bottom of their height.</summary>
         private static float TopOffset(float height, float want) { return Mathf.Min(want, Mathf.Max(0f, height) * 0.25f); }
 
-        // (1.3.0) the arc of vision: humans and zombies [Detection] SightCone (Apocasetter); insects, beasts, brutes, bosses, burrowers have their own
+        /// <summary>(1.3.0) the arc of vision: humans and zombies [Detection] SightCone (Apocasetter); insects, beasts, brutes, bosses, burrowers have their own</summary>
         internal static float ConeOf(Agent a)
         {
             if (a.Burrowed || a.Spider) return 360f;
@@ -471,6 +482,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         private static readonly Dictionary<string, string[]> _words = new Dictionary<string, string[]>();
+        /// <summary>True when the prefab name contains one of the comma/semicolon-separated words of a config list (split once per list).</summary>
         private static bool NameIn(string prefab, string list)
         {
             if (string.IsNullOrEmpty(list)) return false;
@@ -480,7 +492,7 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
-        // boss (BossUI FSM) > burrower > brute > insect > beast > the human setting
+        /// <summary>boss (BossUI FSM) &gt; burrower &gt; brute &gt; insect &gt; beast &gt; the human setting</summary>
         private static int ConeGroupOf(GameObject owner)
         {
             foreach (var f in owner.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "BossUI") return 4;
@@ -492,6 +504,7 @@ namespace WildWasteland.Modules.NPC
             return 0;
         }
 
+        /// <summary>Eye position of an agent: its head bone, else near the top of its collider, else 1.5 m up.</summary>
         private static Vector3 Eye(Agent a)
         {
             if (a.Head != null) return a.Head.position;
@@ -499,6 +512,7 @@ namespace WildWasteland.Modules.NPC
             return a.T.position + Vector3.up * 1.5f;
         }
 
+        /// <summary>Head and body aim points of a sight target (player head bone, agent head / collider centre, else fixed heights).</summary>
         private static void Points(GameObject target, bool isPlayer, out Vector3 head, out Vector3 body)
         {
             if (isPlayer)
@@ -517,7 +531,7 @@ namespace WildWasteland.Modules.NPC
             head = target.transform.position + Vector3.up * 1.5f; body = target.transform.position + Vector3.up * 0.8f;
         }
 
-        // sight range for the light right now: DarkSightRange in full darkness, SightRange in daylight
+        /// <summary>sight range for the light right now: DarkSightRange in full darkness, SightRange in daylight</summary>
         internal static float SightRange()
         {
             float L = LightLevel();
@@ -531,6 +545,7 @@ namespace WildWasteland.Modules.NPC
         // full day. Cached for 0.5 s; VerboseLog prints the reading every minute.
         private static Type _azureType; private static MethodInfo _azureTime; private static Func<object, float> _azureCall; private static Behaviour _azure; private static bool _azureTried; private static float _nextAzureFind;
         private static float[] _nightH, _nightV; private static string _nightSrc;
+        /// <summary>Light level 0 (night) .. 1 (day) from the game clock through the [Senses] NightHours table; cached for 0.5 s.</summary>
         internal static float LightLevel()
         {
             if (Time.time - _lightAt < 0.5f) return _lightCache;
@@ -551,6 +566,7 @@ namespace WildWasteland.Modules.NPC
             return level;
         }
 
+        /// <summary>Light level for an hour from the NightHours points (linear in between, wrapping at midnight); the table is parsed once per config value.</summary>
         private static float NightTable(float hour)
         {
             string cfg = NpcaiSettings.NightHours.Value ?? "";
@@ -582,6 +598,7 @@ namespace WildWasteland.Modules.NPC
             return _nightV[0];
         }
 
+        /// <summary>The scene's AzureTimeController (the game clock), resolved once by reflection and looked up at most every 10 s until found.</summary>
         private static Behaviour Azure()
         {
             if (_azure != null) return _azure;
@@ -610,6 +627,7 @@ namespace WildWasteland.Modules.NPC
             return _azure;
         }
 
+        /// <summary>A field of a type or one of its base types (public or not), for the sensor tag-filter reflection.</summary>
         private static FieldInfo Field(Type t, string name)
         {
             for (var c = t; c != null; c = c.BaseType)
@@ -620,10 +638,11 @@ namespace WildWasteland.Modules.NPC
             return null;
         }
 
-        // (1.7.3) Webs: the player's flashlight while it is on, else null
+        /// <summary>(1.7.3) Webs: the player's flashlight while it is on, else null</summary>
         internal static Transform Flashlight { get { return FlashlightOn() ? _flashlight : null; } }
 
         private static float _flashMissUntil;
+        /// <summary>True while the player's flashlight is on (the camera child "Flashlight"; looked up again at most every 2 s when missing).</summary>
         private static bool FlashlightOn()
         {
             if (_flashlight == null)
@@ -637,6 +656,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- knowledge ----------
+        /// <summary>The agent engages a target it sees: combat state, fresh shout timer, pursuit reset; a player target refreshes the fought memory.</summary>
         private static void Engage(Agent a, GameObject target)
         {
             if (a.Spider) a.AmbushDist = 0f;
@@ -649,7 +669,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) Log(a, "sees " + Name(target) + " at " + Vector3.Distance(a.T.position, target.transform.position).ToString("0") + " m");
         }
 
-        // (1.7.0) Nests: a web was touched - the nest's spiders know where the target is and go for it (they chase / search as usual from here)
+        /// <summary>(1.7.0) Nests: a web was touched - the nest's spiders know where the target is and go for it (they chase / search as usual from here)</summary>
         internal static bool Alert(GameObject owner, GameObject target)
         {
             var a = Get(owner);
@@ -660,6 +680,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
+        /// <summary>Sight of the target is lost: a VISION ghost at the last seen spot, the agent goes there and will pursue (guess or track) a few times.</summary>
         private static void LoseTarget(Agent a, float now)
         {
             var target = a.Target;
@@ -674,6 +695,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) Log(a, "lost sight of " + Name(target) + ", goes where it was (ghost #" + g.Id + ", will " + (a.Tracker ? "track it" : "guess") + " " + a.Pursuits + " more time(s))");
         }
 
+        /// <summary>Diagnostic text of a sight loss (reason, distance, angle against the half cone).</summary>
         private static string SightLossText(Agent a, GameObject target)
         {
             Vector3 flat = target.transform.position - a.T.position; flat.y = 0f;
@@ -681,11 +703,11 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- (crew AI) the fought-player memory ----------
-        // Set when an NPC engages the player, is hit by him, hears his shots while fighting him (convoy crews on foot: also when they hear
-        // them at all), or is told by Patrols (Services.Npc.Remember: its car's crew fought him); refreshed by every sight of him while
-        // fighting him. While it lasts ([Senses] FoughtMemorySeconds after the last contact) losing sight does not drop him.
+        /// <summary>Set when an NPC engages the player, is hit by him, hears his shots while fighting him (convoy crews on foot: also when they hear them at all), or is told by Patrols (Services.Npc.Remember: its car's crew fought him); refreshed by every sight of him while fighting him. While it lasts ([Senses] FoughtMemorySeconds after the last contact) losing sight does not drop him.</summary>
         internal static float FoughtSeconds { get { return Mathf.Clamp(NpcaiSettings.FoughtMemorySeconds.Value, 10f, 600f); } }
+        /// <summary>Refreshes the fought memory of a target for FoughtMemorySeconds from now.</summary>
         private static void FoughtFor(Agent a, GameObject target, float now, string why) { FoughtUntil(a, target, now + FoughtSeconds, why); }
+        /// <summary>Sets the fought memory of a target until a time (keeps a longer existing one); logs a fresh memory at level 2.</summary>
         private static void FoughtUntil(Agent a, GameObject target, float until, string why)
         {
             if (target == null) return;
@@ -695,12 +717,13 @@ namespace WildWasteland.Modules.NPC
             if (fresh || until > a.FoughtUntil) a.FoughtUntil = until;
             if (fresh && WildWasteland.Core.Log.L2) Log(a, "remembers " + Name(target) + " for " + (a.FoughtUntil - now).ToString("0") + " s (" + why + ")");
         }
+        /// <summary>True while the agent remembers fighting the target (never the player in God Mode).</summary>
         private static bool Remembers(Agent a, GameObject target, float now)
         {
             return target != null && ReferenceEquals(a.Fought, target) && now < a.FoughtUntil && !(target == _player && target.layer == 5);   // God Mode: never "known"
         }
 
-        // Hearing shots renews an existing fight; a new listener investigates through Noise without acquiring the shooter.
+        /// <summary>Hearing shots renews an existing fight; a new listener investigates through Noise without acquiring the shooter.</summary>
         private static void HeardPlayerShot(Vector3 pos, float radius, float now)
         {
             if (_player == null || radius <= 0f) return;
@@ -715,6 +738,7 @@ namespace WildWasteland.Modules.NPC
 
         // Services.Npc.Remember: the NPC (registered now if it can be, else the moment it registers) remembers target until now + seconds
         private static readonly Dictionary<int, KeyValuePair<GameObject, float>> _remember = new Dictionary<int, KeyValuePair<GameObject, float>>();
+        /// <summary>INpcApi.Remember: the NPC (now, or the moment it registers) remembers the target for seconds (crew memory handed over by Patrols).</summary>
         internal static void Remember(GameObject npc, GameObject target, float seconds)
         {
             if (npc == null || target == null) return;
@@ -728,6 +752,7 @@ namespace WildWasteland.Modules.NPC
             a.Crew = true; FoughtUntil(a, target, until, "told by its crew");
             if (SimpleBandits.Has(npc)) a.NextLook = Time.time;
         }
+        /// <summary>Applies a Remember order that arrived before the agent registered.</summary>
         private static void Recall(Agent a)
         {
             if (_remember.Count == 0) return;
@@ -738,7 +763,7 @@ namespace WildWasteland.Modules.NPC
             if (r.Key != null && Time.time < r.Value) { a.Crew = true; FoughtUntil(a, r.Key, r.Value, "told by its crew"); if (SimpleBandits.Has(a.Owner)) a.NextLook = Time.time; }   // as Remember: it looks at once
         }
 
-        // for Services.Npc.IsIdle: no target, no ghost to check, no search (an NPC the senses do not know is idle)
+        /// <summary>for Services.Npc.IsIdle: no target, no ghost to check, no search (an NPC the senses do not know is idle)</summary>
         internal static bool IsIdle(GameObject npc)
         {
             if (npc == null) return false;
@@ -754,6 +779,7 @@ namespace WildWasteland.Modules.NPC
             return !(_player != null && SimpleBandits.Fighting(npc) && Remembers(a, _player, now) && IsPlayer(SimpleBandits.Goal(npc)));
         }
 
+        /// <summary>The agent reached its ghost: it pursues its lost target (tracker: the real position, human: a growing guess) while guesses remain, else searches for SearchSeconds.</summary>
         private static void Arrived(Agent a, float now)
         {
             // it lost its target from sight a moment ago: before searching it goes to where that target really is now, a few times -
@@ -778,7 +804,7 @@ namespace WildWasteland.Modules.NPC
             if (a.Ghost != null) RetireIfSearched(a.Ghost);
         }
 
-        // a guess k about where a lost target went: 1.5 s along the way it was going, then a random miss of GuessRadius x k, on the ground
+        /// <summary>a guess k about where a lost target went: 1.5 s along the way it was going, then a random miss of GuessRadius x k, on the ground</summary>
         private static Vector3 Guess(Vector3 real, Vector3 vel, int k)
         {
             vel.y = 0f;
@@ -788,7 +814,7 @@ namespace WildWasteland.Modules.NPC
             return OnGround(real + new Vector3(off.x, 0f, off.y), real.y);
         }
 
-        // a sound / a hit is only roughly located: the direction is right, the distance is off by up to a share of itself
+        /// <summary>a sound / a hit is only roughly located: the direction is right, the distance is off by up to a share of itself</summary>
         private static Vector3 Fuzz(Vector3 pos, Vector3 from, float share)
         {
             Vector3 d = pos - from; d.y = 0f;
@@ -798,6 +824,7 @@ namespace WildWasteland.Modules.NPC
             return OnGround(pos + along * dist * UnityEngine.Random.Range(-share, share) + side * dist * UnityEngine.Random.Range(-share, share), pos.y);
         }
 
+        /// <summary>Ground point under a position (rays on Default and Ground layers), else the position at the reference height.</summary>
         private static Vector3 OnGround(Vector3 p, float refY)
         {
             RaycastHit h;
@@ -805,6 +832,7 @@ namespace WildWasteland.Modules.NPC
             return new Vector3(p.x, refY, p.z);
         }
 
+        /// <summary>Velocity of an object from its Rigidbody or CharacterController (zero when neither).</summary>
         private static Vector3 VelocityOf(GameObject go)
         {
             var rb = go != null ? go.GetComponent<Rigidbody>() : null;
@@ -813,8 +841,7 @@ namespace WildWasteland.Modules.NPC
             return cc != null ? cc.velocity : Vector3.zero;
         }
 
-        // (1.4.10) a search that found nothing: the NPC gives up and tells its friends (same faction, humans, within AllClearRange) who are on
-        // the way to the same spot - or searching it - "there's nothing": they give up too and head back (never those fighting something they see)
+        /// <summary>(1.4.10) a search that found nothing: the NPC gives up and tells its friends (same faction, humans, within AllClearRange) who are on the way to the same spot - or searching it - "there's nothing": they give up too and head back (never those fighting something they see)</summary>
         private static void SearchedNothing(Agent a, string why)
         {
             var g = a.Ghost;
@@ -838,13 +865,14 @@ namespace WildWasteland.Modules.NPC
             if (told > 0 && WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: " + Name(a.Owner) + " found nothing at ghost #" + g.Id + ", tells " + told + " friend(s) to go back");
         }
 
-        // Idle: the search round is walked (or there was none and it looked around) - the search ends now, not when SearchSeconds run out
+        /// <summary>Idle: the search round is walked (or there was none and it looked around) - the search ends now, not when SearchSeconds run out</summary>
         internal static void EndSearch(GameObject owner, string why)
         {
             var a = Get(owner);
             if (a != null && a.State == State.Search) SearchedNothing(a, why);
         }
 
+        /// <summary>The agent gives up: ghost released, idle, target and sight build-up cleared; an enemy shout is news again.</summary>
         private static void GiveUp(Agent a, string why)
         {
             Release(a);
@@ -853,8 +881,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) Log(a, "gives up (" + why + "), idle");
         }
 
-        // An NPC takes a ghost of equal or higher rank than the one it has, or any ghost with newer news about the same subject (it went to
-        // check a shout about the player; the player now shoots elsewhere: that is where the player is). Never while it sees its target.
+        /// <summary>An NPC takes a ghost of equal or higher rank than the one it has, or any ghost with newer news about the same subject (it went to check a shout about the player; the player now shoots elsewhere: that is where the player is). Never while it sees its target.</summary>
         private static bool Assign(Agent a, Ghost g, Src prio, float now)
         {
             if (a.Deaf && prio >= Src.Engine && prio <= Src.Shout) return false;
@@ -882,9 +909,7 @@ namespace WildWasteland.Modules.NPC
             return true;
         }
 
-        // (1.1.0) flanking: a human going to check a spot more than FlankDistance away does not walk straight at it - it goes to a point
-        // FlankWidth m to one side first (the side alternates between NPCs, so two of them come around both sides), then to the spot.
-        // The Detection target meanwhile is a hidden object at that point (the brain / Idle walk to it like to a ghost). Trackers go straight.
+        /// <summary>(1.1.0) flanking: a human going to check a spot more than FlankDistance away does not walk straight at it - it goes to a point FlankWidth m to one side first (the side alternates between NPCs, so two of them come around both sides), then to the spot. The Detection target meanwhile is a hidden object at that point (the brain / Idle walk to it like to a ghost). Trackers go straight.</summary>
         private static void StartFlank(Agent a, Ghost g)
         {
             a.Flanking = false;
@@ -898,9 +923,10 @@ namespace WildWasteland.Modules.NPC
             a.FlankObj.transform.position = p; a.FlankPos = p; a.Flanking = true;
             if (WildWasteland.Core.Log.L2) Log(a, "flanks ghost #" + g.Id + " via a point " + NpcaiSettings.FlankWidth.Value.ToString("0") + " m to the " + (side.x * to.z - side.z * to.x > 0f ? "right" : "left"));
         }
+        /// <summary>Ends the flank detour (the ghost itself is next).</summary>
         private static void EndFlank(Agent a) { a.Flanking = false; }
 
-        // where the NPC is walking to right now: its flank point, else its ghost (Idle's ghost walk and the brain agree with Known())
+        /// <summary>where the NPC is walking to right now: its flank point, else its ghost (Idle's ghost walk and the brain agree with Known())</summary>
         internal static bool GoalOf(GameObject owner, out Vector3 goal)
         {
             var a = Get(owner); goal = Vector3.zero;
@@ -908,17 +934,17 @@ namespace WildWasteland.Modules.NPC
             goal = a.Flanking ? a.FlankPos : a.Ghost.Pos;
             return true;
         }
+        /// <summary>True while the NPC walks to its flank point.</summary>
         internal static bool IsFlanking(GameObject owner) { var a = Get(owner); return a != null && a.Flanking; }
 
-        // time allowed to reach a ghost before searching from wherever the NPC got to (unreachable spots, a cave with no way out)
+        /// <summary>time allowed to reach a ghost before searching from wherever the NPC got to (unreachable spots, a cave with no way out)</summary>
         private static void Budget(Agent a, Ghost g)
         {
             a.InvestigateUntil = Time.time + Mathf.Max(5f, NpcaiSettings.GhostTimeout.Value);
             a.InvestigateSince = Time.time;
         }
 
-        // the brain gets nowhere on the way: the NPC does NOT start searching (only arrival or a stale ghost, GhostTimeout, ends the walk) -
-        // the brain rests a moment and tries again
+        /// <summary>the brain gets nowhere on the way: the NPC does NOT start searching (only arrival or a stale ghost, GhostTimeout, ends the walk) - the brain rests a moment and tries again</summary>
         internal static bool CannotReach(GameObject owner)
         {
             var a = Get(owner);
@@ -927,11 +953,13 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
+        /// <summary>A deaf agent (interior population) drops a noise-ranked investigation it holds.</summary>
         internal static void ClearDeafInvestigation(Agent a)
         {
             if (!a.Deaf || a.Ghost == null || a.GhostPrio < Src.Engine || a.GhostPrio > Src.Shout || a.State != State.Investigate && a.State != State.Search) return;
             Release(a); a.State = State.Idle;
         }
+        /// <summary>Releases the agent's ghost (a ghost without holders dies; one left only to searchers is retired).</summary>
         private static void Release(Agent a)
         {
             a.Flanking = false;
@@ -943,8 +971,7 @@ namespace WildWasteland.Modules.NPC
             else RetireIfSearched(g);
         }
 
-        // nobody is on the way to it any more, only searchers are left: the ghost is retired - never handed out, merged into or relayed again,
-        // and it dies with its last searcher (as every ghost dies with its last holder)
+        /// <summary>nobody is on the way to it any more, only searchers are left: the ghost is retired - never handed out, merged into or relayed again, and it dies with its last searcher (as every ghost dies with its last holder)</summary>
         private static void RetireIfSearched(Ghost g)
         {
             if (g.Retired) return;
@@ -953,6 +980,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: ghost #" + g.Id + " searched by " + g.Holders.Count + ", retired");
         }
 
+        /// <summary>Finds a live ghost of the same rank from the same source or place within the merge window and moves it, else makes a new hidden ghost object.</summary>
         private static Ghost GetOrMake(Src src, Vector3 pos, GameObject source, string about, float mergeRadius, float mergeSeconds, float now)
         {
             foreach (var g in _ghosts)
@@ -976,6 +1004,7 @@ namespace WildWasteland.Modules.NPC
             return n;
         }
 
+        /// <summary>Removes a ghost: its holders go idle, its object is destroyed.</summary>
         private static void KillGhost(int i)
         {
             var g = _ghosts[i];
@@ -997,8 +1026,10 @@ namespace WildWasteland.Modules.NPC
         private sealed class ByDistance : IComparer<Agent>
         {
             internal static readonly ByDistance Instance = new ByDistance(); internal static Vector3 Pos;
+            /// <summary>Compares two agents by distance to the noise position.</summary>
             public int Compare(Agent x, Agent y) { return (x.T.position - Pos).sqrMagnitude.CompareTo((y.T.position - Pos).sqrMagnitude); }
         }
+        /// <summary>One noise event: the nearest GunshotResponders (plus everyone close) of the NPCs within the radius (storm-shrunk, peaceful factions and the tornado-deafened left out) get the shared ghost or a ghost of their own.</summary>
         private static void Noise(GameObject source, Vector3 pos, float radius, Src src, string about, Func<Agent, bool> filter, Func<Agent, Vector3> at, GameObject subject = null, Action<Agent> told1 = null)
         {
             if (radius <= 0f || !On) return;
@@ -1055,13 +1086,14 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2 && told > 0) NpcaiRuntime.Deep("Senses: " + src + " (" + about + ") within " + radius.ToString("0") + " m alerts " + told + (shared != null ? " -> ghost #" + shared.Id : ""));
         }
 
+        /// <summary>True for the player object or any of its children.</summary>
         private static bool IsPlayer(GameObject go)
         {
             if (go == null || _player == null) return false;
             return go == _player || go.transform.IsChildOf(_player.transform);
         }
 
-        // the event is about the player: the player made it, it is about the player, or an NPC made it while fighting / hunting the player
+        /// <summary>the event is about the player: the player made it, it is about the player, or an NPC made it while fighting / hunting the player</summary>
         private static bool PlayerRelated(GameObject source, GameObject subject)
         {
             FindPlayer();
@@ -1083,6 +1115,7 @@ namespace WildWasteland.Modules.NPC
 
         // Tracers: a gun fired (the player's or an NPC's), once per shot (pellets of one blast merge through the 1 s source window)
         internal static float LastPlayerShotAt = -100f;     // for the brain: a quiet player is reloading or hiding
+        /// <summary>A gun was fired (INpcApi.Shot): heard within the gun kind's (player) or NPC type's range as a ghost 2-4 m off the shooter.</summary>
         internal static void Shot(GameObject shooter, Vector3 pos, WeaponRanges.Kind kind, bool player)
         {
             if (player) LastPlayerShotAt = Time.time;
@@ -1095,6 +1128,7 @@ namespace WildWasteland.Modules.NPC
             Noise(shooter, OnGround(pos + new Vector3(off.x, 0f, off.y), pos.y), radius, Src.Gunshot, about, null, null, shooter);
         }
 
+        /// <summary>Hearing range of a player shot by weapon kind ([Senses] ShotRange*).</summary>
         private static float PlayerShotRange(WeaponRanges.Kind k)
         {
             switch (k)
@@ -1109,6 +1143,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         private static Dictionary<string, float> _npcShot; private static string _npcShotSrc;
+        /// <summary>Hearing range of an NPC's shot: its type in [Senses] NpcShotRanges, else by weapon kind.</summary>
         private static float NpcShotRange(GameObject shooter, WeaponRanges.Kind k)
         {
             string cfg = NpcaiSettings.NpcShotRanges.Value ?? "";
@@ -1133,6 +1168,7 @@ namespace WildWasteland.Modules.NPC
         // CreateObject.OnEnter: a spawned prefab named in [Senses] BlastPrefabs is a GUNSHOT-ranked noise within BlastRange at the blast.
         // Car explosions are not CreateObject spawns (Apocapatrol instantiates its blast itself) - they come only through AfterBlast.
         private static HashSet<string> _blastNames; private static string _blastSrc;
+        /// <summary>CreateObject.OnEnter postfix: structures for the nav and the cover watch, brains for spawned gunmen, and the [Senses] BlastPrefabs explosions as gunshot-ranked noise.</summary>
         public static void AfterCreateObject(CreateObject __instance)
         {
             if (!NpcaiRuntime.Running) return;
@@ -1168,7 +1204,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Senses: " + e); }
         }
 
-        // Tracers: a bullet hit a creature - it knows where that came from
+        /// <summary>Tracers: a bullet hit a creature - it knows where that came from</summary>
         internal static void Hurt(GameObject victim, GameObject attacker)
         {
             if (!On || victim == null || attacker == null) return;
@@ -1203,9 +1239,11 @@ namespace WildWasteland.Modules.NPC
 
         private static Vector3 _hornPos; private static float _hornEr2;
         private static readonly Func<Agent, bool> _beyondEngine = BeyondEngine;
+        /// <summary>Noise filter of the horn: only NPCs beyond the engine's range.</summary>
         private static bool BeyondEngine(Agent a) { return (a.T.position - _hornPos).sqrMagnitude > _hornEr2; }
         private static readonly Dictionary<int, string> _engineAbout = new Dictionary<int, string>();
         private static GameObject _engineRbCar; private static Rigidbody _engineRb;
+        /// <summary>Engine tick (every 0.5 s): the player's running engine and his horn are heard as ENGINE noise around the car.</summary>
         private static void Engine(float now)
         {
             var car = PlayerCar();
@@ -1232,6 +1270,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Engine hearing range by horsepower (read once per car from its child names), shrunk while idling.</summary>
         private static float EngineRadius(GameObject car, out string about)
         {
             float hp;
@@ -1261,6 +1300,7 @@ namespace WildWasteland.Modules.NPC
             return radius;
         }
 
+        /// <summary>The shared engine ghost moved with the car: holders now out of earshot stop following it and search where they stand.</summary>
         private static void ReleaseEngineHolders(GameObject car, Vector3 cpos, float radius, float now)
         {
             // the engine ghost is one shared ghost that moves with the car and is refreshed every tick: an NPC that drove out of earshot
@@ -1282,9 +1322,10 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>True while the car's engine runs (Core vehicle engine state).</summary>
         private static bool Apocapatrol_EngineRunning(GameObject car) { return Nwh.EngineRunning(car); }
 
-        // the player throws a held item (GrabItem FSM state Throw): the landing spot attracts NPCs within ThrowRange
+        /// <summary>the player throws a held item (GrabItem FSM state Throw): the landing spot attracts NPCs within ThrowRange</summary>
         private static void Thrown(float now, float dt)
         {
             if (_grabFsm == null)
@@ -1315,8 +1356,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- the Detection FSM ----------
-        // Harmony prefix on SensorGetDetections.DoAction: for our NPCs the result is what the NPC knows (its seen target, or its ghost),
-        // written to the action's own variable and announced with the state's own events.
+        /// <summary>Harmony prefix on SensorGetDetections.DoAction: for our NPCs the result is what the NPC knows (its seen target, or its ghost), written to the action's own variable and announced with the state's own events.</summary>
         public static bool BeforeGetDetections(SensorGetDetections __instance)
         {
             try
@@ -1338,7 +1378,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Senses: " + e); return true; }
         }
 
-        // the burst's line-of-sight check (Attack FSM "ranged" state): a target the NPC sees right now, never a ghost
+        /// <summary>the burst's line-of-sight check (Attack FSM "ranged" state): a target the NPC sees right now, never a ghost</summary>
         public static bool BeforeLosResult(SensorGetLineOfSightResult __instance)
         {
             try
@@ -1359,7 +1399,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Senses: " + e); return true; }
         }
 
-        // the target is in sight right now: seen within the last two looks and a clear line from the eyes to its head or body
+        /// <summary>the target is in sight right now: seen within the last two looks and a clear line from the eyes to its head or body</summary>
         private static bool SeesNow(Agent a)
         {
             if ((a.State != State.Combat && a.State != State.Hide) || a.Target == null || a.UnseenFor > 0.35f) return false;
@@ -1377,6 +1417,7 @@ namespace WildWasteland.Modules.NPC
             return a.Sees;
         }
 
+        /// <summary>What the Detection FSM is told the NPC detects: its combat target, its flank point or ghost while investigating / searching, else nothing.</summary>
         private static GameObject Known(Agent a)
         {
             if(a.CrewBoarding)return null;
@@ -1391,7 +1432,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // for the brain and Aim
+        /// <summary>for the brain and Aim</summary>
         internal static int KindOf(GameObject owner)
         {
             if (!On) return 0;
@@ -1399,7 +1440,9 @@ namespace WildWasteland.Modules.NPC
             if (a == null) return 0;
             switch (a.State) { case State.Combat: case State.Hide: return 1; case State.Investigate: return 2; case State.Search: return 3; default: return 0; }
         }
+        /// <summary>True while the NPC goes to or searches a ghost (not a real target).</summary>
         internal static bool IsGhostTarget(GameObject owner) { int k = KindOf(owner); return k == 2 || k == 3; }
+        /// <summary>The brain / Idle reached the NPC's goal: the end of a flank detour or the arrival at the ghost.</summary>
         internal static void ArrivedAt(GameObject owner)
         {
             var a = Get(owner);
@@ -1408,7 +1451,7 @@ namespace WildWasteland.Modules.NPC
             Arrived(a, Time.time);
         }
 
-        // (1.1.0) the brain took the NPC into cover / out of it: Hide keeps the target and ignores every ghost until the cover ends
+        /// <summary>(1.1.0) the brain took the NPC into cover / out of it: Hide keeps the target and ignores every ghost until the cover ends</summary>
         internal static void SetHiding(GameObject owner, bool hiding)
         {
             var a = Get(owner);
@@ -1435,7 +1478,7 @@ namespace WildWasteland.Modules.NPC
         // A postfix on Explode.Blast makes a car explosion a gunshot-ranked noise (ExplosionRange) at the wreck.
         private static readonly Dictionary<int, KeyValuePair<GameObject, float>> _handover = new Dictionary<int, KeyValuePair<GameObject, float>>();
 
-        // (WW) Core.Services.CrewBailedOut (raised by the Patrols module at the end of Patrol.BailOut; __result = the new on-foot NPC)
+        /// <summary>(WW) Core.Services.CrewBailedOut (raised by the Patrols module at the end of Patrol.BailOut; __result = the new on-foot NPC)</summary>
         internal static void AfterBailOut(GameObject car, GameObject pax, GameObject __result)
         {
             try
@@ -1460,7 +1503,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Senses: bail-out handover: " + e); }
         }
 
-        // (WW) Core.Services.VehicleExploded (raised by the Patrols module in Explode.Blast)
+        /// <summary>(WW) Core.Services.VehicleExploded (raised by the Patrols module in Explode.Blast)</summary>
         internal static void AfterBlast(GameObject car)
         {
             try
@@ -1471,7 +1514,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcaiRuntime.Error("Senses: explosion noise: " + e); }
         }
 
-        // tell an NPC (now, or the moment it registers) that it knows about target
+        /// <summary>tell an NPC (now, or the moment it registers) that it knows about target</summary>
         internal static void Inform(GameObject npc, GameObject target)
         {
             if (npc == null || target == null) return;
@@ -1480,6 +1523,7 @@ namespace WildWasteland.Modules.NPC
             if (a != null) Handover(a);
         }
 
+        /// <summary>Applies a bail-out / Inform handover: engage the target when seen, else a vision ghost where the crew last had it.</summary>
         private static void Handover(Agent a)
         {
             if(SimpleBandits.Has(a.Owner)){_handover.Remove(a.Owner.GetInstanceID());return;}
@@ -1498,13 +1542,16 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- registry ----------
+        /// <summary>The registered agent of an object (null when not registered).</summary>
         internal static Agent AgentFor(GameObject owner) { return Get(owner); }
+        /// <summary>Registered agent of an object or null (no registration attempt).</summary>
         private static Agent Get(GameObject owner)
         {
             Agent a;
             return owner != null && _agents.TryGetValue(owner.GetInstanceID(), out a) ? a : null;
         }
 
+        /// <summary>Registered agent of an object, registering it on first sight of its Detection FSM (unsuitable objects are remembered as ignored).</summary>
         private static Agent Of(GameObject owner)
         {
             if (owner == null) return null;
@@ -1517,6 +1564,7 @@ namespace WildWasteland.Modules.NPC
             Register(a);
             return a;
         }
+        /// <summary>Adds an agent to the registry, publishes NpcSpawned and applies pending handover / remember / crew orders.</summary>
         private static void Register(Agent a)
         {
             _agents[a.Owner.GetInstanceID()] = a;
@@ -1526,7 +1574,7 @@ namespace WildWasteland.Modules.NPC
             Recall(a);
             RecallCrewOrder(a);
         }
-        // (crew AI) Remember: registered now if its FSMs are up; never marked ignored (asked again when its Detection FSM first runs)
+        /// <summary>(crew AI) Remember: registered now if its FSMs are up; never marked ignored (asked again when its Detection FSM first runs)</summary>
         private static Agent TryRegister(GameObject owner)
         {
             if (!On || owner.transform.parent != null || _ignored.Contains(owner.GetInstanceID())) return null;
@@ -1535,6 +1583,7 @@ namespace WildWasteland.Modules.NPC
             return a;
         }
 
+        /// <summary>Builds an agent: Detection and Attack FSMs, enemy tags, faction relation, human / spider / tracker / sight group, head bone, vanilla sensors switched off, animal registrations.</summary>
         private static Agent Make(GameObject owner)
         {
             if (owner.transform.parent != null) return null;
@@ -1585,10 +1634,7 @@ namespace WildWasteland.Modules.NPC
             return a;
         }
 
-        // The game turns a faction against the player at run time: hitting a Coyote sends HitFriendly -> CheckFriendly -> FactionCoyotesEnemy,
-        // and every Coyote's PlayerIsEnemy FSM goes to state PlayerEnemy (and back to PlayerFriendly when the game makes peace). Our copy of the
-        // NPC's enemies follows that state (checked every second and when the NPC registers); the game's own sensors are off, so their
-        // tag lists can't be relied on.
+        /// <summary>The game turns a faction against the player at run time: hitting a Coyote sends HitFriendly -&gt; CheckFriendly -&gt; FactionCoyotesEnemy, and every Coyote's PlayerIsEnemy FSM goes to state PlayerEnemy (and back to PlayerFriendly when the game makes peace). Our copy of the NPC's enemies follows that state (checked every second and when the NPC registers); the game's own sensors are off, so their tag lists can't be relied on.</summary>
         private static void Relation(Agent a, bool log)
         {
             bool hostile;
@@ -1600,6 +1646,7 @@ namespace WildWasteland.Modules.NPC
             if (log) Log(a, hostile ? "turns hostile to the player" : "makes peace with the player");
         }
 
+        /// <summary>Switches the vanilla LOS / range sensors of an agent on or off.</summary>
         private static void Sensors(Agent a, bool on)
         {
             if (a.Sensors == null) return;
@@ -1607,15 +1654,18 @@ namespace WildWasteland.Modules.NPC
             a.SensorsOff = !on;
         }
         private static PlayMakerFSM _coyoteRelation;private static float _nextCoyoteRelation;
+        /// <summary>The game manager's FactionRelation_Coyotes FSM (looked up at most every 2 s until found).</summary>
         private static PlayMakerFSM CoyoteRelation()
         {
             if(_coyoteRelation==null&&Time.time>=_nextCoyoteRelation)
             {_nextCoyoteRelation=Time.time+2f;var manager=Core.GameRefs.GameManager;if(manager!=null)foreach(var f in manager.GetComponents<PlayMakerFSM>())if(f.FsmName=="FactionRelation_Coyotes"){_coyoteRelation=f;break;}}
             return _coyoteRelation;
         }
+        /// <summary>True when the Coyotes faction is hostile to the player.</summary>
         private static bool CoyoteHostile(){var f=CoyoteRelation();return f!=null&&f.Fsm.Initialized&&(f.ActiveStateName=="PlayerEnemy"||f.FsmVariables.FindFsmInt("OnOff")?.Value>0);}
 
         private static string[] _trackers; private static string _trackersSrc;
+        /// <summary>True when the prefab is a tracker ([Senses] Trackers name parts; the list is split once per value).</summary>
         private static bool IsTracker(string prefab)
         {
             string cfg = NpcaiSettings.Trackers.Value ?? "";
@@ -1624,13 +1674,14 @@ namespace WildWasteland.Modules.NPC
             return false;
         }
 
+        /// <summary>True when the faction tag counts as human for taunts ([Senses] HumanFactions).</summary>
         private static bool IsHuman(string tag)
         {
             foreach (var p in (NpcaiSettings.HumanFactions.Value ?? "").Split(',')) if (p.Trim() == tag) return true;
             return false;
         }
 
-        // the faction's enemies: the RangeSensor's tag filter (SignalFilter.AllowedTags), as the game has it per prefab
+        /// <summary>the faction's enemies: the RangeSensor's tag filter (SignalFilter.AllowedTags), as the game has it per prefab</summary>
         private static HashSet<string> HostileTags(GameObject owner, Behaviour[] behaviours)
         {
             var set = new HashSet<string>();
@@ -1666,6 +1717,7 @@ namespace WildWasteland.Modules.NPC
             return set;
         }
 
+        /// <summary>Finds the player (every 2 s while missing) and its head bone, and refreshes the player's car.</summary>
         private static void FindPlayer()
         {
             if (_player == null && Time.time >= _nextPlayerFind)
@@ -1679,7 +1731,7 @@ namespace WildWasteland.Modules.NPC
             _playerCar = PlayerCar();
         }
 
-        // the car the player drives: the Player's InCar FSM (state InCar, variable Car)
+        /// <summary>the car the player drives: the Player's InCar FSM (state InCar, variable Car)</summary>
         private static GameObject PlayerCar()
         {
             if (_player == null) return null;
@@ -1693,9 +1745,11 @@ namespace WildWasteland.Modules.NPC
             return _inCarVar != null ? _inCarVar.Value : null;
         }
 
+        /// <summary>Short display name for logs: "the player" or the prefab name.</summary>
         private static string Name(GameObject go) { return go == null ? "?" : (go == _player ? "the player" : Prefab(go.name)); }
+        /// <summary>Prefab name: the object name before "(".</summary>
         private static string Prefab(string n) { int c = n.IndexOf('('); return c > 0 ? n.Substring(0, c) : n; }
-        // the prefab name of an object, read once (GameObject.name is a native call + a new string every time)
+        /// <summary>the prefab name of an object, read once (GameObject.name is a native call + a new string every time)</summary>
         internal static string PrefabOf(GameObject go)
         {
             int id = go.GetInstanceID(); string n;
@@ -1706,12 +1760,13 @@ namespace WildWasteland.Modules.NPC
             return n;
         }
 
+        /// <summary>Number of registered agents.</summary>
         internal static int AgentCount { get { return _agents.Count; } }
+        /// <summary>Number of live ghosts.</summary>
         internal static int GhostCount { get { return _ghosts.Count; } }
         internal static int AlertCount { get { int n = 0; foreach (var kv in _agents) if (kv.Value.Owner != null && kv.Value.State != State.Idle) n++; return n; } }
 
-        // (WW) module shutdown: every NPC gets the game's own sensors and detection back. Detection targets that are our ghost / flank objects
-        // are cleared (the objects are destroyed); the vanilla sensors find the real target again on their next pulse.
+        /// <summary>(WW) module shutdown: every NPC gets the game's own sensors and detection back. Detection targets that are our ghost / flank objects are cleared (the objects are destroyed); the vanilla sensors find the real target again on their next pulse.</summary>
         internal static void Shutdown()
         {
             Persist.Shutdown();
@@ -1735,7 +1790,7 @@ namespace WildWasteland.Modules.NPC
             _handover.Clear(); _remember.Clear(); _crewOrders.Clear(); _thrown = null; _grabFsm = null; _grabState = null;
         }
 
-        // (WW) floating origin: ghost / flank objects live under the DontDestroyOnLoad root the game does not move; positions are scene space
+        /// <summary>(WW) floating origin: ghost / flank objects live under the DontDestroyOnLoad root the game does not move; positions are scene space</summary>
         internal static void Shift(Vector3 d)
         {
             foreach (var g in _ghosts) { g.Pos += d; if (g.Obj != null) g.Obj.transform.position = g.Pos; }
@@ -1747,7 +1802,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        // (WW) Core.SaveBus.StateChanged: the SaveLoadGame state changes the old Persist.Tick polled for itself (same reactions, same order)
+        /// <summary>(WW) Core.SaveBus.StateChanged: the SaveLoadGame state changes the old Persist.Tick polled for itself (same reactions, same order)</summary>
         internal static void OnSaveLoadState(string previous, string current)
         {
             if (!NpcaiRuntime.Running || current == null) return;
@@ -1763,11 +1818,15 @@ namespace WildWasteland.Modules.NPC
             private static string _loadSlot; private static bool _restoring, _loadPending;
             private static Coroutine _co;
             private static int _gen;        // bumped by every reset / clear / new load: a running Restore sees it and stops
+            /// <summary>True while a load's senses restore is matching saved NPCs.</summary>
             internal static bool Restoring { get { return _restoring; } }
 
+            /// <summary>Scene load: forgets the pending load and cancels a running restore.</summary>
             internal static void ResetForScene() { _loadSlot = null; _restoring = false; _loadPending = false; _gen++; }
+            /// <summary>Module stop: cancels a running restore coroutine.</summary>
             internal static void Shutdown() { _gen++; _restoring = false; _loadPending = false; if (_co != null) { Core.Scheduler.StopCoroutine(_co); _co = null; } }
 
+            /// <summary>SaveLoadGame state change: SaveGame writes the sidecar, LoadGame arms the restore, setSeed clears, the first isPlay after a load starts the restore.</summary>
             internal static void OnState(string state)
             {
                 try
@@ -1787,6 +1846,7 @@ namespace WildWasteland.Modules.NPC
                 catch (Exception e) { Core.SaveBus.ReportFailure(NpcaiRuntime.Module, "NPC senses persistence failed: " + e.Message); NpcaiRuntime.Error("Senses persistence: " + e); }
             }
 
+            /// <summary>Current save slot file name (ES3 default path, else the SaveLoadGame SaveFile variable).</summary>
             private static string Slot()
             {
                 try { string p = ES3Settings.defaultSettings.path; if (!string.IsNullOrEmpty(p)) return Path.GetFileName(p); } catch (Exception) { }
@@ -1797,6 +1857,7 @@ namespace WildWasteland.Modules.NPC
 
             // the save file names Saves writes or the game's own slots (same rule as Saves' SaveRuntime.IsSaveFile / SaveBus.Slot)
             private static readonly System.Text.RegularExpressions.Regex SlotFile = new System.Text.RegularExpressions.Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            /// <summary>Sidecar path config/WildWasteland/NPCAI/Saves/&lt;slot&gt;.senses.txt for a valid save file name (false otherwise).</summary>
             private static bool TryPath(string slot, out string path)
             {
                 path = null;
@@ -1808,6 +1869,7 @@ namespace WildWasteland.Modules.NPC
                 return true;
             }
 
+            /// <summary>New world: every agent's alert state and every ghost are dropped.</summary>
             private static void Clear()
             {
                 _gen++;
@@ -1815,6 +1877,7 @@ namespace WildWasteland.Modules.NPC
                 for (int i = _ghosts.Count - 1; i >= 0; i--) KillGhost(i);
             }
 
+            /// <summary>Writes the senses sidecar of a slot (v1: ghosts and alert agents with targets, ghosts and search time) through an atomic replace.</summary>
             private static void Save(string slot)
             {
                 string path;
@@ -1843,6 +1906,7 @@ namespace WildWasteland.Modules.NPC
                 if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: saved " + _ghosts.Count + " ghost(s), " + n + " alert NPC(s) for " + Path.GetFileName(slot));
             }
 
+            /// <summary>Restores the senses sidecar after a load: recreates the ghosts, then matches saved agents by name for up to 20 s as the NPCs register.</summary>
             private static IEnumerator Restore(string slot)
             {
                 _restoring = true;

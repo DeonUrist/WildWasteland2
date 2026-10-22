@@ -40,9 +40,7 @@ namespace WildWasteland.Modules.NPC
             a.State=State.Combat;a.Target=target;a.UnseenFor=0f;a.LastSeen=target.transform.position;
             if(a.DetectedVar!=null)a.DetectedVar.Value=target;
         }
-        // (crew AI) a convoy crew member on foot and the player: noticed as any NPC notices (sight in its cone over NoticeSeconds..NoticeFar,
-        // his shots and hits through the memory), kept while seen (tracked outside the cone) or while it remembers fighting him (his real
-        // position), dropped LoseSeconds after the last sight once that memory is over -> idle (no ghost, no search)
+        /// <summary>(crew AI) a convoy crew member on foot and the player: noticed as any NPC notices (sight in its cone over NoticeSeconds..NoticeFar, his shots and hits through the memory), kept while seen (tracked outside the cone) or while it remembers fighting him (his real position), dropped LoseSeconds after the last sight once that memory is over -&gt; idle (no ghost, no search)</summary>
         private static GameObject SimplePlayer(Agent a,float now,float interval)
         {
             var p=_player;
@@ -90,10 +88,7 @@ namespace WildWasteland.Modules.NPC
     }
     internal static partial class Brain
     {
-        // (crew AI) a convoy crew member on foot: holds and shoots inside 70 % of its gun's range with a clear line, otherwise chases with the
-        // brain's own walk (MoveToward: the baked map's route out of caves / camps with its leg gate, the feelers, progress / blocked checks,
-        // back-ups, rests and hops). No cover, ghosts or engine checks. Chasing it thinks at the brain's rate (same per-frame cap and phase);
-        // holding it re-checks every 0.6 s (x TickScale) on its own phase, as before.
+        /// <summary>(crew AI) a convoy crew member on foot: holds and shoots inside 70 % of its gun's range with a clear line, otherwise chases with the brain's own walk (MoveToward: the baked map's route out of caves / camps with its leg gate, the feelers, progress / blocked checks, back-ups, rests and hops). No cover, ghosts or engine checks. Chasing it thinks at the brain's rate (same per-frame cap and phase); holding it re-checks every 0.6 s (x TickScale) on its own phase, as before.</summary>
         private static void SimpleThink(Npc n,float now)
         {
             var target=n.Target.Value;if(target==null){if(n.Mode!=Mode.Off)SetMode(n,Mode.Off,"no target");return;}

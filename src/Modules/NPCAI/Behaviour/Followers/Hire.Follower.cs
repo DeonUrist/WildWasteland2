@@ -18,9 +18,7 @@ namespace WildWasteland.Modules.Quests
 
         static float settleUntil;
 
-        // After the car: Apocapatrol's crew code switches off his walking AI (Movement, Rotate, Unstuck...) and may do it once more
-        // as he gets out. Without Movement he cannot follow, and Unstuck makes him hop on the spot. For a couple of seconds after
-        // getting out, everything but the combat FSMs (which Detection runs) is put back the way it was when he was hired.
+        /// <summary>After the car: Apocapatrol's crew code switches off his walking AI (Movement, Rotate, Unstuck...) and may do it once more as he gets out. Without Movement he cannot follow, and Unstuck makes him hop on the spot. For a couple of seconds after getting out, everything but the combat FSMs (which Detection runs) is put back the way it was when he was hired.</summary>
         static void WakeBrain(bool log)
         {
             if (npc == null) return;
@@ -48,6 +46,7 @@ namespace WildWasteland.Modules.Quests
         // and a player target is cleared (on finding him again, and every couple of seconds after that, quickly for the first 20 s).
         static float nextCalm, calmFast;
 
+        /// <summary>After a load the follower may come back hostile or targeting the player: the hostility switch and a player target are cleared (often for 20 s, then every couple of seconds).</summary>
         static void Calm(Transform pl, bool log)
         {
             if (npc == null) return;
@@ -73,6 +72,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { NpcaiRuntime.ErrorOnce("HireCalm", e); }
         }
 
+        /// <summary>Lets the follower go: running stops, the brain takes him back, his own AI is restored.</summary>
         static void ReleaseNpc()
         {
             if (npc == null) return;
@@ -85,8 +85,7 @@ namespace WildWasteland.Modules.Quests
             RestoreBrain();
         }
 
-        // Put his own brain back the way it was when he was hired: the car, Apocapatrol's gunner and the target the mod fed him
-        // can leave Detection or other FSMs switched off, and then he just stands there after being let go.
+        /// <summary>Put his own brain back the way it was when he was hired: the car, Apocapatrol's gunner and the target the mod fed him can leave Detection or other FSMs switched off, and then he just stands there after being let go.</summary>
         static void RestoreBrain()
         {
             if (npc == null) return;
@@ -122,7 +121,7 @@ namespace WildWasteland.Modules.Quests
             fsmSnap.Clear();
         }
 
-        // the loaded NPC with this object name that is closest to the player (names can repeat for NPCs the game did not number)
+        /// <summary>the loaded NPC with this object name that is closest to the player (names can repeat for NPCs the game did not number)</summary>
         static Transform NearestUncached(string name, Vector3 from)
         {
             Transform best = null;
@@ -142,6 +141,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // ---- the player's health: something hurt them --------------------------------------------------
+        /// <summary>Watches the player's health: a drop with the attacker in view makes the follower answer it.</summary>
         static void WatchPlayerHealth(Transform pl)
         {
             if (playerHealthVar == null)
@@ -164,6 +164,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // ---- fighting ------------------------------------------------------------------------------------------
+        /// <summary>True for a living NPC (its Health FSM in "health").</summary>
         static bool Alive(GameObject go)
         {
             if (go == null) return false;
@@ -171,7 +172,7 @@ namespace WildWasteland.Modules.Quests
             return h == null || h.ActiveStateName == "health";
         }
 
-        // an enemy of the player: the game's own switch says so, or it is a creature with no such switch
+        /// <summary>an enemy of the player: the game's own switch says so, or it is a creature with no such switch</summary>
         static bool IsCritter(GameObject go)
         {
             string n = Game.BaseName(go.name);
@@ -191,8 +192,7 @@ namespace WildWasteland.Modules.Quests
 
         static string lastSnd, lastDr; static float selfShotAt = -10f, lastRealShot = -10f;
 
-        // One real shot of his own: the gunshot (Sound2 starting to play) or a hit/shot state of his Damage Ranged FSM.
-        // Both usually come with the same shot, so signals closer than 40 ms count once. The mod's own shots are not counted here.
+        /// <summary>One real shot of his own: the gunshot (Sound2 starting to play) or a hit/shot state of his Damage Ranged FSM. Both usually come with the same shot, so signals closer than 40 ms count once. The mod's own shots are not counted here.</summary>
         static bool RealShotFired()
         {
             bool fired = false;
@@ -212,8 +212,7 @@ namespace WildWasteland.Modules.Quests
             return fired;
         }
 
-        // His own shooting on foot counts against the same magazine; while he reloads his Attack FSM is held off,
-        // and given back (if Detection still sees an enemy) when the reload is done.
+        /// <summary>His own shooting on foot counts against the same magazine; while he reloads his Attack FSM is held off, and given back (if Detection still sees an enemy) when the reload is done.</summary>
         static void FootMagazine(float now)
         {
             PlayDueSounds();
@@ -250,6 +249,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { NpcaiRuntime.ErrorOnce("HireFootMag", e); }
         }
 
+        /// <summary>On-foot shooting watch: the magazine and the decision to keep shooting.</summary>
         static void FootWatch(float now)
         {
             FootMagazine(now);
@@ -280,6 +280,7 @@ namespace WildWasteland.Modules.Quests
 
         static bool footShooting, footSetup; static float footNextShot, footIdleAt; static string footShootAnim;
 
+        /// <summary>Shoots at the current target on foot (the follower's own Attack FSM aimed and fired, magazine counted).</summary>
         static void FootShoot(float now)
         {
             if (!footShooting) { footShooting = true; if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + " shoots at " + target.name + " on foot."); }
@@ -312,6 +313,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { NpcaiRuntime.ErrorOnce("HireFootShoot", e); }
         }
 
+        /// <summary>Ends the on-foot shooting (Attack FSM back to its idle state).</summary>
         static void EndFootShot()
         {
             if (!footShooting) return;
@@ -321,9 +323,10 @@ namespace WildWasteland.Modules.Quests
             if (flashObjs != null) foreach (GameObject g in flashObjs) if (g != null) g.SetActive(false);
         }
 
-        // nothing solid between his chest and the target (the target's own car does not count)
+        /// <summary>nothing solid between his chest and the target (the target's own car does not count)</summary>
         static bool ClearShot() { return ClearShot(target); }
 
+        /// <summary>True when the follower has a clear shot at the target (or the target hurt the player from behind cover a moment ago).</summary>
         static bool ClearShot(GameObject target)
         {
             if (target != null && target == coverTarget && Time.time < coverUntil) return true;      // it hurt you from behind cover: shoot anyway
@@ -350,6 +353,7 @@ namespace WildWasteland.Modules.Quests
             return true;
         }
 
+        /// <summary>True when the object's PlayerIsEnemy FSM says it is hostile to the player.</summary>
         static bool Hostile(GameObject go)
         {
             PlayMakerFSM[] fsms = NpcWorld.Fsms(go);
@@ -358,15 +362,17 @@ namespace WildWasteland.Modules.Quests
             return true;
         }
 
+        /// <summary>Tells the follower's senses where an enemy is (INpcApi.Inform).</summary>
         static void Inform(GameObject enemy)
         {
-            if (npc == null || enemy == null || Services.Npc == null) return;
-            Services.Npc.Inform(npc, enemy); target = enemy; lastInform = Time.time; engagedUntil = Time.time + 25f;
+            if (npc == null || enemy == null || ModApi.Get<INpcApi>() == null) return;
+            ModApi.Get<INpcApi>().Inform(npc, enemy); target = enemy; lastInform = Time.time; engagedUntil = Time.time + 25f;
         }
 
         // Sends the follower after whatever hurt you (the closest living enemy near you) and keeps it on a target while one is close.
         static float hiddenSince = -1f, coverUntil; static GameObject coverTarget;
 
+        /// <summary>Picks the follower's target: hostiles near the player that attack him or are in the follower's view, nearest first, with a short engagement memory.</summary>
         static void Threats(Transform pl, float dist)
         {
             float now = Time.time;
@@ -410,7 +416,7 @@ namespace WildWasteland.Modules.Quests
             if (best != null && best != target) Inform(best);
         }
 
-        // NPCAI's idle behaviour sends NPCs home; for the follower it is switched off (best effort, through NPCAI's own table)
+        /// <summary>NPCAI's idle behaviour sends NPCs home; for the follower it is switched off (best effort, through NPCAI's own table)</summary>
         static void ExcludeFromIdle()
         {
             if (Time.unscaledTime < nextExclude) return;
@@ -418,9 +424,11 @@ namespace WildWasteland.Modules.Quests
             SetExcluded(true);
         }
 
-        static void SetExcluded(bool value) { if (Services.Npc != null) Services.Npc.SetFollowerDriven(npc, value); }
+        /// <summary>Hands the follower's movement to the follower driver (INpcApi.SetFollowerDriven) or back to the brain.</summary>
+        static void SetExcluded(bool value) { if (ModApi.Get<INpcApi>() != null) ModApi.Get<INpcApi>().SetFollowerDriven(npc, value); }
 
         // ---- walking after you -----------------------------------------------------------------------------------
+        /// <summary>Follows the player: run when far, walk when near, stop at the follow distance, catch up / rescue when stuck or lost.</summary>
         static void Follow(Transform pl, float dist, float now)
         {
             if (moveFsm == null) { moveFsm = FindFsm(npc, "Movement"); if (moveFsm == null) return; }
@@ -449,7 +457,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
-        // far behind for a few seconds: pop back next to the player
+        /// <summary>far behind for a few seconds: pop back next to the player</summary>
         static void CatchUp(Transform pl, float dist, float now)
         {
             float limit = teleportDist.Value;
@@ -476,7 +484,7 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
-        // a free spot on the ground a few metres from the player (not on the car, not inside anything)
+        /// <summary>a free spot on the ground a few metres from the player (not on the car, not inside anything)</summary>
         static Vector3 FindExit(Transform pl, GameObject car)
         {
             int myLayer = npc != null ? npc.layer : 0;
@@ -511,8 +519,7 @@ namespace WildWasteland.Modules.Quests
             return pl.position + Vector3.up * 0.3f;
         }
 
-        // the NPC's origin is not at its feet: lift it until its lowest solid collider is just above the ground
-        // (a body that starts inside a terrain falls straight through it)
+        /// <summary>the NPC's origin is not at its feet: lift it until its lowest solid collider is just above the ground (a body that starts inside a terrain falls straight through it)</summary>
         static void LiftAbove(float groundY)
         {
             if (npc == null) return;
@@ -526,7 +533,7 @@ namespace WildWasteland.Modules.Quests
             Physics.SyncTransforms();
         }
 
-        // fell through the ground (or off the world): back next to the player
+        /// <summary>fell through the ground (or off the world): back next to the player</summary>
         static void RescueIfLost(Transform pl)
         {
             if (npc.transform.position.y > pl.position.y - 40f) return;
@@ -547,6 +554,7 @@ namespace WildWasteland.Modules.Quests
             TeleportNear(pl);
         }
 
+        /// <summary>Moves the follower to a free exit spot next to the player.</summary>
         static void TeleportNear(Transform pl)
         {
             Vector3 spot = FindExit(pl, null);
@@ -556,6 +564,7 @@ namespace WildWasteland.Modules.Quests
             if (rb != null && !rb.isKinematic) { rb.velocity = Vector3.zero; rb.angularVelocity = Vector3.zero; }
         }
 
+        /// <summary>True when the NPC has a ranged attack (a ranged raycast object or a ranged Attack FSM state).</summary>
         static bool RangedUncached(GameObject go)
         {
             foreach (PlayMakerFSM f in NpcWorld.Fsms(go))
@@ -564,6 +573,7 @@ namespace WildWasteland.Modules.Quests
             return NamedRanged(go);
         }
 
+        /// <summary>True when the NPC's base name is in the ranged list ([Quests / Hire] ranged names).</summary>
         static bool NamedRanged(GameObject go)
         {
             string n = Game.BaseName(go.name);

@@ -18,9 +18,7 @@ namespace WildWasteland.Modules.Quests
 
         static float pendingUntil, nextPending;
 
-        // Called whenever the quest book is cleared (new game, or a save being loaded): forgets the walkers and everything
-        // remembered about the world that was left, and gives the game a few seconds to bring its saved NPCs back before
-        // anything is re-spawned.
+        /// <summary>Called whenever the quest book is cleared (new game, or a save being loaded): forgets the walkers and everything remembered about the world that was left, and gives the game a few seconds to bring its saved NPCs back before anything is re-spawned.</summary>
         public static void ClearWalks()
         {
             walkers.Clear();
@@ -39,7 +37,7 @@ namespace WildWasteland.Modules.Quests
 
         static float settleUntil;
 
-        // lines for the save: object name and origin-relative target of everybody still walking
+        /// <summary>lines for the save: object name and origin-relative target of everybody still walking</summary>
         public static List<SavedWalk> ActiveWalks()   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
         {
             var res = new List<SavedWalk>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
@@ -58,7 +56,7 @@ namespace WildWasteland.Modules.Quests
             nextPending = 0f;
         }
 
-        // The game recreates saved NPCs a little after loading; pick the walking ones up by name when they appear.
+        /// <summary>The game recreates saved NPCs a little after loading; pick the walking ones up by name when they appear.</summary>
         static void ResolvePending()
         {
             if (pending.Count == 0 || Time.unscaledTime < nextPending) return;
@@ -134,8 +132,7 @@ namespace WildWasteland.Modules.Quests
             return made;
         }
 
-        // A real NPC has a Movement FSM. Some assets share an NPC's name but are only the model (no FSMs, no animator
-        // state), which stands in a T-pose and never moves, so those are never used.
+        /// <summary>A real NPC has a Movement FSM. Some assets share an NPC's name but are only the model (no FSMs, no animator state), which stands in a T-pose and never moves, so those are never used.</summary>
         static bool Usable(GameObject go)
         {
             PlayMakerFSM[] fsms = NpcWorld.Fsms(go);
@@ -163,7 +160,7 @@ namespace WildWasteland.Modules.Quests
         // a name that could not be found is not looked for again (a full scan of every object) for a while
         static readonly Dictionary<string, float> prefabMissUntil = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
 
-        // The prefab asset for a name, or (fallback) a living object with that name to copy.
+        /// <summary>The prefab asset for a name, or (fallback) a living object with that name to copy.</summary>
         static GameObject FindPrefab(string name)
         {
             GameObject cached;
@@ -232,7 +229,7 @@ namespace WildWasteland.Modules.Quests
             return solidMask;
         }
 
-        // is something solid (not a slope) within dist metres in direction dir, at knee or chest height?
+        /// <summary>is something solid (not a slope) within dist metres in direction dir, at knee or chest height?</summary>
         static bool Blocked(Transform t, Vector3 dir, float dist)
         {
             for (int h = 0; h < 2; h++)
@@ -247,7 +244,7 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
-        // the free heading closest to `want` (turning up to 140 degrees either way), or zero when every way is blocked
+        /// <summary>the free heading closest to `want` (turning up to 140 degrees either way), or zero when every way is blocked</summary>
         internal static Vector3 Steer(Transform t, Vector3 want, float look)
         {
             float[] turns = { 0f, 30f, -30f, 60f, -60f, 90f, -90f, 125f, -125f };
@@ -259,13 +256,13 @@ namespace WildWasteland.Modules.Quests
             return Vector3.zero;
         }
 
-        // is there room to stand at this ground point (nothing solid where a person would be)?
+        /// <summary>is there room to stand at this ground point (nothing solid where a person would be)?</summary>
         internal static bool RoomAt(Vector3 ground)
         {
             return !Physics.CheckCapsule(ground + Vector3.up * 0.5f, ground + Vector3.up * 1.6f, 0.4f, SolidMask(), QueryTriggerInteraction.Ignore);
         }
 
-        // every frame
+        /// <summary>every frame</summary>
         public static void Update()
         {
             ResolvePending();
