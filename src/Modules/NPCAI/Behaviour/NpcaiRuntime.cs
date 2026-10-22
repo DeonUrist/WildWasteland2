@@ -29,5 +29,9 @@ namespace WildWasteland.Modules.NPC
 
         /// <summary>Error owned by NPCAI (always written, rate-limited by Core).</summary>
         internal static void Error(string message, System.Exception e = null) { Log.Error(Module, message, e); }
+
+        static readonly System.Collections.Generic.HashSet<string> _once = new System.Collections.Generic.HashSet<string>();
+        /// <summary>Error logged once per key for the session (ex Quests Plugin.LogOnce in the follower code).</summary>
+        internal static void ErrorOnce(string key, System.Exception e) { if (_once.Add(key)) Log.Error(Module, key + ": " + e); }
     }
 }

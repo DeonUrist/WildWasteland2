@@ -1501,7 +1501,7 @@ namespace WildWasteland.Modules.NPC
                         }
                     }
             }
-            catch (Exception e) { NpcaiRuntime.Deep("Brain: no aim pose for " + owner.name + ": " + e.Message); }
+            catch (Exception e) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Brain: no aim pose for " + owner.name + ": " + e.Message); }
         
         }
 

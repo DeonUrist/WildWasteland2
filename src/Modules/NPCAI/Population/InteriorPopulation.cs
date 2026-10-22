@@ -188,7 +188,7 @@ namespace WildWasteland.Modules.Towns
                     if (f.ActiveStateName != "wait" && f.ActiveStateName != "trigger") continue;
                     if (Time.unscaledTime - group.StartedAt < 2) continue;
                     if (group.Attempts >= 2)
-                    { f.enabled = false; Pending.RemoveAt(at); Log.Warn("[Towns] stopped stalled interior spawn group " + f.gameObject.name + "; existing actors retained"); return true; }
+                    { f.enabled = false; Pending.RemoveAt(at); NpcaiRuntime.Warn("stopped stalled interior spawn group " + f.gameObject.name + "; existing actors retained"); return true; }
                     group.Started = false;
                 }
                 if (!f.Fsm.Initialized || f.ActiveStateName != "wait" && f.ActiveStateName != "trigger") continue;
@@ -208,7 +208,7 @@ namespace WildWasteland.Modules.Towns
                 // Run the authored random roll and its actual trigger transition, not a guessed spawn count/state.
                 f.Fsm.SetState("trigger"); f.Fsm.Event(trigger.sendEvent);
                 _spawnAfter = Time.unscaledTime + .15f;
-                Log.Always("[Towns] location population queued on arrival: " + f.gameObject.name + "; actors spaced by 0.15 s between world-build slices, native sequence retained.");
+                if (Core.Log.L1) NpcaiRuntime.Main("location population queued on arrival: " + f.gameObject.name + "; actors spaced by 0.15 s between world-build slices, native sequence retained.");
                 return true;
             }
             return false;
@@ -267,7 +267,7 @@ namespace WildWasteland.Modules.Towns
                 Senses.ClearDeafInvestigation(member.Agent);
             }
             if ((previous >= 3) != (_near >= 3) && Names.Count > 0)
-                Log.Always("[Towns] interior hearing: " + (_near >= 3 ? "3+ enemies within 50 m; sounds ignored" : _near + " enemies within 50 m; nearby hearing enabled"));
+                if (Core.Log.L1) NpcaiRuntime.Main("interior hearing: " + (_near >= 3 ? "3+ enemies within 50 m; sounds ignored" : _near + " enemies within 50 m; nearby hearing enabled"));
         }
         internal static void Clear()
         {

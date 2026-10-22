@@ -216,14 +216,14 @@ namespace WildWasteland.Modules.NPC
                 _pending.RemoveAt(i);
                 Nest nest = null;
                 foreach (var x in _nests) if (x.Poi == poi) { nest = x; break; }
-                if (nest == null) { nest = Make(poi); NpcaiRuntime.Deep("Nests: spiders at " + poi.name + " (" + Flat(poi.position - pp).ToString("0") + " m away) - a nest will be built there"); }
+                if (nest == null) { nest = Make(poi); if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Nests: spiders at " + poi.name + " (" + Flat(poi.position - pp).ToString("0") + " m away) - a nest will be built there"); }
                 if (!nest.Spiders.Contains(a)) nest.Spiders.Add(a);
             }
             if (_pending.Count > 0 && WildWasteland.Core.Log.L2 && now >= _nextStatus)
             {
                 _nextStatus = now + 30f;
                 var a0 = _pending[0];
-                NpcaiRuntime.Deep("Nests: " + _pending.Count + " spider(s) not at any place (first " + (a0.Owner != null ? a0.Owner.name : "?") + "), " + _pois.Count + " places known" + (_mapMagic == null ? ", MapMagic not found" : ""));
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Nests: " + _pending.Count + " spider(s) not at any place (first " + (a0.Owner != null ? a0.Owner.name : "?") + "), " + _pois.Count + " places known" + (_mapMagic == null ? ", MapMagic not found" : ""));
             }
         }
 
@@ -331,10 +331,10 @@ namespace WildWasteland.Modules.NPC
                 // the touch check and the seating reach every web of the nest (a cave's webs may lie farther than its spiders' spread)
                 foreach (var w in n.Hanging) n.Radius = Mathf.Max(n.Radius, Flat(w.Center - n.C) + w.R + 2f);
                 foreach (var w in n.Ground) n.Radius = Mathf.Max(n.Radius, Flat(w.Center - n.C) + w.R + 2f);
-                NpcaiRuntime.Deep("Nests: " + n.Name + " is a spider nest: " + n.Hanging.Count + " hanging + " + n.Ground.Count + " ground webs, " + n.Spiders.Count + " spider(s), built in " + n.BuildMs.ToString("0.0") + " ms over " + n.Frames + " frames (at most " + n.MaxFrameMs.ToString("0.00") + " ms in one)");
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Nests: " + n.Name + " is a spider nest: " + n.Hanging.Count + " hanging + " + n.Ground.Count + " ground webs, " + n.Spiders.Count + " spider(s), built in " + n.BuildMs.ToString("0.0") + " ms over " + n.Frames + " frames (at most " + n.MaxFrameMs.ToString("0.00") + " ms in one)");
                 SeatAll(n);
                 PublishBuilt(n);
-                NpcaiRuntime.Deep("Nests: " + n.Name + ": " + n.Sitters.Count + " big spider(s) sit in its webs" + (n.SpiderSpots ? " (webs placed around the spiders' own spots)" : ""));
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Nests: " + n.Name + ": " + n.Sitters.Count + " big spider(s) sit in its webs" + (n.SpiderSpots ? " (webs placed around the spiders' own spots)" : ""));
             }
         }
 
@@ -619,7 +619,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 for (int i = n.Sitters.Count - 1; i >= 0; i--) { Drop(n.Sitters[i], player); n.Sitters.RemoveAt(i); }
                 PublishTouched(n, hit.Center, player);
-                NpcaiRuntime.Deep("Nests: you touched a " + (hit.Orb ? "hanging" : "ground") + " web at " + n.Name + " - " + c + " spider(s) come at you");
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Nests: you touched a " + (hit.Orb ? "hanging" : "ground") + " web at " + n.Name + " - " + c + " spider(s) come at you");
             }
         }
 

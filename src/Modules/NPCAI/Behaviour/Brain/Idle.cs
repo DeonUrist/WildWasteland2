@@ -212,7 +212,7 @@ namespace WildWasteland.Modules.NPC
         private static void SetHome(Ctl c, Spot s)
         {
             c.Home = FloorUnder(s.T.position); c.HasHome = true; c.SpotId = s.T.GetInstanceID(); _claimed.Add(c.SpotId);
-            Log(c, "home at " + s.T.parent.name + "/" + s.T.name);
+            if (WildWasteland.Core.Log.L2) Log(c, "home at " + s.T.parent.name + "/" + s.T.name);
         }
 
         // ---------- per frame ----------
@@ -278,7 +278,7 @@ namespace WildWasteland.Modules.NPC
                     {
                         if (c.Leg != Leg.None || c.Moving || c.Turning) Stop(c, false);
                         c.Inv = true; c.InvGhost = gh.Id; c.InvFails = 0; c.WaitUntil = 0f;
-                        Log(c, "walks to ghost #" + gh.Id + " (" + Flat(a.T.position - gh.Pos).ToString("0") + " m)");
+                        if (WildWasteland.Core.Log.L2) Log(c, "walks to ghost #" + gh.Id + " (" + Flat(a.T.position - gh.Pos).ToString("0") + " m)");
                     }
                     else if (c.InvGhost != gh.Id) { c.InvGhost = gh.Id; c.InvFails = 0; c.BestLeft = c.BestStraight = float.MaxValue; c.ProgressAt = now; }   // news: a new spot
                     c.BusyAt = now; c.LastWasSearch = false; c.Fresh = false; c.Tries = 0; c.PendingBack = false; c.AtHome = false;
@@ -413,7 +413,7 @@ namespace WildWasteland.Modules.NPC
             if (c.Leg != Leg.None || c.Turning) Stop(c, false);     // a camp leg left over
             if (now < c.WaitUntil) return;
             float left = Flat(pos - ord.Point);
-            if (left <= ord.Radius) { ord.State = 2; c.Tries = 0; Log(c, "is there (travel, " + left.ToString("0.0") + " m)"); return; }
+            if (left <= ord.Radius) { ord.State = 2; c.Tries = 0; if (WildWasteland.Core.Log.L2) Log(c, "is there (travel, " + left.ToString("0.0") + " m)"); return; }
             c.Ord = ord;
             float runBeyond = Mathf.Max(0f, NpcaiSettings.TravelRunBeyond.Value);
             StartLeg(c, Leg.Travel, ord.Point, now, left > runBeyond ? 5f : 2.5f);
@@ -463,17 +463,17 @@ namespace WildWasteland.Modules.NPC
                 if (r < 0)       // home's map not baked yet (or home is off the map: a platform high above the camp floor)
                 {
                     c.PointsState = -1; c.NextPoints = now + 10f;
-                    if (++c.PointsTries >= 30) { c.PointsState = 1; c.Points.Clear(); c.DroppedUntil = new float[0]; Log(c, "no camp map at its home - stands"); }
+                    if (++c.PointsTries >= 30) { c.PointsState = 1; c.Points.Clear(); c.DroppedUntil = new float[0]; if (WildWasteland.Core.Log.L2) Log(c, "no camp map at its home - stands"); }
                     return;
                 }
                 c.PointsState = 1; c.DroppedUntil = new float[c.Points.Count];
-                Log(c, r + " patrol point(s)" + (r == 0 ? " - stands" : ""));
+                if (WildWasteland.Core.Log.L2) Log(c, r + " patrol point(s)" + (r == 0 ? " - stands" : ""));
             }
             if (c.PointsState != 1 || c.Points.Count == 0) return;
             int pick = -1, tries = 0;
             while (tries++ < 6) { int i = UnityEngine.Random.Range(0, c.Points.Count); if (now >= c.DroppedUntil[i]) { pick = i; break; } }
             if (pick < 0) { c.WaitUntil = now + 10f; return; }
-            if (!Nav.BodyPathClear(c.Home, c.Points[pick])) { c.DroppedUntil[pick] = now + 300f; c.WaitUntil = now + 5f; Log(c, "patrol point " + pick + " blocked now, skipped"); return; }
+            if (!Nav.BodyPathClear(c.Home, c.Points[pick])) { c.DroppedUntil[pick] = now + 300f; c.WaitUntil = now + 5f; if (WildWasteland.Core.Log.L2) Log(c, "patrol point " + pick + " blocked now, skipped"); return; }
             c.PointIdx = pick;
             StartLeg(c, Leg.ToPoint, c.Points[pick], now, 2.5f);
         }
@@ -488,7 +488,7 @@ namespace WildWasteland.Modules.NPC
                 int r = Nav.SearchPoints(pos, c.SPts, 3, 4f, 12f);
                 c.SDropped = new float[c.SPts.Count];
                 c.WaitUntil = now + UnityEngine.Random.Range(1.5f, 3f);
-                Log(c, "searches: " + c.SPts.Count + " point(s) to walk to" + (r < 0 ? " (off a camp map)" : ""));
+                if (WildWasteland.Core.Log.L2) Log(c, "searches: " + c.SPts.Count + " point(s) to walk to" + (r < 0 ? " (off a camp map)" : ""));
                 return;
             }
             if (c.Leg != Leg.None) { LegThink(c, now, pos); return; }
@@ -559,7 +559,7 @@ namespace WildWasteland.Modules.NPC
         private static void StartLeg(Ctl c, Leg leg, Vector3 goal, float now, float speed)
         {
             c.Leg = leg; c.Goal = goal; c.LegStart = now; c.ProgressAt = now; c.BestLeft = float.MaxValue; c.Speed = speed;
-            if (leg == Leg.Home) Log(c, "runs home (" + Flat(c.A.T.position - goal).ToString("0") + " m, try " + (c.Tries + 1) + ")");
+            if (leg == Leg.Home) { if (WildWasteland.Core.Log.L2) Log(c, "runs home (" + Flat(c.A.T.position - goal).ToString("0") + " m, try " + (c.Tries + 1) + ")"); }
             else if (leg == Leg.Travel && WildWasteland.Core.Log.L2) Log(c, (speed > 2.5f ? "runs" : "walks") + " to its travel goal (" + Flat(c.A.T.position - goal).ToString("0") + " m" + (c.Ord != null && c.Ord.Tries > 0 ? ", try " + (c.Ord.Tries + 1) : "") + ")");
             LegThink(c, now, c.A.T.position);
             if (c.Leg != Leg.None) Go(c, speed);
@@ -612,7 +612,7 @@ namespace WildWasteland.Modules.NPC
             c.LastHop = now;
             c.Rb.AddForce(Vector3.up * 3.2f + fwd * 1.5f, ForceMode.VelocityChange);
             Brain.HopAnim(c.A.Owner);                                    // (1.2.0) the jump on an animated body
-            Log(c, "hops over a low edge (" + h.collider.name + ")");
+            if (WildWasteland.Core.Log.L2) Log(c, "hops over a low edge (" + h.collider.name + ")");
         }
 
         private static void Arrived(Ctl c, float now)
@@ -620,10 +620,10 @@ namespace WildWasteland.Modules.NPC
             var leg = c.Leg;
             Stop(c);
             if (leg == Leg.Travel) { if (c.Ord != null) { c.Ord.State = 2; c.Ord.Tries = 0; } Log(c, "is there (travel)"); return; }
-            if (leg == Leg.Investigate) { c.InvFails = 0; bool flank = Senses.IsFlanking(c.A.Owner); Log(c, flank ? "is at its flank point" : "is at the ghost"); Senses.ArrivedAt(c.A.Owner); c.WaitUntil = flank ? now + 0.3f : c.WaitUntil; return; }   // the senses start the search (or a pursuit); after a flank point: the ghost itself
+            if (leg == Leg.Investigate) { c.InvFails = 0; bool flank = Senses.IsFlanking(c.A.Owner); if (WildWasteland.Core.Log.L2) Log(c, flank ? "is at its flank point" : "is at the ghost"); Senses.ArrivedAt(c.A.Owner); c.WaitUntil = flank ? now + 0.3f : c.WaitUntil; return; }   // the senses start the search (or a pursuit); after a flank point: the ghost itself
             if (leg == Leg.SearchOut) { c.SAtOrigin = false; c.WaitUntil = now + UnityEngine.Random.Range(2f, 4f); return; }   // the brain looks around
             if (leg == Leg.SearchBack) { c.SAtOrigin = true; c.WaitUntil = now + UnityEngine.Random.Range(1.5f, 3f); return; }
-            if (leg == Leg.Home) { c.Tries = 0; c.AtHome = true; c.WaitUntil = now + UnityEngine.Random.Range(10f, 25f); Log(c, "is home"); }
+            if (leg == Leg.Home) { c.Tries = 0; c.AtHome = true; c.WaitUntil = now + UnityEngine.Random.Range(10f, 25f); if (WildWasteland.Core.Log.L2) Log(c, "is home"); }
             else if (leg == Leg.ToPoint) { c.WaitUntil = now + UnityEngine.Random.Range(4f, 10f); c.NextLook = now + 1f; c.AtHome = false; c.PendingBack = true; }
             else { c.AtHome = true; c.WaitUntil = now + UnityEngine.Random.Range(10f, 25f); }
         }
@@ -640,10 +640,10 @@ namespace WildWasteland.Modules.NPC
                 if (left < o.Best - 10f) { o.Best = left; o.Tries = 0; }      // 10 m nearer than ever before: bumps on a long way don't add up
                 o.Tries++;
                 int max = Math.Max(1, NpcaiSettings.IdleReturnTries.Value);
-                if (o.Tries >= max) { o.State = 3; Log(c, "gets nowhere on its travel after " + o.Tries + " tries, gives up (" + left.ToString("0") + " m left)"); return; }
+                if (o.Tries >= max) { o.State = 3; if (WildWasteland.Core.Log.L2) Log(c, "gets nowhere on its travel after " + o.Tries + " tries, gives up (" + left.ToString("0") + " m left)"); return; }
                 Hop(c, now);
                 c.WaitUntil = now + 1f;
-                Log(c, "gets nowhere on its travel (try " + o.Tries + "/" + max + "), again");
+                if (WildWasteland.Core.Log.L2) Log(c, "gets nowhere on its travel (try " + o.Tries + "/" + max + "), again");
                 return;
             }
             if (leg == Leg.Investigate)
@@ -654,12 +654,12 @@ namespace WildWasteland.Modules.NPC
                 {
                     // no good three times: the brain takes this ghost (feelers, back-ups, hops) - the pre-1.6 walk, never worse than before
                     c.SkipGhost = g.Id; c.SkipPos = g.Pos; c.Inv = false;
-                    Log(c, "gets nowhere walking to ghost #" + g.Id + " (3 tries), the brain takes over");
+                    if (WildWasteland.Core.Log.L2) Log(c, "gets nowhere walking to ghost #" + g.Id + " (3 tries), the brain takes over");
                     return;
                 }
                 Hop(c, now);
                 c.WaitUntil = now + 0.5f;
-                Log(c, "gets nowhere walking to the ghost (try " + c.InvFails + "/3), again");
+                if (WildWasteland.Core.Log.L2) Log(c, "gets nowhere walking to the ghost (try " + c.InvFails + "/3), again");
                 return;
             }
             if (leg == Leg.SearchOut || leg == Leg.SearchBack)
@@ -673,9 +673,9 @@ namespace WildWasteland.Modules.NPC
             {
                 c.Tries++;
                 int max = Math.Max(1, NpcaiSettings.IdleReturnTries.Value);
-                if (c.Tries >= max) { c.Forgotten = true; _claimed.Remove(c.SpotId); Log(c, "can't get home after " + c.Tries + " tries, forgets it"); return; }
+                if (c.Tries >= max) { c.Forgotten = true; _claimed.Remove(c.SpotId); if (WildWasteland.Core.Log.L2) Log(c, "can't get home after " + c.Tries + " tries, forgets it"); return; }
                 c.WaitUntil = now + Mathf.Max(0f, NpcaiSettings.IdleRetrySeconds.Value);
-                Log(c, "gets nowhere going home (try " + c.Tries + "/" + max + "), waits");
+                if (WildWasteland.Core.Log.L2) Log(c, "gets nowhere going home (try " + c.Tries + "/" + max + "), waits");
             }
             else
             {

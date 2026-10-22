@@ -158,7 +158,7 @@ namespace WildWasteland.Modules.NPC
             if (p.Ray != null) { p.RayLen = p.Ray.Length; p.Ray.Length = 0.001f; }   // no vanilla bite in the middle of it
             if (d <= leap) { Leap(p, player, pc, now); return; }
             p.Phase = Phase.Zig; p.Since = now; p.ZigSide = UnityEngine.Random.value < 0.5f ? -1 : 1; p.ZigSwitch = now + UnityEngine.Random.Range(0.15f, 0.3f);
-            Log(p, "zigzags in from " + d.ToString("0.0") + " m");
+            if (WildWasteland.Core.Log.L2) Log(p, "zigzags in from " + d.ToString("0.0") + " m");
         }
 
         private static void Zig(P p, bool ok, GameObject player, float now)
@@ -211,7 +211,7 @@ namespace WildWasteland.Modules.NPC
             p.Phase = Phase.Air; p.Since = now; p.FlightT = t; p.PitchGoal = Mathf.Clamp(NpcaiSettings.PouncePitch.Value, 0f, 110f);
             Play(p, _hashAttack, _hashAttack);
             AnimalEvents.Leap(p.A != null ? p.A.Owner : null, player, start, aim);
-            Log(p, "leaps (" + Flat(aim - start).magnitude.ToString("0.0") + " m, " + t.ToString("0.00") + " s)");
+            if (WildWasteland.Core.Log.L2) Log(p, "leaps (" + Flat(aim - start).magnitude.ToString("0.0") + " m, " + t.ToString("0.00") + " s)");
         }
 
         private static void Air(P p, GameObject player, float now)
@@ -256,7 +256,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 back = Flat(p.T.position - player.transform.position); back = back.sqrMagnitude > 0.0001f ? back.normalized : -p.T.forward;
             p.Rb.velocity = back * 1.5f + Vector3.down * 1f;          // lets go and drops off
             p.Phase = Phase.Bite; p.Until = now + 0.25f; p.PitchGoal = 0f;
-            Log(p, "bites the player (" + p.Damage.ToString("0") + (bp == null ? ", no Bodypart found!" : "") + ")");
+            if (WildWasteland.Core.Log.L2) Log(p, "bites the player (" + p.Damage.ToString("0") + (bp == null ? ", no Bodypart found!" : "") + ")");
         }
 
         private static void StartFlee(P p, GameObject player, float now)

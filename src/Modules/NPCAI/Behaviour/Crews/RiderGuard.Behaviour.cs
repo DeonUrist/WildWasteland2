@@ -60,7 +60,7 @@ namespace WildWasteland.Modules.Patrols
                     else if (Time.time - _modeStart > _windUp + 5f)
                     {
                         _mode = Mode.Riding; _nextWitness = Time.time + 3f; _standAt = -1f;
-                        PatrolsModule.Verbose("Rider: " + name + " - no jump that can hit, back to throwing");
+                        if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + name + " - no jump that can hit, back to throwing");
                     }
                 }
                 return;
@@ -148,7 +148,7 @@ namespace WildWasteland.Modules.Patrols
             _mode = Mode.Witness; _modeStart = Time.time;
             if (Lance != null) Lance.gameObject.SetActive(true);
             _windUp = Rider.Scream(transform) + AfterScream;   // the whole scream first, then the leap
-            PatrolsModule.Verbose("Rider: " + name + " - WITNESS ME! (" + (Wounded() ? "wounded" : "chance roll") + ")");
+            if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + name + " - WITNESS ME! (" + (Wounded() ? "wounded" : "chance roll") + ")");
         }
 
         private Vector3 LeapFrom() { return transform.position + Vector3.up * 0.9f; }
@@ -186,7 +186,7 @@ namespace WildWasteland.Modules.Patrols
             if (Lance != null) Lance.gameObject.SetActive(true);
             Play(2);
             _mode = Mode.Flying; _modeStart = Time.time;
-            PatrolsModule.Verbose("Rider: " + name + " leaps at the player's car, " + flight.ToString("0.00") + " s, " + Rider.Elevation(launch).ToString("0") + " deg up");
+            if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + name + " leaps at the player's car, " + flight.ToString("0.00") + " s, " + Rider.Elevation(launch).ToString("0") + " deg up");
         }
 
         private void Fly()
@@ -242,9 +242,9 @@ namespace WildWasteland.Modules.Patrols
                     foreach (var r in body.GetComponentsInChildren<Rigidbody>(true)) r.velocity = _vel * 0.3f + Vector3.up * 4f + UnityEngine.Random.insideUnitSphere * 3f;
                     UnityEngine.Object.Destroy(body, 120f);
                 }
-                PatrolsModule.Verbose("Rider: " + name + " blew up at " + at);
+                if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + name + " blew up at " + at);
             }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Rider: detonate: " + e.Message); }
+            catch (Exception e) { NpcaiRuntime.Warn("Rider: detonate: " + e.Message); }
             if (_marker != null) _marker.DropRider(gameObject);
             Destroy(gameObject);
         }
@@ -259,7 +259,7 @@ namespace WildWasteland.Modules.Patrols
             // 2.2.3: he becomes a normal NPC at once - a fresh mob of his kind (same health, AI on) takes his place and jumps off with
             // physics, playing Apocaplayer's Jump on its own animator while in the air (was: a kinematic hop, a stiff upright body)
             var vel = _car.transform.right * _side * 3.2f + Vector3.up * 4.2f + CarVel() * 0.7f;
-            PatrolsModule.Verbose("Rider: " + name + " jumps off " + _car.name + " (" + why + ")");
+            if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + name + " jumps off " + _car.name + " (" + why + ")");
             SpawnMob(transform.position, vel);
         }
 
@@ -294,7 +294,7 @@ namespace WildWasteland.Modules.Patrols
                     foreach (var a in mob.GetComponentsInChildren<Collider>(true)) foreach (var b in carCols) if (a != null && b != null) Physics.IgnoreCollision(a, b, true);
                 }
                 mob.AddComponent<JumpClip>().Velocity = vel;   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
-                PatrolsModule.Verbose("Rider: " + mob.name + " jumped off and fights on foot");
+                if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + mob.name + " jumped off and fights on foot");
                 Dismounted(mob);
             }
             if (_marker != null) _marker.DropRider(gameObject);
@@ -346,7 +346,7 @@ namespace WildWasteland.Modules.Patrols
                 if (col != null) mob.transform.position += Vector3.up * (at.y + 0.15f - col.bounds.min.y);
                 Register.Name(mob, prefab.name); CrewAppearance.Transfer(gameObject, mob); Register.Add(mob, false);   // refs-ok: REFACTOR-REQUEST B07-12 (part of a Patrols crew/traffic type; B11 moves callers to INpcControl/ISeatedCombat)
                 if (health > 0f) { Patrol.SetHealth(mob, health); mob.AddComponent<Patrol.LateHealth>().Value = health; }
-                PatrolsModule.Verbose("Rider: " + mob.name + " landed and fights on foot");
+                if (Core.Log.L1) NpcaiRuntime.Main("Rider: " + mob.name + " landed and fights on foot");
                 Core.Services.RaiseCrewBailedOut(_car, gameObject, mob);
                 Dismounted(mob);
             }

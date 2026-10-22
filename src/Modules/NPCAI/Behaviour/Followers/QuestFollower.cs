@@ -1,6 +1,8 @@
 using System;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
+
 namespace WildWasteland.Modules.Quests
 {
     internal static class QuestFollower
@@ -53,7 +55,7 @@ namespace WildWasteland.Modules.Quests
                 if (_body != null)
                 {
                     UpdateWeapon();
-                    Log.Always("[Quests] Follower animation attached: " + npc.name + " / " + (_weaponKey ?? "unarmed"));
+                    if (Core.Log.L1) NpcaiRuntime.Main("Follower animation attached: " + npc.name + " / " + (_weaponKey ?? "unarmed"));
                 }
             }
             if (_body == null || !_body.Valid) return;

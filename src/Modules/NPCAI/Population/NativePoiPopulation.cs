@@ -4,6 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
@@ -124,7 +125,7 @@ namespace WildWasteland.Modules.Towns
             site.Random = new System.Random(hash); site.Empty = site.Random.Next(100) < 15;
             // Existing progress belongs to the save: never thin a partially populated location.
             foreach (var f in site.Spawners) if (Value(f, "OnOff") > 0 || Value(f, "number") > 0) { site.Empty = false; break; }
-            Log.Always("[POI] native population " + site.Root.name + " at " + world + ": " + (site.Empty ? "empty (15% roll)" : "occupied; same-category variety"));
+            if (Core.Log.L1) NpcaiRuntime.Main("native population " + site.Root.name + " at " + world + ": " + (site.Empty ? "empty (15% roll)" : "occupied; same-category variety"));
         }
         private static bool Enter(Fsm fsm, FsmState state)
         {

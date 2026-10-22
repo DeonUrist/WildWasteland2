@@ -405,7 +405,7 @@ namespace WildWasteland.Modules.NPC
                 tx.Sand[texel] = verdict;
                 return verdict;
             }
-            catch (Exception e) { NpcaiRuntime.Deep("Burrow: sand check: " + e.Message); return NpcaiSettings.BurrowTerrainIsSand.Value; }
+            catch (Exception e) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Burrow: sand check: " + e.Message); return NpcaiSettings.BurrowTerrainIsSand.Value; }
         }
 
         // per layer: a sand keyword in its name / texture name; null when no layer matches at all (then TerrainIsSand decides)

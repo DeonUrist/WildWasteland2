@@ -7,6 +7,7 @@ using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Quests
 {
@@ -35,9 +36,9 @@ namespace WildWasteland.Modules.Quests
                     bool want = kv.Value || n == "Detection" || n == "Movement";
                     if (f.enabled != want) { f.enabled = want; fixedCount++; }
                 }
-                if (fixedCount > 0 && (log || !wakeLogged)) { wakeLogged = true; Plugin.Info("Hire: " + displayName + "'s walking AI switched back on (" + fixedCount + " FSMs)."); }
+                if (fixedCount > 0 && (log || !wakeLogged)) { wakeLogged = true; if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + "'s walking AI switched back on (" + fixedCount + " FSMs)."); }
             }
-            catch (Exception e) { Plugin.LogOnce("HireWakeBrain", e); }
+            catch (Exception e) { NpcaiRuntime.ErrorOnce("HireWakeBrain", e); }
         }
 
         static bool wakeLogged;
@@ -67,9 +68,9 @@ namespace WildWasteland.Modules.Quests
                         did = true;
                     }
                 }
-                if (did) Plugin.Info("Hire: " + displayName + " was hostile to you (after a load); made friendly again.");
+                if (did) if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + " was hostile to you (after a load); made friendly again.");
             }
-            catch (Exception e) { Plugin.LogOnce("HireCalm", e); }
+            catch (Exception e) { NpcaiRuntime.ErrorOnce("HireCalm", e); }
         }
 
         static void ReleaseNpc()
@@ -115,9 +116,9 @@ namespace WildWasteland.Modules.Quests
                     }
                     if (f.FsmName == "Movement" || f.FsmName == "Rotate" || f.FsmName == "Unstuck") f.enabled = true;
                 }
-                Plugin.Info("Hire: " + displayName + "'s own AI is back on.");
+                if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + "'s own AI is back on.");
             }
-            catch (Exception e) { Plugin.LogOnce("HireRestoreBrain", e); }
+            catch (Exception e) { NpcaiRuntime.ErrorOnce("HireRestoreBrain", e); }
             fsmSnap.Clear();
         }
 
@@ -207,7 +208,7 @@ namespace WildWasteland.Modules.Quests
                 if (fired) lastRealShot = Time.time;
                 if (fired && magSize > 0 && magLeft == 1 && dr != null) dr.enabled = false;     // last round: no second shot sneaks out before the reload starts
             }
-            catch (Exception e) { Plugin.LogOnce("HireRealShot", e); }
+            catch (Exception e) { NpcaiRuntime.ErrorOnce("HireRealShot", e); }
             return fired;
         }
 
@@ -246,7 +247,7 @@ namespace WildWasteland.Modules.Quests
                     }
                 }
             }
-            catch (Exception e) { Plugin.LogOnce("HireFootMag", e); }
+            catch (Exception e) { NpcaiRuntime.ErrorOnce("HireFootMag", e); }
         }
 
         static void FootWatch(float now)
@@ -272,7 +273,7 @@ namespace WildWasteland.Modules.Quests
             }
             EndFootShot();
             if (now - footShotAt < 8f) return;
-            Plugin.Info("Hire: " + displayName + " cannot get at " + target.name + "; follows you again.");
+            if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + " cannot get at " + target.name + "; follows you again.");
             ignoreTarget = target; ignoreUntil = now + 20f;
             target = null; engagedUntil = 0f; footSince = -1f;
         }
@@ -281,7 +282,7 @@ namespace WildWasteland.Modules.Quests
 
         static void FootShoot(float now)
         {
-            if (!footShooting) { footShooting = true; Plugin.Info("Hire: " + displayName + " shoots at " + target.name + " on foot."); }
+            if (!footShooting) { footShooting = true; if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + " shoots at " + target.name + " on foot."); }
             if (!footSetup) { footSetup = true; GunSetup(); footShootAnim = ShootAnimName(); }
             // stand and face the target
             if (moveFsm != null && moveFsm.ActiveStateName == "Run") { try { moveFsm.Fsm.SetState("Idle"); } catch (Exception) { } }
@@ -300,7 +301,7 @@ namespace WildWasteland.Modules.Quests
                 if (hp == null) return;
                 hp.Value -= ownDamage > 0f ? ownDamage : shotDamage.Value;
                 shotsFired++;
-                if (shotsFired <= 12) Plugin.Info("Hire: " + displayName + " shoots " + target.name + " on foot (health now " + hp.Value.ToString("0") + ").");
+                if (shotsFired <= 12) if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + " shoots " + target.name + " on foot (health now " + hp.Value.ToString("0") + ").");
                 if (npcAnim == null) npcAnim = npc.GetComponent<Animator>() ?? npc.GetComponentInChildren<Animator>(true);
                 if (npcAnim != null && !string.IsNullOrEmpty(footShootAnim)) { QuestFollower.Play(npcAnim, footShootAnim, 0, 0f); footIdleAt = now + 0.9f; }
                 PlayShotAnim();
@@ -308,7 +309,7 @@ namespace WildWasteland.Modules.Quests
                 PlayMakerFSM snd = FindFsm(npc, "Sound2");
                 if (snd != null) { selfShotAt = Time.time; try { snd.Fsm.SetState("playAudio"); } catch (Exception) { } }
             }
-            catch (Exception e) { Plugin.LogOnce("HireFootShoot", e); }
+            catch (Exception e) { NpcaiRuntime.ErrorOnce("HireFootShoot", e); }
         }
 
         static void EndFootShot()
@@ -469,7 +470,7 @@ namespace WildWasteland.Modules.Quests
                     LiftAbove(g.y);
                     Rigidbody rb = npc.GetComponent<Rigidbody>();
                     if (rb != null && !rb.isKinematic) rb.velocity = Vector3.zero;
-                    Plugin.Info("Hire: " + displayName + " caught up.");
+                    if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + " caught up.");
                     return;
                 }
             }
@@ -500,13 +501,13 @@ namespace WildWasteland.Modules.Quests
                         {
                             if (!Takeover.RoomAt(h.point)) break;                                              // something stands there
                             if (h.point.y > pl.position.y + 4f || h.point.y < pl.position.y - 6f) break;       // a roof or a pit, not the ground you stand on
-                            Plugin.Info("Hire: exit spot on " + h.collider.name + " (layer " + h.collider.gameObject.layer + ", " + h.collider.GetType().Name + "), npc layer " + myLayer + ", y " + h.point.y.ToString("0.0") + ", player y " + pl.position.y.ToString("0.0"));
+                            if (Core.Log.L1) NpcaiRuntime.Main("Hire: exit spot on " + h.collider.name + " (layer " + h.collider.gameObject.layer + ", " + h.collider.GetType().Name + "), npc layer " + myLayer + ", y " + h.point.y.ToString("0.0") + ", player y " + pl.position.y.ToString("0.0"));
                             return h.point + Vector3.up * 0.15f;
                         }
                         break;
                     }
                 }
-            Plugin.Info("Hire: no free exit spot found; using your position.");
+            if (Core.Log.L1) NpcaiRuntime.Main("Hire: no free exit spot found; using your position.");
             return pl.position + Vector3.up * 0.3f;
         }
 
@@ -532,7 +533,7 @@ namespace WildWasteland.Modules.Quests
             float now = Time.time;
             if (now - firstRescue > 60f) { rescues = 0; firstRescue = now; }
             rescues++;
-            Plugin.Warn("Hire: " + displayName + " was " + (pl.position.y - npc.transform.position.y).ToString("0") + " m below you; bringing it back (" + rescues + ").");
+            NpcaiRuntime.Warn("Hire: " + displayName + " was " + (pl.position.y - npc.transform.position.y).ToString("0") + " m below you; bringing it back (" + rescues + ").");
             LogBody("fell");
             if (rescues >= 3)
             {

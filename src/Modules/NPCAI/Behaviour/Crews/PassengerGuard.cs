@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -138,7 +139,7 @@ namespace WildWasteland.Modules.Patrols
                             }
             foreach (var fsm in passenger.GetComponents<PlayMakerFSM>())
                 if (fsm.FsmName == "Damage") fsm.enabled = false;
-            PatrolsModule.Verbose("Passenger: forced ranged-only Attack on " + passenger.name + "; redirected "
+            if (Core.Log.L1) NpcaiRuntime.Main("Passenger: forced ranged-only Attack on " + passenger.name + "; redirected "
                 + redirected + " melee event output(s)" + (rangedEvent == null ? " (ranged event not found)" : " to " + rangedEvent.Name));
         }
 
@@ -165,7 +166,7 @@ namespace WildWasteland.Modules.Patrols
             if (hitbox != null)
                 foreach (var collider in hitbox.GetComponents<Collider>()) collider.enabled = false;
 
-            PatrolsModule.Verbose("Passenger: neutralized melee/contact damage on " + passenger.name
+            if (Core.Log.L1) NpcaiRuntime.Main("Passenger: neutralized melee/contact damage on " + passenger.name
                 + "; disabled " + disabledActions + " FSM action(s)" + (hitbox == null ? "; hitbox not found" : "; hitbox disabled"));
         }
 
@@ -234,14 +235,14 @@ namespace WildWasteland.Modules.Patrols
                     _shooting = true;
                     _burstUntil = Time.time + PatrolsModule.FireBurstSeconds.Value;
                     if (_pose != null) _pose.SetShooting(true);
-                    PatrolsModule.Verbose("Driver: " + _passenger.name + " opens fire for " + PatrolsModule.FireBurstSeconds.Value + " s");
+                    if (Core.Log.L1) NpcaiRuntime.Main("Driver: " + _passenger.name + " opens fire for " + PatrolsModule.FireBurstSeconds.Value + " s");
                 }
                 else if (_shooting && (Time.time >= _burstUntil || target == null))
                 {
                     _shooting = false;
                     if (_pose != null) _pose.SetShooting(false);
                     ScheduleBurst();
-                    PatrolsModule.Verbose("Driver: " + _passenger.name + " back on the wheel, next burst in " + (_nextBurst - Time.time).ToString("0") + " s");
+                    if (Core.Log.L1) NpcaiRuntime.Main("Driver: " + _passenger.name + " back on the wheel, next burst in " + (_nextBurst - Time.time).ToString("0") + " s");
                 }
                 if (!_shooting)
                 {
@@ -292,7 +293,7 @@ namespace WildWasteland.Modules.Patrols
             }
             _targetVars = vars.ToArray(); _targetVarScores = varScores.ToArray();
             _targetActions = actions.ToArray(); _targetFields = fields.ToArray(); _targetFieldScores = fieldScores.ToArray();
-            PatrolsModule.Verbose("Passenger: " + _passenger.name + " target sources: " + _targetVars.Length + " variables, " + _targetFields.Length + " action fields");
+            if (Core.Log.L1) NpcaiRuntime.Main("Passenger: " + _passenger.name + " target sources: " + _targetVars.Length + " variables, " + _targetFields.Length + " action fields");
         }
 
         private GameObject FindVanillaTarget()
@@ -314,7 +315,7 @@ namespace WildWasteland.Modules.Patrols
             if (best == null && !_targetDiagnosticLogged)
             {
                 _targetDiagnosticLogged = true;
-                PatrolsModule.Verbose("Passenger ranged combat: waiting for vanilla FSM target");
+                if (Core.Log.L1) NpcaiRuntime.Main("Passenger ranged combat: waiting for vanilla FSM target");
             }
             _lastTarget = best;
             return best;

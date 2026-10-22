@@ -123,7 +123,7 @@ namespace WildWasteland.Modules.NPC
                 if (hold && Time.time - st.LastLog > 5f)
                 {
                     st.LastLog = Time.time;
-                    NpcaiRuntime.Deep("Aim: " + owner.name + " holds fire at " + d.ToString("0") + " m (" + kind + " reach " + reach.ToString("0") + " m, engages at " + engage.ToString("0") + " m)");
+                    if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Aim: " + owner.name + " holds fire at " + d.ToString("0") + " m (" + kind + " reach " + reach.ToString("0") + " m, engages at " + engage.ToString("0") + " m)");
                 }
                 if (hold) __instance.Finish();     // the action is done (nothing sent); the state's NextFrameEvent moves on
                 return !hold;

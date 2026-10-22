@@ -541,7 +541,7 @@ namespace WildWasteland.Modules.NPC
                 var az = Azure();
                 if (az != null) { hour = _azureCall != null ? _azureCall(az) : Convert.ToSingle(_azureTime.Invoke(az, null)); level = NightTable(hour); }
             }
-            catch (Exception e) { NpcaiRuntime.Deep("Senses: clock read failed: " + e.Message); }
+            catch (Exception e) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: clock read failed: " + e.Message); }
             _lightCache = level;
             if (WildWasteland.Core.Log.L2 && Time.time >= _nextLightLog)
             {
@@ -598,7 +598,7 @@ namespace WildWasteland.Modules.NPC
                         var call = System.Linq.Expressions.Expression.Call(System.Linq.Expressions.Expression.Convert(p, _azureType), _azureTime);
                         _azureCall = System.Linq.Expressions.Expression.Lambda<Func<object, float>>(System.Linq.Expressions.Expression.Convert(call, typeof(float)), p).Compile();
                     }
-                    catch (Exception e) { _azureCall = null; NpcaiRuntime.Deep("Senses: clock call not compiled (" + e.Message + "), reflection used"); }
+                    catch (Exception e) { _azureCall = null; if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: clock call not compiled (" + e.Message + "), reflection used"); }
             }
             if (_azureType == null || Time.unscaledTime < _nextAzureFind) return null;
             _nextAzureFind = Time.unscaledTime + 10f;
@@ -923,7 +923,7 @@ namespace WildWasteland.Modules.NPC
         {
             var a = Get(owner);
             if (a == null || a.State != State.Investigate || a.Ghost == null) return false;
-            if (Time.time - a.LastLog > 5f) { a.LastLog = Time.time; Log(a, "gets nowhere toward ghost #" + a.Ghost.Id + " for now, keeps trying"); }
+            if (Time.time - a.LastLog > 5f) { a.LastLog = Time.time; if (WildWasteland.Core.Log.L2) Log(a, "gets nowhere toward ghost #" + a.Ghost.Id + " for now, keeps trying"); }
             return false;
         }
 
@@ -1247,7 +1247,7 @@ namespace WildWasteland.Modules.NPC
                     if (float.TryParse(t.name.Substring(j + 1, i - j - 1), NumberStyles.Float, CultureInfo.InvariantCulture, out v) && v > 0f) { hp = v; break; }
                 }
                 _hpOf[car.GetInstanceID()] = hp;
-                NpcaiRuntime.Deep("Senses: " + car.name + " engine " + (hp > 0f ? hp + " HP" : "unknown"));
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: " + car.name + " engine " + (hp > 0f ? hp + " HP" : "unknown"));
             }
             float lo = NpcaiSettings.EngineMinHp.Value, hi = Mathf.Max(lo + 1f, NpcaiSettings.EngineMaxHp.Value);
             float k = hp > 0f ? Mathf.Clamp01((hp - lo) / (hi - lo)) : 0.5f;
@@ -1650,7 +1650,7 @@ namespace WildWasteland.Modules.NPC
                     break;
                 }
             }
-            catch (Exception e) { NpcaiRuntime.Deep("Senses: tag filter of " + owner.name + ": " + e.Message); }
+            catch (Exception e) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: tag filter of " + owner.name + ": " + e.Message); }
             if (set.Count == 0)
             {
                 // the game's own table, for a prefab without a readable filter
@@ -1840,7 +1840,7 @@ namespace WildWasteland.Modules.NPC
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
                 File.WriteAllText(path + ".tmp", sb.ToString());
                 Core.AtomicFile.Replace(path + ".tmp", path);   // (D17) same-directory replace, no Delete + Move window
-                NpcaiRuntime.Deep("Senses: saved " + _ghosts.Count + " ghost(s), " + n + " alert NPC(s) for " + Path.GetFileName(slot));
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: saved " + _ghosts.Count + " ghost(s), " + n + " alert NPC(s) for " + Path.GetFileName(slot));
             }
 
             private static IEnumerator Restore(string slot)
@@ -1915,10 +1915,10 @@ namespace WildWasteland.Modules.NPC
                         catch (Exception e) { NpcaiRuntime.Warn("Senses: restore of " + p[1] + " failed: " + e.Message); }
                     }
                     if (pending.Count > 0) yield return new WaitForSecondsRealtime(0.5f);
-                    if (gen != _gen) { NpcaiRuntime.Deep("Senses: restore of " + Path.GetFileName(slot) + " cancelled"); _restoring = false; yield break; }   // a new load / reset happened meanwhile
+                    if (gen != _gen) { if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: restore of " + Path.GetFileName(slot) + " cancelled"); _restoring = false; yield break; }   // a new load / reset happened meanwhile
                 }
                 for (int i = _ghosts.Count - 1; i >= 0; i--) if (_ghosts[i].Holders.Count == 0) KillGhost(i);
-                NpcaiRuntime.Deep("Senses: restored " + restored + " alert NPC(s), " + _ghosts.Count + " ghost(s) from " + Path.GetFileName(slot) + (pending.Count > 0 ? "; " + pending.Count + " NPC(s) not found" : ""));
+                if (WildWasteland.Core.Log.L2) NpcaiRuntime.Deep("Senses: restored " + restored + " alert NPC(s), " + _ghosts.Count + " ghost(s) from " + Path.GetFileName(slot) + (pending.Count > 0 ? "; " + pending.Count + " NPC(s) not found" : ""));
                 _restoring = false; _co = null;
             }
         }
