@@ -22,7 +22,7 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 | W0 | W0-A Core kernel | refactor/W0-A | done | 37c5df5 | contracts frozen; requests in requests/W0-A.md |
 | W0 | W0-B Core utilities | refactor/W0-B | done | 67f9b61 | requests in requests/W0-B.md |
 | A | A1..A8 | refactor/A1..A8 | done | all merged | compile OK (36 warnings); check_partials fixed 1 (EngineSim BindCompatibility, original was empty); questions answered as D18 |
-| B | B01 Core-Kernel | refactor/B01 | in progress | | isolated local worktree; see its state/B01.md |
+| B | B01 Core-Kernel | refactor/B01 | accepted in integration | 5dd7b94 | Core ownership/lifecycle complete; independent build and source gates pass; reports/B01.md |
 | B | B02 Core-Optimization | refactor/B02 | accepted in integration | ee96efb | source gates and combined Windows build passed; reports/B02.md |
 | B | B03 Debug | refactor/B03 | accepted in integration | 8028483 | authored ownership audit, source gates and combined Windows build passed; reports/B03.md |
 | B | B04 Saves | refactor/save-bootstrap | active | | bootstrap integrated; full framework conversion in progress |
@@ -47,3 +47,5 @@ Originally a cloud mirror; Denis authorized local continuation on 2026-10-22. Pr
 - 2026-10-22 resume: Coordinator accepted B02 and B03 in `refactor/coord-wiring`; Windows Release/Deploy=false after shared-services and Vistas integration passed with zero warnings/errors. B02/B03 references and summaries pass; combined partial check: 181 declarations, none missing. B03 authored-commit audit: 106 changed paths, none outside base ownership plus 60 exact approved exceptions recorded centrally. B01 consolidation and the Saves bootstrap integration remain active. No deployment or runtime verification.
 
 - 2026-10-22 interruption recovery: pending B01 merge conflict resolved as `293efaa`, preserving canonical Core fix installs and generic session takeover while removing old direct Saves/Vistas bootstrap. Combined Windows Release/Deploy=false: zero warnings/errors; Core dependency findings zero; 178 partial declarations, none missing. Agents resumed for B01 completion, full B04 and full B17. Session bootstrap review recorded separately; no game/deploy/runtime claim.
+
+- 2026-10-22: B01 accepted at5dd7b94 after independent coherent Windows Release/Deploy=false build0warnings/errors, strict Core refs0/comments0in102files (including reviewed cave protocol), partial175/0missing, 11Core asset hashes/361unique index rows verified. Main stays a tracker while full B04/B17 conversions are active; their partial checkpoints are reviewed in coordinator integration, not reported as completed packages.
