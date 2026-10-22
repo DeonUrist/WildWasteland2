@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.Tools
             _selectedGroup = EditorSelection.Select(_expanded, _selectedGroup, _selectedGroup.Length > 0);
             if (PatrolEditor.Find(_selectedTemplate) == null) _selectedTemplate = "";
         }
-        internal void Close() { _session.Close(); _modal = ""; _dropdown.Close(); }
+        internal void Close() { _mutation = null; _afterClose = null; _dirty = false; _session.Close(); _modal = ""; _dropdown.Close(); }
         private void OnDestroy() { _session.Close(true); }
         internal void LateTick() { _session.Maintain(); }
         private void Queue(Action action, bool save = true)

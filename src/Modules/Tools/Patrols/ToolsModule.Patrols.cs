@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.Tools
         private void BindPatrols(ModuleConfig cfg) { _patrolKey=cfg.Hotkey("Patrol editor",Key.None,"Open the patrol, convoy, merchant and cargo ledger.");_recorderKey=cfg.Hotkey("Template recorder",Key.None,"Record the supported vehicle you currently sit in.");AllowDebugSpawns=cfg.Tool("Patrols","AllowDebugSpawns",true,"Show explicit editor spawn actions."); }
         private void InitPatrols()
         {
+            ModApi.Changed += PatrolProviderChanged;
             _patrolHost=new GameObject("WW Tools Patrol authoring");_patrolHost.transform.SetParent(Runner.Host.transform,false);
             _patrolMenu=_patrolHost.AddComponent<TemplateMenu>();_recorder=_patrolHost.AddComponent<TemplateExporter>();
             Scheduler.EveryFrame(this,"Patrol authoring input",TickPatrolEditors);
@@ -29,8 +30,9 @@ namespace WildWasteland.Modules.Tools
         private void MaintainPatrolEditors(){if(_patrolMenu!=null)_patrolMenu.LateTick();if(_recorder!=null)_recorder.LateTick();}
         private void OpenPatrolEditor(){if(_patrolMenu!=null)_patrolMenu.TryOpen();}
         private void OpenRecorder(){if(_recorder!=null)_recorder.TryOpen();}
+        private void PatrolProviderChanged(Type contract) { if(contract==typeof(IPatrolAuthoring)||contract==typeof(IVehicleAuthoring)||contract==typeof(ICargoLoot)) { ClosePatrolEditors(); PatrolEditor.Data=null; PatrolEditor.Park.Clear(); } }
         private void ClosePatrolEditors(){if(_patrolMenu!=null)_patrolMenu.Close();if(_recorder!=null)_recorder.Close();}
-        private void ShutdownPatrols(){ClosePatrolEditors();if(_patrolHost!=null)UnityEngine.Object.Destroy(_patrolHost);_patrolHost=null;_patrolMenu=null;_recorder=null;}
+        private void ShutdownPatrols(){ModApi.Changed -= PatrolProviderChanged;ClosePatrolEditors();if(_patrolHost!=null)UnityEngine.Object.Destroy(_patrolHost);_patrolHost=null;_patrolMenu=null;_recorder=null;}
         private void DrawPatrolEditor(ToolLayout l){l.Text("Edit patrol, convoy and merchant rosters, factions, crew, cargo and template metadata. The editor pauses the world and writes validated authoring files.");l.Toggle(AllowDebugSpawns,"Show spawn controls");var api=PatrolEditor.Source;if(api==null){l.Text("Enable Patrols to author its groups and templates.");return;}l.Value("Templates",api.Summary);if(l.Button("Open patrol editor",GameRefs.InPlay))ToolWindow.CloseThen(OpenPatrolEditor);if(l.Button("Reload templates from disk"))PatrolEditor.Refresh(true);}
         private void DrawRecorder(ToolLayout l){l.Text("Sit in a supported assembled vehicle to record its frame, attached parts, adjusted hinges, trailer, suspension and crew choices.");if(l.Button("Record seated vehicle",PatrolEditor.Source!=null&&TemplateExporter.Seated))ToolWindow.CloseThen(OpenRecorder);l.Entry(_recorderKey);l.Value("Folder",PatrolEditor.Source?.PlayerDirectory??"Patrols unavailable");}
     }

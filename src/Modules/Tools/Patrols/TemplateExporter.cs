@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.Tools
         private readonly EditorSession _session = new EditorSession();
         internal bool IsOpen { get { return _session.Open; } }
         // the F7 "Template recorder" page shows its button only while this is true
-        internal static bool Seated { get { string how; return FindCar(out how) != null; } }
+        internal static bool Seated { get { string how; return ModApi.Get<IVehicleAuthoring>() != null && FindCar(out how) != null; } }
         private Transform _draftCar;
         private string _templateName = "", _driverName = "Scraffa", _passengerName = "Sprokka", _lootId = "";
         private string _faction="Scrapyard";
@@ -61,7 +61,7 @@ namespace WildWasteland.Modules.Tools
         internal bool TryOpen()
         {
             if (_session.Open || EditorSession.Busy || !Application.isFocused) return false;
-            if (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay) return false;
+            if (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay || ModApi.Get<IVehicleAuthoring>() == null) return false;
             string how; var car = FindCar(out how); if (car == null) return false;
             if (!_session.Acquire()) return false;
             Skin.EnsureGameFont();

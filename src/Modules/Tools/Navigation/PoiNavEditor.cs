@@ -456,7 +456,7 @@ namespace WildWasteland.Modules.Tools
             if (NavigationTools.Source == null) { l.Text("Enable NPC AI to bake and edit its navigation data."); return; }
             l.Toggle(NavigationTools.Source.Enabled);
             l.Toggle(NavigationTools.Setup);
-            l.Toggle(NavigationTools.Display);
+            l.Toggle(NavigationTools.DisplayGraphs);
             l.Value("Setup", PoiNavSetup.Active ? PoiNavSetup.Status : "off");
             if (PoiNavSetup.Active && l.Button("Bake all setup POIs", PoiNavSetup.Queued == 0)) PoiNavSetup.BakeAll();
             if (l.Button("Bake the nearest POI", GameRefs.InPlay && PoiNavSetup.Queued == 0)) BakeNearest();
