@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ------------------------------------------------------------------ Climbing
+        /// <summary>F7 "Climbing" page: climb / ladder state and settings.</summary>
         static void ClimbingPage(ToolLayout l)
         {
             var c = ClimbingController.Instance;

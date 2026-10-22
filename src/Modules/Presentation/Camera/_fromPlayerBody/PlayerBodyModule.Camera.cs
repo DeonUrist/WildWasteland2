@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal static ConfigEntry<bool> ThirdPersonOnFoot, ToggleMiddleMouse, DynamicCrosshair, PickAssistOn;
         internal static ConfigEntry<bool> OcclusionPrototype, OcclusionInVehicle;
         internal static ConfigEntry<Key> ObserveKey;
+        /// <summary>The Observe key as a legacy KeyCode (polled with Input.GetKey).</summary>
         internal static KeyCode ObserveKeyCode { get { return KeyMap.Code(ObserveKey.Value); } }
 
         // ------------------------------------------------------------------ F7 (tools.cfg)

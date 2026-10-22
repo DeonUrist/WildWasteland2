@@ -22,6 +22,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // ------------------------------------------------------------------ Camera
         
+        /// <summary>F7 "Camera" page: third-person state and camera settings.</summary>
         static void CameraPage(ToolLayout l)
         {
             l.Heading("State");

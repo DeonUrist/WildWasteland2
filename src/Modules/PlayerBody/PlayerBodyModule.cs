@@ -26,8 +26,11 @@ namespace WildWasteland.Modules.PlayerBody
         public const string SourceVersion = "2.3.9";      // ModAPI.PluginVersion (consumers compare against Apocaplayer versions)
         internal static PlayerBodyModule Instance;
 
+        /// <summary>Module id: config section prefix, Harmony id suffix, asset folder.</summary>
         public override string Id { get { return "PlayerBody"; } }
+        /// <summary>Name shown in the F3/F6 module lists.</summary>
         public override string DisplayName { get { return "Player body & animation"; } }
+        /// <summary>Standalone mods this module replaces (ReplacementGuard disables them).</summary>
         public override string[] ConflictsWith { get { return new[] { "com.denis.apocalypter.apocaplayer", "com.denis.apocalypter.apocaclimber" }; } }
 
         // ------------------------------------------------------------------ state shared with the ported code
@@ -35,13 +38,19 @@ namespace WildWasteland.Modules.PlayerBody
         internal static bool Running;
         internal new static string Dir;            // BepInEx\plugins\WildWasteland\PlayerBody\
         internal static string DataDir;        // BepInEx\config\WildWasteland\PlayerBody\
+        /// <summary>True while Core verbose logging is on.</summary>
         internal static bool VerboseOn { get { return Core.Log.Verbose; } }
 
         // ------------------------------------------------------------------ logging (old Plugin.Log / Verbose / Warn)
+        /// <summary>Verbose-level log line with the [PlayerBody] prefix.</summary>
         internal static void Info(string s) { if (Core.Log.Verbose) Core.Log.Info("[PlayerBody] " + s); }
+        /// <summary>Verbose-level log line with the [PlayerBody] prefix (same as Info).</summary>
         internal static void Verbose(string s) { if (Core.Log.Verbose) Core.Log.Info("[PlayerBody] " + s); }
+        /// <summary>Warning with the [PlayerBody] prefix (rate-limited by Core).</summary>
         internal static void Warn(string s) { Core.Log.Warn("[PlayerBody] " + s); }
+        /// <summary>Error with the [PlayerBody] prefix.</summary>
         internal static void Error(string s) { Core.Log.Error("[PlayerBody] " + s); }
+        /// <summary>Error with the [PlayerBody] prefix and the exception text.</summary>
         internal static void Error(Exception e) { Core.Log.Error("[PlayerBody] " + e); }
 
         /// <summary>A path relative to the module's plugin folder (absolute paths are returned as they are).</summary>
@@ -81,25 +90,45 @@ namespace WildWasteland.Modules.PlayerBody
             BindCharacterTools(cfg);           // [PlayerBody / Animation|Animation (fallback clips)|Model|ModAPI] + live reactions
         }
 
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void BindCharacterChoice(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraView(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void BindCharacterBody(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraPickAssist(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void BindTraversal(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraCulling(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Hud.cs (HUD).</summary>
         partial void BindHud(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Vehicles.cs (Vehicles).</summary>
         partial void BindVehicles(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Gunplay.cs (Gunplay).</summary>
         partial void BindGunplay(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraKeys(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void BindTraversalKeys(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Vehicles.cs (Vehicles).</summary>
         partial void BindVehiclesKeys(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Developer.cs (Developer).</summary>
         partial void BindDeveloperKeys(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Developer.cs (Developer).</summary>
         partial void BindDeveloperTools(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraTools(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void BindCharacterFirstPersonTools(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Seats.cs (Presentation/Seats).</summary>
         partial void BindSeatsTools(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraCullingTools(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void BindTraversalTools(ModuleConfig cfg);
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void BindCharacterTools(ModuleConfig cfg);
 
         // ================================================================== lifecycle
@@ -134,21 +163,37 @@ namespace WildWasteland.Modules.PlayerBody
             Core.Log.Always("[PlayerBody] Player body & animation (Apocaplayer " + SourceVersion + ") ready; assets in " + Dir);
         }
 
+        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
         partial void InitPlayer();
+        /// <summary>Part step, implemented in PlayerBodyModule.Compatibility.cs (Compatibility).</summary>
         partial void InitCompatibility();
+        /// <summary>Part step, implemented in PlayerBodyModule.Vehicles.cs (Vehicles).</summary>
         partial void InitVehicles();
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void InitCharacter();
+        /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void InitTraversal();
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void InitCamera();
+        /// <summary>Part step, implemented in PlayerBodyModule.Gunplay.cs (Gunplay).</summary>
         partial void InitGunplay();
+        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
         partial void InitPlayerCrawling();
+        /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void InitTraversalJobs();
+        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
         partial void InitPlayerJobs();
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void InitCharacterJobs();
+        /// <summary>Part step, implemented in PlayerBodyModule.Seats.cs (Presentation/Seats).</summary>
         partial void InitSeatsJobs();
+        /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void InitTraversalNpcJobs();
+        /// <summary>Part step, implemented in PlayerBodyModule.Hud.cs (HUD).</summary>
         partial void InitHud();
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void InitCameraEndOfFrame();
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void InitCharacterService();
 
         /// <summary>Hotkeys.Register action for context-polled keys (they are only registered for the conflict report).</summary>
@@ -170,13 +215,21 @@ namespace WildWasteland.Modules.PlayerBody
             Running = false;
         }
 
+        /// <summary>Part step, implemented in PlayerBodyModule.Compatibility.cs (Compatibility).</summary>
         partial void ShutdownCompatibility();
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void ShutdownCharacterService();
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void ShutdownCharacterSave();
+        /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void ShutdownTraversal();
+        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
         partial void ShutdownPlayer();
+        /// <summary>Part step, implemented in PlayerBodyModule.Vehicles.cs (Vehicles).</summary>
         partial void ShutdownVehicles();
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void ShutdownCharacter();
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void ShutdownCamera();
 
         /// <summary>Scene load: every part drops its scene references, in the old order.</summary>
@@ -188,9 +241,13 @@ namespace WildWasteland.Modules.PlayerBody
             SceneCamera();                     // third-person caches, sway sweep
         }
 
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void SceneCameraRestart();
+        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
         partial void ScenePlayer();
+        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
         partial void SceneCharacter();
+        /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void SceneCamera();
 
         // the climb path is kept in world space for the duration of a climb: move it with the world (else a cancel would put the player
@@ -199,6 +256,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Floating-origin jump: the traversal part moves its world-space climb path.</summary>
         public override void OnOriginShift(Vector3 delta) { OriginShiftTraversal(delta); }
 
+        /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void OriginShiftTraversal(Vector3 delta);
 
         // ================================================================== F7

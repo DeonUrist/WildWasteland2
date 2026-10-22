@@ -23,6 +23,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // ------------------------------------------------------------------ Weapon pose editor
         static string _msg = "";
+        /// <summary>F7 "Weapon pose editor" page: on/off, keys, current pose, arm nudges, copy/paste/save.</summary>
         static void PoseEditor(ToolLayout l)
         {
             l.Text("Edits where each weapon sits in the character's right hand, per animation clip, and the aim lift of the aim / fire clips. "
@@ -64,6 +65,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_msg != "") l.Text(_msg, Ledger.Accent);
             l.Text("Every save also writes BuiltinPoses.generated.cs next to weapon-poses.txt: the whole table as C#, to hard-code the poses in the mod.");
         }
+        /// <summary>One arm's offset values and nudge buttons on the weapon pose editor page.</summary>
         static void ArmButtons(ToolLayout l, bool left)
         {
             l.Heading(left ? "Left arm" : "Right arm");

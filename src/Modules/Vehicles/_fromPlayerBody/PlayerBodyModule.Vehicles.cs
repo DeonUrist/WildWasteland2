@@ -14,8 +14,11 @@ namespace WildWasteland.Modules.PlayerBody
     {
         internal static ConfigEntry<bool> IgnitionControlOn;
         internal static ConfigEntry<Key> CassetteKey, VolumeDownKey, VolumeUpKey;
+        /// <summary>The cassette key as a legacy KeyCode.</summary>
         internal static KeyCode CassetteKeyCode { get { return KeyMap.Code(CassetteKey.Value); } }
+        /// <summary>The volume-down key as a legacy KeyCode.</summary>
         internal static KeyCode VolumeDownKeyCode { get { return KeyMap.Code(VolumeDownKey.Value); } }
+        /// <summary>The volume-up key as a legacy KeyCode.</summary>
         internal static KeyCode VolumeUpKeyCode { get { return KeyMap.Code(VolumeUpKey.Value); } }
         // mirror of the game's Controls "Ignition" key (IgnitionControl), for the moment before the row exists (was a never-saved entry)
         internal static KeyCode IgnitionKeyCode = KeyCode.I;

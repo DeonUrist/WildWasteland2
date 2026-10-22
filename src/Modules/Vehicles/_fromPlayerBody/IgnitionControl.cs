@@ -19,10 +19,10 @@ namespace WildWasteland.Modules.PlayerBody
         private static KeyCode _key = KeyCode.I, _alt = KeyCode.None, _lastKey, _lastAlt;
         private static bool _loaded, _lastEnabled;
 
-        // (WW) config/WildWasteland/PlayerBody/ignition-key.txt (copied once from config/Apocaplayer by PlayerBodyModule.MigrateSidecars)
+        // (WW) config/WildWasteland/PlayerBody/ignition-key.txt (WW2, D12: no copy from config/Apocaplayer any more)
         private static string FilePath { get { return Path.Combine(PlayerBodyModule.DataDir, "ignition-key.txt"); } }
 
-        // called from PlayerBodyModule.Awake with the key found in the old config entries (None = nothing to carry over)
+        // called from PlayerBodyModule Init with the default key written when the file does not exist yet (WW2: always I; was the old cfg entry)
         internal static void Load(KeyCode legacy)
         {
             _loaded = true;

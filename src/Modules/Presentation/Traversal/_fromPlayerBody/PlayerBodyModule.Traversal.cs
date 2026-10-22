@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.PlayerBody
         // ------------------------------------------------------------------ F6 (main cfg)
         internal static ConfigEntry<bool> ClimbingOn, JumpTriggersClimbing, Ladders;
         internal static ConfigEntry<Key> ClimbKey;
+        /// <summary>The alternative climb key as a legacy KeyCode.</summary>
         internal static KeyCode ClimbKeyCode { get { return KeyMap.Code(ClimbKey.Value); } }
 
         // ------------------------------------------------------------------ F7 (tools.cfg)

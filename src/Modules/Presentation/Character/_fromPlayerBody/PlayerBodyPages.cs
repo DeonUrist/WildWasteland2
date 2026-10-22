@@ -13,9 +13,12 @@ namespace WildWasteland.Modules.PlayerBody
     internal static partial class PlayerBodyPages
     {
         const string G = ToolGroups.Player;
+        /// <summary>Two-decimal invariant number for page values.</summary>
         static string F(float v) { return v.ToString("0.00", CultureInfo.InvariantCulture); }
+        /// <summary>"yes" / "no" for page values.</summary>
         static string YesNo(bool b) { return b ? "yes" : "no"; }
 
+        /// <summary>The module's F7 pages in the old order (other targets add theirs through the partial methods).</summary>
         internal static IEnumerable<ToolPage> Create(PlayerBodyModule m)
         {
             // (Wave A) the pages of the other targets are added by their partial files, in the old order
@@ -29,11 +32,15 @@ namespace WildWasteland.Modules.PlayerBody
             AddDeveloperPages(m, pages);
             return pages;
         }
+        /// <summary>Adds the Camera page (PlayerBodyPages.Camera.cs).</summary>
         static partial void AddCameraPages(PlayerBodyModule m, List<ToolPage> pages);
+        /// <summary>Adds the Climbing page (PlayerBodyPages.Traversal.cs).</summary>
         static partial void AddTraversalPages(PlayerBodyModule m, List<ToolPage> pages);
+        /// <summary>Adds the weapon pose editor and steering-wheel pages (PlayerBodyPages.Developer.cs).</summary>
         static partial void AddDeveloperPages(PlayerBodyModule m, List<ToolPage> pages);
 
         // ------------------------------------------------------------------ Animation framework
+        /// <summary>F7 "Animation framework" page: ModAPI service state and attached characters.</summary>
         static void Framework(ToolLayout l)
         {
             l.Text("The Mixamo animation set of the player's body, offered to other modules as Core.Services.Animation (ex Apocaplayer ModAPI): NPC gunmen and patrol turret riders are animated with it.");
@@ -60,6 +67,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ------------------------------------------------------------------ Body & model
+        /// <summary>F7 "Body & model" page: body state, character choice and body toggles.</summary>
         static void BodyPage(ToolLayout l)
         {
             var b = BodyRunner.PlayerBody;

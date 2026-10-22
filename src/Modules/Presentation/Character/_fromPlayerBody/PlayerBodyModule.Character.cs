@@ -13,12 +13,15 @@ namespace WildWasteland.Modules.PlayerBody
     public sealed partial class PlayerBodyModule
     {
         // ------------------------------------------------------------------ F6 (main cfg)
+        /// <summary>Character choices (enum names are the stored config values; Pistoleer/Mechanic are legacy aliases).</summary>
         internal enum Gender { Female, Male, Merchant, Bodyguard, Sprokka, Pistoleer, Mechanic, OrganicMechanic, Gungirl, Shoota }
         internal static ConfigEntry<Gender> Character;
         internal static ConfigEntry<bool> BodyFirstPerson, EmptyHandArms, FemaleArms, ReplaceDriver, EquipmentOnBody, PainSounds, FirstPersonSwayOn, SmoothAimDownSights;
         internal static ConfigEntry<bool> FullBodyOnlyOnFoot;
         internal static ConfigEntry<bool> FirstPersonArmsOnlyOnFoot;
+        /// <summary>First-person body shown in the driver's seat (BodyFirstPerson and not FullBodyOnlyOnFoot).</summary>
         internal static bool BodyInCar { get { return BodyFirstPerson.Value && !FullBodyOnlyOnFoot.Value; } }
+        /// <summary>Empty-handed first-person arms shown on the wheel (FirstPersonArms and not FirstPersonArmsOnlyOnFoot).</summary>
         internal static bool ArmsInCar { get { return EmptyHandArms.Value && !FirstPersonArmsOnlyOnFoot.Value; } }
 
         // ------------------------------------------------------------------ F7 (tools.cfg): tuning, offsets (the old hidden H() entries)
@@ -35,7 +38,9 @@ namespace WildWasteland.Modules.PlayerBody
         internal static ConfigEntry<float> HipsDrift, ClipWalkSpeed, ClipRunSpeed, ClipCrouchSpeed, ThighSwing, KneeBend, ArmSwing, HipBob, CrouchDrop;
 
         internal static bool Female { get { return Character != null && Character.Value == Gender.Female; } }
+        /// <summary>Body model file of the chosen character (Female: the Model entry).</summary>
         internal static string BodyModelFile { get { return Female ? ModelFile.Value : "Models/Player_male.glb"; } }
+        /// <summary>Body texture file of the chosen character (Female: the Texture entry).</summary>
         internal static string BodyTextureFile { get { return Female ? TextureFile.Value : "Models/Player_male.png"; } }
 
         static readonly AnimationService _service = new AnimationService();
