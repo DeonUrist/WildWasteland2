@@ -46,6 +46,7 @@ namespace WildWasteland.Modules.Patrols
         Convoy _convoy; WorldTraffic _traffic; Cleanup _cleanup;
         SaveBus.StateChange _onSaveState;
 
+        /// <summary>Withdraws town journey planning when the actual POI provider stops.</summary>
         private static void OnTownTrafficStopped(ref TownTrafficStopped stopped){WorldTraffic.TownsStopped();}
         // ---------------------------------------------------------------- lifecycle
 
