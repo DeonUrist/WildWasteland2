@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.Quests
+namespace WildWasteland.Modules.NPCAI
 {
     internal static class QuestFollower
     {

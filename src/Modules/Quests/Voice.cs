@@ -25,6 +25,7 @@ namespace WildWasteland.Modules.Quests
         static AudioSource src;
         static readonly HashSet<string> logged = new HashSet<string>();
 
+        /// <summary>Binds retained voice settings while preserving the current playback-disabled policy.</summary>
         public static void Init(VoiceSettings cfg, string dllDir)
         {
             enabled = cfg.enabled;
@@ -37,6 +38,7 @@ namespace WildWasteland.Modules.Quests
             volume.SettingChanged += Changed; folderCfg.SettingChanged += Changed;
         }
 
+        /// <summary>Resolves the authored voice-content directory.</summary>
         static string Root()
         {
             string c = folderCfg != null ? (folderCfg.Value ?? "").Trim() : "";
@@ -46,6 +48,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Plays the line (offer / accept / remind / done) of this quest if some voice actor recorded it. Returns true when something plays.
+        /// <summary>Selects and optionally plays a recorded quest line for its speaker.</summary>
         public static bool Say(Quest q, string line, Transform npc, string npcName)
         {
             try
@@ -74,19 +77,23 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
+        /// <summary>Stops the current quest voice clip.</summary>
         public static void Stop() { try { if (src != null) src.Stop(); } catch (Exception) { } }
 
+        /// <summary>Sanitizes an authored voice path component.</summary>
         static string SafeName(string id)
         {
             foreach (char c in Path.GetInvalidFileNameChars()) id = id.Replace(c, '_');
             return id;
         }
 
+        /// <summary>Derives a deterministic speaker and quest seed.</summary>
         static int Hash(string s)
         {
             unchecked { int h = 17; foreach (char c in s) h = h * 31 + c; return h & 0x7fffffff; }
         }
 
+        /// <summary>Plays a decoded clip on the retained quest audio source.</summary>
         static void Play(AudioClip clip, Transform npc)
         {
             if (src == null)
@@ -106,6 +113,7 @@ namespace WildWasteland.Modules.Quests
             src.Play();
         }
 
+        /// <summary>Loads and caches a supported recorded voice clip.</summary>
         static AudioClip Load(string path)
         {
             AudioClip c;
@@ -133,6 +141,7 @@ namespace WildWasteland.Modules.Quests
             Audio.NormalizePeak(data, 0.9f, Mathf.Max(1f, volume.Value / 5f));
             return Audio.Clip(Path.GetFileNameWithoutExtension(path), data, ch, rate, false);
         }
+        /// <summary>Unsubscribes configuration callbacks and destroys owned voice resources.</summary>
         internal static void Shutdown()
         {
             if (volume != null) volume.SettingChanged -= Changed; if (folderCfg != null) folderCfg.SettingChanged -= Changed;
@@ -140,6 +149,7 @@ namespace WildWasteland.Modules.Quests
             foreach (var clip in clips.Values) if (clip != null) UnityEngine.Object.Destroy(clip);
             clips.Clear(); bad.Clear(); logged.Clear(); root = null; rootLogged = false;
         }
+        /// <summary>Invalidates decoded voices after their path or volume settings change.</summary>
         static void Changed(object sender, EventArgs args)
         {
             Stop(); if (src != null) src.clip = null;

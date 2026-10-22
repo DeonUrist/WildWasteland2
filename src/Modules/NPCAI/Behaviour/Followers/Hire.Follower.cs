@@ -304,7 +304,7 @@ namespace WildWasteland.Modules.Quests
                 shotsFired++;
                 if (shotsFired <= 12) if (Core.Log.L1) NpcaiRuntime.Main("Hire: " + displayName + " shoots " + target.name + " on foot (health now " + hp.Value.ToString("0") + ").");
                 if (npcAnim == null) npcAnim = npc.GetComponent<Animator>() ?? npc.GetComponentInChildren<Animator>(true);
-                if (npcAnim != null && !string.IsNullOrEmpty(footShootAnim)) { QuestFollower.Play(npcAnim, footShootAnim, 0, 0f); footIdleAt = now + 0.9f; }
+                if (npcAnim != null && !string.IsNullOrEmpty(footShootAnim)) { if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Play(npcAnim, footShootAnim, 0, 0f); else npcAnim.Play(footShootAnim, 0, 0f); footIdleAt = now + 0.9f; }
                 PlayShotAnim();
                 CountShot();
                 PlayMakerFSM snd = FindFsm(npc, "Sound2");

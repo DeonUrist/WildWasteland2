@@ -65,6 +65,7 @@ namespace WildWasteland.Modules.Quests
         internal ConfigEntry<string> humanFactions;
         internal ConfigEntry<string> peopleNames;
 
+        /// <summary>Binds quest engine options and authoring policy.</summary>
         internal void Bind(ModuleConfig cfg)
         {
             logKey = QuestBinding.BindKey(cfg, "General", "QuestLogKey", Key.J, "Key that shows or hides the quest log.");
@@ -152,6 +153,7 @@ namespace WildWasteland.Modules.Quests
         internal ConfigEntry<float> rideRange;
         internal ConfigEntry<Key> dismissKey;
 
+        /// <summary>Binds companion contract and movement tuning.</summary>
         internal void Bind(ModuleConfig cfg)
         {
             enabled = QuestBinding.Bind(cfg, "Hire", "Enabled", true, "Bodyguards, pups, bolters, pistoleers, gunnars and luggers can be hired for reputation (needs the NPCAI and Apocapatrol mods).");
@@ -186,6 +188,7 @@ namespace WildWasteland.Modules.Quests
         internal ConfigEntry<float> spatial;
         internal ConfigEntry<string> folderCfg;
 
+        /// <summary>Binds the retained quest voice-content options.</summary>
         internal void Bind(ModuleConfig cfg)
         {
             enabled = QuestBinding.Bind(cfg, "Voice", "Enabled", true, "Play recorded voice lines for quests that have them (Voice Actors\\<actor>\\<quest id>\\offer.wav, accept.wav, remind.wav, done.wav).");

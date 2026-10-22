@@ -12,18 +12,23 @@ namespace WildWasteland.Modules.Quests
         {
             internal Vector3 Position; internal Transform Target; internal string Label;
             internal Color Color; internal int Compass, Map; internal ICompassMarkers CompassApi; internal IMapMarkers MapApi;
+            /// <summary>Resolves the current scene position of a moving or fixed quest marker.</summary>
             internal Vector3 Scene() { return Target != null ? Target.position : Core.Origin.Scene(Position); }
         }
         static readonly Dictionary<string, Marker> Markers = new Dictionary<string, Marker>();
         static readonly List<string> Removed = new List<string>();
+        /// <summary>Whether either map presentation provider is available.</summary>
         internal static bool Available { get { return ModApi.Get<IMapMarkers>() != null || ModApi.Get<ICompassMarkers>() != null; } }
+        /// <summary>Whether the map provider considers this scene point explored.</summary>
         internal static bool IsExplored(Vector3 scene) { return ModApi.Get<IMapMarkers>() != null && ModApi.Get<IMapMarkers>().Explored(scene); }
+        /// <summary>Derives the stable quest-ID color shared by tracker and markers.</summary>
         internal static Color QuestColor(string id)
         {
             uint hash = 2166136261u;
             for (int i = 0; i < id.Length; i++) hash = unchecked((hash ^ id[i]) * 16777619u);
             return Color.HSVToRGB((hash % 360u) / 360f, .6f, 1f);
         }
+        /// <summary>Synchronizes active quest marker identities and destinations.</summary>
         internal static void Sync(Dictionary<string, Vector3> positions)
         {
             Removed.Clear(); foreach (var key in Markers.Keys) if (!positions.ContainsKey(key)) Removed.Add(key);
@@ -47,6 +52,7 @@ namespace WildWasteland.Modules.Quests
             }
             Reconcile();
         }
+        /// <summary>Rebinds marker handles when HUD providers are replaced.</summary>
         internal static void Reconcile()
         {
             foreach (var m in Markers.Values)
@@ -57,7 +63,9 @@ namespace WildWasteland.Modules.Quests
                 if (m.MapApi != null && !m.MapApi.Exists(m.Map)) m.Map = m.MapApi.Add(Owner, m.Scene, "flag", m.Color, m.Label);
             }
         }
+        /// <summary>Removes one marker from both active providers.</summary>
         static void Remove(Marker marker) { if (marker.CompassApi != null) marker.CompassApi.Remove(marker.Compass); if (marker.MapApi != null) marker.MapApi.Remove(marker.Map); }
+        /// <summary>Removes all quest markers when the world or module stops.</summary>
         internal static void Reset() { foreach (var m in Markers.Values) Remove(m); Markers.Clear(); }
     }
 }
