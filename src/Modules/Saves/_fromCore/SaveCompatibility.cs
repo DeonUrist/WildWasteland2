@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using ES3Internal;
 using HarmonyLib;
 using HutongGames.PlayMaker;
@@ -7,20 +6,20 @@ using HutongGames.PlayMaker;
 namespace WildWasteland.Core
 {
     // Preserve Apocasaver's stable hinge keys when its standalone save engine is disabled.
-    // Wave A split (refactor): the Apocasaver HandPose API takeover (SetPose/GetPose) lives in
-    // src/Modules/Compatibility/Apocasaver/_fromCore/SaveCompatibility.Apocasaver.cs; the pose store (Poses/SavePoses) stays here.
-    internal static partial class SaveCompatibility
+    // Compatibility owns the external HandPose adapter; Core transports its metadata with the original full ES3 keys.
+    internal static class SaveCompatibility
     {
-        static readonly Dictionary<string, string> Poses = new Dictionary<string, string>();
         /// <summary>Patches ES3PlayMaker Save/Load.Enter (prefix + finalizer) and clears the pose table on load/new game.</summary>
-        internal static void Install()
+        internal static void Install(IModule owner)
         {
-            if (!Patches.Patch(null, AccessTools.Method(typeof(ES3PlayMaker.Save), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeSave"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterSave"))
-                || !Patches.Patch(null, AccessTools.Method(typeof(ES3PlayMaker.Load), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeLoad"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterLoad"))) throw new InvalidOperationException("Stable hinge compatibility hooks failed");
+            if (!Patches.Patch(owner, AccessTools.Method(typeof(ES3PlayMaker.Save), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeSave"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterSave"))
+                || !Patches.Patch(owner, AccessTools.Method(typeof(ES3PlayMaker.Load), "Enter"), prefix: AccessTools.Method(typeof(SaveCompatibility), "BeforeLoad"), finalizer: AccessTools.Method(typeof(SaveCompatibility), "AfterLoad"))) throw new InvalidOperationException("Stable hinge compatibility hooks failed");
             SaveBus.StateChanged += StateChanged;
         }
+        /// <summary>Detaches load resets; the current world's pose values remain valid across a toggle.</summary>
+        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; }
         /// <summary>Clears the session pose table on LoadGame/Start/setSeed.</summary>
-        static void StateChanged(string previous, string current) { if (current == "LoadGame" || current == "Start" || current == "setSeed") Poses.Clear(); }
+        static void StateChanged(string previous, string current) { if (current == "LoadGame" || current == "Start" || current == "setSeed") SessionMetadata.Clear(); }
         /// <summary>Apocasaver stable ES3 key for a hinge saveItemVar FSM on a saved prefab, or null.</summary>
         static string Stable(Fsm fsm)
         {
@@ -51,6 +50,6 @@ namespace WildWasteland.Core
         { if (__state != null) __instance.key = __state; if (__exception == null) VehicleLoadPlacement.LoadedStance(__instance); return __exception; }
         /// <summary>Writes the session HandPose table into the active file's ES3 cache.</summary>
         internal static void SavePoses()
-        { foreach (var pair in Poses) ES3.Save<string>(pair.Key, pair.Value, new ES3Settings(SaveSystem.ActiveFile) { location = ES3.Location.Cache }); }
+        { SessionMetadata.Save(SaveSystem.ActiveFile); }
     }
 }

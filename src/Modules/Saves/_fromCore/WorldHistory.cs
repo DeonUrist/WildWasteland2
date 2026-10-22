@@ -25,9 +25,12 @@ namespace WildWasteland.Core
         static string _slot, _error;
         static int _generation = -1;
         static bool _running, _restoring;
-        internal static void Install()
+        static IModule _owner;
+        /// <summary>Installs the terrain snapshot barrier and pooling observers for Saves.</summary>
+        internal static void Install(IModule owner)
         {
-            SaveTerrain.Install();
+            _owner = owner;
+            SaveTerrain.Install(owner);
             _data = Access.Get<Dictionary<string, ES3Data>>(typeof(ES3File), "cache");
             _dirty = Access.Get<bool>(typeof(ES3File), "dirty");
             var tile = typeof(MapMagic.Terrains.TerrainTile); var pool = AccessTools.TypeByName("Den.Tools.ObjectsPool+Pool");
@@ -37,11 +40,13 @@ namespace WildWasteland.Core
             _prefab = Access.Get<GameObject>(prototype.FieldType, "prefab");
             foreach (string name in new[] { "Move", "Remove", "ResetTerrain" }) Require(tile, name, "BeforeTile");
             Require(pool, "ClampCount", "BeforeClamp");
-            if (!Patches.Patch(null, AccessTools.Method(pool, "MoveItems"), prefix: AccessTools.Method(typeof(WorldHistory), "BeforePool"), postfix: AccessTools.Method(typeof(WorldHistory), "AfterPool"))) throw new InvalidOperationException("Terrain history placement hook failed");
+            if (!Patches.Patch(owner, AccessTools.Method(pool, "MoveItems"), prefix: AccessTools.Method(typeof(WorldHistory), "BeforePool"), postfix: AccessTools.Method(typeof(WorldHistory), "AfterPool"))) throw new InvalidOperationException("Terrain history placement hook failed");
             SaveBus.StateChanged += StateChanged;
         }
+        /// <summary>Detaches resets and releases template/cache references while retaining immutable current-world history.</summary>
+        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; Templates.Clear(); _restoreCache = null; _owner = null; }
         static void Require(Type type, string name, string before)
-        { if (!Patches.Patch(null, AccessTools.Method(type, name), prefix: AccessTools.Method(typeof(WorldHistory), before))) throw new InvalidOperationException("Terrain history hook failed: " + name); }
+        { if (!Patches.Patch(_owner, AccessTools.Method(type, name), prefix: AccessTools.Method(typeof(WorldHistory), before))) throw new InvalidOperationException("Terrain history hook failed: " + name); }
         static void StateChanged(string previous, string current)
         { if (current == "LoadGame" || current == "setSeed" || current == "Start") { History.Clear(); Delta.Clear(); Templates.Clear(); _restoreCache = null; _slot = null; _generation = -1; } }
         static bool Session()

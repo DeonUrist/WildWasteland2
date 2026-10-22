@@ -34,7 +34,7 @@ namespace WildWasteland.Core
         }
         internal static bool ScreenVisible;
         /// <summary>Menus must not open (loading screen, save running).</summary>
-        internal static bool MenusBlocked { get { return ScreenVisible || SaveBus.Busy || SinglePlayerSaving.Serializing; } }
+        internal static bool MenusBlocked { get { var saves = ModApi.Get<ISaves>(); return ScreenVisible || SaveBus.Busy || saves != null && saves.Busy; } }
         /// <summary>Adds a progress source of a module.</summary>
         internal static void Register(IModule owner, Func<Work?> source) { Sources[owner] = source; }
         /// <summary>Removes a module's progress source.</summary>

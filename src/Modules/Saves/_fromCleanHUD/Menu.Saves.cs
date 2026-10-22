@@ -15,9 +15,10 @@ namespace WildWasteland.Modules.CleanHUD
     /// <summary>Save/load pieces of the title and pause menus (Wave A split; B04 provides an ISaveMenu, B10 calls it): load start, latest save, Continue, the save library and the legacy 10-slot screens used only without the WW save manager.</summary>
     internal sealed partial class Menu
     {
+        /// <summary>Starts the native loading screen and respects recovery admission only while Saves owns the framework.</summary>
         private bool BeginLoad(string path)
         {
-            if (Core.SaveSystem.RecoveryError != null) { Confirm(Core.SaveSystem.RecoveryError, null); return false; }
+            if (Core.SaveSystem.Installed && Core.SaveSystem.RecoveryError != null) { Confirm(Core.SaveSystem.RecoveryError, null); return false; }
             _loadingScreen.Begin();
             if (Click(path)) return true;
             _loadingScreen.End(); return false;
@@ -27,8 +28,20 @@ namespace WildWasteland.Modules.CleanHUD
         private static bool SlotUsed(int n) { var f = new FileInfo(SaveFile(n)); return f.Exists && f.Length > 1024; }
 
         private string _latestSaveFile;
+        /// <summary>Selects named snapshots while Saves runs; otherwise chooses only the newest usable native ten-slot save.</summary>
         private string LatestSave(out int slot)
         {
+            if (!Core.SaveSystem.Installed)
+            {
+                _latestSaveFile = null; slot = 0; DateTime newest = DateTime.MinValue;
+                for (int n = 1; n <= 10; n++)
+                {
+                    if (!SlotUsed(n)) continue;
+                    DateTime time = File.GetLastWriteTimeUtc(SaveFile(n));
+                    if (slot == 0 || time > newest) { slot = n; newest = time; }
+                }
+                return slot == 0 ? "" : SlotLabel(slot, true);
+            }
             _latestSaveFile = Core.SaveRuntime.Latest(); slot = _latestSaveFile == null ? 0 : 1;
             if (_latestSaveFile == null) return "";
             string name = Core.SaveSystem.Info(_latestSaveFile).Name;
@@ -50,11 +63,17 @@ namespace WildWasteland.Modules.CleanHUD
             return s;
         }
 
+        /// <summary>Loads through Saves admission when enabled, or directly clicks the selected native slot when disabled.</summary>
         private void ContinueLatest()
-        { int slot; LatestSave(out slot); if (_latestSaveFile != null) Core.SinglePlayerSaving.Load(_latestSaveFile); }
+        {
+            int slot; LatestSave(out slot);
+            if (Core.SaveSystem.Installed) { if (_latestSaveFile != null) Core.SinglePlayerSaving.Load(_latestSaveFile); }
+            else if (slot > 0) BeginLoad("LoadGame_Canvas/LoadGame/load slot " + slot + "/load_game_" + slot);
+        }
 
+        /// <summary>Opens the named save library while enabled, with the native ten-slot screen as the disabled fallback.</summary>
         private void OpenSave()
-        { if (Core.SaveSystem.Installed) WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); else Confirm(Core.SaveSystem.RecoveryError ?? "The save manager is unavailable. Check the log.", null); }
+        { if (Core.SaveSystem.Installed) WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); else ShowSlots(false); }
 
         // ---------------------------------------------------------------- load / save slots
         private void ShowSlots(bool load)

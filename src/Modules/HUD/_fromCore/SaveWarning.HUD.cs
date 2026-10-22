@@ -11,7 +11,7 @@ namespace WildWasteland.Core
     internal static partial class SaveWarning
     {
         /// <summary>Registers the predicate-gated GUI job (only while a phase is shown).</summary>
-        static partial void InstallHud() { Scheduler.Gui(null, "Autosave compass countdown", Draw, Wants); }
+        static partial void InstallHud(IModule owner) { Scheduler.Gui(owner, "Autosave compass countdown", Draw, Wants); }
 
         /// <summary>Repaint-only countdown text under the compass (hidden in menus, loading, editors).</summary>
         static void Draw()
