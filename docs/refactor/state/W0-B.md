@@ -21,17 +21,17 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 15. ItemSpawner.RegisterSaved
 - [x] 16. Clock
 - [x] 17. Names
-- [ ] 18. Layers
+- [x] 18. Layers
 - [ ] 19. Factions
 - [ ] 20. CameraArbiter
 - [ ] 21. PlayerState
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-65a6d1f (COMPILE OK; state line updated in next commit)
+478875f (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 18 Layers: collect layer numbers used across modules.
+Item 19 Factions: read Quests Factions.cs and Patrols faction use.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -54,3 +54,4 @@ Item 18 Layers: collect layer numbers used across modules.
 - ItemSpawner: Counter/List(Items|Cars)/NextId/Name/RegisterSaved/Unregister; numbering IncrementFirst (5 copies) vs UseThenIncrement (Quests) selectable; list = exact name then contains rule; cached per instance.
 - Clock: GameHours (Quests semantics, -1), Day, HourOfDay, Ready (TrafficReinforcements' Initialized check), Dark (Patrols DayLight verbatim); cached vars, throttled 1 s lookup, reset on scene load. Quests' QuestWorld.All fallback dropped (GameManager is always the owner).
 - Names: Base (Quests), StripClone (SaveCleanup), RenderBase (RenderShared k>0+TrimEnd), RemoveClone (Nav), CloneNumber (LastIndexOf+TryParse), BaseEquals/BaseStartsWith non-allocating.
+- Layers: named layer numbers + shared masks (bit-identical to the literals they replace); 12/13 unnamed.
