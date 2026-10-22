@@ -11,11 +11,10 @@ namespace WildWasteland.Modules.POI
     internal sealed partial class TownSettings
     {
         internal ConfigEntry<int> Min, Max, Chance, Inhabited;
-        internal ConfigEntry<float> Width, Setback, Jitter, Relief, Earthwork, Grade, Feather;
+        internal ConfigEntry<float> Relief, Earthwork, Grade, Feather;
         internal ConfigEntry<string> BuildingPrefabs, RoadLayer;
-        internal ConfigEntry<float> EntrySetback, Gap;
-        internal ConfigEntry<int> PopulationMinPercent, PopulationMaxPercent, LootMinPercent, LootMaxPercent;
-        internal ConfigEntry<float> PathWidth, AccessWidth, AccessLength;
+        internal ConfigEntry<float> Gap;
+        internal ConfigEntry<float> AccessLength;
         internal ConfigEntry<bool> EnsureTown;
         internal ConfigEntry<bool> PoiNearSpawn;
         internal ConfigEntry<bool> Walls;
@@ -40,27 +39,15 @@ namespace WildWasteland.Modules.POI
             Chance = Int(file, "Town chance (%)", 20, 0, 100, "Independent town chance per generated 5 km block. WORLD > POI. Selected blocks retry layouts/sites; Ensure selected towns allows the flattest available site when terrain targets cannot be met.");
             EnsureTown = file.Bind("POI / Generation", "Ensure selected towns", true, "After a successful chance roll, use the flattest available unoccupied site if the relief/cut-fill/grade targets cannot be met. Keep building counts, global blockers and connection to a real road. Unavailable sites remain pending with an explanation.");
             Inhabited = Int(file, "Inhabited towns (%)", 50, 0, 100, "Fraction of human Scrapyard/Coyotes faction bases rather than animal/mutant ruins. Test Building_N models retain their native appearance; roles do not yet create service merchants.");
-            Width = Float(file, "Street width", 10, 4, 24, "Street width in metres, using the current terrain road texture.");
-            Setback = Float(file, "Building setback", 4, 2, 20, "Retained legacy envelope setback key. New layout v2 uses Entrance setback instead; saved layouts retain their exact positions.");
-            EntrySetback = Float(file, "Entrance setback", 1, .5f, 4, "Clear distance from the road edge to the measured entrance, before small irregular variation. Replaces envelope-based setback for layout v2; old layouts keep their positions.");
             Gap = Float(file, "Gap between buildings", 2, .5f, 6, "Typical longitudinal gap between each building's actual footprint; bake margins may overlap and share global blockers.");
-            Jitter = Float(file, "Layout irregularity", 6, 0, 16, "Unequal frontage, setbacks and gentle street bends. Measured entrances continue to face across the street.");
             Relief = Float(file, "Maximum original relief", 6, .5f, 20, "Preferred terrain height range over the pad and feather. A strict limit with Ensure selected towns off; otherwise the flattest available fallback may exceed it.");
             Earthwork = Float(file, "Maximum cut or fill", 3, .25f, 10, "Preferred terrain-to-pad elevation difference. Ensure selected towns permits more for the flattest available fallback site.");
             Grade = Float(file, "Maximum original grade", .15f, .01f, .4f, "Preferred original neighbour rise/run before flattening. .15 means 15 percent. A strict limit only with Ensure selected towns off.");
             Feather = Float(file, "Pad transition width", 35, 10, 100, "Width in metres of the smooth transition from the level town to the unchanged landscape.");
             BuildingPrefabs = file.Bind("POI / Assets", "Test building prefabs", "", "Comma-separated existing Building_N names; blank uses all Building_N prefabs in the current MapMagic graph. Restart after changing. Native prefab geometry, scales and bake identities are preserved.");
             RoadLayer = file.Bind("POI / Assets", "Road terrain layer", "", "Optional exact TerrainLayer name. Blank follows the graph's roadStroke texture input. Missing/ambiguous road artwork rejects town generation instead of inventing a texture. Restart after changing.");
-            PopulationMinPercent = Percent(file, "Minimum population (%)", 10, "Minimum percentage of the whole town's original native enemy total. One town roll is distributed evenly across buildings and groups. 100 restores native amounts, 0 pauses pending spawns.");
-            PopulationMaxPercent = Percent(file, "Maximum population (%)", 20, "Maximum percentage of native enemy spawn amounts per town, inclusive. Faction restrictions still apply. 500 is five times the native amounts.");
-            LootMinPercent = Percent(file, "Minimum loot (%)", 5, "Minimum percentage of the whole town's native common-loot total. One town roll is distributed evenly across buildings and groups. 100 restores native item amounts, 0 pauses pending loot.");
-            LootMaxPercent = Percent(file, "Maximum loot (%)", 10, "Maximum percentage of native common-loot amounts per town, inclusive. 500 is five times the native item amounts. Completed spawners never refill.");
-            PathWidth = Float(file, "Entrance path width", 3, 1.5f, 5, "Terrain-blended path width between entrances. Buildings keep the existing placement spacing.");
-            AccessWidth = Float(file, "Access road width", 5, 3, 9, "Width of the terrain-blended access road to the actual generated world road.");
             AccessLength = Float(file, "Maximum access road length", 900, 100, 1800, "Maximum straight-line road search distance in metres. New towns require a nearby native road and a route with acceptable terrain grade.");
         }
-        private static ConfigEntry<int> Percent(ConfigFile file, string key, int value, string description)
-        { return file.Bind("POI / Debug", key, value, new ConfigDescription(description, new AcceptableValueRange<int>(0, 500))); }
         internal void Bind(ModuleConfig cfg)
         {
             Bind(cfg.Tools);
@@ -76,11 +63,11 @@ namespace WildWasteland.Modules.POI
             if (RejectedDoor(saved) || saved != null && !saved.HasTown && saved.Decision == "chance" && Chance.Value == 100) saved = null;
             return new GenerationInput { Key = key, Seed = seed, Buildings = specs, Saved = saved != null && saved.PathsVersion == 0 ? saved.CopyPaths() : saved,
                 Min = System.Math.Min(Min.Value, Max.Value), Max = System.Math.Max(Min.Value, Max.Value),
-                Chance = Chance.Value, EnsureTown = EnsureTown.Value, Inhabited = Inhabited.Value, StreetWidth = Width.Value,
-                Setback = EntrySetback.Value, Gap = Gap.Value, Jitter = Jitter.Value, MaxRelief = Relief.Value,
+                ParkingCompanions = GasStationParking.Value, Chance = Chance.Value, EnsureTown = EnsureTown.Value, Inhabited = Inhabited.Value,
+                Gap = Gap.Value, MaxRelief = Relief.Value,
                 MaxEarthwork = Earthwork.Value, MaxGrade = Grade.Value, Feather = Feather.Value,
                 RuinsMin = 3, RuinsMax = 6, HumansMin = 5, HumansMax = 9, LootMin = 12, LootMax = 20,
-                PathWidth = PathWidth.Value, AccessWidth = AccessWidth.Value, AccessLength = AccessLength.Value };
+                 AccessLength = AccessLength.Value };
         }
         internal static bool RejectedDoor(TownPlan plan)
         { return plan != null && !plan.HasTown && plan.Decision != "chance" && !plan.Decision.StartsWith("skipped:", System.StringComparison.Ordinal); }

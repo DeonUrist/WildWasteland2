@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.POI
         internal int EntryNode = -1;
         internal int Actors, Loot, Vehicles;
         internal bool Hounds;
-        internal bool Skipped;
+        internal bool Skipped, External;
         internal TownLot Copy() { return (TownLot)MemberwiseClone(); }
     }
     public sealed class TownPlan
@@ -95,13 +95,14 @@ namespace WildWasteland.Modules.POI
         internal string Key;
         internal TownTemplate[] Templates;
         internal int Seed, Min, Max, Chance, Inhabited;
-        internal float StreetWidth, Setback, Jitter, MaxRelief, MaxEarthwork, MaxGrade, Feather;
+        internal bool ParkingCompanions;
+        internal float MaxRelief, MaxEarthwork, MaxGrade, Feather;
         internal float Gap;
         internal BuildingSpec[] Buildings;
         internal TownPlan Saved;
         internal string Error;
         internal int RuinsMin, RuinsMax, HumansMin, HumansMax, LootMin, LootMax;
-        internal float PathWidth, AccessWidth, AccessLength;
+        internal float AccessLength;
         internal bool EnsureTown;
         internal TownLoading.Work Progress;
         internal bool ExcludeStartingChunk;
@@ -131,7 +132,6 @@ namespace WildWasteland.Modules.POI
         internal ITownOverlayWork Overlap;
         internal TownLoading.Work Loading;
         internal int NextLot;
-        internal bool PopulationReady;
         internal int[][] PopulationCounts, LootCounts;
         internal TownRecord Record;
         internal readonly List<Bounds> DebrisBlockers = new List<Bounds>();

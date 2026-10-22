@@ -100,9 +100,9 @@ namespace WildWasteland.Modules.POI
                 go.SetActive(true);
                 Physics.SyncTransforms(); TownBakeBridge.Discover(go);
                 _stations.Add(new Station { Key = request.Key, Root = go, Tile = tile, Request = request, Label = "Camp_10 test" });
-                Log.Always("[Towns] Camp_10 test placed on a level pad at " + request.Pad.WorldCenter + " (geometry only): stand near it until its navigation is baked.");
+                Log.Main(null, "[POI] Camp_10 test placed on a level pad at " + request.Pad.WorldCenter + " (geometry only): stand near it until its navigation is baked.");
             }
-            catch (Exception e) { Log.Warn("[Towns] Camp_10 test placement: " + e.Message); }
+            catch (Exception e) { Log.Warn("[POI] Camp_10 test placement: " + e.Message); }
             finally { Object.Destroy(holder); }
         }
         private void TestTick(GameObject player)
@@ -140,7 +140,7 @@ namespace WildWasteland.Modules.POI
                         _spawnPoints.Add(_cells[best]); _cells.RemoveAt(best);
                     }
                     _pointsReady = true;
-                    if (_spawnPoints.Count < 3) { _status = "Bake has fewer than 3 spaced ground-floor spawn cells; check scale"; Log.Warn("[Towns] Gas station test: " + _status); return; }
+                    if (_spawnPoints.Count < 3) { _status = "Bake has fewer than 3 spaced ground-floor spawn cells; check scale"; Log.Warn("[POI] Gas station test: " + _status); return; }
                     var manager = ES3ReferenceMgrBase.Current;
                     var prefab = manager == null ? null : manager.GetPrefab(2524626245796737373L, true);
                     if (prefab == null || prefab.name != "Scraffa") throw new InvalidOperationException("Native Scraffa melee prefab unavailable");
@@ -155,7 +155,7 @@ namespace WildWasteland.Modules.POI
                 TownBakeBridge.Actor(actor);
                 _status = _spawned == 3 ? "Ready: 3 melee Scrapyard raiders (unsaved test)" : "Spawning melee raiders " + _spawned + "/3";
             }
-            catch (Exception e) { _status = "Failed navigation/population: " + e.Message; Log.Warn("[Towns] Gas station test " + _status); _spawnPoints.Clear(); _spawned = 3; }
+            catch (Exception e) { _status = "Failed navigation/population: " + e.Message; Log.Warn("[POI] Gas station test " + _status); _spawnPoints.Clear(); _spawned = 3; }
         }
         internal void Shift(Vector3 delta)
         {

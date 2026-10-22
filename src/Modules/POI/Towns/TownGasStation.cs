@@ -60,6 +60,8 @@ namespace WildWasteland.Modules.POI
         private bool _failed;
         private string _status = "Off (reload after enabling)";
         internal TownGasStation(TownSettings settings) { _settings = settings; Current = this; }
+        private GameObject _catalogPrefab;
+        internal GameObject CatalogPrefab {get{if(!Available)return null;if(_catalogPrefab==null)_catalogPrefab=Shell(null,"TownsGasStation");return _catalogPrefab;}}
         internal bool Available { get { if (_model == null && !_failed) { try { LoadModel(); } catch (Exception e) { Fail("model setup", e); } } return _model != null && _materials != null; } }
 
         // ------------------------------------------------------------------ requests (main thread, before the tile is generated)
@@ -149,8 +151,8 @@ namespace WildWasteland.Modules.POI
             {
                 if (request.Failure != null)
                 {
-                    if (!request.Desert) { _status = request.Failure; Log.Warn("[Towns] Gas station test: " + _status); }
-                    else Log.Info("[Towns] desert gas station " + request.Key + " skipped: " + request.Failure);
+                    if (!request.Desert) { _status = request.Failure; Log.Warn("[POI] Gas station test: " + _status); }
+                    else Log.Info("[POI] desert gas station " + request.Key + " skipped: " + request.Failure);
                     continue;
                 }
                 if (request.Pad != null && request.Prefab != null) { if (_settings.TestCamp10.Value) PlaceCamp(request, tile); continue; }
@@ -173,12 +175,12 @@ namespace WildWasteland.Modules.POI
                     if (!request.Desert)
                     {
                         _test = station; _status = "Waiting for ground-floor navigation bake";
-                        Log.Always("[Towns] Gas station test placed at " + request.Pad.WorldCenter + "; camp distance "
+                        Log.Main(null, "[POI] Gas station test placed at " + request.Pad.WorldCenter + "; camp distance "
                             + Flat(request.Pad.WorldCenter - request.Camp).ToString("0.0", CultureInfo.InvariantCulture) + " m; scale " + request.Scale.ToString("0.###", CultureInfo.InvariantCulture));
                     }
-                    else Log.Always("[Towns] desert gas station " + request.Key + " at " + request.Pad.WorldCenter + ", facing its road; " + station.Spawners.Count + " native spawners.");
+                    else Log.Main(null, "[POI] desert gas station " + request.Key + " at " + request.Pad.WorldCenter + ", facing its road; " + station.Spawners.Count + " native spawners.");
                 }
-                catch (Exception e) { Log.Warn("[Towns] gas station " + request.Key + " placement: " + e.Message); Remove(request.Key, false); }
+                catch (Exception e) { Log.Warn("[POI] gas station " + request.Key + " placement: " + e.Message); Remove(request.Key, false); }
             }
         }
         /// <summary>The bare station (render shell + collider), inactive, under `parent`. Used for desert stations and town parking lots.</summary>
@@ -281,7 +283,7 @@ namespace WildWasteland.Modules.POI
                 foreach (int index in _model.Mesh.GetTriangles(sub)) floor = Mathf.Max(floor, vertices[index].y);
             if (float.IsNegativeInfinity(floor)) throw new InvalidDataException("Gas station foundation node concrete_1 missing");
             ShiftMesh(_model, Vector3.down * floor); ShiftMesh(_collision, alignment + Vector3.down * floor);
-            Log.Always("[Towns] Gas station meshes aligned: collider offset " + alignment + "; foundation top offset "
+            Log.Main(null, "[POI] Gas station meshes aligned: collider offset " + alignment + "; foundation top offset "
                 + (-floor).ToString("0.###", CultureInfo.InvariantCulture) + " m; collider " + _collision.Mesh.vertexCount + " vertices; authored scale retained (use debug scale 1).");
             var manager = ES3ReferenceMgrBase.Current;
             if (manager == null) throw new InvalidOperationException("Native material reference manager unavailable");
@@ -310,13 +312,13 @@ namespace WildWasteland.Modules.POI
                         if (tex != null)
                         {
                             material = new Material(native["concrete_1"]) { name = names[i], mainTexture = tex };
-                            Log.Always("[Towns] Gas station: " + names[i] + " built from its texture (" + tex.width + "x" + tex.height + ")");
+                            Log.Main(null, "[POI] Gas station: " + names[i] + " built from its texture (" + tex.width + "x" + tex.height + ")");
                         }
                     }
                     if (material == null && i > 0)
                     {
                         material = native["concrete_1"];      // a cosmetic part only: concrete rather than no gas station at all
-                        Log.Warn("[Towns] Gas station: native texture " + names[i] + " not found, that part uses concrete_1");
+                        Log.Warn("[POI] Gas station: native texture " + names[i] + " not found, that part uses concrete_1");
                     }
                     if (material == null) throw new InvalidDataException("Native material/texture not found: " + names[i]);
                 }
@@ -332,7 +334,7 @@ namespace WildWasteland.Modules.POI
                 Material material;
                 if (!native.TryGetValue(key, out material)) throw new InvalidDataException("Unmapped GLB part: " + _model.NodeNames[i] + "; texture " + key);
                 _materials[i] = material;
-                Log.Always("[Towns] Gas station material: " + _model.NodeNames[i] + " -> " + key);
+                Log.Main(null, "[POI] Gas station material: " + _model.NodeNames[i] + " -> " + key);
             }
         }
         private static bool UsesTexture(Material material, string name)
@@ -355,11 +357,11 @@ namespace WildWasteland.Modules.POI
             var model = Glb.Load(path, collider);
             // The native signature includes mesh name/count/bounds; include all GLB bytes so edited triangles invalidate it too.
             using (var sha = SHA256.Create()) model.Mesh.name = Path.GetFileNameWithoutExtension(file) + "-" + BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(path))).Replace("-", "");
-            Log.Always("[Towns] Gas station mesh loaded: " + path + "; " + model.Mesh.vertexCount + " vertices, " + model.Mesh.subMeshCount + " submeshes; scale-1 size " + model.Bounds.size);
+            Log.Main(null, "[POI] Gas station mesh loaded: " + path + "; " + model.Mesh.vertexCount + " vertices, " + model.Mesh.subMeshCount + " submeshes; scale-1 size " + model.Bounds.size);
             return model;
         }
         private void Fail(string stage, Exception e)
-        { _failed = true; _status = "Failed " + stage + ": " + e.Message; Log.Warn("[Towns] Gas station " + _status); }
+        { _failed = true; _status = "Failed " + stage + ": " + e.Message; Log.Warn("[POI] Gas station " + _status); }
         private void Remove(string key, bool capture)
         {
             for (int i = _stations.Count - 1; i >= 0; i--)
@@ -391,6 +393,7 @@ namespace WildWasteland.Modules.POI
             _map = null; _compass = null;
             if (model)
             {
+                if(_catalogPrefab!=null)Object.Destroy(_catalogPrefab);_catalogPrefab=null;
                 if (_model != null) { Object.Destroy(_model.Mesh); foreach (var mesh in _model.Colliders) Object.Destroy(mesh); }
                 if (_collision != null) { Object.Destroy(_collision.Mesh); foreach (var mesh in _collision.Colliders) Object.Destroy(mesh); }
                 _model = _collision = null; _materials = null; _raider = null; _camp = null; _failed = false;

@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.POI
             }
             var pad = new TownGroundPad { _terrain = terrain, _data = data, _size = size, _resolution = res, _x = x0, _z = z0, _target = target };
             pad.Apply(); site.Plan.Feather = feather; site.Plan.MaximumEarthwork = max;
-            Core.Log.Always("[Towns] foundation prepared before buildings: " + site.Plan.Key + "; radius " + radius.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " m");
+            Core.Log.Main(null, "[POI] foundation prepared before buildings: " + site.Plan.Key + "; radius " + radius.ToString("F1", System.Globalization.CultureInfo.InvariantCulture) + " m");
             return pad;
         }
 

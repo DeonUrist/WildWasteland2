@@ -37,12 +37,13 @@ namespace WildWasteland.Modules.POI
             int choice = random.Next(weight); TownTemplate template = templates[0];
             foreach (var t in templates) { choice -= t.Weight; if (choice < 0) { template = t; break; } }
             plan.TemplateId = template.Id; plan.TemplateJson = Core.Json.Write(template.Data); plan.Rules = TownTemplate.Parse(template.Id, plan.TemplateJson); if (!template.UseGlobalLotRange) count = random.Next(template.MinLots, template.MaxLots + 1);
-            if (template.AllowedPois.Length > 0) { var allowed = new HashSet<string>(template.AllowedPois, StringComparer.Ordinal); var specs = new List<BuildingSpec>(); foreach (var spec in input.Buildings) if (allowed.Contains(spec.Name)) specs.Add(spec); input.Buildings = specs.ToArray(); }
+            if (template.AllowedPois.Length > 0) { var allowed = new HashSet<string>(template.AllowedPois, StringComparer.Ordinal); var specs = new List<BuildingSpec>(); foreach (var spec in input.Buildings) if (allowed.Contains(spec.Name) || Array.IndexOf(template.ExternalParkingPois,spec.Name)>=0) specs.Add(spec); input.Buildings = specs.ToArray(); }
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 if (stop != null && stop.stop) return null;
                 plan.Radius = 0; plan.Yaw = Range(random, 0, 360);
                 BuildLayout(plan, input, random, count);
+                AddParkingCompanions(plan,input);
                 if (template.RequireMerchant && !Array.Exists(plan.Lots, lot => lot.IsMerchant)) { plan.Decision = "skipped: required merchant unavailable"; plan.Lots = new TownLot[0]; return plan; }
                 if (plan.Lots.Length == 0) break;
                 var sites = TownSiting.Find(plan, input, data, heights, avoid, roads, random, stop);
@@ -73,8 +74,8 @@ namespace WildWasteland.Modules.POI
                 bool wantWreck = wrecks < 2 && (i == 3 || count >= 8 && i == count - 1);
                 var choices = new List<BuildingSpec>();
                 // (WW) camps mix in (at most two per town, one of them large)
-                foreach (var candidate in input.Buildings) if (!candidate.Merchant && (!crane || !candidate.Crane) && candidate.Wreck == wantWreck && Fits(candidate, big, camps)) choices.Add(candidate);
-                if (choices.Count == 0) foreach (var candidate in input.Buildings) if (!candidate.Merchant && (!crane || !candidate.Crane) && !candidate.Wreck && Fits(candidate, big, camps)) choices.Add(candidate);
+                foreach (var candidate in input.Buildings) if (!candidate.Merchant && Array.IndexOf(plan.Rules.ExternalParkingPois,candidate.Name)<0 && (!crane || !candidate.Crane) && candidate.Wreck == wantWreck && Fits(candidate, big, camps)) choices.Add(candidate);
+                if (choices.Count == 0) foreach (var candidate in input.Buildings) if (!candidate.Merchant && Array.IndexOf(plan.Rules.ExternalParkingPois,candidate.Name)<0 && (!crane || !candidate.Crane) && !candidate.Wreck && Fits(candidate, big, camps)) choices.Add(candidate);
                 if (i != 2 && choices.Count == 0) break;
                 var spec = i == 2 ? TownParking.Spec : choices[random.Next(choices.Count)];
                 // (WW) a Coyotes town ALWAYS has a merchant lot when any merchant camp is in the catalog
@@ -133,6 +134,8 @@ namespace WildWasteland.Modules.POI
             plan.Lots = lots.ToArray();
             TownParking.Outside(plan);
         }
+        private static void AddParkingCompanions(TownPlan plan,GenerationInput input)
+        {if(!input.ParkingCompanions||plan.Rules.ExternalParkingPois.Length==0)return;TownLot parking=null;foreach(var l in plan.Lots)if(l.IsParking){parking=l;break;}if(parking==null)return;var lots=new List<TownLot>(plan.Lots);float advance=0;var facing=Quaternion.Euler(0,parking.Yaw,0);foreach(string name in plan.Rules.ExternalParkingPois){BuildingSpec spec=null;foreach(var b in input.Buildings)if(b.Name==name){spec=b;break;}if(spec==null)throw new InvalidOperationException("External parking POI unavailable: "+name);if(lots.Count>=32)throw new InvalidOperationException("Town template exceeds 32 lots including parking companions");float yaw=parking.Yaw+180;var rot=Quaternion.Euler(0,yaw,0);var center=parking.LocalPosition+facing*(Vector3.left*(parking.HalfX+2+spec.HalfX)+Vector3.forward*advance);var lot=new TownLot{Prefab=name,External=true,Yaw=yaw,LocalPosition=center-rot*new Vector3(spec.Center.x,0,spec.Center.z),BoundsCenter=spec.Center,HalfX=spec.HalfX,HalfZ=spec.HalfZ,Entry=spec.Entry,HasEntry=true,Role=TownRole.GasStation};lots.Add(lot);advance+=spec.HalfZ*2+4;plan.Radius=Mathf.Max(plan.Radius,lot.LocalPosition.magnitude+Mathf.Sqrt(spec.HalfX*spec.HalfX+spec.HalfZ*spec.HalfZ)+3);}plan.Lots=lots.ToArray();}
         private static bool Fits(BuildingSpec c, bool big, int camps) { return !c.Camp || camps < 2 && (!big || !c.Big); }
         internal static Vector3 Entrance(TownLot lot)
         { return lot.LocalPosition + Quaternion.Euler(0, lot.Yaw, 0) * lot.Entry; }
