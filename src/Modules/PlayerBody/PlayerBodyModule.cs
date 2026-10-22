@@ -297,7 +297,7 @@ namespace WildWasteland.Modules.PlayerBody
 
             // data (was Plugin.Awake): ignition row keys, weapon poses, aim lift, climbing clips, female pain sounds
             IgnitionControl.Load(LegacyIgnitionKey());
-            GunPose.Bind(Path.Combine(Paths.ConfigPath, OldCfg));
+            GunPose.Bind();
             AimLift.Load(DataDir);
             ClimbingController.Init();
             LadderController.Init();

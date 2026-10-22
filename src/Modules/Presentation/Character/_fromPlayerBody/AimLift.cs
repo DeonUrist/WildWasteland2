@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.PlayerBody
     // Per weapon and aim clip: lift (cm), head down (degrees), forward (cm) - in config/WildWasteland/PlayerBody/aim-lift.txt (its own file: weapon-poses.txt
     // is never touched). WeaponAdjustment on: Page Up / Page Down = lift, Home / End = head, Insert / Delete = forward, live.
     // The math here has no Unity types (tools/locotest checks it outside the game).
-    internal static class AimLift
+    internal static partial class AimLift
     {
         public static readonly string[] AimClips = { "RifleAim", "RifleCrouchAim", "RifleFire", "RifleCrouchFire", "PistolFire" };
         public static bool IsAimClip(string clip) { return Array.IndexOf(AimClips, clip) >= 0; }
@@ -146,53 +146,12 @@ namespace WildWasteland.Modules.PlayerBody
             return Default(clip);
         }
         public static bool Own(string weapon, string clip, bool crouched) { string k = weapon + "|" + Key(clip, crouched); return _v.ContainsKey(k) || Builtin(k) != null; }
-        public static void Set(string weapon, string clip, bool crouched, float[] v) { _v[weapon + "|" + Key(clip, crouched)] = v; Dirty = true; Revision++; }
 
-        internal static string EditWeapon, EditClip;
         internal static int Revision;
-        internal static int EditFrame = -1;
-        internal static bool EditCrouched;
-        internal static bool CanEditArms { get { return PlayerBodyModule.Running && Game.Ready && !Game.Dead && !Game.InCar && GunPose.Editing && ThirdPerson.On && EditFrame >= UnityEngine.Time.frameCount - 1 && GunPose.CurrentFrame >= UnityEngine.Time.frameCount - 1 && !string.IsNullOrEmpty(EditWeapon) && !string.IsNullOrEmpty(EditClip); } }
-        static float[] _armKeys;
-        static int _armKeysRevision;
-        static string _armWeapon, _armClip; static bool _armCrouched;
-        internal static void EndArmKeys() { if (_armKeys != null) SaveIfDirty(); _armKeys = null; }
-        internal static void ArmKeys(bool left, UnityEngine.Vector3 move, UnityEngine.Vector3 rot, float dt)
-        {
-            if (!CanEditArms || move == UnityEngine.Vector3.zero && rot == UnityEngine.Vector3.zero) { EndArmKeys(); return; }
-            if (_armKeys == null || _armWeapon != EditWeapon || _armClip != EditClip || _armCrouched != EditCrouched || _armKeysRevision != Revision)
-            {
-                EndArmKeys(); _armWeapon = EditWeapon; _armClip = EditClip; _armCrouched = EditCrouched;
-                _armKeys = (float[])Get(EditWeapon, EditClip, EditCrouched).Clone(); Set(EditWeapon, EditClip, EditCrouched, _armKeys); _armKeysRevision = Revision;
-            }
-            int i = left ? 3 : 8;
-            _armKeys[i] = UnityEngine.Mathf.Clamp(_armKeys[i] + move.y * dt, -45f, 45f);
-            _armKeys[i + 1] = UnityEngine.Mathf.Clamp(_armKeys[i + 1] + move.x * dt, -45f, 45f);
-            _armKeys[i + 2] = UnityEngine.Mathf.Clamp(_armKeys[i + 2] - rot.x * dt, -90f, 90f);
-            _armKeys[i + 3] = UnityEngine.Mathf.Clamp(_armKeys[i + 3] + rot.y * dt, -90f, 90f);
-            _armKeys[i + 4] = UnityEngine.Mathf.Clamp(_armKeys[i + 4] + rot.z * dt, -90f, 90f);
-            Dirty = true;
-        }
-        internal static void NudgeArm(bool left, int axis, float delta)
-        {
-            if (!CanEditArms) return;
-            var v = (float[])Get(EditWeapon, EditClip, EditCrouched).Clone();
-            int i = 3 + (left ? 0 : 5) + axis;
-            float limit = axis < 2 ? 45f : 90f;
-            v[i] = Math.Max(-limit, Math.Min(limit, v[i] + delta));
-            Set(EditWeapon, EditClip, EditCrouched, v); Save();
-        }
-        internal static void ResetArm(bool left)
-        {
-            if (!CanEditArms) return;
-            var v = (float[])Get(EditWeapon, EditClip, EditCrouched).Clone();
-            Array.Clear(v, 3 + (left ? 0 : 5), 5);
-            Set(EditWeapon, EditClip, EditCrouched, v); Save();
-        }
 
         // ---- two-bone IK: the new elbow position so the hand reaches t, the arm bending in the plane it bends in now
         //   s, e, h = shoulder, elbow, hand positions; returns the elbow (the caller turns the upper arm onto it, then the forearm onto t)
-        // (WW perf) the same math on plain doubles, no arrays (same operations in the same order as the array version below)
+        // (WW perf) the math on plain doubles, no arrays (WW2: the array version used only by tools/locotest is gone, README 7)
         public static void Elbow(double sx, double sy, double sz, double ex, double ey, double ez, double hx, double hy, double hz, double tx, double ty, double tz,
                                  out double rx, out double ry, out double rz)
         {
@@ -224,26 +183,5 @@ namespace WildWasteland.Modules.PlayerBody
             double ka = a * cosA, kb = a * sinA;
             rx = sx + (ux * ka + px * kb); ry = sy + (uy * ka + py * kb); rz = sz + (uz * ka + pz * kb);
         }
-        public static double[] Elbow(double[] s, double[] e, double[] h, double[] t)
-        {
-            double a = Dist(s, e), b = Dist(e, h);
-            var st = Sub(t, s); double c = Len(st);
-            if (c < 1e-6 || a < 1e-6 || b < 1e-6) return (double[])e.Clone();
-            c = Math.Max(Math.Abs(a - b) + 1e-4, Math.Min(a + b - 1e-4, c));
-            var u = Mul(st, 1.0 / Len(st));
-            var se = Sub(e, s);
-            var p = Sub(se, Mul(u, Dot(se, u)));          // where the elbow sticks out from the shoulder-target line
-            double pl = Len(p);
-            if (pl < 1e-6) { p = Sub(new[] { 0.0, -1.0, 0.0 }, Mul(u, -u[1])); pl = Len(p); if (pl < 1e-6) return (double[])e.Clone(); }
-            p = Mul(p, 1.0 / pl);
-            double cosA = Math.Max(-1.0, Math.Min(1.0, (a * a + c * c - b * b) / (2 * a * c))), sinA = Math.Sqrt(1 - cosA * cosA);
-            return Add(s, Add(Mul(u, a * cosA), Mul(p, a * sinA)));
-        }
-        static double[] Sub(double[] x, double[] y) { return new[] { x[0] - y[0], x[1] - y[1], x[2] - y[2] }; }
-        static double[] Add(double[] x, double[] y) { return new[] { x[0] + y[0], x[1] + y[1], x[2] + y[2] }; }
-        static double[] Mul(double[] x, double k) { return new[] { x[0] * k, x[1] * k, x[2] * k }; }
-        static double Dot(double[] x, double[] y) { return x[0] * y[0] + x[1] * y[1] + x[2] * y[2]; }
-        static double Len(double[] x) { return Math.Sqrt(Dot(x, x)); }
-        static double Dist(double[] x, double[] y) { return Len(Sub(x, y)); }
     }
 }

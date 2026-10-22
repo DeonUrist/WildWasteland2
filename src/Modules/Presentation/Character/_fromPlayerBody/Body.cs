@@ -797,21 +797,6 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (_prop == null || _propHand == null) return;
             var t = _prop.transform;
-            if (GunPose.HasLegacy(_propFor))
-            {
-                // rifles were tuned on top of AutoGrip (the barrel pointed from the right hand to the left hand in the rifle idle): measure it
-                // once more, the same way and in the same pose, then convert; everything else was tuned on the raider grip
-                if (!(_mixamo && kind == Props.Kind.Rifle)) GunPose.ConvertLegacy(_propFor, _propPos, _propRot);
-                else if (_speedSmooth < 0.1f && _crouch < 0.01f && !_aimingNow && !_shootingNow && !_reloading && Time.time > _throwUntil
-                         && Time.time > _propSince + 0.5f)
-                {
-                    t.localPosition = _propPos; t.localRotation = _propRot;
-                    AlignProp();
-                    GunPose.ConvertLegacy(_propFor, t.localPosition, t.localRotation);
-                    GunPose.Note("");
-                }
-                else GunPose.Note("Converting your old " + _propFor + " grips: stand still (not crouched, not shooting) for a moment.");
-            }
             PoseWeights();
             Vector3 p; Quaternion r;
             GunPose.Blend(_propFor, _poseWn, _propPos, _propRot, out p, out r);
@@ -839,21 +824,6 @@ namespace WildWasteland.Modules.PlayerBody
             Quaternion lr = Quaternion.Inverse(_propHand.rotation) * wr;
             t.localPosition = lp; t.localRotation = lr;
             GunPose.SetLive(_propFor, pose, GunPose.Abs(lp, lr));
-        }
-
-        private void AlignProp()
-        {
-            if (_prop == null || _propBarrel == Vector3.zero) return;
-            Transform rh, lh;
-            if (!Bones.TryGetValue("mixamorig:RightHand", out rh) || !Bones.TryGetValue("mixamorig:LeftHand", out lh)) return;
-            Vector3 want = lh.position - rh.position;
-            if (want.magnitude < 0.12f) return;   // hands together (pistol grip / reload): keep the hand pose
-            var t = _prop.transform;
-            Vector3 have = t.TransformDirection(_propBarrel);
-            var q = Quaternion.FromToRotation(have, want.normalized);
-            Vector3 pivot = rh.position;
-            t.position = pivot + q * (t.position - pivot);
-            t.rotation = q * t.rotation;
         }
 
         // ---------------------------------------------------------------- procedural helpers
