@@ -11,8 +11,11 @@ namespace WildWasteland.Modules.Patrols
     {
         TurretSpotter _spotter; BusPassengerPoseEditor _busPose; MerchantEditor _merchantEditor;
 
+        /// <summary>The turret spot editor component (null while the module is off).</summary>
         internal TurretSpotter Spotter { get { return _spotter; } }
+        /// <summary>The bus passenger pose editor component (null while the module is off).</summary>
         internal BusPassengerPoseEditor BusPose { get { return _busPose; } }
+        /// <summary>The merchant item placement editor component (null while the module is off).</summary>
         internal MerchantEditor MerchantSpot { get { return _merchantEditor; } }
 
         /// <summary>Adds the turret spot and bus passenger pose editors to the runner object (old component order).</summary>

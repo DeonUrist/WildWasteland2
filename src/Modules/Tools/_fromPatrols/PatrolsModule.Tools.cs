@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Patrols
     {
         TemplateMenu _menu; TemplateExporter _exporter;
 
+        /// <summary>The patrol editor component on the module runner object (null while the module is off).</summary>
         internal TemplateMenu Menu { get { return _menu; } }
 
         /// <summary>Adds the patrol editor and template recorder components to the runner object (after Patrol, old component order).</summary>

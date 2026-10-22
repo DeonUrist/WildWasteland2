@@ -34,6 +34,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Line of sight from the car roof to the player (own car, the player and his car ignored); false on a blocker or a full hit buffer.</summary>
         private bool Sight(Vector3 target, GameObject playerCar)
         {
             var origin = transform.position + Vector3.up * 2f;
