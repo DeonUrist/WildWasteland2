@@ -1,0 +1,418 @@
+using System;
+using System.Collections.Generic;
+using HutongGames.PlayMaker;
+using HutongGames.PlayMaker.Actions;
+using UnityEngine;
+
+namespace WildWasteland.Modules.NPC
+{
+    // (1.3.0) Small scorpions burrow. A scorpion that is not aware of anything sinks into the sand (its body goes down, only the top - the eyes -
+    // stays above the surface) and, every BurrowMin..BurrowMax seconds, comes up or goes down again, only ever on sand. Spawned on sand it burrows
+    // at once. Anything that makes it aware (it sees you, hears something, is hit) brings it up and it does not burrow again until it is calm.
+    // The sand puff and the sound are the sand worm's own (the Burrower_Effect prefab), played by hand at a small scale and a low volume.
+    // Burrowed it sees all around (Senses: cone 360). The body is only moved visually (the Rig child), colliders and FSMs are untouched.
+    //
+    // (1.4.0) Big scorpions hunt underground. They burrow like the small ones, but lying in wait they engage anything within HuntRange (15 m).
+    // Then, and also when a target it is fighting gets farther than HuntRange, the scorpion dives (the whole body, tail included, goes under),
+    // "travels" for as long as running there would take (distance / its own run speed), comes up at a spot behind the enemy and attacks.
+    // The spot must be open ground (terrain, not an object) with room for the body; one other spot is tried; if that fails too it comes back up
+    // where it went down 3-5 s later and chases as usual. While travelling the body is kinematic, its colliders are off, its senses and brain
+    // are paused and no other NPC can see it.
+    internal static partial class Burrow
+    {
+        private enum Phase { Out, Burrowing, Under, Rising, Diving, Travel }
+
+        private sealed class B
+        {
+            public Senses.Agent A; public Transform T, Rig; public Vector3 RigBase;
+            public Phase Phase; public float Amount, Depth, NextToggle; public bool WasAware, Applied, Fast;
+            // (1.4.0) hunters
+            public bool Hunter, Hunted, WasKinematic, Fallback, Held; public Rigidbody Rb; public Collider[] Cols; public bool[] ColOn;
+            public float Deep, Height, Radius, OffY, TravelEnd, NextHunt, NextHuntCheck, RiseRate; public int Extensions;
+            public Vector3 Origin, Dest;
+        }
+
+        private static readonly List<B> _list = new List<B>();
+        private static string[] _prefabs, _hunters; private static string _prefabsSrc, _huntersSrc;
+        private static readonly Dictionary<TerrainData, bool[]> _sandLayers = new Dictionary<TerrainData, bool[]>();
+        // (WW perf) the Terrain of a TerrainCollider (was GetComponent per check) and the sand verdict per alphamap texel (was a new
+        // float[1,1,n] from GetAlphamaps per check); a terrain's layers are painted by MapMagic when the tile is made, never in play
+        private static readonly Dictionary<int, Terrain> _terrainOf = new Dictionary<int, Terrain>();
+        private sealed class Texels { public Vector3 At; public readonly Dictionary<int, bool> Sand = new Dictionary<int, bool>(); }
+        private static readonly Dictionary<int, Texels> _sandAt = new Dictionary<int, Texels>();   // per TerrainData; dropped when its terrain moved (a reused tile)
+        private static readonly Collider[] _overlap = new Collider[16];
+        private const int GroundMask = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 11) | (1 << 14) | (1 << 16);           // what can be stood on
+        private const int RoomMask = (1 << 0) | (1 << 6) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 14) | (1 << 16);   // + Player, Actor
+
+        // (1.4.0) NPCs burrowed or travelling right now: Senses.Visible looks a target up in the agent table only while there is any
+        internal static int Hidden;
+
+        // (WW perf) _effect is a prefab asset, not a scene object: it survives scene loads (unloaded -> Unity-null -> found again), no new FSM scan per scene
+        internal static void OnSceneLoaded() { _list.Clear(); if (_effect == null) { _effect = null; _clip = null; } _nextFind = 0f; _sandLayers.Clear(); _terrainOf.Clear(); _sandAt.Clear(); _fxFree.Clear(); _fxLive.Clear(); _fxUntil.Clear(); Hidden = 0; }
+
+        // (WW) module shutdown: a hunter under the ground comes back up where it dived (colliders on, not kinematic), every body is raised
+        // to its rig's own position, the brain's hold is released
+        internal static void Shutdown()
+        {
+            foreach (var b in _list)
+            {
+                if (b.A == null || b.A.Owner == null || b.T == null) continue;
+                try
+                {
+                    if (b.A.Travel)
+                    {
+                        RaycastHit g; Vector3 pos = b.Origin;
+                        if (Ground(b.Origin, out g)) pos.y = g.point.y + b.OffY;
+                        b.T.position = pos; if (b.Rb != null) b.Rb.position = pos;
+                        if (b.Cols != null) for (int i = 0; i < b.Cols.Length; i++) if (b.ColOn[i] && b.Cols[i] != null) b.Cols[i].enabled = true;
+                        b.A.Travel = false;
+                    }
+                    if (b.Rb != null && b.Hunted && b.Rb.isKinematic && !b.WasKinematic) { b.Rb.isKinematic = false; b.Rb.velocity = Vector3.zero; }
+                    if (b.Hunted || b.Held) Brain.SetTravel(b.A.Owner, false);
+                    if (b.Rig != null) b.Rig.localPosition = b.RigBase;
+                    b.A.Burrowed = false; b.A.AmbushDist = 0f;
+                }
+                catch (Exception e) { NpcModule.Warn("Burrow shutdown: " + e.Message); }
+            }
+            _list.Clear(); Hidden = 0;
+            foreach (var fx in _fxLive) if (fx != null) UnityEngine.Object.Destroy(fx);
+            foreach (var fx in _fxFree) if (fx != null) UnityEngine.Object.Destroy(fx);
+            _fxLive.Clear(); _fxUntil.Clear(); _fxFree.Clear(); _terrainOf.Clear(); _sandAt.Clear();
+        }
+
+        // (WW) floating origin: the dive spot and the destination are scene space
+        internal static void Shift(Vector3 d) { foreach (var b in _list) { b.Origin += d; b.Dest += d; } }
+        internal static int Count { get { return _list.Count; } }
+
+        private static bool In(string prefab, string cfg, ref string[] cache, ref string src)
+        {
+            cfg = cfg ?? "";
+            if (cache == null || src != cfg) { src = cfg; cache = cfg.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries); for (int i = 0; i < cache.Length; i++) cache[i] = cache[i].Trim(); }
+            foreach (var p in cache) if (p.Length > 0 && string.Equals(prefab, p, StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        // Senses.Make: every registered NPC passes here once
+        internal static void Register(Senses.Agent a)
+        {
+            if (!NpcModule.BurrowEnabled.Value || a == null || a.Owner == null) return;
+            string prefab = Senses.PrefabOf(a.Owner);
+            bool hunter = In(prefab, NpcModule.HuntPrefabs.Value, ref _hunters, ref _huntersSrc);
+            if (!hunter && !In(prefab, NpcModule.BurrowPrefabs.Value, ref _prefabs, ref _prefabsSrc)) return;
+            Transform rig = a.T.Find("Rig");
+            if (rig == null) { var an = a.Owner.GetComponentInChildren<Animator>(true); if (an != null && an.transform != a.T) rig = an.transform; }
+            if (rig == null) return;
+            Bounds bb = new Bounds(); bool any = false;
+            foreach (var r in rig.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || r is ParticleSystemRenderer) continue;
+                if (!any) { bb = r.bounds; any = true; } else bb.Encapsulate(r.bounds);
+            }
+            float h = any ? bb.size.y : 0.15f;
+            var n = new B { A = a, T = a.T, Rig = rig, RigBase = rig.localPosition, Depth = Mathf.Clamp(h * Mathf.Clamp(NpcModule.BurrowDepth.Value, 0.2f, 1f), 0.04f, 0.5f) };
+            n.Height = Mathf.Max(0.1f, h);
+            n.Deep = Mathf.Max(n.Depth, h + 0.2f);       // a hunter's dive: the whole body and the tail under, with a margin for slopes
+            n.Radius = Mathf.Clamp(any ? Mathf.Max(bb.extents.x, bb.extents.z) * 0.6f : 0.3f, 0.15f, 1.2f);
+            if (hunter)
+            {
+                n.Rb = a.Owner.GetComponent<Rigidbody>();
+                if (n.Rb == null) hunter = false;      // nothing to hold still while it travels: it only burrows
+                else
+                {
+                    if (n.Rb.isKinematic) n.Rb.isKinematic = false;     // (1.7.0) saved while travelling underground: never left kinematic after a load
+                    var solid = new List<Collider>();
+                    foreach (var c in a.Owner.GetComponentsInChildren<Collider>(true)) if (c != null && !c.isTrigger) solid.Add(c);
+                    n.Cols = solid.ToArray(); n.ColOn = new bool[n.Cols.Length];
+                }
+            }
+            n.Hunter = hunter;
+            n.NextToggle = 0f;      // spawned: burrows at once, if it stands on sand and nothing alerts it
+            _list.Add(n);
+            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: " + a.Owner.name + (hunter ? " hunts underground" : " can burrow") + " (depth " + n.Depth.ToString("0.00") + " m, body " + h.ToString("0.00") + " m, radius " + n.Radius.ToString("0.00") + " m)");
+        }
+
+        internal static void Tick()
+        {
+            if (_fxLive.Count > 0) FxRecycle(Time.time);
+            if (_list.Count == 0) { Hidden = 0; return; }
+            float now = Time.time, dt = Time.deltaTime;
+            bool on = NpcModule.BurrowEnabled.Value && Senses.On;
+            int hidden = 0;
+            for (int i = _list.Count - 1; i >= 0; i--)
+            {
+                var b = _list[i];
+                if (b.A == null || b.A.Owner == null || b.T == null) { _list.RemoveAt(i); continue; }
+                bool aware = !on || b.A.State != Senses.State.Idle || b.A.Blown;
+                bool hunting = on && b.Hunter && b.A.State == Senses.State.Combat && b.A.Target != null && !b.A.Blown && b.T.parent == null;
+                if (aware && !b.WasAware) { b.NextToggle = now + Calm(); }
+                if (!aware && b.WasAware && b.Phase == Phase.Out) b.NextToggle = now + Calm();      // calm again: the cycle restarts
+                b.WasAware = aware;
+                switch (b.Phase)
+                {
+                    case Phase.Out:
+                        if (hunting)
+                        {
+                            // fighting above ground: the target got away farther than HuntRange -> after it underground (2 checks a second, cheap first)
+                            if (now >= b.NextHunt && now >= b.NextHuntCheck) { b.NextHuntCheck = now + 0.5f; if (Far(b) && OnSand(b.T.position)) StartHunt(b, now); }
+                        }
+                        else if (!aware && now >= b.NextToggle) { if (OnSand(b.T.position)) Go(b, Phase.Burrowing, false); else b.NextToggle = now + Calm(); }
+                        break;
+                    case Phase.Burrowing:
+                        if (hunting) { if (Within(b, HuntMax)) StartHunt(b, now); else Go(b, Phase.Rising, true); break; }
+                        if (aware) { Go(b, Phase.Rising, true); break; }
+                        b.Amount = Mathf.MoveTowards(b.Amount, 1f, dt / (Mathf.Max(0.1f, NpcModule.BurrowSeconds.Value) * Slow(b)));
+                        if (b.Amount >= 1f) { b.Phase = Phase.Under; b.A.Burrowed = true; b.NextToggle = now + Calm(); }
+                        break;
+                    case Phase.Under:
+                        b.A.Burrowed = true;
+                        if (hunting) { if (Within(b, HuntMax)) StartHunt(b, now); else Go(b, Phase.Rising, true); }      // shot from afar: comes up and fights as usual
+                        else if (aware) Go(b, Phase.Rising, true);
+                        else if (now >= b.NextToggle) Go(b, Phase.Rising, false);
+                        break;
+                    case Phase.Rising:
+                        b.Amount = Mathf.MoveTowards(b.Amount, 0f, dt * (b.RiseRate > 0f ? b.RiseRate : 1f / (Mathf.Max(0.1f, b.Fast ? NpcModule.RiseSeconds.Value * 0.5f : NpcModule.RiseSeconds.Value) * Slow(b))));
+                        if (b.Amount <= 0f) { b.Phase = Phase.Out; b.NextToggle = now + Calm(); if (b.Hunted) EndHunt(b, now); }
+                        break;
+                    case Phase.Diving:
+                        if (!b.Held) b.Held = Brain.SetTravel(b.A.Owner, true);     // not known to the brain when the dive began: hold it now
+                        if (!on) { Emerge(b, b.Origin); break; }
+                        b.Amount = Mathf.MoveTowards(b.Amount, 2f, dt * 2f / Mathf.Max(0.1f, NpcModule.HuntDiveSeconds.Value));
+                        if (b.Amount >= 2f) BeginTravel(b, now);
+                        break;
+                    case Phase.Travel:
+                        if (!on) { Emerge(b, b.Origin); break; }
+                        if (now >= b.TravelEnd) Arrive(b, now);
+                        break;
+                }
+                if (b.A.Burrowed || b.A.Travel) hidden++;
+            }
+            Hidden = hidden;
+        }
+
+        private static float Slow(B b) { return b.Hunter ? Mathf.Clamp(NpcModule.HuntBurrowFactor.Value, 0.25f, 10f) : 1f; }
+        private static float Calm() { float lo = Mathf.Max(1f, NpcModule.BurrowMin.Value), hi = Mathf.Max(lo, NpcModule.BurrowMax.Value); return UnityEngine.Random.Range(lo, hi); }
+        private static float HuntRange { get { return Mathf.Max(2f, NpcModule.HuntRange.Value); } }
+        private static float HuntMax { get { return Mathf.Max(HuntRange, NpcModule.HuntMaxDistance.Value); } }
+
+        private static bool Within(B b, float r)
+        {
+            Vector3 d = b.A.Target.transform.position - b.T.position; d.y = 0f;
+            return d.sqrMagnitude <= r * r;
+        }
+
+        private static bool Far(B b)
+        {
+            Vector3 d = b.A.Target.transform.position - b.T.position; d.y = 0f;
+            float s = d.sqrMagnitude, r = HuntRange, m = HuntMax;
+            return s > r * r && s <= m * m;
+        }
+
+        private static void Go(B b, Phase p, bool fast)
+        {
+            b.Phase = p; b.Fast = fast;
+            if (p == Phase.Burrowing)
+            {
+                b.RiseRate = 0f;
+                // lying in wait: a small one lets you come within a distance chosen now (AmbushMin..AmbushMax m) before it comes up and attacks;
+                // a hunter engages anything within HuntRange and goes for it underground
+                b.A.AmbushDist = b.Hunter ? HuntRange : UnityEngine.Random.Range(Mathf.Max(0.5f, NpcModule.BurrowAmbushMin.Value), Mathf.Max(NpcModule.BurrowAmbushMin.Value, NpcModule.BurrowAmbushMax.Value));
+            }
+            if (p == Phase.Rising) { b.A.AmbushDist = 0f; b.A.Burrowed = false; }      // eyes were at the surface all along; the 360 degree look ends when it comes out
+            Fx(b, b.T.position);
+            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + (p == Phase.Burrowing ? " burrows (" + (b.Hunter ? "hunts within " : "ambush at ") + b.A.AmbushDist.ToString("0.0") + " m)" : fast ? " is alerted, comes up" : " comes up"));
+        }
+
+        // ---------- (1.4.0) the underground hunt ----------
+        private static void StartHunt(B b, float now)
+        {
+            b.Hunted = true; b.Extensions = 0; b.Fallback = false; b.RiseRate = 0f;
+            b.Origin = b.T.position;
+            RaycastHit g;
+            b.OffY = Ground(b.T.position, out g) ? Mathf.Clamp(b.T.position.y - g.point.y, -0.1f, 0.6f) : 0f;
+            b.A.AmbushDist = HuntRange;          // no ghosts handed to it while it is under (Senses.Assign)
+            Vector3 spot;
+            if (Pick(b, out spot))
+            {
+                b.Dest = spot;
+                Vector3 d = spot - b.Origin; d.y = 0f;
+                b.TravelEnd = d.magnitude / RunSpeed(b);          // the travel time (made absolute when the dive ends): as long as running there would take
+            }
+            else
+            {
+                b.Fallback = true; b.Dest = b.Origin;
+                b.TravelEnd = UnityEngine.Random.Range(Mathf.Max(0f, NpcModule.HuntFallbackMin.Value), Mathf.Max(NpcModule.HuntFallbackMin.Value, NpcModule.HuntFallbackMax.Value));
+            }
+            b.Held = Brain.SetTravel(b.A.Owner, true);       // stands still from now on: no pedal, no thinking, no stuck judgement
+            Fx(b, b.T.position);
+            b.Phase = Phase.Diving;
+            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + " dives after " + b.A.Target.name + (b.Fallback ? " (no room behind it: comes back up here in " + b.TravelEnd.ToString("0.0") + " s)" : ", travels " + b.TravelEnd.ToString("0.0") + " s at " + RunSpeed(b).ToString("0.0") + " m/s"));
+        }
+
+        private static void BeginTravel(B b, float now)
+        {
+            b.Phase = Phase.Travel;
+            b.TravelEnd = now + Mathf.Clamp(b.TravelEnd, 0.2f, 30f);
+            b.WasKinematic = b.Rb.isKinematic;
+            if (!b.Rb.isKinematic) { b.Rb.velocity = Vector3.zero; b.Rb.angularVelocity = Vector3.zero; }
+            b.Rb.isKinematic = true;
+            for (int i = 0; i < b.Cols.Length; i++) { var c = b.Cols[i]; b.ColOn[i] = c != null && c.enabled; if (b.ColOn[i]) c.enabled = false; }
+            b.A.Travel = true; b.A.Burrowed = true;
+        }
+
+        private static void Arrive(B b, float now)
+        {
+            if (!b.Fallback && b.A.Target != null)
+            {
+                // the enemy moved meanwhile: behind where it is now; a longer way is travelled at the same speed (twice at the most)
+                Vector3 spot;
+                if (Pick(b, out spot))
+                {
+                    Vector3 d = spot - b.Dest; d.y = 0f;
+                    float extra = d.magnitude, lim = HuntMax * 1.5f;
+                    if (extra > 2f && b.Extensions < 2 && (spot - b.Origin).sqrMagnitude <= lim * lim)
+                    {
+                        b.Dest = spot; b.Extensions++;
+                        b.TravelEnd = now + Mathf.Min(extra / RunSpeed(b), 15f);
+                        return;
+                    }
+                    if (extra <= 2f) b.Dest = spot;                          // about where it was going
+                    else if (!Room(b, b.Dest)) b.Dest = b.Origin;            // too far off now: the planned spot, if there is still room
+                }
+                else if (!Room(b, b.Dest)) b.Dest = b.Origin;      // the planned spot is taken now (a car parked on it): back where it went down
+            }
+            Emerge(b, b.Dest);
+        }
+
+        private static void Emerge(B b, Vector3 at)
+        {
+            if (b.A.Travel)
+            {
+                RaycastHit g;
+                Vector3 pos = at;
+                if (Ground(at, out g)) pos.y = g.point.y + b.OffY;
+                Quaternion rot = b.T.rotation;
+                if (b.A.Target != null)
+                {
+                    Vector3 f = b.A.Target.transform.position - pos; f.y = 0f;
+                    if (f.sqrMagnitude > 0.01f) rot = Quaternion.LookRotation(f.normalized, Vector3.up);
+                }
+                b.T.SetPositionAndRotation(pos, rot);
+                if (b.Rb != null) { b.Rb.position = pos; b.Rb.rotation = rot; }
+                for (int i = 0; i < b.Cols.Length; i++) if (b.ColOn[i] && b.Cols[i] != null) b.Cols[i].enabled = true;
+                b.A.Travel = false;
+            }
+            b.RiseRate = Mathf.Max(0.05f, b.Amount) / Mathf.Max(0.1f, NpcModule.HuntRiseSeconds.Value);      // bursts out
+            Go(b, Phase.Rising, true);
+            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: " + b.A.Owner.name + " bursts out " + (b.Fallback || at == b.Origin ? "where it went down" : (Vector3.Distance(at, b.Origin).ToString("0.0") + " m away")));
+        }
+
+        private static void EndHunt(B b, float now)
+        {
+            b.Hunted = false; b.RiseRate = 0f;
+            if (b.Rb != null && b.Rb.isKinematic && !b.WasKinematic) { b.Rb.isKinematic = false; b.Rb.velocity = Vector3.zero; }
+            Brain.SetTravel(b.A.Owner, false); b.Held = false;
+            b.NextHunt = now + Mathf.Max(0f, NpcModule.HuntCooldown.Value);
+        }
+
+        // underground it goes TravelSpeedFactor (2) times faster than it runs
+        private static float RunSpeed(B b) { float s = Brain.RunSpeed(b.A.Owner); return Mathf.Max(0.5f, s > 0f ? s : NpcModule.HuntSpeed.Value) * Mathf.Clamp(NpcModule.HuntTravelFactor.Value, 0.25f, 10f); }
+
+        // behind the target (behind where it looks: the camera for the player), else one other spot back and to a side
+        private static bool Pick(B b, out Vector3 spot)
+        {
+            spot = Vector3.zero;
+            var target = b.A.Target; if (target == null) return false;
+            Vector3 tp = target.transform.position;
+            Vector3 fwd = target.transform.forward;
+            if (target == Senses.PlayerObj) { var cam = Core.GameRefs.MainCamera; if (cam != null) fwd = cam.transform.forward; }
+            fwd.y = 0f;
+            if (fwd.sqrMagnitude < 0.01f) { fwd = tp - b.T.position; fwd.y = 0f; }
+            if (fwd.sqrMagnitude < 0.01f) fwd = Vector3.forward;
+            fwd.Normalize();
+            float dist = Mathf.Max(b.Radius + 0.5f, NpcModule.HuntBehind.Value);
+            spot = tp - fwd * dist;
+            if (Room(b, spot)) return true;
+            float ang = (UnityEngine.Random.value < 0.5f ? -1f : 1f) * UnityEngine.Random.Range(50f, 80f);
+            spot = tp - (Quaternion.Euler(0f, ang, 0f) * fwd) * dist;
+            return Room(b, spot);
+        }
+
+        // open ground (the terrain, not an object), not too steep, and room for the body
+        private static bool Room(B b, Vector3 p)
+        {
+            RaycastHit g;
+            if (!Ground(p, out g) || !(g.collider is TerrainCollider) || g.normal.y < 0.75f) return false;
+            float r = b.Radius;
+            Vector3 p0 = g.point + Vector3.up * (r + 0.15f), p1 = g.point + Vector3.up * Mathf.Max(r + 0.15f, b.Height + 0.1f);
+            int n = Physics.OverlapCapsuleNonAlloc(p0, p1, r, _overlap, RoomMask, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = _overlap[i];
+                if (c == null || c is TerrainCollider || c.transform.root == b.T) continue;
+                return false;
+            }
+            return true;
+        }
+
+        private static bool Ground(Vector3 p, out RaycastHit h)
+        {
+            return Physics.Raycast(p + Vector3.up * 3f, Vector3.down, out h, 6f, GroundMask, QueryTriggerInteraction.Ignore);
+        }
+
+        // ---------- sand ----------
+        // The ground under p is "sand" when it is the terrain itself and not any other object (the default). With [Burrow] UseTextureLayers on,
+        // only terrain whose texture layers at that spot are mostly layers named like a sand keyword
+        // (layer name or its diffuse texture's name contains one of [Burrow] SandKeywords). A terrain with no such layer at all (the keyword
+        // never matches, or no readable layers) is judged by [Burrow] TerrainIsSand; meshes (rock, floors, roads, cars) are not sand.
+        internal static bool OnSand(Vector3 p)
+        {
+            try
+            {
+                RaycastHit h;
+                if (!Physics.Raycast(p + Vector3.up * 0.5f, Vector3.down, out h, 3f, (1 << 0) | (1 << 14) | (1 << 8) | (1 << 11) | (1 << 16), QueryTriggerInteraction.Ignore)) return false;
+                var tc = h.collider as TerrainCollider;
+                if (tc == null) return false;                       // standing on any other object (rock, floor, road mesh, car, wreck): not sand
+                if (!NpcModule.BurrowUseLayers.Value) return true;     // the open ground itself (terrain) is sand
+                Terrain terrain; int tid = tc.GetInstanceID();
+                if (!_terrainOf.TryGetValue(tid, out terrain) || terrain == null) { terrain = h.collider.GetComponent<Terrain>(); if (_terrainOf.Count > 256) _terrainOf.Clear(); _terrainOf[tid] = terrain; }
+                if (terrain == null || terrain.terrainData == null) return NpcModule.BurrowTerrainIsSand.Value;
+                var d = terrain.terrainData;
+                bool[] sand;
+                if (!_sandLayers.TryGetValue(d, out sand)) { sand = Classify(d); if (_sandLayers.Count > 64) _sandLayers.Clear(); _sandLayers[d] = sand; }
+                if (sand == null || d.alphamapLayers == 0) return NpcModule.BurrowTerrainIsSand.Value;
+                Vector3 lp = h.point - terrain.transform.position;
+                int ax = Mathf.Clamp((int)(lp.x / d.size.x * d.alphamapWidth), 0, d.alphamapWidth - 1);
+                int az = Mathf.Clamp((int)(lp.z / d.size.z * d.alphamapHeight), 0, d.alphamapHeight - 1);
+                Texels tx; int did = d.GetInstanceID(), texel = ax * 65536 + az; Vector3 tp = terrain.transform.position;
+                if (!_sandAt.TryGetValue(did, out tx)) { if (_sandAt.Count > 64) _sandAt.Clear(); _sandAt[did] = tx = new Texels { At = tp }; }
+                if (tx.At != tp || tx.Sand.Count > 4096) { tx.Sand.Clear(); tx.At = tp; }
+                bool verdict;
+                if (tx.Sand.TryGetValue(texel, out verdict)) return verdict;
+                float[,,] w = d.GetAlphamaps(ax, az, 1, 1);
+                float total = 0f, s = 0f;
+                for (int i = 0; i < w.GetLength(2) && i < sand.Length; i++) { total += w[0, 0, i]; if (sand[i]) s += w[0, 0, i]; }
+                verdict = total > 0.0001f && s / total >= 0.5f;
+                tx.Sand[texel] = verdict;
+                return verdict;
+            }
+            catch (Exception e) { NpcModule.Verbose("Burrow: sand check: " + e.Message); return NpcModule.BurrowTerrainIsSand.Value; }
+        }
+
+        // per layer: a sand keyword in its name / texture name; null when no layer matches at all (then TerrainIsSand decides)
+        private static bool[] Classify(TerrainData d)
+        {
+            var layers = d.terrainLayers;
+            if (layers == null || layers.Length == 0) return null;
+            var keys = (NpcModule.BurrowSandKeywords.Value ?? "").Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            var res = new bool[layers.Length]; bool any = false;
+            for (int i = 0; i < layers.Length; i++)
+            {
+                var l = layers[i]; if (l == null) continue;
+                string n = (l.name ?? "") + "|" + (l.diffuseTexture != null ? l.diffuseTexture.name : "");
+                foreach (var k in keys) { string kk = k.Trim(); if (kk.Length > 0 && n.IndexOf(kk, StringComparison.OrdinalIgnoreCase) >= 0) { res[i] = true; any = true; break; } }
+            }
+            if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: terrain layers " + string.Join(", ", Array.ConvertAll(layers, l => l == null ? "-" : l.name)) + (any ? "" : " (no sand-named layer: TerrainIsSand rules)"));
+            return any ? res : null;
+        }
+    }
+}

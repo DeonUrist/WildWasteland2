@@ -3,7 +3,6 @@
 WW reads compatible vanilla maps from DLL resources `NPC.NavMaps.Vanilla.<filename>` first, then optionally from
 `BepInEx/plugins/WildWasteland/NPC/NavMaps/Vanilla/<prefab>-<signature>.wwnav`. These shipped maps are read-only at runtime.
 Missing/custom maps bake once and save to `BepInEx/config/WildWasteland/NPC/NavMaps/Custom/<prefab>-<signature>.wwnav`.
-Old locally generated files directly under the plugin's `NPC/NavMaps/` remain readable as custom cache data.
 Further instances and future game sessions load the map at their own position, height and yaw. These are shared prefab templates,
 not per-slot or per-seed save data. Normal walkability, routing and clearance settings still apply.
 
@@ -31,7 +30,7 @@ does not add upper floors or ladder traversal.
 5. Visit another instance of that prefab, including a different yaw/elevation. Expect the same filename to load and navigation to follow
    the placed walls/entrances, with usable terrain joins. Test a cave floor and Patrols' camp arrival/departure anchors too.
 6. On NPC Debug, click **Reset custom pathfinding baked data**. Expect `Nav: Reset custom pathfinding:` with the file/live-map counts.
-   Custom and legacy cache files are removed and nearby custom maps are rediscovered/rebaked; shipped maps remain in memory/on disk/in
+   Custom cache files are removed and nearby custom maps are rediscovered/rebaked; shipped maps remain in memory/on disk/in
    the DLL. The cache can refill immediately while the player stays near a custom POI. Failed file deletion is reported, not counted as success.
 7. For an embedded-pack test, restart with NPC VerboseLog on and visit a vanilla POI. Expect `Nav: loaded map` with `(vanilla)` and
    `embedded:NPC.NavMaps.Vanilla.<filename>`, plus an increased vanilla count. Reset custom data again: the embedded map must remain
