@@ -4,7 +4,7 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.CleanHUD
 {
-    internal static class Binoculars
+    internal static partial class Binoculars
     {
         private static Camera _camera, _renderCamera;
         private static Transform _overlay, _scope;
@@ -64,24 +64,6 @@ namespace WildWasteland.Modules.CleanHUD
             }
             _zoom = Mathf.Lerp(_zoom, CleanHudModule.BinocularZoom.Value, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 16f));
             if (Mathf.Abs(_zoom - CleanHudModule.BinocularZoom.Value) < .0001f) _zoom = CleanHudModule.BinocularZoom.Value;
-        }
-        private static void PreCull(Camera camera)
-        {
-            if (camera != _camera) return;
-            if (Scoped) { _scopeSlope = 1f / Mathf.Max(.0001f, Mathf.Abs(camera.projectionMatrix.m11)); return; }
-            if (!Raised || !GameRefs.InPlay || _zoom <= 1f) return;
-            Restore(); _renderCamera = camera;
-            _transparentProjection = camera.useJitteredProjectionMatrixForTransparentRendering;
-            var projection = camera.projectionMatrix; projection.m00 *= _zoom; projection.m11 *= _zoom;
-            camera.projectionMatrix = projection; camera.useJitteredProjectionMatrixForTransparentRendering = true;
-            camera.ResetCullingMatrix();
-        }
-        private static void PostRender(Camera camera) { if (camera == _renderCamera) Restore(); }
-        private static void Restore()
-        {
-            if (_renderCamera == null) return;
-            _renderCamera.useJitteredProjectionMatrixForTransparentRendering = _transparentProjection;
-            _renderCamera.ResetProjectionMatrix(); _renderCamera.ResetCullingMatrix(); _renderCamera = null;
         }
         internal static bool Observe(Transform target, string name, Color color)
         {

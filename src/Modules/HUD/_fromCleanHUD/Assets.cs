@@ -9,44 +9,15 @@ using UnityEngine.Rendering;
 
 namespace WildWasteland.Modules.CleanHUD
 {
-    internal sealed class WeaponInfo
+    internal static partial class Assets
     {
-        internal string Key, Caliber, Kind; // Kind: gun, melee, thrown
-        internal WeaponInfo(string key, string cal, string kind) { Key = key; Caliber = cal; Kind = kind; }
-    }
-
-    internal static class Assets
-    {
-        private static readonly Dictionary<string, Texture2D> Embedded = new Dictionary<string, Texture2D>();
         private static readonly Dictionary<string, Texture2D> Rendered = new Dictionary<string, Texture2D>();
         private static readonly HashSet<string> RenderFailed = new HashSet<string>();
-        private static readonly HashSet<string> Missing = new HashSet<string>();
-        private static Texture2D _white;
         private static readonly Queue<GameObject> IconQueue = new Queue<GameObject>();
         private static readonly HashSet<string> Queued = new HashSet<string>();
         private static IEnumerator _render;
         private static string _renderKey;
         internal static int IconRevision;
-
-        // Calibers as printed on the game's own item names, e.g. "M16A1 (5.56mm)".
-        internal static readonly Dictionary<string, WeaponInfo> Weapons = Table();
-        private static Dictionary<string, WeaponInfo> Table()
-        {
-            var t = new Dictionary<string, WeaponInfo>(StringComparer.OrdinalIgnoreCase);
-            Action<string, string, string> a = (k, c, kind) => t[k] = new WeaponInfo(k, c, kind);
-            a("folk_17", "9MM", "gun"); a("9mm_borz_smg", "9MM", "gun");
-            a("22_pipe_pistol", ".22LR", "gun"); a("22_pipe_revolver", ".22LR", "gun"); a("22_pipe_smg", ".22LR", "gun");
-            a("akms", "7.62MM", "gun"); a("akm_trash", "7.62MM", "gun"); a("akm_drum", "7.62MM", "gun");
-            a("m16a1", "5.56MM", "gun");
-            a("redmark_m11", ".30-06", "gun"); a("redmark_m11_scoped", ".30-06", "gun");
-            a("rochester_m24", "12GA", "gun"); a("rochester_m24_chopped", "12GA", "gun");
-            a("slamberg_500", "12GA", "gun"); a("slamberg_500_chopped", "12GA", "gun");
-            a("slamfire_shotgun", "20GA", "gun");
-            a("crossbow", "ARROW", "gun");
-            a("blastlance_1", "THROWN", "thrown"); a("blastlance_2", "THROWN", "thrown");
-            a("machete", "MELEE", "melee"); a("old_knife", "MELEE", "melee"); a("shiv", "MELEE", "melee"); a("pipe_wrench", "MELEE", "melee");
-            return t;
-        }
 
         private static readonly Regex CloneSuffix = new Regex(@"\(Clone\)\d*$|\s*\(\d+\)$", RegexOptions.Compiled);
         internal static string KeyOf(GameObject go)
@@ -57,122 +28,6 @@ namespace WildWasteland.Modules.CleanHUD
             var n = go.name;
             for (int i = 0; i < 3; i++) n = CloneSuffix.Replace(n, "");
             return n.Trim();
-        }
-
-        private static readonly Regex Paren = new Regex(@"\(([^)]+)\)\s*$", RegexOptions.Compiled);
-        // Unknown (modded) weapon: caliber from the item name "Name (cal)", kind from the Reload FSM.
-        internal static WeaponInfo Describe(GameObject item, string itemName)
-        {
-            var key = KeyOf(item);
-            WeaponInfo w;
-            if (key != null && Weapons.TryGetValue(key, out w)) return w;
-            string cal = null;
-            if (!string.IsNullOrEmpty(itemName))
-            {
-                var m = Paren.Match(itemName);
-                if (m.Success) cal = m.Groups[1].Value.Trim().ToUpperInvariant();
-            }
-            bool gun = Bindings.Fsm(item, "Reload") != null;
-            if (cal == null) cal = gun ? "AMMO" : "MELEE";
-            w = new WeaponInfo(key ?? "", cal, gun ? "gun" : "melee");
-            if (key != null) Weapons[key] = w;
-            return w;
-        }
-
-        internal static Texture2D Tex(string name)
-        {
-            Texture2D t;
-            if (Embedded.TryGetValue(name, out t) && t != null) return t;
-            if (Missing.Contains(name)) return null;
-            var asm = Assembly.GetExecutingAssembly();
-            using (var s = WildWasteland.Core.DiskResources.Open("CleanHUD." + name + ".png"))
-            {
-                if (s == null) { Missing.Add(name); return null; }
-                var buf = new byte[s.Length];
-                int read = 0; while (read < buf.Length) { int r = s.Read(buf, read, buf.Length - read); if (r <= 0) break; read += r; }
-                t = new Texture2D(2, 2, TextureFormat.RGBA32, true) { name = "CleanHUD." + name, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 4 };
-                t.LoadImage(buf, false);
-                t.hideFlags = HideFlags.DontUnloadUnusedAsset;
-            }
-            Embedded[name] = t;
-            if (name.StartsWith("panel_", StringComparison.Ordinal)) AccentTheme.RegisterPanel(t);
-            return t;
-        }
-
-        internal static Texture2D White
-        {
-            get
-            {
-                if (_white == null)
-                {
-                    _white = new Texture2D(4, 4, TextureFormat.RGBA32, false) { name = "CleanHUD.white", hideFlags = HideFlags.DontUnloadUnusedAsset };
-                    var px = new Color32[16]; for (int i = 0; i < 16; i++) px[i] = new Color32(255, 255, 255, 255);
-                    _white.SetPixels32(px); _white.Apply(false, true);
-                }
-                return _white;
-            }
-        }
-
-        // Vertical gradient, white at the top to `bottom` grey (bar fill = colour * gradient, as linear-gradient(c, shade(c)) in the mockup).
-        internal static Texture2D VGradient(float bottom)
-        {
-            var key = "vgrad" + bottom.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-            Texture2D t; if (Embedded.TryGetValue(key, out t) && t != null) return t;
-            t = new Texture2D(1, 32, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontUnloadUnusedAsset };
-            for (int y = 0; y < 32; y++) { float v = Mathf.Lerp(bottom, 1f, y / 31f); t.SetPixel(0, y, new Color(v, v, v, 1)); }
-            t.Apply(false, true); Embedded[key] = t; return t;
-        }
-
-        // Compass line: horizontal fade (0..12% / 88..100%) x vertical colour ramp.
-        internal static Texture2D CompassLine()
-        {
-            Texture2D t; if (Embedded.TryGetValue("cmpline", out t) && t != null) return t;
-            const int W = 512, H = 4;
-            t = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontUnloadUnusedAsset };
-            var top = new Color(1f, 1f, 1f, .9f); var bot = new Color(205 / 255f, 196 / 255f, 170 / 255f, .85f);
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                {
-                    var c = Color.Lerp(bot, top, y / (float)(H - 1));
-                    c.a *= Fade((x + .5f) / W);
-                    t.SetPixel(x, y, c);
-                }
-            t.Apply(false, true); Embedded["cmpline"] = t; return t;
-        }
-        // Soft shadow under the line (box-shadow 0 2px 4px rgba(0,0,0,.6)).
-        internal static Texture2D CompassShadow()
-        {
-            Texture2D t; if (Embedded.TryGetValue("cmpshadow", out t) && t != null) return t;
-            const int W = 512, H = 16;
-            t = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.DontUnloadUnusedAsset };
-            for (int y = 0; y < H; y++)
-            {
-                float d = Mathf.Abs((H - 1 - y) - 7.5f) / 4f; // rows from the top; centre 2px below the 3px line
-                float a = .6f * Mathf.Exp(-d * d);
-                for (int x = 0; x < W; x++) t.SetPixel(x, y, new Color(0, 0, 0, a * Fade((x + .5f) / W)));
-            }
-            t.Apply(false, true); Embedded["cmpshadow"] = t; return t;
-        }
-        internal static float Fade(float t)
-        {
-            if (t < .12f) return Mathf.Clamp01(t / .12f);
-            if (t > .88f) return Mathf.Clamp01((1f - t) / .12f);
-            return 1f;
-        }
-        internal static Texture2D Caret()
-        {
-            Texture2D t; if (Embedded.TryGetValue("caret", out t) && t != null) return t;
-            const int W = 28, H = 18;
-            t = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontUnloadUnusedAsset };
-            for (int y = 0; y < H; y++)
-                for (int x = 0; x < W; x++)
-                {
-                    float fy = (H - 1 - y + .5f) / H; // 0 top .. 1 bottom
-                    float half = (1f - fy) * .5f;
-                    float a = Mathf.Clamp01((half - Mathf.Abs((x + .5f) / W - .5f)) * W);
-                    t.SetPixel(x, y, new Color(1, 1, 1, a));
-                }
-            t.Apply(false, true); Embedded["caret"] = t; return t;
         }
 
         // Weapon icon: embedded flat render for the vanilla weapons, otherwise a silhouette rendered at runtime from the item's own meshes.
@@ -214,33 +69,10 @@ namespace WildWasteland.Modules.CleanHUD
             });
         }
 
-        internal static void Dispose()
-        {
-            MapIcons.Dispose();
-            SceneLoaded();
-            foreach (var t in Rendered.Values) if (t != null) UnityEngine.Object.Destroy(t);
-            Rendered.Clear(); RenderFailed.Clear();
-            foreach (var t in Embedded.Values) if (t != null) UnityEngine.Object.Destroy(t);
-            Embedded.Clear(); Missing.Clear();
-            if (_white != null) UnityEngine.Object.Destroy(_white); _white = null;
-            IconRenderer.Clear();
-        }
-
         internal static void SceneLoaded()
         {
             var disposable = _render as IDisposable; if (disposable != null) disposable.Dispose();
             _render = null; _renderKey = null; IconQueue.Clear(); Queued.Clear();
-        }
-        internal static void Preload()
-        {
-            MapIcons.Preload();
-            const string prefix = "CleanHUD.";
-            foreach (string name in WildWasteland.Core.DiskResources.Names)
-                if (name.StartsWith(prefix, StringComparison.Ordinal) && name.EndsWith(".png", StringComparison.Ordinal))
-                    Tex(name.Substring(prefix.Length, name.Length - prefix.Length - 4));
-            var white = White; VGradient(.75f); VGradient(.72f); CompassLine(); CompassShadow(); Caret();
-            GlyphFont.Get();
-            IconRenderer.Preload();
         }
     }
 

@@ -14,7 +14,7 @@ using UnityEngine.UI;
 namespace WildWasteland.Modules.CleanHUD
 {
     // Mirror the source UI's choices and callbacks, including Quests' AQ buttons. The source remains the dialogue model.
-    internal static class TalkDialogue
+    internal static partial class TalkDialogue
     {
         private static object _plugin, _ui;
         private static Func<object, object> _getUi;
@@ -128,21 +128,6 @@ namespace WildWasteland.Modules.CleanHUD
             }
             Pointer.Tick(Buttons, _closeButton); DialoguePointer.Wheel(_chatScroll); DialoguePointer.Wheel(_choiceScroll);
             for (int i = 0; i < Buttons.Count; i++) { Buttons[i].interactable = Sources[i] != null && Sources[i].interactable; Buttons[i].Refresh(); }
-        }
-        internal static List<string> Wrap(string text, float width, float size = 26)
-        {
-            var lines = new List<string>(); var font = GlyphFont.Get();
-            foreach (var paragraph in text.Replace("\r", "").Split('\n'))
-            {
-                var line = new StringBuilder();
-                foreach (var word in paragraph.Split(' '))
-                {
-                    if (line.Length > 0 && font.Measure(line.ToString() + " " + word, size, 0) > width) { lines.Add(line.ToString()); line.Length = 0; }
-                    if (line.Length > 0) line.Append(' '); line.Append(word);
-                }
-                lines.Add(line.ToString());
-            }
-            return lines;
         }
         private static float Lines(Transform parent, string text, float y, float width, Color color)
         {

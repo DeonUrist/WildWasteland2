@@ -4,10 +4,8 @@ using UnityEngine.UI;
 
 namespace WildWasteland.Modules.CleanHUD
 {
-    internal static class DialogueWidgets
+    internal static partial class DialogueWidgets
     {
-        internal static readonly Color Gold = new Color(.886f, .749f, .424f);
-        internal static readonly Color SpeakerGray = new Color32(160, 160, 160, 255);
         internal static void Speaker(GlyphText label, string npc)
         {
             bool player = label.Text.StartsWith("You:", StringComparison.OrdinalIgnoreCase);
