@@ -7,7 +7,7 @@ Wave C: no file remains in a retired module folder and no _from* folder remains.
 Usage: python tools/refactor/filemap_coverage.py --wave A [--package A4] | --wave C | --unmapped
 """
 import os, sys
-from _common import cs_files, load_json, ROOT
+from _common import cs_files, current_path, load_json, ROOT, RELOCATED
 
 RETIRED = ['PlayerBody', 'NPC', 'Guns', 'CleanHUD', 'Towns', 'Weather', 'Performance', 'EngineSimCompat', 'QuestsCompat']
 STAYS_IN_A = {'Modules/PlayerBody/PlayerBodyModule.cs', 'Modules/NPC/NpcModule.cs', 'Modules/NPC/NpcModule.Config.cs',
@@ -20,6 +20,7 @@ SAME = {'Patrols': 'Patrols', 'HUD': 'HUD', 'POI': 'POI', 'Survival': 'Survival'
 
 def exists(p):
     """True when the src-relative (or developer/) path exists in the tree."""
+    p = current_path(p)
     return os.path.exists(os.path.join(ROOT, p if p.startswith('developer/') else 'src/' + p))
 
 
@@ -29,7 +30,7 @@ def main():
     fm = load_json('filemap.json')
     bad = []
     if '--unmapped' in args:
-        mapped = {'src/' + x['path'] if not x['path'].startswith('developer/') else x['path'] for x in fm}
+        mapped = {'src/' + current_path(x['path']) if not x['path'].startswith('developer/') else x['path'] for x in fm}
         for f in cs_files('src'):
             if f not in mapped and '/_from' not in f:
                 bad.append('not in file map (new file? add a row or it is fine if created by the refactor): ' + f)
