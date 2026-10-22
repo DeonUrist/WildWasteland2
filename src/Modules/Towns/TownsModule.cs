@@ -725,7 +725,7 @@ namespace WildWasteland.Modules.Towns
             // Keep graph registrations until shutdown: the native generator graph can survive scene changes.
         }
         private void ClearSites()
-        { _startingTerrainState = null; if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); InteriorPopulation.Clear(); _next = 0; _waitingForTowns = false; TownRoadBridge.Clear(); TownLoading.Clear("World changed"); }
+        { _startingTerrainState = null; if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); InteriorPopulation.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
         private void Block(string stage, Exception e)
         { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[Towns] blocked during " + stage + "; no replacement layout will be invented", e); }
         private static void Undo(Registration registration)

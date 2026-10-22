@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.Towns
         private readonly List<GameObject> _actors = new List<GameObject>(3);
         private Station _test;
         private int _spawned; private bool _pointsReady;
-        private GasStation.GlbModel _model, _collision;
+        private GlbModel _model, _collision;
         private Material[] _materials;
         private GameObject _raider;
         private Transform _camp;
@@ -544,17 +544,17 @@ namespace WildWasteland.Modules.Towns
             var texture = material.GetTexture("_MainTex");
             return texture != null && texture.name == name;
         }
-        private static void ShiftMesh(GasStation.GlbModel model, Vector3 offset)
+        private static void ShiftMesh(GlbModel model, Vector3 offset)
         {
             var vertices = model.Mesh.vertices;
             for (int i = 0; i < vertices.Length; i++) vertices[i] += offset;
             model.Mesh.vertices = vertices; model.Mesh.RecalculateBounds(); model.Bounds = model.Mesh.bounds;
         }
-        private static GasStation.GlbModel LoadMesh(string file, bool collider)
+        private static GlbModel LoadMesh(string file, bool collider)
         {
             string path = Path.Combine(Assets.ModuleDir("Towns"), "Models", file);
             if (!File.Exists(path)) throw new FileNotFoundException("Install the gas station model in Towns/Models: " + file, path);
-            var model = GasStation.Glb.Load(path, collider);
+            var model = Glb.Load(path, collider);
             // The native signature includes mesh name/count/bounds; include all GLB bytes so edited triangles invalidate it too.
             using (var sha = SHA256.Create()) model.Mesh.name = Path.GetFileNameWithoutExtension(file) + "-" + BitConverter.ToString(sha.ComputeHash(File.ReadAllBytes(path))).Replace("-", "");
             Log.Always("[Towns] Gas station mesh loaded: " + path + "; " + model.Mesh.vertexCount + " vertices, " + model.Mesh.subMeshCount + " submeshes; scale-1 size " + model.Bounds.size);
