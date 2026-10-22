@@ -120,6 +120,7 @@ namespace WildWasteland.Modules.NPC
             foreach (var kv in _agents) if (kv.Value.FlankObj != null) UnityEngine.Object.Destroy(kv.Value.FlankObj);
             _ghosts.Clear(); _agents.Clear(); _ignored.Clear(); _remember.Clear(); _hpOf.Clear(); _prefabOf.Clear(); _presentTags.Clear(); _presentNext.Clear(); _maintKeys.Clear(); _maintPos = 0; _engineAbout.Clear(); _engineRbCar = null; _engineRb = null; _flashMissUntil = 0f; Nwh.Clear();
             _player = null; _playerHead = null; _playerCar = null; _flashlight = null; _inCarFsm = null; _grabFsm = null; _thrown = null;
+            foreach (var kv in _byTag) kv.Value.Clear(); _byTagFrame = -1;
             Storm.Reset();
             ResetSpiderLights();
             _hornFsm = null; _azure = null; _nextAzureFind = 0f;
@@ -162,6 +163,7 @@ namespace WildWasteland.Modules.NPC
             if (!on) return;
             if (_player == null) return;
 
+            _sightChecks = 0;
             float baseLook = Mathf.Max(0.05f, NpcaiSettings.LookInterval.Value);
             int looks = 0, lookCap = Mathf.Max(1, Mathf.CeilToInt(_agents.Count * dt / baseLook) + 1);
             Vector3 ppos = _player.transform.position;
@@ -172,7 +174,7 @@ namespace WildWasteland.Modules.NPC
                 var a = kv.Value;
                 if (a.Owner == null || a.T.parent != null) continue;       // seated in a car (Apocapatrol): not ours
                 if (a.Travel || now < a.NextLook) continue;                 // (1.4.0) underground: keeps its target, sees nothing
-                if (looks >= lookCap) continue;                              // (perf) over this frame's cap: looks next frame (NextLook stays overdue)
+                if (looks >= lookCap || _sightChecks >= SightCheckBudget) continue;   // (perf) over this frame's look / NPC-sight cap: looks next frame (NextLook stays overdue)
                 looks++;
                 // (perf) the stagger is the creation phase only (it used to be added to every look: 0.15-0.26 s); far beyond the player's
                 // sight range (SightRange + 20 m / + 50 m, at least 80 / 150 m: nothing there can see the player before its next look) an
@@ -267,15 +269,31 @@ namespace WildWasteland.Modules.NPC
             }
             if (!a.Blown && HostileNpcAround(a))
             {
+                // (perf, README 8 #2) only the agents of the hostile factions (grouped once per frame), nearest first: the first visible one
+                // is the nearest visible one, so one or two line checks usually decide it (was: every agent tested, every closer one ray-cast)
                 Vector3 ap = a.T.position;
-                foreach (var kv in _agents)
+                if (_byTagFrame != Time.frameCount) GroupByTag();
+                _cands.Clear();
+                foreach (var tag in a.Hostile)
                 {
-                    var b = kv.Value;
-                    if (b == a || !a.Hostile.Contains(b.Tag) || b.Owner == null) continue;
-                    float d2 = (b.T.position - ap).sqrMagnitude;
-                    if (d2 > d2max || d2 >= bestD) continue;
+                    List<Agent> group;
+                    if (tag == "Player" || !_byTag.TryGetValue(tag, out group)) continue;
+                    for (int i = 0; i < group.Count; i++)
+                    {
+                        var b = group[i];
+                        if (b == a || b.Owner == null) continue;
+                        float d2 = (b.T.position - ap).sqrMagnitude;
+                        if (d2 > d2max || d2 >= bestD) continue;
+                        _cands.Add(new KeyValuePair<float, Agent>(d2, b));
+                    }
+                }
+                if (_cands.Count > 1) _cands.Sort(NearestFirst);
+                for (int i = 0; i < _cands.Count; i++)
+                {
+                    var b = _cands[i].Value;
+                    _sightChecks++;
                     if (!Visible(a, eye, b.Owner, false, b.InStorm)) continue;
-                    if (d2 < bestD) { best = b.Owner; bestD = d2; }
+                    best = b.Owner; bestD = _cands[i].Key; break;
                 }
             }
             if (best != null)
@@ -345,6 +363,31 @@ namespace WildWasteland.Modules.NPC
                 if (!alive) _pruneIds.Add(kv.Key);
             }
             foreach (var k in _pruneIds) a.Done.Remove(k);
+        }
+
+        // (perf) NPC-vs-NPC sight: agents grouped by faction tag once per frame, candidates sorted nearest first, a per-frame line-check budget
+        private static readonly Dictionary<string, List<Agent>> _byTag = new Dictionary<string, List<Agent>>();
+        private static readonly List<KeyValuePair<float, Agent>> _cands = new List<KeyValuePair<float, Agent>>();
+        private static readonly Comparison<KeyValuePair<float, Agent>> NearestFirst = CompareNearest;
+        private static int _byTagFrame = -1, _sightChecks;
+        private const int SightCheckBudget = 256;     // NPC-vs-NPC line checks per frame before further looks wait a frame
+
+        /// <summary>Candidate order: nearest first.</summary>
+        private static int CompareNearest(KeyValuePair<float, Agent> x, KeyValuePair<float, Agent> y) { return x.Key.CompareTo(y.Key); }
+
+        /// <summary>Groups the live agents by faction tag for this frame (pooled lists).</summary>
+        private static void GroupByTag()
+        {
+            _byTagFrame = Time.frameCount;
+            foreach (var kv in _byTag) kv.Value.Clear();
+            foreach (var kv in _agents)
+            {
+                var b = kv.Value;
+                if (b.Owner == null || b.Tag == null) continue;
+                List<Agent> group;
+                if (!_byTag.TryGetValue(b.Tag, out group)) _byTag[b.Tag] = group = new List<Agent>();
+                group.Add(b);
+            }
         }
 
         private static bool HostileNpcAround(Agent a)
@@ -1101,6 +1144,7 @@ namespace WildWasteland.Modules.NPC
                 string pname = PrefabOf(prefab);        // prefab assets are few: cached, so this hook costs no string per spawn
                 var made = __instance.storeObject != null ? __instance.storeObject.Value : null;
                 if (made != null && Nav.On && pname.Length > 5 && (pname[0] == 'C' || pname[0] == 'B')) Nav.Spawned(made);   // Camp_N / Cave_N / Building_N
+                if (made != null && pname.Length > 5 && (pname[0] == 'C' || pname[0] == 'B') && (pname.StartsWith("Camp_", StringComparison.Ordinal) || pname.StartsWith("Cave_", StringComparison.Ordinal) || pname.StartsWith("Building_", StringComparison.Ordinal))) Core.WorldIndex.QueueRoot(made.transform);   // (WW) its "Hide" cover objects join the brain's WorldIndex watch
                 if (made != null && Brain.On) Brain.Spawned(made);      // (1.1.1) gunmen get Apocaplayer's clips from their first frames
                 if (!On || NpcaiSettings.BlastRange.Value <= 0f) return;
                 string cfg = NpcaiSettings.BlastPrefabs.Value ?? "";

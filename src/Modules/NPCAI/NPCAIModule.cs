@@ -75,7 +75,8 @@ namespace WildWasteland.Modules.NPCAI
             InstallPatches();
             SeatedLosGuard.Install(this);                  // seated crews' target-less LOS actions (ex Patrols; after Senses on the same dispatchers)
             Bosses.Install(this);
-            NpcWorld.Install(this);                        // Health / ID FSM tracking for the follower and walker code (ex Quests QuestWorld)                          // human boss health: FsmIndex "BossUI" tracking (ex Guns entry)
+            NpcWorld.Install(this);
+            Brain.InstallHides(this);                      // "Hide" cover objects from a WorldIndex watch (no 10 s tag scan)                        // Health / ID FSM tracking for the follower and walker code (ex Quests QuestWorld)                          // human boss health: FsmIndex "BossUI" tracking (ex Guns entry)
             InteriorPopulation.Install(this);              // interior / native-POI population rules (ex Towns entry): hooks + jobs
 
             // the old NPCAI.Runner, in its order (load-bearing: Brain/Idle body hand-over, DogAnimations restore in Update / sample in LateUpdate)

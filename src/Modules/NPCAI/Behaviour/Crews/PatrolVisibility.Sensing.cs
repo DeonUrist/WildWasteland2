@@ -14,13 +14,14 @@ namespace WildWasteland.Modules.Patrols
         private sealed class Entry { internal GameObject Car; internal Transform Engine; internal float Horsepower, Refresh; internal Light[] Lights = new Light[0]; }
         private static readonly Dictionary<int, Entry> _cache = new Dictionary<int, Entry>();
         internal static void Reset() { _cache.Clear(); }
+        private static readonly List<int> _deadKeys = new List<int>();
         private static Entry Of(GameObject car)
         {
             if (car == null) return null;
             Entry e; int id = car.GetInstanceID();
             if (!_cache.TryGetValue(id, out e))
             {
-                if (_cache.Count > 32) { var dead = _cache.Where(p => p.Value.Car == null).Select(p => p.Key).ToList(); foreach (var k in dead) _cache.Remove(k); }
+                if (_cache.Count > 32) { _deadKeys.Clear(); foreach (var p in _cache) if (p.Value.Car == null) _deadKeys.Add(p.Key); foreach (var k in _deadKeys) _cache.Remove(k); }
                 e = new Entry { Car = car }; _cache[id] = e;
             }
             return e;

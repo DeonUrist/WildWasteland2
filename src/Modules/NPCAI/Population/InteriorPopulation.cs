@@ -59,6 +59,7 @@ namespace WildWasteland.Modules.Towns
                     || t.name.StartsWith("Cave_", StringComparison.Ordinal) || t.name.StartsWith("Wreck_", StringComparison.Ordinal)) root = t;
             if (markerRoot != null) root = markerRoot;
             object key = town == null ? (object)root : town;
+            if (town != null || markerRoot != null) WorldIndex.QueueRoot(root);   // built at run time: its "Hide" cover objects join the brain's WorldIndex watch
             Location location; if (!Locations.TryGetValue(key, out location)) Locations.Add(key, location = new Location { Root = root });
             Group group;
             if (Groups.TryGetValue(f, out group))
@@ -135,7 +136,7 @@ namespace WildWasteland.Modules.Towns
         }
         private static bool SpawnEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
-            if (_releaseNative || fsm.Name != "ItemSpawner" || ev == null) return true;
+            if (Groups.Count == 0 || _releaseNative || ev == null || fsm.Name != "ItemSpawner") return true;   // (perf, README 8 #1) no tracked group: nothing to defer
             var state = fsm.ActiveState; if (state == null || state.Name != "trigger" && state.Name != "spawn") return true;
             var f = fsm.Owner as PlayMakerFSM; Group group; if (f == null || !Groups.TryGetValue(f, out group)) return true;
             foreach (var transition in state.Transitions)
@@ -214,7 +215,7 @@ namespace WildWasteland.Modules.Towns
         }
         private static void Created(CreateObject action)
         {
-            if (action.Fsm == null || action.Fsm.Name != "ItemSpawner" || action.storeObject == null) return;
+            if (Groups.Count == 0 || action.Fsm == null || action.storeObject == null || action.Fsm.Name != "ItemSpawner") return;   // (perf) cheap filters first
             var f = action.Fsm.Owner as PlayMakerFSM; Group group;
             if (f == null || !Groups.TryGetValue(f, out group)) return;
             var made = action.storeObject.Value; if (made == null || FsmUtil.Find(made, "Health") == null || FsmUtil.Find(made, "Detection") == null) return;

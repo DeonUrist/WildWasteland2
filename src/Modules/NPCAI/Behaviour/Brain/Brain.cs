@@ -506,10 +506,30 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- cover (1.1.0) ----------
-        private static GameObject[] _hides; private static float _nextHides;
+        // (perf, README 8 #5) the "Hide" cover objects come from a Core WorldIndex watch (sliced world walk, tiles and scene loads) instead
+        // of a FindGameObjectsWithTag scene scan every 10 s from the think path; the active ones are copied into _hides every 10 s as before
+        private static readonly List<GameObject> _hides = new List<GameObject>(); private static float _nextHides;
+        private static WildWasteland.Core.WorldWatch _hideWatch;
+
+        /// <summary>Registers the WorldIndex watch for objects tagged "Hide" (module start).</summary>
+        internal static void InstallHides(WildWasteland.Core.IModule owner) { _hideWatch = WildWasteland.Core.WorldIndex.Watch(owner, IsHideObject, null, null, false); _nextHides = 0f; }
+
+        /// <summary>WorldIndex filter: the node is tagged "Hide" (a cover object of a camp).</summary>
+        private static bool IsHideObject(Transform t, string name) { return t.CompareTag("Hide"); }
+
+        /// <summary>Refreshes the active cover objects from the watch (every 10 s).</summary>
+        private static void RefreshHides()
+        {
+            _hides.Clear();
+            var found = _hideWatch != null ? _hideWatch.Found : null;
+            if (found == null) return;
+            for (int i = 0; i < found.Count; i++) { var t = found[i]; if (t != null && t.gameObject.activeInHierarchy) _hides.Add(t.gameObject); }
+        }
+
+        /// <summary>Nearest active cover object within range of pos (null when none); refreshes the shared list every 10 s.</summary>
         private static GameObject NearestHide(Vector3 pos, float range)
         {
-            if (Time.time >= _nextHides) { _nextHides = Time.time + 10f; try { _hides = GameObject.FindGameObjectsWithTag("Hide"); } catch (Exception) { _hides = new GameObject[0]; } }
+            if (Time.time >= _nextHides) { _nextHides = Time.time + 10f; RefreshHides(); }
             GameObject best = null; float bd = range * range;
             if (_hides != null) foreach (var h in _hides) { if (h == null) continue; float d2 = (h.transform.position - pos).sqrMagnitude; if (d2 < bd) { bd = d2; best = h; } }
             return best;
