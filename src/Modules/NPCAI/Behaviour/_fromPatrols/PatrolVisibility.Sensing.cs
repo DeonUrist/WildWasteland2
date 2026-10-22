@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using UnityEngine;
+
 namespace WildWasteland.Modules.Patrols
 {
-    // One shared cache for the player car, rather than hierarchy walks for each patrol's sensing tick.
-    // WW: the cache is no longer a component added to the player's (saved) car (AGENTS.md 5.10) but a static table keyed by the car's
-    // instance id (refreshed every 5 s as before, swept on scene load). The component type stays, empty, so cars saved by Apocapatrol
-    // with it still load (Core.SaveTypes maps the old type name here).
-    internal sealed class PatrolVisibility : MonoBehaviour
+    /// <summary>Player-car visibility for patrol sensing (lights on, engine noise distance) from a static per-car cache; NPCAI senses query in Wave B (Wave A split of Patrols Spawning/PatrolVisibility.cs).</summary>
+    internal sealed partial class PatrolVisibility
     {
+    // One shared cache for the player car, rather than hierarchy walks for each patrol's sensing tick.
+
         private sealed class Entry { internal GameObject Car; internal Transform Engine; internal float Horsepower, Refresh; internal Light[] Lights = new Light[0]; }
         private static readonly Dictionary<int, Entry> _cache = new Dictionary<int, Entry>();
         internal static void Reset() { _cache.Clear(); }
