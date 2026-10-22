@@ -13,7 +13,7 @@ namespace WildWasteland.Modules.NPC
     // flying on and tumbling (the carcass gets its velocity, a spin and the reared pose). A leap that misses lands and the chase goes on.
     // While zigzagging, in the air and running off, NPCAI drives the body itself (the brain is held, Brain.SetTravel) and the spider's vanilla
     // bite ray is shortened to nothing, so the game does not bite on top of the pounce.
-    internal static class Pounce
+    internal static partial class Pounce
     {
         private enum Phase { Ready, Zig, Air, Bite, Flee }
 
@@ -372,54 +372,6 @@ namespace WildWasteland.Modules.NPC
             if (f == null) foreach (var x in go.GetComponentsInChildren<PlayMakerFSM>(true)) if (x != null && x.FsmName == "Bodypart") { f = x; break; }
             if (f != null) { if (_bodypart.Count > 64) _bodypart.Clear(); _bodypart[id] = f; }
             return f;
-        }
-
-        // ---------- the pose ----------
-        // runs in LateUpdate, after the Animator: in the air the body rears back (nose up, about the feet) - the belly towards the player
-        internal static void LateTick()
-        {
-            float dt = Time.deltaTime;
-            for (int i = 0; i < _list.Count; i++)
-            {
-                var p = _list[i];
-                if (p.Rig == null) continue;
-                if (p.Pitch == p.PitchGoal && !p.Tilted) continue;
-                float rate = p.PitchGoal > p.Pitch ? 600f : 300f;
-                p.Pitch = Mathf.MoveTowards(p.Pitch, p.PitchGoal, rate * dt);
-                p.Rig.localRotation = Quaternion.AngleAxis(-p.Pitch, Vector3.right) * p.RigLocal;
-                p.Tilted = p.Pitch > 0.01f;
-                if (!p.Tilted) p.Rig.localRotation = p.RigLocal;
-            }
-        }
-
-        // ---------- killed in the air ----------
-        // CreateObject.OnEnter postfix: the Health FSM's carcass of a spider that is in the air flies on, reared back and tumbling
-        public static void AfterCreateObject(CreateObject __instance)
-        {
-            if (Airborne == 0 || !NpcModule.Running) return;
-            try
-            {
-                var fsm = __instance.Fsm;
-                if (fsm == null || fsm.Name != "Health") return;
-                var owner = fsm.GameObject;
-                var made = __instance.storeObject != null ? __instance.storeObject.Value : null;
-                if (owner == null || made == null) return;
-                foreach (var p in _list)
-                {
-                    if (p.A == null || p.A.Owner != owner || (p.Phase != Phase.Air && p.Phase != Phase.Bite)) continue;
-                    Vector3 vel = p.Rb.velocity;
-                    made.transform.SetPositionAndRotation(p.T.position, p.T.rotation * Quaternion.AngleAxis(-p.Pitch, Vector3.right));
-                    var rb = made.GetComponent<Rigidbody>();
-                    if (rb == null) { rb = made.AddComponent<Rigidbody>(); rb.mass = Mathf.Max(0.05f, p.Rb.mass); UnityEngine.Object.Destroy(rb, 6f); }
-                    if (rb.isKinematic) break;
-                    rb.velocity = vel;
-                    rb.angularVelocity = UnityEngine.Random.onUnitSphere * UnityEngine.Random.Range(6f, 12f);
-                    if (p.Ray != null && p.RayLen > 0f) { p.Ray.Length = p.RayLen; p.RayLen = 0f; }
-                    Log(p, "killed in the air, the carcass tumbles on (" + vel.magnitude.ToString("0.0") + " m/s)");
-                    break;
-                }
-            }
-            catch (Exception e) { NpcModule.Warn("Pounce: carcass: " + e.Message); }
         }
 
         private static void Log(P p, string s) { if (NpcModule.PounceLog.Value) NpcModule.Log.LogInfo("Pounce: " + (p.A != null && p.A.Owner != null ? p.A.Owner.name : "?") + " " + s); }
