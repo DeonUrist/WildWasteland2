@@ -14,7 +14,6 @@ namespace WildWasteland.Modules.Towns
             private readonly Stopwatch _time = Stopwatch.StartNew();
             private bool _done;
             internal Work(string key) { _key = key; Log.Always("[Towns] generation started " + key); }
-            internal void Report(float fraction, string detail) { }
             internal void Finish(string detail)
             {
                 lock (_time) { if (_done) return; _done = true; }

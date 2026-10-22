@@ -63,7 +63,6 @@ namespace WildWasteland.Modules.Towns
                 if (index >= 4) continue;
                 result.Insert(index, site); if (result.Count > 4) result.RemoveAt(4);
             }
-            if (input.Progress != null) input.Progress.Report(.15f, "Measuring the best " + result.Count + " ground sites");
             for (int i = result.Count - 1; i >= 0; i--)
             {
                 if (stop != null && stop.stop) throw new OperationCanceledException();

@@ -252,8 +252,6 @@ namespace WildWasteland.Modules.Towns
             foreach (var group in new List<Group>(Groups.Values)) if (group.Deferred != null && group.Fsm != null && group.Fsm.enabled && group.Fsm.Fsm.ActiveState == group.DeferredState)
             { var ev = group.Deferred; group.Deferred = null; group.Fsm.Fsm.Event(ev); }
         }
-        internal static void Load(string path)
-        { RestoreNames(File.Exists(path) ? File.ReadAllLines(path) : new string[0]); }
         internal static void RestoreNames(string[] names)
         { Clear(); foreach (string name in names) if (!string.IsNullOrEmpty(name)) Names.Add(name); }
         internal static string[] CaptureNames()

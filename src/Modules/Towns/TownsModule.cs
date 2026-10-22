@@ -213,7 +213,6 @@ namespace WildWasteland.Modules.Towns
                 capture.Plan = TownPlanner.Make(capture.Input, data, data.heights, avoid, roads, stop);
                 if (capture.Plan == null || !capture.Plan.HasTown || (stop != null && stop.stop))
                 { if (capture.Input.Progress != null) capture.Input.Progress.Finish(capture.Plan == null ? "Cancelled" : capture.Plan.Decision == "chance" ? "No town selected for this block" : capture.Plan.Decision); return; }
-                if (capture.Input.Progress != null) capture.Input.Progress.Report(.58f, "Shaping town ground and access track");
                 TownLateTerrain.Apply(data, capture.Plan, assets, stop);
                 if (!data.isDraft)
                 {
@@ -265,7 +264,6 @@ namespace WildWasteland.Modules.Towns
                 site.Record = record;
                 TownPopulation.Budget(site, capture.Registration.Assets, _settings);
                 site.Loading = capture.Input.Progress;
-                if (site.Loading != null) site.Loading.Report(.7f, "Placing 0/" + plan.LotCount + " buildings");
                 _sites.Add(new Live { Tile = tile, Registration = capture.Registration, Site = site });
             }
             catch (Exception e) { Log.Warn("[Towns] stopped applying town; existing objects retained: " + e.Message); }
@@ -704,12 +702,11 @@ namespace WildWasteland.Modules.Towns
             }
             catch (Exception e) { SaveBus.ReportFailure("Towns save failed: " + e.Message); Block("saving", e); }
         }
-        private string SavePath(string slot) { return Path.Combine(Assets.ModuleConfigDir(Id), "Saves", Path.GetFileName(slot) + ".towns.bin"); }
         public override void OnLoadBegin(string slot)
         {
             ClearSites(); _resume.Clear(); _epoch++; _blocked = false;
             if (_gasStation != null) _gasStation.Load(slot);
-            try { if (_dressing != null) _dressing.Markers.Load(slot); _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot, SavePath(slot)); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
+            try { if (_dressing != null) _dressing.Markers.Load(slot); _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
             catch (Exception e) { _records.Clear(); Block("loading (saved data retained on disk)", e); }
         }
         public void NewWorld()

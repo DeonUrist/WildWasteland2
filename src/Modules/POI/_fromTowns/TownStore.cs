@@ -47,8 +47,6 @@ namespace WildWasteland.Modules.Towns
                 w.Flush(); return stream.ToArray();
             }
         }
-        internal static Dictionary<string, TownRecord> Read(string path)
-        { return File.Exists(path) ? Deserialize(File.ReadAllBytes(path)) : new Dictionary<string, TownRecord>(StringComparer.Ordinal); }
         internal static Dictionary<string, TownRecord> Deserialize(byte[] bytes)
         {
             var records = new Dictionary<string, TownRecord>(StringComparer.Ordinal);

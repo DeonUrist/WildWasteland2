@@ -40,7 +40,7 @@ namespace WildWasteland.Modules.Towns
                 catch (Exception error) { SaveBus.ReportFailure("Embedded Towns save failed: " + error.Message); Log.Error("[Towns] embedded save verification failed", error); }
             });
         }
-        internal static Dictionary<string, TownRecord> Load(string slot, string legacy)
+        internal static Dictionary<string, TownRecord> Load(string slot)
         {
             var disk = new ES3Settings(slot) { location = ES3.Location.File };
             if (File.Exists(disk.FullPath) && ES3.KeyExists(Key, disk))
@@ -63,11 +63,9 @@ namespace WildWasteland.Modules.Towns
                     return records;
                 }
             }
-            // Read-only compatibility import. Never prefer old config data over an embedded record,
-            // and never hide a corrupt embedded record by falling back to stale sidecars.
-            var old = TownStore.Read(legacy); InteriorPopulation.Load(legacy + ".interiors.txt");
-            if (File.Exists(legacy) || File.Exists(legacy + ".interiors.txt")) Log.Always("[Towns] imported legacy town data; the next successful save stores it inside the world file, without new Towns sidecars.");
-            return old;
+            // No embedded record: a new world (D12: the WW1 config/WildWasteland/Towns/Saves sidecar import is gone).
+            InteriorPopulation.RestoreNames(new string[0]);
+            return new Dictionary<string, TownRecord>(StringComparer.Ordinal);
         }
     }
 }
