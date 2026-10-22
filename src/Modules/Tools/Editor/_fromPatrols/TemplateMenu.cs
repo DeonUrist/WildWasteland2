@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.Patrols
         {
             if (_afterClose != null && _spawnGeneration != EditorSession.Generation) _afterClose = null;
             if (_afterClose != null && !EditorSession.Busy && Time.frameCount >= _spawnNotBefore) { var action = _afterClose; _afterClose = null; action(); }
-            if (_session.Open) { if (PatrolsModule.Pressed(Key.Escape)) { if (_dropdown.IsOpen) _dropdown.Close(); else if (_modal.Length > 0) _modal = ""; else Close(); } }
+            if (_session.Open) { if (Core.Hotkeys.Pressed(Key.Escape)) { if (_dropdown.IsOpen) _dropdown.Close(); else if (_modal.Length > 0) _modal = ""; else Close(); } }
         }
         // the hotkey or the F7 "Patrol editor" page; false when another editor is open or the game is not in play
         internal bool TryOpen()

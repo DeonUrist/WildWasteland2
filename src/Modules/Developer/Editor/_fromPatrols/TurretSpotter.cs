@@ -67,14 +67,14 @@ namespace WildWasteland.Modules.Patrols
             if (Time.timeScale <= 0f) return;
             bool shift = Held(Key.LeftShift) || Held(Key.RightShift);
             float step = Step * (shift ? 5f : 1f);
-            if (PatrolsModule.Pressed(Key.Numpad0)) NextSlot();
-            if (PatrolsModule.Pressed(Key.NumpadPeriod)) { _show = !_show; Say(_show ? "markers on" : "markers off"); }
+            if (Core.Hotkeys.Pressed(Key.Numpad0)) NextSlot();
+            if (Core.Hotkeys.Pressed(Key.NumpadPeriod)) { _show = !_show; Say(_show ? "markers on" : "markers off"); }
             var d = Vector3.zero;
-            if (PatrolsModule.Pressed(Key.Numpad8)) d.z += step; if (PatrolsModule.Pressed(Key.Numpad2)) d.z -= step;
-            if (PatrolsModule.Pressed(Key.Numpad6)) d.x += step; if (PatrolsModule.Pressed(Key.Numpad4)) d.x -= step;
-            if (PatrolsModule.Pressed(Key.Numpad9)) d.y += step; if (PatrolsModule.Pressed(Key.Numpad7)) d.y -= step;
+            if (Core.Hotkeys.Pressed(Key.Numpad8)) d.z += step; if (Core.Hotkeys.Pressed(Key.Numpad2)) d.z -= step;
+            if (Core.Hotkeys.Pressed(Key.Numpad6)) d.x += step; if (Core.Hotkeys.Pressed(Key.Numpad4)) d.x -= step;
+            if (Core.Hotkeys.Pressed(Key.Numpad9)) d.y += step; if (Core.Hotkeys.Pressed(Key.Numpad7)) d.y -= step;
             if (d != Vector3.zero) anchor.localPosition += d;
-            if (PatrolsModule.Pressed(Key.Numpad5)) Say(RiderApi.SaveAnchor(_car, _slot));
+            if (Core.Hotkeys.Pressed(Key.Numpad5)) Say(RiderApi.SaveAnchor(_car, _slot));
         }
 
         private static GameObject Nearest()

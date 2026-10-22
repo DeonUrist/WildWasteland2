@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 _session.Maintain();
                 if (_draftCar == null || FindCar(out _) != _draftCar) { Close(); Toast("Template canceled: you are no longer seated in that vehicle"); return; }
-                if (PatrolsModule.Pressed(Key.Escape)) { if (_ledgerDropdown.IsOpen) _ledgerDropdown.Close(); else Close(); }
+                if (Core.Hotkeys.Pressed(Key.Escape)) { if (_ledgerDropdown.IsOpen) _ledgerDropdown.Close(); else Close(); }
             }
         }
         internal bool TryOpen()

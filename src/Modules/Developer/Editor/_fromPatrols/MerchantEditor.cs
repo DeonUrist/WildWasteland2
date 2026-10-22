@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Patrols
         private GameObject _car,_marker,_forward;
         private int _slot;private string _kind="Box",_status="";private float _next,_step=.05f;
         private MerchantObject[] _objects=new MerchantObject[0];
-        private static bool Press(Key key)=>PatrolsModule.Pressed(key);
+        private static bool Press(Key key)=>Core.Hotkeys.Pressed(key);
         private static bool Held(Key key){var kb=Keyboard.current;if(kb==null||key==Key.None)return false;try{return kb[key].isPressed;}catch(Exception){return false;}}
         private MerchantObject Current=>_objects.Length==0?null:_objects[Mathf.Clamp(_slot,0,_objects.Length-1)];
         internal static bool Enabled=>PatrolsModule.MerchantEditorEnabled!=null&&PatrolsModule.MerchantEditorEnabled.Value;

@@ -88,16 +88,16 @@ namespace WildWasteland.Modules.Patrols
             }
             if(Target==null)return;
             if(Time.timeScale<=0f)return;   // WW: no numpad edits while F7 (or another editor) pauses the game
-            if(PatrolsModule.Pressed(Key.Numpad0))NextJoint();
-            if(PatrolsModule.Pressed(Key.NumpadDivide))NextSide();
-            if(PatrolsModule.Pressed(Key.Numpad5))SavePose();
-            if(PatrolsModule.Pressed(Key.NumpadPeriod))ResetPose();
+            if(Core.Hotkeys.Pressed(Key.Numpad0))NextJoint();
+            if(Core.Hotkeys.Pressed(Key.NumpadDivide))NextSide();
+            if(Core.Hotkeys.Pressed(Key.Numpad5))SavePose();
+            if(Core.Hotkeys.Pressed(Key.NumpadPeriod))ResetPose();
             var kb=Keyboard.current;bool shift=kb!=null&&(kb.leftShiftKey.isPressed||kb.rightShiftKey.isPressed);
             float step=_joint==5?.01f:1f;if(shift)step*=5f;
             var delta=Vector3.zero;
-            if(PatrolsModule.Pressed(Key.Numpad8))delta.x+=step;if(PatrolsModule.Pressed(Key.Numpad2))delta.x-=step;
-            if(PatrolsModule.Pressed(Key.Numpad6))delta.y+=step;if(PatrolsModule.Pressed(Key.Numpad4))delta.y-=step;
-            if(PatrolsModule.Pressed(Key.Numpad9))delta.z+=step;if(PatrolsModule.Pressed(Key.Numpad7))delta.z-=step;
+            if(Core.Hotkeys.Pressed(Key.Numpad8))delta.x+=step;if(Core.Hotkeys.Pressed(Key.Numpad2))delta.x-=step;
+            if(Core.Hotkeys.Pressed(Key.Numpad6))delta.y+=step;if(Core.Hotkeys.Pressed(Key.Numpad4))delta.y-=step;
+            if(Core.Hotkeys.Pressed(Key.Numpad9))delta.z+=step;if(Core.Hotkeys.Pressed(Key.Numpad7))delta.z-=step;
             if(delta==Vector3.zero)return;
             var preset=BusPassengerPoseStore.Current;
             if(_joint==5)preset.seatOffset=Clamp(preset.seatOffset+new Vector3(delta.y,delta.z,delta.x),1f);
