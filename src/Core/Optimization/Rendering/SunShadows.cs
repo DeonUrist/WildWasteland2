@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// EN3 (research C §2 Tier 1.3, §3). Ultra = sun shadows to 200 m, 4 cascades, VeryHigh, skinWeights 4 (Sources data/settings.md
@@ -43,7 +43,7 @@ namespace WildWasteland.Modules.Performance
         protected override void OnEnable(FeatureMode mode)
         {
             ApplyQuality();
-            _job = Scheduler.Interval(Module, "Performance.SunShadows", 5f, Tick);
+            _job = Scheduler.Interval(Module, "Core.Optimization.SunShadows", 5f, Tick);
             Tick();
         }
 

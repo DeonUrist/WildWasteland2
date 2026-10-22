@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// PM7 (plan §4, research B: 22 camera MousePick pairs with 13 masks, ~40 raycasts/frame). Vanilla
@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.Performance
             for (;;)
             {
                 _n = Physics.RaycastNonAlloc(ray, _hits, _maxDist, _unionMask, QueryTriggerInteraction.UseGlobal);
-                Telemetry.PickCasts++;
+                OptimizationMetrics.PickCasts++;
                 if (_n < _hits.Length) break;
                 _hits = new RaycastHit[_hits.Length * 2];   // full buffer = results truncated arbitrarily: cast again
             }
@@ -104,7 +104,7 @@ namespace WildWasteland.Modules.Performance
 
         static bool Answer(Camera cam, Ray ray, float distance, int layerMask, out RaycastHit hit)
         {
-            Telemetry.PickQueries++;
+            OptimizationMetrics.PickQueries++;
             hit = default(RaycastHit);
             bool fresh = _valid && _frame == Time.frameCount && _phase == PhaseKey() && ReferenceEquals(_cam, cam)
                 && (layerMask & ~_castMask) == 0 && distance <= _castDist;

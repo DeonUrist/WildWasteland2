@@ -5,11 +5,11 @@ using UnityEngine;
 using WildWasteland.Core;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     // Shared plumbing of the Rendering features (plan §2 "settings edits" + "prefab pass"):
     //   RenderScan   - the one sliced scan over prefab assets + scene instances (Resources.FindObjectsOfTypeAll on scene load / world
-    //                  ready / when a client starts), then incremental: MapMagic tile objects (PerformanceModule.TileAppliedEvent) and
+    //                  ready / when a client starts), then incremental: MapMagic tile objects (OptimizationRuntime.TileAppliedEvent) and
     //                  objects created by PlayMaker CreateObject (Core.Hooks.CreateObjectEnter postfix).
     //   SaveGuard    - ES3 writes Light / MeshRenderer / ParticleSystem / Camera fields of every saved GameObject and its children
     //                  (Sources code/Assembly-CSharp-firstpass/ES3Types/ES3Type_GameObject.cs:L74-101 "components", ES3Type_Light.cs,
@@ -87,10 +87,10 @@ namespace WildWasteland.Modules.Performance
             _types |= c.Types;
             if (_clients.Count == 1)
             {
-                var m = PerformanceModule.Instance;
-                _job = Scheduler.Sliced(m, "Performance.RenderScan", 1000, Step);
-                PerformanceModule.TileAppliedEvent -= OnTile;
-                PerformanceModule.TileAppliedEvent += OnTile;
+                var m = OptimizationRuntime.Instance;
+                _job = Scheduler.Sliced(m, "Core.Optimization.RenderScan", 1000, Step);
+                OptimizationRuntime.TileAppliedEvent -= OnTile;
+                OptimizationRuntime.TileAppliedEvent += OnTile;
             }
             RequestFull();
         }
@@ -102,7 +102,7 @@ namespace WildWasteland.Modules.Performance
             for (int i = 0; i < _clients.Count; i++) _types |= _clients[i].Types;
             if (_clients.Count == 0)
             {
-                PerformanceModule.TileAppliedEvent -= OnTile;
+                OptimizationRuntime.TileAppliedEvent -= OnTile;
                 if (_job != null) { _job.Remove(); _job = null; }
                 _fullWanted = _fullRunning = false; _arr = null; _subtrees.Clear(); _queued.Clear(); _roots.Clear(); _rootIds.Clear(); _info.Clear();
             }
@@ -140,7 +140,7 @@ namespace WildWasteland.Modules.Performance
 
         static bool Step()
         {
-            if (_fullWanted && !_fullRunning) { _fullWanted = false; _fullRunning = true; _stage = -1; _arr = null; _roots.Clear(); _rootIds.Clear(); _info.Clear(); Telemetry.Mark("prefabpass"); }
+            if (_fullWanted && !_fullRunning) { _fullWanted = false; _fullRunning = true; _stage = -1; _arr = null; _roots.Clear(); _rootIds.Clear(); _info.Clear(); OptimizationMetrics.Mark("prefabpass"); }
             if (_fullRunning) { StepFull(); return true; }
             if (_subtrees.Count > 0) { StepSubtree(_subtrees.Dequeue()); if (_subtrees.Count == 0) { _queued.Clear(); _info.Clear(); } return _subtrees.Count > 0; }
             return false;
@@ -415,9 +415,9 @@ namespace WildWasteland.Modules.Performance
         static void Acquire()
         {
             if (_users++ > 0) return;
-            var m = PerformanceModule.Instance;
+            var m = OptimizationRuntime.Instance;
             m.EnsurePatched(typeof(MenuPatch));
-            _job = Scheduler.Interval(m, "Performance.QualityGuard", 1f, Tick);
+            _job = Scheduler.Interval(m, "Core.Optimization.QualityGuard", 1f, Tick);
             _level = QualitySettings.GetQualityLevel();
         }
 

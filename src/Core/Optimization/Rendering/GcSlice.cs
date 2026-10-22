@@ -3,7 +3,7 @@ using UnityEngine.Scripting;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// EN8 (research C Tier 3 "GC settings", §3). The player runs Unity's incremental GC (boot.config gc-max-time-slice=3 per the plan);

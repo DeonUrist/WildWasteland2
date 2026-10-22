@@ -5,7 +5,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// EN1 (plan §5, research C §1 "Lights", §2 Tier 1.1, §3 presets). 169/178 prefab point lights cast 6-face cube shadows (fire_effect
@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.Performance
             QualityGuard.Set(QualityGuard.Q.PixelLights, _pixel.Value);
             SaveGuard.Register(this);
             RenderScan.Register(this);
-            _job = Scheduler.Interval(Module, "Performance.LightBudget", 0.25f, Tick);
+            _job = Scheduler.Interval(Module, "Core.Optimization.LightBudget", 0.25f, Tick);
         }
 
         protected override void OnDisable()

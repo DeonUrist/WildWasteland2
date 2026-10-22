@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT1 (plan §7, research B §3.2): sliced, de-phased replacement of the four culling sweeps. Vanilla (all Sources
@@ -77,7 +77,7 @@ namespace WildWasteland.Modules.Performance
             FsmEdits.Watch(this, "DeleteFarAwayItems", "__GameManager__", ReadyDeleteFar);
             FsmEdits.Watch(this, "DeleteFallingItems", "__GameManager__", ReadyFalling);
             FsmEdits.Watch(this, "DeleteDestroyedItems", "NewGO_ArrayList", ReadyCompact);
-            _job = Scheduler.Sliced(Module, "Performance.Culler", 1000, Step);
+            _job = Scheduler.Sliced(Module, "Core.Optimization.Culler", 1000, Step);
         }
 
         protected override void OnDisable()
@@ -240,7 +240,7 @@ namespace WildWasteland.Modules.Performance
 
         void RunSlice()
         {
-            Telemetry.Mark("cull");
+            OptimizationMetrics.Mark("cull");
             var player = _player != null ? _player.Value : null;
             // scene teardown mid-pass: never compare against a missing player (would read as distance from the origin)
             if (_owned[(int)_kind] == null || (player == null && _kind != Kind.Falling)) { _running = false; return; }

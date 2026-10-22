@@ -6,7 +6,7 @@ using HutongGames.PlayMaker;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS4 (plan §4, research A §1.6 / R9): every Instantiate of an object with FSMs deserializes all their actions

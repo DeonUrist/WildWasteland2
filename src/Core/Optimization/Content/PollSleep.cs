@@ -7,7 +7,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// Exact sleep for FSMs that wait in a "poll" state (research B §2: almost all polling is an everyFrame compare used as "wait
@@ -48,7 +48,7 @@ namespace WildWasteland.Modules.Performance
         {
             if (_users++ == 0)
             {
-                if (_job == null || !IsAlive(_job)) _job = Scheduler.EveryFrame(f.Module, "Performance.PollSleep", Tick, Phase.EarlyUpdate);
+                if (_job == null || !IsAlive(_job)) _job = Scheduler.EveryFrame(f.Module, "Core.Optimization.PollSleep", Tick, Phase.EarlyUpdate);
                 _job.Enabled = true;
             }
         }
@@ -70,7 +70,7 @@ namespace WildWasteland.Modules.Performance
 
         /// <summary>Called from SubscribeHooks of each user feature (Core removes the subscriptions when the module stops). Several
         /// subscriptions of the same handler are harmless: the first call wakes, later ones find nothing asleep.</summary>
-        internal static void Hook(PerformanceModule m) { Hooks.EnterState.Postfix(m, AfterEnterState); }
+        internal static void Hook(OptimizationRuntime m) { Hooks.EnterState.Postfix(m, AfterEnterState); }
 
         internal static void Register(Feature owner, PlayMakerFSM comp)
         {

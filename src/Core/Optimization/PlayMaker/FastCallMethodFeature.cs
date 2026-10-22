@@ -6,7 +6,7 @@ using HutongGames.PlayMaker.Actions;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS3 (plan §4, research A §3 #25: CallMethod 107 uses). CallMethod.DoMethodCall (CallMethod.cs) calls

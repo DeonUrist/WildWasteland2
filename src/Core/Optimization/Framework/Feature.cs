@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>Per-feature switch. Shadow (only where <see cref="Feature.SupportsShadow"/>): the vanilla path keeps running and the
     /// optimized result is only computed and compared; mismatches are counted on the Performance tab and logged (first few).</summary>
@@ -26,15 +26,15 @@ namespace WildWasteland.Modules.Performance
     }
 
     /// <summary>
-    /// One optimization (plan-Performance.md id in <see cref="PlanId"/>). Lifecycle, driven by <see cref="PerformanceModule"/>:
+    /// One optimization (plan-Performance.md id in <see cref="PlanId"/>). Lifecycle, driven by <see cref="OptimizationRuntime"/>:
     /// Bind (config) -> Enable when the effective mode becomes On/Shadow (module running, mode not Off, preset not Vanilla for
     /// preset features) -> scene/world/tile/origin callbacks while active -> Disable when the mode turns Off, the preset turns
     /// Vanilla or the module shuts down. Disable MUST restore every vanilla value the feature changed (game objects, prefab
     /// assets, settings, FSM actions). Harmony patches are installed once (EnsurePatched) and stay; their bodies check the
     /// feature's static flag, so Off costs one bool test.
-    /// Discovered by reflection: every non-abstract subclass in this assembly with a public parameterless constructor.
+    /// Registered explicitly by OptimizationRuntime so unrelated assembly types never join the feature lifecycle.
     /// </summary>
-    public abstract class Feature
+    public abstract class Feature : IStatsSource
     {
         public abstract string PlanId { get; }          // "PM2", "EN1", ...
         public abstract string Key { get; }             // config key, stable: "Targeted events"
@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.Performance
         public virtual bool UsesPreset { get { return false; } }
         public virtual FeatureMode DefaultMode { get { return FeatureMode.On; } }
 
-        public PerformanceModule Module { get; internal set; }
+        public OptimizationRuntime Module { get; internal set; }
         public ConfigEntry<FeatureMode> ModeEntry { get; internal set; }
         /// <summary>Current running state (what Enable was called with), Off when not enabled.</summary>
         public FeatureMode Running { get; private set; }
@@ -142,7 +142,7 @@ namespace WildWasteland.Modules.Performance
             {
                 float o = Override.Value;
                 if (o >= 0) return o;
-                return _values[(int)PerformanceModule.Preset];
+                return _values[(int)OptimizationRuntime.Preset];
             }
         }
         public float Vanilla { get { return _values[0]; } }

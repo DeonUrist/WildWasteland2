@@ -7,7 +7,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     // Only sharedMesh is exchanged. Native renderer state, transforms, materials, colliders and rig components remain owned by the game.
     public sealed class GeneratedLods : Feature, IScanClient, ISkinnedScanClient, SaveGuard.IClient
@@ -85,14 +85,13 @@ namespace WildWasteland.Modules.Performance
             _epoch++;
             SaveGuard.Register(this);
             RenderScan.Register(this);
-            _job = Scheduler.Sliced(Module, "Performance.GeneratedLods", 750, Step, Phase.LateUpdateLast);
-            _discovery = Scheduler.Interval(Module, "Performance.GeneratedLodDiscovery", 15, Discover);
+            _job = Scheduler.Sliced(Module, "Core.Optimization.GeneratedLods", 750, Step, Phase.LateUpdateLast);
+            _discovery = Scheduler.Interval(Module, "Core.Optimization.GeneratedLodDiscovery", 15, Discover);
             Log.Always("[Performance] RC9 " + _status);
         }
 
         protected override void OnDisable()
         {
-            GeneratedLodExport.Stop();
             Camera.onPreRender -= RenderView;
             RenderScan.Unregister(this);
             SaveGuard.Unregister(this);
@@ -361,8 +360,6 @@ namespace WildWasteland.Modules.Performance
             l.Value("LOD renderers", _objects.Count + "; unique cache " + _cache.Count + "; unmatched meshes " + _missing);
             l.Value("LOD cache", (_reserved / 1048576) + " MB reserved; reads " + _pending + "; errors " + _errors);
             l.Value("LOD view", _zoom ? "zoom: original meshes" : _saving || _guard ? "saving: original meshes" : "automatic screen-size LOD");
-            l.Value("LOD export", GeneratedLodExport.Status);
-            if (l.Buttons("Export loaded models for LOD generator") == 0) GeneratedLodExport.Start(Module);
         }
     }
 }

@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS1 FSM sleep (plan §4, research A §4.2). ~70% of the enabled FSMs sit in a state where Fsm.Update does nothing
@@ -101,16 +101,16 @@ namespace WildWasteland.Modules.Performance
         /// <summary>Wakes one FSM put to sleep by this feature (no-op otherwise). Safe from any code on the main thread.</summary>
         public static void Wake(Fsm fsm)
         {
-            if (Shadow) { if (_asleep.Remove(fsm)) Telemetry.Wakes++; return; }
+            if (Shadow) { if (_asleep.Remove(fsm)) OptimizationMetrics.Wakes++; return; }
             if (!fsm.ManualUpdate) return;          // awake, or set by somebody else? (then not in our set either)
-            if (_asleep.Remove(fsm)) { fsm.ManualUpdate = false; Telemetry.Wakes++; }
+            if (_asleep.Remove(fsm)) { fsm.ManualUpdate = false; OptimizationMetrics.Wakes++; }
         }
 
         /// <summary>Wakes every FSM this feature put to sleep.</summary>
         public static void WakeAll()
         {
             if (!Shadow) foreach (var f in _asleep) if (f != null) f.ManualUpdate = false;
-            Telemetry.Wakes += _asleep.Count;
+            OptimizationMetrics.Wakes += _asleep.Count;
             _asleep.Clear();
         }
 
@@ -229,13 +229,13 @@ namespace WildWasteland.Modules.Performance
                 if (Shadow)
                 {
                     if (ReferenceEquals(_snapFsm, __instance)) Compare(__instance);
-                    if (!_asleep.Contains(__instance) && CanSleep(__instance)) { _asleep.Add(__instance); Telemetry.Sleeps++; }
+                    if (!_asleep.Contains(__instance) && CanSleep(__instance)) { _asleep.Add(__instance); OptimizationMetrics.Sleeps++; }
                     return;
                 }
                 if (!Hooks.ProcessEvent.Applied || !CanSleep(__instance)) return;
                 _asleep.Add(__instance);
                 __instance.ManualUpdate = true;
-                Telemetry.Sleeps++;
+                OptimizationMetrics.Sleeps++;
             }
 
             // ---- event / state paths ----

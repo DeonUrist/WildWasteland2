@@ -6,7 +6,7 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>Reference-identity comparer (UnityEngine.Object.Equals goes native; the registry only needs identity).</summary>
     internal sealed class RefComparer<T> : IEqualityComparer<T> where T : class
@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.Performance
         internal static int Count { get { return _stamps.Count; } }
         internal static long Rebuilds;
 
-        internal static void Acquire(PerformanceModule m)
+        internal static void Acquire(OptimizationRuntime m)
         {
             if (!m.EnsurePatched(typeof(Patch))) throw new Exception("PlayMakerFSM OnEnable/OnDisable/OnDestroy patch failed");
             if (_users++ == 0) Rebuild();
@@ -132,7 +132,7 @@ namespace WildWasteland.Modules.Performance
             if (knownAbsent) return;
             var list = PlayMakerFSM.FsmList;
             for (int i = list.Count - 1; i >= 0; i--)
-                if (ReferenceEquals(list[i], self)) { list.RemoveAt(i); Telemetry.FastRemovals++; return; }
+                if (ReferenceEquals(list[i], self)) { list.RemoveAt(i); OptimizationMetrics.FastRemovals++; return; }
         }
 
         [HarmonyPatch]

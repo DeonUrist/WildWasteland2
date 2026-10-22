@@ -9,7 +9,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// PM5 (plan §4, research A §1.7 / R6). Three exact replacements around PlayMaker's IMGUI and visibility callbacks:
@@ -80,7 +80,7 @@ namespace WildWasteland.Modules.Performance
                 if (m == null) throw new Exception("PlayMakerGUI.DrawStateLabels not found");
                 _drawStateLabels = AccessTools.MethodDelegate<Action<PlayMakerGUI>>(m);
             }
-            if (_guard == null || _guard.Removed) _guard = Scheduler.Interval(Module, "Performance.GuiProxyGuard", 1f, GuardTick);
+            if (_guard == null || _guard.Removed) _guard = Scheduler.Interval(Module, "Core.Optimization.GuiProxyGuard", 1f, GuardTick);
             _isCand.Clear(); _dirty = true; _suspended = false;
             _lastGuiFrame = Time.frameCount;
             // vanilla's scratch copy of FsmList is no longer refreshed: drop the references it holds

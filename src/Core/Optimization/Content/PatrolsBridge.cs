@@ -5,7 +5,7 @@ using HarmonyLib;
 using UnityEngine;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// The only place the Performance module touches the Patrols module (modules must not reference each other's types, AGENTS.md

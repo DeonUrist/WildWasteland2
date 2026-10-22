@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>Called once for each PlayMakerFSM instance a feature watches: when its actions are loaded (postfix on
     /// PlayMakerFSM.Awake, i.e. before its start state is entered) and, when the watch is added mid-game, for every instance that

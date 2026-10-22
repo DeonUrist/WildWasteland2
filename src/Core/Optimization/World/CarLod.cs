@@ -10,7 +10,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT2 (plan §7, research B §1.2-1.3 / C §2 Tier 1 #5): car simulation LOD for cars nobody uses.
@@ -89,7 +89,7 @@ namespace WildWasteland.Modules.Performance
             _engineSimLoaded = AccessTools.TypeByName("EngineSim.EngineManager") != null;
             ReadKnobs();
             FsmEdits.Watch(this, "DistanceKinematic", null, Ready);
-            _job = Scheduler.Interval(Module, "Performance.CarLod", 0.1f, Tick);
+            _job = Scheduler.Interval(Module, "Core.Optimization.CarLod", 0.1f, Tick);
         }
 
         void ReadKnobs() { _kin = Mathf.Max(50f, _kinDist.Value); float p = Mathf.Max(5f, _presDist.Value); _pres2 = p * p; }

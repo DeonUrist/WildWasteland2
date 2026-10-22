@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// EN2, exact part (research C §0, §2 Tier 1.2). WW does not reference Unity.Postprocessing.Runtime, so every PPv2 member is
@@ -216,7 +216,7 @@ namespace WildWasteland.Modules.Performance
         {
             if (!Resolve()) throw new Exception("PostProcessLayer not found");
             _version = -1;
-            _job = Scheduler.Interval(Module, "Performance.AntiAliasing", 1f, Tick);
+            _job = Scheduler.Interval(Module, "Core.Optimization.AntiAliasing", 1f, Tick);
             Tick();
         }
 

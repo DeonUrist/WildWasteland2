@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Object = UnityEngine.Object;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS2 (plan §4, research A §1.5 / R8): SetProperty (3848 uses, 238 every frame) / GetProperty (294, 108 every frame) go

@@ -7,7 +7,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// PM10 (plan §4, research A §3 #14: ConvertFloatToString 225 uses / 191 everyFrame, ConvertIntToString 8; HUD FSMs).

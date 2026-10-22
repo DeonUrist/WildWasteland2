@@ -5,7 +5,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// RC2 (research C §1 "Renderers", §2 Tier 1.4, §3). Only 60 prefab + 24 scene LODGroups exist for 11k renderers, so most props
@@ -79,7 +79,7 @@ namespace WildWasteland.Modules.Performance
 
         internal static bool Owns(LODGroup group)
         {
-            var module = PerformanceModule.Instance;
+            var module = OptimizationRuntime.Instance;
             if (module != null) foreach (var feature in module.Features)
             { var cull = feature as CullLods; if (cull != null && cull.Injected(group)) return true; }
             return false;
@@ -95,7 +95,7 @@ namespace WildWasteland.Modules.Performance
             var go = root.gameObject;
             // RC9 supplies persistent flat wall panels; a cull-only parent would hide those as well.
             if (go.name.StartsWith("Towns perimeter ", StringComparison.Ordinal))
-                foreach (var feature in PerformanceModule.Instance.Features) if (feature is GeneratedLods && feature.IsOn) return;
+                foreach (var feature in OptimizationRuntime.Instance.Features) if (feature is GeneratedLods && feature.IsOn) return;
             if (!_done.Add(root.GetInstanceID())) return;
             if (!c.Asset && go.scene.buildIndex < 0) return;          // DontDestroyOnLoad / mod objects
             if (go.layer == 12) return;

@@ -3,7 +3,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// RC3 (research C §2 Tier 1.4, §3). Spherical per-layer cull distances on the game's view cameras (PlayerCamera and the vehicles'
@@ -37,7 +37,7 @@ namespace WildWasteland.Modules.Performance
         {
             Build(); _version = -1;
             SaveGuard.Register(this);
-            _job = Scheduler.Interval(Module, "Performance.LayerCull", 1f, Tick);
+            _job = Scheduler.Interval(Module, "Core.Optimization.LayerCull", 1f, Tick);
             Tick();
         }
 
@@ -131,7 +131,7 @@ namespace WildWasteland.Modules.Performance
         protected override void OnEnable(FeatureMode mode)
         {
             SaveGuard.Register(this);
-            _job = Scheduler.Interval(Module, "Performance.FarClip", 1f, Tick);
+            _job = Scheduler.Interval(Module, "Core.Optimization.FarClip", 1f, Tick);
             Tick();
         }
 

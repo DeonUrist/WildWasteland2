@@ -4,7 +4,7 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// PM6 (plan §4, research A §1.8 / R7). Every trigger/collision callback of a PlayMakerTriggerEnter/Exit (823/486 baked

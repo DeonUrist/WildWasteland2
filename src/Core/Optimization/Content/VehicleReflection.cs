@@ -4,7 +4,7 @@ using NWH.VehiclePhysics2;
 using UnityEngine;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// CT4 (plan §7, research B §2 #2 #8 #9, §3.3): the per-car FSMs Pedal (x3), RpmGear and Handbrake read/write NWH through
