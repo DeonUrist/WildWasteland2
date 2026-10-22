@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.Towns
     public sealed partial class TownsModule
     {
         private string _startingTerrainState;
+        /// <summary>Vistas only: logs (on change) hole counts and height steps at the edges of the starting tile when a tile next to the origin is applied.</summary>
         partial void TraceStartingTerrain(TerrainTile applied, string source)
         {
             if (!VistasWorldGen.Present || applied == null || applied.mapMagic == null || Mathf.Abs(applied.coord.x) + Mathf.Abs(applied.coord.z) > 1) return;
