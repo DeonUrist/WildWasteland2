@@ -6,47 +6,25 @@ using WildWasteland.Core.UI;
 namespace WildWasteland.Modules.Performance
 {
     /// <summary>
-    /// The separate "Performance" tab of the settings window (between Modules and Debug; registered by Core's CorePages).
-    /// The module switch, preset and measurements stay here. Individual optimization modes, stats and tuning live in Developer.
+    /// Debug part of the Performance tab (Wave A split): Telemetry measurements, the scheduler job table and the Developer
+    /// feature list (modes, stats, shadow results, tuning overrides). B03 takes this over.
     /// </summary>
-    public sealed class PerformancePage : ToolPage
+    public sealed partial class PerformancePage
     {
-        static PerformancePage _instance;
-        public static PerformancePage Instance { get { return _instance ?? (_instance = new PerformancePage()); } }
         bool _tuning;
-
-        PerformancePage() { Group = ToolGroups.General; Title = "Performance"; ShowWhenModuleOff = true; }
-
         static readonly string[] _modes2 = { "Off", "On" };
         static readonly string[] _modes3 = { "Off", "On", "Shadow" };
-        static readonly string[] _presets = { "PERFORMANCE", "BALANCED", "VISUALS", "VANILLA" };
-        static readonly PerfPreset[] _presetValues = { PerfPreset.Low, PerfPreset.Balanced, PerfPreset.Max, PerfPreset.Vanilla };
 
-        public override void Draw(ToolLayout l)
+        /// <summary>Tail of the Performance tab: Telemetry measurements and the per-module/per-job scheduler table.</summary>
+        partial void DrawMeasurements(ToolLayout l)
         {
-            var m = PerformanceModule.Instance;
-            if (m == null) { l.Text("Performance module not loaded."); return; }
-            var entry = ModuleHost.Of(m);
-            if (entry != null && entry.Config != null) l.Toggle(entry.Config.Enabled, "Performance optimizations");
-            bool running = ModuleHost.IsRunning(m);
-            l.Text(running
-                ? "Experimental base-game optimizations. Choose a preset and compare measurements in the same scene. Changes apply immediately."
-                : "The Performance module is off: the game runs unmodified.", running ? (Color?)null : Ledger.Danger);
-
-            var p = PerformanceModule.PresetEntry;
-            if (p != null)
-            {
-                int sel = l.Choices("Preset", Array.IndexOf(_presetValues, p.Value), _presets);
-                if (_presetValues[sel] != p.Value) p.Value = _presetValues[sel];
-                l.Text("PERFORMANCE favors speed; BALANCED is the compromise; VISUALS favors detail. VANILLA (default) disables changes to visuals, simulation and item cleanup, including extra culling (marked *). Exact optimizations remain active.");
-            }
-
             l.Heading("Measurements");
             Telemetry.Draw(l);
             l.Heading("Performance and jobs");
             CorePages.Performance(l);
         }
 
+        /// <summary>Developer page section: every optimization's mode, stats, errors, shadow mismatches and tuning overrides.</summary>
         internal void DrawDeveloper(ToolLayout l)
         {
             var m = PerformanceModule.Instance;

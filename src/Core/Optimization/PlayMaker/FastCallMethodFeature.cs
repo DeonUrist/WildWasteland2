@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using HutongGames.PlayMaker.Actions;
+using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.Performance
@@ -32,7 +33,7 @@ namespace WildWasteland.Modules.Performance
 
         sealed class Inv
         {
-            public volatile Func<object, object[], object> Call;   // published last, by CompileQueue (spread over frames)
+            public volatile Func<object, object[], object> Call;   // published last, by Access.Queue (spread over frames)
             public Type[] Params; public bool[] ValueParam; public bool Static; public Type Decl; public Type OkTarget;
         }
         static readonly Dictionary<MethodBase, Inv> _invokers = new Dictionary<MethodBase, Inv>(RefComparer<MethodBase>.Instance);
@@ -66,9 +67,9 @@ namespace WildWasteland.Modules.Performance
                 }
                 if (inv != NoInvoker)
                 {
-                    // compiled later (CompileQueue); Call stays null -> reflection until then
+                    // compiled later (Access.Queue); Call stays null -> reflection until then
                     var target = inv;
-                    CompileQueue.Enqueue(Module_, b => b.Add(() => FastReflect.Invoker(mi), d => target.Call = d), null);
+                    Access.Queue.Enqueue(Module_, b => b.Add(() => Access.Invoker(mi), d => target.Call = d), null);
                 }
             }
             if (_invokers.Count > 4096) _invokers.Clear();

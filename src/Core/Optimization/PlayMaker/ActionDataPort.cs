@@ -50,18 +50,18 @@ namespace WildWasteland.Modules.Performance
         static readonly Func<ActionData, int, FsmAnimationCurve> _GetFsmAnimationCurve = M<Func<ActionData, int, FsmAnimationCurve>>("GetFsmAnimationCurve");
         static readonly Func<ActionData, int, string> _GetStringParam = M<Func<ActionData, int, string>>("GetStringParam");
         static readonly Action<ActionData, Fsm, Array, Type, int, int> _LoadArrayElement = M<Action<ActionData, Fsm, Array, Type, int, int>>("LoadArrayElement");
-        static readonly Func<ActionData, byte[]> _byteDataAsArray = FastReflect.Getter<ActionData, byte[]>(typeof(ActionData), "byteDataAsArray");
-        static readonly Func<ActionData, List<int>> _paramDataPos = FastReflect.Getter<ActionData, List<int>>(typeof(ActionData), "paramDataPos");
-        static readonly Func<ActionData, List<int>> _paramByteDataSize = FastReflect.Getter<ActionData, List<int>>(typeof(ActionData), "paramByteDataSize");
-        static readonly Func<ActionData, List<string>> _stringParams = FastReflect.Getter<ActionData, List<string>>(typeof(ActionData), "stringParams");
-        static readonly Func<ActionData, List<UnityEngine.Object>> _unityObjectParams = FastReflect.Getter<ActionData, List<UnityEngine.Object>>(typeof(ActionData), "unityObjectParams");
-        static readonly Func<ActionData, List<string>> _paramName = FastReflect.Getter<ActionData, List<string>>(typeof(ActionData), "paramName");
-        static readonly Func<ActionData, List<int>> _customTypeSizes = FastReflect.Getter<ActionData, List<int>>(typeof(ActionData), "customTypeSizes");
-        static readonly Func<ActionData, List<string>> _customTypeNames = FastReflect.Getter<ActionData, List<string>>(typeof(ActionData), "customTypeNames");
-        static readonly Func<ActionData, List<int>> _arrayParamSizes = FastReflect.Getter<ActionData, List<int>>(typeof(ActionData), "arrayParamSizes");
-        static readonly Func<ActionData, List<string>> _arrayParamTypes = FastReflect.Getter<ActionData, List<string>>(typeof(ActionData), "arrayParamTypes");
-        static readonly Func<ActionData, int> _getNext = FastReflect.Getter<ActionData, int>(typeof(ActionData), "nextParamIndex");
-        static readonly Action<ActionData, int> _setNext = FastReflect.Setter<ActionData, int>(typeof(ActionData), "nextParamIndex");
+        static readonly Func<ActionData, byte[]> _byteDataAsArray = WildWasteland.Core.Access.Getter<ActionData, byte[]>(typeof(ActionData), "byteDataAsArray");
+        static readonly Func<ActionData, List<int>> _paramDataPos = WildWasteland.Core.Access.Getter<ActionData, List<int>>(typeof(ActionData), "paramDataPos");
+        static readonly Func<ActionData, List<int>> _paramByteDataSize = WildWasteland.Core.Access.Getter<ActionData, List<int>>(typeof(ActionData), "paramByteDataSize");
+        static readonly Func<ActionData, List<string>> _stringParams = WildWasteland.Core.Access.Getter<ActionData, List<string>>(typeof(ActionData), "stringParams");
+        static readonly Func<ActionData, List<UnityEngine.Object>> _unityObjectParams = WildWasteland.Core.Access.Getter<ActionData, List<UnityEngine.Object>>(typeof(ActionData), "unityObjectParams");
+        static readonly Func<ActionData, List<string>> _paramName = WildWasteland.Core.Access.Getter<ActionData, List<string>>(typeof(ActionData), "paramName");
+        static readonly Func<ActionData, List<int>> _customTypeSizes = WildWasteland.Core.Access.Getter<ActionData, List<int>>(typeof(ActionData), "customTypeSizes");
+        static readonly Func<ActionData, List<string>> _customTypeNames = WildWasteland.Core.Access.Getter<ActionData, List<string>>(typeof(ActionData), "customTypeNames");
+        static readonly Func<ActionData, List<int>> _arrayParamSizes = WildWasteland.Core.Access.Getter<ActionData, List<int>>(typeof(ActionData), "arrayParamSizes");
+        static readonly Func<ActionData, List<string>> _arrayParamTypes = WildWasteland.Core.Access.Getter<ActionData, List<string>>(typeof(ActionData), "arrayParamTypes");
+        static readonly Func<ActionData, int> _getNext = WildWasteland.Core.Access.Getter<ActionData, int>(typeof(ActionData), "nextParamIndex");
+        static readonly Action<ActionData, int> _setNext = WildWasteland.Core.Access.Setter<ActionData, int>(typeof(ActionData), "nextParamIndex");
 
         /// <summary>Touches the static initializer (all delegates/getters resolve or throw here, before patching).</summary>
         internal static void Check() { if (_setNext == null || _LoadArrayElement == null) throw new Exception("ActionData members missing"); }

@@ -70,8 +70,8 @@ namespace WildWasteland.Modules.Performance
                 // interpreter in this game's stripped runtime: slower than reflection and allocating)
                 var fInt = AccessTools.Field(_sssType, "Intensity");
                 var fVal = fInt != null ? AccessTools.Field(fInt.FieldType, "value") : null;
-                var gInt = fInt != null ? FastReflect.BoxedGetter(fInt) : null;
-                var gVal = fVal != null ? FastReflect.TypedGetter<float>(fVal) : null;
+                var gInt = fInt != null ? Access.BoxedGetter(fInt) : null;
+                var gVal = fVal != null ? Access.TypedGetter<float>(fVal) : null;
                 if (gInt == null || gVal == null) return _ok = false;
                 _sssIntensity = s => gVal(gInt(s));
                 _sssRt0 = AccessTools.Field(_sssType, "tempRT0"); _sssRt1 = AccessTools.Field(_sssType, "tempRT1");
@@ -113,7 +113,7 @@ namespace WildWasteland.Modules.Performance
                 gCmd = Getter(ctxType, "command"), gSrc = Getter(ctxType, "source"), gDst = Getter(ctxType, "destination");
             if (getSheet == null || setFloat == null || fValue == null || gSheets == null || gProps == null || gSettings == null || gCmd == null || gSrc == null || gDst == null)
                 throw new Exception("Sharpen members not found");
-            var dm = new FastReflect.Dm("WW_SharpenRender", typeof(void), new[] { typeof(object), typeof(object), typeof(Shader) });
+            var dm = new Access.Dm("WW_SharpenRender", typeof(void), new[] { typeof(object), typeof(object), typeof(Shader) });
             var il = dm.GetILGenerator();
             var lCtx = il.DeclareLocal(ctxType); var lSheet = il.DeclareLocal(sheetType); var lRect = il.DeclareLocal(typeof(Rect?));
             il.Emit(OpCodes.Ldarg_1); il.Emit(OpCodes.Castclass, ctxType); il.Emit(OpCodes.Stloc, lCtx);
@@ -131,7 +131,7 @@ namespace WildWasteland.Modules.Performance
             il.Emit(OpCodes.Call, blit);
             il.Emit(OpCodes.Ret);
             _sharpenRender = (Action<object, object, Shader>)dm.CreateDelegate(typeof(Action<object, object, Shader>));
-            _sharpenSettings = FastReflect.BoxedGetter(settingsProp);
+            _sharpenSettings = Access.BoxedGetter(settingsProp);
             if (_sharpenSettings == null) { _sharpenRender = null; throw new Exception("Sharpen settings getter not compilable"); }
             _sharpRt0 = AccessTools.Field(sharpSettingsType, "tempRT0");
         }

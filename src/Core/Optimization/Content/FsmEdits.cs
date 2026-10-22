@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using HarmonyLib;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
 using Log = WildWasteland.Core.Log;
 
 namespace WildWasteland.Modules.Performance
@@ -258,67 +259,5 @@ namespace WildWasteland.Modules.Performance
         internal override void Revert() { _v.Value = _was; }
     }
 
-    /// <summary>
-    /// Ownership of Fsm.ManualUpdate (PlayMakerFSM.Update skips Fsm.Update while it is set; events, trigger/collision callbacks and
-    /// state changes still run). Several features may pause the same FSM for different reasons (bits); it runs again only when all
-    /// reasons are gone. An FSM whose ManualUpdate was already set by someone else (another feature/module/mod) is never touched,
-    /// and if someone clears it while we hold it, <see cref="Held"/> notices and drops our claim.
-    /// </summary>
-    internal static class FsmPause
-    {
-        internal const int CarLod = 1, PollSleep = 2, Stepped = 4;
-        static readonly Dictionary<Fsm, int> _bits = new Dictionary<Fsm, int>(RefComparer<Fsm>.Instance);
-        static readonly List<Fsm> _tmp = new List<Fsm>();
-        internal static int Count { get { return _bits.Count; } }
-
-        /// <summary>Claims <paramref name="bit"/>; false if the FSM is paused by somebody else.</summary>
-        internal static bool Set(Fsm f, int bit)
-        {
-            int b;
-            if (_bits.TryGetValue(f, out b))
-            {
-                if (!f.ManualUpdate) { _bits.Remove(f); b = 0; }    // released by someone else: start over
-                else { _bits[f] = b | bit; return true; }
-            }
-            if (f.ManualUpdate) return false;
-            f.ManualUpdate = true;
-            _bits[f] = bit;
-            return true;
-        }
-
-        internal static void Clear(Fsm f, int bit)
-        {
-            int b;
-            if (!_bits.TryGetValue(f, out b) || (b & bit) == 0) return;
-            b &= ~bit;
-            if (b == 0) { _bits.Remove(f); f.ManualUpdate = false; }
-            else _bits[f] = b;
-        }
-
-        /// <summary>True while our <paramref name="bit"/> still holds the FSM paused.</summary>
-        internal static bool Held(Fsm f, int bit)
-        {
-            int b;
-            if (!_bits.TryGetValue(f, out b) || (b & bit) == 0) return false;
-            if (!f.ManualUpdate) { _bits.Remove(f); return false; }
-            return true;
-        }
-
-        internal static void ClearAll(int bit)
-        {
-            _tmp.Clear();
-            foreach (var kv in _bits) if ((kv.Value & bit) != 0) _tmp.Add(kv.Key);
-            for (int i = 0; i < _tmp.Count; i++) Clear(_tmp[i], bit);
-            _tmp.Clear();
-        }
-
-        /// <summary>Forget FSMs whose component is gone (scene load, periodic).</summary>
-        internal static void Prune()
-        {
-            _tmp.Clear();
-            foreach (var kv in _bits) { var o = kv.Key.Owner; if (o == null) _tmp.Add(kv.Key); }
-            for (int i = 0; i < _tmp.Count; i++) _bits.Remove(_tmp[i]);
-            _tmp.Clear();
-        }
-    }
+    // FsmPause (ManualUpdate ownership bits) moved to Core: src/Core/Game/FsmPause.cs (W0-B verbatim port; Wave A deleted this copy).
 }

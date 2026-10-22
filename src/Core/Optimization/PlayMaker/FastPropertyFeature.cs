@@ -4,6 +4,7 @@ using System.Reflection;
 using HarmonyLib;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Object = UnityEngine.Object;
 
@@ -17,7 +18,7 @@ namespace WildWasteland.Modules.Performance
     /// These prefixes do exactly the same with:
     /// - the branch tests evaluated once per PropertyType (same predicates, same order; the per-call "!XParameter.IsNone"
     ///   checks of SetValue are still evaluated per call, in order),
-    /// - compiled getters/setters per member (<see cref="FastReflect"/>; property accessor exceptions wrapped in
+    /// - compiled getters/setters per member (<see cref="Access"/>; property accessor exceptions wrapped in
     ///   TargetInvocationException like reflection, typed float/int/bool/vector/color paths without boxing),
     /// - ReflectionUtils.SetMemberValue(MemberInfo[]) replicated step by step: getters for levels 0..n-2 (parent/target),
     ///   then, if the target's RUNTIME type is a value type, set the last member on the boxed target and write the box back
@@ -43,8 +44,8 @@ namespace WildWasteland.Modules.Performance
         static FastPropertyFeature _inst;
         public static long Sets, Gets, Fallbacks;
 
-        static readonly Func<FsmProperty, Object> TargetCached = FastReflect.Getter<FsmProperty, Object>(typeof(FsmProperty), "targetObjectCached");
-        static readonly Func<FsmProperty, MemberInfo[]> MemberInfos = FastReflect.Getter<FsmProperty, MemberInfo[]>(typeof(FsmProperty), "memberInfo");
+        static readonly Func<FsmProperty, Object> TargetCached = Access.Getter<FsmProperty, Object>(typeof(FsmProperty), "targetObjectCached");
+        static readonly Func<FsmProperty, MemberInfo[]> MemberInfos = Access.Getter<FsmProperty, MemberInfo[]>(typeof(FsmProperty), "memberInfo");
 
         protected override void OnEnable(FeatureMode mode)
         {
@@ -58,7 +59,7 @@ namespace WildWasteland.Modules.Performance
         {
             l.Value("Sets / gets / vanilla fallbacks", Sets + " / " + Gets + " / " + Fallbacks);
             l.Value("Compiled members / paths", _accs.Count + " / " + _chains.Count);
-            l.Value("Compile queue (FS2+FS3)", CompileQueue.Stats());
+            l.Value("Compile queue (FS2+FS3)", Access.Queue.Stats());
         }
 
         // ---------------------------------------------------------------- compiled members and paths
@@ -68,7 +69,7 @@ namespace WildWasteland.Modules.Performance
             public MemberInfo M; public Type Type; public Type Decl;
             public Func<object, object> Get; public Action<object, object> Set;
             public Delegate GetT, SetT;   // Func<object,T> / Action<object,T> with T == Type, for the common value types
-            public volatile bool Ready;   // delegates published by CompileQueue (main thread, spread over frames)
+            public volatile bool Ready;   // delegates published by Access.Queue (main thread, spread over frames)
         }
 
         sealed class Chain
@@ -90,19 +91,19 @@ namespace WildWasteland.Modules.Performance
             long k = MemberKey(m);
             Acc a;
             if (_accs.TryGetValue(k, out a) && a.M.DeclaringType == m.DeclaringType && a.M.MetadataToken == m.MetadataToken) return a;
-            a = new Acc { M = m, Type = FastReflect.MemberType(m), Decl = m.DeclaringType };
+            a = new Acc { M = m, Type = Access.MemberType(m), Decl = m.DeclaringType };
             _accs[k] = a;
             var acc = a;
-            CompileQueue.Enqueue(_inst != null ? (WildWasteland.Core.IModule)_inst.Module : null, b => AddBuilds(b, acc), () => acc.Ready = true);
+            Access.Queue.Enqueue(_inst != null ? (WildWasteland.Core.IModule)_inst.Module : null, b => AddBuilds(b, acc), () => acc.Ready = true);
             return a;
         }
 
         /// <summary>Queues every accessor of one member into the current background batch (results land after the build).</summary>
-        static void AddBuilds(FastReflect.Batch b, Acc a)
+        static void AddBuilds(Access.Batch b, Acc a)
         {
             var m = a.M;
-            b.Add(() => FastReflect.BoxedGetter(m), d => a.Get = d);
-            b.Add(() => FastReflect.BoxedSetter(m), d => a.Set = d);
+            b.Add(() => Access.BoxedGetter(m), d => a.Get = d);
+            b.Add(() => Access.BoxedSetter(m), d => a.Set = d);
             var t = a.Type;
             if (t == typeof(float)) Typed<float>(b, a);
             else if (t == typeof(int)) Typed<int>(b, a);
@@ -113,11 +114,11 @@ namespace WildWasteland.Modules.Performance
             else if (t == typeof(Color)) Typed<Color>(b, a);
             else if (t == typeof(Rect)) Typed<Rect>(b, a);
         }
-        static void Typed<T>(FastReflect.Batch b, Acc a)
+        static void Typed<T>(Access.Batch b, Acc a)
         {
             var m = a.M;
-            b.Add(() => FastReflect.TypedGetter<T>(m), d => a.GetT = d);
-            b.Add(() => FastReflect.TypedSetter<T>(m), d => a.SetT = d);
+            b.Add(() => Access.TypedGetter<T>(m), d => a.GetT = d);
+            b.Add(() => Access.TypedSetter<T>(m), d => a.SetT = d);
         }
 
         /// <summary>A declared member type whose values can never be boxed structs at runtime.</summary>
@@ -141,7 +142,7 @@ namespace WildWasteland.Modules.Performance
             string key = sb.ToString();
             Chain c;
             if (_chains.TryGetValue(key, out c)) return c;
-            // members still compiling: vanilla for now, ask again once CompileQueue built something
+            // members still compiling: vanilla for now, ask again once Access.Queue built something
             for (int i = 0; i < members.Length; i++)
             {
                 if (!(members[i] is FieldInfo) && !(members[i] is PropertyInfo)) break;
@@ -234,7 +235,7 @@ namespace WildWasteland.Modules.Performance
             Entry e;
             if (_entries.TryGetValue(p, out e) && ReferenceEquals(e.Members, members) && ReferenceEquals(e.PT, pt))
             {
-                if (e.Pending && e.Ver != CompileQueue.Version) { e.Ver = CompileQueue.Version; e.Chain = GetChain(members, out e.Pending); }
+                if (e.Pending && e.Ver != Access.Queue.Version) { e.Ver = Access.Queue.Version; e.Chain = GetChain(members, out e.Pending); }
                 return e;
             }
             if (e == null)
@@ -242,7 +243,7 @@ namespace WildWasteland.Modules.Performance
                 if (_entries.Count > 8192) _entries.Clear();
                 e = new Entry(); _entries[p] = e;
             }
-            e.Members = members; e.PT = pt; e.Ver = CompileQueue.Version; e.Chain = GetChain(members, out e.Pending); e.Br = GetBranches(pt); e.RootOk = null;
+            e.Members = members; e.PT = pt; e.Ver = Access.Queue.Version; e.Chain = GetChain(members, out e.Pending); e.Br = GetBranches(pt); e.RootOk = null;
             return e;
         }
 

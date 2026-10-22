@@ -48,9 +48,9 @@ namespace WildWasteland.Modules.Performance
         static Job _guard;
         public static long GuiPasses, CandidateCalls, ProxyEmulated, VisibilitySkipped;
 
-        static readonly Func<PlayMakerFSM, Fsm> PmfFsm = FastReflect.Getter<PlayMakerFSM, Fsm>(typeof(PlayMakerFSM), "fsm");
-        static readonly Func<FsmState, List<FsmStateAction>> FinishedActions = FastReflect.Getter<FsmState, List<FsmStateAction>>(typeof(FsmState), "_finishedActions");
-        static readonly Func<Fsm, List<Fsm>> SubFsms = FastReflect.Getter<Fsm, List<Fsm>>(typeof(Fsm), "subFsmList");
+        static readonly Func<PlayMakerFSM, Fsm> PmfFsm = Access.Getter<PlayMakerFSM, Fsm>(typeof(PlayMakerFSM), "fsm");
+        static readonly Func<FsmState, List<FsmStateAction>> FinishedActions = Access.Getter<FsmState, List<FsmStateAction>>(typeof(FsmState), "_finishedActions");
+        static readonly Func<Fsm, List<Fsm>> SubFsms = Access.Getter<Fsm, List<Fsm>>(typeof(Fsm), "subFsmList");
         static readonly FieldInfo VanillaScratch = AccessTools.Field(typeof(PlayMakerGUI), "fsmList");
         static Action<PlayMakerGUI> _drawStateLabels;
 

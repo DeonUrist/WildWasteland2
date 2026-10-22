@@ -47,8 +47,20 @@ namespace WildWasteland.Modules.Performance
             if (_subscribed) return;
             _subscribed = true;
             Hooks.FsmEnable.Postfix(m, OnEnablePost);
+            FsmIndex.SetProvider(IndexProvider.Instance);   // W0B-4: Core FsmIndex.ByOwner answers from PM1 while tracking
         }
-        internal static void Unsubscribed() { _subscribed = false; }
+        /// <summary>Module shutdown: the shared hook handlers are gone; Core FsmIndex falls back to GetComponents.</summary>
+        internal static void Unsubscribed() { _subscribed = false; FsmIndex.SetProvider(null); }
+
+        /// <summary>Core <see cref="FsmIndex"/> provider over this registry (exact FsmList order; ready only while tracking).</summary>
+        sealed class IndexProvider : IFsmIndexProvider
+        {
+            internal static readonly IndexProvider Instance = new IndexProvider();
+            /// <summary>True while PM1 has users (the index is maintained by the hooks).</summary>
+            public bool Ready { get { return Tracking; } }
+            /// <summary>Live per-GameObject list in FsmList order, or null; no allocation.</summary>
+            public List<PlayMakerFSM> On(GameObject go) { return FsmRegistry.On(go); }
+        }
         static void OnEnablePost(PlayMakerFSM f) { if (_users > 0) Add(f); }
         internal static void Release() { if (_users > 0 && --_users == 0) Clear(); }
 
@@ -110,10 +122,10 @@ namespace WildWasteland.Modules.Performance
 
         // ---- PM3: fast FsmList removal (reference compare + RemoveAt; skips the guaranteed-miss scan in OnDestroy) ----
         internal static bool FastRemove;
-        // Generated accessors (FastReflect / MonoMod). NOT HarmonyX FieldRefAccess: its ref-returning delegate read garbage on
+        // Generated accessors (Core Access / MonoMod). NOT HarmonyX FieldRefAccess: its ref-returning delegate read garbage on
         // this runtime (0.1.26 crashed natively in Fsm.OnDestroy -> List.GetEnumerator on a bogus subFsmList).
-        static readonly Func<PlayMakerFSM, Fsm> _fsm = FastReflect.Getter<PlayMakerFSM, Fsm>(typeof(PlayMakerFSM), "fsm");
-        static readonly Action<PlayMakerFSM, Fsm> _setFsm = FastReflect.Setter<PlayMakerFSM, Fsm>(typeof(PlayMakerFSM), "fsm");
+        static readonly Func<PlayMakerFSM, Fsm> _fsm = Access.Getter<PlayMakerFSM, Fsm>(typeof(PlayMakerFSM), "fsm");
+        static readonly Action<PlayMakerFSM, Fsm> _setFsm = Access.Setter<PlayMakerFSM, Fsm>(typeof(PlayMakerFSM), "fsm");
 
         static void RemoveFromFsmList(PlayMakerFSM self, bool knownAbsent)
         {

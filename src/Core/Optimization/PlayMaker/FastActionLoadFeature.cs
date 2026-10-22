@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using HutongGames.PlayMaker;
+using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.Performance
@@ -13,7 +14,7 @@ namespace WildWasteland.Modules.Performance
     /// ActionData.cs:631-1116) with FieldInfo.SetValue per field and Activator.CreateInstance per nested object.
     /// A prefix replaces the private ActionData.LoadActionField with an exact copy (<see cref="ActionDataPort"/>) whose only
     /// differences are <see cref="SetField"/> and <see cref="Create"/>: generated setters/constructors from ONE background-built
-    /// assembly (<see cref="BatchCompiler"/>; this runtime has no Reflection.Emit), used only when reflection would neither
+    /// assembly (<see cref="Access.FieldBatch"/>; this runtime has no Reflection.Emit), used only when reflection would neither
     /// convert, default nor throw; reflection otherwise, before the batch is ready, and whenever FS4 is off.
     /// 0.1.26c transpiled the method in place instead, which broke field loading in game; nothing is transpiled now.
     /// Thread-safe: OnAfterDeserialize can run on Unity's loading thread; caches are locked.
@@ -57,11 +58,11 @@ namespace WildWasteland.Modules.Performance
         // ---------------------------------------------------------------- one batch for every action type
         // The game's runtime cannot emit methods (stripped mscorlib); one MonoMod DMD per member would load thousands of
         // assemblies. Instead every PlayMaker action type, its fields and the field types LoadActionField instantiates are
-        // compiled into ONE assembly (BatchCompiler) on a background thread; until it is ready (and for types it does not
+        // compiled into ONE assembly (Access.FieldBatch) on a background thread; until it is ready (and for types it does not
         // know, e.g. actions of mods loaded later) the original reflection calls run, so results never differ.
         static volatile int _batchState;   // 0 none, 1 compiling, 2 ready, 3 failed
         static string _batchError; static long _batchMs; static int _batchCtors, _batchSetters;
-        static BatchCompiler _batch;
+        static Access.FieldBatch _batch;
         static readonly Dictionary<Type, int> _ctorIndex = new Dictionary<Type, int>();
         static readonly Dictionary<IntPtr, int> _fieldIndex = new Dictionary<IntPtr, int>();
 
@@ -79,7 +80,7 @@ namespace WildWasteland.Modules.Performance
             var sw = System.Diagnostics.Stopwatch.StartNew();
             try
             {
-                var b = new BatchCompiler();
+                var b = new Access.FieldBatch();
                 var ctorIdx = new Dictionary<Type, int>(); var fieldIdx = new Dictionary<IntPtr, int>();
                 var seen = new HashSet<Type>(); var queue = new Queue<Type>();
                 var actionBase = typeof(FsmStateAction);
@@ -114,15 +115,15 @@ namespace WildWasteland.Modules.Performance
             }
         }
 
-        static void AddType(BatchCompiler b, Type t, Dictionary<Type, int> ctorIdx, Dictionary<IntPtr, int> fieldIdx, HashSet<Type> seen, Queue<Type> queue)
+        static void AddType(Access.FieldBatch b, Type t, Dictionary<Type, int> ctorIdx, Dictionary<IntPtr, int> fieldIdx, HashSet<Type> seen, Queue<Type> queue)
         {
             if (Ctorable(t)) { var c = t.GetConstructor(BindingFlags.Instance | BindingFlags.Public, null, Type.EmptyTypes, null); if (c != null) ctorIdx[t] = b.AddCtor(c); }
-            if (t.IsValueType) return;   // FastReflect.FieldSetter excludes struct-declared fields too
+            if (t.IsValueType) return;   // Access.FieldSetter excludes struct-declared fields too
             for (var bt = t; bt != null && bt != typeof(object); bt = bt.BaseType)
             {
                 foreach (var f in bt.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
                 {
-                    if (!FastReflect.CanSet(f) || f.DeclaringType.IsValueType) continue;
+                    if (!Access.CanSet(f) || f.DeclaringType.IsValueType) continue;
                     var ft = f.FieldType;
                     if (ft.IsGenericType && ft.GetGenericTypeDefinition() == typeof(Nullable<>)) continue;
                     var key = f.FieldHandle.Value;

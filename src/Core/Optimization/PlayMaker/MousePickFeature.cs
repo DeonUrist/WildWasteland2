@@ -2,6 +2,7 @@ using System;
 using HarmonyLib;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.Performance
@@ -35,9 +36,9 @@ namespace WildWasteland.Modules.Performance
         internal static bool On, Shadow;
         static MousePickFeature _inst;
 
-        static readonly Action<object, float> SetTime = FastReflect.Setter<object, float>(typeof(ActionHelpers), "mousePickRaycastTime");
-        static readonly Action<object, float> SetDist = FastReflect.Setter<object, float>(typeof(ActionHelpers), "mousePickDistanceUsed");
-        static readonly Action<object, int> SetMask = FastReflect.Setter<object, int>(typeof(ActionHelpers), "mousePickLayerMaskUsed");
+        static readonly Action<object, float> SetTime = Access.Setter<object, float>(typeof(ActionHelpers), "mousePickRaycastTime");
+        static readonly Action<object, float> SetDist = Access.Setter<object, float>(typeof(ActionHelpers), "mousePickDistanceUsed");
+        static readonly Action<object, int> SetMask = Access.Setter<object, int>(typeof(ActionHelpers), "mousePickLayerMaskUsed");
 
         // the shared cast
         static RaycastHit[] _hits = new RaycastHit[64];

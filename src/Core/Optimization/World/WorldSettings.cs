@@ -369,7 +369,7 @@ namespace WildWasteland.Modules.Performance
             {
                 var fi = AccessTools.Field(typeof(AzureWeatherController), "m_isWeatherChanging");
                 if (fi == null) return null;
-                return FastReflect.Getter<AzureWeatherController, bool>(typeof(AzureWeatherController), "m_isWeatherChanging");
+                return Access.Getter<AzureWeatherController, bool>(typeof(AzureWeatherController), "m_isWeatherChanging");
             }
             catch (Exception e) { Log.Warn("[Performance] EN7 weather: transition flag not readable (" + e.Message + ") - weather left vanilla"); return null; }
         }

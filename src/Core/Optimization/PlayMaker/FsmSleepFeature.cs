@@ -59,10 +59,10 @@ namespace WildWasteland.Modules.Performance
         public static long ClonesCleared, Snapshots;
 
         static readonly HashSet<Fsm> _asleep = new HashSet<Fsm>(RefComparer<Fsm>.Instance);
-        static readonly Func<Fsm, bool> ActiveStateEntered = FastReflect.Getter<Fsm, bool>(typeof(Fsm), "activeStateEntered");
-        static readonly Func<FsmState, bool> StateFinished = FastReflect.Getter<FsmState, bool>(typeof(FsmState), "finished");
-        static readonly Func<FsmState, List<FsmStateAction>> FinishedActions = FastReflect.Getter<FsmState, List<FsmStateAction>>(typeof(FsmState), "_finishedActions");
-        static readonly Func<PlayMakerFSM, Fsm> PmfFsm = FastReflect.Getter<PlayMakerFSM, Fsm>(typeof(PlayMakerFSM), "fsm");
+        static readonly Func<Fsm, bool> ActiveStateEntered = Access.Getter<Fsm, bool>(typeof(Fsm), "activeStateEntered");
+        static readonly Func<FsmState, bool> StateFinished = Access.Getter<FsmState, bool>(typeof(FsmState), "finished");
+        static readonly Func<FsmState, List<FsmStateAction>> FinishedActions = Access.Getter<FsmState, List<FsmStateAction>>(typeof(FsmState), "_finishedActions");
+        static readonly Func<PlayMakerFSM, Fsm> PmfFsm = Access.Getter<PlayMakerFSM, Fsm>(typeof(PlayMakerFSM), "fsm");
 
         static readonly Dictionary<Type, bool> _updates = new Dictionary<Type, bool>();
         static Type _lastType; static bool _lastUpdates;

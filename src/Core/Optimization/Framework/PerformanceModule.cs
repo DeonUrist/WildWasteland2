@@ -19,8 +19,18 @@ namespace WildWasteland.Modules.Performance
     /// Off / On (/ Shadow) switch in tools.cfg ("Performance / ..." sections), edited in Developer. The Performance tab retains
     /// the module switch, preset and measurements. Preset-driven features follow [Performance / Preset] Preset.
     /// </summary>
-    public sealed class PerformanceModule : ModuleBase, IWeatherVisualPolicy
+    public sealed partial class PerformanceModule : ModuleBase, IWeatherVisualPolicy
     {
+        // Wave A split (refactor): Debug (Telemetry) and Compatibility (SigmaMod guard) parts live in partial files of their
+        // target folders: src/Modules/Debug/Framework/_fromPerformance/PerformanceModule.Debug.cs and
+        // src/Modules/Compatibility/SigmaMod/_fromPerformance/PerformanceModule.Compatibility.cs. Call order is unchanged.
+        partial void BindDebug(ModuleConfig cfg);
+        partial void InitDebug();
+        partial void ShutdownDebug();
+        partial void SceneLoadedDebug();
+        partial void MarkDebug(string tag);
+        partial void InitCompatibility();
+
         public override string Id { get { return "Performance"; } }
         public override string DisplayName { get { return "Performance & optimization"; } }
 
@@ -53,7 +63,7 @@ namespace WildWasteland.Modules.Performance
                 f.ModeEntry.SettingChanged += (s, a) => { if (_running) Apply(captured, true); };
                 try { f.Bind(cfg); } catch (Exception e) { f.LastError = e.Message; Log.Error("[Performance] " + f.PlanId + " Bind", e); }
             }
-            Telemetry.Bind(cfg);
+            BindDebug(cfg);
         }
 
         void DiscoverFeatures()
@@ -77,9 +87,9 @@ namespace WildWasteland.Modules.Performance
         public override void Init()
         {
             _running = true;
-            SigmaFsmStates.Install(this);
+            InitCompatibility();
             Services.WeatherVisualPolicy = this;
-            Telemetry.Init(this);
+            InitDebug();
             TerrainTile.OnTileApplied -= TileApplied;
             TerrainTile.OnTileApplied += TileApplied;
             foreach (var f in _features)
@@ -109,7 +119,7 @@ namespace WildWasteland.Modules.Performance
             _deferred = false;
             TerrainTile.OnTileApplied -= TileApplied;
             for (int i = _features.Count - 1; i >= 0; i--) _features[i].Stop();
-            Telemetry.Shutdown();
+            ShutdownDebug();
             FsmRegistry.Unsubscribed();   // Core removes the module's hook handlers after Shutdown
             _patched.Clear();   // Core unpatches the module after Shutdown
         }
@@ -181,21 +191,21 @@ namespace WildWasteland.Modules.Performance
 
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            Telemetry.OnSceneLoaded();
+            SceneLoadedDebug();
             if (_deferred) { StartFeatures(); return; }   // features start against this scene: no separate OnSceneLoaded
             Each(f => f.OnSceneLoaded(), "OnSceneLoaded");
         }
         public override void OnWorldReady() { Each(f => f.OnWorldReady(), "OnWorldReady"); }
         public override void OnOriginShift(Vector3 delta) { Each(f => f.OnOriginShift(delta), "OnOriginShift"); }
-        public override void OnSaveBegin(string slot) { Telemetry.Mark("save"); Each(f => f.OnSaveBegin(), "OnSaveBegin"); }
+        public override void OnSaveBegin(string slot) { MarkDebug("save"); Each(f => f.OnSaveBegin(), "OnSaveBegin"); }
         public override void OnSaveEnd(string slot) { Each(f => f.OnSaveEnd(), "OnSaveEnd"); }
-        public override void OnLoadBegin(string slot) { Telemetry.Mark("load"); }
+        public override void OnLoadBegin(string slot) { MarkDebug("load"); }
 
         /// <summary>MapMagic applied a tile (main or draft): features that edit spawned objects re-run on that tile.</summary>
         public static event Action<TerrainTile> TileAppliedEvent;
         void TileApplied(TerrainTile tile, TileData data, StopToken stop)
         {
-            Telemetry.Mark("tile");
+            MarkDebug("tile");
             var h = TileAppliedEvent;
             if (h == null) return;
             foreach (Action<TerrainTile> d in h.GetInvocationList())
