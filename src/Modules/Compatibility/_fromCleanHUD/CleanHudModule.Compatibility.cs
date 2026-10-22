@@ -8,11 +8,8 @@ namespace WildWasteland.Modules.CleanHUD
     /// </summary>
     public sealed partial class CleanHudModule
     {
-        /// <summary>Installs the Apocapocket slot reader (the ChaseCamera part moved to the Compatibility ChaseCamera bridge, B17).</summary>
-        partial void InitCompatibilityEarly()
-        {
-            ApocapocketInventory.Install(this);
-        }
+        /// <summary>Empty (B17): the Apocapocket reader and the ChaseCamera observer are installed by their Compatibility bridges.</summary>
+        partial void InitCompatibilityEarly() { }
 
         /// <summary>Installs the Vistas World Gen engine heat overlay replacement.</summary>
         partial void InitCompatibilityVistas() { VistasEngineHud.Install(this); }
@@ -44,11 +41,10 @@ namespace WildWasteland.Modules.CleanHUD
             TalkDialogue.Dispose();
         }
 
-        /// <summary>Clears the Apocasaver and Apocapocket bridges.</summary>
+        /// <summary>Clears the Apocasaver loading-screen hooks (Apocapocket is cleared by its Compatibility bridge, B17).</summary>
         partial void ShutdownCompatibilityLate()
         {
             ApocasaverLoading.Clear();
-            ApocapocketInventory.Clear();
         }
     }
 }
