@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.NPC
 
         internal static bool HighlightMissingPoiBake(string name)
         {
-            return NpcModule.HighlightUnbakedMapPois != null && NpcModule.HighlightUnbakedMapPois.Value
+            return NavigationAuthoringApi.HighlightUnbaked
                 && _highlightIndexReady && _highlightIndexValid && !string.IsNullOrEmpty(name)
                 && !_capturedMapTypes.Contains(HighlightMapName(name));
         }
@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.NPC
 
         private static void TickMapHighlight()
         {
-            bool enabled = NpcModule.HighlightUnbakedMapPois != null && NpcModule.HighlightUnbakedMapPois.Value;
+            bool enabled = NavigationAuthoringApi.HighlightUnbaked;
             if (!enabled)
             {
                 if (_highlightActive) Core.Log.Always("[NPC] Nav: unbaked POI map tint off; normal colors restored");
@@ -64,16 +64,16 @@ namespace WildWasteland.Modules.NPC
             {
                 // Read only on scene/enable/reset, never in the marker draw loop. New successful saves/loads update the set directly.
                 foreach (string dir in new[] { CustomMapDir, VanillaMapDir,
-                    System.IO.Path.Combine(NpcModule.DataDir, "NavMaps", "VanillaExport") })
+                    System.IO.Path.Combine(Core.Assets.ModuleConfigDir("NPCAI"), "NavMaps", "VanillaExport") })
                     if (Directory.Exists(dir)) foreach (string file in Directory.GetFiles(dir, "*.wwnav", SearchOption.TopDirectoryOnly)) AddCapturedMap(file);
-                const string prefix = "NPC.NavMaps.Vanilla.";
+                const string prefix = "NPCAI.NavMaps.Vanilla.";
                 foreach (string resource in WildWasteland.Core.DiskResources.Names)
                     if (resource.StartsWith(prefix, StringComparison.Ordinal) && resource.EndsWith(".wwnav", StringComparison.OrdinalIgnoreCase))
                         AddCapturedMap(resource.Substring(prefix.Length));
                 _highlightIndexValid = true;
                 Core.Log.Always("[NPC] Nav: unbaked POI map tint on; " + _capturedMapTypes.Count + " POI types have saved bakes");
             }
-            catch (Exception e) { NpcModule.Log.LogWarning("Nav: unbaked POI map tint disabled: bake index could not be read: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn("Nav: unbaked POI map tint disabled: bake index could not be read: " + e.Message); }
         }
     }
 }

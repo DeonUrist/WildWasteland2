@@ -56,16 +56,16 @@ namespace WildWasteland.Modules.NPC
                     foreach (string file in Directory.GetFiles(dir, pattern, SearchOption.TopDirectoryOnly))
                     {
                         try { File.Delete(file); deleted++; }
-                        catch (Exception e) { failed++; NpcModule.Log.LogWarning("Nav: could not delete custom map " + file + ": " + e.Message); }
+                        catch (Exception e) { failed++; Core.Log.Warn("Nav: could not delete custom map " + file + ": " + e.Message); }
                     }
             }
-            catch (Exception e) { failed++; NpcModule.Log.LogWarning("Nav: could not reset custom maps in " + dir + ": " + e.Message); }
+            catch (Exception e) { failed++; Core.Log.Warn("Nav: could not reset custom maps in " + dir + ": " + e.Message); }
         }
 
         // Capture candidates from a clean vanilla setup. Reviewed files go into NPC/Embedded/NavMaps/Vanilla in the repo.
         internal static void ExportVanillaMaps()
         {
-            string export = System.IO.Path.Combine(NpcModule.DataDir, "NavMaps", "VanillaExport");
+            string export = System.IO.Path.Combine(Core.Assets.ModuleConfigDir("NPCAI"), "NavMaps", "VanillaExport");
             var expected = new HashSet<string>(VanillaPoiNames, StringComparer.Ordinal);
             var found = new HashSet<string>(StringComparer.Ordinal);
             var copied = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.NPC
             try
             {
                 Directory.CreateDirectory(export);
-                const string prefix = "NPC.NavMaps.Vanilla.";
+                const string prefix = "NPCAI.NavMaps.Vanilla.";
                 var assembly = typeof(Nav).Assembly;
                 foreach (string resource in WildWasteland.Core.DiskResources.Names)
                 {
@@ -86,7 +86,7 @@ namespace WildWasteland.Modules.NPC
                         using (var output = new FileStream(System.IO.Path.Combine(export, name), FileMode.Create, FileAccess.Write)) input.CopyTo(output);
                         copied.Add(name); found.Add(poi);
                     }
-                    catch (Exception e) { failed++; NpcModule.Log.LogWarning("Nav: could not export " + resource + ": " + e.Message); }
+                    catch (Exception e) { failed++; Core.Log.Warn("Nav: could not export " + resource + ": " + e.Message); }
                 }
                 foreach (string dir in new[] { VanillaMapDir, CustomMapDir })
                 {
@@ -100,7 +100,7 @@ namespace WildWasteland.Modules.NPC
                             File.Copy(file, System.IO.Path.Combine(export, name), true);
                             copied.Add(name); found.Add(poi);
                         }
-                        catch (Exception e) { failed++; NpcModule.Log.LogWarning("Nav: could not export " + file + ": " + e.Message); }
+                        catch (Exception e) { failed++; Core.Log.Warn("Nav: could not export " + file + ": " + e.Message); }
                     }
                 }
                 var missing = new List<string>();
@@ -114,7 +114,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e)
             {
                 MapActionStatus = "Vanilla map export failed: " + e.Message;
-                NpcModule.Log.LogWarning("Nav: " + MapActionStatus);
+                Core.Log.Warn("Nav: " + MapActionStatus);
             }
         }
 
