@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
         {
             SpawnerIntegration.Install(owner);                    // refs-ok: REFACTOR-REQUEST B12-5 (Compatibility Apocaspawner bridge)
             DustStormBridge.Install(owner);                       // refs-ok: REFACTOR-REQUEST B12-5 (Compatibility ApocaDustStorm bridge)
-            PoiEncounter.InstallRetention(owner);                 // refs-ok: REFACTOR-REQUEST B12-6 (POI War Rig encounter)
+                 // refs-ok: REFACTOR-REQUEST B12-6 (POI War Rig encounter)
             Services.PoiChanged -= PoiEncounter.Register;         // refs-ok: REFACTOR-REQUEST B12-6
             Services.PoiChanged += PoiEncounter.Register;         // refs-ok: REFACTOR-REQUEST B12-6
             PoiEncounter.Register(Services.Poi);                  // refs-ok: REFACTOR-REQUEST B12-6

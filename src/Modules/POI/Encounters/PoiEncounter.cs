@@ -19,14 +19,11 @@ namespace WildWasteland.Modules.Patrols.WarRig
         }
         private static bool Enabled() { return PatrolsModule.Running && S.SpawnEnabled.Value; }
         private static void Mark(GameObject marker) { WorldSpawning.NaturalRigs.Add(marker); }
-        internal static void Reset() { _template = null; _zombie = _deadLugnut = null; CleanupChecks.Clear(); }
-        internal static void ResetForScene() { CleanupChecks.Clear(); _zombie = _deadLugnut = null; }
+        internal static void Reset() { _template = null; _zombie = _deadLugnut = null; }
+        internal static void ResetForScene() { _zombie = _deadLugnut = null; }
         internal static void Prepare()
         {
-            CleanupChecks.Clear();
-            var cleanup = Core.FsmUtil.Find(Core.GameRefs.GameManager, "DeleteFarAwayItems");
-            if (cleanup != null) foreach (var state in cleanup.FsmStates) foreach (var action in state.Actions)
-                if (action is GetDistance) CleanupChecks.Add((GetDistance)action);
+           
             _zombie = Prefabs.Exact("Zombie_Runner");
             _deadLugnut = Prefabs.Exact("Lugnut_Dead");
             if (_zombie == null) Core.Log.Warn("[Patrols] War Rig POI: Zombie_Runner prefab is missing.");

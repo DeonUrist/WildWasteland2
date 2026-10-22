@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var m in all)
             {
                 if (m == null) continue;
-                if (WarRig.PoiEncounter.Protected(m.gameObject)) continue;
+                if (WarRig.PatrolRetention.Protected(m.gameObject)) continue;
                 if (WorldTraffic.Owns(m)) continue; // traffic unloads its own representations while retaining world records
                 if(WorldTraffic.IsBattleCar(m.gameObject))continue;
                 if (CrewReturn.Holds(m.gameObject)) { m.FarSeconds = 0f; continue; }   // its crew may still walk back to it
@@ -95,12 +95,12 @@ namespace WildWasteland.Modules.Patrols
         internal static void Remove(PatrolMarker m, string why)
         {
             var car = m.gameObject;
-            if (WarRig.PoiEncounter.Protected(car)) return;
+            if (WarRig.PatrolRetention.Protected(car)) return;
             PatrolsModule.Verbose("Cleanup: removed " + car.name + " (" + why + ")");
             var trailer = Core.ModApi.Get<Core.IVehicleAttachments>().Attached(car);
             if (trailer != null)
             {
-                if (trailer.GetComponent<WarRig.WarRigUnit>() != null) WarRig.PoiEncounter.DetachTankers(car);
+                if (trailer.GetComponent<WarRig.WarRigUnit>() != null) WarRig.PatrolRetention.DetachTankers(car);
                 else { Register.RemoveTree(trailer); Destroy(trailer); }
             }
             Register.RemoveTree(car);
