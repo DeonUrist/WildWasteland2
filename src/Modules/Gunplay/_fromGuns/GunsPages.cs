@@ -8,9 +8,10 @@ using WildWasteland.Core.UI;
 namespace WildWasteland.Modules.Guns
 {
     /// <summary>F7 pages of the Guns module (group Weapons &amp; HUD): live info, the related F6 switches, then the tools.cfg sections.</summary>
-    internal static class GunsPages
+    internal static partial class GunsPages
     {
-        static readonly List<string> _bosses = new List<string>();
+        /// <summary>Adds the NPCAI-owned "Bosses &amp; orbs" page (implemented in NPCAI/Behaviour/_fromGuns/GunsPages.NPCAI.cs).</summary>
+        static partial void AddNpcaiPages(GunsModule m, ConfigFile tools, List<ToolPage> pages);
 
         internal static List<ToolPage> Create(GunsModule m)
         {
@@ -37,10 +38,7 @@ namespace WildWasteland.Modules.Guns
                 new string[0])
             { Intro = "A smaller backpack or body armor no longer deletes what does not fit: the excess ammo drops as an ammo box, the excess armor as one plate per full 50 points. Failed drops keep the ammo/armor and retry every second." });
 
-            pages.Add(new GunsPage(m, "Bosses & orbs", tools, LiveBosses,
-                new ConfigEntryBase[] { GunsModule.BossHealth, GunsModule.BossHpPercent, GunsModule.OrbsHitWalls },
-                new string[0])
-            { Intro = "Human boss health in % of the game's own (a cap, safe across saves) and monster projectiles (orbs) that stop at walls and vehicles." });
+            AddNpcaiPages(m, tools, pages);
             return pages;
         }
 
@@ -76,14 +74,6 @@ namespace WildWasteland.Modules.Guns
         {
             l.Value("Backpack ammo clamps watched", I(BackpackOverflow.Tracked));
             l.Value("Armor clamps watched", I(ArmorOverflow.Tracked));
-        }
-
-        static void LiveBosses(ToolLayout l)
-        {
-            l.Value("Bosses tracked", I(Bosses.Count));
-            Bosses.Describe(_bosses);
-            for (int i = 0; i < _bosses.Count; i++) l.Text(_bosses[i]);
-            l.Value("Monster projectiles in flight", I(Tracers.OrbCount));
         }
     }
 
