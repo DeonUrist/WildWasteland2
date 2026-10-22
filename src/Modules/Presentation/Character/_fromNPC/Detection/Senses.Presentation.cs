@@ -77,7 +77,7 @@ namespace WildWasteland.Modules.NPC
                     if (Assign(f, shared, relay, now)) { told++; f.Heard.Add(shared.Id); }
                 }
                 if (shared != tg && shared.Holders.Count == 0) { int i = _ghosts.IndexOf(shared); if (i >= 0) KillGhost(i); }
-                if (NpcModule.VerboseLog.Value && told > 0) NpcModule.Log.LogInfo("Senses: " + Name(t.Owner) + "'s shout sends " + told + " " + tag + " to " + (tg != null ? "ghost #" + tg.Id : "its target"));
+                if (WildWasteland.Core.Log.L2 && told > 0) NpcModule.Log.LogInfo("Senses: " + Name(t.Owner) + "'s shout sends " + told + " " + tag + " to " + (tg != null ? "ghost #" + tg.Id : "its target"));
             }
             // enemies: the shouter gave itself away
             string ttag = t.Tag;

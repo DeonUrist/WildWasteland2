@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.NPC
                 if (src != null) src.PlayOneShot(clip, Mathf.Clamp01(NpcModule.ShoutVolume.Value));
             }
             Noise(_player, _player.transform.position, NpcModule.PlayerShoutRange.Value, Src.Shout, "the player shouting", a => a.Hostile.Contains("Player"), null, _player);
-            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Senses: the player shouts (" + NpcModule.PlayerShoutRange.Value.ToString("0") + " m)" + (clip == null ? ", no voice clip found" : ""));
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Senses: the player shouts (" + NpcModule.PlayerShoutRange.Value.ToString("0") + " m)" + (clip == null ? ", no voice clip found" : ""));
         }
 
         // ShoutModifier held (an Alt key stands for either Alt). (WW) read once per frame: the button prefixes ask for every GetButton action.

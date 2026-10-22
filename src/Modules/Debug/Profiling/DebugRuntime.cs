@@ -61,7 +61,7 @@ namespace WildWasteland.Modules.Debug
             Measurements.SetMeasuring(Visible || Capturing);
             long begin = Stopwatch.GetTimestamp();
             Instrumentation.Frame = Time.frameCount;
-            if (Recording) Measurements.Frame();
+            Measurements.Frame();
             var keyboard = Keyboard.current;
             if (keyboard != null)
             {

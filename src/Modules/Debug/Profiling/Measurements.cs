@@ -6,6 +6,9 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Debug
 {
+    [Flags]
+    internal enum FrameLifecycle { None = 0, Tile = 1, Save = 2, Load = 4, Origin = 8, Compile = 16, Scene = 32, WorldWork = 64, Spawn = 128 }
+
     internal sealed class JobRow
     {
         internal string System, Name, Phase; internal double Calls, Milliseconds, Average, Maximum; internal int Errors; internal bool Enabled;
@@ -28,9 +31,11 @@ namespace WildWasteland.Modules.Debug
         internal static int PausedFrames;
         internal static int DashboardFrames;
         internal static readonly float[] Frames = new float[Capacity];
+        internal static readonly FrameLifecycle[] FrameTags = new FrameLifecycle[Capacity];
+        private static FrameLifecycle _pendingTags;
         private static readonly float[] Sorted = new float[Capacity];
         internal static int Head, Count, Samples;
-        internal static float Average, P95, P99, Worst;
+        internal static float Average, P50, P95, P99, Worst;
         internal static long ManagedBytes; internal static int Gc0, Gc1, Gc2;
         internal static double SchedulerMsPerSecond, OwnMilliseconds;
         internal static readonly List<EngineCounter> Engine = new List<EngineCounter>();
@@ -68,6 +73,7 @@ namespace WildWasteland.Modules.Debug
             Instrumentation.Frame = Time.frameCount;
             float ms = Time.unscaledDeltaTime * 1000;
             if (ms <= 0 || float.IsNaN(ms) || float.IsInfinity(ms)) return;
+            FrameTags[Head] = _pendingTags; _pendingTags = FrameLifecycle.None;
             Frames[Head] = ms; Head = (Head + 1) % Capacity; Count = Math.Min(Count + 1, Capacity); Samples++;
             RecordedSeconds += ms / 1000.0; if (Time.timeScale == 0) PausedFrames++;
             if (DebugRuntime.Instance != null && DebugRuntime.Instance.Visible) DashboardFrames++;
@@ -78,6 +84,7 @@ namespace WildWasteland.Modules.Debug
             for (int i = 0; i < Count; i++) { Sorted[i] = Frames[i]; total += Frames[i]; Worst = Mathf.Max(Worst, Frames[i]); }
             Array.Sort(Sorted, 0, Count);
             Average = Count == 0 ? 0 : (float)(total / Count);
+            P50 = Count == 0 ? 0 : Sorted[Math.Min(Count - 1, (int)(Count * .5))];
             P95 = Count == 0 ? 0 : Sorted[Math.Min(Count - 1, (int)(Count * .95))]; P99 = Count == 0 ? 0 : Sorted[Math.Min(Count - 1, (int)(Count * .99))];
             ManagedBytes = GC.GetTotalMemory(false); Gc0 = GC.CollectionCount(0) - _gc0; Gc1 = GC.CollectionCount(1) - _gc1; Gc2 = GC.CollectionCount(2) - _gc2;
             foreach (var counter in Engine) counter.Update();
@@ -95,6 +102,7 @@ namespace WildWasteland.Modules.Debug
             Dead.Clear(); foreach (var kv in Old) if (!Live.Contains(kv.Key)) Dead.Add(kv.Key); foreach (var job in Dead) Old.Remove(job);
             rows.Sort((a, b) => b.Milliseconds.CompareTo(a.Milliseconds)); Jobs = rows;
             Methods = Instrumentation.Snapshot(seconds);
+            HandlerMeasurements.Snapshot(seconds);
             Diagnosis.Observe();
             ModuleStates.Clear(); foreach (var entry in ModuleHost.Entries) ModuleStates.Add(entry.Module.Id + " | " + entry.State + " | errors " + entry.Errors + (string.IsNullOrEmpty(entry.LastError) ? "" : " | " + entry.LastError));
             var player = GameRefs.Player;
@@ -104,7 +112,8 @@ namespace WildWasteland.Modules.Debug
         }
         internal static void Reset()
         {
-            Count = Head = Samples = 0; Average = P95 = P99 = Worst = 0;
+            Count = Head = Samples = 0; Average = P50 = P95 = P99 = Worst = 0; _pendingTags = FrameLifecycle.None;
+            HandlerMeasurements.Reset();
             RecordedSeconds = 0; PausedFrames = 0;
             DashboardFrames = 0;
             _gc0 = GC.CollectionCount(0); _gc1 = GC.CollectionCount(1); _gc2 = GC.CollectionCount(2);
@@ -116,6 +125,19 @@ namespace WildWasteland.Modules.Debug
             }
             Instrumentation.Snapshot(1); Old.Clear();
             Diagnosis.ResetWindow();
+        }
+        /// <summary>Tags the next frame sample with Core/Optimization lifecycle transitions without allocating a per-frame string.</summary>
+        internal static void MarkTag(string tag)
+        {
+            if (string.IsNullOrEmpty(tag)) return;
+            if (tag.IndexOf("tile", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.Tile;
+            if (tag.IndexOf("save", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.Save;
+            if (tag.IndexOf("load", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.Load;
+            if (tag.IndexOf("origin", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.Origin;
+            if (tag.IndexOf("compile", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.Compile;
+            if (tag.IndexOf("scene", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.Scene;
+            if (tag.IndexOf("work", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.WorldWork;
+            if (tag.IndexOf("spawn", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.Spawn;
         }
         internal static void Dispose() { foreach (var counter in Engine) counter.Dispose(); Engine.Clear(); }
     }

@@ -41,12 +41,15 @@ namespace WildWasteland.Modules.Debug
             foreach (var entry in Chainloader.PluginInfos) metadata.AppendLine("Plugin " + entry.Key + " " + entry.Value.Metadata.Version + " " + entry.Value.Location);
             foreach (var state in Measurements.ModuleStates) metadata.AppendLine("Module " + state);
             files.Add("metadata.txt", metadata.ToString());
-            var frames = new StringBuilder("sample_oldest_first,frame_ms\n");
-            for (int i = 0; i < Measurements.Count; i++) { int index = (Measurements.Head - Measurements.Count + i + Measurements.Capacity) % Measurements.Capacity; frames.Append(i).Append(',').Append(F(Measurements.Frames[index])).AppendLine(); }
+            var frames = new StringBuilder("sample_oldest_first,frame_ms,lifecycle_flags\n");
+            for (int i = 0; i < Measurements.Count; i++) { int index = (Measurements.Head - Measurements.Count + i + Measurements.Capacity) % Measurements.Capacity; frames.Append(i).Append(',').Append(F(Measurements.Frames[index])).Append(',').Append((int)Measurements.FrameTags[index]).AppendLine(); }
             files.Add("frames.csv", frames.ToString());
             var jobs = new StringBuilder("system,job,phase,enabled,calls_per_second,ms_per_second,average_call_ms,lifetime_max_ms,lifetime_errors\n");
             foreach (var row in Measurements.Jobs) jobs.Append(Csv(row.System)).Append(',').Append(Csv(row.Name)).Append(',').Append(Csv(row.Phase)).Append(',').Append(row.Enabled).Append(',').Append(F(row.Calls)).Append(',').Append(F(row.Milliseconds)).Append(',').Append(F(row.Average)).Append(',').Append(F(row.Maximum)).Append(',').Append(row.Errors).AppendLine();
             files.Add("jobs.csv", jobs.ToString());
+            var handlers = new StringBuilder("kind,owner,handler,calls_per_second,ms_per_second,errors_in_snapshot\n");
+            foreach (var row in HandlerMeasurements.Rows) handlers.Append(Csv(row.Kind)).Append(',').Append(Csv(row.Owner)).Append(',').Append(Csv(row.Name)).Append(',').Append(F(row.Calls)).Append(',').Append(F(row.Milliseconds)).Append(',').Append(row.Errors).AppendLine();
+            files.Add("handlers.csv", handlers.ToString());
             var methods = new StringBuilder("system,method,calls_per_second,inclusive_ms_per_second,self_ms_per_second,main_self_ms_per_second,worker_self_ms_per_second,max_call_ms,errors_in_snapshot,inclusive_alloc_bytes_per_second\n");
             foreach (var row in Measurements.Methods) methods.Append(Csv(row.Scope)).Append(',').Append(Csv(row.Name)).Append(',').Append(F(row.Calls)).Append(',').Append(F(row.Inclusive)).Append(',').Append(F(row.Self)).Append(',').Append(F(row.Main)).Append(',').Append(F(row.Worker)).Append(',').Append(F(row.Maximum)).Append(',').Append(row.Errors).Append(',').Append(Instrumentation.AllocationSupported && DebugModule.AllocationTiming.Value ? F(row.Allocated) : "n/a").AppendLine();
             files.Add("methods.csv", methods.ToString());

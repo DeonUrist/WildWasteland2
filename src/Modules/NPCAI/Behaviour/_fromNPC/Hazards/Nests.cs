@@ -199,7 +199,7 @@ namespace WildWasteland.Modules.NPC
                 {
                     Free(n, true); _nests.RemoveAt(i);
                     foreach (var a in n.Spiders) if (a != null && a.Owner != null && !_pending.Contains(a)) _pending.Add(a);     // (1.7.1) the nest comes back when you do
-                    if (NpcModule.NestLog.Value) NpcModule.Log.LogInfo("Nests: " + n.Name + " nest freed (place gone or far)");
+                    if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nests: " + n.Name + " nest freed (place gone or far)");
                 }
             }
             if (_pending.Count == 0 || now < _nextPending) return;
@@ -219,7 +219,7 @@ namespace WildWasteland.Modules.NPC
                 if (nest == null) { nest = Make(poi); NpcModule.Log.LogInfo("Nests: spiders at " + poi.name + " (" + Flat(poi.position - pp).ToString("0") + " m away) - a nest will be built there"); }
                 if (!nest.Spiders.Contains(a)) nest.Spiders.Add(a);
             }
-            if (_pending.Count > 0 && NpcModule.NestLog.Value && now >= _nextStatus)
+            if (_pending.Count > 0 && WildWasteland.Core.Log.L2 && now >= _nextStatus)
             {
                 _nextStatus = now + 30f;
                 var a0 = _pending[0];
@@ -363,7 +363,7 @@ namespace WildWasteland.Modules.NPC
                         if (n.WaitSince <= 0f) n.WaitSince = Time.time;
                         if (Time.time - n.WaitSince < 6f)
                         {
-                            if (!n.Waiting) { n.Waiting = true; if (NpcModule.NestLog.Value) NpcModule.Log.LogInfo("Nests: " + n.Name + " waits for its map"); }
+                            if (!n.Waiting) { n.Waiting = true; if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nests: " + n.Name + " waits for its map"); }
                             n.Hold = true; n.NextTry = Time.time + 1f;      // asked again in a second; other nests build meanwhile
                             return;
                         }
@@ -436,7 +436,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 case 2:
                 {
-                    if (n.Cands.Count == 0 && !n.Relaxed) { n.Relaxed = true; n.Phase = 1; n.Step = 0; if (NpcModule.NestLog.Value) NpcModule.Log.LogInfo("Nests: " + n.Name + ": no spot for a hanging web, looking again less strictly"); break; }   // (1.7.4)
+                    if (n.Cands.Count == 0 && !n.Relaxed) { n.Relaxed = true; n.Phase = 1; n.Step = 0; if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nests: " + n.Name + ": no spot for a hanging web, looking again less strictly"); break; }   // (1.7.4)
                     n.Cands.Sort((a, b) => b.Score.CompareTo(a.Score));
                     n.Chosen = new List<Cand>();
                     foreach (var c in n.Cands)
@@ -565,7 +565,7 @@ namespace WildWasteland.Modules.NPC
             n.Sitters.Add(s);
             a.CaveWeb = n.Cave;
             a.AmbushDist = Mathf.Max(0.3f, NpcModule.NestSitterReach.Value);      // (1.7.5) in its web it strikes only at what comes within 1 m
-            if (NpcModule.NestLog.Value) NpcModule.Log.LogInfo("Nests: " + a.Owner.name + " sits in a web at " + n.Name);
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nests: " + a.Owner.name + " sits in a web at " + n.Name);
         }
 
         private static void Sitters(GameObject player, float now)
@@ -594,7 +594,7 @@ namespace WildWasteland.Modules.NPC
             if (s.Rb != null) { s.Rb.rotation = rot; s.Rb.isKinematic = false; s.Rb.velocity = Vector3.zero; }
             Brain.SetTravel(s.A.Owner, false);
             if (s.A.AmbushDist > 0f && s.A.AmbushDist <= NpcModule.NestSitterReach.Value + 0.01f) s.A.AmbushDist = 0f;   // off the web: the usual ambush distance again when calm
-            if (NpcModule.NestLog.Value) NpcModule.Log.LogInfo("Nests: " + s.A.Owner.name + " drops from its web");
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nests: " + s.A.Owner.name + " drops from its web");
         }
 
         // ---------- touching a web ----------

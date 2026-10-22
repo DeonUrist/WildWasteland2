@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.NPC
                             if (st == null || st.Actions == null) continue;
                             foreach (var act in st.Actions) { var sc = act as SetAudioClip; if (sc != null && sc.audioClip != null && sc.audioClip.Value as AudioClip != null) _clip = sc.audioClip.Value as AudioClip; }
                         }
-                    if (NpcModule.BurrowLog.Value) NpcModule.Log.LogInfo("Burrow: sand effect found (" + (_clip != null ? _clip.name : "no clip") + ")");
+                    if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: sand effect found (" + (_clip != null ? _clip.name : "no clip") + ")");
                     break;
                 }
             }

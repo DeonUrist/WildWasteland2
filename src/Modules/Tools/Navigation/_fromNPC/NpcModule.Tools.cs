@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.NPC
     /// </summary>
     public sealed partial class NpcModule
     {
+        internal static BepInEx.Configuration.ConfigEntry<bool> HighlightUnbakedMapPois;
         /// <summary>Registers the developer setup / bake queue job (before PoiNav.Build, as before).</summary>
         partial void InitToolsPoiNavSetup()
         {

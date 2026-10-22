@@ -67,7 +67,7 @@ namespace WildWasteland.Modules.NPC
             }
             d.Bones = bones.ToArray();
             _list.Add(d); _byId[a.Owner.GetInstanceID()] = d;
-            if (NpcModule.DogLog.Value) NpcModule.Log.LogInfo("DogBite: " + a.Owner.name + " reach " + d.Reach.ToString("0.0") + " m, " + d.Bones.Length + " head/neck bone(s)");
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("DogBite: " + a.Owner.name + " reach " + d.Reach.ToString("0.0") + " m, " + d.Bones.Length + " head/neck bone(s)");
         }
 
         // per frame, after the brain: in reach -> stand and face the target fast
