@@ -13,8 +13,11 @@ namespace WildWasteland.Modules.HUD
     // GameRefs.MainCamera, world points follow floating-origin jumps (Shift), Shutdown destroys its owned canvas and pooled graphics.
     internal static class HitFeedbackOverlay
     {
+        /// <summary>Stores pending values for the hit feedback overlay.</summary>
         private struct Pending { public GameObject Target; public Vector3 Point; public float Damage; public bool Head, Part; public float Time; }
+        /// <summary>Stores floater values for the hit feedback overlay.</summary>
         private struct Floater { public Vector3 Point; public string Text; public bool Head, Part; public float Born; }
+        /// <summary>Stores line values for the hit feedback overlay.</summary>
         private struct Line { public string Text; public bool Head, Part; public float Born; }
 
         private static readonly List<Pending> _pending = new List<Pending>();     // this frame's hits, merged per target (pellets -> one number)
@@ -28,6 +31,7 @@ namespace WildWasteland.Modules.HUD
         private static int _textCount;
 
         // called by the Guns module (Services.Hud) for every player bullet that hits a creature (damage < 0 in the game's convention)
+        /// <summary>Queues player damage and headshot feedback, merging nearby hits on one target.</summary>
         public static void PlayerHit(GameObject target, Vector3 point, float damage, bool head)
         {
             if (target == null || !HudModule.HudEnabled.Value) return;
@@ -49,6 +53,7 @@ namespace WildWasteland.Modules.HUD
         }
 
         // a player bullet took pct % off a vehicle part's condition: a light blue number ("-1.2%")
+        /// <summary>Queues condition-loss feedback, merging nearby hits on one vehicle part.</summary>
         public static void PartHit(GameObject part, Vector3 point, float pct)
         {
             if (part == null || !HudModule.HudEnabled.Value || HudModule.DamageNumbers.Value == 0) return;
@@ -72,6 +77,7 @@ namespace WildWasteland.Modules.HUD
         }
 
         // colours: white = damage, red with "!" = headshot, light blue = vehicle part condition
+        /// <summary>Colours: white = damage, red with "!" = headshot, light blue = vehicle part condition.</summary>
         private static Color ColorOf(bool head, bool part, float a)
         {
             if (part) return new Color(0.55f, 0.85f, 1f, a);
@@ -80,6 +86,7 @@ namespace WildWasteland.Modules.HUD
         }
 
         // end of the frame's simulation: turn the merged hits into numbers / marker
+        /// <summary>Converts merged hits into the configured display and updates the uGUI overlay.</summary>
         public static void Flush()
         {
             if (_pending.Count == 0) { Render(); return; }
@@ -109,6 +116,7 @@ namespace WildWasteland.Modules.HUD
             Render();
         }
 
+        /// <summary>Handles scene loaded for the hit feedback overlay.</summary>
         public static void OnSceneLoaded() { _pending.Clear(); _floaters.Clear(); _lines.Clear(); _markerUntil = 0f; _markerHeadUntil = 0f; if (_canvas != null) _canvas.SetActive(false); }
 
         /// <summary>FloatingOrigin jump: keep the numbers on their hit points.</summary>

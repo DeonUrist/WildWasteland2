@@ -127,6 +127,7 @@ namespace WildWasteland.Modules.Quests
 
         internal void Frame()
         {
+            for (int i = toasts.Count - 1; i >= 0; i--) if (Time.unscaledTime > toasts[i].Until) toasts.RemoveAt(i);
             try { Game.WatchSpawns(); } catch (Exception) { }
             try
             {

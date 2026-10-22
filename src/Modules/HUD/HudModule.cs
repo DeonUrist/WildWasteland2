@@ -32,10 +32,14 @@ namespace WildWasteland.Modules.HUD
         static bool _running;
         Job _crosshairJob;
 
+        /// <summary>Returns id for the HUD module.</summary>
         public override string Id { get { return "HUD"; } }
+        /// <summary>Returns display name for the HUD module.</summary>
         public override string DisplayName { get { return "HUD"; } }
+        /// <summary>Returns conflicts with for the HUD module.</summary>
         public override string[] ConflictsWith { get { return new[] { "com.denis.apocalypter.gunplayhud", GUID }; } }
 
+        /// <summary>Resolves bind config for the HUD module.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             Instance = this;
@@ -76,6 +80,7 @@ namespace WildWasteland.Modules.HUD
         private TrafficMapView _trafficMap;
         private CharacterPortraitBank _portraitBank;
         private CursorPresentation _cursors;
+        /// <summary>Initializes the HUD module.</summary>
         public override void Init()
         {
             InitClean();
@@ -109,14 +114,17 @@ namespace WildWasteland.Modules.HUD
             Core.Log.Info("[HUD] Combat HUD (ex Gunplay HUD 1.2.2) started");
         }
 
+        /// <summary>Resolves flush hits for the HUD module.</summary>
         static void FlushHits() { HitFeedbackOverlay.Flush(); }
 
+        /// <summary>Handles feedback setting changed for the HUD module.</summary>
         static void OnFeedbackSettingChanged()
         {
             if (!_running) return;
             HeadshotAudio.Refresh();
         }
 
+        /// <summary>Handles scene loaded for the HUD module.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             SavingPresentation.Clear();
@@ -129,8 +137,10 @@ namespace WildWasteland.Modules.HUD
             if (_crosshairJob != null) _crosshairJob.RunNow();
         }
 
+        /// <summary>Handles origin shift for the HUD module.</summary>
         public override void OnOriginShift(Vector3 delta) { OriginShiftClean(delta); HitFeedbackOverlay.Shift(delta); }
 
+        /// <summary>Restores native behavior and releases owned HUD module resources.</summary>
         public override void Shutdown()
         {
             SavingPresentation.Clear();
@@ -148,7 +158,9 @@ namespace WildWasteland.Modules.HUD
             _crosshairJob = null;
         }
 
+        /// <summary>Handles load begin for the HUD module.</summary>
         public override void OnLoadBegin(string slot) { SavingPresentation.Clear(); LoadBeginClean(slot); }
+        /// <summary>Handles world ready for the HUD module.</summary>
         public override void OnWorldReady() { WorldReadyClean(); }
 
         // ------------------------------------------------------------------ assets
@@ -178,6 +190,7 @@ namespace WildWasteland.Modules.HUD
 
         // ------------------------------------------------------------------ F7
 
+        /// <summary>Resolves tool pages for the HUD module.</summary>
         public override IEnumerable<ToolPage> ToolPages()
         {
             yield return new HudToolPage(this, Config.Tools);
@@ -187,12 +200,14 @@ namespace WildWasteland.Modules.HUD
         sealed class HudToolPage : ToolPage
         {
             readonly ConfigPage _settings;
+            /// <summary>Constructs the HUD module and captures its owning resources.</summary>
             public HudToolPage(IModule owner, ConfigFile tools)
             {
                 Owner = owner; Group = ToolGroups.Weapons; Title = "HUD"; ShowWhenModuleOff = true; IsTool = true;
                 _settings = new ConfigPage(owner, ToolGroups.Weapons, "HUD", tools, "HUD / *");
             }
 
+            /// <summary>Draws the HUD module.</summary>
             public override void Draw(ToolLayout l)
             {
                 bool on = ModuleHost.IsRunning(Owner);
@@ -223,7 +238,9 @@ namespace WildWasteland.Modules.HUD
                        (HudModule.DamageNumbers.Value != 0 || HudModule.HitMarker.Value || HudModule.HeadshotSound.Value);
             }
         }
+        /// <summary>Queues player damage and headshot feedback, merging nearby hits on the same target.</summary>
         public void PlayerHit(GameObject target, Vector3 point, float damage, bool head) { HitFeedbackOverlay.PlayerHit(target, point, damage, head); }
+        /// <summary>Queues vehicle-part condition feedback, merging nearby hits on the same part.</summary>
         public void PartHit(GameObject target, Vector3 point, float percent) { HitFeedbackOverlay.PartHit(target, point, percent); }
         public bool ExternalReporter
         {
