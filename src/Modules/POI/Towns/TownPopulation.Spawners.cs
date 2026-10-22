@@ -120,7 +120,7 @@ namespace WildWasteland.Modules.POI
                 int kind = asset.Budgets[n].Kind;
                 if (kind == 4)
                 {
-                    if (item.IsMerchant && Spawners.Read(f, "OnOff") == 0) f.enabled = site.Plan.Faction == TownFaction.Coyotes;   // (WW) a Coyotes town always keeps its merchant
+                    if (item.IsMerchant && Spawners.Read(f, "OnOff") == 0) f.enabled = site.Plan.Rules.RequireMerchant;   // (WW) a Coyotes town always keeps its merchant
                     continue; // Authored shopkeepers and paid sale stock retain native placement/counts.
                 }
                 if (kind == 6) { Spawners.Write(f, "OnOff", 1); f.enabled = false; continue; }

@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.POI
         internal INativeSpawnCatalog Catalog { get { if (_catalog == null) _catalog = Spawners.CreateCatalog(); return _catalog; } }
 
         /// <summary>Copies live marker FSM progress into the Loot store (before unload/save).</summary>
-        internal void Capture() { Spawners.CaptureMarkers(); }
+        internal void Capture() { ModApi.Get<INativeSpawners>()?.CaptureMarkers(); }
 
         /// <summary>Stable identity of a marker group: base64 site type, world position of the site root (dm) and marker id.</summary>
         private static string Identity(PoiDressing.Site site, PoiDressProp marker)
@@ -92,12 +92,12 @@ namespace WildWasteland.Modules.POI
         }
 
         /// <summary>POI entry save: marker progress into the slot (forwards to <see cref="Spawners.SaveMarkers"/>).</summary>
-        internal void Save(string slot) { Spawners.SaveMarkers(slot); }
+        internal void Save(string slot) { ModApi.Get<INativeSpawners>()?.SaveMarkers(slot); }
 
         /// <summary>POI entry load/new world (null slot): marker progress of the slot (forwards to <see cref="Spawners.LoadMarkers"/>; throws on invalid data).</summary>
-        internal void Load(string slot) { Spawners.LoadMarkers(slot); }
+        internal void Load(string slot) { ModApi.Get<INativeSpawners>()?.LoadMarkers(slot); }
 
         /// <summary>Unload of the dressed sites: captures progress, stops tracking, (reset) forgets progress, drops the catalog.</summary>
-        internal void Clear(bool reset) { Spawners.ClearMarkers(reset); Catalog.Clear(); }
+        internal void Clear(bool reset) { ModApi.Get<INativeSpawners>()?.ClearMarkers(reset); if(_catalog!=null)_catalog.Clear(); _catalog=null; }
     }
 }

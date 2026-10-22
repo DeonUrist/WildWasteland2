@@ -48,8 +48,10 @@ namespace WildWasteland.Modules.POI
             Authoring = new PoiAuthoringApi(this); ModApi.Provide<IPoiAuthoring>(owner.Owner,Authoring);
             Scheduler.Sliced(owner.Owner, "POI static dressing", 500, Step);
             Scheduler.Interval(owner.Owner, "POI dressing cleanup", 5f, Sweep, Phase.Update, false);
-            Scheduler.Sliced(owner.Owner, "POI marker catalog", 500, Markers.Catalog.Step);
+            Scheduler.Sliced(owner.Owner, "POI marker catalog", 500, StepMarkerCatalog);
         }
+        /// <summary>Defers optional spawn-profile discovery until the actual Loot provider is available.</summary>
+        private bool StepMarkerCatalog(){return ModApi.Get<INativeSpawners>()!=null&&Markers.Catalog.Step();}
         /// <summary>Recognizes static custom POIs eligible for reusable dressing.</summary>
         private static bool Custom(Transform root)
         {

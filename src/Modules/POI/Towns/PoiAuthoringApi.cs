@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.POI
         /// <summary>Reports completion of the sliced native scenery catalog.</summary>
         public bool CatalogComplete=>_runtime.Catalog.Complete;
         /// <summary>Starts native scenery and spawn-profile discovery for authoring.</summary>
-        public void StartCatalog(){_runtime.Catalog.Start();_runtime.Markers.Catalog.Start();}
+        public void StartCatalog(){_runtime.Catalog.Start();if(ModApi.Get<INativeSpawners>()!=null)_runtime.Markers.Catalog.Start();}
         /// <summary>Copies detached authoring assets without exposing runtime catalog objects.</summary>
         public void Catalog(List<PoiAuthoringAsset> into){into.Clear();foreach(var a in _runtime.Catalog.All)into.Add(new PoiAuthoringAsset{Id=a.Id,Label=a.Label,MeshName=a.MeshName,Source=a.Source,Category=a.Category,MarkerKind=a.MarkerKind,NativeScale=a.NativeScale,Offset=a.Offset,Box=a.Box,HasCollision=a.Shapes.Count>0});}
         /// <summary>Creates a static preview after validating its prop JSON and catalog identity.</summary>
@@ -31,9 +31,9 @@ namespace WildWasteland.Modules.POI
         /// <summary>Writes the current validated state through its owning persistence transaction.</summary>
         public bool Save(int id,string json,out string error){try{var s=Site(id);_runtime.Save(s,PoiDressStore.Parse(json,s.Type));error=null;return true;}catch(Exception e){error=e.Message;return false;}}
         /// <summary>Copies available native spawn-profile names of the requested marker kind.</summary>
-        public void Profiles(string kind,List<string> into){into.Clear();_runtime.Markers.Catalog.Start();foreach(var p in _runtime.Markers.Catalog.For(kind))into.Add(p.Name);}
+        public void Profiles(string kind,List<string> into){into.Clear();if(ModApi.Get<INativeSpawners>()==null)return;_runtime.Markers.Catalog.Start();foreach(var p in _runtime.Markers.Catalog.For(kind))into.Add(p.Name);}
         /// <summary>Returns the exact number of native selection rows in a profile.</summary>
-        public int ProfileCount(string kind,string name)=>_runtime.Markers.Catalog.Find(kind,name)?.Count??0;
+        public int ProfileCount(string kind,string name)=>ModApi.Get<INativeSpawners>()==null?0:_runtime.Markers.Catalog.Find(kind,name)?.Count??0;
         /// <summary>Returns the validated reusable layout path of a POI type.</summary>
         public string LayoutPath(string type)=>PoiDressStore.FilePath(type);
         /// <summary>Returns the module-owned reusable layout directory.</summary>
