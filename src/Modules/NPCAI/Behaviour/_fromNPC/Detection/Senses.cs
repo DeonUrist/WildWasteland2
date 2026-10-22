@@ -1736,7 +1736,7 @@ namespace WildWasteland.Modules.NPC
                         if (!string.IsNullOrEmpty(s)) _co = Core.Scheduler.StartCoroutine(Restore(s));
                     }
                 }
-                catch (Exception e) { Core.SaveBus.ReportFailure("NPC senses persistence failed: " + e.Message); NpcaiRuntime.Error("Senses persistence: " + e); }
+                catch (Exception e) { Core.SaveBus.ReportFailure(NpcaiRuntime.Module, "NPC senses persistence failed: " + e.Message); NpcaiRuntime.Error("Senses persistence: " + e); }
             }
 
             private static string Slot()
@@ -1747,11 +1747,13 @@ namespace WildWasteland.Modules.NPC
                 return v != null ? v.Value : null;
             }
 
+            // the save file names Saves writes or the game's own slots (same rule as Saves' SaveRuntime.IsSaveFile / SaveBus.Slot)
+            private static readonly System.Text.RegularExpressions.Regex SlotFile = new System.Text.RegularExpressions.Regex(@"^(SaveGame([1-9]|10)|WW_(live|save|auto)-[a-fA-F0-9]{32})\.es3$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             private static bool TryPath(string slot, out string path)
             {
                 path = null;
                 string name = Path.GetFileName(slot ?? "");
-                if (Core.SaveRuntime.IsSaveFile(name)) { path = Path.Combine(Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "Saves"), name + ".senses.txt"); return true; }
+                if (SlotFile.IsMatch(name)) { path = Path.Combine(Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "Saves"), name + ".senses.txt"); return true; }
                 if (string.IsNullOrEmpty(name) || !name.StartsWith("SaveGame", StringComparison.OrdinalIgnoreCase)) return false;
                 foreach (char c in name) if (!(char.IsLetterOrDigit(c) || c == '.')) return false;
                 path = Path.Combine(Path.Combine(NpcaiRuntime.DataDir ?? Core.Assets.ModuleConfigDir("NPCAI"), "Saves"), name + ".senses.txt");

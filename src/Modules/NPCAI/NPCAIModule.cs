@@ -42,6 +42,7 @@ namespace WildWasteland.Modules.NPCAI
         {
             NpcaiRuntime.Module = this;
             NpcaiSettings.Bind(cfg);
+            Sidecars.Register(this, "NPCAI/Saves/{slot}.senses.txt");   // per-slot senses sidecar (B04-2): journaled, backed up and copied by Saves
             BindNavigation(cfg);
         }
 

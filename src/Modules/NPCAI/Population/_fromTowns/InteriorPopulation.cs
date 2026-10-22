@@ -130,8 +130,10 @@ namespace WildWasteland.Modules.Towns
         {
             get { foreach (var group in Pending) if (group.Fsm != null && Near(group.Fsm) && group.Fsm.gameObject.activeInHierarchy && (group.Fsm.enabled || group.Suspended) && Value(group.Fsm, "OnOff") == 0) return false; return true; }
         }
+        // SaveSystem.Busy (the WW save transaction lock) has no exact contract equivalent: ISaves.Busy / SaveBus.Busy also cover
+        // loading and "Wait for Terrain Gen", where population must keep running (B04-8 answered in reports/B07.md)
         private static bool CanRun()
-        { return !SaveSystem.Busy && !SaveBus.Saving && (GameRefs.InGame || GameRefs.SaveLoadState == "Wait for Terrain Gen"); }
+        { return !SaveSystem.Busy && !SaveBus.Saving && (GameRefs.InGame || GameRefs.SaveLoadState == "Wait for Terrain Gen"); }   // refs-ok: REFACTOR-REQUEST B07-6
         private static float _spawnAfter, _actorAfter;
         private static int _actorFrame = -1;
         private static bool Step()

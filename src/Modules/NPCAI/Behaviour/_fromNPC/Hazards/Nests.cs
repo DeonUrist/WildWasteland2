@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.NPC
             {
                 var lines = new List<string>(); foreach (var kv in _layouts) lines.Add(kv.Key + "\t" + kv.Value);
                 System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(LayoutFile));
-                System.IO.File.WriteAllLines(LayoutFile, lines.ToArray());
+                string file = LayoutFile; System.IO.File.WriteAllLines(file + ".tmp", lines.ToArray()); Core.AtomicFile.Replace(file + ".tmp", file);   // (D17) atomic publication, no half-written layouts file
             }
             catch (Exception e) { NpcaiRuntime.Warn("Nests: layouts not written: " + e.Message); }
         }
