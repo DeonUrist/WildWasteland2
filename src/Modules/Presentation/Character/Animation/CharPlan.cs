@@ -5,8 +5,7 @@ namespace WildWasteland.Modules.PlayerBody
 {
     // (2.2.0) ModAPI: the animation decisions for ANY humanoid that another mod animates with the player's clips (ModAPI.Character), frame by frame,
     // with no Unity types - tools/modapitest runs it for every weapon kind x every situation outside the game and checks / draws the result.
-    // It is the player's own logic (Loco.cs / Body.cs: LocoPlan's legs and hands, jumps, turns in place, walk-to-stop, reloads incl. one round at
-    // a time, ShotgunPump, throws, strikes) with the game's inputs (camera, mouse, the player's FSMs) replaced by what the caller says. Every clip
+    // The player and NPCs supply inputs to this one decision model: locomotion, turns, jumps, reloads, pumps, throws and strikes. Every clip
     // time is set explicitly here (the playables run at speed 0), so the plan alone decides what is shown.
     internal sealed class CharPlan
     {
@@ -39,6 +38,31 @@ namespace WildWasteland.Modules.PlayerBody
         public int Kind;                     // LocoPlan.K_*
         public bool Crouch, Aim, Fire, Airborne;
         public bool TurnInPlace = true, WalkToStop = true;
+        // Optional client inputs. NPC callers leave these unset and retain timed command behavior.
+        public bool FollowNativeReload, NativeReload, Seated;
+        public float NativeReloadFraction = -1f;
+        public string SeatedHandsClip, Preview;
+        private bool _nativeReloadWas;
+        private string _meleeClip = "Melee";
+        /// <summary>Current strike timing, shared by the graph and the player's hit-alignment adapter.</summary>
+        internal string StrikeClip { get { return _striking ? _strikeClip : null; } }
+        /// <summary>Native-clock start of the active shared strike.</summary>
+        internal float StrikeAt { get { return _strikeAt; } }
+        /// <summary>Duration of the active shared strike.</summary>
+        internal float StrikeCycle { get { return _strikeCycle; } }
+        /// <summary>Clip-space hit point used by player aim alignment.</summary>
+        internal float StrikeHit { get { return _strikeHit; } }
+        internal string StrikeHand { get; private set; }
+        /// <summary>True while the first whole-clip melee swing is active.</summary>
+        internal bool MeleePlaying { get { return _now < _meleeUntil; } }
+        /// <summary>Start of the accepted throw on the shared clock.</summary>
+        internal float ThrowAt { get { return _throwAt; } }
+        /// <summary>End of the accepted throw, retained across weapon changes.</summary>
+        internal float ThrowUntil { get { return _throwUntil; } }
+        /// <summary>Native release lead in clip seconds.</summary>
+        internal float ThrowFrom { get { return _throwFrom; } }
+        /// <summary>Clip selected by the shared throw command.</summary>
+        internal string ThrowClip { get { return _throwClip; } }
 
         // ---- the clips (from the bundle in the game, from the FBX files in the test)
         public Func<string, bool> Has;
@@ -151,12 +175,14 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Requests a kick at the next step.</summary>
         public void Kick() { _wantKick = true; }
         /// <summary>Starts a throw (left hand quick grenade or right hand), at most one per 1.2 s.</summary>
-        public void Throw(bool rightHand)
+        public void Throw(bool rightHand) { Throw(rightHand, false); }
+        /// <summary>Starts a native-timed throw at its release lead without restarting on a weapon change.</summary>
+        internal void Throw(bool rightHand, bool timed)
         {
             if (_now - _throwAt < 1.2f) return;
             string n = rightHand && Has("ThrowRight") ? "ThrowRight" : "Throw";
             if (!Has(n)) return;
-            _throwAt = _now; _throwClip = n; _throwFrom = 0f;
+            _throwAt = _now; _throwClip = n; _throwFrom = timed ? Clamp(ThrowRelease - 0.4f, 0f, Len(n) * 0.5f) : 0f;
             _throwUntil = _now + Clamp(Len(n) - _throwFrom, 0.5f, 2f);
             if (Logging) Log += "throw " + n + "; ";
         }
@@ -171,7 +197,8 @@ namespace WildWasteland.Modules.PlayerBody
                 for (int k = 0; k < 2; k++)
                 {
                     int i = (_punchN + k) % 2;
-                    string c = Has(i == 0 ? "Punch1" : "Punch2") ? (i == 0 ? "Punch1" : "Punch2") : null;
+                    string primary = i == 0 ? "Punch1" : "Punch2", alias = i == 0 ? "Melee1" : "Melee2";
+                    string c = Has(primary) ? primary : Has(alias) ? alias : null;
                     if (c == null) continue;
                     _punchN = i + 1;
                     SetStrike(new[] { c, i == 0 ? "0.75" : "0.3", i == 0 ? "1.0" : "0.5", i == 0 ? "1.5" : "0.95" }, cycle);
@@ -181,13 +208,14 @@ namespace WildWasteland.Modules.PlayerBody
             }
             _chainN = chained ? _chainN + 1 : 0;
             if (_chainN > 0 && Has("MeleeCombo")) { SetStrike(Combo[(_chainN - 1) % 2], cycle); _meleeUntil = 0f; return; }
-            if (!Has("Melee")) return;
+            _meleeClip = Has("Melee") ? "Melee" : "enemy_1_attack";
+            if (!Has(_meleeClip)) return;
             // the first swing: the whole Melee clip fitted to the swing (as the player's first swing)
             _striking = false; _strikeW = 0f; _strikeClip = null;
-            _meleeAt = _now; _meleeUntil = _now + cycle; _meleeSpeed = Clamp(Len("Melee") / cycle, 0.5f, 5f);
+            _meleeAt = _now; _meleeUntil = _now + cycle; _meleeSpeed = Clamp(Len(_meleeClip) / cycle, 0.5f, 5f);
             if (Logging) Log += "melee " + cycle.ToString("0.00") + "s; ";
         }
-        // the player's strikes (Body.PunchSeq / Combo): clip, from (wind-up), hit (the blow lands), to (back on guard), clip seconds
+        // Shared strikes: clip, from (wind-up), hit (the blow lands), to (back on guard), clip seconds
         private static readonly string[][] PunchSeq = {
             new[] { "Punch", "0.30", "0.47", "0.65" }, new[] { "Punch", "0.65", "0.80", "1.00" }, new[] { "Punch", "0.97", "1.17", "1.32" }, new[] { "Punch", "1.30", "1.47", "1.65" },
             new[] { "Punch", "1.70", "1.87", "2.05" }, new[] { "Punch", "1.93", "2.07", "2.22" }, new[] { "Punch", "2.17", "2.33", "2.47" }, new[] { "Punch", "2.40", "2.53", "2.85" } };
@@ -198,8 +226,43 @@ namespace WildWasteland.Modules.PlayerBody
         private void SetStrike(string[] s, float cycle)
         {
             _strikeClip = s[0]; _strikeFrom = F(s[1]); _strikeHit = F(s[2]); _strikeTo = F(s[3]);
+            StrikeHand = Kind != LocoPlan.K_NONE ? null : _strikeClip == "Punch" ? ((_seqN == 2 || _seqN == 3 || _seqN == 5 || _seqN == 7) ? "mixamorig:RightHand" : "mixamorig:LeftHand")
+                : (_strikeClip == "Punch1" || _strikeClip == "Melee1" ? "mixamorig:RightHand" : "mixamorig:LeftHand");
             _striking = true; _strikeAt = _now; _strikeCycle = cycle; _strikeW = 1f; _meleeUntil = 0f;
             if (Logging) Log += "strike " + _strikeClip + "@" + _strikeHit + "; ";
+        }
+
+        /// <summary>Fits the active first melee swing to the observed native arms duration without starting a new combo.</summary>
+        internal void RetimeMelee(float seconds)
+        {
+            if (_meleeUntil <= 0f) return;
+            seconds = Clamp(seconds, 0.2f, 2f);
+            _meleeUntil = _meleeAt + seconds; _meleeSpeed = Clamp(Len(_meleeClip) / seconds, 0.5f, 5f);
+        }
+        /// <summary>Stops a third-person kick immediately when the player returns to first person.</summary>
+        internal void SuppressKick() { if(ActionClip=="Kick") { _actionUntil=0f;ActionW=0f; } _wantKick=false; }
+        /// <summary>Ends weapon-specific actions while preserving a grenade/lance already in flight.</summary>
+        internal void CancelWeaponActions()
+        {
+            _reloadUntil=_pumpUntil=_meleeUntil=0f;_nativeReloadWas=false;_striking=false;_strikeClip=null;_strikeW=0f;
+            _strikeEnd=-10f;_chainN=_seqN=0;
+        }
+        /// <summary>Changes seat ownership without restarting a native throw, melee swing or reload already in progress.</summary>
+        internal void SeatChanged()
+        {
+            _actionUntil = 0f; ActionW = 0f; ActionClip = "";
+            _wantJump = _wantKick = _wasAir = false; _jumpPhase = "";
+            _turnClip = null; _turnInit = false; _snap = true;
+        }
+        /// <summary>Ends transient actions when traversal or death takes over the character.</summary>
+        internal void ResetActions()
+        {
+            _reloadUntil = _pumpUntil = _throwUntil = _meleeUntil = _fireUntil = _actionUntil = 0f;
+            _striking = _wantJump = _wantKick = _pumpStart = _wasAir = _nativeReloadWas = false;
+            _strikeClip = null; _strikeW = UpperW = RigW = RigEff = ActionW = AimLiftW = 0f;
+            UpperClip = RigClip = ActionClip = ""; UpperOld = RigOld = null;
+            _jumpPhase = ""; _turnClip = null; _turnInit = false; _snap = true;
+            _strikeEnd = -10f; _chainN = _seqN = 0;
         }
 
         // ---------------------------------------------------------------- one frame
@@ -213,7 +276,7 @@ namespace WildWasteland.Modules.PlayerBody
             bool snap = _snap;
             if (Kind != _lastKind) { if (_lastKind >= 0) { _reloadUntil = 0f; _pumpUntil = 0f; } _lastKind = Kind; }
 
-            // ---- speed, run, sprint, crouch (LateMixamo)
+            // ---- speed, run, sprint, crouch (shared locomotion)
             float speed = (float)Math.Sqrt(Lx * Lx + Lz * Lz);
             SpeedSmooth = snap ? speed : Lerp(SpeedSmooth, speed, 1f - (float)Math.Exp(-dt * 10f));
             // (ModAPI) an NPC's velocity can jump from standing to running in one frame (the player's never does): the legs need at least 1/8 s
@@ -264,6 +327,11 @@ namespace WildWasteland.Modules.PlayerBody
             HipTurn = snap ? hipWant : Lerp(HipTurn, hipWant, 1f - (float)Math.Exp(-dt * 8f));
 
             // ---- reload, cocking
+            if (FollowNativeReload)
+            {
+                if (NativeReload && !_nativeReloadWas) { _reloadStart = now; _reloadLen = Len(Kind == LocoPlan.K_PISTOL ? "PistolReload" : "RifleReload"); _reloadRounds = 0; }
+                _reloadUntil = NativeReload ? now + 0.05f : 0f; _nativeReloadWas = NativeReload;
+            }
             bool reloading = gun && now < _reloadUntil;
             if (_pumpStart)
             {
@@ -353,7 +421,7 @@ namespace WildWasteland.Modules.PlayerBody
 
             // ---- upper-body layer: throws, strikes
             if (now < _throwUntil && Has(_throwClip)) { SetUpper(_throwClip, 1f, 0f, snap); UpperTime = _throwFrom + (now - _throwAt); }
-            else if (_meleeUntil > 0f && now < _meleeUntil && Has("Melee")) { SetUpper("Melee", 1f, 0f, snap); UpperTime = Math.Min(Len("Melee") - 0.001f, (now - _meleeAt) * _meleeSpeed); }
+            else if (_meleeUntil > 0f && now < _meleeUntil && Has(_meleeClip)) { SetUpper(_meleeClip, 1f, 0f, snap); UpperTime = Math.Min(Len(_meleeClip) - 0.001f, (now - _meleeAt) * _meleeSpeed); }
             else if (_strikeClip != null)
             {
                 if (_meleeUntil > 0f) { _meleeUntil = 0f; _strikeEnd = now; }
@@ -368,11 +436,19 @@ namespace WildWasteland.Modules.PlayerBody
                 if (_strikeW <= 0f) { _strikeClip = null; SetUpper("", 0f, 0f, snap); }
                 else { SetUpper(_strikeClip, _strikeW, 0f, snap); UpperTime = t; }
             }
+            else if (Seated && !string.IsNullOrEmpty(SeatedHandsClip) && Has(SeatedHandsClip))
+            {
+                if (reloading && !_seatedReloadWas) UpperClip = "";
+                SetUpper(SeatedHandsClip, 1f, 0f, snap);
+                UpperTime = reloading ? (NativeReloadFraction >= 0f ? NativeReloadFraction * Len(SeatedHandsClip) : Math.Min(Len(SeatedHandsClip) - .001f, now - _reloadStart))
+                    : (UpperTime + dt) % Len(SeatedHandsClip);
+            }
             else
             {
                 if (_meleeUntil > 0f && now >= _meleeUntil) { _meleeUntil = 0f; _strikeEnd = now; }
                 SetUpper("", 0f, 0f, snap);
             }
+            _seatedReloadWas = reloading;
             UpperW = snap ? _upperWTarget : MoveTowards(UpperW, _upperWTarget, dt / (_upperWTarget > UpperW ? UpperIn : UpperOut));
             if (UpperOld != null) { UpperX = snap ? 1f : MoveTowards(UpperX, 1f, dt / UpperCross); if (UpperX >= 1f) UpperOld = null; }
             else UpperX = 1f;
@@ -393,7 +469,7 @@ namespace WildWasteland.Modules.PlayerBody
                     float k = Clamp01((el - idx * per) / per);
                     _rigManual = a + k * (b - a);
                 }
-                else _rigManual = Clamp01(el / _reloadLen) * 0.999f;     // the whole clip fitted to the reload time
+                else _rigManual = FollowNativeReload ? (NativeReloadFraction >= 0f ? Clamp01(NativeReloadFraction) : Clamp01(el / _reloadLen)) : Clamp01(el / _reloadLen) * 0.999f;     // the whole clip fitted to the reload time
                 _rigManualOn = true;
             }
             _rigWant = up != null ? 1f : 0f;
@@ -431,7 +507,32 @@ namespace WildWasteland.Modules.PlayerBody
             if (wRig > 0.001f && RigClip != "") AddPose(RigClip, wRig * (1f - wAct) * (1f - wUp));
             if (wUp > 0.001f && UpperClip != "") AddPose(UpperClip, wUp);
             if (wAct > 0.001f && ActionClip != "") AddPose(ActionClip, wAct * (1f - wUp));
+            if (Seated)
+            {
+                Array.Clear(W, 0, W.Length); W[Crouch && !_noCrouchClips ? LocoPlan.B_CIDLE : LocoPlan.B_IDLE] = 1f;
+                HipTurn = ActionW = RigW = RigEff = ChestFollow = AimLiftW = 0f;
+                PoseW.Clear(); if (UpperW > .001f && UpperClip != "") AddPose(UpperClip, UpperW);
+            }
+            ApplyPreview(now);
             _snap = false;
+        }
+        private bool _seatedReloadWas;
+        /// <summary>Uses the same graph outputs for authoring previews without a second animation driver.</summary>
+        private void ApplyPreview(float now)
+        {
+            if (string.IsNullOrEmpty(Preview) || !Has(Preview) || Seated) return;
+            Array.Clear(W, 0, W.Length); int slot = -1;
+            for (int i = 0; i < SlotClip.Length; i++) if (SlotClip[i] == Preview) { slot = i; break; }
+            W[slot >= 0 ? slot : Preview.Contains("Crouch") && !_noCrouchClips ? LocoPlan.B_CIDLE : LocoPlan.B_IDLE] = 1f;
+            CrouchW = Preview.Contains("Crouch") ? 1f : 0f;
+            HipTurn = ChestFollow = UpperW = ActionW = RigEff = 0f; UpperOld = RigOld = null;
+            float t = now % Len(Preview);
+            if (slot >= 0) SlotTime[slot] = t;
+            else if (Preview.Contains("Jump") || Preview.Contains("Turn") || Preview == "Kick") { ActionClip = Preview; ActionTime = t; ActionW = 1f; }
+            else { RigClip = Preview; RigTime = t; RigX = RigW = RigEff = 1f; }
+            bool lift = AimLift.IsAimClip(Preview);
+            AimLiftW = lift ? 1f : 0f; AimLiftClip = lift ? Preview : null; AimCrouched = Preview.Contains("Crouch");
+            PoseW.Clear(); PoseW[Preview] = 1f;
         }
         /// <summary>True when a moving locomotion slot carries weight.</summary>
         private bool _bdom() { for (int i = 0; i < LocoPlan.BN; i++) if (LocoPlan.Moving(i) && W[i] > 0.05f) return true; return false; }
@@ -475,7 +576,7 @@ namespace WildWasteland.Modules.PlayerBody
             _rigHold = hold; _rigSync = sync; _rigSpeed = speed;
         }
 
-        /// <summary>standing still and turning: the turn clip's feet are driven by the turn itself (Loco.TurnInPlace)</summary>
+        /// <summary>standing still and turning: the turn clip's feet are driven by the turn itself (shared character turn model)</summary>
         private void DoTurn(float yawDeg, float m, float crouch, bool relaxed, float dt)
         {
             if (!_turnInit) { _turnInit = true; _turnLastYaw = yawDeg; }

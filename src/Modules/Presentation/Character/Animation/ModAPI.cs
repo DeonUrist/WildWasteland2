@@ -165,18 +165,22 @@ namespace WildWasteland.Modules.PlayerBody
         public static int Count { get { return _chars.Count; } }
 
         /// <summary>starts animating this humanoid Animator with the player's clips (the same object for the same Animator); null when it can't</summary>
-        public static Character Attach(Animator animator)
+        public static Character Attach(Animator animator) { return AttachCore(animator, false); }
+        /// <summary>Attaches the player's body to the same driver while its input adapter owns the update point.</summary>
+        internal static Character AttachPlayer(Animator animator) { return AttachCore(animator, true); }
+        /// <summary>Creates one driver per Animator and publishes its actual character kind.</summary>
+        private static Character AttachCore(Animator animator, bool manualDriven)
         {
             if (animator == null) return null;
             var have = Find(animator);
-            if (have != null) return have;
+            if (have != null) return have.ManualDriven == manualDriven ? have : null;
             if (!Ready || animator.avatar == null || !animator.avatar.isHuman) return null;
             try
             {
-                var c = new Character(animator);
+                var c = new Character(animator, manualDriven);
                 if (!c.Valid) return null;
-                _chars.Add(c);
-                PresentationEvents.Attached(animator, CharacterKind.Human);
+                _chars.Add(c); c.Registered = true;
+                PresentationEvents.Attached(animator, c.Kind);
                 if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "ModAPI: animating " + animator.gameObject.name + " (" + _chars.Count + " characters)");
                 return c;
             }
@@ -217,7 +221,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal static void OnSceneLoaded()
         {
             foreach (var c in _chars.ToArray()) if (c != null) c.Dispose();
-            _chars.Clear(); _perRound.Clear(); _cocks.Clear();
+            _chars.Clear(); _perRound.Clear(); _cocks.Clear(); Character.ResetNativeClip();
         }
     }
 }

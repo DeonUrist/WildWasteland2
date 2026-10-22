@@ -8,8 +8,8 @@ namespace WildWasteland.Modules.Presentation
 {
     /// <summary>
     /// ICharacterPresentation provider (README 6.1): the id-based face of the single ModAPI character driver (ModCharacter + CharPlan).
-    /// Human and female NPC rigs are attached through <see cref="ModAPI.Attach"/>; the player's body (Body + Loco, still its own driver
-    /// until the unification step) answers the held-prop / muzzle / root queries for <see cref="Entities.Player"/>. Animals stay with the
+    /// Player and human/female NPC rigs share ModAPI.Character and CharPlan. PlayerInputAdapter owns the player's native
+    /// input/update point; Body answers model/view-specific held-prop, muzzle and root queries for Entities.Player. Animals stay with the
     /// quadruped driver (DogAnimations, driven by NPCAI's registry), so Attach refuses Dog/Animal/Player kinds. Drivers may also send
     /// <see cref="CharacterAction"/> events instead of calling <see cref="Action"/>.
     /// </summary>
@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.Presentation
         public bool Ready { get { return ModAPI.Ready; } }
 
         /// <summary>Number of characters attached through this service.</summary>
-        public int Count { get { return _entries.Count; } }
+        public int Count { get { return _entries.Count + (PlayerBodyAlive() ? 1 : 0); } }
 
         /// <summary>Starts driving a humanoid Animator (Human/Female kinds); false for other kinds, other owners or unsupported rigs.</summary>
         public bool Attach(EntityId id, Animator animator, CharacterKind kind)
@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.Presentation
         }
 
         /// <summary>True while the id is driven by the pipeline.</summary>
-        public bool IsAttached(EntityId id) { return Get(id) != null; }
+        public bool IsAttached(EntityId id) { return id == Entities.Player ? PlayerBodyAlive() : Get(id) != null; }
 
         /// <summary>Kind the character was attached as (the player reports Player while its body exists).</summary>
         public bool TryGetKind(EntityId id, out CharacterKind kind)
@@ -83,6 +83,14 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Last inputs given to the character.</summary>
         public bool TryGetInputs(EntityId id, out CharacterInputs inputs)
         {
+            if (id == Entities.Player)
+            {
+                var c = BodyRunner.PlayerDriver;
+                inputs = c == null ? default(CharacterInputs) : new CharacterInputs { Velocity=c.Velocity, AimPitch=c.AimPitch,
+                    Crouched=c.Crouched, Aiming=c.Aiming, Firing=c.Firing, Airborne=c.Airborne, Seated=c.Plan.Seated,
+                    TurnInPlace=c.TurnInPlace, WalkToStop=c.WalkToStop };
+                return c != null;
+            }
             var e = Get(id);
             inputs = e != null ? e.Inputs : default(CharacterInputs);
             return e != null;

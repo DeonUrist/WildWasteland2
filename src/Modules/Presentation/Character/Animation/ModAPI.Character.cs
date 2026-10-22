@@ -10,12 +10,31 @@ namespace WildWasteland.Modules.PlayerBody
 {
     public static partial class ModAPI
     {
-        // One animated humanoid (ModAPI.Attach). The decisions are CharPlan's (the player's own logic, tested offline); this class applies them
-        // like the player's Body does: a PlayableGraph on the character's Animator (layer 0 the 42 locomotion slots, 1 the whole-body actions,
+        // One animated humanoid. Player input and NPC commands both feed CharPlan; this is the only humanoid driver: a PlayableGraph on the character's Animator (layer 0 the 42 locomotion slots, 1 the whole-body actions,
         // 2 throws / strikes on the upper body), an invisible copy of its skeleton (the UpperRig) that plays the hands' clip and is written over its
         // spine and everything above, then the procedural touches (hips turn, chest follow, aim pitch, aim lift) and the weapon in the right hand.
         public sealed class Character
         {
+            /// <summary>Player input drives this instance at the body placement point; the global NPC tick skips it.</summary>
+            internal readonly bool ManualDriven;
+            internal bool Registered;
+            /// <summary>Reports the native input owner for lifecycle events.</summary>
+            internal CharacterKind Kind { get { return ManualDriven ? CharacterKind.Player : CharacterKind.Human; } }
+            /// <summary>Shared graph outputs used by the seat, crawl and traversal presentation adapters.</summary>
+            internal PlayableGraph Graph { get { return _g; } }
+            /// <summary>Common layer output below temporary crawl and traversal overlays.</summary>
+            internal AnimationLayerMixerPlayable Layers { get { return _layers; } }
+            /// <summary>Single decision model supplying this character's animation outputs.</summary>
+            internal CharPlan Plan { get { return _p; } }
+            internal float HeadPitch;
+            /// <summary>Refreshes live player tuning before the input adapter supplies its per-frame policy.</summary>
+            internal void RefreshTuning() { ReadSettings(); }
+            /// <summary>Runs the same driver once at the player body's placement point, including paused pose reconstruction.</summary>
+            internal void StepManual(float dt)
+            {
+                if (_disposed || _suspended || _a == null) return;
+                TickInner(Mathf.Max(0f,dt));
+            }
             // ---------------------------------------------------------------- inputs (set them in Update; read in LateUpdate)
             /// <summary>The Animator this character drives.</summary>
             public Animator Animator { get { return _a; } }
@@ -104,7 +123,8 @@ namespace WildWasteland.Modules.PlayerBody
             public void Dispose()
             {
                 if (_disposed) return;
-                PresentationEvents.Detached(_a, CharacterKind.Human);
+                if (Registered) PresentationEvents.Detached(_a, Kind);
+                Registered = false;
                 ReleaseWeapon();
                 DestroyGraph();
                 try { if (_rg.IsValid()) _rg.Destroy(); } catch (Exception) { }
@@ -120,8 +140,28 @@ namespace WildWasteland.Modules.PlayerBody
             private readonly CharPlan _p = new CharPlan();
             private bool _disposed, _suspended, _rootMotionWas;
             private AnimatorCullingMode _cullingWas; private AnimatorUpdateMode _updateWas;
+            private RuntimeAnimatorController _controllerWas;
             private readonly Dictionary<HumanBodyBones, Transform> _b = new Dictionary<HumanBodyBones, Transform>();
             private AnimationClip _fallback;
+            private static AnimationClip _nativeMelee;
+            private static bool _nativeMeleeTried;
+            /// <summary>Forgets the native fallback when the scene's clip population can change.</summary>
+            internal static void ResetNativeClip() { _nativeMelee = null; _nativeMeleeTried = false; }
+            /// <summary>Resolves bundle clips and shares one lazy native melee fallback lookup per scene, never a per-frame scan.</summary>
+            private AnimationClip ResolveClip(string name)
+            {
+                var clip = Anims.Get(name);
+                if (clip != null || name != "enemy_1_attack") return clip;
+                if (_nativeMeleeTried) return _nativeMelee;
+                _nativeMeleeTried = true;
+                foreach (var candidate in Resources.FindObjectsOfTypeAll<AnimationClip>())
+                {
+                    if (candidate == null || candidate.name != name) continue;
+                    if (_nativeMelee == null || candidate.humanMotion) _nativeMelee = candidate;
+                    if (candidate.humanMotion) break;
+                }
+                return _nativeMelee;
+            }
             // main graph
             private PlayableGraph _g;
             private AnimationMixerPlayable _base;
@@ -140,8 +180,9 @@ namespace WildWasteland.Modules.PlayerBody
             private Vector3 _lastPos; private bool _hasLast;
 
             /// <summary>Maps the humanoid bones, wires CharPlan to the bundle's clips and builds the UpperRig and the main graph (disposed when the rig is not a usable humanoid).</summary>
-            internal Character(Animator a)
+            internal Character(Animator a, bool manualDriven = false)
             {
+                ManualDriven = manualDriven;
                 _a = a; _root = a.transform;
                 _rb = a.GetComponentInParent<Rigidbody>();
                 foreach (HumanBodyBones hb in Enum.GetValues(typeof(HumanBodyBones)))
@@ -152,15 +193,14 @@ namespace WildWasteland.Modules.PlayerBody
                 }
                 if (!_b.ContainsKey(HumanBodyBones.Hips) || !_b.ContainsKey(HumanBodyBones.Spine) || !_b.ContainsKey(HumanBodyBones.RightHand)) { _disposed = true; return; }
                 _fallback = Anims.Get("RifleIdle");
-                _p.Has = n => n != null && Anims.Get(n) != null;
-                _p.Length = n => { var c = Anims.Get(n); return c != null ? c.length : 1f; };
-                _p.Looping = n => { var c = Anims.Get(n); return c != null && c.isLooping; };
+                _p.Has = n => n != null && ResolveClip(n) != null;
+                _p.Length = n => { var c = ResolveClip(n); return c != null ? c.length : 1f; };
+                _p.Looping = n => { var c = ResolveClip(n); return c != null && c.isLooping; };
                 _p.PhaseOf = PhaseOf;
                 _p.NativeOf = NativeOf;
                 ReadSettings();
-                _p.Build();
-                BuildRig();
-                BuildGraph();
+                try { _p.Build(); BuildRig(); BuildGraph(); }
+                catch { Dispose(); throw; }
             }
 
             /// <summary>Copies the [Presentation / Animation] tuning into the character's CharPlan.</summary>
@@ -179,7 +219,7 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 if (_g.IsValid() || _a == null) return;
                 _g = PlayableGraph.Create("Apocaplayer.ModAPI." + _a.gameObject.name);
-                _g.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
+                _g.SetTimeUpdateMode(ManualDriven ? DirectorUpdateMode.Manual : DirectorUpdateMode.GameTime);
                 var output = AnimationPlayableOutput.Create(_g, "body", _a);
                 _base = AnimationMixerPlayable.Create(_g, LocoPlan.BN);
                 for (int i = 0; i < LocoPlan.BN; i++)
@@ -204,6 +244,7 @@ namespace WildWasteland.Modules.PlayerBody
                 // always evaluated while the player's clips drive it: the procedural turns after the Animator are applied to its pose of this
                 // frame - a culled Animator would leave last frame's bones and they would add up
                 _cullingWas = _a.cullingMode; _a.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                if (ManualDriven) { _controllerWas = _a.runtimeAnimatorController; _a.runtimeAnimatorController = null; }
                 _updateWas = _a.updateMode; _a.updateMode = AnimatorUpdateMode.Normal;      // every frame, not only on physics steps (same reason)
                 _g.Play();
                 _p.Snap();
@@ -211,7 +252,7 @@ namespace WildWasteland.Modules.PlayerBody
             /// <summary>Destroys the main graph and restores the Animator's root motion, culling and update modes.</summary>
             private void DestroyGraph()
             {
-                try { if (_g.IsValid()) { _g.Destroy(); if (_a != null) { _a.applyRootMotion = _rootMotionWas; _a.cullingMode = _cullingWas; _a.updateMode = _updateWas; } } } catch (Exception) { }
+                try { if (_g.IsValid()) { _g.Destroy(); if (_a != null) { _a.applyRootMotion = _rootMotionWas; _a.cullingMode = _cullingWas; _a.updateMode = _updateWas; if (ManualDriven) _a.runtimeAnimatorController = _controllerWas; } } } catch (Exception) { }
             }
             /// <summary>A paused clip playable without foot IK.</summary>
             private static AnimationClipPlayable Clip(PlayableGraph g, AnimationClip c)
@@ -225,14 +266,16 @@ namespace WildWasteland.Modules.PlayerBody
             /// <summary>Builds the UpperRig: an invisible skeleton copy with its own manual graph whose upper-body bones are copied onto the character.</summary>
             private void BuildRig()
             {
+                GameObject holder = null;
                 try
                 {
                     if (_rigRoot == null) { _rigRoot = new GameObject("Apocaplayer.ModAPI.Rigs") { hideFlags = HideFlags.HideAndDontSave }; UnityEngine.Object.DontDestroyOnLoad(_rigRoot); }
-                    var holder = new GameObject("Apocaplayer.ModAPI.RigHolder");
+                    holder = new GameObject("Apocaplayer.ModAPI.RigHolder");
                     holder.SetActive(false);                       // nothing in the copy wakes up before it is complete
                     // (B05 perf, README 8 #3) a Transform-only copy of the Animator object's hierarchy (same names, paths and local poses) plus
                     // an Animator with the same avatar, instead of instantiating the whole NPC (FSMs, colliders, renderers) and stripping it
                     var go = CopySkeleton(_a.transform, holder.transform);
+                    _rigGo = go;
                     go.name = "UpperRig." + _a.gameObject.name;
                     var keep = go.AddComponent<Animator>();
                     keep.avatar = _a.avatar;
@@ -246,7 +289,6 @@ namespace WildWasteland.Modules.PlayerBody
                     go.transform.SetParent(_rigRoot.transform, false);
                     go.transform.localPosition = Vector3.zero; go.transform.localRotation = Quaternion.identity; go.transform.localScale = _root.lossyScale;
                     go.SetActive(true);
-                    UnityEngine.Object.Destroy(holder);
                     _rigGo = go; _rigA = keep;
                     if (_rigA == null) { UnityEngine.Object.Destroy(go); _rigGo = null; return; }
                     _rigA.runtimeAnimatorController = null;
@@ -254,7 +296,7 @@ namespace WildWasteland.Modules.PlayerBody
                     _rigA.enabled = true;
                     _spine = _b[HumanBodyBones.Spine]; _spineC = _rigA.GetBoneTransform(HumanBodyBones.Spine);
                     _rigLFoot = _rigA.GetBoneTransform(HumanBodyBones.LeftFoot); _rigRFoot = _rigA.GetBoneTransform(HumanBodyBones.RightFoot);
-                    if (_spineC == null) { UnityEngine.Object.Destroy(go); _rigGo = null; return; }
+                    if (_spineC == null) { if (ManualDriven) throw new InvalidOperationException("Player humanoid has no upper-rig spine"); UnityEngine.Object.Destroy(go); _rigGo = null; return; }
                     // the skeleton above the spine: every bone its skinned meshes use (Spine1 / Spine2 too when the avatar maps only some of them) and every
                     // humanoid bone, found in the copy by its path - props under the hands (the gun moved to the right hand ...) are not bones and are left alone
                     var bones = new HashSet<Transform>();
@@ -275,7 +317,15 @@ namespace WildWasteland.Modules.PlayerBody
                     _rigOut.SetSourcePlayable(_rigMix);
                     _rg.Play();
                 }
-                catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "ModAPI: no upper rig for " + _a.gameObject.name + " (" + e.Message + ") - the legs' clips move its hands"); _pairs.Clear(); _rigGo = null; }
+                catch (Exception e)
+                {
+                    if (_rg.IsValid()) _rg.Destroy();
+                    if (_rigGo != null) UnityEngine.Object.Destroy(_rigGo);
+                    _pairs.Clear(); _rigGo = null;
+                    if (ManualDriven) throw;
+                    Core.Log.Warn(PresentationModule.Instance, "ModAPI: no upper rig for " + _a.gameObject.name + " (" + e.Message + ") - the legs' clips move its hands");
+                }
+                finally { if (holder != null) UnityEngine.Object.Destroy(holder); }
             }
 
             /// <summary>Copies <paramref name="src"/> and its whole child hierarchy as bare GameObjects (name and local pose only) under <paramref name="parent"/>.</summary>
@@ -306,7 +356,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (string.IsNullOrEmpty(clip)) return -1f;
                 if (_phases.TryGetValue(clip, out p)) return p;
                 if (!_rg.IsValid()) return -1f;                      // no rig to measure on: not cached, another character may measure it
-                p = Measure(Anims.Get(clip));
+                p = Measure(ResolveClip(clip));
                 _phases[clip] = p;
                 return p;
             }
@@ -392,7 +442,7 @@ namespace WildWasteland.Modules.PlayerBody
             /// <summary>LateUpdate tick: animates the character (skipped while suspended, inactive or LOD-skipped); three errors suspend it.</summary>
             internal void Tick()
             {
-                if (_disposed) return;
+                if (_disposed || ManualDriven) return;
                 if (_a == null) { Dispose(); return; }
                 if (_suspended) { _hasLast = false; return; }
                 if (!_a.isActiveAndEnabled) { _hasLast = false; return; }
@@ -435,7 +485,7 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 if (!_g.IsValid()) BuildGraph();
                 float now = Time.time;
-                if (dt <= 0f) return;                                            // paused: the pose stays (nothing evaluated, nothing added)
+                if (dt <= 0f && !ManualDriven) return;                                            // paused: the pose stays (nothing evaluated, nothing added)
                 if (_w == null && _wMoved) _wMoved = false;                      // the weapon model was destroyed
                 // velocity in its own frame
                 Vector3 fwd = _root.forward; fwd.y = 0f;
@@ -463,7 +513,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (_p.ActionClip != "" && _p.ActionClip != _actName)
                 {
                     _g.Disconnect(_layers, 1); _act.Destroy();
-                    _act = Clip(_g, Anims.Get(_p.ActionClip) ?? _fallback); _actName = _p.ActionClip;
+                    _act = Clip(_g, ResolveClip(_p.ActionClip) ?? _fallback); _actName = _p.ActionClip;
                     _g.Connect(_act, 0, _layers, 1);
                 }
                 _layers.SetInputWeight(1, _p.ActionW);
@@ -473,7 +523,11 @@ namespace WildWasteland.Modules.PlayerBody
                 _up0.SetTime(_p.UpperTime); if (_up1.IsValid()) _up1.SetTime(_p.UpperOldTime);
                 _upMix.SetInputWeight(0, _up1.IsValid() ? _p.UpperX : 1f); _upMix.SetInputWeight(1, _up1.IsValid() ? 1f - _p.UpperX : 0f);
 
-                // ---- this frame's pose (the Animator evaluated it): the hands from the rig, then the procedural touches
+                // The player adapter can run while the Animator was disabled for a seat/pose, or while time is paused.
+                // Reconstruct its graph pose once before procedural work so offsets never accumulate on stale bones.
+                if (ManualDriven) _g.Evaluate(dt);
+                if (_p.Seated && ManualDriven) { PoseWeapon(); return; }
+                // ---- this frame's pose: the hands from the rig, then the procedural touches
                 if (Mathf.Abs(_p.HipTurn) > 0.2f && _p.ActionW < 0.5f)
                 {
                     Turn(HumanBodyBones.Hips, Vector3.up, _p.HipTurn);
@@ -489,7 +543,7 @@ namespace WildWasteland.Modules.PlayerBody
                     var xz = Vector2.ClampMagnitude(new Vector2(hl.x, hl.z), CharacterSettings.HipsDrift.Value);
                     if (xz.x != hl.x || xz.y != hl.z) hips.position = _root.TransformPoint(new Vector3(xz.x, hl.y, xz.y));
                 }
-                float pitch = AimPitch * CharacterSettings.AimPitchShare.Value, headPitch = AimPitch;
+                float pitch = AimPitch * CharacterSettings.AimPitchShare.Value, headPitch = ManualDriven ? HeadPitch : AimPitch;
                 if (Mathf.Abs(pitch) > 0.5f)
                 {
                     Turn(HumanBodyBones.Spine, Vector3.right, pitch * 0.3f);
@@ -498,14 +552,23 @@ namespace WildWasteland.Modules.PlayerBody
                     Turn(HumanBodyBones.Neck, Vector3.right, pitch * 0.1f);
                     headPitch -= pitch * ((_b.ContainsKey(HumanBodyBones.Spine) ? .3f : 0f) + (_b.ContainsKey(HumanBodyBones.Chest) ? .3f : 0f) + (_b.ContainsKey(HumanBodyBones.UpperChest) ? .3f : 0f) + (_b.ContainsKey(HumanBodyBones.Neck) ? .1f : 0f));
                 }
-                Turn(HumanBodyBones.Head, Vector3.right, Mathf.Clamp(headPitch, -65f, 65f));
+                Turn(HumanBodyBones.Head, Vector3.right, ManualDriven ? headPitch : Mathf.Clamp(headPitch, -65f, 65f));
                 AimLiftApply();
                 ArmPoseApply();
+                if (ManualDriven && !_p.Seated)
+                {
+                    float legsIn = CharacterSettings.RunLegsIn.Value * _p.M * _p.RunW * (1f - _p.CrouchW) * (1f - _p.ActionW);
+                    if (Mathf.Abs(legsIn) > .05f)
+                    {
+                        Turn(HumanBodyBones.LeftUpperLeg, Vector3.forward, legsIn); Turn(HumanBodyBones.LeftFoot, Vector3.forward, -legsIn);
+                        Turn(HumanBodyBones.RightUpperLeg, Vector3.forward, -legsIn); Turn(HumanBodyBones.RightFoot, Vector3.forward, legsIn);
+                    }
+                }
                 PoseWeapon();
             }
 
             /// <summary>the two-input mixer to show 'cur' (input 0) with 'old' fading out under it (input 1)</summary>
-            private AnimationClipPlayable Make(PlayableGraph g, string name) { return Clip(g, Anims.Get(name) ?? _fallback); }
+            private AnimationClipPlayable Make(PlayableGraph g, string name) { return Clip(g, ResolveClip(name) ?? _fallback); }
             /// <summary>Shows clip 'cur' on mixer input 0 with 'old' fading out on input 1 (creates/destroys clip playables only when the names change).</summary>
             private void Sync2(PlayableGraph g, AnimationMixerPlayable mix, ref AnimationClipPlayable c0, ref string n0, ref AnimationClipPlayable c1, ref string n1, string cur, string old)
             {

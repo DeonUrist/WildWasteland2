@@ -8,15 +8,15 @@ using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
-    // Her body: a clone of Flexa's "Anim" object (Animator with the humanoid avatar enemy_1_IdleAvatar + the 22 mixamorig bones +
-    // the skinned mesh), stripped of props/colliders/FSMs, with our mesh and texture. Animated by a PlayableGraph with the Mixamo clips of
-    // the animation bundle (Body.Loco.cs), plus procedural layers in LateUpdate (aim pitch, crouch, prone, hand rig). In a car the
-    // Animator is off and the pose is copied from the car's seated driver (CarSeat).
+    // Player model/view adapter: a clone of Flexa's "Anim" object (Animator with the humanoid avatar enemy_1_IdleAvatar + the 22 mixamorig bones +
+    // the skinned mesh), stripped of props/colliders/FSMs, with our mesh and texture. ModAPI.Character + CharPlan drive the same
+    // animation pipeline as NPCs; PlayerInputAdapter supplies native input and action timing. In a car the
+    // same graph supplies action arms over the car's seated driver pose (CarSeat).
     // (B05, README 7 / A2-3) the non-Mixamo fallback (the game's raider clips + procedural walk, mirrored body, the 12 [Animation (fallback
     // clips)] entries) is gone: without a complete bundle no body is built and the game's own first-person view stays.
     internal sealed partial class Body
     {
-        public GameObject Root;          // mirror lives here (scale x -1)
+        public GameObject Root;          // player view/model transform; the driver owns animation
         private Transform _anim;         // clone of Flexa/Anim
         private Ragdoll _ragdoll;
         private Equipment _equipment;
@@ -47,7 +47,8 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (_ragdoll == null)
             {
-                if (_graph.IsValid()) _graph.Stop();
+                EndCrawl(); EndTraversal();
+                _driver.Suspended = true;
                 _animator.enabled = false;
                 ShowProp(false);
                 SetMesh(false, false);
@@ -82,123 +83,33 @@ namespace WildWasteland.Modules.PlayerBody
         public readonly Dictionary<string, Transform> Bones = new Dictionary<string, Transform>();
         private readonly Dictionary<string, Quaternion> _bindLocal = new Dictionary<string, Quaternion>();
 
-        private PlayableGraph _graph;
-        private AnimationLayerMixerPlayable _layers;
-        private AnimationClipPlayable _upper;
-        // upper layer = a 2-input mixer: _upper (the current clip, input 0) and _upperOld (the clip it replaced, input 1) cross-faded.
-        // The new clip always starts at once at its own time and speed - only the old pose fades out under it - so nothing gets longer.
-        private AnimationMixerPlayable _upperMix;
-        private AnimationClipPlayable _upperOld;
-        private float _upperX = 1f, _upperW, _upperWTarget;
-        private const float UpperIn = 0.08f, UpperOut = 0.15f, UpperCross = 0.12f;
-        // the layer mixer's inputs: 0 the base, then the upper-body layer (strikes / throws, masked) and the whole-body actions (kick, jumps,
-        // turns). (2.1.9) In Mixamo mode the upper layer is ABOVE the actions (index 2): a grenade thrown or a punch mid-jump shows on top
-        private int _lUpper = 1, _lAction = 2;
+        private ModAPI.Character _driver;
+        /// <summary>The shared humanoid driver; the player wrapper only owns model/view fitting.</summary>
+        internal ModAPI.Character Driver { get { return _driver; } }
+        private PlayerInputAdapter _input;
+        /// <summary>The common driver owns the graph; traversal/crawl only attach temporary overlays.</summary>
+        private PlayableGraph _graph { get { return _driver != null ? _driver.Graph : default(PlayableGraph); } }
+        private AnimationLayerMixerPlayable _layers { get { return _driver.Layers; } }
+        private bool _mixamo { get { return _driver != null && _driver.Valid; } }
+        /// <summary>Animation state of the shared driver used by player view adapters.</summary>
+        private CharPlan Plan { get { return _driver.Plan; } }
+        private string _upperClip { get { return Plan.UpperClip; } }
+        private float _upperW { get { return Plan.UpperW; } }
+        private float _actionW { get { return Plan.ActionW; } }
+        private string _actionClip { get { return Plan.ActionClip; } }
+        private float _throwUntil { get { return Plan.ThrowUntil; } }
+        private float _throwFrom { get { return Plan.ThrowFrom; } }
+        private string _throwClip { get { return Plan.ThrowClip; } }
+        private bool _throwAim { get { return _input.ThrowAim; } }
+        private bool _reloading { get { return _driver.Reloading || Plan.Preview != null && Plan.Preview.EndsWith("Reload", StringComparison.Ordinal); } }
+        private float _speedSmooth { get { return Plan.SpeedSmooth; } }
+        private bool _aimCrouched { get { return Plan.AimCrouched; } }
+        private bool _aimingNow { get { return _driver.Aiming; } }
+        private bool _shootingNow { get { return _driver.Firing; } }
+        private Dictionary<string,float> _poseWn { get { return Plan.PoseW; } }
+        private const float ThrowRelease = CharPlan.ThrowRelease;
 
-        /// <summary>Creates the upper-body layer: a two-input mixer (current clip, fading old clip) connected to the layer mixer at weight 0.</summary>
-        private void MakeUpper(AnimationClip c)
-        {
-            _upperMix = AnimationMixerPlayable.Create(_graph, 2);
-            _upper = AnimationClipPlayable.Create(_graph, c);
-            _graph.Connect(_upper, 0, _upperMix, 0);
-            _upperMix.SetInputWeight(0, 1f); _upperMix.SetInputWeight(1, 0f);
-            _graph.Connect(_upperMix, 0, _layers, _lUpper);
-            _layers.SetInputWeight(_lUpper, 0f);
-            _upperW = _upperWTarget = 0f; _upperX = 1f;
-        }
-
-        /// <summary>every frame: the upper layer's weight eases toward what SetUpper asked (fast in, a little slower out), the cross-fade advances</summary>
-        private void TickUpper(float dt)
-        {
-            if (!_layers.IsValid() || !_upperMix.IsValid()) return;
-            if (_snap) _upperW = _upperWTarget;
-            else _upperW = Mathf.MoveTowards(_upperW, _upperWTarget, dt / (_upperWTarget > _upperW ? UpperIn : UpperOut));
-            _layers.SetInputWeight(_lUpper, _upperW);
-            if (_upperOld.IsValid())
-            {
-                _upperX = _snap ? 1f : Mathf.MoveTowards(_upperX, 1f, dt / UpperCross);
-                _upperMix.SetInputWeight(0, _upperX); _upperMix.SetInputWeight(1, 1f - _upperX);
-                if (_upperX >= 1f) { _graph.Disconnect(_upperMix, 1); _upperOld.Destroy(); }
-            }
-            else { _upperMix.SetInputWeight(0, 1f); _upperMix.SetInputWeight(1, 0f); }
-        }
-        private string _upperClip = "";
-        private AnimationClip _fallback;
-        private bool _mixamo;                       // the Mixamo graph is built (always true for a built body since B05; read by the seat part)
-        private float _reloadUntil, _throwUntil, _reloadStart;
-        private bool _reloading;
-        private string _kickState = "", _jumpState = "";
-        private AnimationClipPlayable _action;
-        private string _actionClip = "";
-        private float _actionUntil, _actionW;
-
-        private float _jumpAt = -10f;
-        /// <summary>Starts a whole-body action clip (kick, jump, turn) from a share of its length.</summary>
-        private void StartAction(string name, float startFraction = 0f)
-        {
-            var c = Anims.Get(name);
-            if (c == null || !_action.IsValid()) return;
-            if (_actionClip != name)
-            {
-                _actionClip = name;
-                _graph.Disconnect(_layers, _lAction);
-                _action.Destroy();
-                _action = AnimationClipPlayable.Create(_graph, c);
-                _action.SetApplyFootIK(false);   // jumps / turns / kick: no foot IK (2.0.2)
-                _graph.Connect(_action, 0, _layers, _lAction);
-            }
-            float t0 = Mathf.Clamp01(startFraction) * c.length;   // jumps: skip the clip's crouch before take-off, the game pushes her up at once
-            _action.SetTime(t0); _action.SetSpeed(1);
-            _actionUntil = Time.time + c.length - t0;
-        }
-
-        /// <summary>Eases the action layer's weight in while the action runs and out after it.</summary>
-        private void UpdateAction(float dt)
-        {
-            if (!_action.IsValid()) return;
-            bool on = Time.time < _actionUntil - 0.15f;
-            _actionW = Mathf.MoveTowards(_actionW, on ? 1f : 0f, dt * (on ? 10f : _actionFade));
-            if (!on && _actionW <= 0f) _actionFade = 6f;
-            _layers.SetInputWeight(_lAction, _actionW);
-        }
-        private string _grenadeState = "";
-
-        // a throw: the quick grenade with the LEFT hand ("Throw", mirrored in the bundle - the right one holds the gun), a drawn throwing weapon
-        // (blast lance) with the RIGHT hand ("ThrowRight" = the same clip unmirrored, else "Throw"). The blast lance's [Attack] FSM goes
-        // on -> fire (0.4 s) -> throw (the lance leaves the hand), so its clip starts ThrowLead s in: her release (0.85 s into the clip) on the game's
-        private string _throwClip = "Throw";
-        private float _throwFrom;
-        private bool _throwFresh;
-        private const float ThrowRelease = 0.85f, ThrowLead = 0.4f;
-        private float _throwAt = -10f;
-        private bool _throwAim;          // the quick grenade: aimed at where the game's grenade flies (ThrowAim)
-        /// <summary>Starts a throw (left-hand quick grenade or right-hand weapon), at most one per 1.2 s; timed = the lance's FSM already started.</summary>
-        private void StartThrow(bool rightHand = false, bool timed = false)
-        {
-            if (Time.time - _throwAt < 1.2f) return;   // one throw at a time (the lance's FSM can pass "on" again around its throw)
-            _throwAt = Time.time;
-            _throwAim = !rightHand; _aimMeasured = false;
-            string n = rightHand && Anims.Get("ThrowRight") != null ? "ThrowRight" : "Throw";
-            var c = Anims.Get(n);
-            if (c == null) return;
-            _throwClip = n;
-            _throwFrom = timed ? Mathf.Clamp(ThrowRelease - ThrowLead, 0f, c.length * 0.5f) : 0f;
-            _throwUntil = Time.time + Mathf.Clamp(c.length - _throwFrom, 0.5f, 2f);
-            _upperClip = ""; _throwFresh = true;   // restart the clip
-            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Throw: " + n + " from " + _throwFrom.ToString("0.00") + " s");
-        }
-        /// <summary>the throw runs on its own clock (started at _throwAt from _throwFrom): a weapon change during it (the lance leaving her hand, the grenade holstering the drawn weapon) resets the upper clip, which must not start the throw over</summary>
-        private void PlayThrow()
-        {
-            SetUpper(_throwClip, 1f, 1f);
-            if (!_upper.IsValid()) return;
-            double want = _throwFrom + (Time.time - _throwAt);
-            if (_throwFresh || System.Math.Abs(_upper.GetTime() - want) > 0.05) _upper.SetTime(want);
-            _throwFresh = false;
-        }
-        private readonly Dictionary<string, AnimationClip> _clips = new Dictionary<string, AnimationClip>();
-
-        private float _speedSmooth, _crouch, _prone, _runW;
+        private float _crouch, _prone;
         private float _legThigh, _legShin;
         private bool _inCar, _snap;
         private View _lastView = View.FirstPerson;
@@ -325,8 +236,9 @@ namespace WildWasteland.Modules.PlayerBody
             b._animator.applyRootMotion = false;
             b._rootMotion = clone.AddComponent<RootMotionTap>();
             b.Root.SetActive(true);
-            b.BuildGraph(flexa);
-            b.BuildUpperRig(clone);
+            b._driver = ModAPI.AttachPlayer(b._animator);
+            if (b._driver == null) { UnityEngine.Object.Destroy(b.Root); return null; }
+            b._input = new PlayerInputAdapter(b._driver);
             b.MeasureLegs();
             if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Body built from Flexa's skeleton (" + b.Bones.Count + " bones)");
             return b;
@@ -341,94 +253,6 @@ namespace WildWasteland.Modules.PlayerBody
                 if (go != null && go.name == "Flexa" && !go.scene.IsValid() && go.transform.parent == null && go.GetComponent<Rigidbody>() != null)
                 { _flexa = go; break; }
             return _flexa;
-        }
-
-        /// <summary>A humanoid clip by name: the bundle first, then the game's clips (cached per name).</summary>
-        private AnimationClip Clip(string name)
-        {
-            AnimationClip c;
-            if (string.IsNullOrEmpty(name)) return null;
-            if (_clips.TryGetValue(name, out c)) return c;
-            c = Anims.Get(name);
-            if (c != null) { _clips[name] = c; return c; }
-            foreach (var a in Resources.FindObjectsOfTypeAll<AnimationClip>())
-                if (a != null && a.name == name && a.humanMotion) { c = a; break; }
-            if (c == null)
-                foreach (var a in Resources.FindObjectsOfTypeAll<AnimationClip>())
-                    if (a != null && a.name == name) { c = a; break; }
-            if (c == null) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Animation clip " + name + " not found"); }
-            _clips[name] = c;
-            return c;
-        }
-
-        /// <summary>Creates the body's PlayableGraph and builds the Mixamo graph on it.</summary>
-        private void BuildGraph(GameObject flexa)
-        {
-            _graph = PlayableGraph.Create("Apocaplayer");
-            _graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
-            var output = AnimationPlayableOutput.Create(_graph, "body", _animator);
-            _mixamo = true;
-            BuildMixamo(output);
-        }
-
-
-        /// <summary>The game's raider swing, used when the bundle has no Melee clip (ex [Animation (fallback clips)] MeleeClip default).</summary>
-        private const string RaiderMeleeClip = "enemy_1_attack";
-
-        /// <summary>Plays the current melee swing or punch/strike on the upper layer at the strike's timing.</summary>
-        private void PlayStrike(float dt)
-        {
-            if (_meleeStart > 0f)
-            {
-                string mc = Anims.Get("Melee") != null ? "Melee" : RaiderMeleeClip;
-                if (UpdateMelee(mc)) { SetUpper(mc, 1f, _meleeSpeed); return; }
-                _strikeEnd = Time.time;
-            }
-            if (_strike == null) { SetUpper("", 0f, 0f); return; }
-            float el = Time.time - _strikeAt, t;
-            if (_striking && el >= _strikeCycle) { _striking = false; _strikeEnd = Time.time; }
-            if (_striking)
-            {
-                float w = Mathf.Min(CharacterSettings.StrikeWindup.Value, _strikeCycle * 0.4f);
-                t = el < w ? Mathf.Lerp(_strike.From, _strike.Hit, el / Mathf.Max(0.001f, w))
-                           : Mathf.Lerp(_strike.Hit, _strike.To, (el - w) / Mathf.Max(0.01f, _strikeCycle - w));
-            }
-            else
-            {
-                t = _strike.To;   // back on guard: fade out
-                _strikeW = Mathf.MoveTowards(_strikeW, 0f, dt * 8f);
-            }
-            if (_strikeW <= 0f) { SetUpper("", 0f, 0f); return; }
-            SetUpper(_strike.Clip, _strikeW, 0f);
-            _upper.SetTime(t);
-        }
-
-        /// <summary>Sets the upper layer's clip, target weight and speed (a new clip starts at once, the old one cross-fades out).</summary>
-        private void SetUpper(string clipName, float weight, float speed)
-        {
-            if (string.IsNullOrEmpty(clipName)) { _upperWTarget = 0f; return; }   // keep the last clip connected, fading out
-            if (clipName != _upperClip)
-            {
-                _upperClip = clipName;
-                // the clip being shown fades out under the new one (only when it is visible at all)
-                if (_upperOld.IsValid()) { _graph.Disconnect(_upperMix, 1); _upperOld.Destroy(); }
-                _graph.Disconnect(_upperMix, 0);
-                if (_upper.IsValid() && _upperW > 0.01f && !_snap)
-                {
-                    _upperOld = _upper; _upperOld.SetSpeed(0);   // frozen where it was
-                    _graph.Connect(_upperOld, 0, _upperMix, 1);
-                    _upperX = 0f;
-                }
-                else { if (_upper.IsValid()) _upper.Destroy(); _upperX = 1f; }
-                var c = Clip(clipName) ?? _fallback;
-                _upper = AnimationClipPlayable.Create(_graph, c);
-                _upper.SetApplyFootIK(false);
-                _graph.Connect(_upper, 0, _upperMix, 0);
-                _upper.SetTime(0);
-                _upperMix.SetInputWeight(0, _upperX); _upperMix.SetInputWeight(1, 1f - _upperX);
-            }
-            _upperWTarget = weight;
-            if (_upper.IsValid()) _upper.SetSpeed(speed);
         }
 
         /// <summary>Measures thigh and shin length for the crouch drop (defaults when the rig is odd).</summary>
@@ -447,13 +271,13 @@ namespace WildWasteland.Modules.PlayerBody
             EndCrawl();
             EndTraversal();
             if (_ragdoll != null) { _ragdoll.Destroy(); _ragdoll = null; }
-            try { if (_graph.IsValid()) _graph.Destroy(); } catch (Exception) { }
-            try { if (_rigGraph.IsValid()) _rigGraph.Destroy(); } catch (Exception) { }
+            if (_driver != null) { _driver.Dispose(); _driver = null; }
+            _input = null;
             if (Root != null) UnityEngine.Object.Destroy(Root);
             Root = null;
         }
 
-        public bool Alive { get { return Root != null && _anim != null; } }
+        public bool Alive { get { return Root != null && _anim != null && _driver != null && _driver.Valid; } }
 
         // ---------------------------------------------------------------- per frame
         /// <summary>Shows/hides the body mesh and its shadow-only copy (and the equipment and inside meshes with them).</summary>
@@ -567,7 +391,6 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (LateTraversal(view)) return;
             if (LateCrawl(view, dt)) return;
-            TickUpper(dt);
             if (_inCar) StartPoseFade(0.3f, false);   // out of the driver's seat: the seated pose eases into standing
             LateFootInner(view, dt);
             ApplyPoseFade(dt, null); CapturePose(null);
@@ -604,7 +427,7 @@ namespace WildWasteland.Modules.PlayerBody
             _anim.localPosition = Vector3.zero; _anim.localRotation = Quaternion.identity;
 
             if (view != _lastView) { _lastView = view; _snap = true; }
-            Sway(view, dt); LateMixamo(view, dt, yaw, camPitch); _snap = false; FitFirstPerson(view, yaw, camPitch);
+            Sway(view, dt); LateCharacter(view, dt, yaw, camPitch, crouch); _snap = false; FitFirstPerson(view, yaw, camPitch);
         }
 
         /// <summary>first person: after the pose is final, slide her (horizontally) so her head is right under the camera, a little behind it - looking down you see her whole body up to the collar, wherever the animation puts her head (crouch lean, walk bob)</summary>
@@ -645,9 +468,6 @@ namespace WildWasteland.Modules.PlayerBody
             if (_smr.shadowCastingMode != mode) _smr.shadowCastingMode = mode;
         }
 
-        /// <summary>A new upper-body avatar mask (body, head, arms, fingers, hand IK).</summary>
-        private static AvatarMask UpperMask() { return CharacterRig.UpperMask(); }   // (B05) the shared, cached mask (was a new mask per body)
-
         /// <summary>standing still in third person her whole body follows the clip's root motion (the bundle puts a clip's sideways/forward motion in the root): the Idle's sway moves her hips and body while the feet stay planted. Moving / first person: back to the middle at once. A slow pull to the middle keeps a clip whose loop doesn't close from drifting away.</summary>
         private void Sway(View view, float dt)
         {
@@ -663,42 +483,6 @@ namespace WildWasteland.Modules.PlayerBody
             else _sway = Vector3.MoveTowards(_sway, Vector3.zero, dt * 0.6f);
             _sway = Vector3.ClampMagnitude(_sway, 0.25f);
             _anim.localPosition = _sway;
-        }
-
-        // Rifles: the raider prop's pose was made for Flexa's left-handed raider clip; in Mixamo clips the hands hold it differently.
-        // Point the barrel from her right hand toward her left (support) hand, turning about the right hand, so it lies along both hands.
-        // every frame: the prop's hand pose, then (rifles, bundle clips) the barrel along both hands, then the player's own offset for this weapon
-        // from the [Gun position] settings (her right/up/forward in cm, pitch/yaw/roll in degrees, about the hand holding it)
-        // every frame: the prop's grip in her right hand (raider pose, optionally turned toward the left hand) + the player's grip offset for
-        // this weapon in the HAND's axes - so it stays glued to the hand in every animation. WeaponAdjustment edits that offset with the numpad
-        // (moves/turns along her body axes, converted to the hand's axes).
-        // how much she is in each grip animation (GunPose.Poses): reload, else the locomotion slots split into firing / not firing
-        // every frame: the weapon model's pose in her right hand = the absolute poses of the animations she is in (GunPose, weapon-poses.txt),
-        // blended by the animations' weights. Nothing changes them but the numpad (WeaponAdjustment). Grips from 0.5/0.6 (offsets on the raider
-        // grip, for rifles on the AutoGrip one) are converted once per weapon.
-        // reload, robustly: a reload is shown only
-        //  - while the game's first-person arms of this weapon play their reload (Animator state "reload" / a clip named *reload*), once this
-        //    weapon was seen doing that together with its Reload FSM (then that is all that counts), else
-        //  - while its Reload / ReloadAnimation FSM reloads - but only if it started reloading AFTER the weapon was drawn (a state left over
-        //    from before never counts) and for at most 8 s
-        //  never in the first 0.3 s after drawing.
-        private string _lastWeapon = "";
-        private float _weaponSince, _fsmReloadSince;
-        private bool _reloadFresh;                                     // the FSM was seen not reloading since the weapon was drawn
-        private readonly HashSet<string> _armsShowReload = new HashSet<string>();   // weapons whose FP arms are known to play a recognisable reload
-        /// <summary>True while the drawn gun reloads (its first-person arms' reload when they show one, else its FSM, stale states ignored).</summary>
-        private bool ReloadNow(string weapon)
-        {
-            if (Time.time - _weaponSince < 0.3f) return false;
-            bool known;
-            bool arms = Game.ArmsReloading(weapon, out known);
-            bool fsm = Game.IsReloading(weapon);
-            if (fsm && arms && _armsShowReload.Add(weapon)) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Reload: " + weapon + " - following its first-person arms' reload animation"); }
-            if (known && _armsShowReload.Contains(weapon)) return arms || (fsm && Game.ReloadsPerRound(weapon));   // (2.1.8) one round at a time: the arms rest between rounds
-            if (!fsm) { _reloadFresh = true; _fsmReloadSince = 0f; return false; }
-            if (!_reloadFresh) return false;                           // already "reloading" when drawn: stale
-            if (_fsmReloadSince <= 0f) _fsmReloadSince = Time.time;
-            return Time.time - _fsmReloadSince < 8f;
         }
 
         // the blast lance in a throw: the throwing hand turns it end over end (it pointed backwards). Its forward/backward sense (the barrel axis
@@ -729,7 +513,6 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (_prop == null || _propHand == null) return;
             var t = _prop.transform;
-            PoseWeights();
             Vector3 p; Quaternion r;
             GunPose.Blend(_propFor, _poseWn, _propPos, _propRot, out p, out r);
             t.localPosition = p; t.localRotation = r;

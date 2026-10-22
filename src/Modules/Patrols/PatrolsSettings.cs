@@ -102,7 +102,6 @@ namespace WildWasteland.Modules.Patrols
             BindValues(cfg);
             BindKeys(cfg);
             BindTools(cfg);
-            BindPoses(cfg);
             RaidersOverheat.SettingChanged += (s, e) => { if (Running) Crew.ApplyOverheatAll(); };
             SimpleConvoyBanditsAI.SettingChanged += (sender, args) => { if (Running) SimpleBanditBridge.RefreshAll(); };
             HookCoreSettings();
@@ -317,7 +316,5 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Binds the Turret pose entries (crouched gunner pose and the Warboy lance prop). Implemented in Presentation (_fromPatrols).</summary>
         /// <summary>Wires the Core QuietFsm switch to its entry (initial value + live changes). Implemented in Core (_fromPatrols).</summary>
         partial void HookCoreSettings();
-        /// <summary>Binds the seated-occupant pose entries (Pose, Pose.&lt;Human&gt;). Implemented in Presentation (_fromPatrols).</summary>
-        partial void BindPoses(ModuleConfig cfg);
     }
 }

@@ -22,9 +22,9 @@ B01–B09, B12, B15 and B17 have prior package passes. Current owned-package pro
 | B16 Tools/Developer | Completed and merged independent Tools/Developer editors and actual providers; strict references and comments pass; see reports/B16.md. |
 | B18 Quests | Completed owned source pass through `bbb525e`; follower seat consumer included, current-format records and typed consumers. |
 
-Latest combined Windows Release/Deploy=false build: **0 warnings, 0 errors**. Last partial check: **137 declarations, 0 missing**; obsolete editor partials were removed in B16. Last staged resource index: **407 entries, no duplicate logical names or paths, no missing files**. All six owned package reference/summary gates pass at their final checkpoints. Existing CS0618 suppression is temporary until Wave C; a clean build is not full architecture/runtime acceptance.
+Latest combined Windows Release/Deploy=false build: **0 warnings, 0 errors**. Last partial check: **55 declarations, 0 missing**; obsolete editor partials were removed in B16. Last staged resource index: **407 entries, no duplicate logical names or paths, no missing files**. All six owned package reference/summary gates pass at their final checkpoints. Existing CS0618 suppression is temporary until Wave C; a clean build is not full architecture/runtime acceptance.
 
-Shared integrations remain explicit: distributed character/crew/Hire/Takeover/TalkBridge private partials and Core/Compatibility legacy entry adapters, followed by Wave C namespace/forwarder/registry/packaging/docs/global gates. Passing owner-folder scans does not certify those reverse dependencies. Package state and reports contain exact handoffs.
+Shared step 1 source implementation is complete: player and humanoid NPCs now use the same ModAPI.Character + CharPlan driver, with native player input supplied by PlayerInputAdapter. See reports/shared-character-driver.md. Several seated/follower/quest/save/vehicle adapters are also complete (state/shared-integrations.md). Remaining: rider/animal/vehicle and other shared runtime separation, remaining Core/Compatibility adapters, then Wave C namespace/forwarder/registry/packaging/docs/global gates. Gameplay acceptance remains deferred.
 
 ## How to resume
 

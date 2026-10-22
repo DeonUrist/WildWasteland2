@@ -32,8 +32,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _graph.Connect(_layers, 0, _crawlMix, 0); _graph.Connect(_crawlClip, 0, _crawlMix, 1);
                 _crawlMix.SetInputWeight(0, 0); _crawlMix.SetInputWeight(1, 1); _crawlOutput.SetSourcePlayable(_crawlMix);
                 _crawlTime = _crawlBlend = 0; _crawlHips = hips.localPosition;
-                _reloading = false; _throwUntil = _pumpUntil = _reloadUntil = 0;
-                _jumpPhase = ""; _prone = 1; _crouch = 0; _inCar = false; _sway = Vector3.zero;
+                _input.Resume(); _prone = 1; _crouch = 0; _inCar = false; _sway = Vector3.zero;
                 UpdateProp(""); StartPoseFade(.18f, false);
             }
             Vector3 forward = PlayerState.PlayerCamera.forward; forward.y = 0;
@@ -62,7 +61,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!_graph.IsValid() || !_crawlMix.IsValid()) return;
             _crawlOutput.SetSourcePlayable(_layers); _graph.Disconnect(_crawlMix, 0); _graph.Disconnect(_crawlMix, 1);
             _crawlMix.Destroy(); if (_crawlClip.IsValid()) _crawlClip.Destroy();
-            _prone = 0; _snap = true; StartPoseFade(.18f, false);
+            _prone = 0; _input.Resume(); _snap = true; StartPoseFade(.18f, false);
         }
     }
 }

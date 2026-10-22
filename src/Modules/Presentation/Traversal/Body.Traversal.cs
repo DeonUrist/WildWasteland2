@@ -25,6 +25,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!_graph.IsValid() || _animator == null || !_animator.isHuman || _animator.avatar == null) return null;
             try { _poseHandler = new HumanPoseHandler(_animator.avatar, _anim); }
             catch (Exception e) { Log.Error(PresentationModule.WorldOwner, "Pose traversal: " + e.Message); _poseHandler = null; return null; }
+            _input.Resume();
             _sway = Vector3.zero;
             Traversal = new PlayerTraversal(this, facing) { Pose = pose };
             return Traversal;
@@ -46,6 +47,7 @@ namespace WildWasteland.Modules.PlayerBody
             _traversalMix.SetInputWeight(1, 0);
             _traversalOutput.SetSourcePlayable(_traversalMix);
             _traversalLength = clip.length;
+            _input.Resume();
             _sway = Vector3.zero;
             Traversal = new PlayerTraversal(this, facing);
             return Traversal;
@@ -155,7 +157,7 @@ namespace WildWasteland.Modules.PlayerBody
             bool pose = Traversal != null && Traversal.Pose != null;
             Traversal = null;
             if (_poseHandler != null) { _poseHandler.Dispose(); _poseHandler = null; }
-            if (pose) { _snap = true; StartPoseFade(.15f, false); return; }
+            if (pose) { _input.Resume(); _snap = true; StartPoseFade(.15f, false); return; }
             if (_graph.IsValid() && _traversalMix.IsValid())
             {
                 _traversalOutput.SetSourcePlayable(_layers);
@@ -163,7 +165,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _graph.Disconnect(_traversalMix, 1);
                 _traversalMix.Destroy();
                 if (_traversalClip.IsValid()) _traversalClip.Destroy();
-                _snap = true;
+                _input.Resume(); _snap = true;
                 StartPoseFade(.08f, false);
             }
         }

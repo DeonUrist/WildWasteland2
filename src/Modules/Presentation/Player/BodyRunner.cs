@@ -13,6 +13,8 @@ namespace WildWasteland.Modules.PlayerBody
         private static Body _body;
         private static Vector3 _jumpHeadPlayerPosition;
         private static bool _jumpHeadReady;
+        /// <summary>Current player driver, shared with NPC animation and owned by the body input adapter.</summary>
+        internal static ModAPI.Character PlayerDriver { get { return _body != null && _body.Alive ? _body.Driver : null; } }
         /// <summary>Head position of the body during the player's jump, shifted with the player's movement since the last pose (scene space).</summary>
         internal static bool TryPlayerJumpHead(GameObject player, out Vector3 position)
         {
@@ -125,7 +127,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (!PlayerState.Dead && _body != null && _body.IsRagdoll) DestroyBody();
                 if (_body == null || !_body.Alive)
                 {
-                    _body = null;
+                    if (_body != null) DestroyBody();
                     if (Time.unscaledTime < _nextBuild) return;
                     _nextBuild = Time.unscaledTime + 2f;
                     _body = Body.Create();

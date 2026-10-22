@@ -23,7 +23,7 @@ namespace WildWasteland.Modules.Presentation
         internal static void Attached(Animator a, CharacterKind kind)
         {
             if (!ModEvents.HasListeners<CharacterAttached>()) return;
-            var e = new CharacterAttached { Character = EntityOf(a), Kind = kind, ModelId = null };
+            var e = new CharacterAttached { Character = kind == CharacterKind.Player ? Entities.Player : EntityOf(a), Kind = kind, ModelId = null };
             ModEvents.Publish(ref e);
         }
 
@@ -31,7 +31,7 @@ namespace WildWasteland.Modules.Presentation
         internal static void Detached(Animator a, CharacterKind kind)
         {
             if (!ModEvents.HasListeners<CharacterDetached>()) return;
-            var e = new CharacterDetached { Character = EntityOf(a), Kind = kind };
+            var e = new CharacterDetached { Character = kind == CharacterKind.Player ? Entities.Player : EntityOf(a), Kind = kind };
             ModEvents.Publish(ref e);
         }
 
