@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.NPC
     internal static partial class Brain
     {
         // [Debug] NavTrace (NavDump + VerboseLog): a line per moving NPC per second and a picture of its trail when a chase ends / it rests
-        private static bool Tracing { get { return NpcModule.NavDump.Value && NpcModule.BrainLog.Value; } }
+        private static bool Tracing { get { return NpcModule.NavDump.Value && NpcModule.VerboseLog.Value; } }
         private static void TraceDump(Npc n, string why)
         {
             if (!Tracing || n.Trail.Count < 2 || Time.time < n.NextTraceDump) return;

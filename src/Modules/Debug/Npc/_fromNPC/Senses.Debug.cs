@@ -19,7 +19,7 @@ namespace WildWasteland.Modules.NPC
     {
         private static void Log(Agent a, string s)
         {
-            if (NpcModule.SensesLog.Value) NpcModule.Log.LogInfo("Senses: " + a.Owner.name + " " + s);
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Senses: " + a.Owner.name + " " + s);
         }
 
         internal static string Status() { return _agents.Count + " NPCs, " + _ghosts.Count + " ghosts"; }
@@ -27,7 +27,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly Color[] SrcColor = { Color.gray, new Color(0.4f, 0.6f, 1f), new Color(0.4f, 0.9f, 0.4f), new Color(1f, 0.9f, 0.2f), new Color(1f, 0.55f, 0.15f), new Color(1f, 0.3f, 0.9f), new Color(1f, 0.25f, 0.2f) };
         internal static void DrawDebug()
         {
-            if (!On || !NpcModule.ShowGhosts.Value) return;
+            if (!On || !NpcModule.ShowNav.Value) return;
             var cam = Core.GameRefs.MainCamera; if (cam == null) return;
             float now = Time.time, r2 = DebugOverlay.Range * DebugOverlay.Range; Vector3 cp = cam.transform.position;   // (WW perf) no label strings for what is not drawn
             foreach (var g in _ghosts)

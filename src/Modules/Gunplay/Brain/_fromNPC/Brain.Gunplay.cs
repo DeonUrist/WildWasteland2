@@ -89,7 +89,7 @@ namespace WildWasteland.Modules.NPC
             }
             n.ReloadRounds = rounds; n.ReloadShown = false;
             n.Reloading = true; n.ReloadUntil = now + len; n.ReloadLen = len; n.ReloadSoundsPlayed = 0;
-            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " reloads " + n.WeaponKey + " (" + n.Shots + " shots, " + len.ToString("0.0") + " s" + (rounds > 0 ? ", " + rounds + " rounds one at a time" : "") + ")");
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " reloads " + n.WeaponKey + " (" + n.Shots + " shots, " + len.ToString("0.0") + " s" + (rounds > 0 ? ", " + rounds + " rounds one at a time" : "") + ")");
             return true;
         }
     }

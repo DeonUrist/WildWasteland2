@@ -23,8 +23,8 @@ namespace WildWasteland.Modules.NPC
 
         internal static void Tick()
         {
-            PoiNav.LearnLadderSide();
-            PoiNav.WalkerTick();
+            // (A3) PoiNav.LearnLadderSide (dead after its return) deleted; PoiNav.WalkerTick runs in NPCAI's own "PoiNav.Walkers" job,
+            // registered right before this one (same frame, same order).
             bool want = PoiNav.Display != null && PoiNav.Display.Value && Plugin.EnableDebug.Value || EditData != null;
             if (want && PoiNav.Display.Value) PoiNav.Rescan();
             if (want == _hooked) return;

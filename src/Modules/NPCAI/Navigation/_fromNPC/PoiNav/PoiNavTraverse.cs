@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.NPC
             rb.useGravity = false; rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.Interpolate;
             NoShove(run, true);
             _runs[owner.GetInstanceID()] = run;
-            if (NpcModule.SensesLog.Value) Log.Info("[NPC] " + owner.name + " was stuck on its POI route: slides " + len.ToString("0.0") + " m along it");
+            if (NpcModule.VerboseLog.Value) Log.Info("[NPC] " + owner.name + " was stuck on its POI route: slides " + len.ToString("0.0") + " m along it");
             return true;
         }
         static bool StepGlide(Run r)
@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.NPC
                 run.Anim = Services.Animation.BeginNpcTraversal(anim, l.Kind == PoiLinkKind.Ladder ? "Ladder" : (run.To.y - run.From.y) > 1.25f ? "ClimbHigh" : "ClimbWaist");
             NoShove(run, true); NoAttack(run, true);
             _runs[owner.GetInstanceID()] = run;
-            if (NpcModule.SensesLog.Value) Log.Info("[NPC] " + owner.name + " takes the " + l.Kind + " of " + inst.Poi + " (" + (run.To.y - run.From.y).ToString("0.0") + " m)");
+            if (NpcModule.VerboseLog.Value) Log.Info("[NPC] " + owner.name + " takes the " + l.Kind + " of " + inst.Poi + " (" + (run.To.y - run.From.y).ToString("0.0") + " m)");
             return true;
         }
 

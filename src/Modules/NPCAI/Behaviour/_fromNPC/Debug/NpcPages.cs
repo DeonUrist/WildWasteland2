@@ -7,7 +7,7 @@ using WildWasteland.Core.UI;
 namespace WildWasteland.Modules.NPC
 {
     /// <summary>The module's F7 pages (group "NPC AI & navigation"): live values of every subsystem on top, its F7 settings below.</summary>
-    internal static class NpcPages
+    internal static partial class NpcPages
     {
         /// <summary>Live lines (optional) followed by a ConfigPage over tools.cfg sections.</summary>
         private sealed class LivePage : ToolPage
@@ -30,30 +30,32 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Invariant integer text.</summary>
         static string I(int v) { return v.ToString(CultureInfo.InvariantCulture); }
+        /// <summary>Invariant number text with a format.</summary>
         static string F(double v, string fmt) { return v.ToString(fmt, CultureInfo.InvariantCulture); }
+        /// <summary>Full section name "NPC / s".</summary>
         static string Sec(string s) { return "NPC / " + s; }
 
-        // per-job time of this module (avg ms per frame since the last reset, worst ms)
-        static void Jobs(ToolLayout l, IModule m)
-        {
-            double frames = Math.Max(1, Scheduler.Frames), total = 0, worst = 0;
-            foreach (var j in Scheduler.AllJobs())
-            {
-                if (j.Owner != m) continue;
-                total += j.TotalMs; if (j.MaxMs > worst) worst = j.MaxMs;
-                l.Value(j.Name, F(j.TotalMs / frames, "0.000") + " ms avg, last " + F(j.LastMs, "0.000") + ", worst " + F(j.MaxMs, "0.000"));
-            }
-            l.Value("All NPC jobs", F(total / frames, "0.000") + " ms/frame avg, worst job " + F(worst, "0.000") + " ms");
-        }
+        // ---- pages / page parts owned by other target modules (Wave A split); called where the moved lines were
+        /// <summary>Presentation: the "Female appearance & voices" config page.</summary>
+        static partial void AddPresentationPages(NpcModule m, List<ToolPage> pages);
+        /// <summary>Debug: the debug overlay toggles and the per-job frame times at the end of "AI overview".</summary>
+        static partial void DrawAiOverviewDebug(ToolLayout l, IModule m);
+        /// <summary>Debug: the "Debug" page (overlay switch, status lines, log button; its baked-data part is Tools').</summary>
+        static partial void AddDebugPages(NpcModule m, List<ToolPage> pages);
+        /// <summary>Tools: the "Pathfinding baked data" block of the Debug page (map highlight, reset / export of maps).</summary>
+        static partial void DrawToolsMapData(ToolLayout l);
+        /// <summary>Tools: the "POI pathfinding" page (editor / setup).</summary>
+        static partial void AddToolsPages(NpcModule m, List<ToolPage> pages);
 
+        /// <summary>The module's F7 pages in their old order (target parts are partial calls).</summary>
         internal static IEnumerable<ToolPage> Build(NpcModule m)
         {
             var pages = new List<ToolPage>();
             pages.Add(new ConfigPage(m, ToolGroups.Npc, "NPC population", m.Config.Main, Sec("Women of Wasteland"))
             { Intro = "Female Flexa/Sprokka population and crew conversion. Existing females retain their identity when new conversion is off. Disable standalone Women of Wasteland and restart to use these built-in controls." });
-            pages.Add(new ConfigPage(m, ToolGroups.Npc, "Female appearance & voices", m.Config.Main, Sec("Gungirl"), Sec("Shoota"))
-            { Intro = "Women of Wasteland models, textures, accessories and voice settings. Paths are relative to plugins/WildWasteland/NPC. Model, texture and voice changes require a restart." });
+            AddPresentationPages(m, pages);
 
             pages.Add(new LivePage(m, "AI overview", null, l =>
             {
@@ -67,12 +69,7 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Idle controllers", I(Idle.Count) + " (" + I(Idle.Walking) + " walking)");
                 l.Value("Animation framework", ApBody.Available ? "in use (gunmen use the player's clips)" : "not available (game clips)");
                 l.Value("Guns integration", Services.Guns != null ? (WeaponRanges.ProjectilesEnabled ? "Guns module, projectiles on" : "Guns module, vanilla hitscan") : "off (fallback ranges)");
-                l.Heading("Debug overlay");
-                l.Toggle(NpcModule.ShowNav, "Show navigation, ghosts and NPC states in the world");
-                l.Toggle(NpcModule.NavDump, "NavDump: map pictures (BMP) to config/WildWasteland/NPC/NavDump");
-                l.Toggle(NpcModule.VerboseLog, "Verbose NPC log");
-                l.Heading("Frame time");
-                Jobs(l, m);
+                DrawAiOverviewDebug(l, m);
             }));
 
             pages.Add(new LivePage(m, "Detection", "Sight cones per creature group, light, hearing ranges, ghosts, taunts, the player's shout, engines and explosions (F6 has SightCone / SightRange / DarkSightRange / FootstepRadius).", l =>
@@ -120,23 +117,8 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Storms", NpcModule.StormsEnabled.Value ? I(Storm.StormCount) + " sandstorm(s), " + I(Storm.FunnelCount) + " funnel(s)" : "off (F6 Storms)");
             }, Sec("Nests"), Sec("Webs")));
 
-            pages.Add(new LivePage(m, "Debug", "World overlay, map pictures and the NPC log. Hunting a problem: VerboseLog + NavDump, reproduce, then read BepInEx/LogOutput.log and the BMPs.", l =>
-            {
-                l.Toggle(NpcModule.ShowNav, "Show navigation, ghosts and NPC states in the world");
-                l.Value("Senses", Senses.Status());
-                l.Value("Brain", Brain.Status());
-                l.Value("Nav", Nav.Status());
-                if (l.Button("Write the NPC status to the log", true, false, 360))
-                    Core.Log.Always("[NPC] senses " + Senses.Status() + "; brain " + Brain.Status() + "; nav " + Nav.Status() + "; baking " + Nav.BakingText + "; nests " + Nests.Count + "; webs " + Webs.Count);
-                l.Space(); l.Heading("Pathfinding baked data");
-                l.Toggle(NpcModule.HighlightUnbakedMapPois, "Highlight unbaked POIs on map (light purple)");
-                if (l.Button("Reset custom pathfinding baked data", true, false, 430)) Nav.ResetCustomMaps();
-                if (l.Button("Export vanilla pathfinding maps", true, false, 430)) Nav.ExportVanillaMaps();
-                l.Text("Reset clears locally baked maps and rebuilds nearby custom maps. Shipped vanilla maps and vanilla exports are retained. Export collects release candidates from a clean vanilla setup.");
-                if (!string.IsNullOrEmpty(Nav.MapActionStatus)) l.Text(Nav.MapActionStatus);
-            }, Sec("Debug")) { IsTool = true });
-
-            pages.Add(new ActionPage(m, ToolGroups.Debug, "POI pathfinding", PoiNavEditor.DrawPage) { DebugOnly = true, IsTool = true });
+            AddDebugPages(m, pages);
+            AddToolsPages(m, pages);
             return pages;
         }
     }

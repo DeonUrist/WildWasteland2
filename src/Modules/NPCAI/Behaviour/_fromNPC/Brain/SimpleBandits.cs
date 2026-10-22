@@ -54,10 +54,10 @@ namespace WildWasteland.Modules.NPC
             {
                 a.SeenFor+=interval;a.UnseenSince=-1f;a.MemTrack=false;
                 if(fighting){FoughtFor(a,p,now,"fights him");return p;}
-                if(Remembers(a,p,now)){if(NpcModule.SensesLog.Value)Log(a,"sees the player it remembers fighting, fights (convoy crew on foot)");return p;}
+                if(Remembers(a,p,now)){if(NpcModule.VerboseLog.Value)Log(a,"sees the player it remembers fighting, fights (convoy crew on foot)");return p;}
                 if(a.SeenFor>=NoticeNeed(to.magnitude))
                 {
-                    if(NpcModule.SensesLog.Value)Log(a,"notices the player at "+to.magnitude.ToString("0")+" m (convoy crew on foot)");
+                    if(NpcModule.VerboseLog.Value)Log(a,"notices the player at "+to.magnitude.ToString("0")+" m (convoy crew on foot)");
                     FoughtFor(a,p,now,"engages him");return p;
                 }
                 return null;
@@ -66,15 +66,15 @@ namespace WildWasteland.Modules.NPC
             if(fighting&&a.UnseenSince<0f)a.UnseenSince=now;
             if(Remembers(a,p,now))
             {
-                if(fighting&&!a.MemTrack){a.MemTrack=true;if(NpcModule.SensesLog.Value){a.UnseenFor=now-a.UnseenSince;Log(a,SightLossText(a,p)+" - kept: remembers fighting the player ("+(a.FoughtUntil-now).ToString("0")+" s more), follows his real position (convoy crew on foot)");}}
-                else if(!fighting&&NpcModule.SensesLog.Value)Log(a,"remembers fighting the player, goes for him (convoy crew on foot)");
+                if(fighting&&!a.MemTrack){a.MemTrack=true;if(NpcModule.VerboseLog.Value){a.UnseenFor=now-a.UnseenSince;Log(a,SightLossText(a,p)+" - kept: remembers fighting the player ("+(a.FoughtUntil-now).ToString("0")+" s more), follows his real position (convoy crew on foot)");}}
+                else if(!fighting&&NpcModule.VerboseLog.Value)Log(a,"remembers fighting the player, goes for him (convoy crew on foot)");
                 return p;
             }
             if(!fighting)return null;
             float unseen=now-a.UnseenSince;
             if(unseen<Mathf.Max(0f,NpcModule.LoseSeconds.Value))return p;
             a.UnseenFor=unseen;
-            if(NpcModule.SensesLog.Value)Log(a,SightLossText(a,p)+(a.MemTrack?" - its memory of fighting the player is over":"")+" - convoy crew on foot: drops him, idle");
+            if(NpcModule.VerboseLog.Value)Log(a,SightLossText(a,p)+(a.MemTrack?" - its memory of fighting the player is over":"")+" - convoy crew on foot: drops him, idle");
             a.MemTrack=false;a.UnseenSince=-1f;a.SeenFor=0f;
             return null;
         }

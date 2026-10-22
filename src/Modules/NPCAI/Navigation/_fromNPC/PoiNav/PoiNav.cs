@@ -9,24 +9,19 @@ namespace WildWasteland.Modules.NPC
     // (WW) Runtime POI navigation: human NPCs inside a POI whose type has pre-recorded data (PoiNavData) route over its node graph with
     // A* (a few hundred nodes, no physics) and take its ladders, ledge climbs and drops as scripted traversals with the ladder / climb
     // animations (Core.Services.Animation.BeginNpcTraversal). Outside such POIs, or for creatures, Nav's grid maps and feelers carry on.
-    internal static class PoiNav
+    internal static partial class PoiNav
     {
-        internal static ConfigEntry<bool> Enabled, Setup, Display;
-        internal static ConfigEntry<float> BakeBudgetMs, LadderSpeed, BakeCell;
-        internal static ConfigEntry<UnityEngine.InputSystem.Key> EditorKey;
+        internal static ConfigEntry<bool> Enabled;
+        internal static ConfigEntry<float> LadderSpeed;
+
+        /// <summary>Tools part of Bind: the developer setup / display switches, the editor key and the baker tuning (PoiNav.Tools.cs).</summary>
+        static partial void BindTools(ModuleConfig cfg);
 
         internal static void Bind(ModuleConfig cfg)
         {
             Enabled = cfg.Main.Bind(cfg.Section("Pathfinding"), "PoiNavigation", true,
                 "Human NPCs use the pre-recorded navigation of POIs (every floor, roof and walkway; ladders and climbs) where it exists. Off = the grid maps only.");
-            Setup = cfg.Main.Bind(cfg.Section("POI pathfinding setup"), "Setup POI pathfinding", false,
-                "Developer: one copy of every native POI type is placed near the starting camp (not saved, removed when off) and new towns are not generated, so each POI can be baked and edited.");
-            Display = cfg.Main.Bind(cfg.Section("POI pathfinding setup"), "Display navigation data", false,
-                "Developer: draws the POI navigation near you: surfaces (one colour each), ladders (cyan), climbs (orange), drops (red), editor links brighter, switched-off links grey.");
-            EditorKey = cfg.Main.Bind(cfg.Section("Editors"), "POI navigation editor", UnityEngine.InputSystem.Key.None,
-                "Opens the POI navigation editor for the nearest POI (Debug + Developer mode).");
-            BakeBudgetMs = cfg.Tool("POI pathfinding setup", "BakeBudgetMs", 8f, "Milliseconds per frame the POI navigation baker may use.", new AcceptableValueRange<float>(1f, 50f));
-            BakeCell = cfg.Tool("POI pathfinding setup", "BakeCellSize", .33f, "Sample spacing of the POI navigation bake, m (smaller = narrower walkways found, slower bake).", new AcceptableValueRange<float>(.2f, .5f));
+            BindTools(cfg);
             LadderSpeed = cfg.Tool("POI pathfinding setup", "NpcLadderSpeed", 2f, "How fast NPCs climb ladders up, m/s (down they slide like the player).", new AcceptableValueRange<float>(.3f, 4f));
             if (Mathf.Approximately(LadderSpeed.Value, 1f)) LadderSpeed.Value = 2f;   // the old default: twice as fast now
         }
@@ -197,42 +192,6 @@ namespace WildWasteland.Modules.NPC
             }
             if (inst.BuildIndex >= inst.World.Length) { inst.Ready = true; inst.Queued = false; _builds.Dequeue(); }
             return _builds.Count > 0;
-        }
-
-        // (WW) ladders are learned from the developer: the side the player climbs a POI ladder on (developer mode) becomes the side
-        // its baked links use - flipped and saved as editor links, so rebakes keep it. Climb each ladder once the right way.
-        private static Collider _learned;
-        internal static void LearnLadderSide()
-        {
-            return;   // (off: the player can grab a ladder from either side, so his side taught wrong sides - leaning ladders now follow their lean, tall ones are hardcoded)
-#pragma warning disable CS0162
-            var lad = Services.PlayerLadder;
-            if (lad == _learned) return;
-            _learned = lad;
-            if (lad == null || Enabled == null || !Enabled.Value || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value || PoiNavEditor.Opened) return;
-            try
-            {
-                Rescan();
-                Vector3 side = Services.PlayerLadderSide; side.y = 0f; if (side.sqrMagnitude < 1e-4f) return;
-                Vector3 c = lad.bounds.center;
-                foreach (var inst in _inst.Values)
-                {
-                    if (inst.Root == null || !inst.Box.Contains(c)) continue;
-                    int flipped = 0, kept = 0;
-                    foreach (var l in inst.Data.Links)
-                    {
-                        if (l.Kind != PoiLinkKind.Ladder) continue;
-                        Vector3 b = inst.W(l.LineBottom); if (new Vector2(b.x - c.x, b.z - c.z).sqrMagnitude > 1.5f * 1.5f) continue;
-                        Vector3 linkSide = -(inst.Root.rotation * (Quaternion.Euler(0f, l.Yaw, 0f) * Vector3.forward)); linkSide.y = 0f;
-                        if (Vector3.Dot(linkSide, side) >= 0f) { kept++; continue; }
-                        l.Yaw = Mathf.Repeat(l.Yaw + 180f, 360f); l.Manual = true; flipped++;
-                    }
-                    if (flipped > 0) { PoiNavStore.Save(inst.Data); Log.Info("[NPC] POI navigation: learned the climbing side of " + inst.Poi + "'s ladder " + lad.name + " from the player: " + flipped + " link(s) flipped and saved"); }
-                    else if (kept > 0 && NpcModule.SensesLog.Value) Log.Info("[NPC] POI navigation: " + inst.Poi + "'s ladder " + lad.name + " is climbed on the player's side already (" + kept + " link(s))");
-                }
-            }
-            catch (Exception e) { Log.Warn("[NPC] POI navigation ladder side: " + e.Message); }
-#pragma warning restore CS0162
         }
 
         /// <summary>(WW) The body's real direction on a POI route, every physics step: straight at the route's current point (the turn

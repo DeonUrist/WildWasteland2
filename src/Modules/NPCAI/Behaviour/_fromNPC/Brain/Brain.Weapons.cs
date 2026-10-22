@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.NPC
             if (fresh)
             {
                 n.NextFrightCover = 0f; n.NextTick = 0f;
-                if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " retreat: " + why);
+                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " retreat: " + why);
             }
         }
 

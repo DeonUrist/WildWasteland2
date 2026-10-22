@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception e) { NpcModule.Warn("Reload sounds: " + e.Message); }
             list = found.ToArray();
             _clips[key] = list;
-            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Reload sounds for " + key + ": " + (list.Length == 0 ? "none found" : string.Join(", ", Array.ConvertAll(list, c => c.name))));
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Reload sounds for " + key + ": " + (list.Length == 0 ? "none found" : string.Join(", ", Array.ConvertAll(list, c => c.name))));
             return list;
         }
 

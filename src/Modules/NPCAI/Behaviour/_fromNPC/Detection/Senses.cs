@@ -248,7 +248,7 @@ namespace WildWasteland.Modules.NPC
                 // no searching on the way: only a ghost nobody has refreshed for GhostTimeout seconds (since it was given to this NPC or last
                 // moved/renewed) lets the NPC settle for searching where it got to
                 else if (now >= Mathf.Max(a.InvestigateSince, a.Ghost.Moved) + Mathf.Max(5f, NpcModule.GhostTimeout.Value))
-                { if (NpcModule.SensesLog.Value) Log(a, "ghost #" + a.Ghost.Id + " went stale (" + NpcModule.GhostTimeout.Value.ToString("0") + " s without news, " + to.magnitude.ToString("0") + " m left), searches from here"); Arrived(a, now); }
+                { if (NpcModule.VerboseLog.Value) Log(a, "ghost #" + a.Ghost.Id + " went stale (" + NpcModule.GhostTimeout.Value.ToString("0") + " s without news, " + to.magnitude.ToString("0") + " m left), searches from here"); Arrived(a, now); }
             }
             if ((a.State == State.Combat || a.State == State.Hide) && a.Target == null) { a.State = State.Idle; Log(a, "target gone"); }
             if (a.Flanking && a.State == State.Investigate && (a.FlankPos - a.T.position).sqrMagnitude <= 9f) EndFlank(a);   // at the flank point: on to the ghost itself
@@ -308,9 +308,9 @@ namespace WildWasteland.Modules.NPC
                     if (a.Target == _player && !a.CaveWeb && (a.Crew || SimpleBandits.Has(a.Owner)) && a.Hostile.Contains("Player") && Remembers(a, _player, now))   // patrol crew only: camp NPCs keep their ghost/search on sight loss
                     {
                         a.LastSeen = _player.transform.position;
-                        if (!a.MemTrack) { a.MemTrack = true; if (NpcModule.SensesLog.Value) Log(a, SightLossText(a, _player) + " - kept: remembers fighting the player (" + (a.FoughtUntil - now).ToString("0") + " s more), follows his real position"); }
+                        if (!a.MemTrack) { a.MemTrack = true; if (NpcModule.VerboseLog.Value) Log(a, SightLossText(a, _player) + " - kept: remembers fighting the player (" + (a.FoughtUntil - now).ToString("0") + " s more), follows his real position"); }
                     }
-                    else { if (a.MemTrack && NpcModule.SensesLog.Value) Log(a, "its memory of fighting the player is over"); a.MemTrack = false; LoseTarget(a, now); }
+                    else { if (a.MemTrack && NpcModule.VerboseLog.Value) Log(a, "its memory of fighting the player is over"); a.MemTrack = false; LoseTarget(a, now); }
                 }
             }
         }
@@ -601,7 +601,7 @@ namespace WildWasteland.Modules.NPC
             Release(a);
             a.State = State.Combat; a.Target = target; a.UnseenFor = 0f; a.UnseenSince = -1f; a.Pursuits = 0; a.Pursue = null; a.Heard.RemoveWhere(x => x < 0);
             a.NextShout = 0f;       // a fresh sighting: the next shout comes at once
-            if (NpcModule.SensesLog.Value) Log(a, "sees " + Name(target) + " at " + Vector3.Distance(a.T.position, target.transform.position).ToString("0") + " m");
+            if (NpcModule.VerboseLog.Value) Log(a, "sees " + Name(target) + " at " + Vector3.Distance(a.T.position, target.transform.position).ToString("0") + " m");
         }
 
         // (1.7.0) Nests: a web was touched - the nest's spiders know where the target is and go for it (they chase / search as usual from here)
@@ -618,7 +618,7 @@ namespace WildWasteland.Modules.NPC
         private static void LoseTarget(Agent a, float now)
         {
             var target = a.Target;
-            if (NpcModule.SensesLog.Value && target != null) Log(a, SightLossText(a, target));
+            if (NpcModule.VerboseLog.Value && target != null) Log(a, SightLossText(a, target));
             a.Target = null;
             var g = GetOrMake(Src.Vision, a.LastSeen, target, "last seen " + Name(target), 4f, 3f, now);
             g.Subject = target;
@@ -626,7 +626,7 @@ namespace WildWasteland.Modules.NPC
             Assign(a, g, Src.Vision, now);
             a.Pursue = target;
             a.Pursuits = a.PursuitsTotal = Mathf.Max(0, NpcModule.Guesses.Value);
-            if (NpcModule.SensesLog.Value) Log(a, "lost sight of " + Name(target) + ", goes where it was (ghost #" + g.Id + ", will " + (a.Tracker ? "track it" : "guess") + " " + a.Pursuits + " more time(s))");
+            if (NpcModule.VerboseLog.Value) Log(a, "lost sight of " + Name(target) + ", goes where it was (ghost #" + g.Id + ", will " + (a.Tracker ? "track it" : "guess") + " " + a.Pursuits + " more time(s))");
         }
 
         private static string SightLossText(Agent a, GameObject target)
@@ -648,7 +648,7 @@ namespace WildWasteland.Modules.NPC
             bool fresh = !ReferenceEquals(a.Fought, target) || now >= a.FoughtUntil;
             a.Fought = target;
             if (fresh || until > a.FoughtUntil) a.FoughtUntil = until;
-            if (fresh && NpcModule.SensesLog.Value) Log(a, "remembers " + Name(target) + " for " + (a.FoughtUntil - now).ToString("0") + " s (" + why + ")");
+            if (fresh && NpcModule.VerboseLog.Value) Log(a, "remembers " + Name(target) + " for " + (a.FoughtUntil - now).ToString("0") + " s (" + why + ")");
         }
         private static bool Remembers(Agent a, GameObject target, float now)
         {
@@ -726,10 +726,10 @@ namespace WildWasteland.Modules.NPC
                                   : GetOrMake(Src.Vision, spot, null, "guess " + k + " about " + Name(a.Pursue), 0f, 0f, now);   // its own guess, not shared, not merged
                 g.Subject = a.Pursue;
                 a.State = State.Idle;
-                if (Assign(a, g, Src.Vision, now)) { if (NpcModule.SensesLog.Value) Log(a, "reached ghost without seeing " + Name(a.Pursue) + ", " + (a.Tracker ? "follows to where it is now" : "guesses where it went (" + Vector3.Distance(spot, real).ToString("0") + " m off)") + " (ghost #" + g.Id + ", " + a.Pursuits + " left)"); return; }
+                if (Assign(a, g, Src.Vision, now)) { if (NpcModule.VerboseLog.Value) Log(a, "reached ghost without seeing " + Name(a.Pursue) + ", " + (a.Tracker ? "follows to where it is now" : "guesses where it went (" + Vector3.Distance(spot, real).ToString("0") + " m off)") + " (ghost #" + g.Id + ", " + a.Pursuits + " left)"); return; }
             }
             a.State = State.Search; a.SearchUntil = now + Mathf.Max(0f, NpcModule.SearchSeconds.Value);
-            if (NpcModule.SensesLog.Value) Log(a, "reached ghost #" + (a.Ghost != null ? a.Ghost.Id.ToString() : "?") + ", looks around for " + NpcModule.SearchSeconds.Value.ToString("0") + " s");
+            if (NpcModule.VerboseLog.Value) Log(a, "reached ghost #" + (a.Ghost != null ? a.Ghost.Id.ToString() : "?") + ", looks around for " + NpcModule.SearchSeconds.Value.ToString("0") + " s");
             if (a.Ghost != null) RetireIfSearched(a.Ghost);
         }
 
@@ -790,7 +790,7 @@ namespace WildWasteland.Modules.NPC
                 GiveUp(f, "told by " + Name(a.Owner) + " there's nothing at ghost #" + fg.Id);
                 told++;
             }
-            if (told > 0 && NpcModule.SensesLog.Value) NpcModule.Log.LogInfo("Senses: " + Name(a.Owner) + " found nothing at ghost #" + g.Id + ", tells " + told + " friend(s) to go back");
+            if (told > 0 && NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Senses: " + Name(a.Owner) + " found nothing at ghost #" + g.Id + ", tells " + told + " friend(s) to go back");
         }
 
         // Idle: the search round is walked (or there was none and it looked around) - the search ends now, not when SearchSeconds run out
@@ -805,7 +805,7 @@ namespace WildWasteland.Modules.NPC
             Release(a);
             a.State = State.Idle; a.Target = null; a.SeenFor = 0f;
             a.Heard.RemoveWhere(x => x < 0);    // the alert is over: a new shout from the same enemy is news again
-            if (NpcModule.SensesLog.Value) Log(a, "gives up (" + why + "), idle");
+            if (NpcModule.VerboseLog.Value) Log(a, "gives up (" + why + "), idle");
         }
 
         // An NPC takes a ghost of equal or higher rank than the one it has, or any ghost with newer news about the same subject (it went to
@@ -833,7 +833,7 @@ namespace WildWasteland.Modules.NPC
             a.State = State.Investigate; a.SeenFor = 0f;
             Budget(a, g);
             StartFlank(a, g);
-            if(SimpleBandits.Fighting(a.Owner)&&NpcModule.SensesLog.Value)Log(a,"investigates "+prio+" at ghost #"+g.Id);
+            if(SimpleBandits.Fighting(a.Owner)&&NpcModule.VerboseLog.Value)Log(a,"investigates "+prio+" at ghost #"+g.Id);
             return true;
         }
 
@@ -851,7 +851,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 p = OnGround(a.T.position + to * 0.6f + side * NpcModule.FlankWidth.Value, g.Pos.y);
             if (a.FlankObj == null) { a.FlankObj = new GameObject("NPCAI.Flank") { hideFlags = HideFlags.HideAndDontSave }; if (_ghostRoot != null) a.FlankObj.transform.SetParent(_ghostRoot, false); }
             a.FlankObj.transform.position = p; a.FlankPos = p; a.Flanking = true;
-            if (NpcModule.SensesLog.Value) Log(a, "flanks ghost #" + g.Id + " via a point " + NpcModule.FlankWidth.Value.ToString("0") + " m to the " + (side.x * to.z - side.z * to.x > 0f ? "right" : "left"));
+            if (NpcModule.VerboseLog.Value) Log(a, "flanks ghost #" + g.Id + " via a point " + NpcModule.FlankWidth.Value.ToString("0") + " m to the " + (side.x * to.z - side.z * to.x > 0f ? "right" : "left"));
         }
         private static void EndFlank(Agent a) { a.Flanking = false; }
 
@@ -905,7 +905,7 @@ namespace WildWasteland.Modules.NPC
             if (g.Retired) return;
             foreach (var h in g.Holders) if (h.State == State.Investigate) return;
             g.Retired = true;
-            if (NpcModule.SensesLog.Value) NpcModule.Log.LogInfo("Senses: ghost #" + g.Id + " searched by " + g.Holders.Count + ", retired");
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Senses: ghost #" + g.Id + " searched by " + g.Holders.Count + ", retired");
         }
 
         private static Ghost GetOrMake(Src src, Vector3 pos, GameObject source, string about, float mergeRadius, float mergeSeconds, float now)
@@ -927,7 +927,7 @@ namespace WildWasteland.Modules.NPC
             n.Obj.transform.SetParent(_ghostRoot, false);
             n.Obj.transform.position = pos;
             _ghosts.Add(n);
-            if (NpcModule.SensesLog.Value && (src == Src.Vision || src == Src.Hit)) NpcModule.Log.LogInfo("Senses: ghost #" + n.Id + " " + src + " (" + n.About + ") at " + pos);
+            if (NpcModule.VerboseLog.Value && (src == Src.Vision || src == Src.Hit)) NpcModule.Log.LogInfo("Senses: ghost #" + n.Id + " " + src + " (" + n.About + ") at " + pos);
             return n;
         }
 
@@ -1006,7 +1006,7 @@ namespace WildWasteland.Modules.NPC
                 if (Assign(a, g, src, now)) { told++; if (told1 != null) told1(a); }
             }
             if (shared != null && shared.Holders.Count == 0) { int i = _ghosts.IndexOf(shared); if (i >= 0) KillGhost(i); }
-            if (NpcModule.SensesLog.Value && told > 0) NpcModule.Log.LogInfo("Senses: " + src + " (" + about + ") within " + radius.ToString("0") + " m alerts " + told + (shared != null ? " -> ghost #" + shared.Id : ""));
+            if (NpcModule.VerboseLog.Value && told > 0) NpcModule.Log.LogInfo("Senses: " + src + " (" + about + ") within " + radius.ToString("0") + " m alerts " + told + (shared != null ? " -> ghost #" + shared.Id : ""));
         }
 
         private static bool IsPlayer(GameObject go)
@@ -1043,7 +1043,7 @@ namespace WildWasteland.Modules.NPC
             if (!On) return;
             float radius = player ? PlayerShotRange(kind) : NpcShotRange(shooter, kind);
             if (player) HeardPlayerShot(pos, radius, Time.time);
-            string about = NpcModule.SensesLog.Value || NpcModule.ShowGhosts.Value ? (player ? "player" : Name(shooter)) + " " + kind.ToString().ToLowerInvariant() : "gunshot";
+            string about = NpcModule.VerboseLog.Value || NpcModule.ShowNav.Value ? (player ? "player" : Name(shooter)) + " " + kind.ToString().ToLowerInvariant() : "gunshot";
             // a shot is heard, not seen: the spot is 2-4 m off (merged per shooter within 1 s, so a burst makes one ghost)
             Vector2 off = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(2f, 4f);
             Noise(shooter, OnGround(pos + new Vector3(off.x, 0f, off.y), pos.y), radius, Src.Gunshot, about, null, null, shooter);
@@ -1143,7 +1143,7 @@ namespace WildWasteland.Modules.NPC
             var g = GetOrMake(Src.Hit, from, attacker.transform.root.gameObject, "hit by " + Name(attacker), 0f, 1f, now);
             g.Subject = attacker.transform.root.gameObject;
             bool had = a.Ghost == g;
-            if (Assign(a, g, Src.Hit, now)) { if (!had) if (NpcModule.SensesLog.Value) Log(a, "is hit by " + Name(attacker) + ", goes for ghost #" + g.Id); }   // once per shot, not per pellet
+            if (Assign(a, g, Src.Hit, now)) { if (!had) if (NpcModule.VerboseLog.Value) Log(a, "is hit by " + Name(attacker) + ", goes for ghost #" + g.Id); }   // once per shot, not per pellet
             else if (g.Holders.Count == 0) { int i = _ghosts.IndexOf(g); if (i >= 0) KillGhost(i); }
         }
 
@@ -1255,7 +1255,7 @@ namespace WildWasteland.Modules.NPC
                 {
                     _thrown = _grabItemVar.Value.GetComponent<Rigidbody>();
                     _thrownSince = now; _thrownRest = 0f;
-                    if (NpcModule.SensesLog.Value) NpcModule.Log.LogInfo("Senses: " + Name(_grabItemVar.Value) + " thrown");
+                    if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Senses: " + Name(_grabItemVar.Value) + " thrown");
                 }
             }
             if (_thrown == null) return;
@@ -1376,7 +1376,7 @@ namespace WildWasteland.Modules.NPC
             else if (a.State == State.Hide)
             {
                 a.State = a.Target != null ? State.Combat : State.Idle;
-                if (NpcModule.SensesLog.Value) Log(a, "leaves cover" + (a.UnseenFor > 0.5f ? " (target not in sight for " + a.UnseenFor.ToString("0") + " s)" : ""));
+                if (NpcModule.VerboseLog.Value) Log(a, "leaves cover" + (a.UnseenFor > 0.5f ? " (target not in sight for " + a.UnseenFor.ToString("0") + " s)" : ""));
             }
         }
 
@@ -1442,12 +1442,12 @@ namespace WildWasteland.Modules.NPC
             if (!_handover.TryGetValue(id, out h)) return;
             _handover.Remove(id);
             if (h.Key == null || Time.time - h.Value > 30f) return;
-            if (Visible(a, Eye(a), h.Key, h.Key == _player, InStormOf(h.Key))) { Engage(a, h.Key); if (NpcModule.SensesLog.Value) Log(a, "bailed out and sees " + Name(h.Key)); return; }
+            if (Visible(a, Eye(a), h.Key, h.Key == _player, InStormOf(h.Key))) { Engage(a, h.Key); if (NpcModule.VerboseLog.Value) Log(a, "bailed out and sees " + Name(h.Key)); return; }
             float now = Time.time;
             a.LastSeen = h.Key.transform.position;
             var g = GetOrMake(Src.Vision, a.LastSeen, h.Key, "crew knew where " + Name(h.Key) + " was", 6f, 2f, now);
             g.Subject = h.Key;
-            if (Assign(a, g, Src.Vision, now)) if (NpcModule.SensesLog.Value) Log(a, "bailed out, goes where its crew last had " + Name(h.Key) + " (ghost #" + g.Id + ")");
+            if (Assign(a, g, Src.Vision, now)) if (NpcModule.VerboseLog.Value) Log(a, "bailed out, goes where its crew last had " + Name(h.Key) + " (ghost #" + g.Id + ")");
         }
 
         // ---------- registry ----------
@@ -1533,7 +1533,7 @@ namespace WildWasteland.Modules.NPC
             Nests.Register(a);
             Ambush.Register(a);
             DogBite.Register(a);
-            if (NpcModule.SensesLog.Value) NpcModule.Log.LogInfo("Senses: " + owner.name + " (" + a.Tag + (a.Human ? ", human" : "") + ") hunts " + string.Join("/", new List<string>(a.Hostile).ToArray()) + (a.Head != null ? ", eyes at the head" : ""));
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Senses: " + owner.name + " (" + a.Tag + (a.Human ? ", human" : "") + ") hunts " + string.Join("/", new List<string>(a.Hostile).ToArray()) + (a.Head != null ? ", eyes at the head" : ""));
             return a;
         }
 

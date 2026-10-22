@@ -60,7 +60,7 @@ namespace WildWasteland.Modules.NPC
             s.RefY = rootY + t.RefOffset; s.Walkable = t.Walkable; s.Next = n;
             s.LoadedMap = true; s.LoadedVanilla = t.Vanilla; s.MapSource = t.Source; s.LoadedTemplate = true; s.Phase = 2;
             RememberCapturedMap(s);
-            if (NpcModule.NavLog.Value) NpcModule.Log.LogInfo("Nav: cloned map " + s.Name + " from memory (" + (t.Vanilla ? "vanilla" : "custom cache") + "); " + t.Source);
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Nav: cloned map " + s.Name + " from memory (" + (t.Vanilla ? "vanilla" : "custom cache") + "); " + t.Source);
             return true;
         }
         internal static void ForgetTemplates(bool vanillaToo)

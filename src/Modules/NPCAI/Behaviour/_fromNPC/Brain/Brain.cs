@@ -376,7 +376,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (kind == 3) { if (n.Mode != Mode.Search) { n.NextLookTurn = 0f; SetMode(n, Mode.Search, "looks around"); } return; }
             n.ToGhost = kind == 2;
-            if (n.Mode == Mode.Off || n.Mode == Mode.Search || n.Mode == Mode.Walk) SetMode(n, Mode.Chase, !NpcModule.BrainLog.Value ? "" : (n.ToGhost ? "ghost" : "target") + " at " + d.ToString("0") + " m");
+            if (n.Mode == Mode.Off || n.Mode == Mode.Search || n.Mode == Mode.Walk) SetMode(n, Mode.Chase, !NpcModule.VerboseLog.Value ? "" : (n.ToGhost ? "ghost" : "target") + " at " + d.ToString("0") + " m");
             // (1.1.0) cover: the game's own hide (a target faster than 6 m/s: FindClosest tag Hide, then it only turned toward it and ran
             // blind) and low health - both walked there with the map and the feelers, then held facing the target
             if (!n.ToGhost && n.Mode != Mode.BackUp && n.Mode != Mode.Rest) CoverCheck(n, now, ast, kind, tp);
@@ -407,7 +407,7 @@ namespace WildWasteland.Modules.NPC
                 if (n.Mode == Mode.Hold)
                 {
                     bool lost = (!los && now - n.LosLostAt > 0.3f * R) || d > engage * 1.1f;
-                    if (lost) { SetMode(n, Mode.Chase, !NpcModule.BrainLog.Value ? "" : los ? "target at " + d.ToString("0") + " m" : "no line of sight"); }
+                    if (lost) { SetMode(n, Mode.Chase, !NpcModule.VerboseLog.Value ? "" : los ? "target at " + d.ToString("0") + " m" : "no line of sight"); }
                     else if (now >= n.NextRecheck)
                     {
                         n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;
@@ -428,14 +428,14 @@ namespace WildWasteland.Modules.NPC
                 {
                     if (now >= n.ModeUntil || !los || d < 3f)
                     {
-                        if (good) { SetMode(n, Mode.Hold, !NpcModule.BrainLog.Value ? "" : "at " + d.ToString("0") + " m" + (now >= n.ModeUntil ? "" : ", enough")); return; }
-                        SetMode(n, Mode.Chase, !NpcModule.BrainLog.Value ? "" : los ? "target at " + d.ToString("0") + " m" : "no line of sight");
+                        if (good) { SetMode(n, Mode.Hold, !NpcModule.VerboseLog.Value ? "" : "at " + d.ToString("0") + " m" + (now >= n.ModeUntil ? "" : ", enough")); return; }
+                        SetMode(n, Mode.Chase, !NpcModule.VerboseLog.Value ? "" : los ? "target at " + d.ToString("0") + " m" : "no line of sight");
                     }
                 }
                 else if (n.Mode == Mode.Chase && good && n.LosLooks >= 2)        // two thinks in a row: a fence bar flickering across the line doesn't stop and start the hold
                 {
                     n.NextRecheck = now + UnityEngine.Random.Range(global::WildWasteland.Modules.NPC.Aim.HoldRecheckMin, global::WildWasteland.Modules.NPC.Aim.HoldRecheckMax) * R;
-                    SetMode(n, Mode.Hold, !NpcModule.BrainLog.Value ? "" : "line of sight at " + d.ToString("0") + " m (engages within " + engage.ToString("0") + ")");
+                    SetMode(n, Mode.Hold, !NpcModule.VerboseLog.Value ? "" : "line of sight at " + d.ToString("0") + " m (engages within " + engage.ToString("0") + ")");
                     return;
                 }
             }
@@ -473,7 +473,7 @@ namespace WildWasteland.Modules.NPC
                        : "NO MAP: " + (Nav.LastReason.Length > 0 ? Nav.LastReason : "outside every map") + " | " + trace)
                     + (n.HasWaypoint ? " | corner " + Vector3.Distance(n.Waypoint, n.T.position).ToString("0.0") + " m" : "") + (n.Side != 0 ? " | side " + n.Side : ""));
             }
-            if (NpcModule.BrainLog.Value && !n.OnNav && Nav.LastReason != n.NavReason)
+            if (NpcModule.VerboseLog.Value && !n.OnNav && Nav.LastReason != n.NavReason)
             {
                 n.NavReason = Nav.LastReason;
                 if (n.NavReason.Length > 0) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " no map route: " + n.NavReason + Nav.Probe(n.T.position));
@@ -491,8 +491,8 @@ namespace WildWasteland.Modules.NPC
             {
                 Vector3 w = n.Waypoint - n.T.position; w.y = 0f;
                 float wd = w.magnitude;
-                if (wd < 1.2f || now > n.WaypointUntil) { n.HasWaypoint = false; if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + (wd < 1.2f ? " reached the corner" : " gives up the corner")); }
-                else if (DirectClear(n, tp, d)) { n.HasWaypoint = false; if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " has a clear line, drops the corner"); }
+                if (wd < 1.2f || now > n.WaypointUntil) { n.HasWaypoint = false; if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + (wd < 1.2f ? " reached the corner" : " gives up the corner")); }
+                else if (DirectClear(n, tp, d)) { n.HasWaypoint = false; if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " has a clear line, drops the corner"); }
                 else { goal = w; gd = wd; }
             }
             if (n.OnNav) NavSteer(n, goal, now);                // on a map route: straight at the waypoint, short front feelers, steps over low stuff
@@ -589,7 +589,7 @@ namespace WildWasteland.Modules.NPC
         {
             n.CoverPos = spot; n.CoverArrived = false; n.CoverFromHide = fromHide; n.CoverSince = now; n.CoverUntil = now + seconds;
             n.CoverCooldownUntil = n.CoverUntil + 20f;
-            SetMode(n, Mode.Cover, NpcModule.BrainLog.Value ? why + ", " + Vector3.Distance(spot, n.T.position).ToString("0") + " m away" : "");
+            SetMode(n, Mode.Cover, NpcModule.VerboseLog.Value ? why + ", " + Vector3.Distance(spot, n.T.position).ToString("0") + " m away" : "");
         }
 
         private static void CoverThink(Npc n, float now, string ast, int kind, Vector3 tp)
@@ -607,7 +607,7 @@ namespace WildWasteland.Modules.NPC
             {
                 if (n.CoverFromHide && ast == "hide") n.Attack.SendEvent("back");
                 if (n.CoverArrived) Move(n, true);
-                SetMode(n, Mode.Chase, NpcModule.BrainLog.Value ? (kind == 1 && td < 8f ? "target too close for cover" : now >= n.CoverUntil ? "cover time over" : kind != 1 ? "nothing to hide from" : "the game's hide ended") : "");
+                SetMode(n, Mode.Chase, NpcModule.VerboseLog.Value ? (kind == 1 && td < 8f ? "target too close for cover" : now >= n.CoverUntil ? "cover time over" : kind != 1 ? "nothing to hide from" : "the game's hide ended") : "");
                 return;
             }
             if (n.CoverArrived) return;              // holds there: faces the target (Tick), the game's burst logic + Aim shoot from cover
@@ -616,7 +616,7 @@ namespace WildWasteland.Modules.NPC
                 n.CoverArrived = true; n.HasHeading = false;
                 Move(n, false);
                 if (n.Ranged) { Aim(n); if (NpcModule.CrouchChance.Value > 0f && UnityEngine.Random.Range(0f, 100f) < NpcModule.CrouchChance.Value * 1.5f) Crouch(n, true); }
-                if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " in cover, " + td.ToString("0") + " m from its target");
+                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " in cover, " + td.ToString("0") + " m from its target");
                 return;
             }
             MoveToward(n, n.CoverPos, c3, cd, now);
@@ -641,7 +641,7 @@ namespace WildWasteland.Modules.NPC
                 if (Physics.Raycast(origin, dir, 2.5f, PathMask, QueryTriggerInteraction.Ignore)) { dir = -dir; left = !left; }      // a wall that way: the other way
                 n.MakeWayDir = dir; n.MakeWaySpeed = 2.2f; n.MakeWayUntil = now + 0.9f;
                 StrafeClip(n, left);
-                if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " is hit, sidesteps " + (left ? "left" : "right"));
+                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " is hit, sidesteps " + (left ? "left" : "right"));
             }
         }
 
@@ -698,7 +698,7 @@ namespace WildWasteland.Modules.NPC
             BlkReset(n, now);
             if (driven < 0.6f || covered >= driven * NpcModule.BlockedRatio.Value) return false;
             if (PoiNav.Guiding(n.Owner)) return false;     // (WW) on a POI route its own watchdog slides the body on (no step back, no feelers)
-            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " blocked (covered " + covered.ToString("0.0") + " of " + driven.ToString("0.0") + " m)" + (n.OnNav ? " on its map route" : ""));
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " blocked (covered " + covered.ToString("0.0") + " of " + driven.ToString("0.0") + " m)" + (n.OnNav ? " on its map route" : ""));
             OnStuck(n);
             return true;
         }
@@ -753,7 +753,7 @@ namespace WildWasteland.Modules.NPC
             n.LastStep = now;
             Vector3 v = n.Rb.velocity;
             if (v.y < 2.4f) n.Rb.AddForce(Vector3.up * (2.4f - Mathf.Max(0f, v.y)) + fwd * 0.6f, ForceMode.VelocityChange);
-            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " steps over " + h.collider.name + " (" + (h.point.y - b.min.y).ToString("0.00") + " m)");
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " steps over " + h.collider.name + " (" + (h.point.y - b.min.y).ToString("0.00") + " m)");
         }
 
         // progress on a map route (path length left): 2.5 s without getting nearer -> a hop; 5 s -> full feelers for 3 s, then the map again
@@ -765,7 +765,7 @@ namespace WildWasteland.Modules.NPC
             if (stall >= 5f * R)
             {
                 n.NavOffUntil = now + 3f * R; n.OnNav = false; n.NoProgressSince = now;
-                if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " gets nowhere on its map route, full feelers for " + (3f * R).ToString("0") + " s");
+                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " gets nowhere on its map route, full feelers for " + (3f * R).ToString("0") + " s");
             }
             else if (stall >= 2.5f * R) TryHop(n, now, true);
         }
@@ -873,7 +873,7 @@ namespace WildWasteland.Modules.NPC
                             side = Mathf.Abs(facing) > 0.05f ? (facing > 0f ? 1 : -1) : (UnityEngine.Random.value < 0.5f ? -1 : 1);
                         }
                         n.Side = side; n.SideUntil = now + SideLock * R; n.ClearLooks = 0;
-                        if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " goes around on the " + (side > 0 ? "right" : "left") + " (free L " + fl.ToString("0.0") + " / R " + fr.ToString("0.0") + ")");
+                        if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " goes around on the " + (side > 0 ? "right" : "left") + " (free L " + fl.ToString("0.0") + " / R " + fr.ToString("0.0") + ")");
                     }
                 }
                 else
@@ -935,7 +935,7 @@ namespace WildWasteland.Modules.NPC
                         {
                             n.Side = -n.Side; n.SideUntil = now + SideLock * 2f * R; n.ClearLooks = 0; n.NextScout = 0f;
                             heading = Mathf.Atan2(-tangent.x, -tangent.z) * Mathf.Rad2Deg;
-                            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " dead end, turns around");
+                            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " dead end, turns around");
                         }
                     }
                 }
@@ -1078,7 +1078,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (bestCost == float.MaxValue) return false;
             n.Waypoint = bestEnd; n.HasWaypoint = true; n.WaypointUntil = now + 8f * R;
-            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " scouts a corner " + (bestAngle < 0f ? "left" : "right") + " " + Mathf.Abs(bestAngle) + " deg, " + (bestEnd - origin).magnitude.ToString("0.0") + " m away (path " + bestCost.ToString("0.0") + " m, straight " + dReal.ToString("0.0") + ")");
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " scouts a corner " + (bestAngle < 0f ? "left" : "right") + " " + Mathf.Abs(bestAngle) + " deg, " + (bestEnd - origin).magnitude.ToString("0.0") + " m away (path " + bestCost.ToString("0.0") + " m, straight " + dReal.ToString("0.0") + ")");
             return true;
         }
 
@@ -1115,7 +1115,7 @@ namespace WildWasteland.Modules.NPC
                 n.Flipped = true;
                 n.Side = n.Side != 0 ? -n.Side : (UnityEngine.Random.value < 0.5f ? -1 : 1);
                 n.SideUntil = now + SideLock * 2f * R; n.ClearLooks = 0;
-                if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " gets nowhere, tries the " + (n.Side > 0 ? "right" : "left"));
+                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " gets nowhere, tries the " + (n.Side > 0 ? "right" : "left"));
                 return true;
             }
             n.Flipped = false; n.Side = 0; n.BestDist = float.MaxValue;
@@ -1169,7 +1169,7 @@ namespace WildWasteland.Modules.NPC
                 }
             }
             else { Unfreeze(n); Crouch(n, false); }
-            if (NpcModule.BrainLog.Value && (m != was))
+            if (NpcModule.VerboseLog.Value && (m != was))
                 NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " " + was + " -> " + m + " (" + why + ", " + n.Dist.ToString("0") + " m" + (n.Ranged ? ", " + n.Kind : "") + ")");
         }
 
@@ -1234,7 +1234,7 @@ namespace WildWasteland.Modules.NPC
             if (h.point.y - b.min.y <= 0.6f && !Physics.Raycast(new Vector3(b.center.x, b.min.y + 0.65f, b.center.z), d.normalized, h.distance + r + 0.3f, NavGateMask, QueryTriggerInteraction.Ignore))
                 return true;                                                          // ankle-high clutter with nothing at the knee: stepped over
             n.LegBlock = h.collider.name + " [" + LayerMask.LayerToName(h.collider.gameObject.layer) + "] " + (h.point.y - b.min.y).ToString("0.00") + " m above the feet, " + h.distance.ToString("0.00") + " m ahead" + (hopLeg ? ", hop leg" : "");
-            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " map waypoint blocked by " + n.LegBlock + ", steers without the map");
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " map waypoint blocked by " + n.LegBlock + ", steers without the map");
             return false;
         }
 
@@ -1256,16 +1256,16 @@ namespace WildWasteland.Modules.NPC
                 if (now - n.NavStuckSince > 8f) { n.NavStuckSince = now; n.NavStucks = 0; }
                 n.NavStucks++;
                 n.BlockedYaw = n.T.eulerAngles.y; n.BlockedUntil = now + Mathf.Max(0f, NpcModule.BlockedMemory.Value) * R;
-                if (NpcModule.BrainLog.Value) LogAhead(n);
+                if (NpcModule.VerboseLog.Value) LogAhead(n);
                 if (n.NavStucks < 3)
                 {
                     if (TryHop(n, now, true)) return;
                     n.ModeUntil = now + 0.4f * R;
-                    SetMode(n, Mode.BackUp, NpcModule.BrainLog.Value ? "stuck on a map route at " + n.T.position.x.ToString("0.0") + "," + n.T.position.z.ToString("0.0") + ", a step back, keeps the route" : "");
+                    SetMode(n, Mode.BackUp, NpcModule.VerboseLog.Value ? "stuck on a map route at " + n.T.position.x.ToString("0.0") + "," + n.T.position.z.ToString("0.0") + ", a step back, keeps the route" : "");
                     return;
                 }
                 n.NavStucks = 0; n.NavOffUntil = now + 3f * R; n.OnNav = false;
-                if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " stuck 3x on a map route at " + n.T.position.x.ToString("0.0") + "," + n.T.position.z.ToString("0.0") + ", full feelers for " + (3f * R).ToString("0") + " s");
+                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " stuck 3x on a map route at " + n.T.position.x.ToString("0.0") + "," + n.T.position.z.ToString("0.0") + ", full feelers for " + (3f * R).ToString("0") + " s");
             }
             if (now - n.FirstStuck > StuckWindow * R) { n.FirstStuck = now; n.Stucks = 0; }
             n.Stucks++;
@@ -1290,10 +1290,10 @@ namespace WildWasteland.Modules.NPC
             // the body hit something the feelers did not see (or saw too late): commit to the freer side now and keep it through the back-up
             if (n.Side == 0) n.Side = n.FreeRight >= n.FreeLeft ? 1 : -1;
             n.SideUntil = now + SideLock * 2f * R; n.ClearLooks = 0;
-            if (NpcModule.BrainLog.Value) LogAhead(n);
+            if (NpcModule.VerboseLog.Value) LogAhead(n);
             if (TryHop(n, now, true)) return;       // stuck: a low edge is hopped even when its face is sloped (only gentle terrain is not)
             n.ModeUntil = now + Mathf.Max(0.1f, NpcModule.StuckBackupSeconds.Value) * R;
-            SetMode(n, Mode.BackUp, NpcModule.BrainLog.Value ? "stuck " + n.Stucks + "x, backs up" : "");
+            SetMode(n, Mode.BackUp, NpcModule.VerboseLog.Value ? "stuck " + n.Stucks + "x, backs up" : "");
         }
 
         // Stuck on something low (a rock lip, a kerb, a pipe on the floor) with nothing above it: the game's own Unstuck would hop here (we
@@ -1315,7 +1315,7 @@ namespace WildWasteland.Modules.NPC
             n.LastHop = now;
             n.Rb.AddForce(Vector3.up * 3.2f + fwd * 1.5f, ForceMode.VelocityChange);
             if (n.Body != null && !ApBody.Suspended(n.Body)) ApBody.Jump(n.Body);
-            if (NpcModule.BrainLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " hops over a low edge (" + h.collider.name + ")");
+            if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " hops over a low edge (" + h.collider.name + ")");
             return true;
         }
 
