@@ -464,14 +464,14 @@ namespace WildWasteland.Modules.Quests
                 listedGlobals = true;
                 var names = new List<string>();
                 for (int i = 0; i < ints.Length; i++) if (ints[i] != null) names.Add(ints[i].Name + "=" + ints[i].Value);
-                Plugin.Log.LogInfo("PlayMaker global ints: " + string.Join(", ", names.ToArray()));
+                Plugin.Info("PlayMaker global ints: " + string.Join(", ", names.ToArray()));
             }
 
             if (configured.Length > 0)
             {
                 for (int i = 0; i < ints.Length; i++)
                     if (ints[i] != null && string.Equals(ints[i].Name, configured, StringComparison.OrdinalIgnoreCase)) { money = ints[i]; break; }
-                if (money == null) Plugin.Log.LogWarning("MoneyVariable '" + configured + "' is not a PlayMaker global int.");
+                if (money == null) Plugin.Warn("MoneyVariable '" + configured + "' is not a PlayMaker global int.");
                 return money;
             }
 
@@ -486,8 +486,8 @@ namespace WildWasteland.Modules.Quests
                     for (int i = 0; i < ints.Length; i++)
                         if (ints[i] != null && ints[i].Name != null && ints[i].Name.ToLowerInvariant().Contains(part[e])) { money = ints[i]; break; }
             }
-            if (money != null) Plugin.Log.LogInfo("Using money variable: " + money.Name);
-            else Plugin.Log.LogWarning("Could not find the money variable among the PlayMaker globals (see the list above). Set MoneyVariable in the config.");
+            if (money != null) Plugin.Info("Using money variable: " + money.Name);
+            else Plugin.Warn("Could not find the money variable among the PlayMaker globals (see the list above). Set MoneyVariable in the config.");
             return money;
         }
 
@@ -808,7 +808,7 @@ namespace WildWasteland.Modules.Quests
                 else
                 {
                     if (h.Qty != null) h.Qty.Value = 0;
-                    Plugin.Log.LogInfo("Handed in " + h.Go.name + (h.Held ? " (carried)" : " (" + h.Dist.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m away)"));
+                    Plugin.Info("Handed in " + h.Go.name + (h.Held ? " (carried)" : " (" + h.Dist.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m away)"));
                     UnityEngine.Object.Destroy(h.Go);       // the game's DeleteDestroyedItems FSM drops it from the save list
                 }
                 remaining -= take;

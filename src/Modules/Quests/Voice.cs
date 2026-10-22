@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Quests
         {
             string c = folderCfg != null ? (folderCfg.Value ?? "").Trim() : "";
             string[] tries = c.Length > 0 ? new[] { c, Path.Combine(c, "Voice Actors") } : new[] { Path.Combine(root, "Voice Actors"), Path.Combine(Path.GetDirectoryName(root) ?? root, "Voice Actors") };
-            foreach (string t in tries) if (Directory.Exists(t)) { if (!rootLogged) { rootLogged = true; Plugin.Log.LogInfo("Voice: using " + t); } return t; }
+            foreach (string t in tries) if (Directory.Exists(t)) { if (!rootLogged) { rootLogged = true; Plugin.Info("Voice: using " + t); } return t; }
             return null;
         }
 
@@ -66,7 +66,7 @@ namespace WildWasteland.Modules.Quests
                     AudioClip clip = Load(path);
                     if (clip == null) continue;
                     Play(clip, npc);
-                    if (logged.Add(q.Id + "|" + line + "|" + a)) Plugin.Log.LogInfo("Voice: " + Path.GetFileName(a) + " says " + q.Id + "/" + line + ".");
+                    if (logged.Add(q.Id + "|" + line + "|" + a)) Plugin.Info("Voice: " + Path.GetFileName(a) + " says " + q.Id + "/" + line + ".");
                     return true;
                 }
             }
@@ -116,7 +116,7 @@ namespace WildWasteland.Modules.Quests
                 c = ReadWav(path);
                 if (c != null) { clips[path] = c; return c; }
             }
-            catch (Exception e) { Plugin.Log.LogWarning("Voice: cannot read " + path + ": " + e.Message); }
+            catch (Exception e) { Plugin.Warn("Voice: cannot read " + path + ": " + e.Message); }
             bad.Add(path);
             return null;
         }

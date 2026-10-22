@@ -23,12 +23,13 @@ namespace WildWasteland.Modules.Quests
         const string SaveKey = "ApocalypterQuests";
 
         internal static Plugin I;
-        internal static QuestLogger Log;
+        static bool logStarted;             // set on the first engine start (the old QuestLogger instance existed from then on)
         static readonly HashSet<string> logged = new HashSet<string>();
 
+        /// <summary>Logs an exception once per call site key for the session (error level), after the engine first started.</summary>
         internal static void LogOnce(string where, Exception e)
         {
-            if (Log != null && logged.Add(where)) Log.LogError(where + ": " + e);
+            if (logStarted && logged.Add(where)) Error(where + ": " + e);
         }
 
         // ---- config ----
@@ -195,7 +196,7 @@ namespace WildWasteland.Modules.Quests
             q.Progress = q.Count;
             q.ObjectiveDone = true;
             nextRefresh = 0f;
-            Log.LogInfo(q.Title + ": camp is empty, counting it as cleared.");
+            Info(q.Title + ": camp is empty, counting it as cleared.");
             Quest tq = q;
             Defer(delegate
             {
@@ -558,7 +559,7 @@ namespace WildWasteland.Modules.Quests
             q.Count = need;
             nextRefresh = 0f;
             if (first) AddToast("The " + q.Label + " has " + need + " people. Quest log updated: " + q.Title + " 0/" + need);
-            else Log.LogInfo(q.Title + ": more people came into view, now " + need + ".");
+            else Info(q.Title + ": more people came into view, now " + need + ".");
         }
 
         // ------------------------------------------------------------------
@@ -852,7 +853,7 @@ namespace WildWasteland.Modules.Quests
             t.Until = Time.unscaledTime + 6f;
             toasts.Add(t);
             if (toasts.Count > 4) toasts.RemoveAt(0);
-            Log.LogInfo(text);
+            Info(text);
         }
 
         // ------------------------------------------------------------------
@@ -984,7 +985,7 @@ namespace WildWasteland.Modules.Quests
             try
             {
                 if (string.IsNullOrEmpty(npc)) return;
-                Log.LogInfo("Talking to NPC: \"" + npc + "\"");
+                Info("Talking to NPC: \"" + npc + "\"");
                 if (seenNpcs.Add(npc))
                 {
                     string path = Path.Combine(DataDir, "npc_names.txt");
@@ -993,7 +994,7 @@ namespace WildWasteland.Modules.Quests
                     if (known.Add(npc)) File.AppendAllText(path, npc + Environment.NewLine);
                 }
             }
-            catch (Exception e) { Log.LogWarning("Could not record NPC name: " + e.Message); }
+            catch (Exception e) { Warn("Could not record NPC name: " + e.Message); }
             try
             {
                 // which camp / cave / building is this NPC standing at? (helps you fill in factions.txt)
@@ -1010,13 +1011,13 @@ namespace WildWasteland.Modules.Quests
                 }
                 string entry = npc + " @ " + best.Name;
                 Faction nf = Factions.OfObject(t.gameObject.tag, npc, t.position);
-                Log.LogInfo("NPC location: " + entry + " (" + (int)bd + " m)  faction: " + (nf != null ? nf.Name : "none"));
+                Info("NPC location: " + entry + " (" + (int)bd + " m)  faction: " + (nf != null ? nf.Name : "none"));
                 string lpath = Path.Combine(DataDir, "npc_locations.txt");
                 var have = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 if (File.Exists(lpath)) foreach (string l in File.ReadAllLines(lpath)) have.Add(l.Trim());
                 if (have.Add(entry)) File.AppendAllText(lpath, entry + Environment.NewLine);
             }
-            catch (Exception e) { Log.LogWarning("Could not record NPC name: " + e.Message); }
+            catch (Exception e) { Warn("Could not record NPC name: " + e.Message); }
         }
 
         internal void OnTalkOpen(object inst)
@@ -1025,7 +1026,7 @@ namespace WildWasteland.Modules.Quests
             pendingOffer = null;
             repMenuOpen = false;
             uiDirty = true;
-            Factions.Refresh(factionsPath, delegate (string w) { Log.LogWarning(w); });
+            Factions.Refresh(factionsPath, delegate (string w) { Warn(w); });
             RecordNpcName(bridge.NpcName);
             if (!ready) return;
 
@@ -1142,7 +1143,7 @@ namespace WildWasteland.Modules.Quests
             int cost = Hire.CostFor(npc);
             if (cost < 0) return;
             Faction f = Factions.OfPerson(tr.gameObject.tag, npc, tr.position);
-            if (f == null) { if (logged.Add("HireNoFaction" + Game.BaseName(npc))) Log.LogInfo("Hire: " + npc + " (tag " + tr.gameObject.tag + ") has no faction here (no matching tag, factions.txt entry or camp nearby), so it cannot be hired."); return; }
+            if (f == null) { if (logged.Add("HireNoFaction" + Game.BaseName(npc))) Info("Hire: " + npc + " (tag " + tr.gameObject.tag + ") has no faction here (no matching tag, factions.txt entry or camp nearby), so it cannot be hired."); return; }
             string shown = Game.BaseName(npc);
             wantButtons.Add(Btn("hire", "Hire " + shown + " for a day  (" + cost + " " + f.Name + " reputation)", delegate { HireNpc(f, cost, tr, shown); }));
         }
@@ -1249,7 +1250,7 @@ namespace WildWasteland.Modules.Quests
                 if (!Game.AddMoney(-n * buyP, moneyVar.Value)) { bridge.Say("(Mod problem: the money variable was not found. See the BepInEx log.)"); return; }
                 ChangeRep(f.Key, n, null);
                 bridge.Say("Done. " + n + " reputation, " + (n * buyP) + " nuts. Word will get round.");
-                Log.LogInfo("Bought " + n + " " + f.Name + " reputation for " + (n * buyP) + " nuts (now " + RepOf(f.Key) + ").");
+                Info("Bought " + n + " " + f.Name + " reputation for " + (n * buyP) + " nuts (now " + RepOf(f.Key) + ").");
             }
             else
             {
@@ -1258,7 +1259,7 @@ namespace WildWasteland.Modules.Quests
                 ChangeRep(f.Key, -n, null);
                 Game.AddMoney(n * sellP, moneyVar.Value);
                 bridge.Say("Done. " + n + " reputation off your name, " + (n * sellP) + " nuts for you.");
-                Log.LogInfo("Sold " + n + " " + f.Name + " reputation for " + (n * sellP) + " nuts (now " + RepOf(f.Key) + ").");
+                Info("Sold " + n + " " + f.Name + " reputation for " + (n * sellP) + " nuts (now " + RepOf(f.Key) + ").");
             }
         }
 
@@ -1319,10 +1320,10 @@ namespace WildWasteland.Modules.Quests
             // what really exists around the giver
             Vector3 giverWorld = npcTr != null ? npcTr.position : (pl != null ? pl.position : Vector3.zero);
             float range = questRange.Value;
-            Factions.Refresh(factionsPath, delegate (string w) { Log.LogWarning(w); });
+            Factions.Refresh(factionsPath, delegate (string w) { Warn(w); });
             people = Game.FindPeople(Factions.PeopleWords);          // who is around right now
             Faction gf = Factions.OfObject(npcTr != null ? npcTr.gameObject.tag : "", npc, giverWorld);
-            if (gf != null && gf.Hostile) { Log.LogInfo("Giver faction " + gf.Name + " is hostile; no quest offered."); return null; }
+            if (gf != null && gf.Hostile) { Info("Giver faction " + gf.Name + " is hostile; no quest offered."); return null; }
             offerGiver = npcTr != null ? npcTr.gameObject : null;
             List<EnemyInfo> foes = NotProtected(gf, Game.FindEnemies(giverWorld, range > 0f ? range : 1e9f), offerGiver);
             List<Poi> allPois = FreePois(gf, Game.FindPois(giverWorld, gotoMin.Value, gotoMax.Value, ""));
@@ -1831,7 +1832,7 @@ namespace WildWasteland.Modules.Quests
             if (q.Type == QType.Deliver)
             {
                 // the goods appear on the ground in front of the giver; the clock starts now
-                int made = Game.SpawnItemsInFront(q.Target, q.Count, bridge.Npc, delegate (string m) { Log.LogInfo(m); });
+                int made = Game.SpawnItemsInFront(q.Target, q.Count, bridge.Npc, delegate (string m) { Info(m); });
                 if (made <= 0) { bridge.Say("Hm. I can't find the goods. Forget it."); return; }
                 q.Count = made;
                 QuestGen.ResetClock(q, bridge.Npc != null ? bridge.Npc.position : Vector3.zero, deliverMinutesBase.Value * 60f, deliverMinutesPerKm.Value * 60f);
@@ -1989,7 +1990,7 @@ namespace WildWasteland.Modules.Quests
                     {
                         Quest def = null;
                         for (int i = 0; i < defs.Count; i++) if (string.Equals(defs[i].Id, id, StringComparison.OrdinalIgnoreCase)) { def = defs[i]; break; }
-                        if (def == null) { Log.LogWarning("quest.give: no quest [" + id + "] in quests.txt."); return; }
+                        if (def == null) { Warn("quest.give: no quest [" + id + "] in quests.txt."); return; }
                         if (ActiveById(id) != null) return;
                         string npc = bridge.NpcName;
                         Transform npcTr = bridge.Npc;
@@ -1997,7 +1998,7 @@ namespace WildWasteland.Modules.Quests
                         Vector3 playerRel = pl != null ? Game.Rel(pl.position) : Vector3.zero;
                         Vector3 giverRel = npcTr != null ? Game.Rel(npcTr.position) : playerRel;
                         Vector3 giverWorld = npcTr != null ? npcTr.position : (pl != null ? pl.position : Vector3.zero);
-                        Factions.Refresh(factionsPath, delegate (string w) { Log.LogWarning(w); });
+                        Factions.Refresh(factionsPath, delegate (string w) { Warn(w); });
                         people = Game.FindPeople(Factions.PeopleWords);
                         Faction gf = Factions.OfObject(npcTr != null ? npcTr.gameObject.tag : "", npc, giverWorld);
                         offerGiver = npcTr != null ? npcTr.gameObject : null;
@@ -2075,7 +2076,7 @@ namespace WildWasteland.Modules.Quests
             es3Resolved = true;
             es3Type = FindType("ES3");
             if (es3Type == null) es3Type = Type.GetType("ES3, Assembly-CSharp-firstpass", false);
-            if (es3Type == null) { Log.LogError("Easy Save (ES3) was not found; quests cannot be saved."); return false; }
+            if (es3Type == null) { Error("Easy Save (ES3) was not found; quests cannot be saved."); return false; }
 
             foreach (MethodInfo m in es3Type.GetMethods(BindingFlags.Public | BindingFlags.Static))
             {
@@ -2100,10 +2101,10 @@ namespace WildWasteland.Modules.Quests
             es3SettingsType = es3Type.Assembly.GetType("ES3Settings", false);
             Type locType = es3Type.GetNestedType("Location");
             if (locType != null) { try { es3FileLocation = Enum.Parse(locType, "File"); } catch (Exception) { } }
-            Log.LogInfo("Easy Save: default " + (es3Save != null && es3Load != null) + ", straight-to-file " + (es3SaveS != null && es3LoadS != null && es3SettingsType != null && es3FileLocation != null));
+            Info("Easy Save: default " + (es3Save != null && es3Load != null) + ", straight-to-file " + (es3SaveS != null && es3LoadS != null && es3SettingsType != null && es3FileLocation != null));
             if (es3Save == null || es3Load == null || es3Exists == null)
             {
-                Log.LogError("Easy Save has no Save<T>(key,value) / Load<T>(key,default) / KeyExists(key) overloads this mod can use; quests cannot be saved.");
+                Error("Easy Save has no Save<T>(key,value) / Load<T>(key,default) / KeyExists(key) overloads this mod can use; quests cannot be saved.");
                 return false;
             }
             return true;
@@ -2307,7 +2308,7 @@ namespace WildWasteland.Modules.Quests
         void SaveBook()
         {
             if (!ready || _sessionSlot == null || _sessionSlot != SaveBus.Slot) return;
-            if (saveBlocked) { SaveBus.ReportFailure("Quest data is unreadable; preserving the previous save."); Log.LogWarning("Not saving quests: the data in this slot was in a format this version cannot read."); return; }
+            if (saveBlocked) { SaveBus.ReportFailure("Quest data is unreadable; preserving the previous save."); Warn("Not saving quests: the data in this slot was in a format this version cannot read."); return; }
             PruneStamps();
             CaptureBook();
             string text = book.Serialize();
@@ -2319,7 +2320,7 @@ namespace WildWasteland.Modules.Quests
                 if (slotFile.Length > 0)
                 {
                     try { diskOk = SaveToDisk(SaveKey, text, slotFile); }
-                    catch (Exception e) { Log.LogWarning("Saving quests straight into " + slotFile + " failed: " + (e.InnerException ?? e).Message); }
+                    catch (Exception e) { Warn("Saving quests straight into " + slotFile + " failed: " + (e.InnerException ?? e).Message); }
                 }
                 try
                 {
@@ -2389,19 +2390,19 @@ namespace WildWasteland.Modules.Quests
                 catch (Exception e) { readError = true; LogOnce("LoadBackup", e); }
             }
             if (readError) { saveBlocked = true; book.Clear(); Warn("Quest data could not be read; saving is blocked for this session."); return; }
-            if (string.IsNullOrEmpty(data)) { Log.LogInfo("No saved quests found for slot " + SlotId() + "."); return; }
+            if (string.IsNullOrEmpty(data)) { Info("No saved quests found for slot " + SlotId() + "."); return; }
             if (!book.Deserialize(data))
             {
                 saveBlocked = true;
                 book.Clear();
-                Log.LogWarning("Quest data in slot " + SlotId() + " (" + from + ") could not be read; leaving it untouched.");
+                Warn("Quest data in slot " + SlotId() + " (" + from + ") could not be read; leaving it untouched.");
                 return;
             }
             RestoreBook();
             MapLink.Reset();
             for (int i = 0; i < book.Active.Count; i++)
                 if (book.Active[i].Type != QType.Deliver && book.Active[i].Deadline <= 0.0) AssignDeadline(book.Active[i]);   // jobs saved by an older version get a fresh time limit
-            Log.LogInfo("Loaded " + book.Active.Count + " quests from the " + from + " (slot " + SlotId() + ").");
+            Info("Loaded " + book.Active.Count + " quests from the " + from + " (slot " + SlotId() + ").");
         }
 
         // ------------------------------------------------------------------

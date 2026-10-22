@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.Quests
             if (mAddNpc == null) missing += " AddNpc";
             if (missing.Length > 0)
             {
-                Plugin.Log.LogError("Apocalypter Talk is missing members this mod needs (" + missing.Trim() + "). Is it a different version than the one this mod was made for (Apocatalker)? Quest dialogue is disabled.");
+                Plugin.Error("Apocalypter Talk is missing members this mod needs (" + missing.Trim() + "). Is it a different version than the one this mod was made for (Apocatalker)? Quest dialogue is disabled.");
                 return false;
             }
             readName = Reader<string>(fName); readNpc = Reader<Transform>(fNpc); readUi = Reader<object>(fUi);
@@ -190,7 +190,7 @@ namespace WildWasteland.Modules.Quests
                 skinTex = t;
                 skinBorder = ParseBorder(TalkConfigString("windowBorderCfg"), 16);
             }
-            catch (Exception e) { Plugin.Log.LogWarning("Could not load Talk's window.png for the quest log: " + e.Message); }
+            catch (Exception e) { Plugin.Warn("Could not load Talk's window.png for the quest log: " + e.Message); }
         }
 
         string TalkConfigString(string field)
@@ -326,9 +326,9 @@ namespace WildWasteland.Modules.Quests
                     Delegate d = Delegate.CreateDelegate(ev.EventHandlerType, listener, m);
                     ev.AddEventHandler(null, d); actionEvent = ev; actionHandler = d;
                 }
-                else Plugin.Log.LogWarning("Talk's ActionTriggered event was not found; 'action = quest.give:...' lines in dialogue files will not work.");
+                else Plugin.Warn("Talk's ActionTriggered event was not found; 'action = quest.give:...' lines in dialogue files will not work.");
             }
-            catch (Exception e) { api = null; Plugin.Log.LogWarning("Could not link to Talk's API: " + e.Message); }
+            catch (Exception e) { api = null; Plugin.Warn("Could not link to Talk's API: " + e.Message); }
         }
 
         internal static void Shutdown() { if (actionEvent != null && actionHandler != null) actionEvent.RemoveEventHandler(null, actionHandler); actionEvent = null; actionHandler = null; api = null; getFlag = setFlag = null; }

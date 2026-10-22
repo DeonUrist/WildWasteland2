@@ -158,7 +158,7 @@ namespace WildWasteland.Modules.Quests
             book.HireKind = shownName ?? "";
             Attach(go);
             toast("Hired " + displayName + " for " + (durationHours.Value >= 24f ? Math.Round(durationHours.Value / 24f, 1).ToString("0.#", CultureInfo.InvariantCulture) + " day(s)" : durationHours.Value.ToString("0.#", CultureInfo.InvariantCulture) + " hours") + ". " + dismissHint());
-            Plugin.Log.LogInfo("Hired " + go.name + " (" + book.HireKind + ") until game hour " + book.HireUntil.ToString("0.0", CultureInfo.InvariantCulture));
+            Plugin.Info("Hired " + go.name + " (" + book.HireKind + ") until game hour " + book.HireUntil.ToString("0.0", CultureInfo.InvariantCulture));
         }
 
         static string dismissHint()
@@ -220,7 +220,7 @@ namespace WildWasteland.Modules.Quests
                     bool want = kv.Value || n == "Detection" || n == "Movement";
                     if (f.enabled != want) { f.enabled = want; fixedCount++; }
                 }
-                if (fixedCount > 0 && (log || !wakeLogged)) { wakeLogged = true; Plugin.Log.LogInfo("Hire: " + displayName + "'s walking AI switched back on (" + fixedCount + " FSMs)."); }
+                if (fixedCount > 0 && (log || !wakeLogged)) { wakeLogged = true; Plugin.Info("Hire: " + displayName + "'s walking AI switched back on (" + fixedCount + " FSMs)."); }
             }
             catch (Exception e) { Plugin.LogOnce("HireWakeBrain", e); }
         }
@@ -250,7 +250,7 @@ namespace WildWasteland.Modules.Quests
                         did = true;
                     }
                 }
-                if (did) Plugin.Log.LogInfo("Hire: " + displayName + " was hostile to you (after a load); made friendly again.");
+                if (did) Plugin.Info("Hire: " + displayName + " was hostile to you (after a load); made friendly again.");
             }
             catch (Exception e) { Plugin.LogOnce("HireCalm", e); }
         }
@@ -296,7 +296,7 @@ namespace WildWasteland.Modules.Quests
                     }
                     if (f.FsmName == "Movement" || f.FsmName == "Rotate" || f.FsmName == "Unstuck") f.enabled = true;
                 }
-                Plugin.Log.LogInfo("Hire: " + displayName + "'s own AI is back on.");
+                Plugin.Info("Hire: " + displayName + "'s own AI is back on.");
             }
             catch (Exception e) { Plugin.LogOnce("HireRestoreBrain", e); }
             fsmSnap.Clear();
@@ -363,7 +363,7 @@ namespace WildWasteland.Modules.Quests
             {
                 if (!searching) { searching = true; searchUntil = Time.unscaledTime + 60f; }
                 Transform t = NearestByName(book.HireName, pl.position);
-                if (t != null) { Attach(t.gameObject); Plugin.Log.LogInfo("Hired help " + book.HireName + " found again."); Calm(pl, true); nextCalm = Time.time + 0.5f; }
+                if (t != null) { Attach(t.gameObject); Plugin.Info("Hired help " + book.HireName + " found again."); Calm(pl, true); nextCalm = Time.time + 0.5f; }
                 else if (Time.unscaledTime > searchUntil)
                 {
                     string n = string.IsNullOrEmpty(book.HireKind) ? "Your hired help" : book.HireKind;
@@ -578,7 +578,7 @@ namespace WildWasteland.Modules.Quests
             }
             EndFootShot();
             if (now - footShotAt < 8f) return;
-            Plugin.Log.LogInfo("Hire: " + displayName + " cannot get at " + target.name + "; follows you again.");
+            Plugin.Info("Hire: " + displayName + " cannot get at " + target.name + "; follows you again.");
             ignoreTarget = target; ignoreUntil = now + 20f;
             target = null; engagedUntil = 0f; footSince = -1f;
         }
@@ -587,7 +587,7 @@ namespace WildWasteland.Modules.Quests
 
         static void FootShoot(float now)
         {
-            if (!footShooting) { footShooting = true; Plugin.Log.LogInfo("Hire: " + displayName + " shoots at " + target.name + " on foot."); }
+            if (!footShooting) { footShooting = true; Plugin.Info("Hire: " + displayName + " shoots at " + target.name + " on foot."); }
             if (!footSetup) { footSetup = true; GunSetup(); footShootAnim = ShootAnimName(); }
             // stand and face the target
             if (moveFsm != null && moveFsm.ActiveStateName == "Run") { try { moveFsm.Fsm.SetState("Idle"); } catch (Exception) { } }
@@ -606,7 +606,7 @@ namespace WildWasteland.Modules.Quests
                 if (hp == null) return;
                 hp.Value -= ownDamage > 0f ? ownDamage : shotDamage.Value;
                 shotsFired++;
-                if (shotsFired <= 12) Plugin.Log.LogInfo("Hire: " + displayName + " shoots " + target.name + " on foot (health now " + hp.Value.ToString("0") + ").");
+                if (shotsFired <= 12) Plugin.Info("Hire: " + displayName + " shoots " + target.name + " on foot (health now " + hp.Value.ToString("0") + ").");
                 if (npcAnim == null) npcAnim = npc.GetComponent<Animator>() ?? npc.GetComponentInChildren<Animator>(true);
                 if (npcAnim != null && !string.IsNullOrEmpty(footShootAnim)) { QuestFollower.Play(npcAnim, footShootAnim, 0, 0f); footIdleAt = now + 0.9f; }
                 PlayShotAnim();
@@ -801,7 +801,7 @@ namespace WildWasteland.Modules.Quests
                     LiftAbove(g.y);
                     Rigidbody rb = npc.GetComponent<Rigidbody>();
                     if (rb != null && !rb.isKinematic) rb.velocity = Vector3.zero;
-                    Plugin.Log.LogInfo("Hire: " + displayName + " caught up.");
+                    Plugin.Info("Hire: " + displayName + " caught up.");
                     return;
                 }
             }
@@ -833,13 +833,13 @@ namespace WildWasteland.Modules.Quests
                         {
                             if (!Takeover.RoomAt(h.point)) break;                                              // something stands there
                             if (h.point.y > pl.position.y + 4f || h.point.y < pl.position.y - 6f) break;       // a roof or a pit, not the ground you stand on
-                            Plugin.Log.LogInfo("Hire: exit spot on " + h.collider.name + " (layer " + h.collider.gameObject.layer + ", " + h.collider.GetType().Name + "), npc layer " + myLayer + ", y " + h.point.y.ToString("0.0") + ", player y " + pl.position.y.ToString("0.0"));
+                            Plugin.Info("Hire: exit spot on " + h.collider.name + " (layer " + h.collider.gameObject.layer + ", " + h.collider.GetType().Name + "), npc layer " + myLayer + ", y " + h.point.y.ToString("0.0") + ", player y " + pl.position.y.ToString("0.0"));
                             return h.point + Vector3.up * 0.15f;
                         }
                         break;
                     }
                 }
-            Plugin.Log.LogInfo("Hire: no free exit spot found; using your position.");
+            Plugin.Info("Hire: no free exit spot found; using your position.");
             return pl.position + Vector3.up * 0.3f;
         }
 
@@ -875,7 +875,7 @@ namespace WildWasteland.Modules.Quests
             float now = Time.time;
             if (now - firstRescue > 60f) { rescues = 0; firstRescue = now; }
             rescues++;
-            Plugin.Log.LogWarning("Hire: " + displayName + " was " + (pl.position.y - npc.transform.position.y).ToString("0") + " m below you; bringing it back (" + rescues + ").");
+            Plugin.Warn("Hire: " + displayName + " was " + (pl.position.y - npc.transform.position.y).ToString("0") + " m below you; bringing it back (" + rescues + ").");
             LogBody("fell");
             if (rescues >= 3)
             {
@@ -899,12 +899,12 @@ namespace WildWasteland.Modules.Quests
                 foreach (Collider c in npc.GetComponentsInChildren<Collider>(true)) { if (c.enabled) on++; else off++; if (c.isTrigger) trig++; }
                 Rigidbody[] rbs = npc.GetComponentsInChildren<Rigidbody>(true);
                 RaycastHit h; bool g = Physics.Raycast(npc.transform.position + Vector3.up * 2f, Vector3.down, out h, 200f, ~0, QueryTriggerInteraction.Ignore);
-                Plugin.Log.LogInfo("Hire: body (" + what + "): pos " + npc.transform.position.ToString("0.0") + ", layer " + npc.layer + ", parent " + (npc.transform.parent != null ? npc.transform.parent.name : "none")
+                Plugin.Info("Hire: body (" + what + "): pos " + npc.transform.position.ToString("0.0") + ", layer " + npc.layer + ", parent " + (npc.transform.parent != null ? npc.transform.parent.name : "none")
                     + ", rb " + (rb == null ? "none" : "kin=" + rb.isKinematic + " grav=" + rb.useGravity + " detect=" + rb.detectCollisions + " mode=" + rb.collisionDetectionMode + " vel=" + rb.velocity.ToString("0.0"))
                     + ", rigidbodies " + rbs.Length + ", colliders on/off/trigger " + on + "/" + off + "/" + trig
                     + ", ground below " + (g ? h.collider.name + " at " + h.point.y.ToString("0.0") : "none"));
             }
-            catch (Exception e) { Plugin.Log.LogInfo("Hire: LogBody failed: " + e.Message); }
+            catch (Exception e) { Plugin.Info("Hire: LogBody failed: " + e.Message); }
         }
 
         static void TeleportNear(Transform pl)
@@ -1029,7 +1029,7 @@ namespace WildWasteland.Modules.Quests
             try
             {
                 Transform rack = WeaponRack();
-                if (rack == null) { Plugin.Log.LogInfo("Hire: the player's weapon rack was not found; " + displayName + " keeps the gun data he had."); return; }
+                if (rack == null) { Plugin.Info("Hire: the player's weapon rack was not found; " + displayName + " keeps the gun data he had."); return; }
                 reloadClips.Clear();
                 var held = new List<string>();
                 if (gunHand != null)
@@ -1056,12 +1056,12 @@ namespace WildWasteland.Modules.Quests
                     }
                     if (want.Length > 0) { best = rack.Find(want); viaFallback = best != null; }
                 }
-                if (best == null) { Plugin.Log.LogInfo("Hire: " + displayName + "'s gun (" + string.Join(", ", held.ToArray()) + ") has no player version; no reload sounds (set ReloadSoundFrom)."); return; }
+                if (best == null) { Plugin.Info("Hire: " + displayName + "'s gun (" + string.Join(", ", held.ToArray()) + ") has no player version; no reload sounds (set ReloadSoundFrom)."); return; }
                 ReadGunStats(best, rack);
                 if (viaFallback || FindFsm(npc, "WeaponType") == null) BorrowShotSound(best);     // Bolter has no WeaponType: the game never set his gun's sound
                 PlayMakerFSM snd = null;
                 foreach (PlayMakerFSM f in best.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "AnimSound") { snd = f; break; }
-                if (snd == null) { Plugin.Log.LogInfo("Hire: " + best.name + " has no AnimSound; no reload sounds."); return; }
+                if (snd == null) { Plugin.Info("Hire: " + best.name + " has no AnimSound; no reload sounds."); return; }
                 var states = new List<FsmState>(snd.FsmStates);
                 states.Sort((x, y) => string.CompareOrdinal(x.Name, y.Name));
                 foreach (FsmState st in states)
@@ -1082,7 +1082,7 @@ namespace WildWasteland.Modules.Quests
                     }
                 }
                 var names = new List<string>(); foreach (AudioClip c in reloadClips) names.Add(c.name);
-                Plugin.Log.LogInfo("Hire: " + displayName + " reloads with the sounds of " + best.name + ": " + string.Join(", ", names.ToArray())
+                Plugin.Info("Hire: " + displayName + " reloads with the sounds of " + best.name + ": " + string.Join(", ", names.ToArray())
                     + (gunPerRound && reloadClips.Count > 0 ? " (" + reloadClips[InsertClip()].name + " for every round)" : "") + ".");
             }
             catch (Exception e) { Plugin.LogOnce("HireReloadClips", e); }
@@ -1100,7 +1100,7 @@ namespace WildWasteland.Modules.Quests
                 gunPerRound = false;
                 PlayMakerFSM rl = null;
                 foreach (PlayMakerFSM f in gun.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "Reload") { rl = f; break; }
-                if (rl == null) { Plugin.Log.LogInfo("Hire: " + gun.name + " has no Reload FSM; magazine and reload time not known."); return; }
+                if (rl == null) { Plugin.Info("Hire: " + gun.name + " has no Reload FSM; magazine and reload time not known."); return; }
                 int mag = 0; bool perRound = false;
                 foreach (FsmState st in rl.FsmStates)
                 {
@@ -1142,7 +1142,7 @@ namespace WildWasteland.Modules.Quests
                 {
                     var all = new List<string>();
                     foreach (Animator an in anims) if (an != null && an.runtimeAnimatorController != null) foreach (AnimationClip c in an.runtimeAnimatorController.animationClips) if (c != null) all.Add(c.name + " " + c.length.ToString("0.0"));
-                    Plugin.Log.LogInfo("Hire: " + gun.name + " has no clip named reload; its clips: " + string.Join(", ", all.ToArray()));
+                    Plugin.Info("Hire: " + gun.name + " has no clip named reload; its clips: " + string.Join(", ", all.ToArray()));
                 }
                 float secs = -1f;
                 if (lens.Count > 0)
@@ -1155,7 +1155,7 @@ namespace WildWasteland.Modules.Quests
                 gunPerRound = perRound;
                 if (mag > 0) magSize = mag;
                 if (secs > 0f) reloadSecs = secs;
-                Plugin.Log.LogInfo("Hire: " + gun.name + ": " + (mag > 0 ? mag + " rounds" : "rounds unknown") + (perRound ? ", loaded one at a time" : "") + ", reload clips " + (clipNames.Count > 0 ? string.Join(", ", clipNames.ToArray()) : "none") + (secs > 0f ? " = " + secs.ToString("0.0") + " s" : "") + ".");
+                Plugin.Info("Hire: " + gun.name + ": " + (mag > 0 ? mag + " rounds" : "rounds unknown") + (perRound ? ", loaded one at a time" : "") + ", reload clips " + (clipNames.Count > 0 ? string.Join(", ", clipNames.ToArray()) : "none") + (secs > 0f ? " = " + secs.ToString("0.0") + " s" : "") + ".");
             }
             catch (Exception e) { Plugin.LogOnce("HireGunStats", e); }
         }
@@ -1214,7 +1214,7 @@ namespace WildWasteland.Modules.Quests
                         if (clip != null) break;
                     }
                 }
-                if (clip == null) { Plugin.Log.LogInfo("Hire: no shot sound found on " + gun.name + "; " + displayName + " keeps his own."); return; }
+                if (clip == null) { Plugin.Info("Hire: no shot sound found on " + gun.name + "; " + displayName + " keeps his own."); return; }
                 PlayMakerFSM snd = FindFsm(npc, "Sound2");
                 if (snd == null) return;
                 FsmObject gs = snd.FsmVariables.GetFsmObject("GunSound");
@@ -1227,7 +1227,7 @@ namespace WildWasteland.Modules.Quests
                         FsmObject v = fi != null ? fi.GetValue(a) as FsmObject : null;
                         if (v != null) v.Value = clip;
                     }
-                Plugin.Log.LogInfo("Hire: " + displayName + " shoots with the sound of " + gun.name + " (" + clip.name + ").");
+                Plugin.Info("Hire: " + displayName + " shoots with the sound of " + gun.name + " (" + clip.name + ").");
             }
             catch (Exception e) { Plugin.LogOnce("HireShotSound", e); }
         }
@@ -1312,7 +1312,7 @@ namespace WildWasteland.Modules.Quests
                 if (--magLeft <= 0)
                 {
                     magLeft = magSize; reloadUntil = Time.time + reloadSecs; ScheduleReloadSounds();
-                    Plugin.Log.LogInfo("Hire: " + displayName + " reloads (" + reloadSecs.ToString("0.#") + " s).");
+                    Plugin.Info("Hire: " + displayName + " reloads (" + reloadSecs.ToString("0.#") + " s).");
                 }
             }
             QuestFollower.Shot();
@@ -1349,7 +1349,7 @@ namespace WildWasteland.Modules.Quests
                 if (hp == null) { Plugin.LogOnce("HireShotNoHealth", new Exception("target " + target.name + " has no Health variable")); return; }
                 hp.Value -= ownDamage > 0f ? ownDamage : shotDamage.Value;     // his own weapon's damage when it can be read (Bolter hits harder)
                 shotsFired++;
-                if (shotsFired <= 6) Plugin.Log.LogInfo("Hire: " + displayName + " shoots " + target.name + " (health now " + hp.Value.ToString("0") + ").");
+                if (shotsFired <= 6) Plugin.Info("Hire: " + displayName + " shoots " + target.name + " (health now " + hp.Value.ToString("0") + ").");
                 PlayShotAnim();
                 CountShot();
                 PlayMakerFSM snd = FindFsm(npc, "Sound2");
@@ -1380,14 +1380,14 @@ namespace WildWasteland.Modules.Quests
                     bool parentToo = t.parent != null && t.parent.name.ToLowerInvariant().StartsWith("fire_effect");
                     if (flashName && !parentToo) flashObjs.Add(t.gameObject);
                 }
-                Plugin.Log.LogInfo("Hire: " + displayName + " parts: " + names);
-                Plugin.Log.LogInfo("Hire: " + displayName + " muzzle flash objects found: " + flashObjs.Count);
+                Plugin.Info("Hire: " + displayName + " parts: " + names);
+                Plugin.Info("Hire: " + displayName + " muzzle flash objects found: " + flashObjs.Count);
                 Animator a0 = npc.GetComponent<Animator>() ?? npc.GetComponentInChildren<Animator>(true);
                 if (a0 != null && a0.runtimeAnimatorController != null)
                 {
                     var cn = new System.Text.StringBuilder();
                     foreach (AnimationClip c in a0.runtimeAnimatorController.animationClips) cn.Append(c.name).Append(", ");
-                    Plugin.Log.LogInfo("Hire: " + displayName + " animation clips: " + cn);
+                    Plugin.Info("Hire: " + displayName + " animation clips: " + cn);
                 }
                 gunArm = null; gunHand = null;
                 foreach (GameObject g in flashObjs)
@@ -1420,7 +1420,7 @@ namespace WildWasteland.Modules.Quests
                 FsmFloat dv = dr != null ? dr.FsmVariables.GetFsmFloat("Damage Value") : null;
                 if (dv != null && Mathf.Abs(dv.Value) > 0.1f) ownDamage = Mathf.Abs(dv.Value);
                 FindReloadClips();
-                Plugin.Log.LogInfo("Hire: " + displayName + " holds his gun in " + (gunHand != null ? gunHand.name : "(no hand found)") + ", shot damage " + (ownDamage > 0f ? ownDamage.ToString("0") + " (his own)" : shotDamage.Value.ToString("0") + " (ShotDamage)") + ".");
+                Plugin.Info("Hire: " + displayName + " holds his gun in " + (gunHand != null ? gunHand.name : "(no hand found)") + ", shot damage " + (ownDamage > 0f ? ownDamage.ToString("0") + " (his own)" : shotDamage.Value.ToString("0") + " (ShotDamage)") + ".");
             }
             catch (Exception e) { Plugin.LogOnce("HireScanParts", e); if (flashObjs == null) flashObjs = new List<GameObject>(); }
         }
@@ -1529,7 +1529,7 @@ namespace WildWasteland.Modules.Quests
                 }
                 foreach (var kv in preGuardFsms)
                     if (kv.Key != null && (kv.Key.FsmName == "Damage" || kv.Key.FsmName == "FireDamage") && kv.Key.enabled != kv.Value) { kv.Key.enabled = kv.Value; n++; }
-                if (n > 0) Plugin.Log.LogInfo("Hire: " + displayName + "'s melee and attack wiring put back as before the car (" + n + " changes undone).");
+                if (n > 0) Plugin.Info("Hire: " + displayName + "'s melee and attack wiring put back as before the car (" + n + " changes undone).");
             }
             catch (Exception ex) { Plugin.LogOnce("HireRestoreCombat", ex); }
             actSnap.Clear(); evtSnap.Clear(); preGuardFsms.Clear();
@@ -1584,7 +1584,7 @@ namespace WildWasteland.Modules.Quests
             if (mo >= 0f) magSize = Mathf.RoundToInt(mo);
             if (ro > 0f) reloadSecs = Mathf.Max(0.2f, ro);
             if (magLeft < 0 || magLeft > magSize) magLeft = magSize;
-            Plugin.Log.LogInfo("Hire: " + displayName + " magazine " + (magSize > 0 ? magSize.ToString() : "none (never reloads)") + ", reload " + reloadSecs.ToString("0.0") + " s" + (mo >= 0f || ro > 0f ? " (override)" : "") + ".");
+            Plugin.Info("Hire: " + displayName + " magazine " + (magSize > 0 ? magSize.ToString() : "none (never reloads)") + ", reload " + reloadSecs.ToString("0.0") + " s" + (mo >= 0f || ro > 0f ? " (override)" : "") + ".");
         }
 
         static void DetachGuard()
@@ -1625,8 +1625,8 @@ namespace WildWasteland.Modules.Quests
         {
             Transform ct = car.transform;
             Transform sit = FindDeep(ct, "sitPos"), hd = FindDeep(ct, "hinge_seat_driver"), hp = FindDeep(ct, "hinge_seat_passenger");
-            if (sit == null || hd == null || hp == null) { Plugin.Log.LogInfo("Hire: " + car.name + " has no passenger seat; the follower stays out."); return false; }
-            if (SeatTaken(ct)) { Plugin.Log.LogInfo("Hire: the passenger seat of " + car.name + " is taken; the follower stays out."); return false; }
+            if (sit == null || hd == null || hp == null) { Plugin.Info("Hire: " + car.name + " has no passenger seat; the follower stays out."); return false; }
+            if (SeatTaken(ct)) { Plugin.Info("Hire: the passenger seat of " + car.name + " is taken; the follower stays out."); return false; }
 
             mountObj = new GameObject("ApocalypterQuests.HireSeat");
             mountObj.transform.SetParent(ct, false);
@@ -1685,7 +1685,7 @@ namespace WildWasteland.Modules.Quests
             mounted = true;
             carObj = car;
             target = null;
-            Plugin.Log.LogInfo("Hire: " + displayName + " rides in " + car.name + ".");
+            Plugin.Info("Hire: " + displayName + " rides in " + car.name + ".");
             return true;
         }
 
@@ -1746,7 +1746,7 @@ namespace WildWasteland.Modules.Quests
             muted.Clear(); ignoredCars.Clear(); ownCols.Clear();
             if (mountObj != null) UnityEngine.Object.Destroy(mountObj);
             mountObj = null;
-            Plugin.Log.LogInfo("Hire: " + displayName + " got out.");
+            Plugin.Info("Hire: " + displayName + " got out.");
         }
 
         // ---- the end -------------------------------------------------------------------------------------------------
