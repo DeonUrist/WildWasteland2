@@ -6,6 +6,7 @@ namespace WildWasteland.Core
     /// <summary>Shared native NWH engine reads with optional typed ignition overrides.</summary>
     public static class VehicleEngine
     {
+        /// <summary>Cached native engine and input handles tied to the exact vehicle object.</summary>
         sealed class Handles { public GameObject Car; public object Engine, Input; }
         static readonly Dictionary<int, Handles> Cars = new Dictionary<int, Handles>();
         static readonly Dictionary<Type, Dictionary<string, Func<object, object>>> Getters = new Dictionary<Type, Dictionary<string, Func<object, object>>>();

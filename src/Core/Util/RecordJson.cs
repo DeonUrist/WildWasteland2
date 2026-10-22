@@ -12,9 +12,12 @@ namespace WildWasteland.Core
     // Use the existing template JSON parser/writer and only public DTO fields; never serialize Unity objects/properties.
     public static class RecordJson
     {
+        /// <summary>Encodes a supported public-field record through the shared JSON writer.</summary>
         public static string WriteRecord(object record) { return Json.Write(Encode(record, 0)); }
+        /// <summary>Decodes JSON into the requested record type using the shared field schema.</summary>
         public static T ReadRecord<T>(string json) { return (T)Decode(Json.Parse(json), typeof(T), 0); }
 
+        /// <summary>Recursively projects supported records, arrays and scalar values into JSON data.</summary>
         private static object Encode(object value, int depth)
         {
             if (depth > 16) throw new InvalidDataException("Traffic data nesting too deep");
@@ -31,6 +34,7 @@ namespace WildWasteland.Core
             return result;
         }
 
+        /// <summary>Reconstructs supported scalar, array and public-field record values with bounded recursion.</summary>
         private static object Decode(object value, Type type, int depth)
         {
             if (depth > 16) throw new InvalidDataException("Traffic data nesting too deep");

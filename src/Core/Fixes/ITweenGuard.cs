@@ -14,13 +14,20 @@ namespace WildWasteland.Core
     // Fix: before each tween update, if the body is gone, switch the tween to non-physics mode (iTween's Update then drives it).
     internal static class ITweenGuard
     {
+        static readonly FixOwner Owner = new FixOwner("ITweenGuard");
+        static bool _installed;
         internal const string GUID = "com.denis.apocalypter.itweenguard";
         static int _fixed;
 
-        internal static void Init()
+        /// <summary>Removes this fix's hooks and patches so installation can be repeated safely.</summary>
+        internal static void Remove() { Owner.Remove(); _installed = false; _fixed = 0; }
+
+        /// <summary>Installs the short-name stop guard and, without a standalone conflict, the removed-body tween guard.</summary>
+        internal static void Install()
         {
+            if (_installed) return; _installed = true;
             var stop = AccessTools.Method(typeof(iTween), "Stop", new[] { typeof(GameObject), typeof(string) });
-            if (Patches.Patch(null, stop, transpiler: AccessTools.Method(typeof(ITweenGuard), nameof(StopTranspiler))))
+            if (Patches.Patch(Owner, stop, transpiler: AccessTools.Method(typeof(ITweenGuard), nameof(StopTranspiler))))
                 Log.Always("[Core] iTween stop guard ready (always on)");
             BepInEx.PluginInfo info;
             if (Chainloader.PluginInfos.TryGetValue(GUID, out info) && !ReferenceEquals(info.Instance, null))
@@ -30,10 +37,11 @@ namespace WildWasteland.Core
             }
             var target = AccessTools.Method(typeof(iTween), "TweenUpdate");
             if (target == null) { Log.Warn("[Core] iTween guard: iTween.TweenUpdate not found; nothing patched"); return; }
-            if (Patches.Patch(null, target, prefix: AccessTools.Method(typeof(ITweenGuard), nameof(Prefix))))
+            if (Patches.Patch(Owner, target, prefix: AccessTools.Method(typeof(ITweenGuard), nameof(Prefix))))
                 Log.Always("[Core] iTween guard ready (always on)");
         }
 
+        /// <summary>Replaces the expected single Substring call with the short-name-safe equivalent.</summary>
         static IEnumerable<CodeInstruction> StopTranspiler(IEnumerable<CodeInstruction> instructions)
         {
             var code = new List<CodeInstruction>(instructions);
@@ -47,12 +55,14 @@ namespace WildWasteland.Core
         }
 
         // A shorter tween name cannot match the requested prefix; leave it short so Stop continues with the other tweens.
+        /// <summary>Leaves too-short tween names unmatched instead of throwing during prefix comparison.</summary>
         static string StopPrefix(string value, int startIndex, int length)
         {
             return value.Length < length ? value : value.Substring(startIndex, length);
         }
 
         // ___physics / ___kinematic: iTween's private fields, accessed directly by Harmony (no reflection per call).
+        /// <summary>Returns a tween to nonphysics updates when its Rigidbody has been removed.</summary>
         static void Prefix(iTween __instance, ref bool ___physics, ref bool ___kinematic)
         {
             if (!___physics) return;

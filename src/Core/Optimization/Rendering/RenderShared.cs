@@ -372,7 +372,12 @@ namespace WildWasteland.Core.Optimization
                 ModEvents.Subscribe<Events.SaveEnd>(OptimizationRuntime.Instance, SaveFinished);
                 SaveBus.StateChanged -= Changed; SaveBus.StateChanged += Changed;
             }
-            if (Reverted) c.RevertSaved();
+            // The first client may join after native wait/BeforeSerialize already happened while no clients existed.
+            // Recover that barrier from current state instead of waiting for another event that will never arrive.
+            var saves = ModApi.Get<ISaves>();
+            if (!Reverted && (SaveBus.Saving || SaveBus.State == "wait" || SaveBus.State == "SaveGame"
+                || saves != null && saves.Phase == SavePhase.Saving)) BeginSerialization();
+            else if (Reverted) c.RevertSaved();
         }
 
         /// <summary>Drops one scan/save client and releases shared registrations when the last client leaves.</summary>

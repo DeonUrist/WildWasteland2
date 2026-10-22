@@ -26,10 +26,12 @@ namespace WildWasteland.Core.UI
         static bool _open;
         static bool _fromMenu;
         static Action _deferred;
+        /// <summary>Whether the settings window currently owns an editor session.</summary>
         public static bool IsOpen { get { return _open; } }
         /// <summary>The window is open or has a deferred action to run: the GUI runner must stay on.</summary>
         internal static bool NeedsGui { get { return _open || _deferred != null; } }
 
+        /// <summary>Registers the shared settings hotkey, core pages and save-state observer.</summary>
         internal static void Init()
         {
             Hotkeys.Register(null, Plugin.ToolWindowKey, Toggle, null, true);
@@ -38,12 +40,14 @@ namespace WildWasteland.Core.UI
         }
 
         static bool _newGame, _openNewGame;
+        /// <summary>Tracks new-game completion so the settings page opens at the existing ready point.</summary>
         static void OnSaveState(string previous, string current)
         {
             if (current == "LoadGame" || current == "generateTerrain 2") { _newGame = _openNewGame = false; }
             else if (current == "setSeed" || current == "generateTerrain") _newGame = true;
             else if (current == "isPlay" && _newGame) { _newGame = false; _openNewGame = true; }
         }
+        /// <summary>Closes blocked sessions and opens the new-game settings page when input is ready.</summary>
         internal static void Tick()
         {
             if (LoadingProgress.MenusBlocked) { if (_open) Close(); return; }
@@ -53,14 +57,19 @@ namespace WildWasteland.Core.UI
             if (_open) { _openNewGame = false; Log.Always("[Core] New game ready: opened Game settings"); }
         }
 
+        /// <summary>Adds a unique settings page to the window.</summary>
         public static void Add(ToolPage p) { if (p != null && !_pages.Contains(p)) _pages.Add(p); }
+        /// <summary>Removes a page and clears its current-page reference.</summary>
         public static void Remove(ToolPage p) { _pages.Remove(p); if (_current == p) _current = null; }
 
+        /// <summary>Closes the active settings window or opens its default page.</summary>
         public static void Toggle() { if (_open) Close(); else Open(null); }
 
+        /// <summary>Opens a requested page through the shared editor session and pause-menu policy.</summary>
         public static void Open(ToolPage page)
         { Open(page, GameRefs.Menu != null && GameRefs.Menu.ActiveStateName == "pause"); }
 
+        /// <summary>Opens Game settings while preserving the native menu context.</summary>
         internal static void OpenFromMenu() { Open(CorePages.GamePage, true); }
         /// <summary>Opens an authored page, optionally acquiring input from an already paused native menu.</summary>
         public static void Open(ToolPage page, bool fromMenu)
@@ -83,6 +92,7 @@ namespace WildWasteland.Core.UI
             if (_current != null) _current.OnShow();
         }
 
+        /// <summary>Closes the current page and releases the editor session and transient widget state.</summary>
         public static void Close()
         {
             if (!_open) return;
@@ -97,6 +107,7 @@ namespace WildWasteland.Core.UI
         static bool _collected;
         /// <summary>Module tool pages collected for the Debug-owned Developer presentation.</summary>
         public static IEnumerable<ToolPage> DeveloperPages { get { return CorePages.ModulePages; } }
+        /// <summary>Collects each module tool page once for the Debug-owned developer page.</summary>
         static void CollectModulePages()
         {
             if (_collected) return;
@@ -110,6 +121,7 @@ namespace WildWasteland.Core.UI
             }
         }
 
+        /// <summary>Collects visible pages and orders them by group and original registration.</summary>
         static List<ToolPage> Sorted()
         {
             var l = new List<ToolPage>();
@@ -122,10 +134,12 @@ namespace WildWasteland.Core.UI
             });
             return l;
         }
+        /// <summary>Applies Debug and Developer visibility settings to a page.</summary>
         static bool Visible(ToolPage p)
         {
             return (!p.DebugOnly || Plugin.EnableDebug.Value) && (p != CorePages.DeveloperPage || Plugin.DeveloperMode.Value);
         }
+        /// <summary>Returns the standard group order, placing custom groups last.</summary>
         static int GroupIndex(string g) { int i = Array.IndexOf(ToolGroups.Order, g); return i < 0 ? ToolGroups.Order.Length : i; }
 
         /// <summary>Called from the Runner's OnGUI.</summary>
@@ -146,7 +160,7 @@ namespace WildWasteland.Core.UI
                 if (!ToolLayout.Rebinding && Event.current != null && UnityEngine.InputSystem.Keyboard.current != null && UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame) { Close(); return; }
                 if (_current != null) { try { _current.Update(); } catch (Exception e) { Log.Error("F7 page " + _current.Title, e); } }
             }
-            if (Skin.GameFont == null) { var f = ApocasetterBridge.GameFont; if (f != null) Skin.SetGameFont(f); }
+            Skin.EnsureGameFont();
             int depth = GUI.depth; GUI.depth = -900;
             float s = Mathf.Min(Screen.width / Width, Screen.height / Height);
             var accent = AccentTheme.Resolve(ThemePalette.Gold);
@@ -168,6 +182,7 @@ namespace WildWasteland.Core.UI
 
         static readonly ToolLayout _layout = new ToolLayout();
 
+        /// <summary>Lays out the active settings navigation, search and page surface.</summary>
         static void DrawWindow()
         {
             if (_current != null && _current.DrawFullPage()) return;

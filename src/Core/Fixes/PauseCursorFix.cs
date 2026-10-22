@@ -1,6 +1,6 @@
 using HutongGames.PlayMaker;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Core
 {
     /// <summary>
     /// Mouse dead for ~2 s in TAB / F3 after closing the ESC menu (vanilla timing, not the menu skin).
@@ -14,9 +14,17 @@ namespace WildWasteland.Modules.CleanHUD
     /// </summary>
     internal static class PauseCursorFix
     {
+        static readonly FixOwner Owner = new FixOwner("PauseCursorFix");
+        static bool _installed;
+        /// <summary>Installs the native pause-menu cursor fix independently of HUD availability.</summary>
+        internal static void Install()
+        { if (_installed) return; _installed = true; Hooks.EnterState.Postfix(Owner, AfterEnterState); }
+        /// <summary>Removes the native state observer.</summary>
+        internal static void Remove() { Owner.Remove(); _installed = false; }
+        /// <summary>Stops the delayed native GUI cursor override immediately when the pause menu returns to play.</summary>
         internal static void AfterEnterState(Fsm fsm, FsmState state)
         {
-            if (!CleanHudModule.Running || fsm == null || state == null) return;
+            if (fsm == null || state == null) return;
             var n = fsm.Name;
             if (n == null || n.Length != 4 || n != "Menu" || state.Name != "play") return;
             var go = fsm.GameObject;

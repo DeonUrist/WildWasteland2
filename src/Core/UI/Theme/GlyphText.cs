@@ -10,13 +10,16 @@ namespace WildWasteland.Core.UI
     // Native Helveticrap by default, optional forcedSquare. Both atlases work before scene fonts are loaded.
     internal sealed partial class GlyphFont
     {
+        /// <summary>Atlas glyph rectangle, offsets and advance used by the shared bitmap font.</summary>
         internal struct G { internal float X, Y, W, H, Ox, Top, Adv; }
         internal Texture2D Atlas;
         internal float Size, Ascent, Descent, AtlasW, AtlasH;
         internal readonly Dictionary<char, G> Map = new Dictionary<char, G>();
 
         private static GlyphFont _game, _clean;
+        /// <summary>Forgets cached native and packaged bitmap-font lookups.</summary>
         internal static void Reset() { _game = _clean = null; }
+        /// <summary>Resolves the native bitmap font, falling back to the packaged theme font unless game-only is requested.</summary>
         internal static GlyphFont Get(bool gameOnly = false)
         {
             bool clean = !gameOnly && UiTheme.CleanFont != null && UiTheme.CleanFont.Value;
@@ -42,8 +45,10 @@ namespace WildWasteland.Core.UI
             if (clean) _clean = f; else _game = f;
             return f;
         }
+        /// <summary>Converts a parsed JSON number to a glyph metric with zero fallback.</summary>
         private static float F(object o) { return o is double ? (float)(double)o : 0f; }
 
+        /// <summary>Measures glyph advances and spacing for the requested text and size.</summary>
         internal float Measure(string text, float size, float spacing)
         {
             if (string.IsNullOrEmpty(text)) return 0f;
@@ -57,12 +62,14 @@ namespace WildWasteland.Core.UI
         }
 
         // The same atlas in IMGUI windows, sharing the menu's text metrics and assets.
+        /// <summary>Draws text with the shared native-or-packaged bitmap font.</summary>
         internal static void Draw(Rect rect, string text, float size, Color color, TextAnchor align)
         {
             if (Event.current.type != EventType.Repaint || string.IsNullOrEmpty(text)) return;
             var font = Get(); if (font == null || font.Atlas == null) return;
             font.DrawRange(rect, text, 0, text.Length, size, color, align);
         }
+        /// <summary>Draws text only when the native game bitmap font is available.</summary>
         internal static void DrawGame(Rect rect, string text, float size, Color color, TextAnchor align)
         {
             if (Event.current.type != EventType.Repaint || string.IsNullOrEmpty(text)) return;
@@ -70,6 +77,7 @@ namespace WildWasteland.Core.UI
             font.DrawRange(rect, text, 0, text.Length, size, color, align);
         }
 
+        /// <summary>Measures one text range without allocating a substring.</summary>
         private float TextWidth(string text, int start, int end, float size)
         {
             float width = 0; G glyph;
@@ -78,6 +86,7 @@ namespace WildWasteland.Core.UI
             return width * size / Size;
         }
 
+        /// <summary>Draws one aligned text range using the font atlas glyph rectangles.</summary>
         private void DrawRange(Rect rect, string text, int start, int end, float size, Color color, TextAnchor align)
         {
             float width = TextWidth(text, start, end, size);
@@ -99,6 +108,7 @@ namespace WildWasteland.Core.UI
             GUI.color = previous;
         }
 
+        /// <summary>Finds the next wrapped line boundary and advances past its separating whitespace.</summary>
         private int LineEnd(string text, int start, float size, float width, out int next)
         {
             float used = 0; int space = -1; G glyph;
@@ -114,6 +124,7 @@ namespace WildWasteland.Core.UI
             next = text.Length; return text.Length;
         }
 
+        /// <summary>Measures total wrapped text height using the same boundaries as drawing.</summary>
         internal static float WrappedHeight(string text, float size, float width)
         {
             if (string.IsNullOrEmpty(text)) return size * 1.2f;
@@ -122,6 +133,7 @@ namespace WildWasteland.Core.UI
             return lines * size * 1.2f;
         }
 
+        /// <summary>Draws successive glyph-wrapped lines inside the supplied rectangle.</summary>
         internal static void DrawWrapped(Rect rect, string text, float size, Color color, TextAnchor align)
         {
             if (Event.current.type != EventType.Repaint || string.IsNullOrEmpty(text)) return;
@@ -140,8 +152,11 @@ namespace WildWasteland.Core.UI
     public sealed class GlyphText : MaskableGraphic
     {
         private static readonly HashSet<GlyphText> Live = new HashSet<GlyphText>();
+        /// <summary>Tracks the live bitmap graphic and invalidates its mesh on enable.</summary>
         protected override void OnEnable() { base.OnEnable(); Live.Add(this); SetAllDirty(); }
+        /// <summary>Stops tracking the bitmap graphic when it is disabled.</summary>
         protected override void OnDisable() { Live.Remove(this); base.OnDisable(); }
+        /// <summary>Invalidates all live bitmap graphics after the shared font changes.</summary>
         internal static void RefreshFont() { foreach (var text in Live) if (text != null) text.SetAllDirty(); }
         [NonSerialized] public string Text = "";
         [NonSerialized] public float Size = 24f;
@@ -152,6 +167,7 @@ namespace WildWasteland.Core.UI
 
         public override Texture mainTexture { get { var f = GlyphFont.Get(); return f != null ? f.Atlas : null; } }
 
+        /// <summary>Updates text and invalidates the mesh only when its content changes.</summary>
         public void Set(string t)
         {
             t = t ?? "";
@@ -160,8 +176,10 @@ namespace WildWasteland.Core.UI
             SetVerticesDirty();
         }
 
+        /// <summary>Resolves the native bitmap font, falling back to the packaged theme font unless game-only is requested.</summary>
         public float Width { get { return GlyphFont.Get().Measure(Text, Size, Spacing); } }
 
+        /// <summary>Builds atlas-textured quads for the current bitmap text.</summary>
         protected override void OnPopulateMesh(VertexHelper vh)
         {
             vh.Clear();

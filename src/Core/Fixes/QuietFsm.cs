@@ -12,25 +12,33 @@ namespace WildWasteland.Core
     // This prefix does the same lookup (first PlayMakerFSM with that name, else the first PlayMakerFSM like vanilla) without the warning. Off: the vanilla method runs.
     internal static class QuietFsm
     {
+        static readonly FixOwner Owner = new FixOwner("QuietFsm");
+        static bool _installed;
         private static readonly List<PlayMakerFSM> _buf = new List<PlayMakerFSM>();
         private static int _hidden;
 
-        // On is a static bool kept in sync with the setting "Hide missing-FSM warnings" (tools.cfg, Patrols / Debug; bound by Patrols.BindConfig).
-        internal static bool On;
+        // Debug owns Log.Level; native warnings are visible only with deep diagnostic logging.
+        /// <summary>Removes this fix's hooks and patches so installation can be repeated safely.</summary>
+        internal static void Remove() { Owner.Remove(); _installed = false; _buf.Clear(); _hidden = 0; }
+
+        /// <summary>Installs native FSM lookup and performance-warning guards once.</summary>
         internal static void Install()
         {
-            Patches.Patch(null, AccessTools.PropertyGetter(typeof(PlayMakerPrefs), "LogPerformanceWarnings"),
+            if (_installed) return; _installed = true;
+            Patches.Patch(Owner, AccessTools.PropertyGetter(typeof(PlayMakerPrefs), "LogPerformanceWarnings"),
                 postfix: AccessTools.Method(typeof(QuietFsm), nameof(PerformanceWarnings)));
             var target = AccessTools.Method(typeof(HutongGames.PlayMaker.ActionHelpers), "GetGameObjectFsm", new[] { typeof(GameObject), typeof(string) });
             if (target == null) { Log.Warn("[Core] QuietFsm: ActionHelpers.GetGameObjectFsm not found; missing-FSM warnings stay"); return; }
-            Patches.Patch(null, target, prefix: AccessTools.Method(typeof(QuietFsm), nameof(Prefix)));
+            Patches.Patch(Owner, target, prefix: AccessTools.Method(typeof(QuietFsm), nameof(Prefix)));
         }
 
-        private static void PerformanceWarnings(ref bool __result) { __result = __result && Log.Verbose; }
+        /// <summary>Allows native performance warnings only at the deep diagnostic logging level.</summary>
+        private static void PerformanceWarnings(ref bool __result) { __result = __result && Log.L2; }
 
+        /// <summary>Preserves native named-FSM lookup and fallback while hiding missing-FSM warnings below level two.</summary>
         private static bool Prefix(GameObject __0, string __1, ref PlayMakerFSM __result)
         {
-            if (!On) return true;
+            if (Log.L2) return true;
             if (__0 == null || string.IsNullOrEmpty(__1)) return true;   // the vanilla paths for these
             try
             {
@@ -40,7 +48,7 @@ namespace WildWasteland.Core
                 // vanilla falls back to go.GetComponent<PlayMakerFSM>() (the first FSM, or null) after the warning
                 __result = _buf.Count > 0 ? _buf[0] : null;
                 _buf.Clear();
-                if (++_hidden == 1 && Log.Verbose) Log.Info("[Core] QuietFsm: hiding \"Could not find FSM\" warnings (first: " + __1 + " on " + __0.name + ")");
+                if (++_hidden == 1 && Log.L1) Log.Info("[Core] QuietFsm: hiding \"Could not find FSM\" warnings (first: " + __1 + " on " + __0.name + ")");
                 return false;
             }
             catch (Exception) { _buf.Clear(); return true; }

@@ -9,6 +9,7 @@ namespace WildWasteland.Core
     {
         private static readonly Dictionary<string, string> Paths = new Dictionary<string, string>(StringComparer.Ordinal);
         internal static string[] Names { get; private set; }
+        /// <summary>Loads the packaged resource-name to relative-path index once for external asset lookup.</summary>
         internal static void Initialize()
         {
             Paths.Clear();
@@ -29,12 +30,14 @@ namespace WildWasteland.Core
             }
             Names = names.ToArray();
         }
+        /// <summary>Resolves an indexed asset to its installed path, or returns null when absent.</summary>
         internal static string FilePath(string name)
         {
             string path;
             if (!Paths.TryGetValue(name, out path)) throw new FileNotFoundException("Runtime asset is not listed in asset-index.tsv: " + name);
             return path;
         }
+        /// <summary>Opens an indexed disk asset or the matching assembly resource.</summary>
         internal static Stream Open(string name)
         {
             string path; if (!Paths.TryGetValue(name, out path)) return null;
