@@ -7,7 +7,6 @@ using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Quests
 {
@@ -46,7 +45,7 @@ namespace WildWasteland.Modules.Quests
             try
             {
                 Transform rack = WeaponRack();
-                if (rack == null) { if (Log.L1) GunplayLog.Main("Hire: the player's weapon rack was not found; " + displayName + " keeps the gun data he had."); return; }
+                if (rack == null) { if (Log.L1) Plugin.Info("Hire: the player's weapon rack was not found; " + displayName + " keeps the gun data he had."); return; }
                 reloadClips.Clear();
                 var held = new List<string>();
                 if (gunHand != null)
@@ -73,12 +72,12 @@ namespace WildWasteland.Modules.Quests
                     }
                     if (want.Length > 0) { best = rack.Find(want); viaFallback = best != null; }
                 }
-                if (best == null) { if (Log.L1) GunplayLog.Main("Hire: " + displayName + "'s gun (" + string.Join(", ", held.ToArray()) + ") has no player version; no reload sounds (set ReloadSoundFrom)."); return; }
+                if (best == null) { if (Log.L1) Plugin.Info("Hire: " + displayName + "'s gun (" + string.Join(", ", held.ToArray()) + ") has no player version; no reload sounds (set ReloadSoundFrom)."); return; }
                 ReadGunStats(best, rack);
                 if (viaFallback || FindFsm(npc, "WeaponType") == null) BorrowShotSound(best);     // Bolter has no WeaponType: the game never set his gun's sound
                 PlayMakerFSM snd = null;
                 foreach (PlayMakerFSM f in best.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "AnimSound") { snd = f; break; }
-                if (snd == null) { if (Log.L1) GunplayLog.Main("Hire: " + best.name + " has no AnimSound; no reload sounds."); return; }
+                if (snd == null) { if (Log.L1) Plugin.Info("Hire: " + best.name + " has no AnimSound; no reload sounds."); return; }
                 var states = new List<FsmState>(snd.FsmStates);
                 states.Sort((x, y) => string.CompareOrdinal(x.Name, y.Name));
                 foreach (FsmState st in states)
@@ -99,7 +98,7 @@ namespace WildWasteland.Modules.Quests
                     }
                 }
                 var names = new List<string>(); foreach (AudioClip c in reloadClips) names.Add(c.name);
-                if (Log.L1) GunplayLog.Main("Hire: " + displayName + " reloads with the sounds of " + best.name + ": " + string.Join(", ", names.ToArray())
+                if (Log.L1) Plugin.Info("Hire: " + displayName + " reloads with the sounds of " + best.name + ": " + string.Join(", ", names.ToArray())
                     + (gunPerRound && reloadClips.Count > 0 ? " (" + reloadClips[InsertClip()].name + " for every round)" : "") + ".");
             }
             catch (Exception e) { Plugin.LogOnce("HireReloadClips", e); }
@@ -118,7 +117,7 @@ namespace WildWasteland.Modules.Quests
                 gunPerRound = false;
                 PlayMakerFSM rl = null;
                 foreach (PlayMakerFSM f in gun.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "Reload") { rl = f; break; }
-                if (rl == null) { if (Log.L1) GunplayLog.Main("Hire: " + gun.name + " has no Reload FSM; magazine and reload time not known."); return; }
+                if (rl == null) { if (Log.L1) Plugin.Info("Hire: " + gun.name + " has no Reload FSM; magazine and reload time not known."); return; }
                 int mag = 0; bool perRound = false;
                 foreach (FsmState st in rl.FsmStates)
                 {
@@ -160,7 +159,7 @@ namespace WildWasteland.Modules.Quests
                 {
                     var all = new List<string>();
                     foreach (Animator an in anims) if (an != null && an.runtimeAnimatorController != null) foreach (AnimationClip c in an.runtimeAnimatorController.animationClips) if (c != null) all.Add(c.name + " " + c.length.ToString("0.0"));
-                    if (Log.L1) GunplayLog.Main("Hire: " + gun.name + " has no clip named reload; its clips: " + string.Join(", ", all.ToArray()));
+                    if (Log.L1) Plugin.Info("Hire: " + gun.name + " has no clip named reload; its clips: " + string.Join(", ", all.ToArray()));
                 }
                 float secs = -1f;
                 if (lens.Count > 0)
@@ -173,7 +172,7 @@ namespace WildWasteland.Modules.Quests
                 gunPerRound = perRound;
                 if (mag > 0) magSize = mag;
                 if (secs > 0f) reloadSecs = secs;
-                if (Log.L1) GunplayLog.Main("Hire: " + gun.name + ": " + (mag > 0 ? mag + " rounds" : "rounds unknown") + (perRound ? ", loaded one at a time" : "") + ", reload clips " + (clipNames.Count > 0 ? string.Join(", ", clipNames.ToArray()) : "none") + (secs > 0f ? " = " + secs.ToString("0.0") + " s" : "") + ".");
+                if (Log.L1) Plugin.Info("Hire: " + gun.name + ": " + (mag > 0 ? mag + " rounds" : "rounds unknown") + (perRound ? ", loaded one at a time" : "") + ", reload clips " + (clipNames.Count > 0 ? string.Join(", ", clipNames.ToArray()) : "none") + (secs > 0f ? " = " + secs.ToString("0.0") + " s" : "") + ".");
             }
             catch (Exception e) { Plugin.LogOnce("HireGunStats", e); }
         }
@@ -207,7 +206,7 @@ namespace WildWasteland.Modules.Quests
                         if (clip != null) break;
                     }
                 }
-                if (clip == null) { if (Log.L1) GunplayLog.Main("Hire: no shot sound found on " + gun.name + "; " + displayName + " keeps his own."); return; }
+                if (clip == null) { if (Log.L1) Plugin.Info("Hire: no shot sound found on " + gun.name + "; " + displayName + " keeps his own."); return; }
                 PlayMakerFSM snd = FindFsm(npc, "Sound2");
                 if (snd == null) return;
                 FsmObject gs = snd.FsmVariables.GetFsmObject("GunSound");
@@ -220,7 +219,7 @@ namespace WildWasteland.Modules.Quests
                         FsmObject v = fi != null ? fi.GetValue(a) as FsmObject : null;
                         if (v != null) v.Value = clip;
                     }
-                if (Log.L1) GunplayLog.Main("Hire: " + displayName + " shoots with the sound of " + gun.name + " (" + clip.name + ").");
+                if (Log.L1) Plugin.Info("Hire: " + displayName + " shoots with the sound of " + gun.name + " (" + clip.name + ").");
             }
             catch (Exception e) { Plugin.LogOnce("HireShotSound", e); }
         }
@@ -323,10 +322,10 @@ namespace WildWasteland.Modules.Quests
                 if (--magLeft <= 0)
                 {
                     magLeft = magSize; reloadUntil = Time.time + reloadSecs; ScheduleReloadSounds();
-                    if (Log.L2) GunplayLog.Deep("Hire: " + displayName + " reloads (" + reloadSecs.ToString("0.#") + " s).");
+                    if (Log.L2) Plugin.Info("Hire: " + displayName + " reloads (" + reloadSecs.ToString("0.#") + " s).");
                 }
             }
-            if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Shot();   // refs-ok: REFACTOR-REQUEST B09-4 (follower AI shot pacing lives in NPCAI QuestFollower)
+            if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Shot();
         }
 
         // while reloading, Apocapatrol's gunner is told it cannot fire, so his own Attack FSM stays off and the arms come down
@@ -362,7 +361,7 @@ namespace WildWasteland.Modules.Quests
                 if (hp == null) { Plugin.LogOnce("HireShotNoHealth", new Exception("target " + target.name + " has no Health variable")); return; }
                 hp.Value -= ownDamage > 0f ? ownDamage : shotDamage.Value;     // his own weapon's damage when it can be read (Bolter hits harder)
                 shotsFired++;
-                if (shotsFired <= 6 && Log.L2) GunplayLog.Deep("Hire: " + displayName + " shoots " + target.name + " (health now " + hp.Value.ToString("0") + ").");
+                if (shotsFired <= 6 && Log.L2) Plugin.Info("Hire: " + displayName + " shoots " + target.name + " (health now " + hp.Value.ToString("0") + ").");
                 PlayShotAnim();
                 CountShot();
                 PlayMakerFSM snd = FindFsm(npc, "Sound2");
@@ -384,7 +383,7 @@ namespace WildWasteland.Modules.Quests
                 if (RealShotFired()) { realFireAt = Time.time; PlayShotAnim(); CountShot(); }
                 lastAtkState = st;
                 if (flashOff > 0f && Time.time > flashOff) { flashOff = 0f; if (flashObjs != null) foreach (GameObject g in flashObjs) if (g != null) g.SetActive(false); }
-                if (animBack > 0f && Time.time > animBack && npcAnim != null) { animBack = 0f; if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Play(npcAnim, "idle", 0, 0f); else npcAnim.Play("idle", 0, 0f); }   // refs-ok: REFACTOR-REQUEST B09-4
+                if (animBack > 0f && Time.time > animBack && npcAnim != null) { animBack = 0f; if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Play(npcAnim, "idle", 0, 0f); else npcAnim.Play("idle", 0, 0f); }
             }
             catch (Exception e) { Plugin.LogOnce("HireWatchShots", e); }
         }
@@ -402,7 +401,7 @@ namespace WildWasteland.Modules.Quests
             if (mo >= 0f) magSize = Mathf.RoundToInt(mo);
             if (ro > 0f) reloadSecs = Mathf.Max(0.2f, ro);
             if (magLeft < 0 || magLeft > magSize) magLeft = magSize;
-            if (Log.L1) GunplayLog.Main("Hire: " + displayName + " magazine " + (magSize > 0 ? magSize.ToString() : "none (never reloads)") + ", reload " + reloadSecs.ToString("0.0") + " s" + (mo >= 0f || ro > 0f ? " (override)" : "") + ".");
+            if (Log.L1) Plugin.Info("Hire: " + displayName + " magazine " + (magSize > 0 ? magSize.ToString() : "none (never reloads)") + ", reload " + reloadSecs.ToString("0.0") + " s" + (mo >= 0f || ro > 0f ? " (override)" : "") + ".");
         }
     }
 }

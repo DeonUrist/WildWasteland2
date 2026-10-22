@@ -19,15 +19,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static bool _built;
 
         /// <summary>Prop catalog key of a weapon object name ("akm_trash_model (1)" -&gt; "akm_trash").</summary>
-        internal static string Norm(string n)
-        {
-            n = n.ToLowerInvariant();
-            int p = n.IndexOf(" (", StringComparison.Ordinal); if (p > 0) n = n.Substring(0, p);
-            p = n.IndexOf("(clone)", StringComparison.Ordinal); if (p > 0) n = n.Substring(0, p);
-            if (n.EndsWith("_model")) n = n.Substring(0, n.Length - 6);
-            if (n.StartsWith("9mm_")) n = n.Substring(4);
-            return n.Trim();
-        }
+        internal static string Norm(string n) { return Core.Names.Weapon(n); }
 
         private static float _nextBuild;
         /// <summary>Catalogs the weapon models in the hands of NPC prefab assets.</summary>

@@ -29,7 +29,7 @@ namespace WildWasteland.Modules.Quests
         static readonly Dictionary<string, GameObject> prefabs = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
 
         // walks that were saved with the quests and still have to be picked up again after a load
-        static readonly List<SavedWalk> pending = new List<SavedWalk>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
+        static readonly List<SavedWalk> pending = new List<SavedWalk>();
 
         static float pendingUntil, nextPending;
 
@@ -53,17 +53,17 @@ namespace WildWasteland.Modules.Quests
         static float settleUntil;
 
         /// <summary>lines for the save: object name and origin-relative target of everybody still walking</summary>
-        public static List<SavedWalk> ActiveWalks()   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
+        public static List<SavedWalk> ActiveWalks()
         {
-            var res = new List<SavedWalk>();   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
+            var res = new List<SavedWalk>();
             for (int i = 0; i < walkers.Count; i++)
-                if (walkers[i].Go != null) res.Add(new SavedWalk { Name = walkers[i].Go.name, TargetRel = walkers[i].TargetRel, CampKey = walkers[i].CampKey ?? "" });   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
+                if (walkers[i].Go != null) res.Add(new SavedWalk { Name = walkers[i].Go.name, TargetRel = walkers[i].TargetRel, CampKey = walkers[i].CampKey ?? "" });
             for (int i = 0; i < pending.Count; i++) res.Add(pending[i]);
             return res;
         }
 
         /// <summary>Load: saved walks are picked up again as the walkers' NPCs come back.</summary>
-        public static void RestoreWalks(List<SavedWalk> saved)   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
+        public static void RestoreWalks(List<SavedWalk> saved)
         {
             walkers.Clear();
             pending.Clear();
@@ -152,7 +152,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>A real NPC has a Movement FSM. Some assets share an NPC's name but are only the model (no FSMs, no animator state), which stands in a T-pose and never moves, so those are never used.</summary>
         static bool Usable(GameObject go)
         {
-            PlayMakerFSM[] fsms = NpcWorld.Fsms(go);
+            PlayMakerFSM[] fsms = QuestWorld.Fsms(go);
             for (int i = 0; i < fsms.Length; i++) if (fsms[i] != null && fsms[i].FsmName == "Movement") return true;
             return false;
         }
@@ -167,7 +167,7 @@ namespace WildWasteland.Modules.Quests
             var res = new List<string>();
             for (int i = 0; i < names.Count; i++)
             {
-                string n = NpcWorld.Norm(names[i]);
+                string n = Util.Norm(names[i]);
                 bool skip = false;
                 for (int k = 0; k < NonFighters.Length && !skip; k++) if (n.Contains(NonFighters[k])) skip = true;
                 if (!skip) res.Add(names[i]);
@@ -195,7 +195,7 @@ namespace WildWasteland.Modules.Quests
         static GameObject ScanForPrefab(string name)
         {
             GameObject living = null;
-            var all = QuestWorld.Objects;   // refs-ok: REFACTOR-REQUEST B07-14 (part of a Quests type; B18 Hire/Takeover split)
+            var all = QuestWorld.Objects;
             for (int i = 0; i < all.Count; i++)
             {
                 GameObject go = all[i];
@@ -220,7 +220,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>The Movement FSM of an object (null when missing).</summary>
         static PlayMakerFSM MoveFsm(GameObject go)
         {
-            PlayMakerFSM[] fsms = NpcWorld.Fsms(go);
+            PlayMakerFSM[] fsms = QuestWorld.Fsms(go);
             for (int i = 0; i < fsms.Length; i++) if (fsms[i] != null && fsms[i].FsmName == "Movement") return fsms[i];
             return null;
         }

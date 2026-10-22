@@ -136,7 +136,6 @@ namespace WildWasteland.Modules.Presentation
         void InitNpcVisuals()
         {
             DogAnimations.Initialize(this);
-            Scheduler.Sliced(this, "Presentation.NpcRigs", 1000, Brain.BuildRig, Phase.LateUpdate);
             Scheduler.EveryFrame(this, "Presentation.BurrowLate", Burrow.LateTick, Phase.LateUpdate);
             Scheduler.EveryFrame(this, "Presentation.PounceLate", Pounce.LateTick, Phase.LateUpdate);
             Scheduler.EveryFrame(this, "Presentation.DogBiteLate", DogBite.LateTick, Phase.LateUpdate);
@@ -219,6 +218,7 @@ namespace WildWasteland.Modules.Presentation
             ModApi.Provide<IFollowerSeatPresentation>(this,new FollowerSeatPresentation());
             ModApi.Provide<ICrewAppearance>(this,new CrewAppearance());
             ModApi.Provide<IAnimationApi>(this, _animation);
+            ModApi.Provide<INpcAnimationPolicy>(this,new NpcAnimationPolicy());
             ModApi.Provide<ICharacterPresentation>(this, _characters);
             ModApi.Provide<IPlayerWeaponVisual>(this,new PlayerWeaponVisual());
             ModApi.Provide<ICharacterAppearance>(this, _appearance);

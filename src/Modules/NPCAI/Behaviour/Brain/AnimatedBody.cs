@@ -2,8 +2,6 @@ using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.PlayerBody;
-using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -31,15 +29,15 @@ namespace WildWasteland.Modules.NPC
         private static void Init()
         {
             var api = ModApi.Get<IAnimationApi>();
-            if (api == null) { if (_ok || _api != null) { _ok = false; _api = null; _logged = false; Core.Log.Deep(PresentationModule.Instance, "NPC animations: the player animation framework is off - the game's clips, no sidesteps"); } return; }
+            if (api == null) { if (_ok || _api != null) { _ok = false; _api = null; _logged = false; Core.Log.Deep(NpcaiRuntime.Module, "NPC animations: the player animation framework is off - the game's clips, no sidesteps"); } return; }
             if (_ok && ReferenceEquals(api, _api)) return;
             if (Time.unscaledTime < 3f || Time.unscaledTime < _nextProbe) return;     // let the framework finish loading its bundle
             _nextProbe = Time.unscaledTime + 5f;
             _api = api;
             try { _ok = Probe(api); }
-            catch (Exception e) { _ok = false; Core.Log.Warn(PresentationModule.Instance, "NPC animations: the animation framework failed (" + e.GetType().Name + ") - the game's clips"); return; }
-            if (_ok) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "NPC animations: the player animation framework (ModAPI " + api.ApiVersion + ", " + api.ClipNames().Length + " player clips) in use"); }
-            else if (!_logged) { _logged = true; Core.Log.Deep(PresentationModule.Instance, "NPC animations: the animation bundle is not ready (yet) - the game's clips"); }
+            catch (Exception e) { _ok = false; Core.Log.Warn(NpcaiRuntime.Module, "NPC animations: the animation framework failed (" + e.GetType().Name + ") - the game's clips"); return; }
+            if (_ok) { if (Core.Log.L2) Core.Log.Deep(NpcaiRuntime.Module, "NPC animations: the player animation framework (ModAPI " + api.ApiVersion + ", " + api.ClipNames().Length + " player clips) in use"); }
+            else if (!_logged) { _logged = true; Core.Log.Deep(NpcaiRuntime.Module, "NPC animations: the animation bundle is not ready (yet) - the game's clips"); }
         }
         /// <summary>True when the framework reports its bundle ready.</summary>
         private static bool Probe(IAnimationApi api) { return api.Ready; }
@@ -48,7 +46,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Weapon-pose / magazine table key of a held model ("akm_trash_model" -> "akm_trash", "9mm_borz_smg" -> "borz_smg"); the
         /// shared Presentation name rule (Props.Norm, the same as IAnimationApi.WeaponKey), also while the animation framework is off.
         /// (B05) the copy of the rule and the unused IsPistol were deleted (A3-6).</summary>
-        internal static string WeaponKey(Transform weapon) { return weapon == null ? null : Props.Norm(weapon.name); }
+        internal static string WeaponKey(Transform weapon) { return weapon == null ? null : Core.Names.Weapon(weapon.name); }
 
         // ---------------------------------------------------------------- per NPC (only when Available)
         /// <summary>Attaches the player animation set to an NPC Animator (turns in place and walk-to-stop on); null when not possible.</summary>

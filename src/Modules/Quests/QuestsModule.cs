@@ -35,6 +35,7 @@ namespace WildWasteland.Modules.Quests
         public override void Init()
         {
             _checked = false;
+            ModApi.Provide<IFollowers>(this,new Hire.FollowersApi());
             Scheduler.EveryFrame(this, "Quests.Frame", Frame);
             Scheduler.EveryFrame(this, "Quests.Poses", Late, Phase.LateUpdateLast);
             Scheduler.Interval(this, "Quests.Progress", .5f, Progress);

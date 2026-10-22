@@ -13,6 +13,16 @@ namespace WildWasteland.Core
     /// </summary>
     public static class Names
     {
+        /// <summary>Canonical held weapon key shared by animation and weapon catalogs.</summary>
+        public static string Weapon(string name)
+        {
+            if(name==null)return null;
+            string n=name.ToLowerInvariant();int p=n.IndexOf(" (",StringComparison.Ordinal);if(p>0)n=n.Substring(0,p);
+            p=n.IndexOf("(clone)",StringComparison.Ordinal);if(p>0)n=n.Substring(0,p);
+            if(n.EndsWith("_model",StringComparison.Ordinal))n=n.Substring(0,n.Length-6);
+            if(n.StartsWith("9mm_",StringComparison.Ordinal))n=n.Substring(4);
+            return n.Trim();
+        }
         static readonly System.Text.RegularExpressions.Regex InstanceSuffix = new System.Text.RegularExpressions.Regex(@"(\(Clone\)\d*|\s\(\d+\))+$");
         /// <summary>Prefab label used by vehicle templates: removes trailing clone numbers and Unity numbered-copy suffixes, then trims.</summary>
         public static string Prefab(string instance) { return InstanceSuffix.Replace(instance ?? "", "").Trim(); }

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
-using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -41,14 +40,14 @@ namespace WildWasteland.Modules.NPC
                     n.Weapon = w; n.WeaponKey = ApBody.WeaponKey(w);
                     n.Shots = 0; n.Reloading = false; n.ReloadShown = false; n.Magazine = MagazineOf(n.WeaponKey);
                     n.Cocks = w != null && ApBody.Cocks(n.WeaponKey);
-                    if (WildWasteland.Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Brain: " + n.Owner.name + " now holds " + (w != null ? n.WeaponKey + (n.Cocks ? " (cocked after each burst)" : "") : "nothing"));
+                    if (WildWasteland.Core.Log.L2) Core.Log.Deep(NpcaiRuntime.Module, "Brain: " + n.Owner.name + " now holds " + (w != null ? n.WeaponKey + (n.Cocks ? " (cocked after each burst)" : "") : "nothing"));
                 }
                 ApBody.SetWeapon(body, w != null && w.gameObject.activeInHierarchy && GunPoses(n, now) ? w : null, n.WeaponKey);   // a gun goes to the right hand; anything else stays where it is
             }
             bool gun = n.Weapon != null && GunPoses(n, now);     // a gun the player's table knows (a machete out: the game's clips)
             bool dead = n.HpVar != null && n.HpMax > 0f && n.HpVar.Value <= 0f;
             bool melee = state == "attack_melee";
-            bool off = !gun || dead || melee || n.T.parent != null || !CharacterSettings.ApocaplayerClips.Value;
+            bool off = !gun || dead || melee || n.T.parent != null || !(Core.ModApi.Get<Core.INpcAnimationPolicy>()?.PlayerClips==true);
             ApBody.Suspend(body, off);
             if (off) { n.Strafing = false; n.SpeedCap = 0f; n.WasBurst = false; return; }
             if (n.Strafing && now >= n.MakeWayUntil) n.Strafing = false;
@@ -111,7 +110,7 @@ namespace WildWasteland.Modules.NPC
         private static void Aim(Npc n)
         {
             if (n.Body != null) return;     // Drive() tells the body every frame
-            if (!CharacterSettings.AimPose.Value || n.Anim == null || string.IsNullOrEmpty(n.AimState)) return;
+            if (!(Core.ModApi.Get<Core.INpcAnimationPolicy>()?.AimPose==true) || n.Anim == null || string.IsNullOrEmpty(n.AimState)) return;
             try
             {
                 n.Anim.Play(n.AimState, 0, 0f);
@@ -155,7 +154,7 @@ namespace WildWasteland.Modules.NPC
                     float h = Mathf.Max(n.Capsule.radius * 2f, n.CapHeight - n.Drop);
                     n.Capsule.height = h; n.Capsule.center = new Vector3(n.CapCenter.x, bottom + h * 0.5f, n.CapCenter.z);
                 }
-                if (WildWasteland.Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Brain: " + n.Owner.name + " crouches");
+                if (WildWasteland.Core.Log.L2) Core.Log.Deep(NpcaiRuntime.Module, "Brain: " + n.Owner.name + " crouches");
             }
             else
             {
@@ -169,7 +168,7 @@ namespace WildWasteland.Modules.NPC
         private static void TryRig(Npc n)
         {
             if (n.Body != null || n.Anim == null || !n.Ranged || Time.time < n.RigTried + 2f) return;
-            if (!ApBody.Available || !CharacterSettings.ApocaplayerClips.Value) return;
+            if (!ApBody.Available || !(Core.ModApi.Get<Core.INpcAnimationPolicy>()?.PlayerClips==true)) return;
             if (n.RigQueued) return;
             n.RigQueued = true; _rigs.Enqueue(n);
         }
@@ -180,16 +179,16 @@ namespace WildWasteland.Modules.NPC
             if (!NpcaiRuntime.Running || _rigFrame == Time.frameCount || _rigs.Count == 0 || Core.Scheduler.FrameMs >= Core.Scheduler.FrameBudgetMs) return false;
             var n = _rigs.Dequeue(); n.RigQueued = false;
             if (n.Owner == null || n.T.parent != null || !n.Owner.activeInHierarchy || n.Body != null || n.Anim == null || !n.Ranged
-                || !ApBody.Available || !CharacterSettings.ApocaplayerClips.Value) return _rigs.Count > 0;
+                || !ApBody.Available || !(Core.ModApi.Get<Core.INpcAnimationPolicy>()?.PlayerClips==true)) return _rigs.Count > 0;
             _rigFrame = Time.frameCount; n.RigTried = Time.time;
             try
             {
                 n.Body = ApBody.Attach(n.Anim);
                 if (n.Body == null) { n.RigTried = Time.time + 30f; return false; }      // not a humanoid: the game's clips (asked again much later)
                 n.WeaponDirty = true;      // Drive() finds the held gun model (and follows the game's swaps of it)
-                if (WildWasteland.Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Brain: " + n.Owner.name + " animated by Apocaplayer's ModAPI");
+                if (WildWasteland.Core.Log.L2) Core.Log.Deep(NpcaiRuntime.Module, "Brain: " + n.Owner.name + " animated by Apocaplayer's ModAPI");
             }
-            catch (Exception e) { n.Body = null; Core.Log.Warn(PresentationModule.Instance, "Brain: Apocaplayer's ModAPI for " + n.Owner.name + ": " + e.Message); }
+            catch (Exception e) { n.Body = null; Core.Log.Warn(NpcaiRuntime.Module, "Brain: Apocaplayer's ModAPI for " + n.Owner.name + ": " + e.Message); }
             return false;
         }
 

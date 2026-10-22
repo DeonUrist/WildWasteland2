@@ -84,6 +84,7 @@ namespace WildWasteland.Modules.NPCAI
             InitNavigation();
             _townNavigation.Start(this); ModApi.Provide<ITownNavigation>(this,_townNavigation);                              // B08: "Nav" here (between Senses and Brain, as before), Passthrough, PoiNav jobs
             Scheduler.EveryFrame(this, "NPCAI.Brain", Brain.Tick);
+            Scheduler.Sliced(this,"NPCAI.Animation attachments",1000,Brain.BuildRig,Phase.LateUpdate);
             Scheduler.EveryFrame(this, "NPCAI.Idle", Idle.Tick);
             Scheduler.EveryFrame(this, "NPCAI.Burrow", Burrow.Tick);
             Scheduler.EveryFrame(this, "NPCAI.Pounce", Pounce.Tick);
@@ -260,7 +261,6 @@ namespace WildWasteland.Modules.NPCAI
             ModApi.Provide<INpcControl>(this, api);
             ModApi.Provide<ISeatedCombat>(this, new SeatedCombatApi());
             ModApi.Provide<IOccupantCombat>(this, new OccupantCombatApi());
-            ModApi.Provide<IFollowers>(this, new Hire.FollowersApi());
             ModApi.Provide<IQuestFollowerBody>(this, new QuestFollower.BodyApi());
             ModApi.Provide<IPopulation>(this, new PopulationApi());
             ModApi.Provide<INpcDiagnosticSource>(this, new NpcDiagnosticSource());
