@@ -34,11 +34,13 @@ namespace WildWasteland.Modules.NPC
             internal readonly Dictionary<long, List<int>> Buckets = new Dictionary<long, List<int>>();
             private int _node, _edge, _link;
             internal bool Ready;
+            /// <summary>An empty graph for one data set; built a node / edge / link at a time by Step.</summary>
             internal Graph(PoiNavData d)
             {
                 Data = d; int n = d.Nodes.Count;
                 Out = new List<Arc>[n]; LinkFrom = new int[d.Links.Count]; LinkTo = new int[d.Links.Count];
             }
+            /// <summary>One build step: bucket one node, add one edge pair, or resolve one link's end nodes; Ready after the last.</summary>
             internal void Step()
             {
                 var d = Data;
@@ -71,6 +73,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 Ready = true;
             }
+            /// <summary>Node nearest to a link end (within 2.5 m, height weighted, on the given surface when >= 0), or -1.</summary>
             private int Nearest(Vector3 p, int surface)
             {
                 int best = -1; float distance = 6.25f;
@@ -89,6 +92,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
         private static readonly Dictionary<PoiNavData, Graph> _graphs = new Dictionary<PoiNavData, Graph>();
+        /// <summary>The (shared) graph of a data set, created on first use (cache cleared beyond 128).</summary>
         internal static Graph GraphOf(PoiNavData d)
         {
             Graph g; if (!_graphs.TryGetValue(d, out g)) { if (_graphs.Count > 128) _graphs.Clear(); _graphs[d] = g = new Graph(d); }
@@ -101,6 +105,7 @@ namespace WildWasteland.Modules.NPC
             internal Transform Root; internal string Poi; internal PoiNavData Data; internal Graph G;
             internal Vector3[] World; internal Bounds Box; internal Vector3 RootPos; internal int Id;
             internal int BuildIndex; internal bool Ready, Queued;
+            /// <summary>Scene position of a POI-local point.</summary>
             internal Vector3 W(Vector3 local) { return Root.TransformPoint(local); }
         }
         private static readonly Dictionary<int, Inst> _inst = new Dictionary<int, Inst>();
@@ -111,6 +116,7 @@ namespace WildWasteland.Modules.NPC
         private static float _nextScan;
         internal static Dictionary<int, Inst>.ValueCollection Instances { get { return _inst.Values; } }
 
+        /// <summary>At most once a second: drops dead instances/routes and creates or rebuilds the instance of every structure root whose POI type has data.</summary>
         internal static void Rescan(bool force = false)
         {
             float now = Time.unscaledTime;
@@ -142,6 +148,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>(Re)binds an instance to its data: world bounds now, node positions queued for the sliced build.</summary>
         internal static void Build(Inst inst, PoiNavData data)
         {
             inst.Ready = false; inst.BuildIndex = 0;
@@ -246,6 +253,7 @@ namespace WildWasteland.Modules.NPC
             w.Rb.MovePosition(p);
             return true;
         }
+        /// <summary>Gives a walker's body its physics and player collisions back.</summary>
         static void Release(int id)
         {
             Walker w; if (!_walkers.TryGetValue(id, out w)) return;
@@ -282,19 +290,23 @@ namespace WildWasteland.Modules.NPC
             if (PoiNavTraverse.Busy(owner)) return true;
             Route r; return Enabled != null && Enabled.Value && _routes.TryGetValue(owner.GetInstanceID(), out r) && r.HasNext && r.Inst.Ready && r.Inst.Root != null && r.Inst.Root.gameObject.activeInHierarchy;
         }
+        /// <summary>Stops following the current POI route point (the route stays for the next think).</summary>
         internal static void StopGuiding(GameObject owner)
         {
             Route r; if (owner == null) return; int id = owner.GetInstanceID();
             if (_routes.TryGetValue(id, out r)) r.HasNext = false;
             if (!PoiNavTraverse.Busy(owner)) Release(id);
         }
+        /// <summary>Forgets an NPC's route so the next think plans again from where it stands.</summary>
         internal static void DropRoute(GameObject owner)
         {
             Route r; if (owner == null || !_routes.TryGetValue(owner.GetInstanceID(), out r)) return;
             r.Steps.Clear(); r.Index = 0; r.HasNext = false; r.Pending = true; r.DirectSurface = -1;
         }
+        /// <summary>True when a point lies in the bounds of a POI instance with navigation data.</summary>
         internal static bool Inside(Vector3 p) { return Enabled != null && Enabled.Value && _inst.Count > 0 && At(p, false) != null; }
 
+        /// <summary>The (ready) instance whose bounds contain p, nearest centre first, or null.</summary>
         static Inst At(Vector3 p, bool readyOnly = true)
         {
             Inst best = null; float bd = float.MaxValue;
@@ -311,6 +323,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<int> _nearNodes = new List<int>();
         /// <summary>World terrain projection changes Y only. Tilted roots retain the exact full-search fallback.</summary>
         static bool Planar(Inst inst) { Vector3 up = inst.Root.up; return Mathf.Abs(up.x) < .000001f && Mathf.Abs(up.z) < .000001f && up.y > 0f; }
+        /// <summary>Fills the near-node buffer with the nodes of the 2 m buckets within radius (every node for tilted roots), in node order.</summary>
         static void Nearby(Inst inst, Vector3 p, float radius)
         {
             _nearNodes.Clear();
@@ -331,6 +344,7 @@ namespace WildWasteland.Modules.NPC
             { List<int> nodes; if (inst.G.Buckets.TryGetValue(Bucket(x, z), out nodes)) _nearNodes.AddRange(nodes); }
             _nearNodes.Sort();   // preserve node order, including the existing line-of-sight preference
         }
+        /// <summary>The node the NPC stands on: within 4 m flat, from 1.2 m below to 0.6 m above its feet, level and in plain sight first.</summary>
         static int NearestStart(Inst inst, Vector3 feet)
         {
             int best = -1; float bd = float.MaxValue;
@@ -348,6 +362,7 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
+        /// <summary>Node nearest to a scene point within a distance (ground nodes only: flat distance), or -1.</summary>
         static int NearestWorld(Inst inst, Vector3 p, float within, bool groundOnly)
         {
             int best = -1; float bd = within * within;
@@ -423,6 +438,7 @@ namespace WildWasteland.Modules.NPC
             into.Reverse();
             return true;
         }
+        /// <summary>A* open list: push (binary heap on a list).</summary>
         static void Push(float f, int i)
         {
             // small binary heap on a list
@@ -430,6 +446,7 @@ namespace WildWasteland.Modules.NPC
             int c = _open.Count - 1;
             while (c > 0) { int p = (c - 1) / 2; if (_open[p].Key <= _open[c].Key) break; var t = _open[p]; _open[p] = _open[c]; _open[c] = t; c = p; }
         }
+        /// <summary>A* open list: pop the smallest key.</summary>
         static int Pop()
         {
             int r = _open[0].Value; int last = _open.Count - 1; _open[0] = _open[last]; _open.RemoveAt(last);
@@ -458,6 +475,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<int, Route> _routes = new Dictionary<int, Route>();
         private static int _planFrame = -1, _plansNow;
 
+        /// <summary>True for human NPCs without a creature sight cone (only they use POI navigation).</summary>
         static bool Human(GameObject owner)
         {
             var a = Senses.AgentFor(owner);
@@ -598,6 +616,7 @@ namespace WildWasteland.Modules.NPC
 
         /// <summary>a link step (-(code + 1), code = link * 2 + backwards): where it starts / lands</summary>
         static Vector3 StartOf(Inst inst, int step) { int code = -step - 1; var l = inst.Data.Links[code >> 1]; return inst.W((code & 1) == 0 ? l.From : l.To); }
+        /// <summary>Scene point where a link step lands.</summary>
         static Vector3 EndOf(Inst inst, int step) { int code = -step - 1; var l = inst.Data.Links[code >> 1]; return inst.W((code & 1) == 0 ? l.To : l.From); }
 
         /// <summary>the ladder link the player is on (his goal is the player, he climbs one of this POI's ladders), or -1</summary>
@@ -620,6 +639,7 @@ namespace WildWasteland.Modules.NPC
             return best;
         }
 
+        /// <summary>True when the line 0.6 m above both points hits nothing solid.</summary>
         static bool Clear(Vector3 a, Vector3 b)
         {
             Vector3 up = Vector3.up * .6f;
@@ -627,6 +647,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ------------------------------------------------------------------ lifecycle
+        /// <summary>Drops a POI type's cached data and every route (after an edit), then rescans.</summary>
         internal static void Forget(string poi)
         {
             PoiNavStore.Forget(poi);

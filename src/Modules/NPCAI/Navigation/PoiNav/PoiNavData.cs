@@ -21,12 +21,14 @@ namespace WildWasteland.Modules.NPC
     /// </summary>
     internal enum PoiLinkKind { Ladder, Climb, Drop }
 
+    /// <summary>One walkable node: POI-local position, surface (level) index, terrain node flag (re-projected per instance).</summary>
     internal sealed class PoiNavNode { public Vector3 Pos; public int Surface; public bool Terrain; }
     internal sealed class PoiNavLink
     {
         public PoiLinkKind Kind; public bool Manual, Off;
         public Vector3 From, To, LineBottom, LineTop; public float Yaw;   // Yaw: POI-local facing while traversing (towards the ladder / wall)
         public int FromSurface = -1, ToSurface = -1;                      // the surfaces its ends stand on (-1 = the nearest node decides)
+        /// <summary>Shallow copy of the link (all value fields).</summary>
         public PoiNavLink Copy() { return (PoiNavLink)MemberwiseClone(); }
     }
 
@@ -40,6 +42,7 @@ namespace WildWasteland.Modules.NPC
         internal Bounds Box;                                            // local bounds of the nodes (computed)
         internal int Surfaces;
 
+        /// <summary>Deep copy of the data (editor drafts).</summary>
         internal PoiNavData Copy()
         {
             var d = new PoiNavData { Poi = Poi, Signature = Signature, Box = Box, Surfaces = Surfaces };
@@ -49,6 +52,7 @@ namespace WildWasteland.Modules.NPC
             return d;
         }
 
+        /// <summary>Recomputes the local bounds (nodes and link ends, +2 m) and the surface count.</summary>
         internal void Recompute()
         {
             Surfaces = 0;
@@ -61,9 +65,12 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ---------- text format (hand editable, diff friendly) ----------
+        /// <summary>Invariant short float text.</summary>
         static string F(float v) { return v.ToString("0.###", CultureInfo.InvariantCulture); }
+        /// <summary>Invariant vector text (three floats).</summary>
         static string V(Vector3 v) { return F(v.x) + " " + F(v.y) + " " + F(v.z); }
 
+        /// <summary>The hand-editable text form (header, nodes, edges, links).</summary>
         internal string Write()
         {
             var sb = new StringBuilder();
@@ -78,9 +85,12 @@ namespace WildWasteland.Modules.NPC
             return sb.ToString();
         }
 
+        /// <summary>Invariant float parse.</summary>
         static float P(string s) { return float.Parse(s, NumberStyles.Float, CultureInfo.InvariantCulture); }
+        /// <summary>Vector parse from three words starting at i.</summary>
         static Vector3 PV(string[] w, int i) { return new Vector3(P(w[i]), P(w[i + 1]), P(w[i + 2])); }
 
+        /// <summary>Parses the text form; throws on bad data (edges to missing nodes).</summary>
         internal static PoiNavData Read(string text)
         {
             var d = new PoiNavData();

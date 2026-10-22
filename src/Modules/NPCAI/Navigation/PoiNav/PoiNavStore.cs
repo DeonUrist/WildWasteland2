@@ -14,14 +14,18 @@ namespace WildWasteland.Modules.NPC
     /// pack sits in plugins\WildWasteland\NPCAI\PoiNav\ (read when no config file exists). Loads are async (worker) and cached per type.</summary>
     internal static class PoiNavStore
     {
+        /// <summary>Editor/baker output folder: config/WildWasteland/NPCAI/PoiNav.</summary>
         internal static string ConfigDir { get { return Path.Combine(Assets.ModuleConfigDir("NPCAI"), "PoiNav"); } }
+        /// <summary>Shipped pack folder: plugins/WildWasteland/NPCAI/PoiNav.</summary>
         internal static string ShippedDir { get { return Path.Combine(Assets.ModuleDir("NPCAI"), "PoiNav"); } }
+        /// <summary>File name of a POI type (unsafe characters as _).</summary>
         static string FileName(string poi)
         {
             var sb = new StringBuilder();
             foreach (char c in poi) sb.Append(char.IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_');
             return sb.ToString() + ".txt";
         }
+        /// <summary>Config file path of a POI type.</summary>
         internal static string ConfigPath(string poi) { return Path.Combine(ConfigDir, FileName(poi)); }
 
         private static readonly Dictionary<string, PoiNavData> _cache = new Dictionary<string, PoiNavData>(StringComparer.Ordinal);
@@ -33,9 +37,12 @@ namespace WildWasteland.Modules.NPC
         }
         private static readonly Dictionary<string, Loading> _loading = new Dictionary<string, Loading>(StringComparer.Ordinal);
         private static readonly object _readLock = new object();
+        /// <summary>Cancels every load and forgets every cached type.</summary>
         internal static void Forget() { foreach (var job in _loading.Values) job.Cancel.Cancel(); _loading.Clear(); _cache.Clear(); }
+        /// <summary>Cancels the load and forgets the cache of one type.</summary>
         internal static void Forget(string poi) { Loading job; if (_loading.TryGetValue(poi, out job)) { job.Cancel.Cancel(); _loading.Remove(poi); } _cache.Remove(poi); }
 
+        /// <summary>The data of a type without blocking: null while it loads on a worker thread (or when missing); cached afterwards, warnings flushed on the main thread.</summary>
         internal static PoiNavData GetAsync(string poi)
         {
             if (string.IsNullOrEmpty(poi)) return null;
@@ -81,6 +88,7 @@ namespace WildWasteland.Modules.NPC
             return d;
         }
 
+        /// <summary>Validates and writes a type's data (previous file kept as .bak, AtomicFile publication, D17) and caches it.</summary>
         internal static void Save(PoiNavData d)
         {
             Directory.CreateDirectory(ConfigDir);
