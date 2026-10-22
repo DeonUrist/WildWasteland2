@@ -123,8 +123,8 @@ namespace WildWasteland.Modules.POI
             _settings.LootMinPercent.SettingChanged += PopulationChanged; _settings.LootMaxPercent.SettingChanged += PopulationChanged;
             TerrainTile.OnBeforeTilePrepare += Prepare;
             TerrainTile.OnTileFinalized += Finalized; TerrainTile.OnTileApplied += Applied; TerrainTile.OnTileMoved += Moved;
-            VistasWorldGen.TerrainEdited += TownTerrainEdited;
-            if (VistasWorldGen.Present) Log.Always("[Towns] Vistas compatibility: planned town foundations flattened before buildings; no access roads.");
+            WorldTiles.OnEdited(Owner,TownTerrainEdited);
+            if (WorldGeneration.Present) Log.Always("[Towns] Vistas compatibility: planned town foundations flattened before buildings; no access roads.");
             Scheduler.Sliced(Owner, "Build and connect", 700, BuildStep);
             // Behind a loading/generating screen this tick runs construction far beyond the shared frame budget; the predicate is one field read.
             Scheduler.EveryFrame(Owner, "Load construction", LoadBurst).Wants = LoadWanted;
@@ -237,7 +237,7 @@ namespace WildWasteland.Modules.POI
                 {
                     // Building-map overlay (neighbour walls, wreck garden, towers, border props) from the read-only templates, off the main thread.
                     // A failure here only loses the shortcut: the runtime projection remains the fallback.
-                    try { if (!VistasWorldGen.Present) capture.Plan.Overlay = TownOverlayPlan.Build(capture.Plan, assets.Specs, assets.WallKit.Dressing, assets.ShellBounds, assets.NavMaxStep, stop); }
+                    try { if (!WorldGeneration.Present) capture.Plan.Overlay = TownOverlayPlan.Build(capture.Plan, assets.Specs, assets.WallKit.Dressing, assets.ShellBounds, assets.NavMaxStep, stop); }
                     catch (Exception e) { capture.Plan.Overlay = null; Log.Always("[Towns] WARNING: overlay plan skipped for " + capture.Plan.Key + ": " + e.Message); }
                     _planned.Enqueue(capture);
                 }
@@ -292,7 +292,7 @@ namespace WildWasteland.Modules.POI
         private static TownSite NewSite(TownPlan plan, Transform anchor, Terrain terrain, BuildingSpec[] specs)
         {
             var site = new TownSite { Plan = plan, Anchor = anchor, GroundTerrain = null, Buildings = new GameObject[plan.LotCount], Spawners = new PlayMakerFSM[plan.LotCount][] };
-            if (VistasWorldGen.Present)
+            if (WorldGeneration.Present)
             {
                 if (terrain == null) throw new InvalidOperationException("Town foundation terrain is missing.");
                 site.Plan = plan = plan.CopyPaths(); plan.Overlay = null; plan.DressingOnly = null; plan.AccessPath = new Vector3[0]; plan.GradeAccess = false;
@@ -313,7 +313,7 @@ namespace WildWasteland.Modules.POI
             if (!_running || tile == null) return;
             foreach (var live in _sites) if (live.Tile == tile && live.Site.GroundPad != null) live.Site.GroundPad.Apply();
         }
-        private bool Loading { get { return _waitingForTowns || (SaveBus.Busy && !SaveBus.Saving && !SaveSystem.Busy); } }
+        private bool Loading { get { return _waitingForTowns || (SaveBus.Busy && !SaveBus.Saving && !(ModApi.Get<ISaveTransactionState>()?.Active??false)); } }
         private bool LoadWanted() { return _loading; }
         private void LoadBurst()
         {
@@ -326,7 +326,7 @@ namespace WildWasteland.Modules.POI
         private bool BuildStep()
         {
             _loading = Loading;
-            if (!_running || _blocked || _sites.Count == 0 || SaveSystem.Busy || SaveBus.Saving) return false;
+            if (!_running || _blocked || _sites.Count == 0 || (ModApi.Get<ISaveTransactionState>()?.Active??false) || SaveBus.Saving) return false;
             if (_builtFrame == Time.frameCount || Time.unscaledTime < _buildAfter) return false;
             // Native prefab activation is indivisible; never stack two of those costs in one frame, and leave 40 ms between
             // them while someone is playing. Everything else (wall pieces, planned props, map overlays, link checks) is
@@ -446,7 +446,7 @@ namespace WildWasteland.Modules.POI
         }
         private void Refresh()
         {
-            if (!_running || _blocked || SaveSystem.Busy || SaveBus.Saving) return;
+            if (!_running || _blocked || (ModApi.Get<ISaveTransactionState>()?.Active??false) || SaveBus.Saving) return;
             Capture pending;
             for (int i = 0; i < 4 && _planned.TryDequeue(out pending); i++)
                 if (pending.Epoch == _epoch && pending.Plan != null && pending.Plan.HasTown && !_records.ContainsKey(pending.Plan.Key))
@@ -590,7 +590,7 @@ namespace WildWasteland.Modules.POI
             _settings.LootMinPercent.SettingChanged -= PopulationChanged; _settings.LootMaxPercent.SettingChanged -= PopulationChanged;
             TerrainTile.OnBeforeTilePrepare -= Prepare; TerrainTile.OnTileFinalized -= Finalized;
             TerrainTile.OnTileApplied -= Applied; TerrainTile.OnTileMoved -= Moved;
-            VistasWorldGen.TerrainEdited -= TownTerrainEdited;
+            WorldTiles.Remove(Owner,(WorldTiles.TileEvent)TownTerrainEdited);
             _resume.Clear();
             foreach (var live in _sites)
             {

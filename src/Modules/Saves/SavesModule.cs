@@ -4,7 +4,7 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.Saves
 {
     /// <summary>Owns named singleplayer saves, transaction recovery and autosave admission.</summary>
-    public sealed partial class SavesModule : ModuleBase
+    public sealed partial class SavesModule : ModuleBase, ISaveTransactionState
     {
         /// <summary>Settings, lifecycle and service owner for the save framework.</summary>
         public override string Id { get { return "Saves"; } }
@@ -46,7 +46,8 @@ namespace WildWasteland.Modules.Saves
             _running = true;
         }
         /// <summary>Provides the real save state only while the framework is enabled.</summary>
-        public override void ProvideApis() { ModApi.Provide<ISaves>(this, this); }
+        bool ISaveTransactionState.Active { get { return SaveSystem.Busy; } }
+        public override void ProvideApis() { ModApi.Provide<ISaves>(this, this); ModApi.Provide<ISaveTransactionState>(this,this); }
         /// <summary>Unsubscribes and disposes all work, restoring native barriers even after partial initialization.</summary>
         public override void Shutdown()
         {

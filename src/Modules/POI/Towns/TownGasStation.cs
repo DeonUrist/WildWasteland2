@@ -129,7 +129,7 @@ namespace WildWasteland.Modules.POI
                     float y = data.heights.GetWorldInterpolatedValue(p.x + x * outer * .5f, p.z + z * outer * .5f) * data.globals.height;
                     low = Mathf.Min(low, y); high = Mathf.Max(high, y);
                 }
-                if (high - low > (VistasWorldGen.Present ? 1.5f : 8)) continue;
+                if (high - low > (WorldGeneration.Present ? 1.5f : 8)) continue;
                 float cost = (high - low) + distance * .02f;
                 if (cost < bestCost) { bestCost = cost; best = new Vector3(p.x, (low + high) * .5f, p.z); bestRoad = road; }
             }
@@ -161,7 +161,7 @@ namespace WildWasteland.Modules.POI
                 {
                     var root = Shell(tile.objectsPool.transform, request.Desert ? "TownsGasStation (desert " + request.Key + ")" : "TownsGasStation");
                     root.transform.position = tile.mapMagic.transform.TransformPoint(request.Pad.WorldCenter) + Vector3.up * .1f;
-                    if (VistasWorldGen.Present) { var p = root.transform.position; p.y = tile.main.terrain.SampleHeight(p) + tile.main.terrain.transform.position.y + .1f; root.transform.position = p; }
+                    if (WorldGeneration.Present) { var p = root.transform.position; p.y = tile.main.terrain.SampleHeight(p) + tile.main.terrain.transform.position.y + .1f; root.transform.position = p; }
                     root.transform.rotation = tile.mapMagic.transform.rotation * Quaternion.Euler(0, request.Yaw, 0);
                     root.transform.localScale = Vector3.one * request.Scale;
                     var station = new Station { Key = request.Key, Desert = request.Desert, Root = root, Tile = tile, Request = request };

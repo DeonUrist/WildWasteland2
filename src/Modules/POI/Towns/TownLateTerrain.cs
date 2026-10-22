@@ -12,7 +12,7 @@ namespace WildWasteland.Modules.POI
     {
         internal static void Apply(TileData data, TownPlan plan, TownAssets assets, StopToken stop)
         {
-            if (Core.VistasWorldGen.Present) { ClearObjects(data, plan, assets, stop); return; }
+            if (WorldGeneration.Present) { ClearObjects(data, plan, assets, stop); return; }
             var heights = new MatrixWorld(data.heights);
             Flatten200.StampLevel(heights, plan.WorldCenter.y / data.globals.height,
                 new Vector2D(plan.WorldCenter.x, plan.WorldCenter.z), plan.Radius + plan.Feather,
