@@ -35,7 +35,7 @@ namespace WildWasteland.Core.Optimization
         internal static bool On, Shadow;
         static bool _acquired;
         static string _foreign;   // another mod's Harmony id already patching a dispatch method (PM2 then stays out)
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             Instance = this;
@@ -51,11 +51,11 @@ namespace WildWasteland.Core.Optimization
         }
         /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = Shadow = false; if (_acquired) { _acquired = false; FsmRegistry.Release(); } }
-        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
+        /// <summary>Registers the feature's shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { FsmRegistry.Subscribe(Module); }
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { FsmRegistry.Rebuild(); }
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             if (_foreign != null) l.Text("Not active: event dispatch is already patched by " + _foreign + ".");
@@ -85,9 +85,13 @@ namespace WildWasteland.Core.Optimization
         // ---- pooled, re-entrant buffers ----
         static readonly Stack<List<PlayMakerFSM>> _pmPool = new Stack<List<PlayMakerFSM>>();
         static readonly Stack<List<Fsm>> _fsmPool = new Stack<List<Fsm>>();
+        /// <summary>Rents a cleared component receiver list for nested event dispatch without per-call allocations.</summary>
         static List<PlayMakerFSM> RentPm() { return _pmPool.Count > 0 ? _pmPool.Pop() : new List<PlayMakerFSM>(16); }
+        /// <summary>Clears a receiver list before returning it to the appropriate reentrant dispatch pool.</summary>
         static void Return(List<PlayMakerFSM> l) { l.Clear(); _pmPool.Push(l); }
+        /// <summary>Rents a cleared FSM receiver list for nested event dispatch without per-call allocations.</summary>
         static List<Fsm> RentFsm() { return _fsmPool.Count > 0 ? _fsmPool.Pop() : new List<Fsm>(16); }
+        /// <summary>Clears a receiver list before returning it to the appropriate reentrant dispatch pool.</summary>
         static void Return(List<Fsm> l) { l.Clear(); _fsmPool.Push(l); }
         static readonly List<PlayMakerFSM> _children = new List<PlayMakerFSM>(64);
         static readonly Comparison<PlayMakerFSM> _byStamp = (a, b) => FsmRegistry.Stamp(a).CompareTo(FsmRegistry.Stamp(b));
@@ -119,6 +123,7 @@ namespace WildWasteland.Core.Optimization
         }
 
         // ---- shadow: vanilla's selection, recomputed without side effects ----
+        /// <summary>Collects native receivers in their original hierarchy order for Shadow comparisons.</summary>
         static void VanillaCollect(GameObject go, bool children, List<Fsm> into)
         {
             foreach (var fsm in PlayMakerFSM.FsmList)
@@ -132,6 +137,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Checks optimized receiver identity/order against the native collection and records mismatches.</summary>
         static void Compare(List<Fsm> a, List<Fsm> b, string what)
         {
             bool same = a.Count == b.Count;
@@ -140,6 +146,7 @@ namespace WildWasteland.Core.Optimization
         }
 
         static bool _stoodDown;
+        /// <summary>Disables optimized targeted dispatch when another Harmony owner takes over the same native methods.</summary>
         static void StandDown()
         {
             if (_stoodDown || (!On && !Shadow)) return;
@@ -153,6 +160,7 @@ namespace WildWasteland.Core.Optimization
             // Fsm.SendEventToFsmOnGameObject(GameObject, string, FsmEvent)
             // Last + __runOriginal: backstop for a mod that patches after PM2 started (ForeignPatcher only sees earlier ones). Its prefix
             // already dispatched and skipped the original; dispatching again would deliver the event twice (toggle FSM pairs flip back).
+            /// <summary>Targeted-event prefix: yields when disabled or another dispatcher ran; otherwise preserves native receiver/event-data semantics.</summary>
             [HarmonyPatch(typeof(Fsm), "SendEventToFsmOnGameObject", typeof(GameObject), typeof(string), typeof(FsmEvent)), HarmonyPrefix, HarmonyPriority(Priority.Last)]
             static bool SendToFsm(GameObject gameObject, string fsmName, FsmEvent fsmEvent, bool __runOriginal)
             {
@@ -197,6 +205,7 @@ namespace WildWasteland.Core.Optimization
             }
 
             // Fsm.BroadcastEventToGameObject(GameObject, FsmEvent, FsmEventData, bool sendToChildren, bool excludeSelf)
+            /// <summary>Object-event prefix: yields when disabled or another dispatcher ran; otherwise targets the native ordered receiver snapshot.</summary>
             [HarmonyPatch(typeof(Fsm), "BroadcastEventToGameObject", typeof(GameObject), typeof(FsmEvent), typeof(FsmEventData), typeof(bool), typeof(bool)), HarmonyPrefix, HarmonyPriority(Priority.Last)]
             static bool SendToObject(Fsm __instance, GameObject go, FsmEvent fsmEvent, FsmEventData eventData, bool sendToChildren, bool excludeSelf, bool __runOriginal)
             {
@@ -235,82 +244,4 @@ namespace WildWasteland.Core.Optimization
             }
         }
     }
-
-    /// <summary>PM4: BroadcastAll without the throw-away copy of FsmList (pooled snapshot; per-receiver EventData copies kept).</summary>
-    public sealed class BroadcastFeature : Feature
-    {
-        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
-        public override string PlanId { get { return "PM4"; } }
-        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
-        public override string Key { get { return "Broadcast events"; } }
-        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
-        public override string Title { get { return "Broadcast without list copies"; } }
-        /// <summary>Performance settings group used for stable feature ordering.</summary>
-        public override string Category { get { return Categories.PlayMaker; } }
-        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
-        public override int Order { get { return 4; } }
-        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
-        public override string Help { get { return "Game-wide events (Save/Load settings, day change, faction changes) reuse one buffer instead of copying every FSM."; } }
-        static bool On;
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
-        protected override void OnEnable(FeatureMode mode) { if (!EnsurePatched(typeof(Patch))) throw new Exception("broadcast patch failed"); On = true; }
-        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
-        protected override void OnDisable() { On = false; }
-
-        static readonly Stack<PlayMakerFSM[]> _pool = new Stack<PlayMakerFSM[]>();
-        static PlayMakerFSM[] Snapshot(out int n)
-        {
-            var src = PlayMakerFSM.FsmList; n = src.Count;
-            var a = _pool.Count > 0 ? _pool.Pop() : null;
-            if (a == null || a.Length < n) a = new PlayMakerFSM[Mathf.NextPowerOfTwo(Mathf.Max(256, n))];
-            src.CopyTo(a, 0);
-            return a;
-        }
-        static void Release(PlayMakerFSM[] a, int n) { Array.Clear(a, 0, n); _pool.Push(a); }
-
-        [HarmonyPatch]
-        static class Patch
-        {
-            [HarmonyPatch(typeof(Fsm), "BroadcastEvent", typeof(FsmEvent), typeof(bool)), HarmonyPrefix]
-            static bool FsmBroadcast(Fsm __instance, FsmEvent fsmEvent, bool excludeSelf)
-            {
-                if (!On) return true;
-                OptimizationMetrics.Broadcasts++;
-                var eventData = new FsmEventData(Fsm.EventData);
-                Fsm.SetEventDataSentByInfo();
-                var source = new FsmEventData(Fsm.EventData);
-                int n; var snap = Snapshot(out n);
-                try
-                {
-                    for (int i = 0; i < n; i++)
-                    {
-                        var item = snap[i];
-                        if (!(item == null) && item.Fsm != null && (!excludeSelf || item.Fsm != __instance))
-                        {
-                            Fsm.EventData = new FsmEventData(source);
-                            item.Fsm.ProcessEvent(fsmEvent);
-                        }
-                    }
-                }
-                finally { Release(snap, n); }
-                Fsm.EventData = eventData;
-                return false;
-            }
-
-            [HarmonyPatch(typeof(PlayMakerFSM), "BroadcastEvent", typeof(FsmEvent)), HarmonyPrefix]
-            static bool PmBroadcast(FsmEvent fsmEvent)
-            {
-                if (!On) return true;
-                OptimizationMetrics.Broadcasts++;
-                int n; var snap = Snapshot(out n);
-                try
-                {
-                    for (int i = 0; i < n; i++) { var item = snap[i]; if (!(item == null) && item.Fsm != null) item.Fsm.ProcessEvent(fsmEvent); }
-                }
-                finally { Release(snap, n); }
-                return false;
-            }
-        }
-    }
-
 }

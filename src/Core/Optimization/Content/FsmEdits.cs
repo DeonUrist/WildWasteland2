@@ -24,6 +24,7 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     internal static class FsmEdits
     {
+        /// <summary>Records a feature's native FSM-name/root filter and validated edit callback.</summary>
         sealed class WatchEntry { public Feature Owner; public string Root; public FsmReadyHandler Ready; }
         static readonly Dictionary<string, List<WatchEntry>> _byName = new Dictionary<string, List<WatchEntry>>(StringComparer.Ordinal);
         static readonly List<WatchEntry> _any = new List<WatchEntry>();
@@ -60,6 +61,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Removes all pending native FSM edit watches owned by this feature.</summary>
         internal static void Unwatch(Feature owner)
         {
             foreach (var kv in _byName) _count -= kv.Value.RemoveAll(w => w.Owner == owner);
@@ -87,6 +89,7 @@ namespace WildWasteland.Core.Optimization
             return all;
         }
 
+        /// <summary>Checks component eligibility and the optional owner-name filter before invoking one content-edit callback.</summary>
         static void Deliver(WatchEntry w, PlayMakerFSM f)
         {
             if (w.Root != null && !RootMatches(f, w.Root)) return;
@@ -95,6 +98,7 @@ namespace WildWasteland.Core.Optimization
             catch (Exception e) { Warn(w.Owner, "handler:" + f.FsmName, e.GetType().Name + ": " + e.Message); }
         }
 
+        /// <summary>Finds watches for a newly awakened FSM and applies their verified edits.</summary>
         static void Dispatch(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -121,6 +125,7 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
+        /// <summary>Matches the limited root-name pattern syntax used by content-edit watches.</summary>
         static bool Wild(string s, string p)
         {
             if (p == "*") return true;
@@ -132,6 +137,7 @@ namespace WildWasteland.Core.Optimization
             return s == core;
         }
 
+        /// <summary>Finds an exact native state name without invoking noisy PlayMaker lookup helpers.</summary>
         internal static FsmState State(Fsm fsm, string name)
         {
             var st = fsm.States;
@@ -154,6 +160,7 @@ namespace WildWasteland.Core.Optimization
             return t;
         }
 
+        /// <summary>Logs one validation mismatch per feature/key and leaves the native action unchanged.</summary>
         internal static void Warn(Feature owner, string key, string why)
         {
             Mismatches++;
@@ -188,8 +195,10 @@ namespace WildWasteland.Core.Optimization
         sealed class ReplaceUndo : Undo
         {
             readonly PlayMakerFSM _c; readonly FsmState _s; readonly int _i; readonly FsmStateAction _orig, _wrap;
+            /// <summary>Captures an action slot and both original/wrapper references for identity-safe undo.</summary>
             public ReplaceUndo(PlayMakerFSM c, FsmState s, int i, FsmStateAction o, FsmStateAction w) { _c = c; _s = s; _i = i; _orig = o; _wrap = w; }
             internal override bool Alive { get { return _c != null; } }
+            /// <summary>Restores the captured native value only while the undo record's owning component is live.</summary>
             internal override void Revert()
             {
                 var a = _s.Actions;
@@ -202,6 +211,7 @@ namespace WildWasteland.Core.Optimization
     internal abstract class Undo
     {
         internal abstract bool Alive { get; }
+        /// <summary>Restores the captured native value only while the undo record's owning component is live.</summary>
         internal abstract void Revert();
     }
 
@@ -211,12 +221,15 @@ namespace WildWasteland.Core.Optimization
     {
         readonly List<Undo> _items = new List<Undo>(64);
         int _pruneAt = 1024;
+        /// <summary>Number of reversible edits currently held by this feature.</summary>
         internal int Count { get { return _items.Count; } }
+        /// <summary>Appends one reversible edit and amortizes removal of records whose components were destroyed.</summary>
         internal void Add(Undo u)
         {
             _items.Add(u);
             if (_items.Count >= _pruneAt) { Prune(); _pruneAt = Math.Max(1024, _items.Count * 2); }
         }
+        /// <summary>Drops undo records whose native components no longer exist without reverting live edits.</summary>
         internal void Prune()
         {
             int n = 0;
@@ -228,6 +241,7 @@ namespace WildWasteland.Core.Optimization
             }
             _items.RemoveRange(n, _items.Count - n);
         }
+        /// <summary>Restores captured edits newest-first and isolates failures between independent records.</summary>
         internal void RevertAll()
         {
             for (int i = _items.Count - 1; i >= 0; i--)
@@ -237,22 +251,27 @@ namespace WildWasteland.Core.Optimization
             }
             _items.Clear(); _pruneAt = 1024;
         }
+        /// <summary>Drops undo bookkeeping after its native scene objects have been discarded.</summary>
         internal void Clear() { _items.Clear(); _pruneAt = 1024; }
     }
 
     internal sealed class EnabledUndo : Undo
     {
         readonly PlayMakerFSM _c; readonly FsmStateAction _a; readonly bool _was;
+        /// <summary>Captures an action's original enabled flag and owning component.</summary>
         public EnabledUndo(PlayMakerFSM c, FsmStateAction a, bool was) { _c = c; _a = a; _was = was; }
         internal override bool Alive { get { return _c != null; } }
+        /// <summary>Restores the captured native value only while the undo record's owning component is live.</summary>
         internal override void Revert() { _a.Enabled = _was; }
     }
 
     internal sealed class FloatUndo : Undo
     {
         readonly PlayMakerFSM _c; readonly FsmFloat _v; readonly float _was;
+        /// <summary>Captures a native float variable and its original value for feature shutdown.</summary>
         public FloatUndo(PlayMakerFSM c, FsmFloat v, float was) { _c = c; _v = v; _was = was; }
         internal override bool Alive { get { return _c != null; } }
+        /// <summary>Restores the captured native value only while the undo record's owning component is live.</summary>
         internal override void Revert() { _v.Value = _was; }
     }
 

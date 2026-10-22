@@ -51,7 +51,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Receives directional lights from the shared startup/incremental scan.</summary>
         public ScanTypes Types { get { return ScanTypes.Lights; } }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             ApplyQuality();
@@ -79,6 +79,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { TryCurrentSun(); RenderScan.RequestFull(); }
 
+        /// <summary>Applies preset caps for native sun shadow distance, cascades, resolution and skin weights.</summary>
         void ApplyQuality()
         {
             QualityGuard.Set(QualityGuard.Q.ShadowDistance, _dist.Value);
@@ -140,13 +141,14 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Rechecks the selected sun after a shared scan finishes.</summary>
         public void OnPassDone() { TryCurrentSun(); }
 
+        /// <summary>Restores the exact original layer-shadow distances on the previously owned sun.</summary>
         void RestoreSun()
         {
             if (_sunSet && _sun != null) _sun.layerShadowCullDistances = _sunOrig != null && _sunOrig.Length == 32 ? _sunOrig : new float[32];
             _sunSet = false; _sun = null; _sunOrig = null;
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Shadow distance", QualityGuard.Describe(QualityGuard.Q.ShadowDistance));

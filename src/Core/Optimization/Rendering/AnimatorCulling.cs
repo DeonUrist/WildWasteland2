@@ -38,14 +38,16 @@ namespace WildWasteland.Core.Optimization
             _cullAnim = NewKnob(cfg, "Cull NPC animators", "1 = AlwaysAnimate NPC animators become CullUpdateTransforms (prefabs).", 1, 1, 1, 0);
         }
 
+        /// <summary>Retains a prefab animator and its exact original culling mode for feature restoration.</summary>
         sealed class ARec { public Animator A; public AnimatorCullingMode Orig; }
         readonly List<ARec> _assets = new List<ARec>();
         readonly Dictionary<RuntimeAnimatorController, AnimatorCullingMode> _byController = new Dictionary<RuntimeAnimatorController, AnimatorCullingMode>();
         readonly List<PlayMakerFSM> _fbuf = new List<PlayMakerFSM>();
         readonly HashSet<int> _npcRoots = new HashSet<int>(), _otherRoots = new HashSet<int>();
+        /// <summary>Requests only animator components from the shared rendering scan.</summary>
         public ScanTypes Types { get { return ScanTypes.Animators; } }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (_cullAnim.Value > 0.5f) RenderScan.Register(this);
@@ -67,6 +69,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _npcRoots.Clear(); _otherRoots.Clear(); RenderScan.RequestFull(); }
 
+        /// <summary>Restores edited prefab modes and live clones using the same controller, then drops ownership caches.</summary>
         void RestoreAnimators()
         {
             for (int i = 0; i < _assets.Count; i++) if (_assets[i].A != null) _assets[i].A.cullingMode = _assets[i].Orig;
@@ -85,6 +88,7 @@ namespace WildWasteland.Core.Optimization
             _assets.Clear(); _byController.Clear(); _npcRoots.Clear(); _otherRoots.Clear();
         }
 
+        /// <summary>Shared scan: edits only eligible native NPC prefab animators, excluding player/vehicle and non-AlwaysAnimate modes.</summary>
         public void OnAnimator(Animator a, ref ScanCtx c)
         {
             if (!c.Asset || c.Player || c.Vehicle || a.cullingMode != AnimatorCullingMode.AlwaysAnimate) return;
@@ -94,6 +98,7 @@ namespace WildWasteland.Core.Optimization
             a.cullingMode = AnimatorCullingMode.CullUpdateTransforms;
         }
 
+        /// <summary>Caches native NPC-root classification before accepting a prefab animator for offscreen culling.</summary>
         bool IsNpcRoot(Transform root)
         {
             if (root == null) return false;
@@ -116,9 +121,10 @@ namespace WildWasteland.Core.Optimization
         public void OnParticles(ParticleSystem p, ref ScanCtx c) { }
         /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
+        /// <summary>The animator client has no additional end-of-pass work.</summary>
         public void OnPassDone() { }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("NPC animators culled (prefabs)", _assets.Count.ToString());

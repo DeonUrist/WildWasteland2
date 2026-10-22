@@ -46,6 +46,7 @@ namespace WildWasteland.Core.Optimization
 
         // exact marker heights: vanilla groups use 0.004-0.018 but never these values
         const float H1 = 0.0120123f, H2 = 0.0060123f, H3 = 0.0030123f;
+        /// <summary>Recognizes only the exact preset heights previously authored by this optimization.</summary>
         static bool IsInjectedHeight(float h, float scale) { return h == H1 * scale || h == H2 * scale || h == H3 * scale; }
 
         readonly List<LODGroup> _assetGroups = new List<LODGroup>();
@@ -57,9 +58,10 @@ namespace WildWasteland.Core.Optimization
         readonly List<PlayMakerFSM> _fbuf = new List<PlayMakerFSM>();
         float _usedScale = 1f;
         public static int Failed;
+        /// <summary>Requests root geometry from the shared render scan for bounded LOD-group authoring.</summary>
         public ScanTypes Types { get { return ScanTypes.Roots; } }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             _usedScale = Mathf.Clamp(_scale.Value, 0.1f, 10f);
@@ -80,6 +82,7 @@ namespace WildWasteland.Core.Optimization
             _assetGroups.Clear(); _instGroups.Clear(); _done.Clear();
         }
 
+        /// <summary>Recognizes only single-level cull groups matching this feature's authored heights.</summary>
         bool Injected(LODGroup g)
         {
             if (g.lodCount != 1 || g.fadeMode != LODFadeMode.None) return false;
@@ -87,6 +90,7 @@ namespace WildWasteland.Core.Optimization
             return lods.Length == 1 && IsInjectedHeight(lods[0].screenRelativeTransitionHeight, _usedScale);
         }
 
+        /// <summary>Checks whether a LODGroup belongs to the active cull-only optimization.</summary>
         internal static bool Owns(LODGroup group)
         {
             var module = OptimizationRuntime.Instance;
@@ -102,6 +106,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { RenderScan.RequestFull(); }
 
+        /// <summary>Shared root scan: adds simple cull-only LOD groups only to eligible static geometry without authored native LODs.</summary>
         public void OnRoot(Transform root, ref ScanCtx c)
         {
             if (c.Player || c.Saved || c.Vehicle) return;
@@ -158,6 +163,7 @@ namespace WildWasteland.Core.Optimization
             _keep.Clear();
         }
 
+        /// <summary>Rejects saved/interactive roots identified by native ID FSMs before injecting a static cull group.</summary>
         bool HasIdFsm(Transform t)
         {
             t.GetComponents(_fbuf);
@@ -189,13 +195,14 @@ namespace WildWasteland.Core.Optimization
         public void OnParticles(ParticleSystem p, ref ScanCtx c) { }
         /// <summary>This scan client does not modify animators.</summary>
         public void OnAnimator(Animator a, ref ScanCtx c) { }
+        /// <summary>Prunes references to destroyed injected groups after a shared scan pass.</summary>
         public void OnPassDone()
         {
             for (int i = _instGroups.Count - 1; i >= 0; i--) if (_instGroups[i] == null) _instGroups.RemoveAt(i);
             if (_done.Count > 50000) _done.Clear();
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Injected LOD groups", _assetGroups.Count + " prefabs, " + _instGroups.Count + " live objects" + (Failed > 0 ? ", " + Failed + " failed" : ""));

@@ -86,10 +86,10 @@ namespace WildWasteland.Core.Optimization
         static readonly List<PlayMakerFSM> _fsms = new List<PlayMakerFSM>(128);
         internal static long Paused, NwhSleeps, NwhWakes;
 
-        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
+        /// <summary>Registers the feature's shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { Hooks.EnterState.Postfix(Module, AfterEnterState); }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("SetIsKinematic.OnEnter patch failed");
@@ -99,6 +99,7 @@ namespace WildWasteland.Core.Optimization
             _job = Scheduler.Interval(Module, "Core.Optimization.CarLod", 0.1f, Tick);
         }
 
+        /// <summary>Caches clamped kinematic and presentation-distance thresholds from the active preset.</summary>
         void ReadKnobs() { _kin = Mathf.Max(50f, _kinDist.Value); float p = Mathf.Max(5f, _presDist.Value); _pres2 = p * p; }
 
         /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
@@ -120,9 +121,10 @@ namespace WildWasteland.Core.Optimization
 
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _cars.Clear(); _byGo.Clear(); _paused.Clear(); _nwhOffCount = 0; _lastDriven = null; _player = null; FsmPause.Prune(); }
-        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
+        /// <summary>Restores this feature's saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin() { for (int i = 0; i < _cars.Count; i++) { WakeNwh(_cars[i]); } }
 
+        /// <summary>Validates the native DistanceKinematic FSM and captures thresholds/components for eligible parked-car tracking.</summary>
         void Ready(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -146,6 +148,7 @@ namespace WildWasteland.Core.Optimization
         }
 
         // ---- per-car decision, a few cars per tick ----
+        /// <summary>Processes a bounded round-robin set of tracked parked cars outside native save guards.</summary>
         void Tick()
         {
             if (!On || _cars.Count == 0) return;
@@ -166,6 +169,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Chooses presentation pause, native kinematic threshold and NWH sleep from player distance and current eligibility.</summary>
         void Decide(Car car, Transform pt, Vector3 pp)
         {
             if (pt.IsChildOf(car.T)) _lastDriven = car.Go;
@@ -182,6 +186,7 @@ namespace WildWasteland.Core.Optimization
             if (pres) PausePres(car); else if (car.PresPaused) ResumePres(car);
         }
 
+        /// <summary>Excludes player-used, running-engine and typed module-owned/joint-coupled vehicles before any LOD mutation.</summary>
         bool Eligible(Car car, Transform pt)
         {
             if (car.Go == _lastDriven || pt.IsChildOf(car.T)) return false;
@@ -216,6 +221,7 @@ namespace WildWasteland.Core.Optimization
             return f;
         }
 
+        /// <summary>Applies the configured native kinematic threshold or restores the exact captured thresholds when ineligible.</summary>
         void SetThreshold(Car car, bool eligible)
         {
             if (eligible)
@@ -228,6 +234,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Pauses only validated resting presentation FSMs using this feature's shared reason bit.</summary>
         void PausePres(Car car)
         {
             car.PresPaused = true;
@@ -244,6 +251,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Releases this feature's presentation pause claims without disturbing other optimization reasons.</summary>
         void ResumePres(Car car)
         {
             car.PresPaused = false;
@@ -256,9 +264,11 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Drops stale per-car paused-FSM bookkeeping after native scene/component destruction.</summary>
         void ForgetPaused(Car car) { for (int i = 0; i < car.Pres.Count; i++) { var c = car.Pres[i]; if (!ReferenceEquals(c, null) && c.Fsm != null && _paused.Remove(c.Fsm)) FsmPause.Clear(c.Fsm, FsmPause.CarLod); } }
 
         // any state entry of a paused presentation FSM (event while far away) -> run it normally again
+        /// <summary>Shared state-entry postfix: releases a parked-car presentation claim before native state behavior changes.</summary>
         static void AfterEnterState(Fsm fsm, FsmState st)
         {
             if (_paused.Count == 0 || !_paused.Contains(fsm)) return;
@@ -266,6 +276,7 @@ namespace WildWasteland.Core.Optimization
             FsmPause.Clear(fsm, FsmPause.CarLod);
         }
 
+        /// <summary>Captures input/gear and wheel simulation state before suspending eligible distant frozen-vehicle physics.</summary>
         static void SleepNwh(Car car)
         {
             var vc = car.Vc;
@@ -277,6 +288,7 @@ namespace WildWasteland.Core.Optimization
             car.NwhOff = true; _nwhOffCount++; NwhSleeps++;
         }
 
+        /// <summary>Restores captured NWH/wheel simulation plus parked input and gear before native physics resumes.</summary>
         static void WakeNwh(Car car)
         {
             if (!car.NwhOff) return;
@@ -288,6 +300,7 @@ namespace WildWasteland.Core.Optimization
             vc.powertrain.transmission.Gear = car.SavedGear;
         }
 
+        /// <summary>Restores native thresholds, presentation FSMs and vehicle physics for one tracked car.</summary>
         void Release(Car car)
         {
             if (car.Go == null) return;
@@ -300,6 +313,7 @@ namespace WildWasteland.Core.Optimization
         static class Patch
         {
             // DistanceKinematic "KinematicOff" #1 makes the car dynamic: bring NWH back first (same frame, before the physics step).
+            /// <summary>SetIsKinematic action prefix: wakes feature-owned NWH state before native code makes the body dynamic.</summary>
             [HarmonyPatch(typeof(SetIsKinematic), "OnEnter"), HarmonyPrefix]
             static void Pre(SetIsKinematic __instance)
             {
@@ -310,7 +324,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             int pres = 0, nwh = 0; for (int i = 0; i < _cars.Count; i++) { if (_cars[i].PresPaused) pres++; if (_cars[i].NwhOff) nwh++; }

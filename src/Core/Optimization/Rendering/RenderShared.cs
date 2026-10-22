@@ -48,6 +48,7 @@ namespace WildWasteland.Core.Optimization
         void OnPassDone();
     }
 
+    /// <summary>Optional shared-scan callback for features that also consume skinned meshes.</summary>
     internal interface ISkinnedScanClient { void OnSkinned(SkinnedMeshRenderer r, ref ScanCtx c); }
 
     internal static class RenderScan
@@ -78,8 +79,10 @@ namespace WildWasteland.Core.Optimization
         static readonly Dictionary<int, Info> _info = new Dictionary<int, Info>();
 
         public static long Passes, Subtrees, Visited;
+        /// <summary>Whether a full scan or queued incremental subtree still has work to publish.</summary>
         public static bool Busy { get { return _fullRunning || _subtrees.Count > 0; } }
 
+        /// <summary>Adds one scan/save client, starting shared work only when the first client joins.</summary>
         internal static void Register(IScanClient c)
         {
             if (_clients.Contains(c)) return;
@@ -95,6 +98,7 @@ namespace WildWasteland.Core.Optimization
             RequestFull();
         }
 
+        /// <summary>Drops one scan/save client and releases shared registrations when the last client leaves.</summary>
         internal static void Unregister(IScanClient c)
         {
             if (!_clients.Remove(c)) return;
@@ -124,6 +128,7 @@ namespace WildWasteland.Core.Optimization
             if (_queued.Add(t.GetInstanceID())) _subtrees.Enqueue(t);
         }
 
+        /// <summary>Queues applied tile-pool children for the main-thread incremental render scan.</summary>
         static void OnTile(MapMagic.Terrains.TerrainTile tile)
         {
             if (tile == null || tile.objectsPool == null) return;
@@ -139,6 +144,7 @@ namespace WildWasteland.Core.Optimization
             if (go != null) Enqueue(go.transform);
         }
 
+        /// <summary>Runs one shared full-pass or incremental-subtree slice within its scheduler budget.</summary>
         static bool Step()
         {
             if (_fullWanted && !_fullRunning) { _fullWanted = false; _fullRunning = true; _stage = -1; _arr = null; _roots.Clear(); _rootIds.Clear(); _info.Clear(); OptimizationMetrics.Mark("prefabpass"); }
@@ -147,8 +153,10 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
+        /// <summary>Checks the aggregate component-kind flags requested by active scan clients.</summary>
         static bool Wants(ScanTypes t) { return (_types & t) != 0; }
 
+        /// <summary>Advances one stage/chunk of the shared prefab-and-scene rendering scan.</summary>
         static void StepFull()
         {
             if (_stage == 5)
@@ -179,12 +187,14 @@ namespace WildWasteland.Core.Optimization
             if (_idx >= _arr.Length) _arr = null;
         }
 
+        /// <summary>Completes the full scan, clears transient roots and notifies active clients to prune records.</summary>
         static void Finish()
         {
             _fullRunning = false; _arr = null; _stage = 6; _info.Clear(); _roots.Clear(); _rootIds.Clear(); Passes++;
             for (int i = 0; i < _clients.Count; i++) { try { _clients[i].OnPassDone(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan pass done", e); } }
         }
 
+        /// <summary>Classifies one root and isolates delivery failures between interested scan clients.</summary>
         static void DeliverRoot(Transform r)
         {
             if (r == null) return;
@@ -194,6 +204,7 @@ namespace WildWasteland.Core.Optimization
                 if ((_clients[k].Types & ScanTypes.Roots) != 0) { try { _clients[k].OnRoot(r, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan root", e); } }
         }
 
+        /// <summary>Visits requested component types below one incrementally queued native subtree.</summary>
         static void StepSubtree(Transform t)
         {
             if (t == null) return;
@@ -212,6 +223,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Classifies a scanned component and delivers it only to clients requesting that component kind.</summary>
         static void Deliver(Component comp)
         {
             if (ReferenceEquals(comp, null) || comp == null) return;
@@ -241,9 +253,13 @@ namespace WildWasteland.Core.Optimization
                 }
         }
 
+        /// <summary>Delivers one typed component callback while containing the individual scan client's exception.</summary>
         static void Safe(IScanClient cl, Light x, ref ScanCtx c) { try { cl.OnLight(x, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan light", e); } }
+        /// <summary>Delivers one typed component callback while containing the individual scan client's exception.</summary>
         static void Safe(IScanClient cl, MeshRenderer x, ref ScanCtx c) { try { cl.OnRenderer(x, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan renderer", e); } }
+        /// <summary>Delivers one typed component callback while containing the individual scan client's exception.</summary>
         static void Safe(IScanClient cl, ParticleSystem x, ref ScanCtx c) { try { cl.OnParticles(x, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan particles", e); } }
+        /// <summary>Delivers one typed component callback while containing the individual scan client's exception.</summary>
         static void Safe(IScanClient cl, Animator x, ref ScanCtx c) { try { cl.OnAnimator(x, ref c); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "scan animator", e); } }
 
         /// <summary>Classifies a transform. False for objects that must never be touched (editor/internal hide flags, WW's own runner).</summary>
@@ -264,6 +280,7 @@ namespace WildWasteland.Core.Optimization
             return true;
         }
 
+        /// <summary>Caches inherited saved/player/vehicle/root classification for one transform in the current pass.</summary>
         static Info GetInfo(Transform t)
         {
             int id = t.GetInstanceID();
@@ -324,6 +341,7 @@ namespace WildWasteland.Core.Optimization
             return Mathf.Max(Mathf.Abs(e.x * s.x), Mathf.Max(Mathf.Abs(e.y * s.y), Mathf.Abs(e.z * s.z)));
         }
 
+        /// <summary>Draws shared scan work counters without triggering discovery.</summary>
         internal static void Stats(WildWasteland.Core.UI.ToolLayout l)
         {
             l.Value("Prefab pass", (Busy ? "running" : "idle") + ", passes " + Passes + ", subtrees " + Subtrees + ", visited " + Visited);
@@ -336,11 +354,13 @@ namespace WildWasteland.Core.Optimization
     /// Core.SaveBus raises StateChanged on the first frame of "wait", i.e. ~1 s before ES3 serializes the objects.</summary>
     internal static class SaveGuard
     {
+        /// <summary>Save-bound visual client that can restore and reapply its own native component fields.</summary>
         internal interface IClient { void RevertSaved(); void ReapplySaved(); }
         static readonly List<IClient> _clients = new List<IClient>();
         internal static bool Reverted { get; private set; }
         public static long Saves;
 
+        /// <summary>Adds one scan/save client, starting shared work only when the first client joins.</summary>
         internal static void Register(IClient c)
         {
             if (_clients.Contains(c)) return;
@@ -355,6 +375,7 @@ namespace WildWasteland.Core.Optimization
             if (Reverted) c.RevertSaved();
         }
 
+        /// <summary>Drops one scan/save client and releases shared registrations when the last client leaves.</summary>
         internal static void Unregister(IClient c)
         {
             _clients.Remove(c);
@@ -393,6 +414,7 @@ namespace WildWasteland.Core.Optimization
             for (int i = 0; i < _clients.Count; i++) { try { _clients[i].ReapplySaved(); } catch (Exception ex) { Log.Error(OptimizationRuntime.Instance, "re-apply after save", ex); } }
         }
 
+        /// <summary>Native wait/isPlay fallback preserves the early save barrier for vanilla paths without typed serialization events.</summary>
         static void Changed(string prev, string now)
         {
             if (now == "wait" || now == "SaveGame")
@@ -411,6 +433,7 @@ namespace WildWasteland.Core.Optimization
     /// re-apply after the game or another mod resets them; release restores the level's own value if nobody changed it since.</summary>
     internal static class QualityGuard
     {
+        /// <summary>QualitySettings slots managed by this shared cap/floor owner.</summary>
         internal enum Q { PixelLights, ShadowDistance, ShadowCascades, ShadowResolution, SkinWeights, LodBias, TextureLimit, Aniso, Count }
         struct Slot { public bool Active, HasOrig, Floor; public float Want, Orig, Applied; }
         static readonly Slot[] _s = new Slot[(int)Q.Count];
@@ -418,6 +441,7 @@ namespace WildWasteland.Core.Optimization
         static Job _job;
         public static long Reapplies;
 
+        /// <summary>Reads the native QualitySettings value for one managed slot.</summary>
         static float Get(Q q)
         {
             switch (q)
@@ -434,6 +458,7 @@ namespace WildWasteland.Core.Optimization
             return 0;
         }
 
+        /// <summary>Writes one native QualitySettings slot using its required integer/enum representation.</summary>
         static void SetRaw(Q q, float v)
         {
             switch (q)
@@ -449,6 +474,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Starts the shared graphics-menu guard and periodic reset detection for its first active slot.</summary>
         static void Acquire()
         {
             if (_users++ > 0) return;
@@ -458,6 +484,7 @@ namespace WildWasteland.Core.Optimization
             _level = QualitySettings.GetQualityLevel();
         }
 
+        /// <summary>Stops the shared quality guard job after its last slot is released.</summary>
         static void ReleaseUser()
         {
             if (_users > 0 && --_users == 0 && _job != null) { _job.Remove(); _job = null; }
@@ -472,6 +499,7 @@ namespace WildWasteland.Core.Optimization
             Apply(i);
         }
 
+        /// <summary>Restores a slot's original value only if another writer has not changed it since this feature applied it.</summary>
         internal static void Release(Q q)
         {
             int i = (int)q;
@@ -482,6 +510,7 @@ namespace WildWasteland.Core.Optimization
             ReleaseUser();
         }
 
+        /// <summary>Applies a slot's cap or floor relative to the user's native quality value.</summary>
         static void Apply(int i)
         {
             var q = (Q)i;
@@ -506,6 +535,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Formats the current managed quality value together with its original quality-level value.</summary>
         internal static string Describe(Q q)
         {
             int i = (int)q;
@@ -516,6 +546,7 @@ namespace WildWasteland.Core.Optimization
         [HarmonyPatch]
         static class MenuPatch
         {
+            /// <summary>Graphics-menu postfix: reapplies active quality slots only while this shared guard has users.</summary>
             [HarmonyPatch(typeof(AkshayDhotre.GraphicSettingsMenu.GraphicSettingHelperMethods), "ChangeQualitySettings"), HarmonyPostfix]
             static void Post() { if (_users > 0) { try { Tick(); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "quality re-apply", e); } } }
         }
@@ -531,6 +562,7 @@ namespace WildWasteland.Core.Optimization
         static int _frame = -1;
         internal static int Version;
 
+        /// <summary>Refreshes recognized game cameras at most once per frame using a reusable camera buffer.</summary>
         internal static void Refresh()
         {
             if (_frame == Time.frameCount) return;
@@ -547,6 +579,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Accepts native player and vehicle view cameras, excluding unrelated rendering/editor cameras.</summary>
         internal static bool IsGameCamera(Camera c)
         {
             string n = c.name;
@@ -558,6 +591,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>True for a vehicle camera (saved with its car: ES3 writes Camera.farClipPlane / layerCullSpherical).</summary>
         internal static bool IsVehicleCamera(Camera c) { return c != null && c.name == "Camera"; }
 
+        /// <summary>Drops scene-bound camera lists and advances their discovery revision.</summary>
         internal static void Clear() { List.Clear(); _seen.Clear(); Version++; }
     }
 }

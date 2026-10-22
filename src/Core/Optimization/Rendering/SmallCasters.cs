@@ -35,14 +35,16 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg) { _size = NewKnob(cfg, "Half extent (m)", "Renderers with a world half extent below this stop casting shadows.", 0.35f, 0.15f, 0.08f, 0f); }
 
+        /// <summary>Retains one renderer's native shadow mode, measured size and asset/save flags.</summary>
         sealed class RRec { public MeshRenderer R; public ShadowCastingMode Orig; public bool Saved, Asset; public float Size; }
         readonly Dictionary<int, RRec> _recs = new Dictionary<int, RRec>();
         readonly List<RRec> _list = new List<RRec>();
         readonly Dictionary<long, ShadowCastingMode> _assetOrig = new Dictionary<long, ShadowCastingMode>();
         float _threshold;
+        /// <summary>Requests mesh renderers from the shared rendering scan.</summary>
         public ScanTypes Types { get { return ScanTypes.Renderers; } }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { _threshold = _size.Value; SaveGuard.Register(this); RenderScan.Register(this); }
 
         /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
@@ -70,6 +72,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { RenderScan.RequestFull(); }
 
+        /// <summary>Builds the mesh/root identity used to share native shadow-caster classification.</summary>
         static long MeshKey(MeshRenderer r, Transform root)
         {
             var mf = r.GetComponent<MeshFilter>();
@@ -77,6 +80,7 @@ namespace WildWasteland.Core.Optimization
             return ((long)mesh << 32) ^ (uint)RenderScan.RootHash(root);
         }
 
+        /// <summary>Shared scan: captures eligible native renderers before disabling only sufficiently small shadow casters.</summary>
         public void OnRenderer(MeshRenderer r, ref ScanCtx c)
         {
             if (c.Player || c.Vehicle || (c.Asset && c.Saved)) return;
@@ -99,7 +103,9 @@ namespace WildWasteland.Core.Optimization
             if (!(rec.Saved && SaveGuard.Reverted)) Apply(rec);
         }
 
+        /// <summary>Disables shadow casting on one still-live renderer selected by the feature's size threshold.</summary>
         static void Apply(RRec r) { if (r.R != null && r.R.shadowCastingMode != ShadowCastingMode.Off) r.R.shadowCastingMode = ShadowCastingMode.Off; }
+        /// <summary>Restores the captured native shadow-casting mode on one recorded renderer.</summary>
         static void Restore(RRec r) { if (r.R != null && r.R.shadowCastingMode != r.Orig) r.R.shadowCastingMode = r.Orig; }
 
         /// <summary>Restores the original fields of saved objects before serialization.</summary>
@@ -115,6 +121,7 @@ namespace WildWasteland.Core.Optimization
         public void OnAnimator(Animator a, ref ScanCtx c) { }
         /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
+        /// <summary>Prunes destroyed renderer records after shared discovery finishes.</summary>
         public void OnPassDone()
         {
             int n = 0;
@@ -124,7 +131,7 @@ namespace WildWasteland.Core.Optimization
             _recs.Clear(); for (int i = 0; i < _list.Count; i++) _recs[_list[i].R.GetInstanceID()] = _list[i];
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Renderers without shadow", _list.Count + " (" + _assetOrig.Count + " prefab meshes)"); }
     }
 }

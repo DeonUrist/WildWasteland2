@@ -40,7 +40,7 @@ namespace WildWasteland.Core.Optimization
         static readonly Action<Fsm, string> SetTriggerName = AccessTools.MethodDelegate<Action<Fsm, string>>(AccessTools.PropertySetter(typeof(Fsm), "TriggerName"));
         static readonly Action<Fsm, string> SetCollisionName = AccessTools.MethodDelegate<Action<Fsm, string>>(AccessTools.PropertySetter(typeof(Fsm), "CollisionName"));
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
@@ -67,7 +67,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Callbacks / system events skipped", Calls + " / " + Skipped); }
 
         /// <summary>The tail shared by all six methods (Fsm.cs:3026-3036 etc.): the state's handler said "not switching".</summary>
@@ -82,6 +82,7 @@ namespace WildWasteland.Core.Optimization
         {
             // Fsm.OnTriggerEnter(Collider) (Fsm.cs:3076)
 
+            /// <summary>3D trigger-entry replacement: native action callbacks and transitions run before unhandled system events are skipped.</summary>
             internal static bool TriggerEnter(Fsm __instance, Collider other)
             {
                 if (!On) return true;
@@ -96,6 +97,7 @@ namespace WildWasteland.Core.Optimization
 
             // Fsm.OnTriggerStay(Collider) (Fsm.cs:3094)
 
+            /// <summary>3D trigger-stay replacement: preserves native callback order while suppressing only an unhandled system event.</summary>
             internal static bool TriggerStay(Fsm __instance, Collider other)
             {
                 if (!On) return true;
@@ -110,6 +112,7 @@ namespace WildWasteland.Core.Optimization
 
             // Fsm.OnTriggerExit(Collider) (Fsm.cs:3112)
 
+            /// <summary>3D trigger-exit replacement: preserves native collider/name state and transition processing.</summary>
             internal static bool TriggerExit(Fsm __instance, Collider other)
             {
                 if (!On) return true;
@@ -124,6 +127,7 @@ namespace WildWasteland.Core.Optimization
 
             // Fsm.OnCollisionEnter(Collision) (Fsm.cs:3022)
 
+            /// <summary>3D collision-entry replacement: preserves native collision/name state and transition processing.</summary>
             internal static bool CollisionEnter(Fsm __instance, Collision collisionInfo)
             {
                 if (!On) return true;
@@ -138,6 +142,7 @@ namespace WildWasteland.Core.Optimization
 
             // Fsm.OnCollisionStay(Collision) (Fsm.cs:3040)
 
+            /// <summary>3D collision-stay replacement: preserves native callbacks while suppressing only an unhandled system event.</summary>
             internal static bool CollisionStay(Fsm __instance, Collision collisionInfo)
             {
                 if (!On) return true;
@@ -152,6 +157,7 @@ namespace WildWasteland.Core.Optimization
 
             // Fsm.OnCollisionExit(Collision) (Fsm.cs:3058)
 
+            /// <summary>3D collision-exit replacement: preserves native callbacks and state-change processing.</summary>
             internal static bool CollisionExit(Fsm __instance, Collision collisionInfo)
             {
                 if (!On) return true;

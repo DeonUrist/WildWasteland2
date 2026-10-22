@@ -61,6 +61,7 @@ namespace WildWasteland.Core.Optimization
         public override string Help { get { return "FSMs waiting for an event (doors, items, switches, parked cars) stop running their per-frame update until something happens to them."; } }
 
         internal static bool On, Shadow;
+        /// <summary>Whether native sleep or Shadow sleep bookkeeping is active.</summary>
         static bool Any { get { return On || Shadow; } }
         static FsmSleepFeature _inst;
         public static long ClonesCleared, Snapshots;
@@ -74,7 +75,7 @@ namespace WildWasteland.Core.Optimization
         static readonly Dictionary<Type, bool> _updates = new Dictionary<Type, bool>();
         static Type _lastType; static bool _lastUpdates;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("FSM sleep patches failed");
@@ -90,7 +91,7 @@ namespace WildWasteland.Core.Optimization
             _snapFsm = null;
         }
 
-        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
+        /// <summary>Registers the feature's shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks()
         {
             Hooks.ProcessEvent.Prefix(Module, BeforeProcessEvent);
@@ -117,10 +118,10 @@ namespace WildWasteland.Core.Optimization
 
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { WakeAll(); }
-        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
+        /// <summary>Restores this feature's saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin() { WakeAll(); }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value(IsShadow ? "Would be asleep now" : "Asleep now", _asleep.Count + " of " + PlayMakerFSM.FsmList.Count + " enabled FSMs");
@@ -145,6 +146,7 @@ namespace WildWasteland.Core.Optimization
             _asleep.Clear();
         }
 
+        /// <summary>Shared event prefix: wakes this feature's claim before the FSM handles any incoming event.</summary>
         static bool BeforeProcessEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             if (Any && fsm != null) Wake(fsm);
@@ -153,6 +155,7 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- sleep decision
 
+        /// <summary>Caches whether the exact action type overrides native per-frame OnUpdate behavior.</summary>
         static bool UpdatesEveryFrame(FsmStateAction a)
         {
             var t = a.GetType();
@@ -193,6 +196,7 @@ namespace WildWasteland.Core.Optimization
             return false;                                         // nothing blocks: would finish
         }
 
+        /// <summary>Admits only initialized owner FSMs whose active state has no observable per-frame update work.</summary>
         static bool CanSleep(Fsm fsm)
         {
             if (fsm.ManualUpdate || !fsm.Started || fsm.Finished || fsm.IsSwitchingState || Fsm.HitBreakpoint) return false;
@@ -212,6 +216,7 @@ namespace WildWasteland.Core.Optimization
         static FsmState _sState; static bool _sEntered, _sStateFinished, _sSwitching, _sFinished, _sStarted;
         static int _sActive, _sFinishedActs, _sDelayed, _sLoop; static FsmEventTarget _sTarget;
 
+        /// <summary>Captures state-machine invariants before a native Shadow-mode update that would have slept.</summary>
         static void Snap(Fsm fsm)
         {
             Snapshots++;
@@ -225,6 +230,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Checks the captured invariants after native Shadow execution and records any semantic mismatch.</summary>
         static void Compare(Fsm fsm)
         {
             _snapFsm = null;
@@ -242,17 +248,20 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- patches
 
+        /// <summary>Cheap wake guard used by native callback prefixes; inactive features leave the FSM unchanged.</summary>
         static void W(Fsm f) { if (Any && f != null) Wake(f); }
 
         [HarmonyPatch]
         static class Patch
         {
+            /// <summary>Fsm.Update prefix: captures only Shadow candidates before native state-machine work.</summary>
             [HarmonyPatch(typeof(Fsm), "Update"), HarmonyPrefix]
             static void UpdatePre(Fsm __instance)
             {
                 if (Shadow && _asleep.Contains(__instance)) Snap(__instance);
             }
 
+            /// <summary>Fsm.Update postfix: validates Shadow invariants or acquires only this feature's shared sleep claim.</summary>
             [HarmonyPatch(typeof(Fsm), "Update"), HarmonyPostfix]
             static void UpdatePost(Fsm __instance)
             {
@@ -272,58 +281,83 @@ namespace WildWasteland.Core.Optimization
             }
 
             // ---- event / state paths ----
+            /// <summary>Fsm.Event prefix: wakes the sender before native event routing and transitions.</summary>
             [HarmonyPatch(typeof(Fsm), "Event", typeof(FsmEventTarget), typeof(FsmEvent)), HarmonyPrefix]
             static void EventPre(Fsm __instance) { W(__instance); }
+            /// <summary>Native SwitchState prefix: wakes only a feature-owned sleeper before transition processing.</summary>
             [HarmonyPatch(typeof(Fsm), "SwitchState"), HarmonyPrefix]
             static void SwitchStatePre(Fsm __instance) { W(__instance); }
+            /// <summary>Native Fsm.Start prefix: releases an existing feature-owned sleep claim before startup.</summary>
             [HarmonyPatch(typeof(Fsm), "Start"), HarmonyPrefix]
             static void StartPre(Fsm __instance) { W(__instance); }
+            /// <summary>Native Fsm.Stop prefix: releases an existing feature-owned sleep claim before stopping.</summary>
             [HarmonyPatch(typeof(Fsm), "Stop"), HarmonyPrefix]
             static void StopPre(Fsm __instance) { W(__instance); }
+            /// <summary>Native Fsm.Init prefix: wakes before action/state initialization.</summary>
             [HarmonyPatch(typeof(Fsm), "Init"), HarmonyPrefix]
             static void InitPre(Fsm __instance) { W(__instance); }
+            /// <summary>Native Fsm.Reinitialize prefix: wakes before rebuilding native state.</summary>
             [HarmonyPatch(typeof(Fsm), "Reinitialize"), HarmonyPrefix]
             static void ReinitPre(Fsm __instance) { W(__instance); }
+            /// <summary>Native Fsm.Clear prefix: releases the feature-owned sleep claim before references are cleared.</summary>
             [HarmonyPatch(typeof(Fsm), "Clear"), HarmonyPrefix]
             static void ClearPre(Fsm __instance) { W(__instance); }
+            /// <summary>Native Fsm.OnDestroy prefix: releases this feature's claim before native destruction.</summary>
             [HarmonyPatch(typeof(Fsm), "OnDestroy"), HarmonyPrefix]
             static void OnDestroyPre(Fsm __instance) { W(__instance); }
+            /// <summary>Delayed-event prefix: wakes the sender before its delayed-event queue changes.</summary>
             [HarmonyPatch(typeof(Fsm), "DelayedEvent", typeof(FsmEvent), typeof(float)), HarmonyPrefix]
             static void Delayed1Pre(Fsm __instance) { W(__instance); }
+            /// <summary>Targeted delayed-event prefix: wakes the sender before its delayed-event queue changes.</summary>
             [HarmonyPatch(typeof(Fsm), "DelayedEvent", typeof(FsmEventTarget), typeof(FsmEvent), typeof(float)), HarmonyPrefix]
             static void Delayed2Pre(Fsm __instance) { W(__instance); }
+            /// <summary>Action-finish prefix: wakes the owner so the next native update can emit FINISHED.</summary>
             [HarmonyPatch(typeof(FsmStateAction), "Finish"), HarmonyPrefix]
             static void FinishPre(FsmStateAction __instance) { if (Any) { var f = __instance.Fsm; if (f != null) Wake(f); } }
 
             // ---- physics / animator / GUI callbacks ----
+            /// <summary>2D trigger-enter prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnTriggerEnter2D"), HarmonyPrefix]
             static void P7(Fsm __instance) { W(__instance); }
+            /// <summary>2D trigger-stay prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnTriggerStay2D"), HarmonyPrefix]
             static void P8(Fsm __instance) { W(__instance); }
+            /// <summary>2D trigger-exit prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnTriggerExit2D"), HarmonyPrefix]
             static void P9(Fsm __instance) { W(__instance); }
+            /// <summary>2D collision-enter prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnCollisionEnter2D"), HarmonyPrefix]
             static void P10(Fsm __instance) { W(__instance); }
+            /// <summary>2D collision-stay prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnCollisionStay2D"), HarmonyPrefix]
             static void P11(Fsm __instance) { W(__instance); }
+            /// <summary>2D collision-exit prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnCollisionExit2D"), HarmonyPrefix]
             static void P12(Fsm __instance) { W(__instance); }
+            /// <summary>Particle-collision prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnParticleCollision"), HarmonyPrefix]
             static void P13(Fsm __instance) { W(__instance); }
+            /// <summary>Controller-collision prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnControllerColliderHit"), HarmonyPrefix]
             static void P14(Fsm __instance) { W(__instance); }
+            /// <summary>Joint-break prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnJointBreak"), HarmonyPrefix]
             static void P15(Fsm __instance) { W(__instance); }
+            /// <summary>2D joint-break prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnJointBreak2D"), HarmonyPrefix]
             static void P16(Fsm __instance) { W(__instance); }
+            /// <summary>Animator-move prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnAnimatorMove"), HarmonyPrefix]
             static void P17(Fsm __instance) { W(__instance); }
+            /// <summary>Animator-IK prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnAnimatorIK"), HarmonyPrefix]
             static void P18(Fsm __instance) { W(__instance); }
+            /// <summary>FSM GUI prefix: wakes only while FSM sleep or Shadow tracking is active.</summary>
             [HarmonyPatch(typeof(Fsm), "OnGUI"), HarmonyPrefix]
             static void P19(Fsm __instance) { W(__instance); }
 
             // ---- serialized flag ----
+            /// <summary>Native serialization prefix: releases this feature's claim on the main thread; workers never mutate shared ownership.</summary>
             [HarmonyPatch(typeof(PlayMakerFSM), "OnBeforeSerialize"), HarmonyPrefix]
             static void BeforeSerializePre(PlayMakerFSM __instance)
             {

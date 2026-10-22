@@ -54,7 +54,7 @@ namespace WildWasteland.Core.Optimization
         static readonly Func<FsmProperty, Object> TargetCached = Access.Getter<FsmProperty, Object>(typeof(FsmProperty), "targetObjectCached");
         static readonly Func<FsmProperty, MemberInfo[]> MemberInfos = Access.Getter<FsmProperty, MemberInfo[]>(typeof(FsmProperty), "memberInfo");
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("FsmProperty patches failed");
@@ -65,7 +65,7 @@ namespace WildWasteland.Core.Optimization
         protected override void OnDisable() { On = Shadow = false; _entries.Clear(); _shadowFor = null; }
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _entries.Clear(); }
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Sets / gets / vanilla fallbacks", Sets + " / " + Gets + " / " + Fallbacks);
@@ -92,11 +92,13 @@ namespace WildWasteland.Core.Optimization
         static readonly Dictionary<long, Acc> _accs = new Dictionary<long, Acc>();
         static readonly Dictionary<string, Chain> _chains = new Dictionary<string, Chain>();
 
+        /// <summary>Produces a stable reflection-member identity key for cached accessors.</summary>
         static long MemberKey(MemberInfo m)
         {
             return ((long)m.DeclaringType.TypeHandle.Value.ToInt64() * 31L) ^ ((long)m.MetadataToken << 1) ^ (m is PropertyInfo ? 1L : 0L);
         }
 
+        /// <summary>Resolves and caches one field/property accessor with safe reflection fallback.</summary>
         static Acc GetAcc(MemberInfo m)
         {
             long k = MemberKey(m);
@@ -125,6 +127,7 @@ namespace WildWasteland.Core.Optimization
             else if (t == typeof(Color)) Typed<Color>(b, a);
             else if (t == typeof(Rect)) Typed<Rect>(b, a);
         }
+        /// <summary>Adds typed getter/setter delegates for one property value kind to the shared accessor batch.</summary>
         static void Typed<T>(Access.Batch b, Acc a)
         {
             var m = a.M;
@@ -138,6 +141,7 @@ namespace WildWasteland.Core.Optimization
             return t.IsClass && t != typeof(object) && t != typeof(ValueType) && t != typeof(Enum);
         }
 
+        /// <summary>Builds or reuses a compiled member chain, reporting compilation that is still pending.</summary>
         static Chain GetChain(MemberInfo[] members, out bool pending)
         {
             pending = false;
@@ -187,6 +191,7 @@ namespace WildWasteland.Core.Optimization
         // 11 Color 12 Object subclass 13 array 14 enum. Get order (GetValue): same 0..11, then enum, array, Object subclass.
         const int BEnum = 14, BArray = 13, BObject = 12;
 
+        /// <summary>Resolves the FsmProperty getter/setter branches for the native property value type.</summary>
         static Branches GetBranches(Type pt)
         {
             Branches b;
@@ -238,9 +243,11 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- per FsmProperty entry
 
+        /// <summary>Caches one native FsmProperty's member chain, root type and typed value branches.</summary>
         sealed class Entry { public MemberInfo[] Members; public Type PT; public Chain Chain; public Branches Br; public Type RootOk; public bool Pending; public int Ver; }
         static readonly Dictionary<FsmProperty, Entry> _entries = new Dictionary<FsmProperty, Entry>(RefComparer<FsmProperty>.Instance);
 
+        /// <summary>Reuses a property's cached chain only while its members and native property type still match.</summary>
         static Entry GetEntry(FsmProperty p, MemberInfo[] members, Type pt)
         {
             Entry e;
@@ -270,6 +277,7 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- chain walk (ReflectionUtils semantics)
 
+        /// <summary>Reads one intermediate member in a nested property chain.</summary>
         static object GetLevel(Chain c, int i, object t)
         {
             // vanilla: GetMemberValue(member, target) -> on a null target the reflection call throws; make exactly that call
@@ -277,6 +285,7 @@ namespace WildWasteland.Core.Optimization
             return c.Levels[i].Get(t);
         }
 
+        /// <summary>Writes one nested member using its boxed/reflection-compatible accessor.</summary>
         static void BoxedSet(Chain c, int i, object target, object value)
         {
             var a = c.Levels[i];
@@ -285,6 +294,7 @@ namespace WildWasteland.Core.Optimization
             a.Set(target, value);
         }
 
+        /// <summary>Reads the final property value through the cached boxed member chain.</summary>
         static object GetBoxed(Chain c, object root)
         {
             object t = root;
@@ -293,6 +303,7 @@ namespace WildWasteland.Core.Optimization
             return t;
         }
 
+        /// <summary>Reads the final property value through its compiled typed getter when available.</summary>
         static T GetTyped<T>(Chain c, object root)
         {
             object t = root;
@@ -321,6 +332,7 @@ namespace WildWasteland.Core.Optimization
             else BoxedSet(c, n - 1, t, value);
         }
 
+        /// <summary>Writes the final member and propagates modified value-type containers back through their parents.</summary>
         static void SetObject(Chain c, object root, object value)
         {
             object t = root, parent = null;
@@ -333,6 +345,7 @@ namespace WildWasteland.Core.Optimization
 
         // ---------------------------------------------------------------- the replacements
 
+        /// <summary>Copies the native FsmProperty input variable into the compiled member chain using its exact type branch.</summary>
         static bool DoSet(FsmProperty p, Entry e, object target)
         {
             int b = SetBranch(e.Br, p);
@@ -362,6 +375,7 @@ namespace WildWasteland.Core.Optimization
             return true;
         }
 
+        /// <summary>Copies the compiled member-chain result into the matching native FsmProperty output variable.</summary>
         static bool DoGet(FsmProperty p, Entry e, object target)
         {
             int b = e.Br.GetIdx;
@@ -409,6 +423,7 @@ namespace WildWasteland.Core.Optimization
 
         static FsmProperty _shadowFor; static Entry _shadowEntry; static object _shadowTarget;
 
+        /// <summary>Compares an optimized getter result with the native getter while leaving native behavior authoritative.</summary>
         static void ShadowCompareGet(FsmProperty p, Entry e, object target)
         {
             int b = e.Br.GetIdx;
@@ -434,6 +449,7 @@ namespace WildWasteland.Core.Optimization
             if (!Equals(mine, vanilla) && _inst != null) _inst.Mismatch("GetProperty " + p.TargetTypeName + "." + p.PropertyName + ": vanilla " + vanilla + ", compiled " + mine);
         }
 
+        /// <summary>Compares native setter results with the optimized chain's observable target state.</summary>
         static void ShadowCompareSet(FsmProperty p, Entry e, object target)
         {
             if (!e.Chain.GetOk || SetBranch(e.Br, p) < 0) return;
@@ -445,6 +461,7 @@ namespace WildWasteland.Core.Optimization
         [HarmonyPatch]
         static class Patch
         {
+            /// <summary>FsmProperty setter prefix: yields while disabled/pending and invokes the typed path only for a supported entry.</summary>
             [HarmonyPatch(typeof(FsmProperty), "SetValue"), HarmonyPrefix]
             static bool SetPre(FsmProperty __instance)
             {
@@ -458,6 +475,7 @@ namespace WildWasteland.Core.Optimization
                 return false;
             }
 
+            /// <summary>FsmProperty setter postfix: runs only the pending Shadow comparison after native assignment.</summary>
             [HarmonyPatch(typeof(FsmProperty), "SetValue"), HarmonyPostfix]
             static void SetPost(FsmProperty __instance)
             {
@@ -466,6 +484,7 @@ namespace WildWasteland.Core.Optimization
                 try { ShadowCompareSet(__instance, _shadowEntry, _shadowTarget); } catch (Exception) { }
             }
 
+            /// <summary>FsmProperty getter prefix: yields while disabled/pending and invokes the typed path only for a supported entry.</summary>
             [HarmonyPatch(typeof(FsmProperty), "GetValue"), HarmonyPrefix]
             static bool GetPre(FsmProperty __instance)
             {
@@ -479,6 +498,7 @@ namespace WildWasteland.Core.Optimization
                 return false;
             }
 
+            /// <summary>FsmProperty getter postfix: compares the optimized result with the native Shadow-mode result.</summary>
             [HarmonyPatch(typeof(FsmProperty), "GetValue"), HarmonyPostfix]
             static void GetPost(FsmProperty __instance)
             {

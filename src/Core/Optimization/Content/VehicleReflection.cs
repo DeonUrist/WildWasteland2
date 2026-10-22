@@ -35,7 +35,7 @@ namespace WildWasteland.Core.Optimization
         readonly UndoLog _undo = new UndoLog();
         internal static long Swapped;
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
@@ -47,12 +47,13 @@ namespace WildWasteland.Core.Optimization
         protected override void OnDisable() { On = false; FsmEdits.Unwatch(this); _undo.RevertAll(); }
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _undo.Prune(); }
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Actions replaced (live / total)", _undo.Count + " / " + Swapped); }
 
         // Member ids
         internal const int Brakes = 0, Clutch = 1, Throttle = 2, Rpm = 3, Gear = 4, Handbrake = 5;
 
+        /// <summary>Validates native Pedal property actions before replacing their reflection with typed NWH reads.</summary>
         void ReadyPedal(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -64,6 +65,7 @@ namespace WildWasteland.Core.Optimization
             Swap(f, "pedal", 1, new NwhGet(g, which));
         }
 
+        /// <summary>Validates native RPM/gear property actions before replacing their reflection with typed NWH reads.</summary>
         void ReadyRpmGear(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -76,6 +78,7 @@ namespace WildWasteland.Core.Optimization
             Swap(f, "RpmGear", 3, new NwhGet(g, Gear));
         }
 
+        /// <summary>Validates native handbrake property actions before replacing their reflection with typed NWH writes.</summary>
         void ReadyHandbrake(PlayMakerFSM f)
         {
             var fsm = f.Fsm;
@@ -87,6 +90,7 @@ namespace WildWasteland.Core.Optimization
             else if (off != null) FsmEdits.Warn(this, "Handbrake/HandbrakeOff#3", "writes " + off.targetProperty.PropertyName);
         }
 
+        /// <summary>Checks that a reflected property targets the native VehicleController component.</summary>
         static bool IsVc(FsmProperty p)
         {
             if (p == null || p.TargetObject == null) return false;
@@ -94,6 +98,7 @@ namespace WildWasteland.Core.Optimization
             return t == "NWH.VehiclePhysics2.VehicleController";
         }
 
+        /// <summary>Replaces a validated native action and records the original slot for feature shutdown.</summary>
         void Swap(PlayMakerFSM f, string state, int number, ProxyAction w)
         {
             var st = FsmEdits.State(f.Fsm, state);
@@ -106,14 +111,18 @@ namespace WildWasteland.Core.Optimization
         sealed class NwhGet : ProxyAction
         {
             readonly GetProperty _g; readonly int _which;
+            /// <summary>Retains the native getter and selects the equivalent NWH value to read.</summary>
             public NwhGet(GetProperty g, int which) : base(g) { _g = g; _which = which; }
+            /// <summary>Runs the direct NWH operation at native action entry and preserves its every-frame completion rule.</summary>
             protected override void Enter()
             {
                 if (!On) { base.Enter(); return; }
                 Do();
                 if (!_g.everyFrame) FinishInner();
             }
+            /// <summary>Repeats the direct NWH operation only when the original action requested every-frame execution.</summary>
             protected override void Tick() { if (!On) { base.Tick(); return; } Do(); }
+            /// <summary>Performs the wrapper's typed NWH operation, falling back to the retained native action when unavailable.</summary>
             void Do()
             {
                 // FsmProperty.GetValue: target = TargetObject.Value (re-read every call); null target -> nothing written
@@ -135,14 +144,18 @@ namespace WildWasteland.Core.Optimization
         sealed class NwhSetHandbrake : ProxyAction
         {
             readonly SetProperty _s;
+            /// <summary>Retains the native setter used by the direct NWH handbrake wrapper.</summary>
             public NwhSetHandbrake(SetProperty s) : base(s) { _s = s; }
+            /// <summary>Runs the direct NWH operation at native action entry and preserves its every-frame completion rule.</summary>
             protected override void Enter()
             {
                 if (!On) { base.Enter(); return; }
                 Do();
                 if (!_s.everyFrame) FinishInner();
             }
+            /// <summary>Repeats the direct NWH operation only when the original action requested every-frame execution.</summary>
             protected override void Tick() { if (!On) { base.Tick(); return; } Do(); }
+            /// <summary>Performs the wrapper's typed NWH operation, falling back to the retained native action when unavailable.</summary>
             void Do()
             {
                 var vc = _s.targetProperty.TargetObject.Value as VehicleController;

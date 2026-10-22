@@ -42,13 +42,15 @@ namespace WildWasteland.Core.Optimization
         }
 
         struct Orig { public bool Prewarm, Lights; public ParticleSystemCullingMode Cull; public ParticleSystemCollisionQuality Coll; public int Max; }
+        /// <summary>Retains one particle system's original modules plus its asset/save ownership flags.</summary>
         sealed class PRec { public ParticleSystem P; public bool Saved, Asset; public Orig O; }
         readonly Dictionary<int, PRec> _recs = new Dictionary<int, PRec>();
         readonly List<PRec> _list = new List<PRec>();
         readonly Dictionary<string, Orig> _assetOrig = new Dictionary<string, Orig>();
+        /// <summary>Requests particle systems from the shared rendering scan.</summary>
         public ScanTypes Types { get { return ScanTypes.Particles; } }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { SaveGuard.Register(this); RenderScan.Register(this); }
 
         /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
@@ -70,12 +72,14 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { RenderScan.RequestFull(); }
 
+        /// <summary>Captures the native particle modules and limits that this feature may change.</summary>
         static Orig Read(ParticleSystem p)
         {
             var m = p.main;
             return new Orig { Prewarm = m.prewarm, Cull = m.cullingMode, Coll = p.collision.quality, Lights = p.lights.enabled, Max = m.maxParticles };
         }
 
+        /// <summary>Shared scan: captures eligible native systems once before applying current preset tuning.</summary>
         public void OnParticles(ParticleSystem p, ref ScanCtx c)
         {
             if (c.Player) return;
@@ -93,8 +97,10 @@ namespace WildWasteland.Core.Optimization
             if (!(r.Saved && SaveGuard.Reverted)) Apply(r);
         }
 
+        /// <summary>Recognizes prewarm/light settings already carrying optimization edits before capturing native originals.</summary>
         bool LooksEdited(Orig o) { return !o.Prewarm || !o.Lights; }
 
+        /// <summary>Applies the selected particle limits and module flags to one live recorded system.</summary>
         void Apply(PRec r)
         {
             var p = r.P; if (p == null) return;
@@ -114,6 +120,7 @@ namespace WildWasteland.Core.Optimization
             if (cap > 0 && r.O.Max > cap && m.maxParticles != cap) m.maxParticles = cap;
         }
 
+        /// <summary>Restores the recorded native particle settings and module flags.</summary>
         static void Restore(PRec r)
         {
             var p = r.P; if (p == null) return;
@@ -138,13 +145,14 @@ namespace WildWasteland.Core.Optimization
         public void OnAnimator(Animator a, ref ScanCtx c) { }
         /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
+        /// <summary>Prunes destroyed particle-system records after shared discovery finishes.</summary>
         public void OnPassDone()
         {
             for (int i = _list.Count - 1; i >= 0; i--) if (_list[i].P == null) _list.RemoveAt(i);
             if (_recs.Count != _list.Count) { _recs.Clear(); for (int i = 0; i < _list.Count; i++) _recs[_list[i].P.GetInstanceID()] = _list[i]; }
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Particle systems", _list.Count + " tracked, " + _assetOrig.Count + " prefab systems"); }
     }
 }

@@ -59,6 +59,7 @@ namespace WildWasteland.Core.Optimization
             public Light L; public Transform T; public bool Saved, Head, Point, Eligible, Culled, Touched;
             public LightShadows OrigShadows; public int OrigRes; public float OrigRange;
         }
+        /// <summary>Retains an unsaved prefab light's exact original shadow mode for restoration.</summary>
         sealed class ARec { public Light L; public LightShadows Orig; }
 
         internal static bool On;
@@ -75,9 +76,10 @@ namespace WildWasteland.Core.Optimization
         readonly float[] _bestD = new float[16];
         public static int Shadowed, CulledCount, Live;
 
+        /// <summary>Requests light components from the shared rendering scan.</summary>
         public ScanTypes Types { get { return ScanTypes.Lights; } }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             _inst = this; On = true;
@@ -121,8 +123,10 @@ namespace WildWasteland.Core.Optimization
             return p != null && l != null && p._recs.TryGetValue(l.GetInstanceID(), out r) && r.Culled;
         }
 
+        /// <summary>Recognizes native tiny-range spotlights that must not become budgeted point lights.</summary>
         static bool SmallSpot(Light l) { return l.type == LightType.Spot && l.range < 1f; }
 
+        /// <summary>Shared scan: records eligible light originals and separates prefab/saved/vehicle/player treatment.</summary>
         public void OnLight(Light l, ref ScanCtx c)
         {
             if (c.Player) return;
@@ -165,8 +169,10 @@ namespace WildWasteland.Core.Optimization
         public void OnAnimator(Animator a, ref ScanCtx c) { }
         /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
+        /// <summary>Prunes destroyed light records after shared discovery finishes.</summary>
         public void OnPassDone() { Prune(); }
 
+        /// <summary>Compacts dead light records and removes their instance ids from the lookup.</summary>
         void Prune()
         {
             for (int i = _list.Count - 1; i >= 0; i--)
@@ -177,6 +183,7 @@ namespace WildWasteland.Core.Optimization
             if (_recs.Count != _list.Count) { _recs.Clear(); for (int i = 0; i < _list.Count; i++) _recs[_list[i].L.GetInstanceID()] = _list[i]; }
         }
 
+        /// <summary>Restores the captured shadow, resolution and range fields of one still-live light.</summary>
         void Restore(LRec r)
         {
             var l = r.L;
@@ -251,6 +258,7 @@ namespace WildWasteland.Core.Optimization
             Shadowed = shadowed; CulledCount = culled; Live = _list.Count;
         }
 
+        /// <summary>Writes a light's shadow mode/resolution only when the chosen budget result differs.</summary>
         static void SetShadow(LRec r, bool on, int res)
         {
             var l = r.L;
@@ -260,7 +268,7 @@ namespace WildWasteland.Core.Optimization
             if (l.shadowCustomResolution != wr) l.shadowCustomResolution = wr;
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Lights", Live + " tracked, " + Shadowed + " shadowed, " + CulledCount + " switched off, " + _assets.Count + " prefab lights edited");

@@ -45,7 +45,7 @@ namespace WildWasteland.Core.Optimization
         static readonly Dictionary<MethodBase, Inv> _invokers = new Dictionary<MethodBase, Inv>(RefComparer<MethodBase>.Instance);
         static readonly Inv NoInvoker = new Inv();
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("CallMethod transpiler failed");
@@ -54,9 +54,10 @@ namespace WildWasteland.Core.Optimization
         }
         /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; }
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Compiled calls / reflection fallbacks", Compiled + " / " + Reflected + " (methods " + _invokers.Count + ")"); }
 
+        /// <summary>Caches a supported method invoker or a permanent reflection fallback for the exact MethodBase.</summary>
         static Inv Get(MethodBase m)
         {
             Inv inv;
@@ -97,6 +98,7 @@ namespace WildWasteland.Core.Optimization
             return inv.Call(obj, parameters);
         }
 
+        /// <summary>Checks receiver and argument types before replacing reflection invocation with a compiled delegate.</summary>
         static bool ArgsExact(Inv inv, object obj, object[] args)
         {
             if (!inv.Static)
@@ -126,6 +128,7 @@ namespace WildWasteland.Core.Optimization
         [HarmonyPatch]
         static class Patch
         {
+            /// <summary>Replaces only the two audited MethodBase.Invoke call sites in PlayMaker CallMethod's body.</summary>
             [HarmonyPatch(typeof(CallMethod), "DoMethodCall"), HarmonyTranspiler]
             static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions)
             {

@@ -26,6 +26,7 @@ namespace WildWasteland.Core.Optimization
         public override bool UsesPreset { get { return true; } }
         /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Uses the optional Performance/LOD pack made by tools/lod-generator/Generate.cmd. Zoom restores original meshes. Missing/unsupported meshes stay original. Restores originals for saves and when disabled."; } }
+        /// <summary>Requests static and skinned renderers from the shared scan for generated mesh bindings.</summary>
         public ScanTypes Types { get { return ScanTypes.Renderers | ScanTypes.Skinned; } }
 
         Knob _near, _far, _zoomFov, _memory, _distance;
@@ -63,8 +64,10 @@ namespace WildWasteland.Core.Optimization
             internal Entry Entry;
             internal int Level;
             internal Mesh Current { get { return Skin != null ? Skin.sharedMesh : Filter != null ? Filter.sharedMesh : null; } }
+            /// <summary>Writes the selected mesh to the binding's native skinned renderer or mesh filter.</summary>
             internal void Set(Mesh mesh) { if (Skin != null) Skin.sharedMesh = mesh; else if (Filter != null) Filter.sharedMesh = mesh; }
         }
+        /// <summary>Carries one worker decode result and its scene epoch to main-thread upload.</summary>
         sealed class Completion { internal int Epoch; internal Entry Entry; internal GeneratedLodPack.Level[] Data; internal string Error; }
 
         /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
@@ -77,7 +80,7 @@ namespace WildWasteland.Core.Optimization
             _memory = NewKnob(cfg, "Cache MB", "Maximum generated payload bytes reserved for the current scene; two worker reads at most. GPU overhead is additional.", 128, 256, 384, 256);
         }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             string root = Path.Combine(Assets.Root, "Core", "Optimization", "LOD");
@@ -111,12 +114,13 @@ namespace WildWasteland.Core.Optimization
             RenderScan.RequestFull();
         }
 
+        /// <summary>Requests a shared discovery pass only when a pack is loaded and the existing scan is idle.</summary>
         void Discover() { if (_pack != null && !RenderScan.Busy) RenderScan.RequestFull(); }
         /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { Discover(); }
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { Clear(); Discover(); }
-        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
+        /// <summary>Restores this feature's saved-object state before the native save transaction.</summary>
         public override void OnSaveBegin() { _saving = true; Restore(); }
         /// <summary>Resumes feature work after the native save transaction has completed.</summary>
         public override void OnSaveEnd() { _saving = false; }
@@ -125,6 +129,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Reapplies active optimization settings after serialization releases saved objects.</summary>
         public void ReapplySaved() { _guard = false; }
 
+        /// <summary>Restores original meshes, invalidates outstanding worker results and releases generated mesh resources.</summary>
         void Clear()
         {
             _epoch++;
@@ -140,6 +145,7 @@ namespace WildWasteland.Core.Optimization
             _rendered.Clear(); _normalFov = null;
         }
 
+        /// <summary>Restores every still-owned mesh binding to its original native mesh.</summary>
         void Restore()
         {
             foreach (var b in _objects)
@@ -151,6 +157,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Shared scan: accepts eligible mesh filters and handles recognized town wall panels before generated mesh binding.</summary>
         public void OnRenderer(MeshRenderer renderer, ref ScanCtx c)
         {
             if (c.Asset || c.Player || (c.Root != null && c.Root.name == "ApocaplayerBody")) return;
@@ -162,6 +169,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Builds/reuses the simple distant wall panel while preserving original bounds, material and native mesh.</summary>
         void Wall(MeshRenderer renderer, MeshFilter filter, Transform root)
         {
             if (_pack == null || filter.sharedMesh == null || _bindings.ContainsKey(renderer.GetInstanceID())) return;
@@ -189,11 +197,13 @@ namespace WildWasteland.Core.Optimization
             var binding = new Binding { Renderer = renderer, Filter = filter, Original = original, Entry = entry };
             _objects.Add(binding); _bindings.Add(renderer.GetInstanceID(), binding);
         }
+        /// <summary>Shared scan: attaches an eligible native skinned mesh to its optional generated LOD entry.</summary>
         public void OnSkinned(SkinnedMeshRenderer renderer, ref ScanCtx c)
         {
             if (!c.Asset && !c.Player && (c.Root == null || c.Root.name != "ApocaplayerBody")) Attach(renderer, null, renderer, renderer.sharedMesh);
         }
 
+        /// <summary>Matches a source mesh to its validated pack key and caches one renderer binding without replacing foreign mesh edits.</summary>
         void Attach(Renderer renderer, MeshFilter filter, SkinnedMeshRenderer skin, Mesh source)
         {
             if (_pack == null || source == null || source.blendShapeCount != 0 || source.name.StartsWith("WWLOD_", StringComparison.Ordinal)) return;
@@ -221,6 +231,7 @@ namespace WildWasteland.Core.Optimization
             _objects.Add(b); _bindings.Add(id, b);
         }
 
+        /// <summary>Reserves bounded payload memory and schedules at most the configured concurrent worker decodes.</summary>
         void Request(Entry entry)
         {
             if (entry.State != 0 || _pending >= 2) return;
@@ -240,6 +251,7 @@ namespace WildWasteland.Core.Optimization
             });
         }
 
+        /// <summary>Marks a failed payload entry, destroys partial variants and keeps the native original mesh.</summary>
         void Fail(Entry entry, string error)
         {
             entry.State = 4; entry.Data = null; _errors++;
@@ -248,6 +260,7 @@ namespace WildWasteland.Core.Optimization
             if (_errors <= 5) Log.Warn(OptimizationRuntime.Instance, "RC9 keeps original mesh: " + error);
         }
 
+        /// <summary>Publishes current-epoch worker completions and uploads at most one generated mesh level per slice.</summary>
         bool Upload()
         {
             Completion completed = null;
@@ -277,14 +290,17 @@ namespace WildWasteland.Core.Optimization
         struct View { internal float Tan; internal int Frame; }
         readonly Dictionary<Camera, View> _rendered = new Dictionary<Camera, View>();
         HutongGames.PlayMaker.FsmFloat _normalFov;
+        /// <summary>Reads the rendered projection's vertical half-angle tangent, including custom camera zoom matrices.</summary>
         static float ProjectionTan(Camera camera)
         { float m11 = Mathf.Abs(camera.projectionMatrix.m11); return m11 > .0001f ? 1 / m11 : Mathf.Tan(camera.fieldOfView * Mathf.Deg2Rad * .5f); }
+        /// <summary>Uses the last rendered projection when a camera restored its matrix after the preceding frame.</summary>
         float ViewTan(Camera camera)
         {
             View view; float tan = ProjectionTan(camera);
             // Third-person projection is restored after rendering. Retain its last actual view for the next sliced pass.
             return _rendered.TryGetValue(camera, out view) && view.Frame >= Time.frameCount - 1 ? Mathf.Min(tan, view.Tan) : tan;
         }
+        /// <summary>Detects real magnification relative to native normal FOV plus the configured full-detail threshold.</summary>
         bool Zoom(Camera camera, float tan)
         {
             if (_zoomFov.Value <= 0 || camera.orthographic) return false;
@@ -292,6 +308,7 @@ namespace WildWasteland.Core.Optimization
             float normal = _normalFov != null && _normalFov.Value > 0 ? _normalFov.Value : camera.fieldOfView;
             return tan <= Mathf.Tan(_zoomFov.Value * Mathf.Deg2Rad * .5f) || tan < Mathf.Tan(normal * Mathf.Deg2Rad * .5f) * .98f;
         }
+        /// <summary>Camera pre-render callback: restores originals immediately on zoom, independent of the sliced work budget.</summary>
         void RenderView(Camera camera)
         {
             if (camera == null || !camera.isActiveAndEnabled || !GameCameras.IsGameCamera(camera) || camera.orthographic) return;
@@ -299,6 +316,7 @@ namespace WildWasteland.Core.Optimization
             // Runs after camera projection overrides, even when the shared slice budget is exhausted.
             if (!_zoom && Zoom(camera, tan)) { Restore(); _zoom = true; }
         }
+        /// <summary>Caches active recognized view cameras once per frame and resolves whether any view requires full detail.</summary>
         void Cameras()
         {
             if (_cameraFrame == Time.frameCount) return;
@@ -316,6 +334,7 @@ namespace WildWasteland.Core.Optimization
             _zoom = zoom;
         }
 
+        /// <summary>Uploads or updates a bounded binding slice only outside save guards/zoom and while view cameras exist.</summary>
         bool Step()
         {
             if (_pack == null) return false;
@@ -358,6 +377,7 @@ namespace WildWasteland.Core.Optimization
             return true;
         }
 
+        /// <summary>Prunes destroyed renderer bindings and rebuilds the instance-id lookup after shared discovery.</summary>
         public void OnPassDone()
         {
             for (int i = _objects.Count - 1; i >= 0; i--)
@@ -373,7 +393,7 @@ namespace WildWasteland.Core.Optimization
         public void OnAnimator(Animator a, ref ScanCtx c) { }
         /// <summary>This scan client does not consume root geometry.</summary>
         public void OnRoot(Transform root, ref ScanCtx c) { }
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("LOD pack", _status ?? "not loaded");

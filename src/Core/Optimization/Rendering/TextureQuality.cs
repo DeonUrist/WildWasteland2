@@ -36,13 +36,14 @@ namespace WildWasteland.Core.Optimization
             _aniso = NewKnob(cfg, "Anisotropic cap", "0 Disable, 1 Enable (per texture), 2 ForceEnable (= no cap).", 1, 2, 2, 2);
         }
 
-        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
+        /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { Apply(); }
         /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged() { Apply(); }
         /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { QualityGuard.Release(QualityGuard.Q.TextureLimit); QualityGuard.Release(QualityGuard.Q.Aniso); }
 
+        /// <summary>Applies the preset's texture-size/aniso limits through the shared native-quality guard.</summary>
         void Apply()
         {
             int lim = Mathf.Clamp(_limit.Int, 0, 3);
@@ -51,7 +52,7 @@ namespace WildWasteland.Core.Optimization
             if (an < 2) QualityGuard.Set(QualityGuard.Q.Aniso, an); else QualityGuard.Release(QualityGuard.Q.Aniso);
         }
 
-        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
+        /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Texture limit / aniso", QualityGuard.Describe(QualityGuard.Q.TextureLimit) + " / " + QualityGuard.Describe(QualityGuard.Q.Aniso));
