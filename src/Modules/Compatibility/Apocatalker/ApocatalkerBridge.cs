@@ -10,9 +10,11 @@ namespace WildWasteland.Modules.Compatibility
     /// </summary>
     internal static class ApocatalkerBridge
     {
+        private static ExternalQuestConversation _quests;
         /// <summary>Installs the mirror and registers job "Compatibility.Apocatalker.Dialogue" (LateUpdateLast, as the HUD job was).</summary>
         internal static void Start(IModule scope)
         {
+            _quests=ExternalQuestConversation.Start(scope);
             TalkDialogue.Install(scope);
             Scheduler.EveryFrame(scope, "Compatibility.Apocatalker.Dialogue", TalkDialogue.Tick, Phase.LateUpdateLast);
         }
@@ -21,6 +23,6 @@ namespace WildWasteland.Modules.Compatibility
         internal static void OnSceneLoaded() { TalkDialogue.Hide(); }
 
         /// <summary>Destroys the mirror window.</summary>
-        internal static void Shutdown() { TalkDialogue.Dispose(); }
+        internal static void Shutdown() { try{_quests?.Stop();}finally{_quests=null;TalkDialogue.Dispose();} }
     }
 }

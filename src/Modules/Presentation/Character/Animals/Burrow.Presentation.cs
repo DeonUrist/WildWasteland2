@@ -68,12 +68,12 @@ namespace WildWasteland.Modules.NPC
         private static void Fx(B b, Vector3 at)
         {
             var cam = Core.GameRefs.MainCamera;
-            if (cam == null || (cam.transform.position - at).sqrMagnitude > NpcModule.BurrowFxRange.Value * NpcModule.BurrowFxRange.Value) return;
+            if (cam == null || (cam.transform.position - at).sqrMagnitude > NpcaiSettings.BurrowFxRange.Value * NpcaiSettings.BurrowFxRange.Value) return;
             FindEffect();
             if (_effect == null) return;
             try
             {
-                float s = Mathf.Clamp(b.Hunter ? NpcModule.HuntFxScale.Value : NpcModule.BurrowFxScale.Value, 0.05f, 1f);
+                float s = Mathf.Clamp(b.Hunter ? NpcaiSettings.HuntFxScale.Value : NpcaiSettings.BurrowFxScale.Value, 0.05f, 1f);
                 GameObject fx = null;
                 while (_fxFree.Count > 0 && fx == null) { fx = _fxFree[_fxFree.Count - 1]; _fxFree.RemoveAt(_fxFree.Count - 1); }
                 if (fx == null)
@@ -98,9 +98,9 @@ namespace WildWasteland.Modules.NPC
                 if (src != null)
                 {
                     if (_clip != null) src.clip = _clip;
-                    src.volume = Mathf.Clamp01(b.Hunter ? NpcModule.HuntFxVolume.Value : NpcModule.BurrowFxVolume.Value);
-                    src.pitch = Mathf.Clamp(b.Hunter ? NpcModule.HuntFxPitch.Value : NpcModule.BurrowFxPitch.Value, 0.5f, 3f);
-                    src.spatialBlend = 1f; src.rolloffMode = AudioRolloffMode.Linear; src.minDistance = 1f; src.maxDistance = Mathf.Max(5f, NpcModule.BurrowFxRange.Value * (b.Hunter ? 1f : 0.5f));
+                    src.volume = Mathf.Clamp01(b.Hunter ? NpcaiSettings.HuntFxVolume.Value : NpcaiSettings.BurrowFxVolume.Value);
+                    src.pitch = Mathf.Clamp(b.Hunter ? NpcaiSettings.HuntFxPitch.Value : NpcaiSettings.BurrowFxPitch.Value, 0.5f, 3f);
+                    src.spatialBlend = 1f; src.rolloffMode = AudioRolloffMode.Linear; src.minDistance = 1f; src.maxDistance = Mathf.Max(5f, NpcaiSettings.BurrowFxRange.Value * (b.Hunter ? 1f : 0.5f));
                     src.loop = false; src.dopplerLevel = 0f;
                     if (src.clip != null) { src.Play(); life = Mathf.Max(life, src.clip.length / src.pitch + 0.5f); }
                 }

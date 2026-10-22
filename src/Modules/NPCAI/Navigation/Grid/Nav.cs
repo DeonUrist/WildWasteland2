@@ -133,7 +133,7 @@ namespace WildWasteland.Modules.NPC
         private const int FloorColCells = 40;
 
         /// <summary>Navigation runs while the NPC behaviour runs with the brain enabled.</summary>
-        internal static bool On { get { return NpcModule.Running && NpcModule.BrainEnabled.Value; } }
+        internal static bool On { get { return NpcaiRuntime.Running && NpcaiSettings.BrainEnabled.Value; } }
 
         /// <summary>Old NPC-entry reset (scene load / init / shutdown): forwards to <see cref="ResetCore"/> unless the NPCAI entry owns navigation.</summary>
         [System.Obsolete("refactor: NPCAIModule runs navigation (NavRuntime); no-op while it does")]

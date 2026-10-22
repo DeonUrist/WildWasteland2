@@ -4,35 +4,6 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
-    /// <summary>
-    /// NpcModule part owned by Debug (Wave A split): the NPCAI log adapter and helpers, the ShowNavigation overlay job and the debug /
-    /// log switches of tools.cfg. Partial methods are called from the NPC entry where the moved lines were.
-    /// </summary>
-    public sealed partial class NpcModule
-    {
-        /// <summary>[Obsolete] Old NPCAI log adapter, kept for readers outside NPCAI; forwards to the NPCAI-owned level lines.</summary>
-        [Obsolete("refactor: Log.Deep/Warn/Error with the NPCAI owner")]
-        internal static readonly LogAdapter Log = new LogAdapter();
-
-        /// <summary>[Obsolete] Level-2 NPCAI line.</summary>
-        [Obsolete("refactor: Log.Deep with the NPCAI owner")]
-        internal static void Verbose(string s) { NpcaiRuntime.Deep(s); }
-        /// <summary>[Obsolete] NPCAI warning (always written, rate-limited by Core).</summary>
-        [Obsolete("refactor: Log.Warn with the NPCAI owner")]
-        internal static void Warn(string s) { NpcaiRuntime.Warn(s); }
-
-        /// <summary>Plugin.Log of NPCAI: forwards to the NPCAI-owned level lines.</summary>
-        internal sealed class LogAdapter
-        {
-            /// <summary>Level-2 line.</summary>
-            public void LogInfo(string s) { NpcaiRuntime.Deep(s); }
-            /// <summary>Warning line.</summary>
-            public void LogWarning(string s) { NpcaiRuntime.Warn(s); }
-            /// <summary>Error line.</summary>
-            public void LogError(string s) { NpcaiRuntime.Error(s); }
-        }
-    }
-
     /// <summary>Copies private NPC state only when Debug explicitly asks for it.</summary>
     internal sealed class NpcDiagnosticSource : INpcDiagnosticSource
     {

@@ -42,8 +42,8 @@ namespace WildWasteland.Modules.NPC
                     __instance.Finish();
                     return false;
                 }
-                a.NextShout = now + UnityEngine.Random.Range(Mathf.Max(1f, NpcModule.TauntMin.Value), Mathf.Max(NpcModule.TauntMin.Value, NpcModule.TauntMax.Value));
-                if (a.Human && NpcModule.TauntRange.Value > 0f) Taunt(a);
+                a.NextShout = now + UnityEngine.Random.Range(Mathf.Max(1f, NpcaiSettings.TauntMin.Value), Mathf.Max(NpcaiSettings.TauntMin.Value, NpcaiSettings.TauntMax.Value));
+                if (a.Human && NpcaiSettings.TauntRange.Value > 0f) Taunt(a);
             }
             catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Senses: " + e); }
             return true;
@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>A human's taunt: passes its knowledge to friends in TauntRange and tells enemies where it stands.</summary>
         private static void Taunt(Agent t)
         {
-            float now = Time.time, range = NpcModule.TauntRange.Value;
+            float now = Time.time, range = NpcaiSettings.TauntRange.Value;
             // friends: where the shouter's target is (or the ghost the shouter is going to)
             Vector3 where; bool known = false; Ghost tg = null;
             if ((t.State == State.Combat || t.State == State.Hide) && t.Target != null) { where = Fuzz(t.Target.transform.position, t.T.position, 0.2f); known = true; }   // "over there!": roughly

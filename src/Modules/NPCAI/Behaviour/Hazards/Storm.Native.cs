@@ -117,7 +117,7 @@ namespace WildWasteland.Modules.NPC
         {
             if (InDust(p)) return true;
             if (_storms.Count == 0) return false;
-            float r = NpcModule.StormRadius.Value, r2 = r * r;
+            float r = NpcaiSettings.StormRadius.Value, r2 = r * r;
             for (int i = 0; i < _storms.Count; i++)
             {
                 var t = _storms[i];

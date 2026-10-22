@@ -1041,14 +1041,14 @@ namespace WildWasteland.Modules.Quests
         // ---- the quest choices in Talk's window -------------------------------------------------
 
         bool uiDirty;
-        readonly List<TalkBtn> wantButtons = new List<TalkBtn>();
+        readonly List<QuestDialogueButton> wantButtons = new List<QuestDialogueButton>();
 
         /// <summary>Creates one keyed conversation action from its label and callback.</summary>
-        TalkBtn Btn(string key, string text, Action act)
+        QuestDialogueButton Btn(string key, string text, Action act)
         {
             int generation = bridge.Generation;
             bool queued = false;
-            var b = new TalkBtn();
+            var b = new QuestDialogueButton();
             b.Key = key;
             b.Text = text;
             b.Click = delegate { if (queued) return; queued = true; Defer(delegate { try { if (generation != bridge.Generation || !bridge.TalkingNow || !ready) return; act(); uiDirty = true; } finally { queued = false; } }); };

@@ -37,28 +37,8 @@ namespace WildWasteland.Modules.NPC
         static string I(int v) { return v.ToString(CultureInfo.InvariantCulture); }
         /// <summary>Invariant number text with a format.</summary>
         static string F(double v, string fmt) { return v.ToString(fmt, CultureInfo.InvariantCulture); }
-        /// <summary>Full section name "NPC / s" of the old entry shell (Presentation part pages).</summary>
-        static string Sec(string s) { return "NPC / " + s; }
         /// <summary>Full section name "NPCAI / s".</summary>
         static string NSec(string s) { return "NPCAI / " + s; }
-
-        // ---- pages / page parts owned by other target modules (Wave A split); called where the moved lines were
-        /// <summary>Presentation: the "Female appearance & voices" config page.</summary>
-        static partial void AddPresentationPages(NpcModule m, List<ToolPage> pages);
-        /// <summary>Tools: the "Pathfinding baked data" block of the Debug page (map highlight, reset / export of maps).</summary>
-        /// <summary>Tools: the "POI pathfinding" page (editor / setup).</summary>
-
-        /// <summary>F7 pages of the old NPC entry shell: NPC population (Women of Wasteland config), then the Presentation and Tools pages.</summary>
-        internal static IEnumerable<ToolPage> BuildShell(NpcModule m)
-        {
-            var pages = new List<ToolPage>();
-            pages.Add(new ConfigPage(m, ToolGroups.Npc, "NPC population", m.Config.Main, Sec("Women of Wasteland"))
-            { Intro = "Female Flexa/Sprokka population and crew conversion. Existing females retain their identity when new conversion is off. Disable standalone Women of Wasteland and restart to use these built-in controls." });
-            AddPresentationPages(m, pages);
-            pages.Add(new ConfigPage(m, ToolGroups.Npc, "NPC visuals", m.Config.Tools, Sec("Brain"), Sec("NpcAim"), Sec("Behaviour"))
-            { Intro = "Gunman animation (Apocaplayer clips, aim pose), reload sounds and the lying-dog pose. These entries stay in the old [NPC / ...] sections until Presentation takes them over." });
-            return pages;
-        }
 
         /// <summary>The NPCAI module's F7 pages (live values on top, tuning sections below) in their old order.</summary>
         internal static void Build(IModule m, List<ToolPage> pages)

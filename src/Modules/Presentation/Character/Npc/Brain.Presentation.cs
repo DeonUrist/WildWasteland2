@@ -177,7 +177,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Sliced LateUpdate job: builds one queued rig per frame within the frame budget.</summary>
         internal static bool BuildRig()
         {
-            if (!NpcModule.Running || _rigFrame == Time.frameCount || _rigs.Count == 0 || Core.Scheduler.FrameMs >= Core.Scheduler.FrameBudgetMs) return false;
+            if (!NpcaiRuntime.Running || _rigFrame == Time.frameCount || _rigs.Count == 0 || Core.Scheduler.FrameMs >= Core.Scheduler.FrameBudgetMs) return false;
             var n = _rigs.Dequeue(); n.RigQueued = false;
             if (n.Owner == null || n.T.parent != null || !n.Owner.activeInHierarchy || n.Body != null || n.Anim == null || !n.Ranged
                 || !ApBody.Available || !CharacterSettings.ApocaplayerClips.Value) return _rigs.Count > 0;

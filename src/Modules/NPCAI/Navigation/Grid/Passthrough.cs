@@ -85,7 +85,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Job "NPCAI.Passthrough" (0.25 s game time): makes / re-applies / releases same-faction collision ignores in narrow places.</summary>
         internal static void Update()
         {
-            bool on = NpcModule.FriendsPassThrough.Value && Senses.On;
+            bool on = NpcaiSettings.FriendsPassThrough.Value && Senses.On;
             if (!on)
             {
                 if (_pairs.Count > 0) { foreach (var kv in _pairs) if (kv.Value.Key.Owner != null && kv.Value.Value.Owner != null) Set(kv.Value.Key, kv.Value.Value, false); _pairs.Clear(); }

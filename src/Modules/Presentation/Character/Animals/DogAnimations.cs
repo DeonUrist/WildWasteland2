@@ -49,9 +49,9 @@ namespace WildWasteland.Modules.NPC
         // (WW) the six [Behaviour] entries are bound in NpcModule.BindConfig (F6: DogAnimations, DogsLieDown, DogJumpAttack; F7: the rest)
         private static ConfigEntry<bool> enabled { get { return CharacterSettings.DogAnimationsEnabled; } }
         private static ConfigEntry<bool> resting { get { return CharacterSettings.DogsLieDown; } }
-        private static ConfigEntry<bool> jumping { get { return NpcModule.DogJumpAttack; } }
-        private static ConfigEntry<float> idleMin { get { return NpcModule.DogIdlePoseMin; } }
-        private static ConfigEntry<float> idleMax { get { return NpcModule.DogIdlePoseMax; } }
+        private static ConfigEntry<bool> jumping { get { return NpcaiSettings.DogJumpAttack; } }
+        private static ConfigEntry<float> idleMin { get { return NpcaiSettings.DogIdlePoseMin; } }
+        private static ConfigEntry<float> idleMax { get { return NpcaiSettings.DogIdlePoseMax; } }
         private static ConfigEntry<float> frontLift { get { return CharacterSettings.DogLieFrontLift; } }
         private static AssetBundle bundle; private static bool _loadTried;
         /// <summary>True when the dog bundle loaded clips (F7 diagnostics).</summary>
@@ -65,7 +65,7 @@ namespace WildWasteland.Modules.NPC
         private static Dictionary<string, AnimationClip> wildHoundClips;
         private const int Solid = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 11) | (1 << 14) | (1 << 16);
         private const int Floor = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14);
-        private static bool On { get { return PresentationModule.Running && enabled != null && enabled.Value && NpcModule.DogBiteEnabled != null && NpcModule.DogBiteEnabled.Value && Senses.On; } }
+        private static bool On { get { return PresentationModule.Running && enabled != null && enabled.Value && NpcaiSettings.DogBiteEnabled != null && NpcaiSettings.DogBiteEnabled.Value && Senses.On; } }
 
         /// <summary>(WW) the bundles load once per session (an AssetBundle cannot be loaded twice; a module restart reuses the clips); the hooks / patch are installed on every Init, only when clips are there (no bundle = the procedural DogBite only, as before)</summary>
         internal static void Initialize(PresentationModule module)
@@ -189,7 +189,7 @@ namespace WildWasteland.Modules.NPC
         private static bool WithinRange(Senses.Agent agent)
         {
             var player = Senses.PlayerObj;
-            float distance = NpcModule.MaxDistance != null ? NpcModule.MaxDistance.Value : 120f;
+            float distance = NpcaiSettings.MaxDistance != null ? NpcaiSettings.MaxDistance.Value : 120f;
             return player == null || (agent.T.position - player.transform.position).sqrMagnitude <= distance * distance;
         }
         /// <summary>True when the dog is currently animated by this driver.</summary>

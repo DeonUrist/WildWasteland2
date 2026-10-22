@@ -32,7 +32,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>CreateObject.OnEnter postfix: the carcass of a spider killed mid-leap flies on, reared back and tumbling.</summary>
         public static void AfterCreateObject(CreateObject __instance)
         {
-            if (Airborne == 0 || !NpcModule.Running) return;
+            if (Airborne == 0 || !NpcaiRuntime.Running) return;
             try
             {
                 var fsm = __instance.Fsm;

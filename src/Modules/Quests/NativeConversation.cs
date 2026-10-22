@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.Quests
     {
         internal bool NativeOpen;
         internal int Generation;
-        internal bool ExternalAvailable;
+
         internal readonly EditorSession Session = new EditorSession();
         Transform _nativeNpc;
         string _nativeName = "";
@@ -25,6 +25,49 @@ namespace WildWasteland.Modules.Quests
         readonly List<QuestChoice> _choices = new List<QuestChoice>();
         readonly Dictionary<string, Action> _buttons = new Dictionary<string, Action>();
         bool _pending;
+        private IExternalQuestConversation _external;
+        private IModule _owner;
+        private string _choiceSignature="";
+        /// <summary>Rebinds the optional provider and invalidates queued choices when its actual owner changes.</summary>
+        private IExternalQuestConversation External
+        {
+            get
+            {
+                var next=ModApi.Get<IExternalQuestConversation>();if(ReferenceEquals(next,_external))return _external;
+                if(_external!=null)_external.Unsubscribe(_owner);
+                Generation++;_external=next;
+                if(_external!=null && _owner!=null){if(NativeOpen)Close();_external.Subscribe(_owner,Plugin.I.ExternalOpened,Plugin.I.ExternalClosed,Plugin.I.OnTalkAction);}
+                return _external;
+            }
+        }
+        /// <summary>Attaches the optional provider to the current quest owner without installing foreign hooks.</summary>
+        internal void InstallOptional(QuestsModule owner){_owner=owner;var current=External;}
+        /// <summary>Releases native input and external choices/callbacks for this quest session.</summary>
+        internal void Uninstall(){try{Close();ClearButtons();Session.Close(true);}finally{_external?.Unsubscribe(_owner);_external=null;_owner=null;}}
+        /// <summary>True while Compatibility provides the actual external adapter.</summary>
+        internal bool ExternalAvailable=>External!=null;
+        /// <summary>Whether either native or optional conversation is currently open.</summary>
+        public bool TalkingNow=>NativeOpen||External?.TalkingNow==true;
+        /// <summary>Current speaker identity from the active conversation owner.</summary>
+        public string NpcName=>NativeOpen?_nativeName:External?.NpcName??"";
+        /// <summary>Current speaker actor from the active conversation owner.</summary>
+        public Transform Npc=>NativeOpen?_nativeNpc:External?.Npc;
+        /// <summary>Updates external host identity through its actual adapter.</summary>
+        public void Bind(object host){if(NativeOpen)Close();External?.Bind(host);Generation++;}
+        /// <summary>Appends an NPC line through the active conversation implementation.</summary>
+        public void Say(string text){if(NativeOpen)AddLine(text);else External?.Say(text);}
+        /// <summary>Appends a player line through the active conversation implementation.</summary>
+        public void You(string text){if(NativeOpen)AddLine("You: "+text);else External?.You(text);}
+        /// <summary>Queries optional skin resources without owning external reflection or textures.</summary>
+        public bool WindowSkin(out Texture2D texture,out RectOffset border){var api=External;if(api!=null)return api.WindowSkin(out texture,out border);texture=null;border=null;return false;}
+        /// <summary>Determines whether the visible choices differ from the current quest projection.</summary>
+        public bool NeedsSync(List<QuestDialogueButton> choices){return NativeOpen?Signature(choices)!=_choiceSignature:External?.NeedsSync(choices)==true;}
+        /// <summary>Publishes native choices locally or delegates external UI changes to Compatibility.</summary>
+        public void SyncButtons(List<QuestDialogueButton> choices){if(NativeOpen){NativeButtons(choices);_choiceSignature=Signature(choices);}else External?.SyncButtons(choices);}
+        /// <summary>Clears native action state and optional external quest choices.</summary>
+        public void ClearButtons(){_choices.Clear();_buttons.Clear();_pending=false;_choiceSignature="";Revision++;External?.ClearButtons();}
+        /// <summary>Compares choices by their semantic identity and text.</summary>
+        private static string Signature(List<QuestDialogueButton> choices){var s=new System.Text.StringBuilder();foreach(var c in choices)s.Append(c.Key).Append('\0').Append(c.Text).Append('\0');return s.ToString();}
         /// <summary>Whether the native quest conversation is open.</summary>
         public bool Open { get { return NativeOpen; } }
         /// <summary>Current native conversation speaker name.</summary>
@@ -41,13 +84,13 @@ namespace WildWasteland.Modules.Quests
         {
             if (NativeOpen || npc == null || !Session.Acquire()) return false;
             Generation++; NativeOpen = true; _nativeNpc = npc; _nativeName = Game.BaseName(npc.name);
-            _chat.Clear(); _choices.Clear(); _buttons.Clear(); _pending = false; Prompt = ""; mineSig = ""; Revision++;
+            _chat.Clear(); _choices.Clear(); _buttons.Clear(); _pending = false; Prompt = ""; _choiceSignature = ""; Revision++;
             AddLine("What do you need?"); Plugin.I.OnTalkOpen(null); return true;
         }
         /// <summary>Appends a bounded native conversation chat line.</summary>
         void AddLine(string text) { if (_chat.Count >= 100) _chat.RemoveAt(0); _chat.Add(text); Revision++; }
         /// <summary>Replaces native conversation buttons with the current quest choices.</summary>
-        void NativeButtons(List<TalkBtn> want)
+        void NativeButtons(List<QuestDialogueButton> want)
         {
             _buttons.Clear(); _choices.Clear(); _pending = false;
             foreach (var b in want) { _choices.Add(new QuestChoice { Key = b.Key, Text = b.Text }); _buttons[b.Key] = b.Click; }
@@ -142,11 +185,4 @@ namespace WildWasteland.Modules.Quests
         }
     }
 
-    // One extra choice in Talk's list of things to say.
-    internal class TalkBtn
-    {
-        public string Key;          // identifies it (the list is rebuilt only when the keys or texts change)
-        public string Text;
-        public Action Click;
-    }
 }

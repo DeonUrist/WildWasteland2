@@ -7,17 +7,17 @@ using UnityEngine;
 using WildWasteland.Core;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.Quests
+namespace WildWasteland.Modules.Compatibility
 {
     // Talks to Apocalypter Talk ("Apocatalker") through reflection: its dialogue window is made of Unity UI objects and
     // all of its members are private / internal. Quest choices are copies of Talk's own choice buttons, put just above
     // its "Goodbye." button (the same way the Rumors mod adds its button).
     /// <summary>
-    /// Apocatalker (Apocalypter Talk) bridge part of <see cref="TalkBridge"/> (Wave A, from Quests/TalkHook.cs; B17 Compatibility/Apocatalker):
+    /// Apocatalker (Apocalypter Talk) bridge part of <see cref="ExternalQuestConversation"/> (Wave A, from Quests/TalkHook.cs; B17 Compatibility/Apocatalker):
     /// reflection access to Talk's NPC/UI fields, copied choice buttons above "Goodbye.", Talk's window skin, and the choice sync
     /// used by both the Talk window and the native conversation.
     /// </summary>
-    internal partial class TalkBridge
+    internal sealed partial class ExternalQuestConversation
     {
         const BindingFlags Inst = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
         const BindingFlags Stat = BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public;
@@ -64,7 +64,7 @@ namespace WildWasteland.Modules.Quests
             if (mAddNpc == null) missing += " AddNpc";
             if (missing.Length > 0)
             {
-                Plugin.Error("Apocalypter Talk is missing members this mod needs (" + missing.Trim() + "). Is it a different version than the one this mod was made for (Apocatalker)? Quest dialogue is disabled.");
+                Core.Log.Error(CompatibilityModule.Instance,"Apocalypter Talk is missing members this mod needs (" + missing.Trim() + "). Is it a different version than the one this mod was made for (Apocatalker)? Quest dialogue is disabled.");
                 return false;
             }
             readName = Reader<string>(fName); readNpc = Reader<Transform>(fNpc); readUi = Reader<object>(fUi);
@@ -77,14 +77,13 @@ namespace WildWasteland.Modules.Quests
         {
             get
             {
-                if (NativeOpen) return true;
                 if (fTalking == null) return false;
                 try { return readTalking(Instance); } catch (Exception) { return false; }
             }
         }
 
         /// <summary>Binds the Talk plugin instance (closes a native conversation first).</summary>
-        public void Bind(object inst) { if (NativeOpen) Close(); Instance = inst; Generation++; }
+        public void Bind(object inst) { Instance = inst; }
 
         /// <summary>Talk's DialogueUI object, or null.</summary>
         object Ui
@@ -113,19 +112,18 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Name of the NPC being talked to.</summary>
         public string NpcName
         {
-            get { return NativeOpen ? _nativeName : Instance == null ? "" : (readName(Instance) ?? ""); }
+            get { return Instance == null ? "" : (readName(Instance) ?? ""); }
         }
 
         /// <summary>Transform of the NPC being talked to.</summary>
         public Transform Npc
         {
-            get { return NativeOpen ? _nativeNpc : Instance == null ? null : readNpc(Instance); }
+            get { return Instance == null ? null : readNpc(Instance); }
         }
 
         /// <summary>Adds an NPC line to the open conversation.</summary>
         public void Say(string text)
         {
-            if (NativeOpen) { AddLine(text); return; }
             if (Instance == null || mAddNpc == null) return;
             addNpc(Instance, text);
         }
@@ -133,7 +131,6 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Adds a player line to the open conversation.</summary>
         public void You(string text)
         {
-            if (NativeOpen) { AddLine("You: " + text); return; }
             object ui = Ui;
             if (ui == null) return;
             if (PromptContent == null || mAppendChatLine == null) return;      // also looks up the method
@@ -198,7 +195,7 @@ namespace WildWasteland.Modules.Quests
                 skinTex = t;
                 skinBorder = ParseBorder(TalkConfigString("windowBorderCfg"), 16);
             }
-            catch (Exception e) { Plugin.Warn("Could not load Talk's window.png for the quest log: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(CompatibilityModule.Instance,"Could not load Talk's window.png for the quest log: " + e.Message); }
         }
 
         /// <summary>Value of one of Talk's string config entries, or null.</summary>
@@ -233,7 +230,7 @@ namespace WildWasteland.Modules.Quests
         // ---- the extra choices ----------------------------------------------------------------
 
         /// <summary>Cached signature of the wanted quest choices (rebuilt only when keys/texts change).</summary>
-        string Signature(List<TalkBtn> want) // refs-ok: REFACTOR-REQUEST B17-12
+        string Signature(List<QuestDialogueButton> want) // refs-ok: REFACTOR-REQUEST B17-12
         {
             bool changed = signature == null || sigKeys.Count != want.Count;
             if (!changed) for (int i = 0; i < want.Count; i++) if (sigKeys[i] != want[i].Key || sigTexts[i] != want[i].Text) { changed = true; break; }
@@ -246,9 +243,8 @@ namespace WildWasteland.Modules.Quests
         // True when the choices on screen are not the wanted ones: the list changed, or Talk rebuilt its own list (which
         // throws away everything in it, ours included) after the player picked one of its prompts.
         /// <summary>True when the choices on screen are not the wanted ones (list changed, or Talk rebuilt its own list).</summary>
-        public bool NeedsSync(List<TalkBtn> want) // refs-ok: REFACTOR-REQUEST B17-12
+        public bool NeedsSync(List<QuestDialogueButton> want) // refs-ok: REFACTOR-REQUEST B17-12
         {
-            if (NativeOpen) return Signature(want) != mineSig;
             RectTransform content = PromptContent;
             if (content == null) return false;
             if (Signature(want) != mineSig) return true;
@@ -261,9 +257,8 @@ namespace WildWasteland.Modules.Quests
         }
 
         /// <summary>Replaces the quest choices: copies of Talk's own choice button placed above "Goodbye." (native conversation: its own buttons).</summary>
-        public void SyncButtons(List<TalkBtn> want) // refs-ok: REFACTOR-REQUEST B17-12
+        public void SyncButtons(List<QuestDialogueButton> want) // refs-ok: REFACTOR-REQUEST B17-12
         {
-            if (NativeOpen) { NativeButtons(want); mineSig = Signature(want); return; }
             RectTransform content = PromptContent;
             if (content == null) return;
             ClearButtons();
@@ -287,7 +282,7 @@ namespace WildWasteland.Modules.Quests
             int at = goodbye;
             for (int i = 0; i < want.Count; i++)
             {
-                TalkBtn b = want[i]; // refs-ok: REFACTOR-REQUEST B17-12
+                QuestDialogueButton b = want[i]; // refs-ok: REFACTOR-REQUEST B17-12
                 GameObject go = UnityEngine.Object.Instantiate(template, content, false);
                 go.name = Prefix + b.Key;
                 go.SetActive(true);
@@ -308,7 +303,6 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Removes every quest choice this bridge added.</summary>
         public void ClearButtons()
         {
-            if (NativeOpen) { _choices.Clear(); _buttons.Clear(); _pending = false; Revision++; }
             for (int i = 0; i < mine.Count; i++)
                 if (mine[i] != null) UnityEngine.Object.Destroy(mine[i]);
             mine.Clear();
@@ -334,7 +328,7 @@ namespace WildWasteland.Modules.Quests
         public static bool Available { get { return api != null; } }
 
         /// <summary>Links TalkApi (flags) and subscribes the listener method to its ActionTriggered event.</summary>
-        public static void Init(Assembly talkAssembly, object listener, string method)
+        public static void Init(Assembly talkAssembly, Action<string,string> listener)
         {
             try
             {
@@ -342,21 +336,21 @@ namespace WildWasteland.Modules.Quests
                 if (api == null) return;
                 getFlag = api.GetMethod("GetFlag", new Type[] { typeof(string) });
                 setFlag = api.GetMethod("SetFlag", new Type[] { typeof(string), typeof(bool) });
-                if (setFlag != null) ModApi.Provide<IConversationFlags>(Compatibility.CompatibilityModule.Instance, new FlagsApi());
+                if (setFlag != null) ModApi.Provide<IConversationFlags>(CompatibilityModule.Instance, new FlagsApi());
                 EventInfo ev = api.GetEvent("ActionTriggered");
-                MethodInfo m = listener.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+                MethodInfo m = listener.Method;
                 if (ev != null && m != null)
                 {
-                    Delegate d = Delegate.CreateDelegate(ev.EventHandlerType, listener, m);
+                    Delegate d = Delegate.CreateDelegate(ev.EventHandlerType, listener.Target, m);
                     ev.AddEventHandler(null, d); actionEvent = ev; actionHandler = d;
                 }
-                else Plugin.Warn("Talk's ActionTriggered event was not found; 'action = quest.give:...' lines in dialogue files will not work.");
+                else Core.Log.Warn(CompatibilityModule.Instance,"Talk's ActionTriggered event was not found; 'action = quest.give:...' lines in dialogue files will not work.");
             }
-            catch (Exception e) { api = null; Plugin.Warn("Could not link to Talk's API: " + e.Message); }
+            catch (Exception e) { api = null; Core.Log.Warn(CompatibilityModule.Instance,"Could not link to Talk's API: " + e.Message); }
         }
 
         /// <summary>Unsubscribes from ActionTriggered and forgets TalkApi.</summary>
-        internal static void Shutdown() { ModApi.Withdraw<IConversationFlags>(Compatibility.CompatibilityModule.Instance); if (actionEvent != null && actionHandler != null) actionEvent.RemoveEventHandler(null, actionHandler); actionEvent = null; actionHandler = null; api = null; getFlag = setFlag = null; }
+        internal static void Shutdown() { ModApi.Withdraw<IConversationFlags>(CompatibilityModule.Instance); if (actionEvent != null && actionHandler != null) actionEvent.RemoveEventHandler(null, actionHandler); actionEvent = null; actionHandler = null; api = null; getFlag = setFlag = null; }
 
         /// <summary>Sets a Talk dialogue flag (ignored when TalkApi is absent).</summary>
         public static void SetFlag(string name, bool value)

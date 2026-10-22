@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.NPC
         internal static int MagazineOf(string weaponKey)
         {
             if (weaponKey == null) return 0;
-            string src = NpcModule.MagazineTable.Value ?? "";
+            string src = NpcaiSettings.MagazineTable.Value ?? "";
             if (_mags == null || _magSrc != src)
             {
                 _mags = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase); _magSrc = src;
@@ -36,7 +36,7 @@ namespace WildWasteland.Modules.NPC
         internal static void Shot(GameObject owner, Fsm damageRanged)
         {
             var n = Get(owner);
-            if (n == null || !NpcModule.Magazines.Value) return;
+            if (n == null || !NpcaiSettings.Magazines.Value) return;
             n.Shots++;
             if (n.Magazine <= 0 && n.Weapon == null)
             {
@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.NPC
         {
             var n = Get(owner);
             if (n != null && n.FollowerDriven) return Time.time < n.FollowerReloadUntil;
-            if (!NpcModule.Magazines.Value || n == null) return false;
+            if (!NpcaiSettings.Magazines.Value || n == null) return false;
             if (n.Weapon == null)
             {
                 // no rig (Apocaplayer absent): the gun is looked up here, once per burst until found
@@ -83,13 +83,13 @@ namespace WildWasteland.Modules.NPC
             if (ap && ApBody.OneRoundAtATime(n.WeaponKey))   // refs-ok: REFACTOR-REQUEST B09-3 (NPC reload timing reads Presentation ApBody; NPCAI decision)
             {
                 rounds = Mathf.Clamp(n.Shots, 1, n.Magazine);
-                len = rounds * NpcModule.RoundSeconds.Value + 0.3f;
+                len = rounds * NpcaiSettings.RoundSeconds.Value + 0.3f;
             }
             else
             {
                 if (ap) len = ApBody.ReloadClipSeconds(n.WeaponKey);   // refs-ok: REFACTOR-REQUEST B09-3 (NPC reload timing reads Presentation ApBody; NPCAI decision)
-                if (len <= 0f) len = NpcModule.ReloadSeconds.Value;
-                if (n.Magazine <= 2) len = Mathf.Min(len, NpcModule.SingleShotReload.Value);     // a break-action / single shot: a quick one, the clip sped up to it
+                if (len <= 0f) len = NpcaiSettings.ReloadSeconds.Value;
+                if (n.Magazine <= 2) len = Mathf.Min(len, NpcaiSettings.SingleShotReload.Value);     // a break-action / single shot: a quick one, the clip sped up to it
             }
             n.ReloadRounds = rounds; n.ReloadShown = false;
             n.Reloading = true; n.ReloadUntil = now + len; n.ReloadLen = len; n.ReloadSoundsPlayed = 0;

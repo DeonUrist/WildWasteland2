@@ -18,7 +18,6 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.PlayerBody.PlayerBodyModule());
             ModuleHost.Add(new Modules.NPCAI.NPCAIModule());
             ModuleHost.Add(new Modules.Presentation.PresentationModule());
-            ModuleHost.Add(new Modules.NPC.NpcModule());
             ModuleHost.Add(new Modules.Gunplay.GunplayModule());
             ModuleHost.Add(new Modules.HUD.HudModule());
             ModuleHost.Add(new Modules.Vehicles.VehiclesModule());

@@ -24,13 +24,13 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Core.Hooks.SensorRayHitEnter prefix (every SensorGetDetectionRayHit.OnEnter): one NPC "Damage Ranged" ray = one magazine shot; with projectiles off the burst sensor reaches the gun's range and the shot is heard (WeaponFired). Never skips.</summary>
         public static bool BeforeNpcShot(SensorGetDetectionRayHit __instance)
         {
-            if (!NpcModule.Running) return true;
+            if (!NpcaiRuntime.Running) return true;
             try
             {
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Damage Ranged" || fsm.GameObject == null) return true;
                 Brain.Shot(fsm.GameObject, fsm);        // (1.1.2) one ray = one shot of the magazine (counted whatever else is on)
-                if (WeaponRanges.ProjectilesEnabled || (!Senses.On && !NpcModule.AimEnabled.Value && !NpcModule.BrainEnabled.Value)) return true;
+                if (WeaponRanges.ProjectilesEnabled || (!Senses.On && !NpcaiSettings.AimEnabled.Value && !NpcaiSettings.BrainEnabled.Value)) return true;
                 WeaponRanges.Kind kind;
                 var owner = fsm.GameObject;
                 if (!WeaponRanges.GunKindOf(owner, out kind)) return true;
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.NPC
                 // effective range; repulse at that reach so rifle/sniper NPCs can hit
                 // from those positions without requiring Gunplay's projectiles.
                 var refs = RefsOf(owner);
-                if (NpcModule.AimEnabled.Value || NpcModule.BrainEnabled.Value)
+                if (NpcaiSettings.AimEnabled.Value || NpcaiSettings.BrainEnabled.Value)
                 {
                     var sensor = refs.Sensor;
                     if (sensor != null)

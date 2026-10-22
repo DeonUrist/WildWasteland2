@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.NPC
         /// <summary>True when the bridge resolved Dog Companion's contract and installed its patches.</summary>
         internal static bool Present { get { return _ok; } }
         /// <summary>Bridge active: resolved, NPC module running and its [NPC] DogCompanionCompat switch on.</summary>
-        private static bool On { get { return _ok && CompatibilityHost.Npc.Running && NpcModule.DogCompanionCompatEnabled.Value; } } // refs-ok: REFACTOR-REQUEST B17-13
+        private static bool On { get { return _ok && CompatibilityHost.Npc.Running && NpcaiSettings.DogCompanionCompatEnabled.Value; } } // refs-ok: REFACTOR-REQUEST B17-13
 
         /// <summary>Resolves Dog Companion's complete private contract, then patches Dog/Npc/Distraction under <paramref name="module"/>.</summary>
         internal static void Initialize(IModule module)
@@ -87,7 +87,7 @@ namespace WildWasteland.Modules.NPC
                 if (!all) throw new InvalidOperationException("a Harmony patch was refused");
                 Compile();
                 _ok = true;
-                NpcModule.DogCompanionCompatEnabled.SettingChanged += OnToggle; // refs-ok: REFACTOR-REQUEST B17-13
+                NpcaiSettings.DogCompanionCompatEnabled.SettingChanged += OnToggle; // refs-ok: REFACTOR-REQUEST B17-13
                 Log.Main(module, "Dog Companion compatibility enabled (" + info.Metadata.Version + "): shared canine locomotion/combat and sitting in vehicles.");
             }
             catch (Exception e)
@@ -99,7 +99,7 @@ namespace WildWasteland.Modules.NPC
 
         /// <summary>[NPC] DogCompanionCompat switched off live: every companion dog is released (Dog Companion's own behaviour); switched on:
         /// they are taken again on their next Update.</summary>
-        private static void OnToggle(object s, EventArgs a) { if (!NpcModule.DogCompanionCompatEnabled.Value) ReleaseAll(); } // refs-ok: REFACTOR-REQUEST B17-13
+        private static void OnToggle(object s, EventArgs a) { if (!NpcaiSettings.DogCompanionCompatEnabled.Value) ReleaseAll(); } // refs-ok: REFACTOR-REQUEST B17-13
         /// <summary>Hands every driven companion back to Dog Companion.</summary>
         private static void ReleaseAll()
         {
@@ -114,7 +114,7 @@ namespace WildWasteland.Modules.NPC
         internal static void Stop()
         {
             ReleaseAll();
-            if (_ok) { try { NpcModule.DogCompanionCompatEnabled.SettingChanged -= OnToggle; } catch (Exception) { } } // refs-ok: REFACTOR-REQUEST B17-13
+            if (_ok) { try { NpcaiSettings.DogCompanionCompatEnabled.SettingChanged -= OnToggle; } catch (Exception) { } } // refs-ok: REFACTOR-REQUEST B17-13
             _ok = false; _owner = null;
         }
         /// <summary>Number of companion dogs currently driven.</summary>
@@ -375,7 +375,7 @@ namespace WildWasteland.Modules.NPC
         {
             if (!On) return true;
             var fsm = __0 != null ? __0.Fsm : null;
-            return fsm == null || !Senses.On || !NpcModule.BrainEnabled.Value || Senses.AgentFor(fsm.GameObject) == null; // refs-ok: REFACTOR-REQUEST B17-13
+            return fsm == null || !Senses.On || !NpcaiSettings.BrainEnabled.Value || Senses.AgentFor(fsm.GameObject) == null; // refs-ok: REFACTOR-REQUEST B17-13
         }
         /// <summary>A driven companion within <paramref name="range"/> of an enemy (NPC Brain: enemies react to the dog), or null.</summary>
         internal static GameObject CloseThreat(GameObject enemy, float range)
