@@ -537,21 +537,20 @@ namespace WildWasteland.Modules.Patrols
         {
             path = null;
             string name = Path.GetFileName(slot ?? "");
-            if (Core.SaveRuntime.IsSaveFile(name)) { path = Path.Combine(SavesDir ?? Path.Combine(Paths.ConfigPath, "Apocapatrol", "Saves"), name + ".bin"); return true; }
-            if (string.IsNullOrEmpty(name) || !name.StartsWith("SaveGame", StringComparison.OrdinalIgnoreCase)
-                || !name.EndsWith(".es3", StringComparison.OrdinalIgnoreCase)) return false;
-            foreach (char c in name) if (!(char.IsLetterOrDigit(c) || c == '.')) return false;
-            path = Path.Combine(SavesDir ?? Path.Combine(Paths.ConfigPath, "Apocapatrol", "Saves"), name + ".bin");
+            if (string.IsNullOrEmpty(name) || name != slot || !name.EndsWith(".es3", StringComparison.OrdinalIgnoreCase)) return false;
+            foreach (char c in name) if (!(char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '_')) return false;
+            path = Path.Combine(SavesDir ?? Core.Assets.ModuleConfigDir("Patrols"), name + ".bin");
             return true;
         }
 
+        /// <summary>Publishes a complete sidecar and keeps the previous version through Core's write-through atomic replacement.</summary>
         private static void AtomicWrite(string path, byte[] bytes)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(path));
-            string temp = path + ".tmp", backup = path + ".bak";
-            File.WriteAllBytes(temp, bytes);
-            if (File.Exists(path)) File.Replace(temp, path, backup);
-            else File.Move(temp, path);
+            string temp = path + ".tmp";
+            using (var stream = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
+            { stream.Write(bytes, 0, bytes.Length); stream.Flush(true); }
+            Core.AtomicFile.Replace(temp, path, path + ".bak");
         }
 
         private static byte[] Serialize(PatrolSaveData data)

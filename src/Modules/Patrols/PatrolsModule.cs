@@ -7,6 +7,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
+using WildWasteland.Core.Events;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -51,7 +52,6 @@ namespace WildWasteland.Modules.Patrols
             Running = true;   // last: per-object loops only run once everything is in place
             Services.FollowerVehicles = new QuestFollowers();
             Services.Camps = new TrafficCamps.Status();
-            Services.VehicleCombatActive = VehicleCombatActive;
             Services.NpcHurt-=Crew.Attacked;Services.NpcHurt+=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;Services.VehiclePartHit+=Crew.PartHit;
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings; SaveBus.CleanupSettings += DrawSaveCleanupSettings;
@@ -66,12 +66,15 @@ namespace WildWasteland.Modules.Patrols
             l.Toggle(CleanupEnabled, "Abandoned patrol vehicles"); l.Entry(CleanupDistance); l.Entry(CleanupMinutes); l.Entry(CleanupMaxCars);
         }
 
+        /// <summary>Shares current combat eligibility with the typed patrol query provider.</summary>
+        internal static bool CombatActive { get { return Running && VehicleCombatActive(); } }
+
         static bool VehicleCombatActive()
         {
             foreach (var marker in PatrolMarker.All)
                 if (marker != null && marker.gameObject.activeInHierarchy && !marker.Exploded && !marker.SetupOnly
                     && marker.FactionTarget != null && marker.FactionTarget.activeInHierarchy && HasCombatCrew(marker)
-                    && ((PlayerRef.Player == null || marker.FactionTarget != PlayerRef.Player.gameObject) || Core.SaveRuntime.PlayerDistance(marker.transform.position, Core.GameRefs.Player != null ? Core.GameRefs.Player.transform : null) <= 600f)) return true;
+                    && ((PlayerRef.Player == null || marker.FactionTarget != PlayerRef.Player.gameObject) || (Core.GameRefs.Player != null ? Vector3.Distance(marker.transform.position, Core.GameRefs.Player.transform.position) : float.MaxValue) <= 600f)) return true;
             return false;
         }
 
@@ -127,7 +130,6 @@ namespace WildWasteland.Modules.Patrols
 
         public override void Shutdown()
         {
-            Services.VehicleCombatActive = null;
             Services.NpcHurt-=Crew.Attacked;
             Services.VehiclePartHit-=Crew.PartHit;
             CrewReturn.Reset();
@@ -202,12 +204,16 @@ namespace WildWasteland.Modules.Patrols
             Scheduler.EveryFrame(this, "Patrols.Vehicle load preparation", VehicleBuildCache.LoadBurst);
             TrafficCompass.Clear();
             Scheduler.Interval(this, "Compass markers", .5f, TrafficCompass.Tick);
-            Scheduler.EveryFrame(this, "Patrol.Tick", () => { if (_patrol != null) _patrol.Tick(); });
+            Scheduler.EveryFrame(this, "Patrols.Runtime", TickPatrol);
+            Scheduler.Interval(this, "Patrols.CombatActivity", .25f, PublishCombatActivity);
             RegisterToolsTicks();
             RegisterDeveloperSeatTicks();
-            Scheduler.EveryFrame(this, "Convoy.Tick", () => { if (_convoy != null) _convoy.Tick(); });
-            Scheduler.EveryFrame(this, "WorldTraffic.Tick", () => { if (_traffic != null) _traffic.Tick(); });
-            Scheduler.EveryFrame(this, "Cleanup.Tick", () => { if (_cleanup != null) _cleanup.Tick(); });
+            Scheduler.Interval(this, "Patrols.Progression", .25f, TickConvoy);
+            Scheduler.Interval(this, "Patrols.Traffic", .25f, TickTraffic);
+            Scheduler.EveryFrame(this, "Patrols.Locations", TickLocations);
+            Scheduler.Interval(this, "Patrols.Camps", .25f, TickCamps);
+            Scheduler.Interval(this, "Patrols.Roads", .25f, TickRoads);
+            Scheduler.Interval(this, "Patrols.Cleanup", .25f, TickCleanup);
             RegisterDeveloperMerchantTick();
 
             RegisterToolsLateTicks();
@@ -215,7 +221,7 @@ namespace WildWasteland.Modules.Patrols
             // (WW perf) each with a predicate (built once here): IMGUI stops when none of them (and no other module) has anything to draw
             RegisterToolsGui();
             RegisterDeveloperSeatGui();
-            Scheduler.Gui(this, "WorldTraffic.Gui", () => { if (_traffic != null) _traffic.Gui(); }, () => _traffic != null && _traffic.GuiWanted());
+            Scheduler.Gui(this, "Patrols.TrafficMap", DrawTraffic, TrafficGuiWanted);
             RegisterDeveloperMerchantGui();
         }
 
