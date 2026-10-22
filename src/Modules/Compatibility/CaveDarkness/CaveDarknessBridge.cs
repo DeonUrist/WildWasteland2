@@ -4,21 +4,22 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using BepInEx.Bootstrap;
 using UnityEngine;
+using WildWasteland.Core;
 
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Compatibility
 {
-    // Read the same ambient multiplier CaveDarkness uses for moving objects; no dependency on its assembly.
-    internal static class CaveDarknessBridge
+    /// <summary>Reads the optional native moving-object ambient field through one captured numeric delegate.</summary>
+    internal sealed class CaveDarknessBridge : ICaveAmbient
     {
-        private static object _plugin;
-        private static Func<Vector3, float> _light;
-        private static float _nextFind;
-        private static bool _failed;
+        private object _plugin;
+        private Func<Vector3, float> _light;
+        private float _nextFind;
+        private bool _failed;
 
-        internal static void Reset() { _plugin = null; _light = null; _nextFind = 0f; _failed = false; }
 
+        /// <summary>Resolves the optional cave field on maintenance ticks; a missing mod retries and an incompatible surface fails once.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void Refresh()
+        internal void Refresh()
         {
             if (_light != null || _failed || Time.unscaledTime < _nextFind) return;
             _nextFind = Time.unscaledTime + 5f;
@@ -38,23 +39,25 @@ namespace WildWasteland.Modules.NPC
                 var read = Expression.Block(new[] { c }, Expression.Assign(c, Expression.Call(at, p)),
                     Expression.Condition(Expression.Equal(c, Expression.Constant(null, at.ReturnType)), Expression.Constant(-1f), sample));
                 _light = Expression.Lambda<Func<Vector3, float>>(Expression.Condition(Expression.Property(enabled, "Value"), read, Expression.Constant(-1f)), p).Compile();
-                NpcModule.Log.LogInfo("Spider senses: CaveDarkness ambient field connected");
+                if (Log.L1) Log.Main(null, "[Compatibility] CaveDarkness ambient field connected");
             }
             catch (Exception e) { Failed(e); }
         }
 
+        /// <summary>Samples only the compiled field delegate, returning -1 for unavailable or failed optional sources.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static float At(Vector3 p)
+        public float At(Vector3 p)
         {
             if (_light == null) return -1f;
             try { return Mathf.Clamp(_light(p), -1f, 1f); }
             catch (Exception e) { Failed(e); return -1f; }
         }
 
-        private static void Failed(Exception e)
+        /// <summary>Releases failed optional native references and prevents repetitive failing resolution.</summary>
+        private void Failed(Exception e)
         {
             _failed = true; _plugin = null; _light = null;
-            NpcModule.Warn("Spider senses: CaveDarkness field unavailable; using cave geometry: " + e.Message);
+            Log.Warn("[Compatibility] CaveDarkness field unavailable; native geometry fallback retained: " + e.Message);
         }
     }
 }

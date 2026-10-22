@@ -19,7 +19,9 @@ namespace WildWasteland.Modules.Compatibility
         public override string DisplayName { get { return "Compatibility"; } }
 
         private readonly EngineSimBridge _engineSim = new EngineSimBridge();
-        private ConfigEntry<bool> _engineEnabled, _languageEnabled;
+        private ConfigEntry<bool> _engineEnabled, _languageEnabled, _caveEnabled;
+        private CaveDarknessBridge _cave;
+        private Job _caveDiscovery;
         private ApocaLanguageBridge _language;
         private bool _running;
         /// <summary>Binds per-mod switches; session takeover remains mandatory and independent of these switches.</summary>
@@ -29,6 +31,8 @@ namespace WildWasteland.Modules.Compatibility
             _engineEnabled.SettingChanged += EngineChanged;
             _languageEnabled = cfg.Player("ApocaLanguage", "Enabled", true, "Use the optional language mod's language choices in the Wild Wasteland menu.");
             _languageEnabled.SettingChanged += LanguageChanged;
+            _caveEnabled = cfg.Player("CaveDarkness", "Enabled", true, "Use the optional cave mod's ambient light for NPC perception.");
+            _caveEnabled.SettingChanged += CaveChanged;
         }
         /// <summary>Restarts only Engine Sim resources when its player switch changes.</summary>
         private void EngineChanged(object sender, EventArgs args)
@@ -47,11 +51,23 @@ namespace WildWasteland.Modules.Compatibility
             if (_languageEnabled.Value) { if (_language == null) _language = new ApocaLanguageBridge(); ModApi.Provide<ILanguageMenu>(this, _language); }
             else { ModApi.Withdraw<ILanguageMenu>(this); _language = null; }
         }
+        /// <summary>Reconciles the optional cave field independently from global daylight policy.</summary>
+        private void CaveChanged(object sender, EventArgs args) { if (_running) ProvideCave(); }
+        /// <summary>Owns cave discovery maintenance and the numeric cave field provider.</summary>
+        private void ProvideCave()
+        {
+            if (_caveDiscovery != null) { _caveDiscovery.Remove(); _caveDiscovery = null; }
+            ModApi.Withdraw<ICaveAmbient>(this); _cave = null;
+            if (!_caveEnabled.Value) return;
+            _cave = new CaveDarknessBridge(); _cave.Refresh();
+            _caveDiscovery = Scheduler.Interval(this, "Compatibility.CaveDarkness.Discovery", 5f, _cave.Refresh);
+            ModApi.Provide<ICaveAmbient>(this, _cave);
+        }
         /// <summary>Reseeds shared scene discovery and clears ignition requests.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (_running && _engineEnabled.Value) _engineSim.OnSceneLoaded(scene, mode); }
 
         /// <summary>Exposes the per-mod Engine Sim switch in the shared settings shell.</summary>
-        public override void Settings(SettingsShell shell) { shell.Row(this, SettingsShell.Page.System, "Compatibility", _engineEnabled, "Engine Sim"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _languageEnabled, "ApocaLanguage"); }
+        public override void Settings(SettingsShell shell) { shell.Row(this, SettingsShell.Page.System, "Compatibility", _engineEnabled, "Engine Sim"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _languageEnabled, "ApocaLanguage"); shell.Row(this, SettingsShell.Page.System, "Compatibility", _caveEnabled, "Cave Darkness"); }
 
         /// <summary>Installs detected SigmaMod and Vistas hooks under this module's lifetime.</summary>
         public override void Init() { SigmaFsmStates.Install(this); VistasWorldGen.Init(this); _running = true; if (_engineEnabled.Value) _engineSim.Init(); }
@@ -59,7 +75,7 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Registers the detected third-party vehicle owner before Core optimization starts.</summary>
         public override void ProvideApis()
         {
-            ProvideLanguage();
+            ProvideLanguage(); ProvideCave();
             if (VistasWorldGen.Present) ModApi.Provide<IWorldGenFacts>(this, new VistasFacts());
             var query = EngineSimVehicleOwnership.Create();
             var ownership = ModApi.Get<IVehicleOwnership>();
@@ -67,7 +83,7 @@ namespace WildWasteland.Modules.Compatibility
         }
 
         /// <summary>Detaches external listeners and clears runtime state before Core removes this module's hooks.</summary>
-        public override void Shutdown() { _running = false; ModApi.Withdraw<ILanguageMenu>(this); _language = null; _engineSim.Shutdown(); VistasWorldGen.Shutdown(); SigmaFsmStates.Clear(); }
+        public override void Shutdown() { _running = false; if (_caveDiscovery != null) _caveDiscovery.Remove(); _caveDiscovery = null; ModApi.Withdraw<ICaveAmbient>(this); _cave = null; ModApi.Withdraw<ILanguageMenu>(this); _language = null; _engineSim.Shutdown(); VistasWorldGen.Shutdown(); SigmaFsmStates.Clear(); }
 
         /// <summary>Publishes generation facts without exposing reflective third-party bridge state.</summary>
         private sealed class VistasFacts : IWorldGenFacts
