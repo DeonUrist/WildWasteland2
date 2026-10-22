@@ -1,4 +1,5 @@
 using WildWasteland.Core;
+using UnityEngine;
 
 namespace WildWasteland.Modules.Vehicles
 {
@@ -7,7 +8,7 @@ namespace WildWasteland.Modules.Vehicles
     /// Registered after the existing modules; Init is empty until its Wave B owner moves the features in. Its [Vehicles] Enabled entry is
     /// new and nothing reads it yet. Assets: plugins/WildWasteland/Vehicles/, data: config/WildWasteland/Vehicles/ (D13).
     /// </summary>
-    public sealed class VehiclesModule : ModuleBase
+    public sealed class VehiclesModule : ModuleBase, IVehicleOwnerQuery
     {
         /// <summary>Module id = config section prefix, Harmony id suffix and asset folder name.</summary>
         public override string Id { get { return "Vehicles"; } }
@@ -20,5 +21,22 @@ namespace WildWasteland.Modules.Vehicles
 
         /// <summary>Nothing to start yet.</summary>
         public override void Init() { }
+
+        /// <summary>Registers ownership of constructed vehicle bodies through the shared Core registry.</summary>
+        public override void ProvideApis()
+        {
+            var ownership = ModApi.Get<IVehicleOwnership>();
+            if (ownership != null) ownership.Register(this, this);
+        }
+
+        /// <summary>Recognizes vehicle-owned rig, motorcycle and suspension components on the queried root.</summary>
+        public bool Owns(GameObject vehicle)
+        {
+            if (vehicle == null) return false;
+            return vehicle.GetComponent<Patrols.WarRig.WarRigUnit>() != null
+                || vehicle.GetComponent<Patrols.Motorcycles.MotorcycleBalance>() != null
+                || vehicle.GetComponent<Patrols.MotorcycleRearAccess>() != null
+                || vehicle.GetComponent<Patrols.SuspensionTune>() != null;
+        }
     }
 }

@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -6,9 +7,9 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using HarmonyLib;
+using Patches = WildWasteland.Core.Patches;
 
-namespace WildWastelandDeveloper
+namespace WildWasteland.Modules.Debug
 {
     internal sealed class Scope
     {
@@ -35,7 +36,6 @@ namespace WildWastelandDeveloper
     }
     internal static class Instrumentation
     {
-        internal const string Owner = "com.denis.apocalypter.wildwastelanddeveloper.timing";
         internal static readonly List<Scope> Scopes = new List<Scope>();
         internal static string[] ScopeNames = new string[0];
         internal static readonly List<Probe> Probes = new List<Probe>();
@@ -44,7 +44,6 @@ namespace WildWastelandDeveloper
         private static readonly ConcurrentDictionary<MethodBase, Probe> Map = new ConcurrentDictionary<MethodBase, Probe>();
         private static readonly Queue<MethodInfo> Pending = new Queue<MethodInfo>();
         private static readonly HashSet<MethodBase> Queued = new HashSet<MethodBase>();
-        private static Harmony _harmony;
         internal static int MainThread, Frame, Dropped;
         internal static string Fault;
         private static int _eventCount;
@@ -61,7 +60,7 @@ namespace WildWastelandDeveloper
         internal static void Initialize()
         {
             MainThread = Thread.CurrentThread.ManagedThreadId;
-            _harmony = new Harmony(Owner);
+            Scopes.Clear(); Probes.Clear(); Failures.Clear(); Map.Clear(); Pending.Clear(); Queued.Clear(); Fault = null;
             var byName = new Dictionary<string, Scope>(StringComparer.Ordinal);
             Type[] types;
             try { types = typeof(WildWasteland.Core.Scheduler).Assembly.GetTypes(); }
@@ -70,7 +69,7 @@ namespace WildWastelandDeveloper
             {
                 if (type == null) continue;
                 string ns = type.Namespace ?? "";
-                if (!ns.StartsWith("WildWasteland.", StringComparison.Ordinal) || type.ContainsGenericParameters) continue;
+                if (!ns.StartsWith("WildWasteland.", StringComparison.Ordinal) || ns.StartsWith("WildWasteland.Modules.Debug", StringComparison.Ordinal) || type.ContainsGenericParameters) continue;
                 bool generated = type.IsDefined(typeof(CompilerGeneratedAttribute), false);
                 string scopeName = ns.StartsWith("WildWasteland.Modules.", StringComparison.Ordinal) ? ns.Substring(22).Split('.')[0] : "Core";
                 Scope scope; if (!byName.TryGetValue(scopeName, out scope)) { scope = new Scope { Name = scopeName }; byName.Add(scopeName, scope); Scopes.Add(scope); }
@@ -130,6 +129,7 @@ namespace WildWastelandDeveloper
         }
         internal static void Enable(Scope scope, bool deep)
         {
+            if (!Core.Log.L2) return;
             scope.Enabled = true;
             foreach (var method in scope.Methods) if ((deep || Boundary(method)) && !Map.ContainsKey(method) && Queued.Add(method)) Pending.Enqueue(method);
         }
@@ -143,7 +143,7 @@ namespace WildWastelandDeveloper
             Map[method] = probe;
             try
             {
-                _harmony.Patch(method, prefix: new HarmonyMethod(typeof(Instrumentation), nameof(Begin)), finalizer: new HarmonyMethod(typeof(Instrumentation), nameof(End)));
+                if (!Patches.Patch(DebugModule.Instance, method, prefix: Patches.Method(typeof(Instrumentation), nameof(Begin)), finalizer: Patches.Method(typeof(Instrumentation), nameof(End)))) throw new InvalidOperationException("Core rejected the diagnostic probe; see patch records.");
                 Probes.Add(probe); scope.Patched++;
             }
             catch (Exception e) { Probe ignored; Map.TryRemove(method, out ignored); scope.Failed++; Failures.Add(probe.Name + ": " + e.GetBaseException().Message); }
@@ -209,7 +209,7 @@ namespace WildWastelandDeveloper
         }
         internal static void Remove()
         {
-            Timing = false; Pending.Clear(); Queued.Clear(); _harmony.UnpatchSelf();
+            Timing = false; Pending.Clear(); Queued.Clear(); Patches.Unpatch(DebugModule.Instance);
             Fault = null;
             // In-flight finalizers retain their Probe references safely. New hooks no longer start.
             Map.Clear(); Probes.Clear(); foreach (var scope in Scopes) { scope.Enabled = false; scope.Patched = 0; }

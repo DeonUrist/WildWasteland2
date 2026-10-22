@@ -1,6 +1,6 @@
 using HutongGames.PlayMaker;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// Shared by PM5 (BecameVisible/Invisible) and PM6 (trigger/collision proxies): decides whether a SYSTEM event that the

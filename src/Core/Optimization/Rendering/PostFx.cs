@@ -8,7 +8,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// EN2, exact part (research C §0, §2 Tier 1.2). WW does not reference Unity.Postprocessing.Runtime, so every PPv2 member is
@@ -77,9 +77,9 @@ namespace WildWasteland.Modules.Performance
                 _sssRt0 = AccessTools.Field(_sssType, "tempRT0"); _sssRt1 = AccessTools.Field(_sssType, "tempRT1");
                 _ok = true;
                 try { BuildSharpen(sharpSettingsType); }
-                catch (Exception e) { _sharpenRender = null; Log.Warn("[Performance] EN2 Sharpen fast path unavailable: " + e.Message); }
+                catch (Exception e) { _sharpenRender = null; Log.Warn(OptimizationRuntime.Instance, "EN2 Sharpen fast path unavailable: " + e.Message); }
             }
-            catch (Exception e) { Log.Warn("[Performance] EN2 post-processing reflection failed: " + e.Message); _ok = false; }
+            catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN2 post-processing reflection failed: " + e.Message); _ok = false; }
             return _ok;
         }
 
@@ -159,7 +159,7 @@ namespace WildWasteland.Modules.Performance
             {
                 // first skipped frame for this settings instance: hand back the two RTs the last vanilla Render kept
                 _lastSss = __instance;
-                try { ReleaseRt(_sssRt0, __instance); ReleaseRt(_sssRt1, __instance); } catch (Exception e) { Log.Warn("[Performance] EN2 release: " + e.Message); }
+                try { ReleaseRt(_sssRt0, __instance); ReleaseRt(_sssRt1, __instance); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN2 release: " + e.Message); }
             }
         }
 
@@ -216,7 +216,7 @@ namespace WildWasteland.Modules.Performance
         {
             if (!Resolve()) throw new Exception("PostProcessLayer not found");
             _version = -1;
-            _job = Scheduler.Interval(Module, "Performance.AntiAliasing", 1f, Tick);
+            _job = Scheduler.Interval(Module, "Core.Optimization.AntiAliasing", 1f, Tick);
             Tick();
         }
 

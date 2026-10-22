@@ -11,8 +11,6 @@ namespace WildWasteland.Modules.Weather
     /// </summary>
     public sealed partial class WeatherModule
     {
-        /// <summary>Debug part: diagnostic controls drawn at the end of the preview page (WeatherModule.Debug.cs).</summary>
-        partial void DrawDebugTools(ToolLayout l);
 
         /// <summary>Draws the Weather preview page: palette, live storm settings, active count and preview spawn/clear buttons.</summary>
         private void DrawTools(ToolLayout l)
@@ -28,7 +26,8 @@ namespace WildWasteland.Modules.Weather
             if (l.Button("Critical dust storm preview ahead", available)) ToolWindow.CloseThen(SpawnHurricane);
             if (l.Button("Dust storm around player", available)) ToolWindow.CloseThen(SpawnHere);
             if (l.Button("Clear weather previews", _running && _count > 0)) Clear();
-            DrawDebugTools(l);
+            var diagnostics = ModApi.Get<IWeatherDiagnosticControls>();
+            if (diagnostics != null) diagnostics.Draw(l);
         }
         /// <summary>Preview button: ordinary dust storm ahead of the player.</summary>
         private void SpawnDust() { Spawn(false, false); }

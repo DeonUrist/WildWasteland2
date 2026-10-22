@@ -238,7 +238,7 @@ namespace WildWasteland.Modules.Patrols
             RefreshRefs();
             if (!Alive(_saveLoad) || !_saveLoad.Fsm.Initialized) return;
             state = state ?? "";
-            PatrolLoadPreparation.StateChanged(state, _saveLoad);
+            PatrolLoadPreparation.StateChanged(state);
             if (state != _lastState)
             {
                 var runner = Runner;

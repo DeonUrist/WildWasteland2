@@ -1,7 +1,7 @@
 using HutongGames.PlayMaker;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// Stand-in for one action in a state's Actions array (swapped in by <see cref="FsmEdits.Replace"/>, swapped back on undo).

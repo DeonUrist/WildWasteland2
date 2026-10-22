@@ -9,7 +9,7 @@ using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// PM5 (plan §4, research A §1.7 / R6). Three exact replacements around PlayMaker's IMGUI and visibility callbacks:
@@ -69,7 +69,23 @@ namespace WildWasteland.Modules.Performance
         static readonly Dictionary<Type, bool> _guiType = new Dictionary<Type, bool>();
 
         // PlayMakerFSM.OnEnable is shared with Patrols and the registry: Core.Hooks.FsmEnable postfix
-        public override void SubscribeHooks() { Hooks.FsmEnable.Postfix(Module, OnFsmEnabled); }
+        public override void SubscribeHooks()
+        {
+            Hooks.FsmEnable.Postfix(Module, OnFsmEnabled);
+            Hooks.FsmDisable.Prefix(Module, BeforeDisabled);
+            Hooks.FsmDestroy.Prefix(Module, BeforeDestroyed);
+        }
+        /// <summary>Shared component disable prefix: forgets the candidate before registry replacement callbacks.</summary>
+        static bool BeforeDisabled(PlayMakerFSM component) { if (On) Removed(component); return true; }
+        /// <summary>Shared destroy prefix: drops FSM metadata before the registry clears its native reference.</summary>
+        static bool BeforeDestroyed(PlayMakerFSM component)
+        {
+            if (!On) return true;
+            Removed(component);
+            var fsm = PmfFsm(component);
+            if (fsm != null) _isCand.Remove(fsm);
+            return true;
+        }
         static void OnFsmEnabled(PlayMakerFSM f) { if (On) Added(f); }
         protected override void OnEnable(FeatureMode mode)
         {
@@ -80,7 +96,7 @@ namespace WildWasteland.Modules.Performance
                 if (m == null) throw new Exception("PlayMakerGUI.DrawStateLabels not found");
                 _drawStateLabels = AccessTools.MethodDelegate<Action<PlayMakerGUI>>(m);
             }
-            if (_guard == null || _guard.Removed) _guard = Scheduler.Interval(Module, "Performance.GuiProxyGuard", 1f, GuardTick);
+            if (_guard == null || _guard.Removed) _guard = Scheduler.Interval(Module, "Core.Optimization.GuiProxyGuard", 1f, GuardTick);
             _isCand.Clear(); _dirty = true; _suspended = false;
             _lastGuiFrame = Time.frameCount;
             // vanilla's scratch copy of FsmList is no longer refreshed: drop the references it holds
@@ -310,10 +326,10 @@ namespace WildWasteland.Modules.Performance
         {
             if (_suspended) return;
             PlayMakerOnGUI[] all;
-            try { all = Resources.FindObjectsOfTypeAll<PlayMakerOnGUI>(); } catch (Exception e) { Log.Warn("[Performance] PM5 proxy scan: " + e.Message); return; }
+            try { all = Resources.FindObjectsOfTypeAll<PlayMakerOnGUI>(); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "PM5 proxy scan: " + e.Message); return; }
             int n = 0;
             for (int i = 0; i < all.Length; i++) if (TryDisable(all[i])) n++;
-            if (n > 0 && Log.Verbose) Log.Info("[Performance] PM5 disabled " + n + " PlayMakerOnGUI helpers (emulated)");
+            if (n > 0 && Log.L2) Log.Deep(OptimizationRuntime.Instance, "PM5 disabled " + n + " PlayMakerOnGUI helpers (emulated)");
         }
 
         static void RestoreProxies()
@@ -369,7 +385,7 @@ namespace WildWasteland.Modules.Performance
             {
                 _suspended = true;
                 RestoreProxies();
-                Log.Info("[Performance] PM5: PlayMakerGUI is not running; OnGUI helpers re-enabled");
+                if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM5: PlayMakerGUI is not running; OnGUI helpers re-enabled");
             }
         }
 
@@ -397,18 +413,6 @@ namespace WildWasteland.Modules.Performance
                 return false;
             }
 
-
-            [HarmonyPatch(typeof(PlayMakerFSM), "OnDisable"), HarmonyPrefix]
-            static void OnDisablePre(PlayMakerFSM __instance) { if (On) Removed(__instance); }
-
-            [HarmonyPatch(typeof(PlayMakerFSM), "OnDestroy"), HarmonyPrefix]
-            static void OnDestroyPre(PlayMakerFSM __instance)
-            {
-                if (!On) return;
-                Removed(__instance);
-                var f = PmfFsm(__instance);
-                if (f != null) _isCand.Remove(f);
-            }
 
             [HarmonyPatch(typeof(Fsm), "CreateSubFsm"), HarmonyPostfix]
             static void CreateSubFsmPost(Fsm __instance) { if (On) { _isCand[__instance] = true; _dirty = true; } }

@@ -6,7 +6,7 @@ using HutongGames.PlayMaker;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     /// <summary>
     /// FS4 (plan §4, research A §1.6 / R9): every Instantiate of an object with FSMs deserializes all their actions
@@ -46,8 +46,8 @@ namespace WildWasteland.Modules.Performance
         {
             if (_logged || _batchState < 2) return;
             _logged = true;
-            if (_batchState == 2) WildWasteland.Core.Log.Always("[Performance] FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
-            else WildWasteland.Core.Log.Warn("[Performance] FS4: batch compile failed, reflection stays (" + _batchError + ")");
+            if (_batchState == 2) WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
+            else WildWasteland.Core.Log.Warn(OptimizationRuntime.Instance, "FS4: batch compile failed, reflection stays (" + _batchError + ")");
         }
         public override void DrawStats(ToolLayout l)
         {

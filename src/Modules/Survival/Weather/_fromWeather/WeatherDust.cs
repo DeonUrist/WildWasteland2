@@ -65,34 +65,34 @@ namespace WildWasteland.Modules.Weather
             Vector3 position = GameRefs.Player != null ? GameRefs.Player.transform.position : camera.transform.position;
             if (_hasPosition && (position-_previous).sqrMagnitude > 10000) _system.Clear();
             _previous = position; _hasPosition = true; _root.transform.position = position;
-            if (WeatherDiagnostics.Frozen && _system.isPlaying) _system.Pause();
-            int diagnosticState = WeatherDiagnostics.Enabled ? WeatherDiagnostics.Preset+1 : 0;
+            if (WeatherDiagnosticState.Frozen && _system.isPlaying) _system.Pause();
+            int diagnosticState = WeatherDiagnosticState.Enabled ? WeatherDiagnosticState.Preset+1 : 0;
             if (Time.unscaledTime < _next && diagnosticState == _diagnosticState) return;
-            if (_tintPending || tint != _lastTint || (diagnosticState != _diagnosticState && (WeatherDiagnostics.CloudPair || _diagnosticState == 9 || _diagnosticState == 10)))
+            if (_tintPending || tint != _lastTint || (diagnosticState != _diagnosticState && (WeatherDiagnosticState.CloudPair || _diagnosticState == 9 || _diagnosticState == 10)))
             {
                 // One-shot tint comparison of the same frozen particles; startColor alone affects only new emissions.
                 var particles = new ParticleSystem.Particle[_system.particleCount]; int count = _system.GetParticles(particles);
                 for (int i = 0; i < count; i++)
-                    particles[i].startColor = WeatherDiagnostics.Enabled && WeatherDiagnostics.Preset == 8 ?
+                    particles[i].startColor = WeatherDiagnosticState.Enabled && WeatherDiagnosticState.Preset == 8 ?
                         _nativeColor.Evaluate(0,(particles[i].randomSeed%10000)/9999f) : tint;
                 _system.SetParticles(particles,count);
                 _tintPending = false;
                 _lastTint = tint;
             }
-            if (!WeatherDiagnostics.Enabled && _restoredSeed) { _system.useAutoRandomSeed = _nativeAutoSeed; _restoredSeed = false; }
+            if (!WeatherDiagnosticState.Enabled && _restoredSeed) { _system.useAutoRandomSeed = _nativeAutoSeed; _restoredSeed = false; }
             _diagnosticState = diagnosticState;
             _next = Time.unscaledTime+.1f;
-            if (WeatherDiagnostics.CloudPair) strength = 1;
+            if (WeatherDiagnosticState.CloudPair) strength = 1;
             if (wind.sqrMagnitude > .01f) _root.transform.rotation = Quaternion.LookRotation(wind);
             bool running = GameRefs.InGame && strength > .005f;
             var emission = _system.emission; emission.enabled = running;
-            emission.rateOverTimeMultiplier = _rate*strength*(!WeatherDiagnostics.CloudPair && detail == WeatherVisualDetail.Low ? .6f : 1);
-            var main = _system.main; main.maxParticles = WeatherDiagnostics.CloudPair ? _nativeLimit : detail == WeatherVisualDetail.Low ? 60 : 100;
-            main.startColor = WeatherDiagnostics.Enabled && WeatherDiagnostics.Preset == 8 ? _nativeColor : new ParticleSystem.MinMaxGradient(tint);
+            emission.rateOverTimeMultiplier = _rate*strength*(!WeatherDiagnosticState.CloudPair && detail == WeatherVisualDetail.Low ? .6f : 1);
+            var main = _system.main; main.maxParticles = WeatherDiagnosticState.CloudPair ? _nativeLimit : detail == WeatherVisualDetail.Low ? 60 : 100;
+            main.startColor = WeatherDiagnosticState.Enabled && WeatherDiagnosticState.Preset == 8 ? _nativeColor : new ParticleSystem.MinMaxGradient(tint);
             if (_material.HasProperty("_Opacity")) _material.SetFloat("_Opacity",_opacity*strength);
-            if (!GameRefs.InGame || WeatherDiagnostics.Frozen) { if (_system.isPlaying) _system.Pause(); }
+            if (!GameRefs.InGame || WeatherDiagnosticState.Frozen) { if (_system.isPlaying) _system.Pause(); }
             else if (!_system.isPlaying) _system.Play();
-            if (!_reported && running && !WeatherDiagnostics.Frozen)
+            if (!_reported && running && !WeatherDiagnosticState.Frozen)
             {
                 if (_reportAt == 0) _reportAt = Time.unscaledTime+2;
                 if (_system.particleCount > 0 || Time.unscaledTime >= _reportAt)
@@ -102,24 +102,24 @@ namespace WildWasteland.Modules.Weather
                 }
             }
         }
-        private void Before(Camera camera) { if (_renderer != null) _renderer.enabled = camera == _camera && WeatherDiagnostics.Clouds; }
-        internal void CaptureDiagnostic(WeatherDiagnostics.Snapshot data)
+        private void Before(Camera camera) { if (_renderer != null) _renderer.enabled = camera == _camera && WeatherDiagnosticState.Clouds; }
+        internal void CaptureDiagnostic(WeatherDiagnosticState.Snapshot data)
         {
             if (_system == null) return;
             _system.Pause();
             data.ParticleSeed = _system.randomSeed; data.ParticleRoot = Origin.World(_root.transform.position); data.ParticleRotation = _root.transform.rotation;
             var particles = new ParticleSystem.Particle[_system.particleCount]; int count = _system.GetParticles(particles);
-            data.Particles = new WeatherDiagnostics.Particle[count];
+            data.Particles = new WeatherDiagnosticState.Particle[count];
             for (int i = 0; i < count; i++)
             {
                 var p = particles[i];
-                data.Particles[i] = new WeatherDiagnostics.Particle { World = Origin.World(p.position), Velocity = p.velocity,
+                data.Particles[i] = new WeatherDiagnosticState.Particle { World = Origin.World(p.position), Velocity = p.velocity,
                     Size = p.startSize3D, Rotation = p.rotation3D, Color = p.startColor, Life = p.remainingLifetime, StartLife = p.startLifetime, Seed = p.randomSeed };
             }
             Log.Always("[WeatherDiag] Local-cloud snapshot: count="+count+"; seed="+data.ParticleSeed+"; scale="+_system.transform.lossyScale.ToString("F3")+"; simulation="+_system.main.simulationSpace+"; shader="+_material.shader.name+"; native shader UV time remains live.");
             Log.Always("[WeatherDiag] Local-cloud emitter: time="+_system.time+"; culling="+_system.main.cullingMode+"; speed="+_system.main.simulationSpeed+"; loop="+_system.main.loop+"; emission="+_system.emission.enabled+"; rate="+_system.emission.rateOverTimeMultiplier+"; sourceRate="+_rate+"; renderer="+_renderer.enabled+"; visible="+_renderer.isVisible+"; active="+_system.gameObject.activeInHierarchy+"; paused="+_system.isPaused);
         }
-        internal void RestoreDiagnostic(WeatherDiagnostics.Snapshot data)
+        internal void RestoreDiagnostic(WeatherDiagnosticState.Snapshot data)
         {
             if (data.Particles == null || data.Particles.Length > 1000) return;
             if (_system == null && !Create()) return;

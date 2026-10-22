@@ -4,12 +4,12 @@ using System.IO;
 using System.Text;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Core.Optimization;
 using Log = WildWasteland.Core.Log;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Modules.Tools
 {
-    // Optional authoring capture for procedural/GLB meshes that do not exist in Unity asset bundles.
-    // Explicit user action only. Captures originals; never edits a mesh or launches the game.
+    /// <summary>Tools-owned explicit capture of readable mesh originals for the offline LOD generator.</summary>
     internal static class GeneratedLodExport
     {
         [Serializable] sealed class Channel { public int kind, dimension; public float[] data; }
@@ -26,28 +26,37 @@ namespace WildWasteland.Modules.Performance
         static Mesh[] _meshes;
         static int _index, _written, _skipped;
         static Job _job;
+        static IModule _owner;
         internal static string Status = "For GLB/procedural models: export loaded meshes, then rerun Generate.cmd.";
 
-        internal static void Start(PerformanceModule module)
+        /// <summary>True while the sliced authoring export owns a mesh snapshot.</summary>
+        internal static bool Running { get { return _job != null; } }
+
+        /// <summary>Captures the loaded-mesh list and schedules export under its Tools owner.</summary>
+        internal static void Start(IModule module)
         {
             if (_job != null) return;
             _meshes = Resources.FindObjectsOfTypeAll<Mesh>();
             _index = _written = _skipped = 0;
-            Directory.CreateDirectory(Path.Combine(Assets.Root, "Performance", "LODInput"));
-            _job = Scheduler.Sliced(module, "Performance.LodExport", 500, Step);
+            Directory.CreateDirectory(Path.Combine(Assets.ModuleDir("Tools"), "LODInput"));
+            _owner = module;
+            _job = Scheduler.Sliced(module, "Tools.LodExport", 500, Step);
         }
+        /// <summary>Stops the job and releases mesh/owner references on completion, cancellation or shutdown.</summary>
         internal static void Stop()
         {
             if (_job != null) { _job.Remove(); _job = null; }
             _meshes = null;
+            _owner = null;
         }
 
+        /// <summary>Exports one eligible mesh with its original channels and unchanged identity/schema.</summary>
         static bool Step()
         {
             if (_index >= _meshes.Length)
             {
                 Status = "Exported " + _written + " meshes; " + _skipped + " skipped (unreadable, small, blend shapes or unsupported). Rerun Generate.cmd.";
-                Log.Always("[Performance] RC9 " + Status);
+                if (Log.L1) Log.Main(_owner, "RC9 " + Status);
                 Stop(); return false;
             }
             Mesh mesh = _meshes[_index++];
@@ -106,13 +115,14 @@ namespace WildWasteland.Modules.Performance
                 var model = new Model { key = GeneratedLodPack.Key(mesh), name = mesh.name, count = mesh.vertexCount, channels = channels.ToArray(), submeshes = subs, bindposes = bindposes,
                     bounds = new[] { bounds.center.x, bounds.center.y, bounds.center.z, bounds.extents.x, bounds.extents.y, bounds.extents.z } };
                 string json = JsonUtility.ToJson(model);
-                string path = Path.Combine(Assets.Root, "Performance", "LODInput", model.key + "." + GeneratedLodPack.Hash(Encoding.UTF8.GetBytes(json)) + ".json");
+                string path = Path.Combine(Assets.ModuleDir("Tools"), "LODInput", model.key + "." + GeneratedLodPack.Hash(Encoding.UTF8.GetBytes(json)) + ".json");
                 if (!File.Exists(path)) File.WriteAllText(path, json, new UTF8Encoding(false));
                 _written++;
             }
-            catch (Exception e) { _skipped++; Log.Warn("[Performance] RC9 mesh export skipped: " + e.Message); }
+            catch (Exception e) { _skipped++; Log.Warn(_owner, "RC9 mesh export skipped: " + e.Message); }
             return true;
         }
+        /// <summary>Flattens a nonempty three-dimensional vertex channel into the export schema.</summary>
         static void Add3(List<Channel> channels, int kind, Vector3[] vectors)
         {
             if (vectors.Length == 0) return;

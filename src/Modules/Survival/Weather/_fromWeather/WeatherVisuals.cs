@@ -118,7 +118,7 @@ namespace WildWasteland.Modules.Weather
             bool paletteChanged = _paletteRevision != WeatherPalette.Revision;
             if (Time.unscaledTime < _nextColor && !paletteChanged) return;
             _nextColor = Time.unscaledTime + .5f;
-            if (WeatherDiagnostics.Frozen && _dustColor.a > 0 && !paletteChanged) return;
+            if (WeatherDiagnosticState.Frozen && _dustColor.a > 0 && !paletteChanged) return;
             _paletteRevision = WeatherPalette.Revision;
             var sun = RenderSettings.sun;
             Vector3 direction = sun != null ? -sun.transform.forward : (Vector3)Shader.GetGlobalVector(AzureSun);
@@ -167,7 +167,7 @@ namespace WildWasteland.Modules.Weather
             properties.SetVector(BackA, backA); properties.SetVector(BackB, backB); properties.SetVector(Pulse, new Vector4(pulseA, pulseB, 0, 0));
             properties.SetFloat("_Spiral",0); properties.SetFloat("_Perimeter",1);
             _perimeter.Update(region); int sections = _perimeter.Count;
-            for (int section = 0; section < sections && (WeatherDiagnostics.Wall || WeatherDiagnostics.Canopy); section++)
+            for (int section = 0; section < sections && (WeatherDiagnosticState.Wall || WeatherDiagnosticState.Canopy); section++)
             {
                 float span = _perimeter.Spans[section];
                 Vector3 position = center+rotation*_perimeter.Centers[section];
@@ -177,13 +177,13 @@ namespace WildWasteland.Modules.Weather
                 properties.SetVector(AxisX,wallRotation*Vector3.right); properties.SetVector(AxisZ,wallRotation*Vector3.forward);
                 bool leading = Vector3.Dot(-(wallRotation*Vector3.forward),region.Velocity) > region.Velocity.magnitude*.45f;
                 properties.SetFloat("_LeadingFront",leading ? 1 : 0);
-                if (WeatherDiagnostics.Enabled) properties.SetFloat(DiagnosticOwner,regionIndex*48+section+1);
+                if (WeatherDiagnosticState.Enabled) properties.SetFloat(DiagnosticOwner,regionIndex*48+section+1);
                 _smoke.Draw(regionIndex*48+section,position,wallRotation,span,0,detail,leading,properties);
             }
-            if (critical <= 0 || columnCount == 0 || !WeatherDiagnostics.Core) return;
-            if (WeatherDiagnostics.Single && WeatherDiagnostics.SelectedColumn < 0 && first >= 0)
+            if (critical <= 0 || columnCount == 0 || !WeatherDiagnosticState.Core) return;
+            if (WeatherDiagnosticState.Single && WeatherDiagnosticState.SelectedColumn < 0 && first >= 0)
             {
-                WeatherDiagnostics.SelectedRegion = regionIndex; WeatherDiagnostics.SelectedColumn = first;
+                WeatherDiagnosticState.SelectedRegion = regionIndex; WeatherDiagnosticState.SelectedColumn = first;
                 Log.Always("[WeatherDiag] Selected hurricane: region="+regionIndex+", column="+first+"; world="+Origin.World(center+rotation*columns[first]).ToString("F3"));
             }
             properties.SetFloat(Vortex, 1); properties.SetFloat(Life, life * critical);
@@ -195,11 +195,11 @@ namespace WildWasteland.Modules.Weather
             float reveal = Mathf.SmoothStep(0,1,Mathf.Clamp01((WeatherRegion.EdgeDistance(relativeEye.x/region.Radii.x,relativeEye.z/region.Radii.y)-.025f)/.195f));
             properties.SetFloat(Life,life*critical*reveal);
             int probe = -1;
-            if (Time.unscaledTime >= _nextGroundProbe && Time.timeScale > 0 && !WeatherDiagnostics.Frozen)
+            if (Time.unscaledTime >= _nextGroundProbe && Time.timeScale > 0 && !WeatherDiagnosticState.Frozen)
             { _nextGroundProbe = Time.unscaledTime+.15f; probe = _groundProbe++%columnCount; }
             for (int i = 0; i < columnCount; i++)
             {
-                if (WeatherDiagnostics.Single && (WeatherDiagnostics.SelectedRegion != regionIndex || WeatherDiagnostics.SelectedColumn != i)) continue;
+                if (WeatherDiagnosticState.Single && (WeatherDiagnosticState.SelectedRegion != regionIndex || WeatherDiagnosticState.SelectedColumn != i)) continue;
                 Vector3 position = center+rotation*columns[i];
                 if (_hasGround[regionIndex,i]) position.y += _groundOffset[regionIndex,i];
                 // Ground is layer 14 in Sources/data/settings.md. Bounded visual probes,
@@ -218,11 +218,11 @@ namespace WildWasteland.Modules.Weather
                 Vector3 back = position+rotation*new Vector3(0,600,350);
                 properties.SetVector(BackA,new Vector4(back.x,back.y,back.z,(.9f+pulseA)*life*critical)); properties.SetVector(BackB,Vector4.zero);
                 _atmosphere.AddEye(position,300*WeatherVortexSmoke.Width(regionIndex*80+i),1600,life*critical,eye);
-                if (WeatherDiagnostics.Enabled) properties.SetFloat(DiagnosticOwner,1000+regionIndex*80+i);
+                if (WeatherDiagnosticState.Enabled) properties.SetFloat(DiagnosticOwner,1000+regionIndex*80+i);
                 if (reveal > .001f) _vortexSmoke.Draw(regionIndex*80+i,position,rotation,detail,properties);
                 if (reveal > .1f && critical > .5f && (position-eye).sqrMagnitude < 1800f*1800f) _debris.Draw(regionIndex*80+i,position,rotation,detail);
             }
-            if (WeatherDiagnostics.Full && (!WeatherDiagnostics.Enabled || WeatherDiagnostics.Output == 0))
+            if (WeatherDiagnosticState.Full && (!WeatherDiagnosticState.Enabled || WeatherDiagnosticState.Output == 0))
                 for (int channel=0;channel<2;channel++)
                 {
                     int index=regionIndex*2+channel;
@@ -237,7 +237,7 @@ namespace WildWasteland.Modules.Weather
                     properties.SetVector(Pulse,channel==0 ? new Vector4(pulse,0,0,0) : new Vector4(0,pulse,0,0));
                     Draw(_lightning[(int)detail],Matrix4x4.TRS(source+rotation*new Vector3(0,0,510),rotation,Vector3.one),_discharge,camera,properties);
                     _flash=Mathf.Max(_flash,pulse*envelope/(1+distance*distance/(3000f*3000f)));
-                    if (_strikes[index]!=cycle && !WeatherDiagnostics.Frozen && GameRefs.InGame)
+                    if (_strikes[index]!=cycle && !WeatherDiagnosticState.Frozen && GameRefs.InGame)
                     { _strikes[index]=cycle; _strikeColumns[index]=column; _audio.Strike(_clock,source,eye,envelope); }
                 }
         }
@@ -260,7 +260,7 @@ namespace WildWasteland.Modules.Weather
         internal void SetGround(int region,int column,float offset) { _groundOffset[region,column]=offset; _hasGround[region,column]=true; }
         internal bool TryGround(int region,int column,out float offset) { offset=_groundOffset[region,column]; return _hasGround[region,column]; }
         internal void ClearGround() { Array.Clear(_hasGround,0,_hasGround.Length); _groundProbe = 0; for (int i=0;i<_strikes.Length;i++) _strikes[i]=int.MinValue; }
-        internal void CaptureDiagnostic(WeatherDiagnostics.Snapshot data)
+        internal void CaptureDiagnostic(WeatherDiagnosticState.Snapshot data)
         {
             data.DustColor = _dustColor; data.AirColor = Shader.GetGlobalVector(Air); data.SunDirection = Shader.GetGlobalVector(Sun);
             data.GroundOffsets = new float[320]; data.GroundValid = new bool[320];
@@ -268,7 +268,7 @@ namespace WildWasteland.Modules.Weather
             { data.GroundOffsets[r*80+c] = _groundOffset[r,c]; data.GroundValid[r*80+c] = _hasGround[r,c]; }
             _localDust.CaptureDiagnostic(data);
         }
-        internal void RestoreDiagnostic(WeatherDiagnostics.Snapshot data)
+        internal void RestoreDiagnostic(WeatherDiagnosticState.Snapshot data)
         {
             _dustColor = data.DustColor; Shader.SetGlobalVector(Air,data.AirColor); Shader.SetGlobalVector(Sun,data.SunDirection);
             ClearGround();

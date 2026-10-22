@@ -7,7 +7,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace WildWasteland.Modules.Performance
+namespace WildWasteland.Core.Optimization
 {
     // Generated packs are optional user data, separate from the shipped runtime asset index.
     internal sealed class GeneratedLodPack
