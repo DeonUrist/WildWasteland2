@@ -98,11 +98,9 @@ namespace WildWasteland.Modules.PlayerBody
 
         internal static void Tick()
         {
-            long t0 = Perf.Now;
             try
             {
                 WheelArms.Tick();
-                try { Perf.Frame(); } catch (Exception e) { PlayerBodyModule.Warn("Perf: " + e.Message); }
                 if (!Game.Ready) { OcclusionCutaway.Stop(); if (_body != null) DestroyBody(); return; }   // (2.2.6) the cutaway taken down in menus / loading too
                 if (!Game.Dead) { _lastVelocity = Game.Velocity; _lastCar = Game.InCar ? Game.CarRoot : null; }
                 if (PlayerBodyModule.FemaleArms.Value && PlayerBodyModule.Female) Arms.Tick(); else Arms.Restore();
@@ -112,12 +110,10 @@ namespace WildWasteland.Modules.PlayerBody
                 if (!ThirdPerson.On || Game.InCar) GunPose.Flush();
             }
             catch (Exception e) { PlayerBodyModule.Error("Update: " + e); }
-            finally { Perf.Add(Perf.Update, t0); }
         }
 
         internal static void LateTick()
         {
-            long t0 = Perf.Now;
             try
             {
                 if (!Game.Ready) return;
@@ -191,7 +187,6 @@ namespace WildWasteland.Modules.PlayerBody
                 if (!ReferenceEquals(mode, _lastMode)) { _lastMode = mode; PlayerBodyModule.Verbose("View: " + mode); }
             }
             catch (Exception e) { PlayerBodyModule.Error("LateUpdate: " + e); _nextBuild = Time.unscaledTime + 5f; }
-            finally { Perf.Add(Perf.Late, t0); }
         }
 
         internal static void WheelTick()
@@ -203,14 +198,13 @@ namespace WildWasteland.Modules.PlayerBody
         // (2.2.0) characters animated through ModAPI, after the Animators (was ModApiRunner.LateUpdate)
         internal static void ModApiTick()
         {
-            long t0 = Perf.Now;
-            try { ModAPI.LateTick(); } finally { Perf.Add(Perf.ModApi, t0); }
+            ModAPI.LateTick();
         }
 
 
         // the same conditions GunPose.OnGUI / Car.OnGUI draw under (an editor hint, or seated in a car)
         internal static bool GuiWanted() { return !string.IsNullOrEmpty(GunPose.HintText) || Car.GuiWanted || WheelArms.EditorVisible; }
-        internal static void Gui() { long t0 = Perf.Now; try { GunPose.OnGUI(); Car.OnGUI(); WheelArms.DrawEditorHint(); } catch (Exception) { } Perf.Add(Perf.Gui, t0); }
+        internal static void Gui() { try { GunPose.OnGUI(); Car.OnGUI(); WheelArms.DrawEditorHint(); } catch (Exception) { } }
 
         // after the frame is drawn: the camera's real matrices back (the game's mouse picks next frame cast from the eye)
         internal static System.Collections.IEnumerator EndOfFrameLoop()
@@ -220,9 +214,7 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 yield return eof;
                 if (!PlayerBodyModule.Running) yield break;
-                long t0 = Perf.Now;
                 try { ThirdPerson.EndOfFrame(); } catch (Exception) { }
-                Perf.Add(Perf.EndFrame, t0);
             }
         }
     }

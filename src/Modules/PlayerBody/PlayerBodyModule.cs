@@ -362,7 +362,6 @@ namespace WildWasteland.Modules.PlayerBody
             try { LadderController.StopInstance(); } catch (Exception e) { Warn("ladders: " + e.Message); }
             try { NpcTraversal.Clear(); } catch (Exception e) { Warn("NPC traversals: " + e.Message); }
             try { BodyRunner.TearDown(); } catch (Exception e) { Error(e); }
-            Perf.StopGc();
             try { IgnitionControl.Remove(); } catch (Exception e) { Warn("ignition row: " + e.Message); }
             try { AimTransition.RestoreAll(); } catch (Exception e) { Warn("aim transition: " + e.Message); }
             try { ModAPI.OnSceneLoaded(); } catch (Exception e) { Warn("ModAPI: " + e.Message); }

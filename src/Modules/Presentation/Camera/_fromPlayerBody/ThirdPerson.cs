@@ -319,8 +319,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static void PreCull(Camera cam)
         {
             if (cam == null || cam != Game.Cam) return;
-            long t0 = Perf.Now;
-            try { PreCullInner(cam); } finally { Perf.Add(Perf.Camera, t0); }
+            PreCullInner(cam);
         }
         private static void PreCullInner(Camera cam)
         {
