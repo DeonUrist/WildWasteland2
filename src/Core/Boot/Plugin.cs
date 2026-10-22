@@ -44,7 +44,7 @@ namespace WildWasteland
     {
         public const string GUID = "com.denis.apocalypter.wildwasteland";
         public const string NAME = "Wild Wasteland";
-        public const string VERSION = "1.0.9";
+        public const string VERSION = "2.0.0";
 
         public static Plugin Instance;
         public static ConfigFile Main, Settings, Tools;
@@ -63,25 +63,18 @@ namespace WildWasteland
             {
                 Core.Assets.Init(Info.Location);
                 Core.UI.Skin.Init(Info.Location);
-                Core.Legacy.FirstRunMain = !File.Exists(Config.ConfigFilePath);
                 var toolsPath = Path.Combine(Core.Assets.ConfigDir, "tools.cfg");
                 Directory.CreateDirectory(Core.Assets.ConfigDir);
-                Core.Legacy.FirstRunTools = !File.Exists(toolsPath);
                 Main = Config;
+                // D12 fresh start: settings.cfg is no longer seeded from the old main cfg and no legacy key is migrated.
                 var settingsPath = Path.Combine(Core.Assets.ConfigDir, "settings.cfg");
-                Core.Legacy.FirstRunMain = Core.Legacy.FirstRunMain && !File.Exists(settingsPath);
-                if (!File.Exists(settingsPath) && File.Exists(Main.ConfigFilePath))
-                    File.Copy(Main.ConfigFilePath, settingsPath);
                 Settings = new ConfigFile(settingsPath, true);
                 Tools = new ConfigFile(toolsPath, true);
 
                 // Apocasetter hides its own opt-in entry; only these two settings are shown in F6.
-                string oldKey = Core.Legacy.Get(Path.GetFileName(Main.ConfigFilePath), "Keys", "Tool window");
-                bool hasWindowKey = Core.Legacy.Get(Path.GetFileName(Main.ConfigFilePath), "Keys", "In-Game Settings Button") != null;
                 Core.TunedSettings.Bind(Main, "General", "Apocasetter", true, "Lists Wild Wasteland in the Apocasetter Mods menu (F6).");
                 ToolWindowKey = Core.TunedSettings.Bind(Main, "Keys", "In-Game Settings Button", Key.F3,
                     "Opens Wild Wasteland settings: Game, Modules and, when enabled, Debug.");
-                if (!hasWindowKey && oldKey != null) ToolWindowKey.SetSerializedValue(oldKey);
                 EnableDebug = Core.TunedSettings.Bind(Main, "General", "Enable Debug", false,
                     "Show Debug in Wild Wasteland settings: logging, switches, patrol editor access and the optional Developer menu.");
 

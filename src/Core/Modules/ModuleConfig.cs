@@ -1,8 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
-using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine.InputSystem;
 
@@ -23,25 +20,31 @@ namespace WildWasteland.Core
         public readonly ConfigFile Tools;
         public ConfigEntry<bool> Enabled { get; internal set; }
 
+        /// <summary>Created by ModuleHost.BindAll for each module.</summary>
         internal ModuleConfig(string prefix, ConfigFile main, ConfigFile tools) { Prefix = prefix; Main = main; Tools = tools; }
 
+        /// <summary>Section name "&lt;Id&gt;" (sub null/"General") or "&lt;Id&gt; / &lt;sub&gt;".</summary>
         public string Section(string sub)
         {
             return string.IsNullOrEmpty(sub) || sub == "General" ? Prefix : Prefix + " / " + sub;
         }
 
+        /// <summary>Player-facing entry in settings.cfg.</summary>
         public ConfigEntry<T> Player<T>(string sub, string key, T def, string desc)
         {
             return TunedSettings.Bind(Main, Section(sub), key, def, desc);
         }
+        /// <summary>Player-facing entry in settings.cfg with a range/list.</summary>
         public ConfigEntry<T> Player<T>(string sub, string key, T def, string desc, AcceptableValueBase range)
         {
             return TunedSettings.Bind(Main, Section(sub), key, def, new ConfigDescription(desc, range));
         }
+        /// <summary>Tuning/debug entry in tools.cfg.</summary>
         public ConfigEntry<T> Tool<T>(string sub, string key, T def, string desc)
         {
             return TunedSettings.Bind(Tools, Section(sub), key, def, desc);
         }
+        /// <summary>Tuning/debug entry in tools.cfg with a range/list.</summary>
         public ConfigEntry<T> Tool<T>(string sub, string key, T def, string desc, AcceptableValueBase range)
         {
             return TunedSettings.Bind(Tools, Section(sub), key, def, new ConfigDescription(desc, range));
@@ -52,71 +55,24 @@ namespace WildWasteland.Core
             return TunedSettings.Bind(Main, "Keys", key, def, desc);
         }
 
-        /// <summary>
-        /// First-run migration: copy a value from a standalone mod's cfg (BepInEx\config\&lt;legacyCfgFile&gt;, e.g.
-        /// "com.denis.apocalypter.apocapatrol.cfg") into a WW entry. Only applied when the WW file the entry lives in did not
-        /// exist at startup (so the user's later edits are never overwritten). Logs what was migrated.
-        /// </summary>
-        public void Migrate<T>(ConfigEntry<T> entry, string legacyCfgFile, string section, string key)
-        {
-            if (entry == null) return;
-            bool firstRun = ReferenceEquals(entry.ConfigFile, Tools) ? Legacy.FirstRunTools : Legacy.FirstRunMain;
-            if (!firstRun) return;
-            string raw = Legacy.Get(legacyCfgFile, section, key);
-            if (raw == null) return;
-            try
-            {
-                entry.SetSerializedValue(raw);
-                Log.Info("[" + Prefix + "] migrated " + legacyCfgFile + " [" + section + "] " + key + " = " + raw);
-            }
-            catch (Exception e) { Log.Warn("[" + Prefix + "] could not migrate [" + section + "] " + key + " from " + legacyCfgFile + ": " + e.Message); }
-        }
+        /// <summary>D12 (fresh start): no-op. Used to copy a first-run value from a standalone mod's cfg; WW2 does not migrate
+        /// WW1/standalone configs. Callers are deleted in Wave A.</summary>
+        [Obsolete("refactor: D12 fresh start - no config migration")]
+        public void Migrate<T>(ConfigEntry<T> entry, string legacyCfgFile, string section, string key) { }
     }
 
-    /// <summary>Raw reader for standalone mods' cfg files (BepInEx ContainsKey only sees bound entries).</summary>
+    /// <summary>D12 (fresh start): the old raw reader for standalone mods' cfg files, now inert. <see cref="Get"/> returns null,
+    /// <see cref="Exists"/> false and the first-run flags stay false, so every legacy migration path is skipped. Deleted in Wave C.</summary>
+    [Obsolete("refactor: D12 fresh start - no config migration")]
     public static class Legacy
     {
-        public static bool FirstRunMain, FirstRunTools;
-        static readonly Dictionary<string, Dictionary<string, string>> _files = new Dictionary<string, Dictionary<string, string>>(StringComparer.OrdinalIgnoreCase);
+        /// <summary>Always false (no first-run migration).</summary>
+        public static readonly bool FirstRunMain = false, FirstRunTools = false;
 
-        public static string Get(string cfgFile, string section, string key)
-        {
-            Dictionary<string, string> d;
-            if (!_files.TryGetValue(cfgFile, out d))
-            {
-                d = Parse(Path.Combine(Paths.ConfigPath, cfgFile));
-                _files[cfgFile] = d;
-            }
-            string v;
-            return d != null && d.TryGetValue(section + "\n" + key, out v) ? v : null;
-        }
+        /// <summary>Always null (no legacy value is read).</summary>
+        public static string Get(string cfgFile, string section, string key) { return null; }
 
-        public static bool Exists(string cfgFile) { return File.Exists(Path.Combine(Paths.ConfigPath, cfgFile)); }
-
-        static Dictionary<string, string> Parse(string path)
-        {
-            if (!File.Exists(path)) return null;
-            var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            string section = "";
-            try
-            {
-                foreach (var raw in File.ReadAllLines(path))
-                {
-                    var line = raw.Trim();
-                    if (line.Length == 0 || line[0] == '#' || line[0] == ';') continue;
-                    if (line[0] == '[' && line[line.Length - 1] == ']') { section = line.Substring(1, line.Length - 2).Trim(); continue; }
-                    int eq = line.IndexOf('=');
-                    if (eq <= 0) continue;
-                    d[section + "\n" + line.Substring(0, eq).Trim()] = line.Substring(eq + 1).Trim();
-                }
-            }
-            catch (Exception e) { Log.Warn("could not read " + path + ": " + e.Message); }
-            return d;
-        }
-
-        public static float ParseFloat(string s, float def)
-        {
-            float f; return float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out f) ? f : def;
-        }
+        /// <summary>Always false.</summary>
+        public static bool Exists(string cfgFile) { return false; }
     }
 }

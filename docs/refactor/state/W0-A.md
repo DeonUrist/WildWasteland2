@@ -8,19 +8,19 @@ Branch `refactor/W0-A`, worktree `/home/claude/wt/W0-A`.
 - [x] 3. All contracts + events of core-modapi.md 8-9; Services/QuestServices interfaces moved; Services.* [Obsolete] forwarders
 - [x] 4. Log levels/generic overloads, old wrappers [Obsolete]; Log.Error no SaveSystem.Fail; SaveBus.ReportFailure; Trace stub; [Debug] VerboseLevel
 - [ ] 5. Scheduler (Removed, phase Interval, name prefix warn); Hooks table-driven, FsmEnable removal fix, Calls all kinds, timing behind Trace.On, new dispatchers
-- [~] 6. IModule ProvideApis/Settings; ModuleConfig.Migrate + Legacy.* obsolete no-ops; stop seeding settings.cfg from old main cfg
+- [x] 6. IModule ProvideApis/Settings; ModuleConfig.Migrate + Legacy.* obsolete no-ops; stop seeding settings.cfg from old main cfg
 - [ ] 7. Delete SaveTypes old-assembly aliases; Sidecars registry + SaveBus.Key + typed SaveBus events
 - [x] 8. SettingsShell API (contribution path next to existing rows)
-- [ ] 8b. Plugin.VERSION = "2.0.0"
+- [x] 8b. Plugin.VERSION = "2.0.0"
 - [ ] 9. Skeleton modules (Debug, Presentation, NPCAI, Gunplay, Vehicles, Loot, Tools, Developer, Compatibility, Saves) registered after existing ones
 - [ ] 10. tools/refactor/*.py work against new layout
 - [ ] Report docs/refactor/reports/W0-A.md, ownership check
 
 ## Last good compile (commit)
-steps 1-4, 8 (+IModule part of 6), COMPILE OK
+steps 1-4, 6, 8, 8b, COMPILE OK
 
 ## Next action
-Step 6 rest: ModuleConfig.Migrate + Legacy.* obsolete no-ops; Plugin stops seeding settings.cfg. Then step 5 (Scheduler/Hooks), 7, 8b, 9, 10.
+Step 5: Scheduler (Removed in RemoveAll, phase-keeping Interval, name prefix check) and Hooks table-driven rewrite + new dispatchers. Then 7, 9, 10.
 
 ## Blockers / questions for Denis
 - csproj has no NoWarn for CS0618: the [Obsolete] Services/Log wrappers will produce many warnings in `dotnet build` (compile.sh suppresses 618). Request: add `<NoWarn>$(NoWarn);CS0618</NoWarn>` to WildWasteland.csproj until Wave C (see requests/W0-A.md).
