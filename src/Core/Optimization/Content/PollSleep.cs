@@ -111,6 +111,7 @@ namespace WildWasteland.Core.Optimization
             if (_byFsm.TryGetValue(fsm, out s) && s.Asleep) { Wake(s); s.PlanCount = -1; }
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         internal static void OnSceneLoaded()
         {
             for (int i = _all.Count - 1; i >= 0; i--) if (_all[i].Comp == null) { if (_all[i].Asleep) { _all[i].Asleep = false; Asleep--; } RemoveAt(i); }
@@ -272,11 +273,15 @@ namespace WildWasteland.Core.Optimization
     /// <summary>Base for the features that only feed FSM names to <see cref="PollSleep"/>.</summary>
     public abstract class PollSleepFeature : Feature
     {
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
         protected abstract string[] FsmNames { get; }
+        /// <summary>Optional native owner-name filter for selecting polling FSMs.</summary>
         protected virtual string RootPattern { get { return null; } }
 
+        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { PollSleep.Hook(Module); }
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             PollSleep.Acquire(this);
@@ -284,8 +289,11 @@ namespace WildWasteland.Core.Optimization
             for (int i = 0; i < names.Length; i++) FsmEdits.Watch(this, names[i], RootPattern, Ready);
         }
         void Ready(PlayMakerFSM f) { PollSleep.Register(this, f); }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { FsmEdits.Unwatch(this); PollSleep.Release(this); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { PollSleep.OnSceneLoaded(); FsmPause.Prune(); }
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             int asleep, n = PollSleep.CountFor(this, out asleep);

@@ -22,11 +22,17 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class CoyoteBroadcastFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT8"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Coyote broadcast"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Coyote faction broadcast"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 8; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Repeated hits on Coyotes no longer re-broadcast the hostility event to every FSM in the game, only to those still friendly."; } }
 
         internal static bool On;
@@ -36,14 +42,18 @@ namespace WildWasteland.Core.Optimization
         internal static long Repeats, Delivered, Firsts;
         const string EventName = "FactionCoyotesEnemy";
 
+        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks() { Hooks.ProcessEvent.Prefix(Module, BeforeEvent); }
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
             FsmEdits.Watch(this, "FactionRelation_Coyotes", "__GameManager__", Ready);
         }
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; _coyote = null; FsmEdits.Unwatch(this); _undo.RevertAll(); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _coyote = null; _undo.Prune(); }
 
         void Ready(PlayMakerFSM f)
@@ -138,6 +148,7 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("First broadcasts (vanilla) / repeats targeted", Firsts + " / " + Repeats);
