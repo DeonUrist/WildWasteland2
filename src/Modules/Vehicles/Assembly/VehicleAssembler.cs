@@ -12,6 +12,8 @@ namespace WildWasteland.Modules.Vehicles
     {
         private const string DefaultHeadlight = "Headlight";
         private static VehicleStructure _structure;
+        /// <summary>Releases the last resolved prefab snapshot when the mechanical cache is reset.</summary>
+        internal static void Clear() {_structure=null;}
         /// <summary>Writes assembly details only when deep logging is enabled.</summary>
         private static void Deep(string message) { if (Log.L2) Log.Deep(VehiclesModule.Instance, message); }
         /// <summary>Finds descendants in native direct-child-first order.</summary>

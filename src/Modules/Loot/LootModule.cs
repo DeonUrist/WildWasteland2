@@ -48,12 +48,6 @@ namespace WildWasteland.Modules.Loot
             ModApi.Provide<ILootSpawning>(this, new LootSpawningApi());
         }
 
-        /// <summary>Re-imports Patrols loot profiles when PatrolsAndLoot.json changed (one file stamp read per world ready).</summary>
-        public override void OnWorldReady()
-        {
-            Tables.Refresh();
-        }
-
         /// <summary>Drops the substitution rules other modules registered (Core removes the hook handler).</summary>
         public override void Shutdown()
         {

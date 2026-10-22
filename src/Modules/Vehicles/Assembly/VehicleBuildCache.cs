@@ -39,7 +39,7 @@ namespace WildWasteland.Modules.Vehicles
         private static readonly Queue<Entry> Pending = new Queue<Entry>();
         private static Entry _active;
         private static GameObject _holder;
-        private static bool _warmRequested = false, _reported;
+        private static bool _reported;
         private const int ReserveCount = 2;
         private const double LoadingBudgetMs = 12;
         private static readonly System.Diagnostics.Stopwatch LoadTime = new System.Diagnostics.Stopwatch(), LoadSliceTime = new System.Diagnostics.Stopwatch();
@@ -55,14 +55,13 @@ namespace WildWasteland.Modules.Vehicles
             }
         }
         /// <summary>True while warming is requested or variants are queued / being prepared.</summary>
-        internal static bool Warming { get { return _warmRequested || _active != null || Pending.Count > 0; } }
+        internal static bool Warming { get { return _active != null || Pending.Count > 0; } }
 
         /// <summary>Prepared fraction 0..1 of all reserves (failed variants count as done).</summary>
         internal static float LoadFraction
         {
             get
             {
-                if (_warmRequested) return 0f;
                 if (Entries.Count == 0) return 1f;
                 float done = 0f;
                 foreach (var entry in Entries.Values)
@@ -91,9 +90,6 @@ namespace WildWasteland.Modules.Vehicles
             return _active != null ? "preparing vehicles - " + _active.Template.Name + " (" + Mathf.RoundToInt(LoadFraction * 100f) + "%)" : "preparing vehicle templates";
         }
 
-        /// <summary>Requests warming of every template of the park (Patrols load/refresh).</summary>
-        internal static void WarmPark() { _warmRequested = false; _reported = false; }
-        /// <summary>Requires the variants of one template (each bumper, its trailer).</summary>
         /// <summary>Exact binary definition of a variant, independent of template name, crew/cargo rolls and traffic-instance metadata.</summary>
         private static string Key(VehicleStructure t, string bumper, bool trailer)
         {
@@ -131,23 +127,15 @@ namespace WildWasteland.Modules.Vehicles
         private static void Enqueue(Entry entry)
         { if (entry.Queued || ReferenceEquals(_active, entry)) return; entry.Queued = true; Pending.Enqueue(entry); _reported = false; }
 
-        /// <summary>Old Patrols sliced job ("Patrols.Vehicle build cache"): steps only while the Vehicles module is off (one driver per frame).</summary>
-        [Obsolete("refactor: the Vehicles module drives the build cache (VehicleBuildCache.DriveFromVehicles)")]
-        internal static bool Step() { return !VehiclesModule.Running && Step(true); }
-
         /// <summary>Sliced job "Vehicles.Build cache" (0.5 ms): steps while the Vehicles module runs.</summary>
-        internal static bool DriveFromVehicles() { return VehiclesModule.Running && Step(true); }
+        internal static bool DriveFromVehicles() { return VehiclesModule.Running && Step(); }
 
         /// <summary>One gameplay step: not while loading (the load slice runs then) and within the shared frame budget.</summary>
-        private static bool Step(bool gameplay)
+        private static bool Step()
         {
             if (Loading || Scheduler.FrameMs >= Scheduler.FrameBudgetMs) return false;
             return StepCore();
         }
-
-        /// <summary>Old Patrols every-frame job ("Patrols.Vehicle load preparation"): runs only while the Vehicles module is off.</summary>
-        [Obsolete("refactor: the Vehicles module runs the load slice (VehicleBuildCache.LoadBurstFromVehicles)")]
-        internal static void LoadBurst() { if (!VehiclesModule.Running) LoadSlice(); }
 
         /// <summary>Every-frame job "Vehicles.Build cache loading": the bounded load slice while the Vehicles module runs.</summary>
         internal static void LoadBurstFromVehicles() { if (VehiclesModule.Running) LoadSlice(); }
@@ -182,12 +170,6 @@ namespace WildWasteland.Modules.Vehicles
         private static bool StepCore()
         {
             if (!Warming || !WorldWork.Try(WorldWork.Vehicles)) return false;
-            if (_warmRequested)
-            {
-                if (GameRefs.NewGOArrayList == null) return false;
-                _warmRequested = false;
-                return true;
-            }
             if (_active == null)
             {
                 if (Pending.Count == 0)
@@ -207,7 +189,7 @@ namespace WildWasteland.Modules.Vehicles
                     if (source == null) throw new InvalidOperationException("Missing frame " + entry.Template.Body);
                     if (_holder == null)
                     {
-                        _holder = new GameObject("WW.Patrols.BuildCache") { hideFlags = HideFlags.HideAndDontSave };
+                        _holder = new GameObject("WW.Vehicles.BuildCache") { hideFlags = HideFlags.HideAndDontSave };
                         _holder.SetActive(false); UnityEngine.Object.DontDestroyOnLoad(_holder);
                     }
                     entry.Root = UnityEngine.Object.Instantiate(source, _holder.transform, false);
@@ -299,7 +281,7 @@ namespace WildWasteland.Modules.Vehicles
             foreach (var entry in Entries.Values) { entry.Ready=false; entry.Failed=true; }
             _active = null; Pending.Clear(); Entries.Clear();
             if (_holder != null) UnityEngine.Object.Destroy(_holder);
-            _holder = null; _warmRequested = false; _reported = false;
+            _holder = null; _reported = false; VehicleAssembler.Clear();
         }
     }
 }

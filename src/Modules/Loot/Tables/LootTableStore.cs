@@ -6,17 +6,7 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Loot
 {
-    /// <summary>
-    /// Loot tables and their assignment (README 6.9), persisted in config/WildWasteland/Loot/LootTables.json (schema 1):
-    /// <c>tables</c> (id, name, kind, textureKey, default, spawnChance, entries[item, weight, min, max]), <c>poiTables</c>
-    /// (POI type -> table id) and <c>lotTables</c> ("townTemplate/lot" -> table id).
-    /// Copy-missing migration: the car/truck loot profiles of the Patrols editor file PatrolsAndLoot.json (schema 3, still authored
-    /// by the Patrols editor) are copied into LootTables.json when their table id is missing; existing tables are never overwritten
-    /// and PatrolsAndLoot.json is never modified. The import runs at Init and again at world ready when the Patrols file changed.
-    /// Runtime tables registered by other modules (<see cref="Register"/>) overlay the file tables and are not written.
-    /// Main thread only. No gameplay reads these tables yet (Patrols still rolls its own profiles); this is the data model behind
-    /// <see cref="ILootTables"/>.
-    /// </summary>
+    /// <summary>Authoritative current loot tables, POI/lot assignments and cargo metadata in LootTables.json. Runtime contributions overlay file tables without a second persisted source.</summary>
     internal sealed class LootTableStore
     {
         private const int Schema = 1;
@@ -26,8 +16,6 @@ namespace WildWasteland.Modules.Loot
         private readonly Dictionary<string, string> _poi = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> _lots = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private string _path;
-        private string _importedFrom;
-        private DateTime _importedStamp;
 
         /// <summary>Increments when tables or assignments change.</summary>
         internal int Revision { get; private set; }
@@ -39,12 +27,11 @@ namespace WildWasteland.Modules.Loot
         internal string FilePath { get { return _path; } }
 
         /// <summary>Reads LootTables.json from <paramref name="dir"/> (an invalid file is preserved as LootTables.invalid-*.json and
-        /// replaced), then runs the copy-missing import of the PatrolsAndLoot.json loot part.</summary>
+        /// replaced), seeding shipped current Loot defaults only when a file must be created.</summary>
         internal void Load(string dir)
         {
             _path = Path.Combine(dir, "LootTables.json");
             _file.Clear(); _order.Clear(); _poi.Clear(); _lots.Clear();
-            _importedFrom = null; _importedStamp = DateTime.MinValue;
             bool dirty = false;
             if (File.Exists(_path))
             {
@@ -59,20 +46,17 @@ namespace WildWasteland.Modules.Loot
                 }
             }
             else dirty = true;
-            if (_file.Count == 0)
+            if (dirty && _file.Count == 0)
             {
-                using(var stream=DiskResources.Open("Patrols.EditorDefaults.json"))
+                using(var stream=DiskResources.Open("Loot.CargoDefaults.json"))
                 using(var reader=new StreamReader(stream))
                 { var defaults=Json.ParseObject(reader.ReadToEnd());ImportProfiles(defaults,"carLoot","car");ImportProfiles(defaults,"truckLoot","truck"); }
             }
 
             if (dirty) Save();
             Revision++;
-            if (Log.L1) Log.Main(LootModule.Instance, "loot tables: " + _file.Count + " in " + _path + (_importedFrom != null ? " (profiles imported from " + _importedFrom + ")" : ""));
+            if (Log.L1) Log.Main(LootModule.Instance, "loot tables: " + _file.Count + " in " + _path);
         }
-
-        /// <summary>World ready: re-runs the copy-missing import when PatrolsAndLoot.json changed since the last import.</summary>
-        internal void Refresh() { }
 
         /// <summary>Drops runtime tables (module shutdown).</summary>
         internal void ClearRuntime()
