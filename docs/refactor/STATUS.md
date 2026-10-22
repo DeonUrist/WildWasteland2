@@ -23,8 +23,8 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 | W0 | W0-B Core utilities | refactor/W0-B | done | 67f9b61 | requests in requests/W0-B.md |
 | A | A1..A8 | refactor/A1..A8 | done | all merged | compile OK (36 warnings); check_partials fixed 1 (EngineSim BindCompatibility, original was empty); questions answered as D18 |
 | B | B01 Core-Kernel | refactor/B01 | in progress | | isolated local worktree; see its state/B01.md |
-| B | B02 Core-Optimization | refactor/B02 | in progress | | isolated local worktree; state/B02.md |
-| B | B03 Debug | refactor/B03 | in progress | | isolated local worktree; state/B03.md |
+| B | B02 Core-Optimization | refactor/B02 | accepted in integration | ee96efb | source gates and combined Windows build passed; reports/B02.md |
+| B | B03 Debug | refactor/B03 | accepted in integration | 8028483 | authored ownership audit, source gates and combined Windows build passed; reports/B03.md |
 | B | B04..B18 | | queued | | dispatch as parallel-agent slots free up, following guide dependencies |
 | C | C | | not started | | |
 
@@ -41,3 +41,5 @@ Originally a cloud mirror; Denis authorized local continuation on 2026-10-22. Pr
 
 ## Open questions for Denis
 (none)
+
+- 2026-10-22 resume: Coordinator accepted B02 and B03 in `refactor/coord-wiring`; Windows Release/Deploy=false after shared-services and Vistas integration passed with zero warnings/errors. B02/B03 references and summaries pass; combined partial check: 181 declarations, none missing. B03 authored-commit audit: 106 changed paths, none outside base ownership plus 60 exact approved exceptions recorded centrally. B01 consolidation and the Saves bootstrap integration remain active. No deployment or runtime verification.
