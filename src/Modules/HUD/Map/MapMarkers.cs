@@ -233,20 +233,23 @@ namespace WildWasteland.Modules.HUD
                     e.LabelView.gameObject.SetActive(false);
                 }
                 if (e.IconTexture == null) e.IconTexture = MapIcons.Get(e.Icon) ?? Assets.Tex("g_" + e.Icon);
+                bool town = e.Owner == "WildWasteland.Towns", gasStation = e.Owner == "WildWasteland.Towns.GasStation";
+                bool location = e.Owner == LocationMarkers.Owner || town || gasStation;
+                bool known = e.Owner == LocationMarkers.Owner && LocationMarkers.Known(e.Position) || town && !string.IsNullOrEmpty(e.Label) && e.Label != "Town";
                 if (e.LabelView != null)
                 {
-                    bool named = !string.IsNullOrEmpty(e.Label) && e.Owner != LocationMarkers.Owner;
+                    bool named = !string.IsNullOrEmpty(e.Label) && e.Owner != LocationMarkers.Owner && !gasStation && (!town || known || Markers == MapDetail.On);
                     if (e.LabelView.gameObject.activeSelf != named) e.LabelView.gameObject.SetActive(named);
                     if (named) { e.LabelView.Set(e.Label); e.LabelView.color = e.Color; }
                 }
-                bool ambiguous = Markers == MapDetail.Ambiguous && !(e.Owner == LocationMarkers.Owner && LocationMarkers.Known(e.Position));
+                bool ambiguous = Markers == MapDetail.Ambiguous && !known;
                 float size = (!ambiguous && e.Owner == LocationMarkers.Owner && LocationMarkers.CustomIcon(e.Position) ? 42f : 28f) * e.Size;
                 if (e.Root.sizeDelta.x != size) e.Root.sizeDelta = new Vector2(size, size);
                 e.Image.texture = ambiguous ? MapIcons.Get("unknown") : e.IconTexture;
                 e.Image.color = ambiguous ? Color.white : e.Color;
                 if (e.Owner == LocationMarkers.Owner && LocationMarkers.MissingBake(e.Position)) e.Image.color = new Color(.78f, .62f, 1f, 1f);
                 var scene = e.Position(); var p = _camera.WorldToViewportPoint(scene);
-                bool visible = p.z > 0 && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1 && !(e.Owner == LocationMarkers.Owner && MapFog.Hides(scene));
+                bool visible = p.z > 0 && p.x >= 0 && p.x <= 1 && p.y >= 0 && p.y <= 1 && !(location && MapFog.Hides(scene));
                 if (e.Root.gameObject.activeSelf != visible) e.Root.gameObject.SetActive(visible);
                 if (visible) e.Root.anchoredPosition = new Vector2(p.x * _map.rect.width - size * .5f, -(1 - p.y) * _map.rect.height + size * .5f);
             }
