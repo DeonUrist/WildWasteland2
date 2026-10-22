@@ -122,20 +122,4 @@ namespace WildWasteland.Modules.Guns
             AmmoSettings.V("Backpack removed: restored base ammo capacities");
         }
     }
-
-    // ---------------------------------------------------------------------------------
-    // Harmony patches
-    // ---------------------------------------------------------------------------------
-
-    [HarmonyPatch(typeof(IntClamp), "DoClamp")]
-    internal static class AmmoCapacity_Patch
-    {
-        static bool Prefix(IntClamp __instance) { return BackpackOverflow.BeforeClamp(__instance); }
-    }
-
-    [HarmonyPatch(typeof(FsmState), "OnEnter")]
-    internal static class BackpackSlot_Patch
-    {
-        static void Postfix(FsmState __instance) { BackpackOverflow.OnSlotEnter(__instance); }
-    }
 }

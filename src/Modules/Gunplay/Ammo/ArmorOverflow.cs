@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.Guns
     {
         // (WW) per FloatClamp action: is it __GameManager__'s ArmorBackpack armor <= armor_capacity clamp (decided once; GameObject.name
         // allocates) + its transfer state
-        private sealed class Clamp { public bool Ours; public ArmorOverflowTransfer State; }
+        private sealed class Clamp { public bool Ours; public OverflowTransfer State; }
         private static readonly Dictionary<FloatClamp, Clamp> _clamps = new Dictionary<FloatClamp, Clamp>();
         internal static void Reset() { _clamps.Clear(); }
         internal static int Tracked { get { int n = 0; foreach (var c in _clamps.Values) if (c.Ours && c.State != null) n++; return n; } }
@@ -37,10 +37,10 @@ namespace WildWasteland.Modules.Guns
             if (!AmmoSettings.DropArmorOverflow.Value) { c.State = null; return true; }
             if (float.IsNaN(armor.Value) || float.IsInfinity(armor.Value) || float.IsNaN(max.Value) || float.IsInfinity(max.Value)) return true;
             float capacity = Math.Max(0f, max.Value);
-            ArmorOverflowTransfer transfer = c.State;
+            OverflowTransfer transfer = c.State;
             if (transfer == null)
             {
-                c.State = new ArmorOverflowTransfer(capacity);
+                c.State = new OverflowTransfer(capacity);
                 return true; // Initial observation/load establishes the native baseline.
             }
             if (transfer.Idle(capacity)) return true;
@@ -50,21 +50,15 @@ namespace WildWasteland.Modules.Guns
             {
                 float returned = armor.Value - retained;
                 armor.Value = retained;
-                if (Core.Log.Verbose) Core.Log.Info("[Guns] Armor capacity reduced: returned " + returned + " armor as " + (returned / ArmorOverflowTransfer.ArmorPerPlate) + " plate(s)");
+                if (Core.Log.Verbose) Core.Log.Info("[Guns] Armor capacity reduced: returned " + returned + " armor as " + (returned / OverflowTransfer.ArmorPerPlate) + " plate(s)");
             }
             return allowClamp;
         }
 
         // (WW) closure outside BeforeClamp (see BackpackOverflow.Transfer)
-        private static bool Transfer(ArmorOverflowTransfer t, float armor, float capacity, UnityEngine.Transform at, out float retained)
+        private static bool Transfer(OverflowTransfer t, float armor, float capacity, UnityEngine.Transform at, out float retained)
         {
             return t.BeforeClamp(armor, capacity, UnityEngine.Time.unscaledTime, plates => AmmoBox.Drop("armorplate", plates, at), out retained);
         }
-    }
-
-    [HarmonyPatch(typeof(FloatClamp), "DoClamp")]
-    internal static class ArmorCapacityPatch
-    {
-        static bool Prefix(FloatClamp __instance) { return ArmorOverflow.BeforeClamp(__instance); }
     }
 }

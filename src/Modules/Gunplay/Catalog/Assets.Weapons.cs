@@ -51,7 +51,7 @@ namespace WildWasteland.Modules.CleanHUD
                 var m = Paren.Match(itemName);
                 if (m.Success) cal = m.Groups[1].Value.Trim().ToUpperInvariant();
             }
-            bool gun = Bindings.Fsm(item, "Reload") != null;
+            bool gun = WildWasteland.Core.FsmUtil.Find(item, "Reload") != null;
             if (cal == null) cal = gun ? "AMMO" : "MELEE";
             w = new WeaponInfo(key ?? "", cal, gun ? "gun" : "melee");
             if (key != null) Weapons[key] = w;

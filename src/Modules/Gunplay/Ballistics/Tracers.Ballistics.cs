@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -47,7 +48,7 @@ namespace WildWasteland.Modules.Guns
                 Core.Log.Info("[Guns] Hitbox " + name + ": body capsule 0.00-" + bodyTop.ToString("0.00") + " m above the feet, head " + headBottom.ToString("0.00")
                     + "-" + headTop.ToString("0.00") + " (r " + head.bounds.extents.x.ToString("0.00") + "), model top " + meshTop.ToString("0.00"));
             }
-            catch (Exception e) { GunsModule.Verbose("Hitbox report failed: " + e.Message); }
+            catch (Exception e) { GunplayLog.Main("Hitbox report failed: " + e.Message); }
         }
 
         private static bool Ignored(Transform t, Transform shooterRoot, GameObject player)
@@ -77,7 +78,7 @@ namespace WildWasteland.Modules.Guns
             float before = Core.Log.Verbose || feedback ? HealthOf(go) : 0f;
             Replay(fsm, (go.layer == 10 || corpse) && gun.ActorHit != null ? gun.ActorHit : gun.GetLayer, falloff);   // a corpse bleeds like the living NPC did
             float headF = creature && col_isHead(go) && !IsPlayerObj(go) ? HeadFactor(go) : 1f;     // [Gunplay] HeadshotMultiplier instead of the head's own x2
-            Replay(fsm, gun.Hit, falloff * headF, GunsModule.VehicleDamage.Value && isPart, (creature || corpse) && (go.layer == 10 || corpse) && gun.ActorHit != null);
+            Replay(fsm, gun.Hit, falloff * headF, GunplaySettings.VehicleDamage.Value && isPart, (creature || corpse) && (go.layer == 10 || corpse) && gun.ActorHit != null);
             float after = Core.Log.Verbose || feedback ? HealthOf(go) : 0f;
             if (feedback)
             {
@@ -115,7 +116,7 @@ namespace WildWasteland.Modules.Guns
                 }
                 _headMul[id] = m;
             }
-            return Mathf.Max(0f, GunsModule.HeadshotMultiplier.Value) / m;
+            return Mathf.Max(0f, GunplaySettings.HeadshotMultiplier.Value) / m;
         }
 
 
@@ -180,7 +181,7 @@ namespace WildWasteland.Modules.Guns
                     var se = a as SendEvent;
                     if (se != null && se.sendEvent != null) { fsm.Event(se.eventTarget, se.sendEvent); continue; }
                 }
-                catch (Exception e) { if (Core.Log.Verbose) GunsModule.Verbose("Tracers: replay " + a.GetType().Name + " failed: " + e.Message); }
+                catch (Exception e) { if (Core.Log.Verbose) GunplayLog.Main("Tracers: replay " + a.GetType().Name + " failed: " + e.Message); }
             }
         }
 
@@ -199,12 +200,12 @@ namespace WildWasteland.Modules.Guns
         {
             switch (k)
             {
-                case Kind.Pistol: return Mathf.Max(1f, GunsModule.PistolRange.Value);
-                case Kind.Smg: return Mathf.Max(1f, GunsModule.SmgRange.Value);
-                case Kind.Sniper: return Mathf.Max(1f, GunsModule.SniperRange.Value);
-                case Kind.Shotgun: return Mathf.Max(1f, GunsModule.ShotgunRange.Value);
-                case Kind.Crossbow: return Mathf.Max(1f, GunsModule.CrossbowRange.Value);
-                default: return Mathf.Max(1f, GunsModule.RifleRange.Value);
+                case Kind.Pistol: return Mathf.Max(1f, GunplaySettings.PistolRange.Value);
+                case Kind.Smg: return Mathf.Max(1f, GunplaySettings.SmgRange.Value);
+                case Kind.Sniper: return Mathf.Max(1f, GunplaySettings.SniperRange.Value);
+                case Kind.Shotgun: return Mathf.Max(1f, GunplaySettings.ShotgunRange.Value);
+                case Kind.Crossbow: return Mathf.Max(1f, GunplaySettings.CrossbowRange.Value);
+                default: return Mathf.Max(1f, GunplaySettings.RifleRange.Value);
             }
         }
 
@@ -292,7 +293,7 @@ namespace WildWasteland.Modules.Guns
                 float falloff = Falloff(ref s, dist) * s.DmgMult;
                 float mult = vhead ? _headMult : 1f;
                 if (s.Bolt) LandBolt(ref s, s.Pos + s.Dir * vt, -s.Dir, vhead && s.Head != null ? s.Head.transform : s.Target.transform, true);
-                if (vhead && Core.Log.Verbose) GunsModule.Verbose("Tracers: headshot on " + s.Target.name + " at " + dist.ToString("0.0") + " m");
+                if (vhead && Core.Log.Verbose) GunplayLog.Main("Tracers: headshot on " + s.Target.name + " at " + dist.ToString("0.0") + " m");
                 HitTarget(ref s, s.Pos + s.Dir * vt, s.Damage * falloff * mult, vhead && s.Head != null ? s.Head : s.Target, dist);
                 s.Pos += s.Dir * vt;
                 s.Travelled = dist;
@@ -447,10 +448,10 @@ namespace WildWasteland.Modules.Guns
             if (part == null) return;
 
             Core.Services.RaiseVehiclePartHit(part.gameObject, s.ShooterRoot ?? s.Player);
-            if (!GunsModule.VehicleDamage.Value) return;
-            float pct = Mathf.Abs(damage) / Mathf.Max(1f, GunsModule.VehicleDamagePer1.Value);   // [Tracers] VehicleDamagePer1 bullet damage = 1 % condition
+            if (!GunplaySettings.VehicleDamage.Value) return;
+            float pct = Mathf.Abs(damage) / Mathf.Max(1f, GunplaySettings.VehicleDamagePer1.Value);   // [Tracers] VehicleDamagePer1 bullet damage = 1 % condition
             bool wheel = IsWheel(col.transform, part);
-            if (wheel) pct *= Mathf.Max(0f, GunsModule.WheelDamageMultiplier.Value);
+            if (wheel) pct *= Mathf.Max(0f, GunplaySettings.WheelDamageMultiplier.Value);
             if (pct <= 0f) return;
             if (s.Gun != null) Bridge.PartHit(part.gameObject, point, pct);
             bool broke = false;
@@ -465,7 +466,7 @@ namespace WildWasteland.Modules.Guns
                 v.Value = Mathf.Max(0f, v.Value - pct);
                 if (before > 0f && v.Value <= 0f) broke = true;
             }
-            if (wheel && broke && GunsModule.WheelPopOff.Value) PopOff(part, s.Dir);
+            if (wheel && broke && GunplaySettings.WheelPopOff.Value) PopOff(part, s.Dir);
         }
 
         // A wheel shot to 0 jumps off the car: the wrench's de_Attach recipe (layer Item + tag vehPartRemoved -> the part's CheckTag FSM
@@ -543,12 +544,12 @@ namespace WildWasteland.Modules.Guns
         private static void PopOff(Transform part, Vector3 dir, string why)
         {
             part.gameObject.layer = 9;
-            try { part.tag = "vehPartRemoved"; } catch (Exception e) { GunsModule.Verbose("Tracers: wheel tag: " + e.Message); }
+            try { part.tag = "vehPartRemoved"; } catch (Exception e) { GunplayLog.Main("Tracers: wheel tag: " + e.Message); }
             Vector3 d = dir; d.y = 0f; d = d.sqrMagnitude > 0.001f ? d.normalized : Vector3.zero;
             _popped.Add(new KeyValuePair<GameObject, Vector3>(part.gameObject, d * 2.5f + Vector3.up * 4f));
             _forceFree.Add(part.gameObject);
             _poppedFrame = Time.frameCount + 2;
-            if (Core.Log.Verbose) GunsModule.Verbose("Tracers: " + part.name + " " + why);
+            if (Core.Log.Verbose) GunplayLog.Main("Tracers: " + part.name + " " + why);
         }
 
         // a wheel / tyre part: the hit collider or any object up to (and including) its part is named like one

@@ -7,7 +7,7 @@ namespace WildWasteland.Modules.Guns
 {
     internal static class EmptyGunSound
     {
-        internal static void Init(GunsModule owner)
+        internal static void Init(IModule owner)
         {
             Core.Patches.Patch(owner, AccessTools.Method(typeof(PlaySound), "DoPlaySound"),
                 prefix: AccessTools.Method(typeof(EmptyGunSound), nameof(Before)));
@@ -20,10 +20,10 @@ namespace WildWasteland.Modules.Guns
             bool empty = fsm.Name == "Attack" && fsm.ActiveStateName == "empty";
             if (!empty && fsm.Name != "AnimSound" && fsm.Name != "Reload") return true;
             var weapon = __instance.Owner;
-            if (weapon == null || weapon.transform.parent != PlayerRig.Parent) return true;
+            if (weapon == null || weapon.transform.parent != PlayerState.WeaponsParent) return true;
             var animation = Services.Animation;
             if (!GameRefs.InGame || animation != null && animation.PlayerThirdPerson) return true;
-            var camera = PlayerRig.Camera;
+            var camera = PlayerState.PlayerCamera;
             var clip = __instance.clip != null ? __instance.clip.Value as AudioClip : null;
             if (camera == null || clip == null || empty && clip.name != "empty_fire") return true;
             // Weapon roots are offset from the camera; first-person handling sounds belong at the listener.

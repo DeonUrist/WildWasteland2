@@ -2,6 +2,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -20,12 +21,12 @@ namespace WildWasteland.Modules.Guns
         private static bool _replaying, _lowering, _holster;
         private const float Duration = .14f;
 
-        internal static void Init(GunsModule owner)
+        internal static void Init(IModule owner)
         {
             Hooks.ProcessEvent.Prefix(owner, BeforeEvent);
             Hooks.ActivateGameObjectEnter.Postfix(owner, AfterActivate);
-            Scheduler.EveryFrame(owner, "WeaponTransition", Tick, Phase.EarlyUpdate);
-            Scheduler.EveryFrame(owner, "WeaponTransitionPose", Pose, Phase.LateUpdateLast);
+            Scheduler.EveryFrame(owner, "Gunplay.WeaponTransition", Tick, Phase.EarlyUpdate);
+            Scheduler.EveryFrame(owner, "Gunplay.WeaponTransitionPose", Pose, Phase.LateUpdateLast);   // refs-ok: Pose is the Presentation-part method of this partial class (REFACTOR-REQUEST B09-5), not the Presentation type Pose
         }
         internal static void Reset()
         {
@@ -49,10 +50,10 @@ namespace WildWasteland.Modules.Guns
         private static bool BeforeEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
             if (!ReferenceEquals(fsm, _switcherFsm) || _switcherFsm == null) return true;
-            if (_switcher == null || _handler == null || !ReferenceEquals(fsm, _switcher.Fsm) || _replaying || !GunsModule.SmoothWeaponSwitch.Value || ev == null) return true;
+            if (_switcher == null || _handler == null || !ReferenceEquals(fsm, _switcher.Fsm) || _replaying || !GunplaySettings.SmoothWeaponSwitch.Value || ev == null) return true;
             if (ev.Name != "weapon 1" && ev.Name != "weapon 2" && ev.Name != "weapon 3" && ev.Name != "back") return true;
             if (!fsm.ActiveStateName.StartsWith("Slot ", System.StringComparison.Ordinal)) return true;
-            if (!GameRefs.InGame || PlayerRig.Parent == null) return true;
+            if (!GameRefs.InGame || PlayerState.WeaponsParent == null) return true;
             var weapon = _handler.FsmVariables.FindFsmString("weaponType");
             if (weapon == null || string.IsNullOrEmpty(weapon.Value) || weapon.Value == "hands") return true;
             _pending = ev; _data = data;
@@ -63,7 +64,7 @@ namespace WildWasteland.Modules.Guns
         private static void AfterActivate(ActivateGameObject action)
         {
             if (!ReferenceEquals(action.Fsm, _handlerFsm) || _handlerFsm == null) return;
-            if (_handler == null || !ReferenceEquals(action.Fsm, _handler.Fsm) || !GunsModule.SmoothWeaponSwitch.Value || !action.activate.Value) return;
+            if (_handler == null || !ReferenceEquals(action.Fsm, _handler.Fsm) || !GunplaySettings.SmoothWeaponSwitch.Value || !action.activate.Value) return;
             if (action.Fsm.ActiveStateName == "hands") return;
             _at = Time.time; _weight = 1f; _lowering = false;
             if (Log.Verbose) Log.Info("[Guns] Weapon transition: raise " + action.Fsm.ActiveStateName);
@@ -74,7 +75,7 @@ namespace WildWasteland.Modules.Guns
             if (_handler == null && Time.unscaledTime >= _nextFind)
             {
                 _nextFind = Time.unscaledTime + 1f;
-                var camera = PlayerRig.Camera;
+                var camera = PlayerState.PlayerCamera;
                 var weapons = camera != null ? camera.Find("HandItemUse/Weapons") : null;
                 if (weapons == null && camera != null) weapons = camera.Find("Weapons");
                 if (weapons != null)
@@ -92,7 +93,7 @@ namespace WildWasteland.Modules.Guns
                 _switcher.SendEvent("Activate"); // Native off 2 also deactivates WeaponInHand and all arm models.
                 if (Log.Verbose) Log.Info("[Guns] World ready: weapons holstered");
             }
-            if (!GunsModule.SmoothWeaponSwitch.Value)
+            if (!GunplaySettings.SmoothWeaponSwitch.Value)
             {
                 if (_pending != null && _handler != null) Replay();
                 _weight = 0f; _lowering = false; return;

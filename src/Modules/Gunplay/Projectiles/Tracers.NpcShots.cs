@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -17,7 +18,7 @@ namespace WildWasteland.Modules.Guns
         {
             try
             {
-                if (!GunsModule.TracersEnabled.Value) return true;
+                if (!GunplaySettings.TracersEnabled.Value) return true;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Damage Ranged") return true;
                 var owner = fsm.GameObject;
@@ -41,13 +42,13 @@ namespace WildWasteland.Modules.Guns
                     jitter *= Bridge.SpreadFactor(Vector3.Distance(owner.transform.position, target.transform.position));
                 Vector3 aim;
                 var cap0 = root != null ? PlayerCapsule(root) : null;
-                if (cap0 != null && GunsModule.AimAtBody) aim = cap0.transform.TransformPoint(cap0.center);
+                if (cap0 != null && GunplaySettings.AimAtBody) aim = cap0.transform.TransformPoint(cap0.center);
                 else aim = (head != null ? head : target).transform.position;
                 Transform muzzle = MuzzleOf(info, owner);
                 Vector3 from = muzzle != null ? muzzle.TransformPoint(info.MuzzleLocal) : fsm.GetOwnerDefaultTarget(__instance.gameObject).transform.position;
-                float speed0 = info.Kind == Kind.Crossbow ? GunsModule.BoltSpeed.Value : GunsModule.BulletSpeed.Value;
+                float speed0 = info.Kind == Kind.Crossbow ? GunplaySettings.BoltSpeed.Value : GunplaySettings.BulletSpeed.Value;
                 // lead a moving target ([NpcAim] LeadTargets): where it will be when the bullet arrives, as well as this NPC can guess
-                if (GunsModule.Lead)
+                if (GunplaySettings.Lead)
                 {
                     Vector3 v = VelocityOf(target, root);
                     v.y *= 0.5f;                                   // a jump is not a direction
@@ -55,9 +56,9 @@ namespace WildWasteland.Modules.Guns
                     {
                         float t = Vector3.Distance(from, aim) / speed0;
                         t = Vector3.Distance(from, aim + v * t) / speed0;   // one refinement: the far point takes longer
-                        t = Mathf.Min(t, Mathf.Max(0f, GunsModule.MaxLeadTime.Value));
-                        float skill = Mathf.Clamp01(GunsModule.LeadAccuracy.Value) * info.LeadSkill;
-                        float err = 1f + UnityEngine.Random.Range(-1f, 1f) * Mathf.Clamp(GunsModule.LeadError.Value, 0f, 100f) / 100f;
+                        t = Mathf.Min(t, Mathf.Max(0f, GunplaySettings.MaxLeadTime.Value));
+                        float skill = Mathf.Clamp01(GunplaySettings.LeadAccuracy.Value) * info.LeadSkill;
+                        float err = 1f + UnityEngine.Random.Range(-1f, 1f) * Mathf.Clamp(GunplaySettings.LeadError.Value, 0f, 100f) / 100f;
                         Vector3 lead = v * (t * skill * err);
                         aim += lead;
                         if (Core.Log.Verbose) Core.Log.Info("[Guns] Lead: " + owner.name + " leads " + lead.magnitude.ToString("0.00") + " m (target " + v.magnitude.ToString("0.0") + " m/s, flight " + t.ToString("0.00") + " s, skill " + skill.ToString("0.00") + ")");
@@ -69,14 +70,14 @@ namespace WildWasteland.Modules.Guns
                 dir.Normalize();
 
                 float damage = info.DamageVar != null ? info.DamageVar.Value : info.DamageLiteral;
-                int pellets = info.Kind == Kind.Shotgun ? Mathf.Clamp(GunsModule.ShotgunPellets.Value, 1, 8) : 1;
-                float spread = info.Kind == Kind.Shotgun ? GunsModule.ShotgunPelletSpread.Value : 0f;
+                int pellets = info.Kind == Kind.Shotgun ? Mathf.Clamp(GunplaySettings.ShotgunPellets.Value, 1, 8) : 1;
+                float spread = info.Kind == Kind.Shotgun ? GunplaySettings.ShotgunPelletSpread.Value : 0f;
                 for (int i = 0; i < pellets; i++)
                 {
                     Vector3 d = dir;
                     if (spread > 0f && pellets > 1)
                     {
-                        Vector2 offset = SpreadOffset(GunsModule.Accuracy(false)) * Mathf.Tan(spread * Mathf.Deg2Rad);
+                        Vector2 offset = SpreadOffset(GunplaySettings.Accuracy(false)) * Mathf.Tan(spread * Mathf.Deg2Rad);
                         d = Quaternion.FromToRotation(Vector3.forward, dir) * new Vector3(offset.x, offset.y, 1f).normalized;
                     }
                     var s = new Shot
@@ -84,7 +85,7 @@ namespace WildWasteland.Modules.Guns
                         Pos = from, Start = from, Dir = d,
                         Speed = speed0,
                         Range = RangeOf(info.Kind),
-                        Damage = damage / pellets * (info.Kind == Kind.Shotgun ? Mathf.Max(0f, GunsModule.NpcShotgunDamage.Value) : 1f),
+                        Damage = damage / pellets * (info.Kind == Kind.Shotgun ? Mathf.Max(0f, GunplaySettings.NpcShotgunDamage.Value) : 1f),
                         Target = target,
                         Head = head,
                         Cap = cap0,
@@ -99,7 +100,7 @@ namespace WildWasteland.Modules.Guns
                         DetectLayers = info.DetectLayers,
                     };
                     LaunchBolt(ref s);
-                    if (_shots.Count >= GunsModule.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); }   // over the cap: hitscan
+                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); }   // over the cap: hitscan
                     else _shots.Add(s);
                 }
 
@@ -178,7 +179,7 @@ namespace WildWasteland.Modules.Guns
                 {
                     if (mf.name != "arrow" || mf.sharedMesh == null) continue;
                     var b = mf.sharedMesh.bounds; info.Muzzle = mf.transform; info.MuzzleLocal = new Vector3(b.center.x, b.center.y, b.max.z);
-                    if (Core.Log.Verbose) GunsModule.Verbose("NPC crossbow shot origin: native arrow tip on " + owner.name);
+                    if (Core.Log.Verbose) GunplayLog.Main("NPC crossbow shot origin: native arrow tip on " + owner.name);
                     break;
                 }
             }
@@ -214,7 +215,7 @@ namespace WildWasteland.Modules.Guns
                 var rs = ray.GetComponent<Micosmo.SensorToolkit.RaySensor>();
                 if (rs != null) { info.ObstructLayers = rs.ObstructedByLayers.value; info.DetectLayers = rs.DetectsOnLayers.value; }
             }
-            if (Core.Log.Verbose) GunsModule.Verbose("Tracers: " + owner.name + " fires " + info.Kind + " (" + info.Weapon.name + "), damage " +
+            if (Core.Log.Verbose) GunplayLog.Main("Tracers: " + owner.name + " fires " + info.Kind + " (" + info.Weapon.name + "), damage " +
                            (info.DamageVar != null ? info.DamageVar.Value : info.DamageLiteral) + ", impact " + (info.Impact != null ? info.Impact.name : "none"));
             return info;
         }

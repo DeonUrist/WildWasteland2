@@ -1,6 +1,7 @@
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -14,10 +15,10 @@ namespace WildWasteland.Modules.Guns
         private static bool _buttonValue, _resetAim;
         private static readonly System.Collections.Generic.Dictionary<Transform, PlayMakerFSM> _weaponSights = new System.Collections.Generic.Dictionary<Transform, PlayMakerFSM>();
 
-        internal static void Init(GunsModule owner)
+        internal static void Init(IModule owner)
         {
             Hooks.GetButtonDo.Prefix(owner, BeforeGetButton);
-            Scheduler.EveryFrame(owner, "Ironsights", Tick, Phase.EarlyUpdate);
+            Scheduler.EveryFrame(owner, "Gunplay.Ironsights", Tick, Phase.EarlyUpdate);
             _projectionOwner = owner; CameraArbiter.AddProjection(owner, "Gunplay.Ironsights", 100, WriteProjection);
         }
         internal static void Shutdown()
@@ -40,7 +41,7 @@ namespace WildWasteland.Modules.Guns
             get
             {
                 if (_ads == null || !_ads.isActiveAndEnabled || _ads.ActiveStateName != "ads") return false;
-                var parent = PlayerRig.Parent;
+                var parent = PlayerState.WeaponsParent;
                 if (parent == null || !parent.gameObject.activeInHierarchy) return false;
                 for (int i = 0; i < parent.childCount; i++)
                 {
@@ -77,8 +78,8 @@ namespace WildWasteland.Modules.Guns
                 _resetAim = false; _ads.SendEvent("Activate");
                 if (Log.Verbose) Log.Info("[Guns] World ready: ironsights off");
             }
-            if (!GameRefs.InPlay || !GunsModule.ToggleIronsights.Value || _ads == null || !_ads.enabled || _ads.ActiveStateName == "reloading") _buttonValue = false;
-            if (!GunsModule.IronsightWheelZoom.Value) { _target = _zoom = 1f; return; }
+            if (!GameRefs.InPlay || !GunplaySettings.ToggleIronsights.Value || _ads == null || !_ads.enabled || _ads.ActiveStateName == "reloading") _buttonValue = false;
+            if (!GunplaySettings.IronsightWheelZoom.Value) { _target = _zoom = 1f; return; }
             if (!GameRefs.InGame || ApocasetterBridge.InputBlocked || !Application.isFocused) return;
             if (!Aiming || ThirdPerson) { _target = _zoom = 1f; return; }
             else
@@ -96,7 +97,7 @@ namespace WildWasteland.Modules.Guns
         private static bool BeforeGetButton(GetButton action)
         {
             if (!ReferenceEquals(action.Fsm, _adsFsm) || _adsFsm == null) return true;
-            if (_ads == null || !ReferenceEquals(action.Fsm, _ads.Fsm) || !GunsModule.ToggleIronsights.Value) return true;
+            if (_ads == null || !ReferenceEquals(action.Fsm, _ads.Fsm) || !GunplaySettings.ToggleIronsights.Value) return true;
             if (action.buttonName.Value != "Aim Down Sights") return true;
             if (ApocasetterBridge.InputBlocked || !GameRefs.InGame || !Application.isFocused)
             { action.storeResult.Value = _buttonValue; return false; }

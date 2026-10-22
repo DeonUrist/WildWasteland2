@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -32,7 +33,7 @@ namespace WildWasteland.Modules.Guns
         {
             try
             {
-                if (!GunsModule.TracersEnabled.Value || !GunsModule.PlayerTracers.Value) return true;
+                if (!GunplaySettings.TracersEnabled.Value || !GunplaySettings.PlayerTracers.Value) return true;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Attack" || __instance.repeatInterval == null || __instance.repeatInterval.Value != 0) return true;
                 bool no;
@@ -59,14 +60,14 @@ namespace WildWasteland.Modules.Guns
                 if (Services.Animation != null && Services.Animation.TryPlayerWeaponMuzzle(out bodyMuzzle))
                 {
                     muzzle = bodyMuzzle;
-                    if (Core.Log.Verbose && _playerMuzzleLogs++ < 3) GunsModule.Verbose("Player shot origin: visible body muzzle " + muzzle);
+                    if (Core.Log.Verbose && _playerMuzzleLogs++ < 3) GunplayLog.Main("Player shot origin: visible body muzzle " + muzzle);
                 }
                 for (int p = 0; p < gun.Pellets; p++)
                 {
                     Vector3 l = local;
                     if (gun.Kind == Kind.Shotgun)
                     {
-                        Vector2 offset = SpreadOffset(GunsModule.Accuracy(true)) * gun.PelletSpread;
+                        Vector2 offset = SpreadOffset(GunplaySettings.Accuracy(true)) * gun.PelletSpread;
                         l = new Vector3(offset.x, offset.y, 1f);
                     }
                     Vector3 dir = __instance.space == Space.Self ? ft.TransformDirection(l) : l;
@@ -79,17 +80,17 @@ namespace WildWasteland.Modules.Guns
                     var s = new Shot
                     {
                         Pos = muzzle, Start = muzzle, Dir = d.normalized,
-                        Speed = gun.Kind == Kind.Crossbow ? GunsModule.BoltSpeed.Value : GunsModule.BulletSpeed.Value,
+                        Speed = gun.Kind == Kind.Crossbow ? GunplaySettings.BoltSpeed.Value : GunplaySettings.BulletSpeed.Value,
                         Range = range, Bolt = gun.Kind == Kind.Crossbow, Shotgun = gun.Kind == Kind.Shotgun, Alive = true, Kind = gun.Kind, DmgMult = 1f,
                         Layers = gun.Layers, Gun = gun, Player = _player,
                         ShooterRoot = ft.root.gameObject,
                     };
                     LaunchBolt(ref s);
-                    if (_shots.Count >= GunsModule.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); }
+                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); }
                     else _shots.Add(s);
                 }
                 if (gun.Kind == Kind.Shotgun && Core.Log.Verbose)
-                    GunsModule.Verbose("Shotgun spread: circular, " + gun.Pellets + " pellets, player accuracy " + GunsModule.Accuracy(true).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%");
+                    GunplayLog.Main("Shotgun spread: circular, " + gun.Pellets + " pellets, player accuracy " + GunplaySettings.Accuracy(true).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%");
                 Bridge.Shot(_player, muzzle, (int)gun.Kind, true);
                 __instance.Finish();         // vanilla: no hit -> FINISHED -> wait -> next shot, same rhythm
                 return false;
@@ -149,7 +150,7 @@ namespace WildWasteland.Modules.Guns
             else if (go.name.StartsWith("redmark_m11", StringComparison.OrdinalIgnoreCase)) gun.DamageMultiplier = 100f / 90f;
             if (gun.Kind == Kind.Crossbow) CacheBoltModel(go.transform);
             if (gun.Kind == Kind.Shotgun && !shotgun) gun.Kind = Kind.Rifle;      // a "rochester" without pellets is not a shotgun
-            if (Core.Log.Verbose) GunsModule.Verbose("Tracers: player gun " + go.name + " = " + gun.Kind + (shotgun ? ", " + gun.Pellets + " pellets" : "") + (gun.Muzzle != null ? "" : ", no muzzle point"));
+            if (Core.Log.Verbose) GunplayLog.Main("Tracers: player gun " + go.name + " = " + gun.Kind + (shotgun ? ", " + gun.Pellets + " pellets" : "") + (gun.Muzzle != null ? "" : ", no muzzle point"));
             return gun;
         }
 

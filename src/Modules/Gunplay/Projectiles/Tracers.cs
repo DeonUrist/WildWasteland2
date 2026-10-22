@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -160,11 +161,11 @@ namespace WildWasteland.Modules.Guns
 
         private static void Snapshot()
         {
-            _npcRadius = Mathf.Max(0f, GunsModule.NpcHitRadius.Value);
-            _fullUntil = Mathf.Clamp(GunsModule.FullDamageUntil.Value, 0f, 99f) / 100f;
-            _headMult = Mathf.Max(0f, GunsModule.HeadshotMultiplier.Value);
-            _bodyR = Mathf.Max(0.03f, GunsModule.PlayerBodyRadius.Value);
-            _headR = Mathf.Max(0.03f, GunsModule.PlayerHeadRadius.Value);
+            _npcRadius = Mathf.Max(0f, GunplaySettings.NpcHitRadius.Value);
+            _fullUntil = Mathf.Clamp(GunplaySettings.FullDamageUntil.Value, 0f, 99f) / 100f;
+            _headMult = Mathf.Max(0f, GunplaySettings.HeadshotMultiplier.Value);
+            _bodyR = Mathf.Max(0.03f, GunplaySettings.PlayerBodyRadius.Value);
+            _headR = Mathf.Max(0.03f, GunplaySettings.PlayerHeadRadius.Value);
         }
 
         public static void Tick()
@@ -172,12 +173,12 @@ namespace WildWasteland.Modules.Guns
             float dt = Time.deltaTime;
             TickBolts();
             Snapshot();
-            if (GunsModule.MeleeOnWheels.Value)                          // (WW) [Guns] MeleeOnWheels
-                try { SwingAtFittedWheels(); } catch (Exception e) { Core.Log.Error("[Guns] Tracers melee (fitted wheels)", e); PlayerRig.Reset(); }
+            if (GunplaySettings.MeleeOnWheels.Value)                          // (WW) [Guns] MeleeOnWheels
+                try { SwingAtFittedWheels(); } catch (Exception e) { Core.Log.Error("[Guns] Tracers melee (fitted wheels)", e); }
             if (_meleeWheels.Count > 0) { try { CheckMeleeWheels(); } catch (Exception e) { Core.Log.Error("[Guns] Tracers melee", e); _meleeWheels.Clear(); } }
             if (dt <= 0f) { if (!_drawnPaused) { Draw(); _drawnPaused = true; } return; }   // paused: the mesh is drawn once and left as it is
             _drawnPaused = false;
-            if (GunsModule.Lead) TrackPlayer(dt);
+            if (GunplaySettings.Lead) TrackPlayer(dt);
             // (WW perf, D2) bullets fly in fixed 1/60 s steps instead of one cast per bullet per frame: a bullet is stepped only once its
             // simulated time is used up, then by whole ticks covering this frame in ONE swept cast (below 60 fps that is one step per frame of
             // the same length as before; above it, ~60 casts a second whatever the fps). The path swept is the same; a hit can land up to
@@ -279,7 +280,7 @@ namespace WildWasteland.Modules.Guns
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 mr.receiveShadows = false;
             }
-            float glow = Mathf.Max(0f, GunsModule.TracerGlow.Value);
+            float glow = Mathf.Max(0f, GunplaySettings.TracerGlow.Value);
             _mat.color = new Color(glow, glow, glow, 1f);
 
             _v.Clear(); _c.Clear(); _t.Clear();
@@ -287,10 +288,10 @@ namespace WildWasteland.Modules.Guns
             if (cam != null && _shots.Count > 0)
             {
                 Vector3 eye = cam.transform.position;
-                Color tc = GunsModule.TracerColor.Value, bc = GunsModule.BoltColor.Value;
-                float tw = GunsModule.TracerWidth.Value, tl = GunsModule.TracerLength.Value;
-                float bw = GunsModule.BoltWidth.Value, bl = GunsModule.BoltLength.Value;
-                bool tracers = GunsModule.TracersDraw.Value, mine = GunsModule.PlayerGunTracers.Value;
+                Color tc = GunplaySettings.TracerColor.Value, bc = GunplaySettings.BoltColor.Value;
+                float tw = GunplaySettings.TracerWidth.Value, tl = GunplaySettings.TracerLength.Value;
+                float bw = GunplaySettings.BoltWidth.Value, bl = GunplaySettings.BoltLength.Value;
+                bool tracers = GunplaySettings.TracersDraw.Value, mine = GunplaySettings.PlayerGunTracers.Value;
                 foreach (var s in _shots)
                 {
                     if (s.Bolt) continue;

@@ -6,6 +6,8 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
+using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -16,7 +18,7 @@ namespace WildWasteland.Modules.Patrols
         private void BuildLance()
         {
             if (_hand == null) return;
-            var prefab = Prefabs.FindAny(Rider.LanceItem);
+            var prefab = LancePrefabs.FindAny(Rider.LanceItem);
             if (prefab == null) { PatrolsModule.Verbose("Rider: no " + Rider.LanceItem + " prefab for the hand prop"); return; }
             var go = UnityEngine.Object.Instantiate(prefab, _hand.position, _hand.rotation);
             foreach (var f in go.GetComponentsInChildren<PlayMakerFSM>(true)) UnityEngine.Object.DestroyImmediate(f);
@@ -38,7 +40,7 @@ namespace WildWasteland.Modules.Patrols
             try
             {
                 if (Lance != null) Lance.gameObject.SetActive(false);
-                var prefab = Prefabs.FindAny(Rider.Projectile);
+                var prefab = LancePrefabs.FindAny(Rider.Projectile);
                 if (prefab == null) { Core.Log.Warn("[Patrols] " + "Rider: projectile prefab not found: " + Rider.Projectile); return; }
                 float speed = PatrolsModule.RiderLanceSpeed.Value;
                 var from = HandPos(); var carVel = CarVel();

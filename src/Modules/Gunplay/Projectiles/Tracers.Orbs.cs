@@ -4,6 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -42,12 +43,12 @@ namespace WildWasteland.Modules.Guns
         private const int OrbBodies = (1 << 6) | (1 << 10);                                         // Player, Actor
         private static readonly RaycastHit[] _orbHits = new RaycastHit[32];
 
-        // CreateObject.OnEnter postfix (via GunsModule.AfterCreateObject)
+        // CreateObject.OnEnter postfix (via GunplayModule.AfterCreateObject)
         internal static void OrbSpawned(CreateObject action, GameObject obj)
         {
             try
             {
-                if (obj == null || !GunsModule.TracersEnabled.Value || !GunsModule.OrbsHitWalls.Value) return;
+                if (obj == null || !GunplaySettings.TracersEnabled.Value || !GunplaySettings.OrbsHitWalls.Value) return;
                 var fsm = action.Fsm;
                 if (fsm == null || fsm.Name != "Damage Ranged") return;
                 var owner = fsm.GameObject;
@@ -71,7 +72,7 @@ namespace WildWasteland.Modules.Guns
                     S = new Shot { Kind = Kind.Pistol, DmgMult = 1f, Alive = true, Orb = true },
                 };
                 _orbs[obj.GetInstanceID()] = o;
-                if (Core.Log.Verbose) GunsModule.Verbose("Orbs: " + owner.name + " fires " + obj.name + " (r " + o.Radius.ToString("0.00") + ")");
+                if (Core.Log.Verbose) GunplayLog.Main("Orbs: " + owner.name + " fires " + obj.name + " (r " + o.Radius.ToString("0.00") + ")");
             }
             catch (Exception e) { Core.Log.Error("[Guns] Orbs (spawn)", e); }
         }
@@ -89,7 +90,7 @@ namespace WildWasteland.Modules.Guns
                 Orb o;
                 int id = go.GetInstanceID();
                 if (!_orbs.TryGetValue(id, out o)) return true;
-                if (o.Body == null || !GunsModule.OrbsHitWalls.Value) { _orbs.Remove(id); return true; }
+                if (o.Body == null || !GunplaySettings.OrbsHitWalls.Value) { _orbs.Remove(id); return true; }
 
                 // the vanilla movement (TranslatePosition.DoMovePosition)
                 Vector3 v = !__instance.vector.IsNone ? __instance.vector.Value

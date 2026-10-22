@@ -1,41 +1,21 @@
-using WildWasteland.Core;
-
 namespace WildWasteland.Modules.NPC
 {
     /// <summary>
-    /// NpcModule part owned by Gunplay (Wave A split): the vanilla shot / damage observers (VanillaEvents) and the NPC gun cache sweep
-    /// (WeaponRanges). Partial methods are called from the NPC entry where the moved lines were.
+    /// Former Gunplay part of the NPC entry (Wave A split). B09 moved the VanillaEvents hooks, the WeaponRanges.Sweep job and the cache
+    /// resets into GunplayModule; the partial methods stay empty until Wave C deletes the NPC entry.
     /// </summary>
     public sealed partial class NpcModule
     {
-        /// <summary>Registers the 30 s WeaponRanges.Sweep job (after Aim.Sweep, as before).</summary>
-        partial void InitGunplayJobs()
-        {
-            Scheduler.Interval(this, "WeaponRanges.Sweep", 30f, WeaponRanges.Sweep);
-        }
+        /// <summary>Empty: the "Gunplay.WeaponRanges.Sweep" job is registered by GunplayModule.</summary>
+        partial void InitGunplayJobs() { }
 
-        /// <summary>Shutdown step "VanillaEvents" (restores the NPC burst ray lengths).</summary>
-        static partial void ShutdownGunplay()
-        {
-            Step("VanillaEvents", VanillaEvents.Shutdown);
-        }
+        /// <summary>Empty: VanillaEvents.Shutdown runs in GunplayModule.Shutdown.</summary>
+        static partial void ShutdownGunplay() { }
 
-        /// <summary>ResetAll: the WeaponRanges and VanillaEvents caches (after Aim, as before).</summary>
-        static partial void ResetGunplay()
-        {
-            WeaponRanges.OnSceneLoaded(); VanillaEvents.OnSceneLoaded();
-        }
+        /// <summary>Empty: WeaponRanges/VanillaEvents caches are reset by GunplayModule.</summary>
+        static partial void ResetGunplay() { }
 
-        /// <summary>
-        /// Hooks: SetFsmFloat.OnEnter postfix (vanilla hits -> Senses.Hurt; subscribed before DogBite's as before), Raycast.OnEnter prefix
-        /// (the player's vanilla shot), SensorGetDetectionRayHit.OnEnter prefix + finalizer (NPC burst ray length, restored afterwards).
-        /// </summary>
-        partial void InstallHooksGunplay()
-        {
-            Hooks.SetFsmFloatEnter.Postfix(this, VanillaEvents.AfterDamage);
-            Hooks.RaycastEnter.Prefix(this, VanillaEvents.BeforePlayerShot);
-            Hooks.SensorRayHitEnter.Prefix(this, VanillaEvents.BeforeNpcShot);
-            Hooks.SensorRayHitEnter.Finalizer(this, VanillaEvents.AfterNpcShot);
-        }
+        /// <summary>Empty: the VanillaEvents hooks are subscribed by GunplayModule.Init.</summary>
+        partial void InstallHooksGunplay() { }
     }
 }

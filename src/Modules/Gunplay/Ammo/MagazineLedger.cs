@@ -5,14 +5,6 @@ using System.Linq;
 
 namespace WildWasteland.Modules.Guns
 {
-    internal struct Magazine
-    {
-        internal int Rounds;
-        internal bool Hammer;
-        internal Magazine(int rounds, bool hammer)
-        { Rounds = Math.Max(0, rounds); Hammer = Rounds > 0 && hammer; }
-    }
-
     /// One magazine per save-stable item name. A vanilla type pool can be inherited only once.
     internal sealed class MagazineLedger
     {

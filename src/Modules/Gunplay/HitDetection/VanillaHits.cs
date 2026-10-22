@@ -4,6 +4,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.HUD
 {
@@ -29,7 +30,7 @@ namespace WildWasteland.Modules.HUD
 
         public static bool BeforeSetFsmFloat(SetFsmFloat __instance)
         {
-            if (!Observing || (HitFeedbackService.External && Services.Guns != null)) return true;
+            if (!Observing || GunplaySettings.ProjectilesEnabled) return true;     // projectiles report their own hits (ex HitFeedbackService.External && Guns running)
             if (__instance.fsmName == null || __instance.fsmName.Value != "Bodypart" ||
                 __instance.variableName == null || __instance.variableName.Value != "Damage") return true;
             var fsm = __instance.Fsm;
@@ -121,6 +122,7 @@ namespace WildWasteland.Modules.HUD
         public static void Flush()
         {
             if (Pending.Count == 0) return;
+            var hud = Services.Hud;
             foreach (var hit in Pending)
             {
                 if (hit.Target == null) continue;
@@ -128,8 +130,9 @@ namespace WildWasteland.Modules.HUD
                 // The game's FSM may process its event on the next tick. Preserve
                 // the gun's nominal damage rather than silently losing feedback.
                 if (damage <= 0f) damage = hit.Nominal;
-                if (hit.Part) Hud.PartHit(hit.Target, hit.Point, damage);
-                else Hud.PlayerHit(hit.Target, hit.Point, damage, hit.Head);
+                if (hud == null) continue;
+                if (hit.Part) hud.PartHit(hit.Target, hit.Point, damage);
+                else hud.PlayerHit(hit.Target, hit.Point, damage, hit.Head);
             }
             Pending.Clear();
         }

@@ -6,6 +6,8 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
+using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -48,7 +50,7 @@ namespace WildWasteland.Modules.Patrols
             _explosionLooked = true;
             try
             {
-                var lance = Prefabs.FindAny(Projectile);
+                var lance = LancePrefabs.FindAny(Projectile);
                 var fsm = lance != null ? lance.GetComponents<PlayMakerFSM>().FirstOrDefault(f => f.FsmName == "Explosion") : null;
                 if (fsm != null && fsm.Fsm != null)
                     foreach (var st in fsm.Fsm.States)
@@ -69,7 +71,7 @@ namespace WildWasteland.Modules.Patrols
         {
             var ex = ExplosionPrefab();
             if (ex != null) { var go = UnityEngine.Object.Instantiate(ex, at, Quaternion.identity); go.SetActive(true); return; }
-            var prefab = Prefabs.FindAny(Projectile);
+            var prefab = LancePrefabs.FindAny(Projectile);
             if (prefab == null) return;
             var bomb = UnityEngine.Object.Instantiate(prefab, at, Quaternion.identity);
             bomb.SetActive(true);
@@ -113,10 +115,10 @@ namespace WildWasteland.Modules.Patrols
             try
             {
                 float radius = PatrolsModule.RiderBlastRadius.Value;
-                var player = PlayerRef.Player;
+                var player = PlayerState.Transform;
                 if (player == null) return;
                 float d = Vector3.Distance(player.position + Vector3.up * 0.9f, at);
-                var car = PlayerRef.PlayerCar;
+                var car = PlayerState.Car;
                 var crb = car != null ? car.GetComponent<Rigidbody>() : null;
                 if (crb != null) d = Mathf.Min(d, Mathf.Max(0f, Vector3.Distance(crb.worldCenterOfMass, at) - 2f));   // the car's hull is ~2 m around its centre
                 if (d <= radius) Ram.HurtPlayer(PatrolsModule.RiderBlastDamage.Value * Mathf.Lerp(1f, 0.33f, d / radius), "Rider " + who + " blast");

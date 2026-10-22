@@ -219,6 +219,19 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.LogOnce("HireShotSound", e); }
         }
 
+        static readonly Dictionary<int, PlayMakerFSM[]> fsmSets = new Dictionary<int, PlayMakerFSM[]>();
+        static readonly Dictionary<int, GameObject> fsmOwners = new Dictionary<int, GameObject>();
+
+        /// <summary>The follower's PlayMaker FSMs, cached per object (same rule as the former QuestWorld.Fsms: refreshed when the id is reused).</summary>
+        static PlayMakerFSM[] FsmsOf(GameObject gameObject)
+        {
+            if (gameObject == null) return new PlayMakerFSM[0];
+            int id = gameObject.GetInstanceID(); PlayMakerFSM[] result; GameObject owner;
+            if (fsmOwners.TryGetValue(id, out owner) && owner == gameObject && fsmSets.TryGetValue(id, out result)) return result;
+            if (fsmSets.Count > 64) { fsmSets.Clear(); fsmOwners.Clear(); }
+            result = gameObject.GetComponents<PlayMakerFSM>(); fsmSets[id] = result; fsmOwners[id] = gameObject; return result;
+        }
+
         static Transform rackCache;
 
         // the player's own guns: Camera/WeaponsArm/Parent. Found from the camera first (the player's root can be the car or a big
@@ -302,7 +315,7 @@ namespace WildWasteland.Modules.Quests
                     Plugin.Info("Hire: " + displayName + " reloads (" + reloadSecs.ToString("0.#") + " s).");
                 }
             }
-            QuestFollower.Shot();
+            QuestFollower.Shot();   // refs-ok: REFACTOR-REQUEST B09-4 (follower AI shot pacing lives in NPCAI QuestFollower)
         }
 
         // while reloading, Apocapatrol's gunner is told it cannot fire, so his own Attack FSM stays off and the arms come down
@@ -318,7 +331,7 @@ namespace WildWasteland.Modules.Quests
             if (!ClearShot()) return;                            // a wall, hull or rock between them: no backup shot through it
             if (realFire.Value)
             {
-                foreach (PlayMakerFSM f in QuestWorld.Fsms(npc))
+                foreach (PlayMakerFSM f in FsmsOf(npc))
                 {
                     if (f == null || !f.enabled) continue;
                     if ((f.FsmName == "Attack" && f.ActiveStateName == "attack_ranged") || (f.FsmName == "Damage Ranged" && f.ActiveStateName == "attack")) realFireAt = now;
@@ -351,13 +364,13 @@ namespace WildWasteland.Modules.Quests
             try
             {
                 string st = null;
-                foreach (PlayMakerFSM f in QuestWorld.Fsms(npc))
+                foreach (PlayMakerFSM f in FsmsOf(npc))
                     if (f != null && f.enabled && f.FsmName == "Attack") { st = f.ActiveStateName; break; }
                 if (st == "attack_ranged" && lastAtkState != "attack_ranged") realFireAt = Time.time;
                 if (RealShotFired()) { realFireAt = Time.time; PlayShotAnim(); CountShot(); }
                 lastAtkState = st;
                 if (flashOff > 0f && Time.time > flashOff) { flashOff = 0f; if (flashObjs != null) foreach (GameObject g in flashObjs) if (g != null) g.SetActive(false); }
-                if (animBack > 0f && Time.time > animBack && npcAnim != null) { animBack = 0f; QuestFollower.Play(npcAnim, "idle", 0, 0f); }
+                if (animBack > 0f && Time.time > animBack && npcAnim != null) { animBack = 0f; QuestFollower.Play(npcAnim, "idle", 0, 0f); }   // refs-ok: REFACTOR-REQUEST B09-4
             }
             catch (Exception e) { Plugin.LogOnce("HireWatchShots", e); }
         }

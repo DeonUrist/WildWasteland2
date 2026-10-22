@@ -5,6 +5,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -24,7 +25,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly List<PlayMakerFSM> _buf = new List<PlayMakerFSM>(64);
 
         internal static bool Suspended { get { return _loading || _saving || _faulted; } }
-        private static bool On { get { return GunsModule.PerGunMagazines.Value; } }
+        private static bool On { get { return GunplaySettings.PerGunMagazines.Value; } }
 
         // ---- F7 live info ----
         internal static int TrackedItems { get { return _ledger.Count; } }
@@ -165,7 +166,7 @@ namespace WildWasteland.Modules.Guns
             if (type == null) return;
             // (WW) the drawn model is an active Reload FSM under the player's WeaponsArm: search that subtree instead of the whole
             // scene every second (whole-scene scan only while the rig is not found)
-            var arm = PlayerRig.WeaponsArm;
+            var arm = PlayerState.WeaponsArm;
             if (arm != null) arm.GetComponentsInChildren(false, _buf);
             else _buf.AddRange(UnityEngine.Object.FindObjectsOfType<PlayMakerFSM>());
             try
@@ -238,34 +239,4 @@ namespace WildWasteland.Modules.Guns
             Core.Log.Error("[Guns] Per-gun ammo suspended to preserve save data", error);
         }
     }
-
-    /// (WW) Handler of Core.Hooks.ActivateGameObjectEnter (prefix, never skips).
-    internal static class MagazineDrawPatch
-    {
-        internal static bool Prefix(ActivateGameObject __instance)
-        {
-            var fsm = __instance.Fsm;
-            if (fsm == null) return true;
-            string n = fsm.Name;
-            if (n == null || n.Length != 12 || n != "WeaponInHand" || !__instance.activate.Value) return true;
-            try { PerGunAmmo.Draw(fsm, fsm.GetOwnerDefaultTarget(__instance.gameObject)); }
-            catch (Exception e) { PerGunAmmo.Fail(e); }
-            return true;
-        }
-    }
-
-    /// (WW) Handlers of Core.Hooks.EnterState (prefix + postfix, never skip).
-    internal static class MagazineStatePatch
-    {
-        internal static bool Prefix(Fsm fsm, FsmState state)
-        {
-            if (state != null && fsm != null) try { PerGunAmmo.BeforeState(fsm, state); } catch (Exception e) { PerGunAmmo.Fail(e); }
-            return true;
-        }
-        internal static void Postfix(Fsm fsm, FsmState state)
-        {
-            if (state != null && fsm != null) try { PerGunAmmo.AfterState(fsm, state); } catch (Exception e) { PerGunAmmo.Fail(e); }
-        }
-    }
-
 }

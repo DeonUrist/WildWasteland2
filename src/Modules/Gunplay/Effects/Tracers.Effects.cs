@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -31,12 +32,12 @@ namespace WildWasteland.Modules.Guns
                 else if (_metalImpact == null && go.name == "MetalImpact" && go.transform.parent == null) _metalImpact = go;
                 if (_rangedHit != null && _metalImpact != null) break;
             }
-            if (Core.Log.Verbose) GunsModule.Verbose("Tracers: impact effects " + (_rangedHit != null ? "RangedHit_Effect" : "none") + (_metalImpact != null ? " + MetalImpact" : ""));
+            if (Core.Log.Verbose) GunplayLog.Main("Tracers: impact effects " + (_rangedHit != null ? "RangedHit_Effect" : "none") + (_metalImpact != null ? " + MetalImpact" : ""));
         }
 
         private static void WorldImpact(Collider col, Vector3 point, Vector3 normal, Vector3 dir)
         {
-            if (!GunsModule.ImpactEffects.Value) return;
+            if (!GunplaySettings.ImpactEffects.Value) return;
             FindEffects();
             if (_rangedHit != null)
             {
@@ -51,12 +52,12 @@ namespace WildWasteland.Modules.Guns
 
         private static void MetalSparks(Collider col, Vector3 point, Vector3 normal)
         {
-            if (!GunsModule.MetalSparks.Value) return;
+            if (!GunplaySettings.MetalSparks.Value) return;
             FindEffects();
             if (_metalImpact == null) return;
             if (!IsCarMetal(col.transform)) return;
             var fx = UnityEngine.Object.Instantiate(_metalImpact, point + normal * 0.01f, Quaternion.LookRotation(normal));
-            float k = Mathf.Clamp(GunsModule.MetalSparksScale.Value, 0.05f, 4f);
+            float k = Mathf.Clamp(GunplaySettings.MetalSparksScale.Value, 0.05f, 4f);
             if (Mathf.Abs(k - 1f) > 0.001f)
             {
                 // the asset-store prefab is sized for a demo scene: scale the whole effect (sizes, speeds, the decal) through the hierarchy

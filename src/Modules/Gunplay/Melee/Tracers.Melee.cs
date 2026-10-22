@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -37,7 +38,7 @@ namespace WildWasteland.Modules.Guns
         {
             try
             {
-                if (!GunsModule.TracersEnabled.Value) return;
+                if (!GunplaySettings.TracersEnabled.Value) return;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Attack" || __instance.State == null || __instance.State.Name != "getLayer") return;
                 if (__instance.storeResult == null || __instance.storeResult.IsNone || __instance.storeResult.Value == 10) return;
@@ -52,7 +53,7 @@ namespace WildWasteland.Modules.Guns
 
         public static void AfterSetAudioClip(SetAudioClip __instance)
         {
-            if (!GunsModule.TracersEnabled.Value) return;
+            if (!GunplaySettings.TracersEnabled.Value) return;
             try
             {
                 var fsm = __instance.Fsm;
@@ -73,7 +74,7 @@ namespace WildWasteland.Modules.Guns
 
         public static bool BeforeMeleeEffect(CreateObject __instance)
         {
-            if (!GunsModule.TracersEnabled.Value || !GunsModule.MetalSparks.Value) return true;
+            if (!GunplaySettings.TracersEnabled.Value || !GunplaySettings.MetalSparks.Value) return true;
             var fsm = __instance.Fsm;
             if (fsm == null || fsm.Name.Length != 9 || fsm.Name != "HitEffect" || !IsPlayerMelee(fsm.GameObject)) return true;
             var attack = FsmUtil.Find(fsm.GameObject, "Attack");
@@ -92,7 +93,7 @@ namespace WildWasteland.Modules.Guns
 
         private static bool IsBlade(string weapon)
         {
-            string list = GunsModule.StabWeapons.Value ?? "";
+            string list = GunplaySettings.StabWeapons.Value ?? "";
             foreach (var part in list.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 string k = part.Trim();
@@ -106,9 +107,9 @@ namespace WildWasteland.Modules.Guns
         {
             if (_stab != null || _stabTried) return _stab;
             _stabTried = true;
-            string rel = GunsModule.StabSound.Value ?? "";
+            string rel = GunplaySettings.StabSound.Value ?? "";
             if (rel.Length == 0) return null;
-            string path = System.IO.Path.IsPathRooted(rel) ? rel : System.IO.Path.Combine(GunsModule.AssetDir ?? "", rel);
+            string path = System.IO.Path.IsPathRooted(rel) ? rel : System.IO.Path.Combine(GunplayModule.AssetDir ?? "", rel);
             try
             {
                 if (!System.IO.File.Exists(path)) { Core.Log.Warn("[Guns] Tracers: no stab sound at " + path + " - blades get the game's knife sound"); return null; }
@@ -119,7 +120,7 @@ namespace WildWasteland.Modules.Guns
                 _stab = AudioClip.Create("knifestab", Math.Max(1, smp.Length / ch), ch, rate, false);
                 _stab.SetData(smp, 0);
                 _stab.hideFlags = HideFlags.DontUnloadUnusedAsset;
-                GunsModule.Verbose("Tracers: stab sound loaded (" + System.IO.Path.GetFileName(path) + ", " + (smp.Length / ch / (float)rate).ToString("0.00") + " s)");
+                GunplayLog.Main("Tracers: stab sound loaded (" + System.IO.Path.GetFileName(path) + ", " + (smp.Length / ch / (float)rate).ToString("0.00") + " s)");
             }
             catch (Exception e) { Core.Log.Warn("[Guns] Tracers: stab sound " + path + " not loaded: " + e.Message); _stab = null; }
             return _stab;
@@ -135,7 +136,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly Dictionary<int, bool> _isMelee = new Dictionary<int, bool>();
         public static void AfterSetFsmFloat(SetFsmFloat __instance)
         {
-            if (!GunsModule.MeleeOnWheels.Value) return;                 // (WW) [Guns] MeleeOnWheels
+            if (!GunplaySettings.MeleeOnWheels.Value) return;                 // (WW) [Guns] MeleeOnWheels
             try
             {
                 var fsm = __instance.Fsm;
@@ -149,7 +150,7 @@ namespace WildWasteland.Modules.Guns
                 if (target == null) return;
                 var part = OwningPart(target.transform);
                 if (part == null || !IsWheel(target.transform, part)) return;
-                float mult = Mathf.Max(0f, GunsModule.WheelDamageMultiplier.Value);
+                float mult = Mathf.Max(0f, GunplaySettings.WheelDamageMultiplier.Value);
                 float before = PartCondition(part);
                 foreach (var f in target.GetComponents<PlayMakerFSM>())
                 {
@@ -163,7 +164,7 @@ namespace WildWasteland.Modules.Guns
                 }
                 var mainCam = GameRefs.MainCamera;
                 Vector3 dir = mainCam != null ? mainCam.transform.forward : Vector3.forward;
-                if (GunsModule.WheelPopOff.Value && before > 0f) _meleeWheels.Add(new MeleeWheel { Part = part, Before = before, Dir = dir, Frame = Time.frameCount });
+                if (GunplaySettings.WheelPopOff.Value && before > 0f) _meleeWheels.Add(new MeleeWheel { Part = part, Before = before, Dir = dir, Frame = Time.frameCount });
             }
             catch (Exception e) { Core.Log.Error("[Guns] Tracers melee", e); }
         }
@@ -202,10 +203,10 @@ namespace WildWasteland.Modules.Guns
 
         private static void SwingAtFittedWheels()
         {
-            // (WW) the rig comes from PlayerRig (Core.GameRefs.PlayerCameraHolder, 2 s retry while missing)
-            var _wParent = PlayerRig.Parent;
+            // (WW) the rig comes from Core PlayerState (retried by Core while missing)
+            var _wParent = PlayerState.WeaponsParent;
             if (_wParent == null) return;
-            var _wCam = PlayerRig.Camera;
+            var _wCam = PlayerState.PlayerCamera;
             // a swing: the Attack FSM in "fire", or (1.5.4) one that just left "on" for "hit" / "wait" - when the game's own cast meets
             // something at once (the hub around a fitted tyre), on -> fire -> hit -> wait runs within ONE frame and "fire" is never seen here
             PlayMakerFSM active = null;
@@ -252,7 +253,7 @@ namespace WildWasteland.Modules.Guns
             if (wheel == null) return;
             _wDone = true;
             Core.Services.RaiseVehiclePartHit(wheel.gameObject, Core.GameRefs.Player);
-            float mult = Mathf.Max(0f, GunsModule.WheelDamageMultiplier.Value);
+            float mult = Mathf.Max(0f, GunplaySettings.WheelDamageMultiplier.Value);
             float before = PartCondition(wheel);
             foreach (var f in wheel.GetComponents<PlayMakerFSM>())
             {
@@ -265,7 +266,7 @@ namespace WildWasteland.Modules.Guns
                 if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + active.gameObject.name + " (melee, fitted wheel) -> " + wheel.name + ", condition " + before.ToString("0.0") + " " + v.Value.ToString("0.0") + " (x" + mult.ToString("0.#") + ")");
                 break;
             }
-            if (GunsModule.WheelPopOff.Value && before > 0f) _meleeWheels.Add(new MeleeWheel { Part = wheel, Before = before, Dir = _wCam.forward, Frame = Time.frameCount });
+            if (GunplaySettings.WheelPopOff.Value && before > 0f) _meleeWheels.Add(new MeleeWheel { Part = wheel, Before = before, Dir = _wCam.forward, Frame = Time.frameCount });
         }
 
         // (1.5.3) The wheel a collider belongs to: the wheel item itself (tag vehPart on a hinge_wheel*), or anything else under a wheel

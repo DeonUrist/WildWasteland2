@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -101,7 +102,7 @@ namespace WildWasteland.Modules.Guns
                 if (bone == null) { Core.Log.Warn("[Guns] Crossbow bolt: corpse has no matching bone " + b.Bone); continue; }
                 b.Visual.SetParent(bone, false); b.Visual.gameObject.layer = bone.gameObject.layer;
                 b.Owner = made.transform; _landedBolts[i] = b;
-                if (Core.Log.Verbose) GunsModule.Verbose("Crossbow bolt: transferred to corpse bone " + b.Bone + " at the same local position and angle");
+                if (Core.Log.Verbose) GunplayLog.Main("Crossbow bolt: transferred to corpse bone " + b.Bone + " at the same local position and angle");
             }
         }
 

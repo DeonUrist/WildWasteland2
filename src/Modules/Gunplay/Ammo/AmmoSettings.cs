@@ -2,13 +2,14 @@ using System;
 using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
     /// <summary>
-    /// Ammo settings (ex Gunplay.Ammo.AmmoSettings). The entries are bound by GunsModule.BindConfig in F6 order (no migration from
+    /// Ammo settings (ex Gunplay.Ammo.AmmoSettings). The entries are bound by GunplaySettings.Bind in F6 order (no migration from
     /// the standalone Apocaunloader cfg: D12 fresh start). The Apocaunloader takeover (runtime patch + UnpatchSelf) is gone:
-    /// GunsModule.ConflictsWith keeps the whole module off while the standalone Apocaunloader is installed (AGENTS.md 5.8).
+    /// GunplayModule.ConflictsWith keeps the whole module off while the standalone Apocaunloader is installed (AGENTS.md 5.8).
     /// </summary>
     internal static class AmmoSettings
     {
@@ -16,7 +17,7 @@ namespace WildWasteland.Modules.Guns
         internal static ConfigEntry<float> HoldSeconds, PhaseTimeout;
         internal static ConfigEntry<Key> FallbackKey;
         internal static int TapFrame = -100;
-        internal static void V(string message) { GunsModule.Verbose(message); }
+        internal static void V(string message) { GunplayLog.Main(message); }
 
         internal static bool ReloadHeld()
         {

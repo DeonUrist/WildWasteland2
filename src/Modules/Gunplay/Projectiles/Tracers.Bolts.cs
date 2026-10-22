@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -30,7 +32,7 @@ namespace WildWasteland.Modules.Guns
         private static void LaunchBolt(ref Shot s)
         {
             if (!s.Bolt) return;
-            if (_boltMesh == null) { var arm = PlayerRig.WeaponsArm; if (arm != null) CacheBoltModel(arm); }
+            if (_boltMesh == null) { var arm = PlayerState.WeaponsArm; if (arm != null) CacheBoltModel(arm); }
             if (_boltMesh == null) return;
             var go = new GameObject("WildWasteland.Guns.Bolt") { hideFlags = HideFlags.DontSave, layer = 9 };
             go.AddComponent<MeshFilter>().sharedMesh = _boltMesh;
@@ -73,7 +75,7 @@ namespace WildWasteland.Modules.Guns
             }
             _landedBolts.Add(new LandedBolt { Visual = bolt, Owner = owner, Bone = owner != null ? BoltBonePath(anchor, owner) : null, Until = Time.time + 15f });
             s.Visual = null;
-            if (Core.Log.Verbose) GunsModule.Verbose("Crossbow bolt: " + (soft ? "embedded halfway in " : "ricochet from ") + (target != null ? target.name : "world") + " (15 s)");
+            if (Core.Log.Verbose) GunplayLog.Main("Crossbow bolt: " + (soft ? "embedded halfway in " : "ricochet from ") + (target != null ? target.name : "world") + " (15 s)");
         }
 
         private static void TickBolts()
