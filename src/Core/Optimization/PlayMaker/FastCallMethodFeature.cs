@@ -131,7 +131,7 @@ namespace WildWasteland.Core.Optimization
                     }
                     yield return ci;
                 }
-                if (replaced != 2) WildWasteland.Core.Log.Warn("[Performance] FS3: replaced " + replaced + " MethodBase.Invoke calls in CallMethod.DoMethodCall (expected 2)");
+                if (replaced != 2) WildWasteland.Core.Log.Warn(OptimizationRuntime.Instance, "FS3: replaced " + replaced + " MethodBase.Invoke calls in CallMethod.DoMethodCall (expected 2)");
             }
         }
     }

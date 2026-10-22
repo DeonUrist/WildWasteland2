@@ -66,7 +66,7 @@ namespace WildWasteland.Core.Optimization
             // instances that inherited a group from an edited asset
             var all = Resources.FindObjectsOfTypeAll<LODGroup>();
             for (int i = 0; i < all.Length; i++) if (all[i] != null && all[i].gameObject.scene.IsValid() && Injected(all[i])) UnityEngine.Object.Destroy(all[i]);
-            for (int i = 0; i < _assetGroups.Count; i++) if (_assetGroups[i] != null) { try { UnityEngine.Object.DestroyImmediate(_assetGroups[i], true); } catch (Exception e) { Log.Warn("[Performance] RC2 asset restore: " + e.Message); } }
+            for (int i = 0; i < _assetGroups.Count; i++) if (_assetGroups[i] != null) { try { UnityEngine.Object.DestroyImmediate(_assetGroups[i], true); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "RC2 asset restore: " + e.Message); } }
             _assetGroups.Clear(); _instGroups.Clear(); _done.Clear();
         }
 
@@ -135,7 +135,7 @@ namespace WildWasteland.Core.Optimization
             float h = (worldSize < 1f ? H1 : worldSize < 5f ? H2 : H3) * _usedScale;
             LODGroup g;
             try { g = go.AddComponent<LODGroup>(); }
-            catch (Exception e) { Failed++; Log.Warn("[Performance] RC2 AddComponent: " + e.Message); _keep.Clear(); return; }
+            catch (Exception e) { Failed++; Log.Warn(OptimizationRuntime.Instance, "RC2 AddComponent: " + e.Message); _keep.Clear(); return; }
             if (g == null) { Failed++; _keep.Clear(); return; }
             g.fadeMode = LODFadeMode.None;
             g.animateCrossFading = false;

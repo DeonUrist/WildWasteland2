@@ -48,12 +48,10 @@ namespace WildWasteland.Core.Optimization
         {
             if (_users++ == 0)
             {
-                if (_job == null || !IsAlive(_job)) _job = Scheduler.EveryFrame(f.Module, "Core.Optimization.PollSleep", Tick, Phase.EarlyUpdate);
+                if (_job == null || _job.Removed) _job = Scheduler.EveryFrame(f.Module, "Core.Optimization.PollSleep", Tick, Phase.EarlyUpdate);
                 _job.Enabled = true;
             }
         }
-
-        static bool IsAlive(Job j) { foreach (var x in Scheduler.AllJobs()) if (x == j) return true; return false; }
 
         /// <summary>Releases everything <paramref name="owner"/> registered (wakes its sleepers).</summary>
         internal static void Release(Feature owner)
@@ -70,7 +68,16 @@ namespace WildWasteland.Core.Optimization
 
         /// <summary>Called from SubscribeHooks of each user feature (Core removes the subscriptions when the module stops). Several
         /// subscriptions of the same handler are harmless: the first call wakes, later ones find nothing asleep.</summary>
-        internal static void Hook(OptimizationRuntime m) { Hooks.EnterState.Postfix(m, AfterEnterState); }
+        static bool _subscribed;
+        internal static void Hook(OptimizationRuntime m)
+        {
+            if (_subscribed) return;
+            _subscribed = true;
+            Hooks.EnterState.Postfix(m, AfterEnterState);
+        }
+
+        /// <summary>Forgets the shared handler registration after Core removes the runtime's hooks.</summary>
+        internal static void Unsubscribed() { _subscribed = false; }
 
         internal static void Register(Feature owner, PlayMakerFSM comp)
         {
@@ -125,7 +132,7 @@ namespace WildWasteland.Core.Optimization
             {
                 var s = _all[i];
                 try { Step(s); }
-                catch (Exception e) { Wake(s); s.Failed = true; Log.Error("[Performance] poll sleep " + s.Fsm.Name, e); }
+                catch (Exception e) { Wake(s); s.Failed = true; Log.Error(OptimizationRuntime.Instance, "poll sleep " + s.Fsm.Name, e); }
             }
         }
 

@@ -46,8 +46,8 @@ namespace WildWasteland.Core.Optimization
         {
             if (_logged || _batchState < 2) return;
             _logged = true;
-            if (_batchState == 2) WildWasteland.Core.Log.Always("[Performance] FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
-            else WildWasteland.Core.Log.Warn("[Performance] FS4: batch compile failed, reflection stays (" + _batchError + ")");
+            if (_batchState == 2) WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
+            else WildWasteland.Core.Log.Warn(OptimizationRuntime.Instance, "FS4: batch compile failed, reflection stays (" + _batchError + ")");
         }
         public override void DrawStats(ToolLayout l)
         {

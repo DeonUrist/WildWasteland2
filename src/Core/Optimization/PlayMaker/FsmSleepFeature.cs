@@ -84,6 +84,25 @@ namespace WildWasteland.Core.Optimization
         public override void SubscribeHooks()
         {
             Hooks.ProcessEvent.Prefix(Module, BeforeProcessEvent);
+            Hooks.FsmInnerEnable.Prefix(Module, BeforeEnable);
+            Hooks.FsmPhysicsCallback.Prefix(Module, BeforePhysics);
+            Hooks.FsmAwake.Postfix(Module, AfterAwake);
+        }
+
+        /// <summary>Shared Fsm.OnEnable prefix; wakes before native enable callbacks execute.</summary>
+        static bool BeforeEnable(Fsm fsm) { W(fsm); return true; }
+
+        /// <summary>Shared 3D physics prefix; runs before trigger replacements even when they suppress vanilla.</summary>
+        static bool BeforePhysics(ref Hooks.FsmPhysicsArgs args) { W(args.Fsm); return true; }
+
+        /// <summary>Shared Awake postfix; clears only an unowned flag copied from a Core-paused source.</summary>
+        static void AfterAwake(PlayMakerFSM component)
+        {
+            if (component == null || FsmPause.Count == 0) return;
+            var fsm = PmfFsm(component);
+            bool copied = fsm != null && fsm.ManualUpdate && !FsmPause.Paused(fsm);
+            FsmPause.ClearCopiedFlag(component);
+            if (copied && fsm != null && !fsm.ManualUpdate) ClonesCleared++;
         }
 
         public override void OnSceneLoaded() { WakeAll(); }
@@ -102,14 +121,13 @@ namespace WildWasteland.Core.Optimization
         public static void Wake(Fsm fsm)
         {
             if (Shadow) { if (_asleep.Remove(fsm)) OptimizationMetrics.Wakes++; return; }
-            if (!fsm.ManualUpdate) return;          // awake, or set by somebody else? (then not in our set either)
-            if (_asleep.Remove(fsm)) { fsm.ManualUpdate = false; OptimizationMetrics.Wakes++; }
+            if (fsm != null && _asleep.Remove(fsm)) { FsmPause.Clear(fsm, FsmPause.FsmSleep); OptimizationMetrics.Wakes++; }
         }
 
         /// <summary>Wakes every FSM this feature put to sleep.</summary>
         public static void WakeAll()
         {
-            if (!Shadow) foreach (var f in _asleep) if (f != null) f.ManualUpdate = false;
+            if (!Shadow) FsmPause.ClearAll(FsmPause.FsmSleep);
             OptimizationMetrics.Wakes += _asleep.Count;
             _asleep.Clear();
         }
@@ -233,9 +251,11 @@ namespace WildWasteland.Core.Optimization
                     return;
                 }
                 if (!Hooks.ProcessEvent.Applied || !CanSleep(__instance)) return;
-                _asleep.Add(__instance);
-                __instance.ManualUpdate = true;
-                OptimizationMetrics.Sleeps++;
+                if (FsmPause.Set(__instance, FsmPause.FsmSleep))
+                {
+                    _asleep.Add(__instance);
+                    OptimizationMetrics.Sleeps++;
+                }
             }
 
             // ---- event / state paths ----
@@ -243,7 +263,6 @@ namespace WildWasteland.Core.Optimization
             static void EventPre(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "SwitchState"), HarmonyPrefix] static void SwitchStatePre(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "Start"), HarmonyPrefix] static void StartPre(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnEnable"), HarmonyPrefix] static void OnEnablePre(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "Stop"), HarmonyPrefix] static void StopPre(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "Init"), HarmonyPrefix] static void InitPre(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "Reinitialize"), HarmonyPrefix] static void ReinitPre(Fsm __instance) { W(__instance); }
@@ -257,12 +276,6 @@ namespace WildWasteland.Core.Optimization
             static void FinishPre(FsmStateAction __instance) { if (Any) { var f = __instance.Fsm; if (f != null) Wake(f); } }
 
             // ---- physics / animator / GUI callbacks ----
-            [HarmonyPatch(typeof(Fsm), "OnTriggerEnter"), HarmonyPrefix] static void P1(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnTriggerStay"), HarmonyPrefix] static void P2(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnTriggerExit"), HarmonyPrefix] static void P3(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnCollisionEnter"), HarmonyPrefix] static void P4(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnCollisionStay"), HarmonyPrefix] static void P5(Fsm __instance) { W(__instance); }
-            [HarmonyPatch(typeof(Fsm), "OnCollisionExit"), HarmonyPrefix] static void P6(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "OnTriggerEnter2D"), HarmonyPrefix] static void P7(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "OnTriggerStay2D"), HarmonyPrefix] static void P8(Fsm __instance) { W(__instance); }
             [HarmonyPatch(typeof(Fsm), "OnTriggerExit2D"), HarmonyPrefix] static void P9(Fsm __instance) { W(__instance); }
@@ -285,24 +298,8 @@ namespace WildWasteland.Core.Optimization
                 var f = PmfFsm(__instance);
                 if (f == null || !f.ManualUpdate) return;
                 if (PlayMakerFSM.IsMainThread) Wake(f);
-                else
-                {
-                    // off the main thread (loading): never mutate the set; the FSM re-sleeps consistently later
-                    try { if (_asleep.Contains(f)) f.ManualUpdate = false; } catch (Exception) { f.ManualUpdate = false; }
-                }
-            }
-
-            [HarmonyPatch(typeof(PlayMakerFSM), "Awake"), HarmonyPostfix]
-            static void AwakePost(PlayMakerFSM __instance)
-            {
-                if (!On) return;
-                var f = PmfFsm(__instance);
-                // vanilla never sets ManualUpdate (research A); a fresh FSM carrying it was copied from a sleeping one
-                if (f != null && f.ManualUpdate && !_asleep.Contains(f))
-                {
-                    f.ManualUpdate = false; ClonesCleared++;
-                    if (ClonesCleared <= 3 && Log.Verbose) Log.Info("[Performance] FS1: cleared a copied sleep flag on " + __instance.name + " / " + f.Name);
-                }
+                // Worker serialization never mutates live claims. SaveBegin wakes the main-thread claims;
+                // an Instantiate-copied flag is cleared by the shared Awake handler on the new component.
             }
         }
     }

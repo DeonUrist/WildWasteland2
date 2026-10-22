@@ -61,7 +61,7 @@ namespace WildWasteland.Core.Optimization
         readonly Dictionary<string, LightShadows> _assetOrig = new Dictionary<string, LightShadows>();
         readonly HashSet<int> _assetIds = new HashSet<int>();
         Job _job;
-        float _nextRescan;
+        float _nextPrune;
         // budget: indices of the nearest candidates (small fixed arrays, no allocation)
         readonly LRec[] _best = new LRec[16];
         readonly float[] _bestD = new float[16];
@@ -97,9 +97,6 @@ namespace WildWasteland.Core.Optimization
             QualityGuard.Set(QualityGuard.Q.PixelLights, _pixel.Value);
             if (_job != null) _job.RunNow();
         }
-
-        // one subscriber for every Rendering feature: the handler is a no-op while no scan client runs
-        public override void SubscribeHooks() { Hooks.CreateObjectEnter.Postfix(Module, RenderScan.AfterCreateObject); }
 
         public override void OnSceneLoaded() { GameCameras.Clear(); RenderScan.RequestFull(); }
         public override void OnWorldReady() { RenderScan.RequestFull(); }
@@ -182,20 +179,7 @@ namespace WildWasteland.Core.Optimization
             if (!On || SaveGuard.Reverted) return;
             var cam = GameRefs.MainCamera;
             if (cam == null) return;
-            float now = Time.unscaledTime;
-            if (now >= _nextRescan)
-            {
-                // spawns outside CreateObject (ES3 loads between passes, other mods' Instantiate): cheap native list of active lights
-                _nextRescan = now + 10f;
-                var all = UnityEngine.Object.FindObjectsOfType<Light>();
-                for (int i = 0; i < all.Length; i++)
-                {
-                    if (_recs.ContainsKey(all[i].GetInstanceID())) continue;
-                    ScanCtx c;
-                    if (RenderScan.Ctx(all[i].transform, out c)) OnLight(all[i], ref c);
-                }
-                Prune();
-            }
+            if (Time.unscaledTime >= _nextPrune) { _nextPrune = Time.unscaledTime + 10f; Prune(); }
             Vector3 cp = cam.transform.position;
             int n = Mathf.Clamp(_count.Int, 0, _best.Length);
             float radius = _radius.Value, factor = _cullFactor.Value, cullMin = _cullMin.Value, headRange = _headRange.Value;

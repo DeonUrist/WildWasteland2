@@ -20,7 +20,7 @@ namespace WildWasteland.Core.Optimization
     ///  - [DeleteFarAwayItems] L449: every 10 s: Items not on layer 22 farther than 5000 m, Cars farther than 5000 m (no layer check),
     ///    Sandstorms farther than 50000 m -> Destroy. "Perma base" (Gameplay_Canvas.md:L236-L251) is EnableFSM(DeleteFarAwayItems,
     ///    false): this pass runs only while that component is enabled, exactly like vanilla. WW Patrols' War Rig protection on that
-    ///    FSM's GetDistance is honoured through <see cref="PatrolsBridge"/> (skip protected, detach tankers before deleting a truck).
+    ///    FSM's GetDistance is honoured through ICullingProtection (skip protected, release trailers before deleting a truck).
     ///  - [DeleteFallingItems] L428: every 10 s: Items and Cars whose world Y is not above -10000 (FloatCompare greaterThan=back, so
     ///    equal and NaN are destroyed too) -> Destroy.
     ///  - NewGO_ArrayList [DeleteDestroyedItems] L11: every 5 s remove destroyed entries from Cars, Items, Sandstorms (vanilla skips the
@@ -59,7 +59,6 @@ namespace WildWasteland.Core.Optimization
 
         // current pass
         static bool _running; static Kind _kind; static int _list; static int _cursor;
-        static bool _patrols;
         const int EntriesPerFrame = 64, ChangesPerFrame = 8;
 
         PlayMakerArrayListProxy _items, _cars, _sand; GameObject _arraysGo;
@@ -227,7 +226,6 @@ namespace WildWasteland.Core.Optimization
                 var p = _player != null ? _player.Value : null;
                 if (p == null && k != Kind.Compact && k != Kind.Falling) return true;   // vanilla would compare stale distances: skip
                 _running = true; _kind = k; _list = 0; _cursor = 0; _passStartFrame = frame; Passes++;
-                _patrols = k == Kind.DeleteFar && PatrolsBridge.Active();
                 if (k == Kind.Compact) { CompactAll(); _running = false; _lastPassFrames = 1; return true; }
             }
             if (_lastSliceFrame == frame) return false;      // one slice of entries per frame
@@ -271,7 +269,12 @@ namespace WildWasteland.Core.Optimization
                         float limit = _list == 2 ? 50000f : 5000f;
                         float d = Vector3.Distance(pp, go.transform.position);
                         if (!(d > limit)) break;
-                        if (_patrols) { if (PatrolsBridge.Protected(go)) break; PatrolsBridge.BeforeFarDelete(go); }
+                        var protection = ModApi.Get<ICullingProtection>();
+                        if (protection != null)
+                        {
+                            if (protection.Protected(go)) break;
+                            protection.BeforeFarDelete(go);
+                        }
                         UnityEngine.Object.Destroy(go); Destroyed++; changes++;
                         break;
                     }

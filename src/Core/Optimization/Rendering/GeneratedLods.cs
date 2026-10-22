@@ -69,14 +69,13 @@ namespace WildWasteland.Core.Optimization
             _memory = NewKnob(cfg, "Cache MB", "Maximum generated payload bytes reserved for the current scene; two worker reads at most. GPU overhead is additional.", 128, 256, 384, 256);
         }
 
-        public override void SubscribeHooks() { Hooks.CreateObjectEnter.Postfix(Module, RenderScan.AfterCreateObject); }
         protected override void OnEnable(FeatureMode mode)
         {
-            string root = Path.Combine(Assets.Root, "Performance", "LOD");
+            string root = Path.Combine(Assets.Root, "Core", "Optimization", "LOD");
             if (!File.Exists(Path.Combine(root, "catalog.tsv")))
             {
                 _status = "No pack installed; run tools/lod-generator/Generate.cmd -Install";
-                Log.Info("[Performance] RC9 " + _status);
+                if (Log.L1) Log.Main(OptimizationRuntime.Instance, "RC9 " + _status);
                 return;
             }
             _pack = new GeneratedLodPack(root);
@@ -87,7 +86,7 @@ namespace WildWasteland.Core.Optimization
             RenderScan.Register(this);
             _job = Scheduler.Sliced(Module, "Core.Optimization.GeneratedLods", 750, Step, Phase.LateUpdateLast);
             _discovery = Scheduler.Interval(Module, "Core.Optimization.GeneratedLodDiscovery", 15, Discover);
-            Log.Always("[Performance] RC9 " + _status);
+            if (Log.L1) Log.Main(OptimizationRuntime.Instance, "RC9 " + _status);
         }
 
         protected override void OnDisable()
@@ -230,7 +229,7 @@ namespace WildWasteland.Core.Optimization
             entry.State = 4; entry.Data = null; _errors++;
             foreach (var mesh in entry.Variants) if (mesh != null) UnityEngine.Object.Destroy(mesh);
             entry.Variants[0] = entry.Variants[1] = null;
-            if (_errors <= 5) Log.Warn("[Performance] RC9 keeps original mesh: " + error);
+            if (_errors <= 5) Log.Warn(OptimizationRuntime.Instance, "RC9 keeps original mesh: " + error);
         }
 
         bool Upload()

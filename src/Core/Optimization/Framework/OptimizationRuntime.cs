@@ -64,7 +64,7 @@ namespace WildWasteland.Core.Optimization
                 f.ModeEntry = cfg.Tool(sub, f.Key, f.DefaultMode, f.PlanId + " " + f.Title + ". " + f.Help + (f.SupportsShadow ? " Shadow = vanilla runs, the optimized result is only compared (mismatches shown in Developer)." : ""));
                 var captured = f;
                 f.ModeEntry.SettingChanged += (s, a) => { if (_running) Apply(captured, true); };
-                try { f.Bind(cfg); } catch (Exception e) { f.LastError = e.Message; Log.Error("[Performance] " + f.PlanId + " Bind", e); }
+                try { f.Bind(cfg); } catch (Exception e) { f.LastError = e.Message; Log.Error(OptimizationRuntime.Instance, f.PlanId + " Bind", e); }
             }
         }
 
@@ -119,14 +119,18 @@ namespace WildWasteland.Core.Optimization
             FsmPause.Own(this, FsmPause.CarLod | FsmPause.PollSleep | FsmPause.Stepped | FsmPause.FsmSleep);
             ProvideApis();
             WorldTiles.OnApplied(this, TileApplied);
+            Hooks.CreateObjectEnter.Postfix(this, RenderScan.AfterCreateObject);
+            // Wakes and GUI cleanup precede replacement bodies that may clear the native FSM reference.
+            foreach (var f in _features) if (f is FsmSleepFeature || f is GuiLoopFeature) f.SubscribeHooks();
             foreach (var f in _features)
             {
-                try { f.SubscribeHooks(); } catch (Exception e) { f.LastError = e.Message; Log.Error("[Performance] " + f.PlanId + " hooks", e); }
+                if (f is FsmSleepFeature || f is GuiLoopFeature) continue;
+                try { f.SubscribeHooks(); } catch (Exception e) { f.LastError = e.Message; Log.Error(OptimizationRuntime.Instance, f.PlanId + " hooks", e); }
             }
             // Features touch scene objects and render settings (RenderSettings.sun crashed natively when called from the
             // BepInEx chainloader, before any scene exists): start them on the first loaded scene, or now when switched on in game.
             _deferred = !SceneManager.GetActiveScene().isLoaded;
-            if (_deferred) Log.Always("[Performance] waiting for the first scene to start " + _features.Count + " optimizations");
+            if (_deferred) { if (Log.L1) Log.Main(OptimizationRuntime.Instance, "waiting for the first scene to start " + _features.Count + " optimizations"); }
             else StartFeatures();
             Hooks.ApplyUsed();
         }
@@ -137,7 +141,7 @@ namespace WildWasteland.Core.Optimization
             _deferred = false;
             ApplyAll(false);
             int on = 0; foreach (var f in _features) if (f.Running != FeatureMode.Off) on++;
-            Log.Always("[Performance] started: " + on + "/" + _features.Count + " optimizations active, preset " + Preset);
+            if (Log.L1) Log.Main(OptimizationRuntime.Instance, "started: " + on + "/" + _features.Count + " optimizations active, preset " + Preset);
         }
 
         public override void Shutdown()
@@ -160,6 +164,8 @@ namespace WildWasteland.Core.Optimization
             FsmPause.ReleaseAll(this);
             ModApi.RemoveAll(this);
             FsmRegistry.Unsubscribed();   // Core removes the module's hook handlers after Shutdown
+            FsmEdits.Unsubscribed();
+            PollSleep.Unsubscribed();
             _patched.Clear();   // Core unpatches the module after Shutdown
         }
 
@@ -187,7 +193,7 @@ namespace WildWasteland.Core.Optimization
             if (f.Running == want) return;
             f.Stop();
             if (want != FeatureMode.Off) f.Start(want);
-            if (log) Log.Always("[Performance] " + f.PlanId + " " + f.Key + " -> " + f.Running);
+            if (log && Log.L1) Log.Main(OptimizationRuntime.Instance, f.PlanId + " " + f.Key + " -> " + f.Running);
         }
 
         internal void SettingsChanged(Feature f)
@@ -198,7 +204,7 @@ namespace WildWasteland.Core.Optimization
 
         static void SafeSettings(Feature f)
         {
-            try { f.OnSettingsChanged(); } catch (Exception e) { f.LastError = e.Message; Log.Error("[Performance] " + f.PlanId + " settings", e); }
+            try { f.OnSettingsChanged(); } catch (Exception e) { f.LastError = e.Message; Log.Error(OptimizationRuntime.Instance, f.PlanId + " settings", e); }
         }
 
         internal bool EnsurePatched(Type patchClass)
@@ -224,7 +230,7 @@ namespace WildWasteland.Core.Optimization
             foreach (var f in _features)
             {
                 if (f.Running == FeatureMode.Off) continue;
-                try { a(f); } catch (Exception e) { f.LastError = e.Message; Log.Error("[Performance] " + f.PlanId + " " + what, e); }
+                try { a(f); } catch (Exception e) { f.LastError = e.Message; Log.Error(OptimizationRuntime.Instance, f.PlanId + " " + what, e); }
             }
         }
 
@@ -249,7 +255,7 @@ namespace WildWasteland.Core.Optimization
             if (h == null) return;
             foreach (Action<TerrainTile> d in h.GetInvocationList())
             {
-                try { d(tile); } catch (Exception e) { Log.Error("[Performance] tile handler", e); }
+                try { d(tile); } catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "tile handler", e); }
             }
         }
 

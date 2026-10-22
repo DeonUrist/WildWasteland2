@@ -56,7 +56,7 @@ namespace WildWasteland.Core.Optimization
             {
                 var s = _mm.terrainSettings;
                 s.pixelError = _oPixel; s.baseMapDist = _oBase; s.detailDistance = _oDist; s.detailDensity = _oDensity;
-                try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn("[Performance] EN4 restore: " + e.Message); }
+                try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN4 restore: " + e.Message); }
             }
             _applied = false; _mm = null;
         }
@@ -88,7 +88,7 @@ namespace WildWasteland.Core.Optimization
             s.baseMapDist = Mathf.Max(0, _baseMap.Int);
             s.detailDistance = _detailDist.Value;
             s.detailDensity = Mathf.Clamp01(_density.Value);
-            if (pushToTiles) { try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn("[Performance] EN4 apply: " + e.Message); } }
+            if (pushToTiles) { try { _mm.ApplyTerrainSettings(); } catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN4 apply: " + e.Message); } }
         }
 
         void OnTile(TerrainTile tile)

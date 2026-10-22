@@ -272,7 +272,7 @@ namespace WildWasteland.Core.Optimization
             if (fo == null) return;
             var before = AccessTools.Method(typeof(NwhOrigin), "BeforeJump");
             var after = AccessTools.Method(typeof(NwhOrigin), "AfterJump");
-            if (before == null || after == null) { Log.Warn("[Performance] EN6 origin: BeforeJump/AfterJump not found - left vanilla"); return; }
+            if (before == null || after == null) { Log.Warn(OptimizationRuntime.Instance, "EN6 origin: BeforeJump/AfterJump not found - left vanilla"); return; }
             _origBefore = (UnityAction)Delegate.CreateDelegate(typeof(UnityAction), fo, before);
             _origAfter = (UnityAction)Delegate.CreateDelegate(typeof(UnityAction), fo, after);
             fo.onBeforeJump.RemoveListener(_origBefore); fo.onAfterJump.RemoveListener(_origAfter);
@@ -371,7 +371,7 @@ namespace WildWasteland.Core.Optimization
                 if (fi == null) return null;
                 return Access.Getter<AzureWeatherController, bool>(typeof(AzureWeatherController), "m_isWeatherChanging");
             }
-            catch (Exception e) { Log.Warn("[Performance] EN7 weather: transition flag not readable (" + e.Message + ") - weather left vanilla"); return null; }
+            catch (Exception e) { Log.Warn(OptimizationRuntime.Instance, "EN7 weather: transition flag not readable (" + e.Message + ") - weather left vanilla"); return null; }
         }
         protected override void OnEnable(FeatureMode mode)
         {

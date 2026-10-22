@@ -30,13 +30,14 @@ namespace WildWasteland.Core.Optimization
         static int _count;
         static PlayMakerFSM[] _live; static int _liveFrame = -1;
         static readonly HashSet<string> _warned = new HashSet<string>(StringComparer.Ordinal);
+        static bool _subscribed;
         internal static long Delivered, Mismatches;
 
         /// <summary>Watch every FSM named <paramref name="fsmName"/> ("*" = every FSM; keep the handler cheap then) whose owner's root
         /// object name matches <paramref name="rootPattern"/> (null = any; '*' wildcards, '|' alternatives).</summary>
         internal static void Watch(Feature owner, string fsmName, string rootPattern, FsmReadyHandler ready)
         {
-            if (!owner.Module.EnsurePatched(typeof(AwakePatch))) throw new Exception("PlayMakerFSM.Awake patch failed");
+            if (!_subscribed) { Hooks.FsmAwake.Postfix(owner.Module, AfterAwake); _subscribed = true; }
             var w = new WatchEntry { Owner = owner, Root = rootPattern, Ready = ready };
             if (fsmName == "*") _any.Add(w);
             else
@@ -158,7 +159,7 @@ namespace WildWasteland.Core.Optimization
             Mismatches++;
             string k = owner.PlanId + "|" + key + "|" + why;
             if (_warned.Count > 500 || !_warned.Add(k)) return;
-            Log.Warn("[Performance] " + owner.PlanId + " " + key + ": " + why + " - left vanilla (game updated?)");
+            Log.Warn(OptimizationRuntime.Instance, owner.PlanId + " " + key + ": " + why + " - left vanilla (game updated?)");
         }
 
         /// <summary>Swaps the action at <paramref name="number"/> (1-based) of <paramref name="state"/> for <paramref name="wrapper"/> and
@@ -172,19 +173,15 @@ namespace WildWasteland.Core.Optimization
             log.Add(new ReplaceUndo(comp, state, number - 1, original, wrapper));
         }
 
-        [HarmonyPatch]
-        internal static class AwakePatch
+        /// <summary>Runtime teardown clears subscription state before shared handlers are removed.</summary>
+        internal static void Unsubscribed() { _subscribed = false; }
+
+        /// <summary>Shared Awake postfix: dispatches verified content edits after copied pause flags were cleared.</summary>
+        static void AfterAwake(PlayMakerFSM component)
         {
-            [HarmonyPatch(typeof(PlayMakerFSM), "Awake"), HarmonyPostfix]
-            static void Post(PlayMakerFSM __instance)
-            {
-                // vanilla never sets ManualUpdate (research A): a fresh FSM carrying it was Instantiate-copied from one we had paused
-                // (the flag is serialized); nobody would ever resume the copy
-                if (FsmPause.Count > 0) { var f = __instance.Fsm; if (f != null && f.ManualUpdate) f.ManualUpdate = false; }
-                if (_count == 0) return;
-                try { Dispatch(__instance); }
-                catch (Exception e) { Log.Error("[Performance] FsmEdits dispatch", e); }
-            }
+            if (_count == 0) return;
+            try { Dispatch(component); }
+            catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "FsmEdits dispatch", e); }
         }
 
         // ---- undo records ----
@@ -236,7 +233,7 @@ namespace WildWasteland.Core.Optimization
             for (int i = _items.Count - 1; i >= 0; i--)
             {
                 try { if (_items[i].Alive) _items[i].Revert(); }
-                catch (Exception e) { Log.Error("[Performance] undo", e); }
+                catch (Exception e) { Log.Error(OptimizationRuntime.Instance, "undo", e); }
             }
             _items.Clear(); _pruneAt = 1024;
         }

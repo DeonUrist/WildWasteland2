@@ -34,7 +34,7 @@ namespace WildWasteland.Core.Optimization
             _foreign = ForeignPatcher();
             if (_foreign != null)
             {
-                WildWasteland.Core.Log.Always("[Performance] PM2: Fsm event dispatch is already patched by " + _foreign + " (e.g. Burner's Utilities FastEvents); PM2 not patched");
+                WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM2: Fsm event dispatch is already patched by " + _foreign + " (e.g. Burner's Utilities FastEvents); PM2 not patched");
                 return;
             }
             FsmRegistry.Acquire(Module); _acquired = true;
@@ -132,7 +132,7 @@ namespace WildWasteland.Core.Optimization
         {
             if (_stoodDown || (!On && !Shadow)) return;
             _stoodDown = true;
-            WildWasteland.Core.Log.Always("[Performance] PM2: another mod already dispatches events sent to objects (e.g. Burner's Utilities FastEvents); PM2 leaves those to it");
+            WildWasteland.Core.if (Log.L1) Log.Main(OptimizationRuntime.Instance, "PM2: another mod already dispatches events sent to objects (e.g. Burner's Utilities FastEvents); PM2 leaves those to it");
         }
 
         [HarmonyPatch]

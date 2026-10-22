@@ -79,11 +79,11 @@ namespace WildWasteland.Core.Optimization
         {
             if (Running != FeatureMode.Off || mode == FeatureMode.Off) return;
             if (mode == FeatureMode.Shadow && !SupportsShadow) mode = FeatureMode.On;
-            try { Running = mode; OnEnable(mode); LastError = null; Log.Info("[Performance] " + PlanId + " " + Key + ": " + mode); }
+            try { Running = mode; OnEnable(mode); LastError = null; if (Log.L1) Log.Main(OptimizationRuntime.Instance, PlanId + " " + Key + ": " + mode); }
             catch (Exception e)
             {
-                LastError = e.Message; Log.Error("[Performance] " + PlanId + " " + Key + " could not start", e);
-                try { OnDisable(); } catch (Exception e2) { Log.Error("[Performance] " + PlanId + " cleanup", e2); }
+                LastError = e.Message; Log.Error(OptimizationRuntime.Instance, PlanId + " " + Key + " could not start", e);
+                try { OnDisable(); } catch (Exception e2) { Log.Error(OptimizationRuntime.Instance, PlanId + " cleanup", e2); }
                 Running = FeatureMode.Off;
             }
         }
@@ -91,7 +91,7 @@ namespace WildWasteland.Core.Optimization
         internal void Stop()
         {
             if (Running == FeatureMode.Off) return;
-            try { OnDisable(); } catch (Exception e) { LastError = e.Message; Log.Error("[Performance] " + PlanId + " " + Key + " stop", e); }
+            try { OnDisable(); } catch (Exception e) { LastError = e.Message; Log.Error(OptimizationRuntime.Instance, PlanId + " " + Key + " stop", e); }
             Running = FeatureMode.Off;
         }
 
@@ -99,7 +99,7 @@ namespace WildWasteland.Core.Optimization
         protected void Mismatch(string what)
         {
             Mismatches++;
-            if (_logged < 5) { _logged++; Log.Warn("[Performance] " + PlanId + " shadow mismatch #" + Mismatches + ": " + what); }
+            if (_logged < 5) { _logged++; Log.Warn(OptimizationRuntime.Instance, PlanId + " shadow mismatch #" + Mismatches + ": " + what); }
         }
 
         /// <summary>Installs this feature's Harmony patch class once (module lifetime). Returns false if it failed.</summary>

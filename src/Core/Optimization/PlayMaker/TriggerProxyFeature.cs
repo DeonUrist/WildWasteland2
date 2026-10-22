@@ -36,10 +36,28 @@ namespace WildWasteland.Core.Optimization
 
         protected override void OnEnable(FeatureMode mode)
         {
-            if (!EnsurePatched(typeof(Patch))) throw new Exception("Fsm trigger/collision patches failed");
             On = true;
         }
         protected override void OnDisable() { On = false; }
+
+        /// <summary>Registers one handler with Core's shared six-callback physics dispatcher.</summary>
+        public override void SubscribeHooks() { Hooks.FsmPhysicsCallback.Prefix(Module, BeforePhysics); }
+
+        /// <summary>3D physics callback replacement; inactive mode immediately yields to native PlayMaker.</summary>
+        static bool BeforePhysics(ref Hooks.FsmPhysicsArgs args)
+        {
+            if (!On) return true;
+            switch (args.Kind)
+            {
+                case Hooks.FsmPhysicsKind.TriggerEnter: return Shared.TriggerEnter(args.Fsm, args.Collider);
+                case Hooks.FsmPhysicsKind.TriggerStay: return Shared.TriggerStay(args.Fsm, args.Collider);
+                case Hooks.FsmPhysicsKind.TriggerExit: return Shared.TriggerExit(args.Fsm, args.Collider);
+                case Hooks.FsmPhysicsKind.CollisionEnter: return Shared.CollisionEnter(args.Fsm, args.Collision);
+                case Hooks.FsmPhysicsKind.CollisionStay: return Shared.CollisionStay(args.Fsm, args.Collision);
+                case Hooks.FsmPhysicsKind.CollisionExit: return Shared.CollisionExit(args.Fsm, args.Collision);
+                default: return true;
+            }
+        }
 
         public override void DrawStats(ToolLayout l) { l.Value("Callbacks / system events skipped", Calls + " / " + Skipped); }
 
@@ -50,12 +68,12 @@ namespace WildWasteland.Core.Optimization
             else fsm.Event(e);
         }
 
-        [HarmonyPatch]
-        static class Patch
+        /// <summary>Vanilla-equivalent callback bodies selected by the shared dispatcher.</summary>
+        static class Shared
         {
             // Fsm.OnTriggerEnter(Collider) (Fsm.cs:3076)
-            [HarmonyPatch(typeof(Fsm), "OnTriggerEnter"), HarmonyPrefix]
-            static bool TriggerEnter(Fsm __instance, Collider other)
+
+            internal static bool TriggerEnter(Fsm __instance, Collider other)
             {
                 if (!On) return true;
                 Calls++;
@@ -68,8 +86,8 @@ namespace WildWasteland.Core.Optimization
             }
 
             // Fsm.OnTriggerStay(Collider) (Fsm.cs:3094)
-            [HarmonyPatch(typeof(Fsm), "OnTriggerStay"), HarmonyPrefix]
-            static bool TriggerStay(Fsm __instance, Collider other)
+
+            internal static bool TriggerStay(Fsm __instance, Collider other)
             {
                 if (!On) return true;
                 Calls++;
@@ -82,8 +100,8 @@ namespace WildWasteland.Core.Optimization
             }
 
             // Fsm.OnTriggerExit(Collider) (Fsm.cs:3112)
-            [HarmonyPatch(typeof(Fsm), "OnTriggerExit"), HarmonyPrefix]
-            static bool TriggerExit(Fsm __instance, Collider other)
+
+            internal static bool TriggerExit(Fsm __instance, Collider other)
             {
                 if (!On) return true;
                 Calls++;
@@ -96,8 +114,8 @@ namespace WildWasteland.Core.Optimization
             }
 
             // Fsm.OnCollisionEnter(Collision) (Fsm.cs:3022)
-            [HarmonyPatch(typeof(Fsm), "OnCollisionEnter"), HarmonyPrefix]
-            static bool CollisionEnter(Fsm __instance, Collision collisionInfo)
+
+            internal static bool CollisionEnter(Fsm __instance, Collision collisionInfo)
             {
                 if (!On) return true;
                 Calls++;
@@ -110,8 +128,8 @@ namespace WildWasteland.Core.Optimization
             }
 
             // Fsm.OnCollisionStay(Collision) (Fsm.cs:3040)
-            [HarmonyPatch(typeof(Fsm), "OnCollisionStay"), HarmonyPrefix]
-            static bool CollisionStay(Fsm __instance, Collision collisionInfo)
+
+            internal static bool CollisionStay(Fsm __instance, Collision collisionInfo)
             {
                 if (!On) return true;
                 Calls++;
@@ -124,8 +142,8 @@ namespace WildWasteland.Core.Optimization
             }
 
             // Fsm.OnCollisionExit(Collision) (Fsm.cs:3058)
-            [HarmonyPatch(typeof(Fsm), "OnCollisionExit"), HarmonyPrefix]
-            static bool CollisionExit(Fsm __instance, Collision collisionInfo)
+
+            internal static bool CollisionExit(Fsm __instance, Collision collisionInfo)
             {
                 if (!On) return true;
                 Calls++;
