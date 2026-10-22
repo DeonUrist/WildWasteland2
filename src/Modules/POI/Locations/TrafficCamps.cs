@@ -4,8 +4,9 @@ using HarmonyLib;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Core;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.POI
 {
     internal sealed class CampResident : MonoBehaviour
     {
@@ -24,7 +25,7 @@ namespace WildWasteland.Modules.Patrols
         {
             public Core.CampState At(Vector3 world,float radius)
             {
-                TrafficBase nearest=null;float distance=radius;
+                CampDiscovery nearest=null;float distance=radius;
                 foreach(var camp in TrafficLocations.Known.Values)
                 {
                     float next=TrafficLocations.FlatDistance(camp.center,world);
@@ -77,7 +78,7 @@ namespace WildWasteland.Modules.Patrols
         }
         internal static void ObserveRoot(Transform root)
         {
-            if(root.parent!=null||Candidates.Count>=512||root.GetComponent<SimpleBanditTag>()!=null)return;
+            if(root.parent!=null||Candidates.Count>=512||(ModApi.Get<IPatrols>()?.IsCrew(root.gameObject) ?? false))return;
             Fs.Clear();root.GetComponents(Fs);
             FsmFloat health=null;bool npc=false;
             foreach(var f in Fs)if(f!=null){if(f.FsmName=="Health")health=f.FsmVariables.GetFsmFloat("Health");if(f.FsmName=="Detection")npc=true;}
@@ -95,11 +96,10 @@ namespace WildWasteland.Modules.Patrols
             foreach(var pair in Candidates)
             {
                 if(pair.Key==null||pair.Value.Value<=0f)continue;
-                var p=TrafficSpace.World(pair.Key.transform.position);
+                var p=Origin.World(pair.Key.transform.position);
                 if(Mathf.Abs(p.x-camp.center.x)>camp.size.x*0.5f+35f||Mathf.Abs(p.z-camp.center.z)>camp.size.z*0.5f+35f)continue;
                 Bind(id,pair.Key,pair.Value);
             }
-            RollPatrolCalls(id,camp);   // Patrols part: TrafficCamps.Calls.cs (reinforcement call roll)
             Check(id);
         }
         internal static void Bind(string id,GameObject npc,FsmFloat health=null)
@@ -124,11 +124,11 @@ namespace WildWasteland.Modules.Patrols
                 if(!resident.WasAlive)return false;
                 if(!resident.Dead&&(resident.Health==null||resident.Health.Value>0f))return false;
             }
-            camp.cleared=true;camp.patrolCallAt=-1f;TrafficLocations.Changed();PatrolsModule.Verbose("Camp cleared: "+camp.name+" "+camp.id);return true;
+            camp.cleared=true;TrafficLocations.Changed();Core.Log.Warn("Camp cleared: "+camp.name+" "+camp.id);return true;
         }
-        /// <summary>Rolls the 10 % reinforcement call of each living camp resident that targets the player or an opposed faction. Implemented in Patrols (TrafficCamps.Calls.cs).</summary>
-        static partial void RollPatrolCalls(string id, TrafficBase camp);
-
+        internal static void Residents(List<CampResidentInfo> into)
+        { into.Clear(); foreach(var pair in Sites) foreach(var r in pair.Value.Residents) if(r!=null) into.Add(new CampResidentInfo { Camp=pair.Key,Actor=r.gameObject,Target=r.Target?.Value,Health=r.Health?.Value??0,CallRolled=r.CallRolled }); }
+        internal static void MarkCallRolled(GameObject actor) { if(actor!=null) { var r=actor.GetComponent<CampResident>(); if(r!=null) r.CallRolled=true; } }
         private static class SpawnHook
         {
             internal static void Postfix(CreateObject __instance)
@@ -144,7 +144,7 @@ namespace WildWasteland.Modules.Patrols
                     if(root==null)return;
                     string id=TrafficLocations.Identity(root);Register(id,root);Bind(id,npc);
                 }
-                catch(Exception e){PatrolsModule.Verbose("Camp resident hook: "+e.Message);}
+                catch(Exception e){Core.Log.Warn("Camp resident hook: "+e.Message);}
             }
         }
     }
