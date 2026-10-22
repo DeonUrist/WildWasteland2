@@ -11,20 +11,18 @@ namespace WildWasteland.Modules.NPC
     // animations (Core.Services.Animation.BeginNpcTraversal). Outside such POIs, or for creatures, Nav's grid maps and feelers carry on.
     internal static partial class PoiNav
     {
+        /// <summary>[NPCAI / Pathfinding] PoiNavigation (bound by <see cref="NavSettings.Bind"/>; null = unbound = off).</summary>
         internal static ConfigEntry<bool> Enabled;
+        /// <summary>[NPCAI / POI pathfinding] NpcLadderSpeed, m/s (bound by <see cref="NavSettings.Bind"/>).</summary>
         internal static ConfigEntry<float> LadderSpeed;
 
         /// <summary>Tools part of Bind: the developer setup / display switches, the editor key and the baker tuning (PoiNav.Tools.cs).</summary>
         static partial void BindTools(ModuleConfig cfg);
 
-        internal static void Bind(ModuleConfig cfg)
-        {
-            Enabled = cfg.Main.Bind(cfg.Section("Pathfinding"), "PoiNavigation", true,
-                "Human NPCs use the pre-recorded navigation of POIs (every floor, roof and walkway; ladders and climbs) where it exists. Off = the grid maps only.");
-            BindTools(cfg);
-            LadderSpeed = cfg.Tool("POI pathfinding setup", "NpcLadderSpeed", 2f, "How fast NPCs climb ladders up, m/s (down they slide like the player).", new AcceptableValueRange<float>(.3f, 4f));
-            if (Mathf.Approximately(LadderSpeed.Value, 1f)) LadderSpeed.Value = 2f;   // the old default: twice as fast now
-        }
+        /// <summary>Old NPC-entry bind point (called from NpcModule.BindConfig): binds only the Tools-owned entries now. The runtime switch
+        /// and the ladder speed moved to <see cref="NavSettings.Bind"/> ([NPCAI / ...], D12) and the LadderSpeed 1 -> 2 rewrite is gone (README 9).</summary>
+        [System.Obsolete("refactor: NPCAI binds its navigation entries in NavSettings.Bind; Tools binds its own (B16)")]
+        internal static void Bind(ModuleConfig cfg) { BindTools(cfg); }
 
         // ------------------------------------------------------------------ graph per data
         internal sealed class Graph

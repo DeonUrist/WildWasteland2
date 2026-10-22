@@ -105,8 +105,8 @@ namespace WildWasteland.Modules.NPC
             if (name.Length > 80) name = name.Substring(0, 80);
             hash.Add((long)MapVersion); hash.Add(name); hash.Add(Application.version); hash.Add(Application.buildGUID);
             hash.Add(typeof(HutongGames.PlayMaker.Actions.CreateObject).Module.ModuleVersionId.ToString());
-            hash.Add(scale); hash.Add(margin); hash.Add(Mathf.Max(0.25f, NpcModule.NavCellSize.Value));
-            s.MapStep = Mathf.Max(0.1f, NpcModule.NavMaxStep.Value); hash.Add(s.MapStep);
+            hash.Add(scale); hash.Add(margin); hash.Add(NavSettings.Cell);
+            s.MapStep = NavSettings.Step; hash.Add(s.MapStep);
             var kept = new List<Collider>(); Bounds bounds = new Bounds(); bool any = false;
             foreach (var c in colliders)
             {
@@ -152,7 +152,7 @@ namespace WildWasteland.Modules.NPC
             var min = bounds.min; var max = bounds.max;
             for (int i = 0; i < 3; i++) { min[i] = Mathf.Round(min[i] * 1000f) / 1000f; max[i] = Mathf.Round(max[i] * 1000f) / 1000f; }
             bounds.SetMinMax(min, max); bounds.Expand(new Vector3(margin * 2f, 0f, margin * 2f));
-            float cell = Mathf.Max(0.25f, NpcModule.NavCellSize.Value);
+            float cell = NavSettings.Cell;
             cell = Mathf.Max(cell, Mathf.Max(bounds.size.x, bounds.size.z) / 600f);
             s.Cell = cell; s.W = Mathf.Max(2, Mathf.CeilToInt(bounds.size.x / cell)); s.H = Mathf.Max(2, Mathf.CeilToInt(bounds.size.z / cell));
             s.GridRight = root.rotation * Vector3.right; s.GridRight.y = 0f; s.GridRight.Normalize();
@@ -174,7 +174,7 @@ namespace WildWasteland.Modules.NPC
         private static bool OpenMap(Structure s)
         {
             if (s.MapFile == null) return false;
-            if (s.MapStep != Mathf.Max(0.1f, NpcModule.NavMaxStep.Value)) { s.MapFile = null; return false; }
+            if (s.MapStep != NavSettings.Step) { s.MapFile = null; return false; }
             s.LoadedTemplate = false;
             if (CloneTemplate(s)) return true;
             try
@@ -251,7 +251,7 @@ namespace WildWasteland.Modules.NPC
 
         private static bool CreateMap(Structure s)
         {
-            if (s.MapFile == null || s.MapStep != Mathf.Max(0.1f, NpcModule.NavMaxStep.Value)) return false;
+            if (s.MapFile == null || s.MapStep != NavSettings.Step) return false;
             try
             {
                 if (!s.ReplaceMap && File.Exists(s.MapFile)) return false;

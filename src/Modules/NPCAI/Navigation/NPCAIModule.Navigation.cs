@@ -3,14 +3,15 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.NPCAI
 {
     /// <summary>Navigation part of <see cref="NPCAIModule"/> (second Wave B owner). Empty implementations so check_partials passes; fill them in.</summary>
     public sealed partial class NPCAIModule
     {
-        /// <summary>Navigation: config binds.</summary>
-        partial void BindNavigation(ModuleConfig cfg) { }
+        /// <summary>Navigation: binds [NPCAI / Navigation], [NPCAI / Pathfinding] and [NPCAI / POI pathfinding] (NavSettings).</summary>
+        partial void BindNavigation(ModuleConfig cfg) { NavSettings.Bind(cfg); }
         /// <summary>Navigation: start.</summary>
         partial void InitNavigation() { }
         /// <summary>Navigation: stop.</summary>

@@ -174,7 +174,7 @@ namespace WildWasteland.Modules.NPC
             else if (_baking == null || curD > NearPreempt)
             {
                 // the nearest unbaked structure within reach; it takes over a running bake only when the player is at it
-                Structure best = null; float bd = NpcModule.NavBakeRange.Value * 3f;
+                Structure best = null; float bd = NavSettings.BakeRange * 3f;
                 for (int i = 0; i < _structures.Count; i++)
                 {
                     var s = _structures[i];
@@ -195,7 +195,7 @@ namespace WildWasteland.Modules.NPC
             Needed = _baking != null && _baking == _needed;      // an NPC is waiting for it: fastest
         }
 
-        private static float BaseBudget() { return Mathf.Max(0.2f, NpcModule.NavBakeBudgetMs.Value); }
+        private static float BaseBudget() { return Mathf.Max(0.2f, NavSettings.BakeBudgetMs); }
 
         // this frame's slice: [Nav] BakeBudgetMs; x4 when an NPC waits for the map, x3 when the player is at the structure, x2 when frames
         // are cheap (above ~90 fps), x4 while the game is paused; halved below ~45 fps
@@ -331,9 +331,9 @@ namespace WildWasteland.Modules.NPC
                 if (!any) { b = c.bounds; any = true; } else b.Encapsulate(c.bounds);
             }
             if (!any) return null;
-            float margin = Mathf.Max(1f, NpcModule.NavMargin.Value);
+            float margin = Mathf.Max(1f, NavSettings.Margin);
             b.Expand(new Vector3(margin * 2f, 0f, margin * 2f));
-            float cell = Mathf.Max(0.25f, NpcModule.NavCellSize.Value);
+            float cell = NavSettings.Cell;
             float maxSide = Mathf.Max(b.size.x, b.size.z);
             if (maxSide / cell > 600f) cell = maxSide / 600f;           // very large footprints get coarser cells (<= 600 x 600)
             var s = new Structure { Root = root, Name = root.name, Box = b, Cell = cell };
@@ -347,7 +347,7 @@ namespace WildWasteland.Modules.NPC
         {
             s.FloorY = new float[s.W * s.H]; s.Why = new byte[s.W * s.H]; s.Open = new bool[s.W * s.H]; s.FloorHits = new Dictionary<int, int>();
             s.Edges = new byte[s.W * s.H]; s.Comp = null; s.CompSize = null; s.Phase = 0; s.CompStack = null; s.CompSizes = null;
-            s.Next = 0; s.Walkable = 0; s.NoFloor = 0; s.Tight = 0; s.Solid = 0; s.ScanLimit = 0; s.BakeMs = 0f; s.BakeFrames = 0; s.StepAtBake = Mathf.Max(0.1f, NpcModule.NavMaxStep.Value);
+            s.Next = 0; s.Walkable = 0; s.NoFloor = 0; s.Tight = 0; s.Solid = 0; s.ScanLimit = 0; s.BakeMs = 0f; s.BakeFrames = 0; s.StepAtBake = NavSettings.Step;
             // the base height: the floor under the structure's pivot (a ray from well above, first walkable surface below the pivot + 2 m)
             Vector3 p = s.Root.position;
             s.RefY = p.y;
@@ -415,7 +415,7 @@ namespace WildWasteland.Modules.NPC
                         if (float.IsNaN(yb)) continue;
                         float dy = Mathf.Abs(ya - yb);
                         Vector3 b = CellCenter(s, cx, cz, yb);
-                        if (dy <= Mathf.Max(0.1f, NpcModule.NavMaxStep.Value)
+                        if (dy <= NavSettings.Step
                             && LowWayClear(a, b, Mathf.Max(ya, yb))                                                                      // a low rock lip / kerb
                             && BodySweep(a, b, Mathf.Max(ya, yb), 0.3f))                                                                 // the whole body, knee to shoulders
                         { bits |= (byte)(1 << k); continue; }
@@ -719,7 +719,7 @@ namespace WildWasteland.Modules.NPC
             float ya = s.FloorY[a], yb = s.FloorY[b];
             if (_relax && (float.IsNaN(ya) || float.IsNaN(yb))) return s.Why != null && Crossable(s, a) && Crossable(s, b) ? 1 : 0;
             if (float.IsNaN(ya) || float.IsNaN(yb)) return 0;
-            bool walkStep = Mathf.Abs(ya - yb) <= Mathf.Max(0.1f, NpcModule.NavMaxStep.Value);
+            bool walkStep = Mathf.Abs(ya - yb) <= NavSettings.Step;
             if (s.Edges == null || s.Phase < 2) return walkStep ? 1 : 0;
             int ax = a % s.W, az = a / s.W, bx = b % s.W, bz = b / s.W;
             int dx = bx - ax, dz = bz - az;
@@ -767,7 +767,7 @@ namespace WildWasteland.Modules.NPC
                 int cx = x + (k == 0 ? 1 : k == 1 ? -1 : 0), cz = z + (k == 2 ? 1 : k == 3 ? -1 : 0);
                 if (cx < 0 || cz < 0 || cx >= s.W || cz >= s.H) continue;
                 int j = cz * s.W + cx; float o = s.FloorY[j];
-                if (float.IsNaN(o) || Mathf.Abs(o - s.FloorY[i]) > Mathf.Max(0.1f, NpcModule.NavMaxStep.Value)) continue;
+                if (float.IsNaN(o) || Mathf.Abs(o - s.FloorY[i]) > NavSettings.Step) continue;
                 if (!Step(s, i, j)) return true;
             }
             return false;
@@ -785,7 +785,7 @@ namespace WildWasteland.Modules.NPC
         private static bool MaskOk(Structure s)
         {
             if (s.Mv == null || _relax || _noHop || s.Phase < 2 || s.Edges == null) return false;
-            if (Mathf.Max(0.1f, NpcModule.NavMaxStep.Value) == s.MaskStep) return true;
+            if (NavSettings.Step == s.MaskStep) return true;
             s.Mv = null; s.Hop = null; QueueMasks(s);      // MaxStep changed live: made again, the old calls meanwhile
             return false;
         }
@@ -800,7 +800,7 @@ namespace WildWasteland.Modules.NPC
         }
         private static bool BuildMasks(Structure s, double budgetMs)
         {
-            float step = Mathf.Max(0.1f, NpcModule.NavMaxStep.Value);
+            float step = NavSettings.Step;
             int n = s.W * s.H, W = s.W, H = s.H;
             if (s.MvB == null || s.MaskStepB != step || s.MvB.Length != n) { s.MvB = new byte[n]; s.HopB = new byte[n]; s.MaskNext = 0; s.MaskStepB = step; }
             bool relax = _relax, noHop = _noHop; _relax = false; _noHop = false;
@@ -896,7 +896,7 @@ namespace WildWasteland.Modules.NPC
             // no route between them, no need for a field to say so (as long as MaxStep was not lowered live since the bake: a lower step
             // closes edges the areas still contain)
             Field f; float d0;
-            if (goalInside && s.Comp != null && s.Comp[from] != s.Comp[goalCell] && Mathf.Max(0.1f, NpcModule.NavMaxStep.Value) >= s.StepAtBake) { f = null; d0 = float.PositiveInfinity; }
+            if (goalInside && s.Comp != null && s.Comp[from] != s.Comp[goalCell] && NavSettings.Step >= s.StepAtBake) { f = null; d0 = float.PositiveInfinity; }
             else { f = FieldFor(s, goal, goalInside, goalCell, from); d0 = f.Dist[from]; }
             if (float.IsInfinity(d0))
             {
@@ -1052,7 +1052,7 @@ namespace WildWasteland.Modules.NPC
         private static Field ExitField(Structure s, int exit, float now, long space, int until)
         {
             long key = (space << 40) | (long)(uint)exit;
-            float life = Mathf.Max(0.2f, NpcModule.NavFieldSeconds.Value);
+            float life = Mathf.Max(0.2f, NavSettings.FieldSeconds);
             Field f;
             if (s.Fields.TryGetValue(key, out f) && (f.Pin || now - f.Made < Mathf.Max(FixedLife, life))) { Expand(s, f, until); return f; }
             if (f != null) { Return(f); s.Fields.Remove(key); }
@@ -1448,7 +1448,7 @@ namespace WildWasteland.Modules.NPC
             // is kept while its goal cell is still within 2 cells of the real one (the feelers close the last metres anyway)
             long key = inside ? ((long)(goalCell % s.W / 4) << 20) | (long)(goalCell / s.W / 4)
                               : (long)1 << 40 | (long)(Mathf.FloorToInt(goal.x / 4f) & 0xFFFFF) << 20 | (long)(Mathf.FloorToInt(goal.z / 4f) & 0xFFFFF);
-            float life = Mathf.Max(0.2f, NpcModule.NavFieldSeconds.Value);
+            float life = Mathf.Max(0.2f, NavSettings.FieldSeconds);
             Field f;
             if (s.Fields.TryGetValue(key, out f) && now - f.Made < life && (!inside || f.GoalCell == goalCell || Settle(s, f, goalCell) <= s.Cell * 2.9f)) { Expand(s, f, until); return f; }
             if (f != null) { Return(f); s.Fields.Remove(key); }
@@ -1863,7 +1863,7 @@ namespace WildWasteland.Modules.NPC
             RaycastHit h;
             Vector3 d = b - a;
             if (!Physics.Linecast(a + Vector3.up * 0.15f, b + Vector3.up * 0.15f, out h, BakeMask, QueryTriggerInteraction.Ignore)) return true;
-            float step = Mathf.Max(0.1f, NpcModule.NavMaxStep.Value);
+            float step = NavSettings.Step;
             // just past the hit point (into the obstacle), from above the highest a step could be, straight down
             Vector3 flat = new Vector3(d.x, 0f, d.z); if (flat.sqrMagnitude > 1e-6f) flat.Normalize();
             Vector3 probe = new Vector3(h.point.x, topFloor + step + 0.6f, h.point.z) + flat * 0.02f;

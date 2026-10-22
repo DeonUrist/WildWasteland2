@@ -4,6 +4,7 @@ using System.Reflection;
 using BepInEx.Configuration;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
@@ -19,12 +20,19 @@ namespace WildWasteland.Modules.Towns
         private static Func<bool> _enabled;
         internal static bool Enabled { get { return _enabled != null && _enabled(); } }
         private static TownsModule _owner;
+        /// <summary>Navigation tuning read by POI town assets (ex reflection into NpcModule): NavMargin, NavCellSize, NavMaxStep; else fallback.</summary>
         internal static float Tuning(string name, float fallback)
         {
-            var type = typeof(Services).Assembly.GetType("WildWasteland.Modules.NPC.NpcModule");
-            var field = type.GetField(name, BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public);
-            var setting = field == null ? null : field.GetValue(null) as ConfigEntry<float>;
-            return setting == null ? fallback : setting.Value;
+            switch (name)
+            {
+                case "NavMargin": return NavSettings.Margin;
+                case "NavCellSize": return NavSettings.CellSize;
+                case "NavMaxStep": return NavSettings.MaxStep;
+                case "NavBakeRange": return NavSettings.BakeRange;
+                case "NavBakeBudgetMs": return NavSettings.BakeBudgetMs;
+                case "NavFieldSeconds": return NavSettings.FieldSeconds;
+                default: return fallback;
+            }
         }
         internal static void Install(TownsModule owner)
         {
