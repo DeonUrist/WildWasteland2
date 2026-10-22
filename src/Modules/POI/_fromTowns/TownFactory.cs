@@ -5,7 +5,11 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Towns
 {
-    internal static class TownFactory
+    /// <summary>
+    /// Stages, activates and removes town lot prefabs (camp wall strip, boss/lab doors off, gas-station parking shell).
+    /// Wave A (A6): POI part of Towns/TownFactory.cs; spawner progress in Loot/_fromTowns/TownFactory.Spawners.cs.
+    /// </summary>
+    internal static partial class TownFactory
     {
         // A lot's prefab clone is deserialized one build slot ahead (Stage) and activated in the next (Building): the two
         // indivisible native costs land in different frames.
@@ -97,31 +101,6 @@ namespace WildWasteland.Modules.Towns
             TownBakeBridge.Discover(go);
             Log.Always("[Towns] lot " + site.Plan.Key + "/" + index + ": " + lot.Prefab + ", role=" + lot.Role + ", town=" + site.Plan.Condition);
         }
-        internal static void Resume(TownSite site)
-        {
-            foreach (var fsms in site.Spawners) if (fsms != null) foreach (var f in fsms)
-            {
-                if (f == null || !f.enabled || Get(f, "OnOff") > 0 || Get(f, "number") <= 0 || Get(f, "numberEnd") <= Get(f, "number")) continue;
-                if (f.ActiveStateName == "wait" || f.ActiveStateName == "trigger") f.Fsm.SetState("getRandom int");
-            }
-        }
-        internal static void Capture(TownSite site, TownRecord record, TownAssets assets)
-        {
-            for (int i = 0; i < site.Spawners.Length; i++)
-            {
-                var fsms = site.Spawners[i]; if (fsms == null) continue;
-                if (site.Plan.Lots[i].IsParking || site.Plan.Lots[i].Skipped) continue;
-                var states = new SpawnerState[fsms.Length];
-                var paths = assets.Buildings[site.Plan.Lots[i].Prefab].Spawners;
-                for (int j = 0; j < fsms.Length; j++) states[j] = new SpawnerState { Path = paths[j],
-                    OnOff = Get(fsms[j], "OnOff"), Number = Get(fsms[j], "number"), NumberEnd = Get(fsms[j], "numberEnd") };
-                record.Spawners[i] = states;
-            }
-        }
-        private static int Get(PlayMakerFSM f, string name)
-        { var v = f == null ? null : f.FsmVariables.FindFsmInt(name); return v == null ? 0 : v.Value; }
-        private static void Set(PlayMakerFSM f, string name, int value)
-        { var v = f.FsmVariables.FindFsmInt(name); if (v != null) v.Value = value; }
 
         internal static GameObject Streets(TownSite site, TownAssets assets, Transform parent)
         {
@@ -143,7 +122,7 @@ namespace WildWasteland.Modules.Towns
             TownMarkers.Remove(site);
             foreach (var building in site.Buildings) if (building != null) { TownOverlap.Forget(building.transform); UnityEngine.Object.Destroy(building); }
             if (site.Streets != null)
-            { foreach (var filter in site.Streets.GetComponentsInChildren<MeshFilter>()) if (filter.sharedMesh != null && filter.sharedMesh.name == "Towns parking slab") UnityEngine.Object.Destroy(filter.sharedMesh); UnityEngine.Object.Destroy(site.Streets); }
+                UnityEngine.Object.Destroy(site.Streets);
         }
     }
 }
