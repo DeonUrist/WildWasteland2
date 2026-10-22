@@ -4,7 +4,9 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols
 {
-    // Foot long-route planner over an ElevationGrid (worker thread); NPCAI foot planning (Wave A split of Patrols Traffic/TrafficElevation.cs).
+    /// <summary>
+    /// Foot long-route planner over an ElevationGrid (worker thread); NPCAI foot planning (Wave A split of Patrols Traffic/TrafficElevation.cs).
+    /// </summary>
     internal static class TerrainWaypoints
     {
         private static readonly float[] Sides={-1400f,-1000f,-650f,-350f,-150f,0f,150f,350f,650f,1000f,1400f};

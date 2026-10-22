@@ -6,9 +6,12 @@ using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
-    // Instance overlays only: a town never edits or writes a prefab's reusable .wwnav map.
+    /// <summary>
+    /// Instance overlays only: a town never edits or writes a prefab's reusable .wwnav map.
+    /// </summary>
     internal sealed class TownOverlap : IDisposable
     {
+        /// <summary>One building's captured map with its overlaid copy.</summary>
         private sealed class Grid
         {
             internal Nav.Structure Native;
@@ -63,7 +66,9 @@ namespace WildWasteland.Modules.Towns
         private int _grid, _cell, _phase, _blocked, _edges;
         private float _retry;
         private bool _warming, _dressing, _planned;
+        /// <summary>The overlay is applied (or given up on: FinishPartial).</summary>
         internal bool Ready { get; private set; }
+        /// <summary>Preparation progress over captured grids and their three phases.</summary>
         internal float Progress { get { return _grids == null ? 0 : _grid >= _grids.Length ? 1
             : (_grid + (_phase + (_phase == 2 ? _grids[_grid].Scan : _cell) / (float)_grids[_grid].Floor.Length) / 3) / _grids.Length; } }
         /// <summary>Overlay of one town (dressing = wall/tower dressing boxes count too).</summary>

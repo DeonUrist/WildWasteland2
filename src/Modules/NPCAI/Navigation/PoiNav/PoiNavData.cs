@@ -23,6 +23,7 @@ namespace WildWasteland.Modules.NPC
 
     /// <summary>One walkable node: POI-local position, surface (level) index, terrain node flag (re-projected per instance).</summary>
     internal sealed class PoiNavNode { public Vector3 Pos; public int Surface; public bool Terrain; }
+    /// <summary>A traversal link (ladder, climb, drop) between two surfaces.</summary>
     internal sealed class PoiNavLink
     {
         public PoiLinkKind Kind; public bool Manual, Off;
@@ -32,6 +33,7 @@ namespace WildWasteland.Modules.NPC
         public PoiNavLink Copy() { return (PoiNavLink)MemberwiseClone(); }
     }
 
+    /// <summary>Pre-recorded navigation of one POI type: nodes, edges, links (POI-local).</summary>
     internal sealed class PoiNavData
     {
         internal const int Version = 1;

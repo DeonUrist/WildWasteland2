@@ -6,10 +6,13 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Towns
 {
-    // Per-building instance overlay computed from the plan and the read-only prefab templates, normally on the MapMagic worker.
-    // Applying it at runtime is a few array writes per building; the physics-free result equals the former sliced projection.
+    /// <summary>
+    /// Per-building instance overlay computed from the plan and the read-only prefab templates, normally on the MapMagic worker.
+    /// Applying it at runtime is a few array writes per building; the physics-free result equals the former sliced projection.
+    /// </summary>
     internal sealed class TownOverlayPlan
     {
+        /// <summary>One building's overlay: cells blocked by the base plan and by dressing, edges cleared.</summary>
         internal sealed class LotPatch
         {
             internal int W, H; internal float Cell;

@@ -29,6 +29,7 @@ namespace WildWasteland.Modules.NPC
         internal static string ConfigPath(string poi) { return Path.Combine(ConfigDir, FileName(poi)); }
 
         private static readonly Dictionary<string, PoiNavData> _cache = new Dictionary<string, PoiNavData>(StringComparer.Ordinal);
+        /// <summary>An async load of one POI type's file.</summary>
         private sealed class Loading
         {
             internal Task<PoiNavData> Work;

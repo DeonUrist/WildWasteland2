@@ -3,7 +3,9 @@ using System.Collections.Generic;
 
 namespace WildWasteland.Modules.Towns
 {
-    // Numeric entrance selection outside the town; the street graph is only used inside its contour.
+    /// <summary>
+    /// Numeric entrance selection outside the town; the street graph is only used inside its contour.
+    /// </summary>
     internal sealed class TownApproach
     {
         private readonly TownOutline _outline;   // refs-ok: REFACTOR-REQUEST B08-6
@@ -12,6 +14,7 @@ namespace WildWasteland.Modules.Towns
         private readonly float[,] _cost = new float[4, 4];
         private readonly int[,] _direction = new int[4, 4];
         private readonly bool[] _from = new bool[4], _to = new bool[4];
+        /// <summary>An NPC's current corner path round the walls.</summary>
         private sealed class Detour { internal GameObject Owner; internal Vector3 Goal; internal readonly Vector3[] Points = new Vector3[4]; internal int Count, Index; }
         private readonly Dictionary<int, Detour> _detours = new Dictionary<int, Detour>();
         private readonly List<int> _dead = new List<int>();

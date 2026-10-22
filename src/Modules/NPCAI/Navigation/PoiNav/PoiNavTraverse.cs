@@ -5,9 +5,11 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
-    // (WW) A human NPC taking a POI navigation link: a scripted, kinematic move (the brain is put on Travel so it neither steers nor
-    // fights meanwhile) with the ladder / climb animation from PlayerBody. Ladder: line up at the foot, climb the rung line, step onto
-    // the platform. Climb: rise in front of the face, then forward onto the top. Drop: a short jump down. One NPC per ladder at a time.
+    /// <summary>
+    /// (WW) A human NPC taking a POI navigation link: a scripted, kinematic move (the brain is put on Travel so it neither steers nor
+    /// fights meanwhile) with the ladder / climb animation from PlayerBody. Ladder: line up at the foot, climb the rung line, step onto
+    /// the platform. Climb: rise in front of the face, then forward onto the top. Drop: a short jump down. One NPC per ladder at a time.
+    /// </summary>
     internal static class PoiNavTraverse
     {
         sealed class Run

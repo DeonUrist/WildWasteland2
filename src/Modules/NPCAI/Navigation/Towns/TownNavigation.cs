@@ -6,6 +6,7 @@ using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
+    /// <summary>Street routing of one town between separately baked buildings: plan street nodes + one portal per building, validated links, all-pairs routes.</summary>
     internal sealed class TownNavigation
     {
         // Same static-world layers as the existing baker; triggers, actors, cars and loose items are excluded.

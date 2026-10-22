@@ -6,9 +6,11 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
-    // (WW) Runtime POI navigation: human NPCs inside a POI whose type has pre-recorded data (PoiNavData) route over its node graph with
-    // A* (a few hundred nodes, no physics) and take its ladders, ledge climbs and drops as scripted traversals with the ladder / climb
-    // animations (IAnimationApi.BeginNpcTraversal). Outside such POIs, or for creatures, Nav's grid maps and feelers carry on.
+    /// <summary>
+    /// (WW) Runtime POI navigation: human NPCs inside a POI whose type has pre-recorded data (PoiNavData) route over its node graph with
+    /// A* (a few hundred nodes, no physics) and take its ladders, ledge climbs and drops as scripted traversals with the ladder / climb
+    /// animations (IAnimationApi.BeginNpcTraversal). Outside such POIs, or for creatures, Nav's grid maps and feelers carry on.
+    /// </summary>
     internal static partial class PoiNav
     {
         /// <summary>[NPCAI / Pathfinding] PoiNavigation (bound by <see cref="NavSettings.Bind"/>; null = unbound = off).</summary>
@@ -25,8 +27,10 @@ namespace WildWasteland.Modules.NPC
         internal static void Bind(ModuleConfig cfg) { BindTools(cfg); }
 
         // ------------------------------------------------------------------ graph per data
+        /// <summary>The node/edge/link graph of one POI data set (built a step at a time).</summary>
         internal sealed class Graph
         {
+            /// <summary>One graph arc: target node, cost, link code (-1 = walk).</summary>
             internal struct Arc { public int To; public float Cost; public int Link; }   // Link -1 = a walk, else link*2 (+1 = taken backwards: down a ladder)
             internal readonly PoiNavData Data;
             internal readonly List<Arc>[] Out;
@@ -100,6 +104,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // ------------------------------------------------------------------ instances (one per live POI root with data)
+        /// <summary>One live POI instance with data: world node positions and bounds.</summary>
         internal sealed class Inst
         {
             internal Transform Root; internal string Poi; internal PoiNavData Data; internal Graph G;

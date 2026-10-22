@@ -3,16 +3,18 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.NPC
 {
-    // [Pathfinding] FriendsPassThrough: NPCs of the same faction walk through each other while they are busy - fighting, going to a spot
-    // they heard or saw something, searching, or walking home (Idle). Their solid colliders ignore each other (Physics.IgnoreCollision,
-    // pairwise); once BOTH are idle again (back home / standing) and no longer overlapping, the collisions are switched back on.
-    // Every 0.25 s over the registered NPCs; only pairs within 30 m are looked at (farther ones can't touch). Unity drops an ignore when a
-    // collider is deactivated, so the ignored pairs are re-applied every 3 s.
-    // (WW perf, N9) new pairs only within 6 m (two runners close at most ~3.5 m in one 0.25 s tick: a pair is made before they touch);
-    // the re-apply goes round: each tick 1/12 of the pairs (each pair every 3 s, as before), and only a pair within 3 m (farther ones
-    // can't touch; their turn comes again within 3 s).
-    // (1.1.0) Only in corridors: a pair is made when at least one of the two stands on a map cell next to a wall / obstacle (Nav.NearWall)
-    // - a doorway, a passage between huts, a cave tunnel. In the open they bump as before (the brain's AvoidFriends passes them).
+    /// <summary>
+    /// [Pathfinding] FriendsPassThrough: NPCs of the same faction walk through each other while they are busy - fighting, going to a spot
+    /// they heard or saw something, searching, or walking home (Idle). Their solid colliders ignore each other (Physics.IgnoreCollision,
+    /// pairwise); once BOTH are idle again (back home / standing) and no longer overlapping, the collisions are switched back on.
+    /// Every 0.25 s over the registered NPCs; only pairs within 30 m are looked at (farther ones can't touch). Unity drops an ignore when a
+    /// collider is deactivated, so the ignored pairs are re-applied every 3 s.
+    /// (WW perf, N9) new pairs only within 6 m (two runners close at most ~3.5 m in one 0.25 s tick: a pair is made before they touch);
+    /// the re-apply goes round: each tick 1/12 of the pairs (each pair every 3 s, as before), and only a pair within 3 m (farther ones
+    /// can't touch; their turn comes again within 3 s).
+    /// (1.1.0) Only in corridors: a pair is made when at least one of the two stands on a map cell next to a wall / obstacle (Nav.NearWall)
+    /// - a doorway, a passage between huts, a cave tunnel. In the open they bump as before (the brain's AvoidFriends passes them).
+    /// </summary>
     internal static class Passthrough
     {
         private static readonly Dictionary<int, Collider[]> _cols = new Dictionary<int, Collider[]>();

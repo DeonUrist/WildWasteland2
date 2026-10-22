@@ -8,7 +8,9 @@ using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
-    // Read-only template data from the existing baker. Never written by Towns.
+    /// <summary>
+    /// Read-only template data from the existing baker. Never written by Towns.
+    /// </summary>
     internal sealed class TownBakeData
     {
         internal int W, H;

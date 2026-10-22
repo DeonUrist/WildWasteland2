@@ -6,10 +6,12 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.NPC
 {
+    /// <summary>Persistent prefab maps of the grid baker (.wwnav): signature, load, save, in-memory templates.</summary>
     internal static partial class Nav
     {
         // These are prefab templates, not save-slot data. Bump MapVersion when sampling or edge rules change.
         private const int MapVersion = 1, MapMagic = 0x574E4156;
+        /// <summary>A running map read or write job.</summary>
         internal sealed class MapIo
         {
             internal BinaryReader Reader;
@@ -22,8 +24,10 @@ namespace WildWasteland.Modules.NPC
             internal float RefOffset;
         }
 
-        // (WW perf) decoded templates kept in memory per map key: a second instance of the same prefab clones the arrays
-        // (plus its areas) instead of re-reading the .wwnav and re-flooding. Instance arrays are copies; the template is never edited.
+        /// <summary>
+        /// (WW perf) decoded templates kept in memory per map key: a second instance of the same prefab clones the arrays
+        /// (plus its areas) instead of re-reading the .wwnav and re-flooding. Instance arrays are copies; the template is never edited.
+        /// </summary>
         private sealed class MapTemplate
         {
             internal float[] Y; internal byte[] Why; internal bool[] Open, Near; internal byte[] Edges; internal int[] Comp, CompSize; internal byte[] Floors;
@@ -81,6 +85,7 @@ namespace WildWasteland.Modules.NPC
         internal static string VanillaMapDir { get { return System.IO.Path.Combine(Core.Assets.ModuleDir("NPCAI"), "NavMaps", "Vanilla"); } }
         internal static string MapActionStatus;
 
+        /// <summary>FNV-1a style 64-bit hash of the map signature.</summary>
         private struct MapHash
         {
             internal ulong Value;
