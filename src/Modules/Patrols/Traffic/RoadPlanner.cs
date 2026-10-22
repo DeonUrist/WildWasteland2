@@ -38,6 +38,9 @@ namespace WildWasteland.Modules.Patrols
             internal TrafficBase[] Sources, Destinations;
             internal Vector3[] Existing;
         }
+        private static readonly ConcurrentQueue<RoadJob> Completed=new ConcurrentQueue<RoadJob>();
+        /// <summary>Publishes completed worker geometry after main-thread owner hints, never calling Unity/module providers on a worker.</summary>
+        internal static void PublishCompleted() { while(Completed.TryDequeue(out var job)){if(job.Epoch!=Volatile.Read(ref _epoch)){job.Route=null;job.Roads=null;}else VehicleRoutingApi.ApplyHints(job);job.Complete=true;} }
         private static readonly ConcurrentQueue<Request> Queue=new ConcurrentQueue<Request>();
         private static int _running,_epoch;
         private static int _snapshotRoad=-1,_snapshotCamps=-1,_snapshotCount=-1;
@@ -130,7 +133,7 @@ namespace WildWasteland.Modules.Patrols
                         if(request.Job.Route!=null)RoadPath.Prepare(request.Job.Route);Interlocked.Increment(ref Searches);
                     }
                     catch(Exception e){request.Job.Error=e.ToString();}
-                    finally{request.Job.Complete=true;}
+                    finally{Completed.Enqueue(request.Job);}
                 }
             }
             finally{Interlocked.Exchange(ref _running,0);if(!Queue.IsEmpty)Start();}
