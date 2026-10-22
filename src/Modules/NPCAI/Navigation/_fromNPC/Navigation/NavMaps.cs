@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.NPC
         internal static int TemplateCount { get { return _templates.Count; } }
         private static void RememberTemplate(Structure s)
         {
-            if (!(s.LoadedMap || s.MapSaved) || s.MapKey == 0 || s.MapFile == null || s.Root == null || s.FloorY == null || s.Comp == null || s.CompSize == null || s.Near == null) return;
+            if (s.Overlaid || !(s.LoadedMap || s.MapSaved) || s.MapKey == 0 || s.MapFile == null || s.Root == null || s.FloorY == null || s.Comp == null || s.CompSize == null || s.Near == null) return;
             if (_templates.ContainsKey(s.MapKey)) return;
             if (_templates.Count >= TemplateLimit) _templates.Clear();
             int n = s.W * s.H; float rootY = s.Root.position.y;
@@ -69,6 +69,9 @@ namespace WildWasteland.Modules.NPC
             var keys = new List<ulong>(); foreach (var kv in _templates) if (!kv.Value.Vanilla) keys.Add(kv.Key);
             foreach (ulong key in keys) _templates.Remove(key);
         }
+
+        /// <summary>Logical name prefix of the embedded vanilla map pack (D13: module folder + path).</summary>
+        internal const string VanillaResourcePrefix = "NPC.NavMaps.Vanilla.";
 
         private static string CustomMapDir { get { return System.IO.Path.Combine(NpcModule.DataDir, "NavMaps", "Custom"); } }
         private static string VanillaMapDir { get { return System.IO.Path.Combine(Core.Assets.ModuleDir("NPC"), "NavMaps", "Vanilla"); } }
@@ -183,7 +186,7 @@ namespace WildWasteland.Modules.NPC
                 if (!s.SkipVanilla)
                 {
                     job.Vanilla = true;
-                    string resource = "NPC.NavMaps.Vanilla." + System.IO.Path.GetFileName(s.MapFile);
+                    string resource = VanillaResourcePrefix + System.IO.Path.GetFileName(s.MapFile);
                     job.Source = "embedded:" + resource;
                     stream = WildWasteland.Core.DiskResources.Open(resource);
                     if (stream == null)
@@ -251,7 +254,8 @@ namespace WildWasteland.Modules.NPC
 
         private static bool CreateMap(Structure s)
         {
-            if (s.MapFile == null || s.MapStep != NavSettings.Step) return false;
+            if (s.MapFile == null || s.MapStep != NavSettings.Step || s.Overlaid) return false;
+            if (MapWritable != null && !MapWritable(s)) return false;
             try
             {
                 if (!s.ReplaceMap && File.Exists(s.MapFile)) return false;

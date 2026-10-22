@@ -2,13 +2,15 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Towns
 {
     internal sealed class TownNavigation
     {
         // Same static-world layers as the existing baker; triggers, actors, cars and loose items are excluded.
-        internal const int Mask = ~((1 << 1) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 12) | (1 << 13) | (1 << 15) | (1 << 17) | (1 << 19) | (1 << 22));
+        /// <summary>Navigation solid mask (POI/Loot/Tools still read it; README A6-9: Core Layers is the final home, request B08-4).</summary>
+        internal const int Mask = NavMasks.Solid;
         private readonly TownSite _site;
         private readonly TownOutline _outline;
         private readonly List<Vector3> _cells = new List<Vector3>(256);

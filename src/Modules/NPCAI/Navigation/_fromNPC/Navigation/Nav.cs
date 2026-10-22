@@ -59,6 +59,7 @@ namespace WildWasteland.Modules.NPC
             // cutting) / is a hop; made after the bake for MaxStep = MaskStep, used while that holds and no _relax / _noHop is on
             public byte[] Mv, Hop; public float MaskStep;
             public byte[] MvB, HopB; public float MaskStepB; public int MaskNext;     // the masks being made (a slice per frame)
+            public bool OverlayChecked, Overlaid;   // INavApi instance overlays looked at for this bake / changed the map (never written to disk)
         }
 
         // (WW perf) a route field is expanded lazily: Build stops once the asking cell is settled and keeps its heap (H) to resume later
@@ -110,7 +111,7 @@ namespace WildWasteland.Modules.NPC
         private static float _nextPick;
         private static readonly Stopwatch _sw = new Stopwatch();
         // solid for baking: everything the feelers see, minus cars (8) and loose items (9) - those move
-        private static readonly int BakeMask = ~((1 << 1) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 6) | (1 << 7) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 12) | (1 << 13) | (1 << 15) | (1 << 17) | (1 << 19) | (1 << 22));
+        private const int BakeMask = NavMasks.Solid;
         private const float Radius = 0.28f, Ankle = 0.2f, HeadTop = 1.5f;   // a human NPC: capsule r 0.28, 1.5 m tall
         // (1.4.11) clearance: from knee height (0.3 m) up the map tests a body 7 cm fatter than the real one - an NPC is never exactly on a
         // cell centre, and a spike passing 3 cm from the centre stopped the body 15 cm off it. Gaps under ~0.7 m at body height close.
@@ -130,7 +131,7 @@ namespace WildWasteland.Modules.NPC
         public static void OnSceneLoaded() { if (!NavRuntime.Active) ResetCore(); }
 
         /// <summary>Drops every structure, map job, route cache and discovery state (scene load, module start/stop).</summary>
-        internal static void ResetCore() { ResetMapHighlight(); foreach (var s in _structures) CloseMap(s); _needed = null; Needed = false; _structures.Clear(); _known.Clear(); _baking = null; _debug.Clear(); _floorCols.Clear(); _exits.Clear(); _relaxedFields.Clear(); _pool.Clear(); _heaps.Clear(); _player = null; _sweep.Clear(); _swept = false; _nodeKind.Clear(); _outPlans.Clear(); _outMemo.Clear(); _compRing.Clear(); PickReset(); _maskQueue.Clear(); }
+        internal static void ResetCore() { IsolatedBake.CancelQueued(); ResetMapHighlight(); foreach (var s in _structures) CloseMap(s); _needed = null; Needed = false; _structures.Clear(); _known.Clear(); _baking = null; _debug.Clear(); _floorCols.Clear(); _exits.Clear(); _relaxedFields.Clear(); _pool.Clear(); _heaps.Clear(); _player = null; _sweep.Clear(); _swept = false; _nodeKind.Clear(); _outPlans.Clear(); _outMemo.Clear(); _compRing.Clear(); PickReset(); _maskQueue.Clear(); }
 
         // ---------- discovery + baking (per frame) ----------
         /// <summary>Old NPC-entry job body: forwards to <see cref="Update"/> unless the NPCAI entry runs the "NPCAI.Nav" job.</summary>
@@ -146,6 +147,7 @@ namespace WildWasteland.Modules.NPC
             var player = Player();
             try { PickStep(); } catch (Exception e) { NpcModule.Log.LogError("Nav: exit pick: " + e); PickReset(); }   // (WW perf) the sliced exit pick (T5)
             try { MaskTick(); } catch (Exception e) { NpcModule.Log.LogError("Nav: move masks: " + e); _maskQueue.Clear(); }   // (WW perf) the move masks (N2)
+            IsolatedBake.TickQueued();      // INavApi.BakeIsolated (one at a time)
             if (player == null) return;
             float udt = Time.unscaledDeltaTime;
             if (udt > 0f && udt < 0.5f) _dtAvg = _dtAvg <= 0f ? udt : _dtAvg + (udt - _dtAvg) * 0.1f;
@@ -328,7 +330,18 @@ namespace WildWasteland.Modules.NPC
 
         private static string Path(Transform t) { return t.parent != null ? t.parent.name + "/" + t.name : t.name; }
 
+        /// <summary>A new structure for root, or null (no solid collider, or a registered make gate holds it back for now). Harmony-patched by
+        /// POI PoiDressing (custom POI not dressed yet) until it uses <see cref="AddMakeGate"/> (request B08-5).</summary>
         private static Structure Make(Transform root)
+        {
+            for (int i = 0; i < _makeGates.Count; i++) if (!_makeGates[i](root)) return null;
+            var s = MakeCore(root);
+            if (s != null && Made != null) Made(root, s);
+            return s;
+        }
+
+        /// <summary>Measures root's solid colliders and builds the (unbaked) structure with its grid frame and map key.</summary>
+        private static Structure MakeCore(Transform root)
         {
             bool any = false; Bounds b = new Bounds();
             var colliders = root.GetComponentsInChildren<Collider>(true);
@@ -353,8 +366,11 @@ namespace WildWasteland.Modules.NPC
             return s;
         }
 
+        /// <summary>Starts (or restarts) the bake of s: fresh arrays, then the saved/template map when one matches, else the base height ray.</summary>
         private static void BeginBake(Structure s, bool loadMap = true)
         {
+            if (BeforeBake != null) BeforeBake(s);
+            s.OverlayChecked = false; s.Overlaid = false;
             s.FloorY = new float[s.W * s.H]; s.Why = new byte[s.W * s.H]; s.Open = new bool[s.W * s.H]; s.FloorHits = new Dictionary<int, int>();
             s.Edges = new byte[s.W * s.H]; s.Comp = null; s.CompSize = null; s.Phase = 0; s.CompStack = null; s.CompSizes = null;
             s.Next = 0; s.Walkable = 0; s.NoFloor = 0; s.Tight = 0; s.Solid = 0; s.ScanLimit = 0; s.BakeMs = 0f; s.BakeFrames = 0; s.StepAtBake = NavSettings.Step;
@@ -377,6 +393,7 @@ namespace WildWasteland.Modules.NPC
             if (s.Phase == 1) { BakeEdges(s, budget); return; }
             if (s.Phase == 2)
             {
+                if (!s.OverlayChecked) ApplyOverlays(s);
                 bool done = ComponentsStep(s, budget);
                 _sw.Stop();
                 s.BakeMs += (float)_sw.Elapsed.TotalMilliseconds; s.BakeFrames++;
@@ -863,7 +880,8 @@ namespace WildWasteland.Modules.NPC
         // A waypoint toward goal for an NPC at pos, or false when no structure is involved / the way is straight. pathLeft = path length to the
         // goal (inside) or to the exit plus the straight rest (outside), for the brain's progress check.
         internal static string LastReason = "";
-        internal static bool Next(GameObject owner, Vector3 pos, Vector3 goal, out Vector3 next, out float pathLeft)
+        /// <summary>The grid/PoiNav routing step for one NPC (see <see cref="Next"/>, which consults the waypoint providers first).</summary>
+        private static bool NextCore(GameObject owner, Vector3 pos, Vector3 goal, out Vector3 next, out float pathLeft)
         {
             next = goal; pathLeft = 0f; LastReason = "";
             _tS = null; _tFrom = _tGoal = _tExit = _tPick = -1; _tD0 = float.NaN; _tRelaxed = false;
@@ -1912,14 +1930,7 @@ namespace WildWasteland.Modules.NPC
         {
             if (into == null) return;
             into.Clear();
-            foreach (var s in _structures)
-            {
-                if (s.Pub == null) s.Pub = new Core.NavStructure();
-                var p = s.Pub;
-                p.Root = s.Root; p.Box = s.Box; p.Baked = s.Baked; p.FloorY = s.FloorY; p.W = s.W; p.Cell = s.Cell;
-                p.GridOrigin = s.GridOrigin; p.GridRight = s.GridRight; p.GridForward = s.GridForward;
-                into.Add(p);
-            }
+            foreach (var s in _structures) into.Add(Publish(s));
         }
 
         // (WW) floating origin: the prefab-aligned grids are scene-space data. Box, grid origins and floor heights move with the world; the grid

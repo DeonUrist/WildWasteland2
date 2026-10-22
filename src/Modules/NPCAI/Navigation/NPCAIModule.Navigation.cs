@@ -28,8 +28,8 @@ namespace WildWasteland.Modules.NPCAI
         partial void LoadBeginNavigation(string slot) { }
         /// <summary>Navigation: origin shift - grid maps, POI instances, routes and traversals move with the world.</summary>
         partial void OriginShiftNavigation(Vector3 delta) { NavRuntime.Shift(delta); }
-        /// <summary>Navigation: ModAPI providers.</summary>
-        partial void ProvideApisNavigation() { }
+        /// <summary>Navigation: provides <see cref="INavApi"/> (Core removes it when the module stops).</summary>
+        partial void ProvideApisNavigation() { ModApi.Provide<INavApi>(this, new NavApi(this)); }
         /// <summary>Navigation: settings rows.</summary>
         partial void SettingsNavigation(SettingsShell shell) { }
         /// <summary>Navigation: tool pages.</summary>
