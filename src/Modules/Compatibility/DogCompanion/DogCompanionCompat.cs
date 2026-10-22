@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using System.Reflection;
 using BepInEx.Bootstrap;
 using BepInEx.Configuration;
@@ -8,11 +7,16 @@ using WildWasteland.Core;
 using HarmonyLib;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Modules.Compatibility;
 
 namespace WildWasteland.Modules.NPC
 {
-    // Dog Companion strips the hound's Rigidbody and FSMs. Only this adapter knows
-    // its private API; both native hounds and the companion use DogAnimations.
+    /// <summary>
+    /// Dog Companion (apocalypter.dogcompanion) bridge serving NPC AI and canine animation: Dog Companion strips the hound's Rigidbody
+    /// and FSMs; only this adapter knows its private API. The companion is driven like a native hound (shared DogAnimations locomotion,
+    /// combat holds and dashes, sitting in vehicles, sneaking with the player). Owned by the Compatibility DogCompanion bridge; acts only
+    /// while the NPC module runs and its [NPC] DogCompanionCompat switch is on. Uses NPC/animation internals (REFACTOR-REQUEST B17-13).
+    /// </summary>
     internal static class DogCompanionCompat
     {
         private static readonly Dictionary<int, Driver> Drivers = new Dictionary<int, Driver>();
@@ -38,12 +42,16 @@ namespace WildWasteland.Modules.NPC
         // (WW) patched through Core (module patches, removed by Core on shutdown). The whole contract is resolved before any patch; a failed
         // patch turns the bridge off (handlers return at once) instead of UnpatchSelf. [NPC] DogCompanionCompat switches it live.
         private static bool _ok;
+        private static IModule _owner;
+        /// <summary>True when the bridge resolved Dog Companion's contract and installed its patches.</summary>
         internal static bool Present { get { return _ok; } }
-        private static bool On { get { return _ok && NpcModule.Running && NpcModule.DogCompanionCompatEnabled.Value; } }
+        /// <summary>Bridge active: resolved, NPC module running and its [NPC] DogCompanionCompat switch on.</summary>
+        private static bool On { get { return _ok && CompatibilityHost.Npc.Running && NpcModule.DogCompanionCompatEnabled.Value; } } // refs-ok: REFACTOR-REQUEST B17-13
 
-        internal static void Initialize(NpcModule module)
+        /// <summary>Resolves Dog Companion's complete private contract, then patches Dog/Npc/Distraction under <paramref name="module"/>.</summary>
+        internal static void Initialize(IModule module)
         {
-            _ok = false;
+            _ok = false; _owner = module;
             BepInEx.PluginInfo info;
             if (!Chainloader.PluginInfos.TryGetValue("apocalypter.dogcompanion", out info) || ReferenceEquals(info.Instance, null)) return;
             try
@@ -79,88 +87,84 @@ namespace WildWasteland.Modules.NPC
                 if (!all) throw new InvalidOperationException("a Harmony patch was refused");
                 Compile();
                 _ok = true;
-                NpcModule.DogCompanionCompatEnabled.SettingChanged += OnToggle;
-                NpcModule.Log.LogInfo("Dog Companion compatibility enabled (" + info.Metadata.Version + "): shared canine locomotion/combat and sitting in vehicles.");
+                NpcModule.DogCompanionCompatEnabled.SettingChanged += OnToggle; // refs-ok: REFACTOR-REQUEST B17-13
+                Log.Main(module, "Dog Companion compatibility enabled (" + info.Metadata.Version + "): shared canine locomotion/combat and sitting in vehicles.");
             }
             catch (Exception e)
             {
                 _ok = false;
-                NpcModule.Log.LogWarning("Dog Companion compatibility unavailable; keeping its original behavior: " + e.Message);
+                Log.Warn(module, "Dog Companion compatibility unavailable; keeping its original behavior: " + e.Message);
             }
         }
 
-        // switched off live: every companion dog is released (Dog Companion's own behaviour); switched on: they are taken again on their next Update
-        private static void OnToggle(object s, EventArgs a) { if (!NpcModule.DogCompanionCompatEnabled.Value) ReleaseAll(); }
+        /// <summary>[NPC] DogCompanionCompat switched off live: every companion dog is released (Dog Companion's own behaviour); switched on:
+        /// they are taken again on their next Update.</summary>
+        private static void OnToggle(object s, EventArgs a) { if (!NpcModule.DogCompanionCompatEnabled.Value) ReleaseAll(); } // refs-ok: REFACTOR-REQUEST B17-13
+        /// <summary>Hands every driven companion back to Dog Companion.</summary>
         private static void ReleaseAll()
         {
             foreach (var d in Drivers.Values) { try { if (d.Dog != null) DogAnimations.RemoveCompanion(d.Dog.gameObject); } catch (Exception) { } }
             Drivers.Clear();
         }
-        internal static void Shutdown()
+        /// <summary>Canine animation shutdown (DogAnimations): hands every companion back to Dog Companion; the bridge stays installed
+        /// and takes them again once the animation runs (the bridge itself stops with <see cref="Stop"/>).</summary>
+        internal static void Shutdown() { ReleaseAll(); }
+
+        /// <summary>Bridge stop: releases every companion and unsubscribes the NPC switch (the scope removes the patches).</summary>
+        internal static void Stop()
         {
             ReleaseAll();
-            if (_ok) { try { NpcModule.DogCompanionCompatEnabled.SettingChanged -= OnToggle; } catch (Exception) { } }
-            _ok = false;
+            if (_ok) { try { NpcModule.DogCompanionCompatEnabled.SettingChanged -= OnToggle; } catch (Exception) { } } // refs-ok: REFACTOR-REQUEST B17-13
+            _ok = false; _owner = null;
         }
+        /// <summary>Number of companion dogs currently driven.</summary>
         internal static int Count { get { return Drivers.Count; } }
 
+        /// <summary>Required field (throws when missing).</summary>
         private static FieldInfo Field(Type type, string name)
         { return AccessTools.Field(type, name) ?? throw new MissingFieldException(type.FullName, name); }
+        /// <summary>Required property (throws when missing).</summary>
         private static PropertyInfo Property(Type type, string name)
         { return AccessTools.Property(type, name) ?? throw new MissingMemberException(type.FullName, name); }
+        /// <summary>Required method (throws when missing).</summary>
         private static MethodInfo Method(Type type, string name)
         { return AccessTools.Method(type, name) ?? throw new MissingMethodException(type.FullName, name); }
+        /// <summary>One of this adapter's patch methods.</summary>
         private static MethodInfo Hook(string name) { return AccessTools.Method(typeof(DogCompanionCompat), name); }
 
-        // ---------- (WW perf) compiled accessors ----------
-        private static Expression Inst(ParameterExpression o, MemberInfo m, bool isStatic) { return isStatic ? null : Expression.Convert(o, m.DeclaringType); }
+        // ---------- (WW perf) generated accessors (Core Access; replaces interpreted Expression.Compile, README 8 #7) ----------
+        /// <summary>Generated getter of a field converted to <typeparamref name="T"/> (enum to int, boxing to object), or null.</summary>
         private static Func<object, T> FieldGet<T>(FieldInfo f)
         {
-            try
-            {
-                var o = Expression.Parameter(typeof(object), "o");
-                Expression e = Expression.Field(Inst(o, f, f.IsStatic), f);
-                if (e.Type != typeof(T)) e = Expression.Convert(e, typeof(T));
-                return Expression.Lambda<Func<object, T>>(e, o).Compile();
-            }
+            try { return Access.Get<T>(f.DeclaringType, f.Name); }
             catch (Exception) { return null; }
         }
+        /// <summary>Generated float field setter, or null.</summary>
         private static Action<object, float> FieldSetFloat(FieldInfo f)
         {
-            try
-            {
-                if (f.FieldType != typeof(float) || f.IsInitOnly) return null;
-                var o = Expression.Parameter(typeof(object), "o"); var v = Expression.Parameter(typeof(float), "v");
-                return Expression.Lambda<Action<object, float>>(Expression.Assign(Expression.Field(Inst(o, f, f.IsStatic), f), v), o, v).Compile();
-            }
-            catch (Exception) { return null; }
+            if (f.FieldType != typeof(float) || f.IsInitOnly) return null;
+            return Access.TypedSetter<float>(f);
         }
+        /// <summary>Generated property getter converted to <typeparamref name="T"/>, or null.</summary>
         private static Func<object, T> PropGet<T>(PropertyInfo pi)
         {
-            try
-            {
-                var o = Expression.Parameter(typeof(object), "o");
-                var g = pi.GetGetMethod(true);
-                Expression e = Expression.Property(Inst(o, pi, g.IsStatic), pi);
-                if (e.Type != typeof(T)) e = Expression.Convert(e, typeof(T));
-                return Expression.Lambda<Func<object, T>>(e, o).Compile();
-            }
+            try { return Access.Get<T>(pi.DeclaringType, pi.Name); }
             catch (Exception) { return null; }
         }
+        /// <summary>Generated call (first delegate parameter = target) when the parameter types match exactly, or null.</summary>
         private static TDelegate Call<TDelegate>(MethodInfo m, params Type[] args) where TDelegate : class
         {
             try
             {
-                var o = Expression.Parameter(typeof(object), "o");
-                var ps = new ParameterExpression[args.Length + 1]; ps[0] = o;
-                var call = new Expression[args.Length];
                 var mp = m.GetParameters();
                 if (mp.Length != args.Length) return null;
-                for (int i = 0; i < args.Length; i++) { ps[i + 1] = Expression.Parameter(args[i], "a" + i); if (mp[i].ParameterType != args[i]) return null; call[i] = ps[i + 1]; }
-                return Expression.Lambda<TDelegate>(Expression.Call(Inst(o, m, m.IsStatic), m, call), ps).Compile();
+                for (int i = 0; i < args.Length; i++) if (mp[i].ParameterType != args[i]) return null;
+                var types = new Type[args.Length + 1]; types[0] = typeof(object); Array.Copy(args, 0, types, 1, args.Length);
+                return Access.Call<TDelegate>(m, typeof(TDelegate).GetMethod("Invoke").ReturnType, types);
             }
             catch (Exception) { return null; }
         }
+        /// <summary>Builds every accessor once (Initialize); a member that cannot be generated falls back to its reflection call.</summary>
         private static void Compile()
         {
             var ft = target; var fm = mode; var fl = lunge; var flf = lastFight; var fnb = nextBite; var fg = targetGo; var fpd = pawDepth;
@@ -186,6 +190,7 @@ namespace WildWasteland.Modules.NPC
             _hurt = Call<Action<object, float>>(mh, typeof(float)) ?? ((o, a) => mh.Invoke(o, new object[] { a }));
         }
 
+        /// <summary>WW-side state of one companion dog: its NPC agent, hold/dash flags, speed and sneaking.</summary>
         internal sealed class Driver
         {
             internal readonly MonoBehaviour Dog;
@@ -198,10 +203,14 @@ namespace WildWasteland.Modules.NPC
             private GameObject movementPlayer;
             private PlayMakerFSM playerMovement;
             private FsmFloat standingHeight;
+            /// <summary>Creates the agent for a companion dog.</summary>
             internal Driver(MonoBehaviour dog)
             { Dog = dog; Agent = new Senses.Agent { Owner = dog.gameObject, T = dog.transform, Col = dog.GetComponent<Collider>() }; }
+            /// <summary>Usable: not failed, dog alive and enabled.</summary>
             internal bool Active { get { return !Failed && Dog != null && Dog.isActiveAndEnabled; } }
+            /// <summary>Dog Companion mode 1 = riding in the player's vehicle.</summary>
             internal bool Riding { get { return _mode(Dog) == 1; } }
+            /// <summary>The player sneaks and the dog has no live target.</summary>
             internal bool Sneaking
             {
                 get
@@ -210,6 +219,7 @@ namespace WildWasteland.Modules.NPC
                     return WantsSneak && !Riding && Agent.Target == null && (npc == null || !_alive(npc));
                 }
             }
+            /// <summary>Reads the player's Movement FSM (crouch/crawl state or low standing height); FSM lookup cached per player.</summary>
             internal void RefreshSneaking()
             {
                 var player = Senses.PlayerObj ?? (GameObject)_knownPlayer(null);
@@ -222,24 +232,33 @@ namespace WildWasteland.Modules.NPC
                 WantsSneak = state.StartsWith("Crouch", StringComparison.OrdinalIgnoreCase) || state.StartsWith("Crawl", StringComparison.OrdinalIgnoreCase)
                     || (playerMovement != null && playerMovement.enabled && standingHeight != null && standingHeight.Value > .1f && standingHeight.Value < 1.4f);
             }
+            /// <summary>Dog Companion's ground point of the dog.</summary>
             internal Vector3 Feet { get { return _feet(Dog); } }
+            /// <summary>Paw height offset.</summary>
             internal float PawHeight { get { return -_pawDepth(Dog); } }
+            /// <summary>Dog Companion's run speed x1.1.</summary>
             internal float RunSpeed { get { return runSpeed.Value * 1.1f; } }
+            /// <summary>Dog Companion's next-bite time.</summary>
             internal float NativeNextBite { get { return _nextBite(Dog); } }
+            /// <summary>Sets Dog Companion's next-bite time.</summary>
             internal void SetCooldown(float until) { _setNextBite(Dog, until); }
+            /// <summary>Copies Dog Companion's live target into the NPC agent (combat/idle).</summary>
             internal void SyncTarget()
             {
                 object npc = Riding ? null : _target(Dog);
                 Agent.Target = npc != null && _alive(npc) ? (GameObject)_targetGo(npc) : null;
                 Agent.State = Agent.Target != null ? Senses.State.Combat : Senses.State.Idle;
             }
+            /// <summary>True when <paramref name="victim"/> is the dog's live target.</summary>
             internal bool TargetAlive(GameObject victim)
             {
                 object npc = _target(Dog);
                 return victim != null && npc != null && (GameObject)_targetGo(npc) == victim && _alive(npc);
             }
+            /// <summary>Holds (stops) or releases the dog's own movement.</summary>
             internal void Halt(bool hold)
             { Held = hold; if (hold && Active) _setMoving(Dog, false, 0f); }
+            /// <summary>A bite landed: Dog Companion damage, NPC hurt by the player, snarl.</summary>
             internal void Contact(GameObject victim)
             {
                 if (!Active || Riding || !TargetAlive(victim)) return;
@@ -247,6 +266,7 @@ namespace WildWasteland.Modules.NPC
                 if (Senses.PlayerObj != null) Senses.Hurt(victim, Senses.PlayerObj);
                 _snarl(Dog);
             }
+            /// <summary>One committed dash step through Dog Companion's Step (steering bypass active).</summary>
             internal void Dash(Vector3 direction, float speed, float dt, GameObject victim)
             {
                 if (!Active || Riding) return;
@@ -255,6 +275,7 @@ namespace WildWasteland.Modules.NPC
                 finally { FixedDash = false; DashTarget = null; }
                 Dog.transform.rotation = Quaternion.LookRotation(direction);
             }
+            /// <summary>Replacement of Dog Companion's ChaseTick: leash, give-up and stuck handling, own navigation unless held/dashing.</summary>
             internal bool Chase(Transform player, float dt)
             {
                 SyncTarget(); if (Agent.Target == null) return false;
@@ -272,6 +293,7 @@ namespace WildWasteland.Modules.NPC
                 return false;
             }
         }
+        /// <summary>The driver of a dog (created and registered with the canine animation on first sight).</summary>
         private static Driver Get(MonoBehaviour dog)
         {
             if (dog == null) return null;
@@ -281,20 +303,23 @@ namespace WildWasteland.Modules.NPC
                 driver = new Driver(dog);
                 if (!DogAnimations.RegisterCompanion(driver.Agent, driver))
                 {
-                    if (!warnedBundle) { warnedBundle = true; NpcModule.Log.LogWarning("Dog Companion needs the updated npcai_dogs.bundle (including sit clips); keeping its original behavior."); }
+                    if (!warnedBundle) { warnedBundle = true; Log.Warn(_owner, "Dog Companion needs the updated npcai_dogs.bundle (including sit clips); keeping its original behavior."); }
                     driver.Failed = true;
                 }
                 Drivers[id] = driver;
             }
             return driver;
         }
+        /// <summary>The canine animation drives this dog.</summary>
         private static bool Owns(Driver d) { return d != null && !d.Failed && DogAnimations.Owns(d.Dog.gameObject); }
+        /// <summary>Releases one dog after an error (logged).</summary>
         private static void Fail(Driver d, Exception e)
         {
             if (d == null) return;
             d.Failed = true; DogAnimations.RemoveCompanion(d.Dog.gameObject);
-            NpcModule.Log.LogWarning("Dog Companion compatibility released this dog after an error: " + e.GetBaseException().Message);
+            Log.Warn(_owner, "Dog Companion compatibility released this dog after an error: " + e.GetBaseException().Message);
         }
+        /// <summary>Prefix of Dog.Update (per companion per frame): target/sneak sync and animation restore.</summary>
         public static void BeforeUpdate(MonoBehaviour __instance)
         {
             if (!On) return;
@@ -302,6 +327,7 @@ namespace WildWasteland.Modules.NPC
             try { d = Get(__instance); if (d == null) return; d.SyncTarget(); d.RefreshSneaking(); DogAnimations.RestoreCompanion(__instance.gameObject); d.Before = __instance.transform.position; }
             catch (Exception e) { Fail(d, e); }
         }
+        /// <summary>Postfix of Dog.Update: measured speed, procedural jolt suppressed, animation tick.</summary>
         public static void AfterUpdate(MonoBehaviour __instance)
         {
             if (!On) return;
@@ -316,6 +342,7 @@ namespace WildWasteland.Modules.NPC
             }
             catch (Exception e) { Fail(d, e); }
         }
+        /// <summary>Prefix of Dog.ChaseTick: the WW chase replaces it while the animation owns the dog.</summary>
         public static bool BeforeChase(MonoBehaviour __instance, Transform __0, float __1)
         {
             if (!On) return true;
@@ -323,6 +350,7 @@ namespace WildWasteland.Modules.NPC
             try { d = Get(__instance); return !Owns(d) || d.Chase(__0, __1); }
             catch (Exception e) { Fail(d, e); return true; }
         }
+        /// <summary>Prefix of Dog.Steer during a committed dash: a short sphere cast replaces its obstacle steering.</summary>
         public static bool BeforeSteer(MonoBehaviour __instance, Vector3 __0, Vector3 __1, ref Vector3 __result)
         {
             if (!On) return true;
@@ -335,18 +363,21 @@ namespace WildWasteland.Modules.NPC
             __result = blocked ? Vector3.zero : __1;
             return false;
         }
+        /// <summary>Prefix of Dog.Step: a sneaking companion walks at most 1.6 m/s.</summary>
         public static void BeforeStep(MonoBehaviour __instance, ref float __1)
         {
             if (!On) return;
             Driver d;
             if (Drivers.TryGetValue(__instance.GetInstanceID(), out d) && Owns(d) && d.Sneaking) __1 = Mathf.Min(__1, 1.6f);
         }
+        /// <summary>Prefix of Distraction.Nearest: NPCs driven by the WW brain ignore Dog Companion's distractions.</summary>
         public static bool BeforeDistraction(FsmStateAction __0)
         {
             if (!On) return true;
             var fsm = __0 != null ? __0.Fsm : null;
-            return fsm == null || !Senses.On || !NpcModule.BrainEnabled.Value || Senses.AgentFor(fsm.GameObject) == null;
+            return fsm == null || !Senses.On || !NpcModule.BrainEnabled.Value || Senses.AgentFor(fsm.GameObject) == null; // refs-ok: REFACTOR-REQUEST B17-13
         }
+        /// <summary>A driven companion within <paramref name="range"/> of an enemy (NPC Brain: enemies react to the dog), or null.</summary>
         internal static GameObject CloseThreat(GameObject enemy, float range)
         {
             if (enemy == null) return null;
@@ -354,6 +385,7 @@ namespace WildWasteland.Modules.NPC
                 if (Owns(d) && !d.Riding && (d.Dog.transform.position - enemy.transform.position).sqrMagnitude <= range * range) return d.Dog.gameObject;
             return null;
         }
+        /// <summary>Postfix of Dog.LateUpdate: late animation pass.</summary>
         public static void AfterLateUpdate(MonoBehaviour __instance)
         {
             if (!On) return;
@@ -362,6 +394,7 @@ namespace WildWasteland.Modules.NPC
             try { DogAnimations.LateCompanion(__instance.gameObject); }
             catch (Exception e) { Fail(d, e); }
         }
+        /// <summary>Postfix of Dog.RideTick: lowers a riding dog onto its seat.</summary>
         public static void AfterRideTick(MonoBehaviour __instance)
         {
             if (!On) return;
@@ -373,12 +406,14 @@ namespace WildWasteland.Modules.NPC
             }
             catch (Exception e) { Fail(d, e); }
         }
+        /// <summary>Prefix of Dog.OnDisable: releases the dog.</summary>
         public static void BeforeDisable(MonoBehaviour __instance)
         {
             if (!_ok) return;
             DogAnimations.RemoveCompanion(__instance.gameObject);
             Drivers.Remove(__instance.GetInstanceID());
         }
+        /// <summary>Scene change: forgets every driver (called by the canine animation).</summary>
         internal static void OnSceneLoaded() { Drivers.Clear(); }
     }
 

@@ -3,16 +3,13 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.NPC
 {
     /// <summary>
-    /// NpcModule part owned by Compatibility (Wave A split): lifecycle of the Dog Companion and Weapons Pack bridges. Partial methods are
-    /// called from the NPC entry where the moved lines were.
+    /// NpcModule part owned by Compatibility (Wave A split). Since B17 every method is empty: the Dog Companion and Weapons Pack bridges
+    /// live in the Compatibility module. Wave C deletes these partial methods with the old NPC entry.
     /// </summary>
     public sealed partial class NpcModule
     {
-        /// <summary>Starts the Dog Companion bridge (only when that mod is installed; [NPC] DogCompanionCompat switches it live).</summary>
-        partial void InitCompatibilityDogCompanion()
-        {
-            DogCompanionCompat.Initialize(this);
-        }
+        /// <summary>Empty (B17): the Dog Companion bridge is started by the Compatibility module (it acts while NPC runs).</summary>
+        partial void InitCompatibilityDogCompanion() { }
 
         /// <summary>Empty (B17): the Weapons Pack cut sweep is the job "Compatibility.WeaponsPack.Cuts" of the Compatibility module.</summary>
         partial void InitCompatibilityJobs() { }
