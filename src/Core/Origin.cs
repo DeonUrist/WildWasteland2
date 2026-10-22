@@ -21,7 +21,7 @@ namespace WildWasteland.Core
         {
             get
             {
-                if (_anchor == null && Time.unscaledTime >= _nextFind)
+                if (_anchor == null && Time.unscaledTime >= _nextFind && GameRefs.WorldActive)
                 {
                     _nextFind = Time.unscaledTime + 1f;
                     var map = GameObject.Find("MapMagic");

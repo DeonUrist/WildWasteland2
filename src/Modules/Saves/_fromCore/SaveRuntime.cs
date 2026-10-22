@@ -43,7 +43,7 @@ namespace WildWasteland.Core
         }
         /// <summary>Clears cached player FSMs; the main menu clears the active file and bumps the save catalogue.</summary>
         static void SceneLoaded(Scene scene, LoadSceneMode mode)
-        { _health = _inCar = null; if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }
+        { if (scene.name == "MainMenu") { ActiveFile = null; SaveSystem.CatalogueVersion++; } }
         /// <summary>LoadGame makes the selected (or native slot) file active; isPlay clears the selection.</summary>
         static void StateChanged(string previous, string current)
         {

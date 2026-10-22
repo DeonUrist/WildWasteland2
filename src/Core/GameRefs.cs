@@ -68,18 +68,35 @@ namespace WildWasteland.Core
 
         public static string SaveLoadState { get { var f = SaveLoadGame; return f != null ? f.ActiveStateName : null; } }
 
+        /// <summary>Whether a world is loading or playing; missing player/map objects are never searched from the title menu.</summary>
+        public static bool WorldActive { get { Refresh(); return WantsWorld(); } }
+
+        /// <summary>Reads only already cached FSM state to avoid recursively resolving world references.</summary>
+        private static bool WantsWorld()
+        {
+            if (_menu != null && _menu.Fsm.Initialized && (_menu.ActiveStateName == "play" || _menu.ActiveStateName == "pause")) return true;
+            if (_saveLoad == null || !_saveLoad.Fsm.Initialized) return false;
+            switch (_saveLoad.ActiveStateName)
+            {
+                case "setSeed": case "LoadGame": case "generateTerrain": case "generateTerrain 2":
+                case "LoadVar": case "loaded": case "Wait for Terrain Gen": case "done": case "SaveGame": case "isPlay": return true;
+                default: return false;
+            }
+        }
+
         /// <summary>Looks up missing references at most once per second.</summary>
         static void Refresh()
         {
             if (_player != null && _gm != null && _menu != null && _saveLoad != null && _camera != null && _arrays != null && _itemId != null) return;
             if (Time.unscaledTime < _next) return;
             _next = Time.unscaledTime + 1f;
-            if (_player == null) _player = GameObject.Find("Player");
-            if (_camera == null) _camera = GameObject.Find("PlayerCameraHolder");
             if (_gm == null) _gm = GameObject.Find("__GameManager__");
             if (_menu == null && _gm != null) _menu = FsmUtil.Find(_gm, "Menu");
             if (_slg == null) _slg = GameObject.Find("SaveLoadGame");
             if (_saveLoad == null && _slg != null) _saveLoad = FsmUtil.Find(_slg, "SaveLoadGame");
+            if (!WantsWorld()) return;
+            if (_player == null) _player = GameObject.Find("Player");
+            if (_camera == null) _camera = GameObject.Find("PlayerCameraHolder");
             if (_arrays == null) _arrays = GameObject.Find("NewGO_ArrayList");
             if (_itemId == null) _itemId = GameObject.Find("itemNameID");
         }

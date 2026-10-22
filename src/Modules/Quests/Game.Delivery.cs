@@ -154,7 +154,7 @@ namespace WildWasteland.Modules.Quests
 
         internal static void ResetWorld()
         {
-            dayFsm = null; ammoFsm = null; money = null;
+            Clock.Reset(); Money.Reset(); ammoFsm = null;
             liveNames.Clear(); liveNamesAt = -10; MatchesByToken.Clear(); _matches = 0; prefabs.Clear(); watched.Clear();
         }
     }
