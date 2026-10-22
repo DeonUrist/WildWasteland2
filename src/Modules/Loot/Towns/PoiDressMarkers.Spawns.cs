@@ -1,45 +1,47 @@
 using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.IO;
 using System.Text;
 using HutongGames.PlayMaker;
-using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Loot;
 using Object = UnityEngine.Object;
 
 namespace WildWasteland.Modules.Towns
 {
     /// <summary>
-    /// Per-world spawn groups of POI layout markers: Hide/Exit points, Items/CarParts/Monsters ItemSpawner clones with one-shot
-    /// progress saved under ES3 key WildWasteland.Towns.PoiDressMarkers.v1 (WWPM1; identity formula unchanged).
-    /// Wave A (A6): partial split of Towns/PoiDressMarkers.cs (Loot part, B15). Still inline for Wave B: Monsters pools (NPCAI, B07)
-    /// and Hide/Exit semantics (NPCAI) in Build; the ES3 cache + AfterSave readback pattern (Core SaveBus helper, B01).
+    /// Spawn part of the POI layout markers (Loot, ex Towns/PoiDressMarkers.cs): builds Hide/Exit points and Items/CarParts/Monsters
+    /// groups (native ItemSpawner clones restricted to a <see cref="PoiSpawnCatalog"/> list). One-shot group progress lives in the
+    /// Loot store <see cref="SpawnerProgress"/> (owner "PoiDressMarkers", ES3 key WildWasteland.Towns.PoiDressMarkers.v1, WWPM1,
+    /// identity formula unchanged); Save/Load/Capture/Clear are the POI entry's call sites and forward there.
+    /// Still POI/NPCAI-coupled (REFACTOR-REQUEST B15-1): the dressing site/marker types, town hash and allegiance, town floor mask
+    /// and the NPCAI interior ownership of Monsters groups. Namespace kept for Wave C.
     /// </summary>
     internal sealed partial class PoiDressMarkers
     {
-        private const string SaveKey = "WildWasteland.Towns.PoiDressMarkers.v1";
-        private sealed class Live { internal string Key; internal PlayMakerFSM Fsm; }
-        private readonly Dictionary<string, SpawnerState> _saved = new Dictionary<string, SpawnerState>(StringComparer.Ordinal);
-        private readonly List<Live> _live = new List<Live>();
+        /// <summary>Spawn-list catalog used by the marker groups and the POI editor.</summary>
         internal readonly PoiSpawnCatalog Catalog = new PoiSpawnCatalog();
-        internal void Capture()
-        {
-            foreach (var row in _live) if (row.Fsm != null)
-                _saved[row.Key] = new SpawnerState { OnOff = TownPopulation.Read(row.Fsm, "OnOff"), Number = TownPopulation.Read(row.Fsm, "number"), NumberEnd = TownPopulation.Read(row.Fsm, "numberEnd") };
-            _live.RemoveAll(row => row.Fsm == null);
-        }
-        private static string Identity(PoiDressing.Site site, PoiDressProp marker)
+
+        /// <summary>Copies live marker FSM progress into the Loot store (before unload/save).</summary>
+        internal void Capture() { SpawnerProgress.CaptureMarkers(); }
+
+        /// <summary>Stable identity of a marker group: base64 site type, world position of the site root (dm) and marker id.</summary>
+        private static string Identity(PoiDressing.Site site, PoiDressProp marker) // refs-ok: REFACTOR-REQUEST B15-1
         {
             var world = Origin.World(site.Root.position);
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(site.Type)) + ":" + Mathf.RoundToInt(world.x * 10) + ":" + Mathf.RoundToInt(world.z * 10) + ":" + marker.Id;
         }
-        internal bool Build(PoiDressing.Site site, PoiDressProp marker)
+
+        /// <summary>
+        /// Builds one marker of a dressed site; false when it is not a marker (the caller places scenery). Hide: five Hide-tagged
+        /// floor points; Exit: an empty holder; spawn kinds: the committed (first rolled, seeded by identity) count, a native
+        /// ItemSpawner clone restricted to the profile's list with that many floor-snapped spawn points, tracked for progress.
+        /// Finished groups build nothing. Throws when the list or the native template is unavailable.
+        /// </summary>
+        internal bool Build(PoiDressing.Site site, PoiDressProp marker) // refs-ok: REFACTOR-REQUEST B15-1
         {
             if (!marker.Marker) return false;
             var holder = new GameObject("POI " + marker.Kind + " " + marker.Id); holder.SetActive(false); holder.transform.SetParent(site.Dressing.transform, false);
-            PoiPropCatalog.Pose(holder.transform, marker);
+            PoiPropCatalog.Pose(holder.transform, marker); // refs-ok: REFACTOR-REQUEST B15-1
             if (marker.Kind == "Hide")
             {
                 // Vanilla and WW brains find Hide-tagged points, not trigger volumes. Five floor-level samples describe the area.
@@ -51,10 +53,10 @@ namespace WildWasteland.Modules.Towns
             string key = Identity(site, marker);
             var profile = Catalog.Find(marker.Kind, marker.Profile);
             if (profile == null) { Object.Destroy(holder); throw new InvalidOperationException("Unavailable marker list: " + marker.Profile); }
-            SpawnerState saved; bool existing = _saved.TryGetValue(key, out saved);
-            var random = new System.Random(TownPlanner.Hash(key));
+            var saved = SpawnerProgress.Marker(key);
+            var random = new System.Random(TownPlanner.Hash(key)); // refs-ok: REFACTOR-REQUEST B15-1
             int count = random.Next(100) >= marker.Chance ? 0 : random.Next(marker.Minimum, marker.Maximum + 1);
-            if (!existing) { saved = new SpawnerState { NumberEnd = count, OnOff = count == 0 ? 1 : 0 }; _saved.Add(key, saved); }
+            if (saved == null) saved = SpawnerProgress.AddMarker(key, count, count == 0 ? 1 : 0);
             count = saved.NumberEnd;
             // Every saved group is one-shot. Changing a layout/list never rerolls already committed progress.
             if (saved.OnOff > 0 || saved.Number >= count) { Object.Destroy(holder); return true; }
@@ -71,60 +73,27 @@ namespace WildWasteland.Modules.Towns
                 var point = new GameObject("Spawn " + i); point.transform.SetParent(points.transform, false);
                 point.transform.localPosition = new Vector3((float)random.NextDouble() - .5f, .03f, (float)random.NextDouble() - .5f);
                 RaycastHit floor; var position = point.transform.position;
-                if (Physics.Raycast(position + Vector3.up * .4f, Vector3.down, out floor, .8f, TownNavigation.Mask, QueryTriggerInteraction.Ignore) && floor.normal.y >= .65f)
+                if (Physics.Raycast(position + Vector3.up * .4f, Vector3.down, out floor, .8f, TownNavigation.Mask, QueryTriggerInteraction.Ignore) && floor.normal.y >= .65f) // refs-ok: REFACTOR-REQUEST B15-1
                     point.transform.position = floor.point + Vector3.up * .06f;
             }
-            foreach (var state in fsm.FsmStates) foreach (var action in state.Actions)
-            {
-                var select = action as SelectRandomInt;
-                if (select != null && select.storeInt != null && select.storeInt.Name == "index")
-                {
-                    select.ints = new FsmInt[profile.Indices.Length]; select.weights = new FsmFloat[profile.Weights.Length];
-                    for (int i = 0; i < select.ints.Length; i++) { select.ints[i] = new FsmInt(profile.Indices[i]); select.weights[i] = new FsmFloat(profile.Weights[i]); }
-                }
-            }
-            TownPopulation.Write(fsm, "number", saved.Number); TownPopulation.Write(fsm, "numberEnd", count); TownPopulation.Write(fsm, "OnOff", saved.OnOff);
-            TownPopulation.Force(fsm, count, marker.Kind == "Monsters" ? site.Population : null);
+            NativeSpawners.Select(fsm, profile.Indices, profile.Weights);
+            NativeSpawners.Write(fsm, "number", saved.Number); NativeSpawners.Write(fsm, "numberEnd", count); NativeSpawners.Write(fsm, "OnOff", saved.OnOff);
+            NativeSpawners.Force(fsm, count, marker.Kind == "Monsters" ? site.Population : null);
             // Ignore stale editor-template spawnList/spawn values; the native spawn action resolves its own fresh children.
             var list = fsm.FsmVariables.FindFsmGameObject("spawnList"); if (list != null) list.Value = points;
-            _live.Add(new Live { Key = key, Fsm = fsm });
-            holder.SetActive(true); InteriorPopulation.OwnMarker(fsm, site);
-            Log.Always("[Towns] POI marker " + site.Type + "/" + marker.Kind + ": " + (marker.Kind == "Monsters" && site.Town != null ? "town allegiance " + site.Town.Plan.Faction : profile.Name) + "; " + saved.Number + "/" + count + ", native arrival queue; " + marker.Id);
+            SpawnerProgress.Track(key, fsm);
+            holder.SetActive(true); InteriorPopulation.OwnMarker(fsm, site); // refs-ok: REFACTOR-REQUEST B15-1
+            if (Log.L1) Log.Main(LootModule.Instance, "POI marker " + site.Type + "/" + marker.Kind + ": " + (marker.Kind == "Monsters" && site.Town != null ? "town allegiance " + site.Town.Plan.Faction : profile.Name) + "; " + saved.Number + "/" + count + ", native arrival queue; " + marker.Id);
             return true;
         }
-        internal void Save(string slot)
-        {
-            Capture(); var text = new StringBuilder("WWPM1\n");
-            foreach (var row in _saved) text.Append(row.Key).Append('\t').Append(row.Value.OnOff).Append('\t').Append(row.Value.Number).Append('\t').Append(row.Value.NumberEnd).Append('\n');
-            string value = text.ToString(); var cache = new ES3Settings(slot) { location = ES3.Location.Cache };
-            ES3.Save<string>(SaveKey, value, cache);
-            SaveBus.AfterSave(() =>
-            {
-                try
-                {
-                    ES3.Save<string>(SaveKey, value, cache); ES3.StoreCachedFile(slot);
-                    if (ES3.Load<string>(SaveKey, new ES3Settings(slot) { location = ES3.Location.File }) != value) throw new IOException("Marker progress readback mismatch");
-                }
-                catch (Exception e) { SaveBus.ReportFailure("POI marker save failed: " + e.Message); }
-            });
-        }
-        internal void Load(string slot)
-        {
-            _saved.Clear(); _live.Clear();
-            if (string.IsNullOrEmpty(slot)) return;
-            var settings = new ES3Settings(slot) { location = ES3.Location.File };
-            if (!File.Exists(settings.FullPath) || !ES3.KeyExists(SaveKey, settings)) return;
-            string[] lines = ES3.Load<string>(SaveKey, settings).Split('\n');
-            if (lines.Length == 0 || lines[0] != "WWPM1" || lines.Length > 100000) throw new InvalidDataException("Invalid marker progress header/count");
-            foreach (string line in lines)
-            {
-                if (line.Length == 0 || line == "WWPM1") continue;
-                var v = line.Split('\t'); int on, number, end;
-                if (v.Length != 4 || !int.TryParse(v[1], out on) || !int.TryParse(v[2], out number) || !int.TryParse(v[3], out end)
-                    || on < 0 || on > 1 || number < 0 || end < 0 || end > 32 || number > 32 || _saved.ContainsKey(v[0])) throw new InvalidDataException("Invalid marker progress row");
-                _saved.Add(v[0], new SpawnerState { OnOff = on, Number = number, NumberEnd = end });
-            }
-        }
-        internal void Clear(bool reset) { Capture(); _live.Clear(); if (reset) _saved.Clear(); Catalog.Clear(); }
+
+        /// <summary>POI entry save: marker progress into the slot (forwards to <see cref="SpawnerProgress.SaveMarkers"/>).</summary>
+        internal void Save(string slot) { SpawnerProgress.SaveMarkers(slot); }
+
+        /// <summary>POI entry load/new world (null slot): marker progress of the slot (forwards to <see cref="SpawnerProgress.LoadMarkers"/>; throws on invalid data).</summary>
+        internal void Load(string slot) { SpawnerProgress.LoadMarkers(slot); }
+
+        /// <summary>Unload of the dressed sites: captures progress, stops tracking, (reset) forgets progress, drops the catalog.</summary>
+        internal void Clear(bool reset) { SpawnerProgress.ClearMarkers(reset); Catalog.Clear(); }
     }
 }

@@ -1,73 +1,47 @@
 using System;
 using System.Collections.Generic;
-using HutongGames.PlayMaker;
-using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Loot;
 
 namespace WildWasteland.Modules.Towns
 {
     /// <summary>
-    /// Generic native ItemSpawner control for towns and stand-alone spawners: native budget capture, per-town percentage
-    /// allocation, Configure (counts, faction pools, selectors), Force and the FSM int helpers.
-    /// Wave A (A6): partial split of Towns/TownPopulation.cs (Loot "spawner control" part, B15; NPCAI supplies the actor pools in Wave B).
+    /// Town spawner budgets (Loot, ex Towns/TownPopulation.cs "spawner control" part): native budget capture for the town asset
+    /// catalog, per-town population/loot percentage allocation balanced across buildings and spawn groups (completed groups
+    /// retained) and per-lot spawner configuration (counts, faction pools, merchants, unique and boss groups). Per-FSM work is
+    /// <see cref="NativeSpawners"/>; the town plan/site/asset/settings types, the percentage roll and the faction pools are POI's
+    /// and NPCAI's (REFACTOR-REQUEST B15-2). Namespace kept for Wave C.
     /// </summary>
     internal static partial class TownPopulation
     {
+        /// <summary>Native count budget of one spawn group of a town building asset (POI TownAssets data; see <see cref="NativeSpawnerBudget"/>).</summary>
         internal sealed class NativeBudget
         {
+            /// <summary>Native numberEnd range and group kind.</summary>
             internal int Min, Max, Kind;
         }
-        private static int NativeValue(PlayMakerFSM f, FsmInt value)
-        {
-            int result = value.Value;
-            if (string.IsNullOrEmpty(value.Name)) return result;
-            var authored = f.FsmVariables.FindFsmInt(value.Name); if (authored != null) result = authored.Value;
-            // ItemNum's SetFsmInt may run after another component's activation. Read its authored
-            // override as well, so 100% means the prefab's real loot amount, not the 4..8 fallback.
-            foreach (var sibling in f.GetComponents<PlayMakerFSM>()) if (sibling.FsmName == "ItemNum")
-                foreach (var state in sibling.FsmStates) foreach (var action in state.Actions)
-                {
-                    var set = action as SetFsmInt;
-                    if (set != null && set.fsmName.Value == "ItemSpawner" && set.variableName.Value == value.Name) result = set.setValue.Value;
-                }
-            return result;
-        }
+
+        /// <summary>Native budget of a spawner prefab FSM (POI TownAssets catalog build); throws for unsupported groups.</summary>
         internal static NativeBudget Capture(PlayMakerFSM f)
         {
-            if (f == null) return new NativeBudget();
-            string name = f.gameObject.name;
-            int kind = name.StartsWith("EnemySpawn", StringComparison.Ordinal) ? 1 : name.StartsWith("ItemSpawn", StringComparison.Ordinal) ? 2
-                : name.StartsWith("CarSpawn", StringComparison.Ordinal) || name.StartsWith("TrailerSpawn", StringComparison.Ordinal) ? 3
-                : name.StartsWith("CritterSpawn", StringComparison.Ordinal) || name.StartsWith("CrateSpawn", StringComparison.Ordinal) ? 0 : 4;
-            var budget = new NativeBudget { Kind = kind };
-            if (kind == 1 && name.IndexOf("boss", StringComparison.OrdinalIgnoreCase) >= 0
-                && name.IndexOf("bodyguard", StringComparison.OrdinalIgnoreCase) < 0) { budget.Kind = 6; return budget; }
-            if (kind != 1 && kind != 2) return budget;
-            // Native unique-item FSMs select one item (or iterate authored child points), with no
-            // numberEnd roll. Preserve that authored flow; zero loot can still suspend it.
-            if (kind == 2 && name.StartsWith("ItemSpawn_Unique", StringComparison.Ordinal))
-            { budget.Kind = 5; return budget; }
-            foreach (var state in f.FsmStates) foreach (var action in state.Actions)
-            {
-                var roll = action as RandomInt;
-                if (roll == null || roll.storeResult == null || roll.storeResult.Name != "numberEnd") continue;
-                budget.Min = Mathf.Max(0, NativeValue(f, roll.min));
-                budget.Max = Mathf.Max(budget.Min, NativeValue(f, roll.max) - (roll.inclusiveMax ? 0 : 1));
-                if (budget.Max > 100000) throw new InvalidOperationException("Invalid native town spawner count: " + name);
-                return budget;
-            }
-            throw new InvalidOperationException("Native count roll missing for " + name + "; refusing to invent a baseline.");
+            var b = NativeSpawners.Capture(f);
+            return new NativeBudget { Min = b.Min, Max = b.Max, Kind = b.Kind };
         }
-        internal static void Budget(TownSite site, TownAssets assets, TownSettings settings)
+
+        /// <summary>
+        /// Plans a town's population and loot before construction: measures completed faction members once (from saved spawner
+        /// records), classifies the town, rolls the population/loot percentages and allocates both over the lots' spawn groups.
+        /// </summary>
+        internal static void Budget(TownSite site, TownAssets assets, TownSettings settings) // refs-ok: REFACTOR-REQUEST B15-2
         {
             if (!site.Plan.PopulationMeasured)
             {
-                // Migrate old saves from native completed spawn counters, never from requested budgets.
+                // Measure completed faction members from native completed spawn counters, never from requested budgets.
                 int spawned = 0;
                 if (site.Record != null) foreach (var row in site.Record.Spawners)
                 {
-                    var lot = site.Plan.Lots[row.Key]; BuildingAsset asset;
+                    var lot = site.Plan.Lots[row.Key]; BuildingAsset asset; // refs-ok: REFACTOR-REQUEST B15-2
                     if (!assets.Buildings.TryGetValue(lot.Prefab, out asset)) continue;
                     foreach (var state in row.Value) for (int i = 0; i < asset.Spawners.Length; i++)
                         if (asset.Spawners[i] == state.Path && asset.Budgets[i].Kind == 1) spawned += Mathf.Max(0, state.Number);
@@ -80,9 +54,15 @@ namespace WildWasteland.Modules.Towns
             int loot = Percentage(site.Plan, settings.LootMinPercent.Value, settings.LootMaxPercent.Value, "loot");
             site.PopulationCounts = Allocate(site, assets, population, 1);
             site.LootCounts = Allocate(site, assets, loot, 2);
-            Log.Always("[Towns] town rolls " + site.Plan.Key + ": faction=" + site.Plan.Faction + ", " + site.Plan.Condition + ", population=" + population + "%, loot=" + loot + "%; planned before construction; shared native totals balanced across buildings and spawn groups; completed groups retained.");
+            if (Log.L1) Log.Main(LootModule.Instance, "town rolls " + site.Plan.Key + ": faction=" + site.Plan.Faction + ", " + site.Plan.Condition + ", population=" + population + "%, loot=" + loot + "%; planned before construction; shared native totals balanced across buildings and spawn groups; completed groups retained.");
         }
-        private static int[][] Allocate(TownSite site, TownAssets assets, int percent, int kind)
+
+        /// <summary>
+        /// Spreads percent of the town's seeded native total of one kind (1 enemies, 2 loot) over the eligible groups: committed
+        /// (already spawned) counts first, then one at a time to the lot with the fewest, the group with the fewest, from a seeded
+        /// start lot. Finished groups are not eligible.
+        /// </summary>
+        private static int[][] Allocate(TownSite site, TownAssets assets, int percent, int kind) // refs-ok: REFACTOR-REQUEST B15-2
         {
             int lots = site.Plan.LotCount, native = 0, committed = 0;
             var result = new int[lots][]; var eligible = new bool[lots][]; var totals = new int[lots];
@@ -91,19 +71,19 @@ namespace WildWasteland.Modules.Towns
                 if (site.Plan.Lots[lot].IsParking || site.Plan.Lots[lot].Skipped) { result[lot] = new int[0]; eligible[lot] = new bool[0]; continue; }
                 var asset = assets.Buildings[site.Plan.Lots[lot].Prefab]; int count = asset.Budgets.Length;
                 result[lot] = new int[count]; eligible[lot] = new bool[count];
-                SpawnerState[] saved = null; if (site.Record != null) site.Record.Spawners.TryGetValue(lot, out saved);
+                SpawnerState[] saved = null; if (site.Record != null) site.Record.Spawners.TryGetValue(lot, out saved); // refs-ok: REFACTOR-REQUEST B15-2
                 for (int n = 0; n < count; n++) if (asset.Budgets[n].Kind == kind)
                 {
-                    var b = asset.Budgets[n]; native += new System.Random(TownPlanner.Hash(site.Plan.Key + "/" + lot + "/native/" + asset.Spawners[n])).Next(b.Min, b.Max + 1);
+                    var b = asset.Budgets[n]; native += new System.Random(TownPlanner.Hash(site.Plan.Key + "/" + lot + "/native/" + asset.Spawners[n])).Next(b.Min, b.Max + 1); // refs-ok: REFACTOR-REQUEST B15-2
                     int done = 0, on = 0;
-                    if (site.Spawners[lot] != null && site.Spawners[lot][n] != null) { done = Get(site.Spawners[lot][n], "number"); on = Get(site.Spawners[lot][n], "OnOff"); }
+                    if (site.Spawners[lot] != null && site.Spawners[lot][n] != null) { done = NativeSpawners.Read(site.Spawners[lot][n], "number"); on = NativeSpawners.Read(site.Spawners[lot][n], "OnOff"); }
                     else if (saved != null) foreach (var state in saved) if (state.Path == asset.Spawners[n]) { done = state.Number; on = state.OnOff; break; }
                     result[lot][n] = Mathf.Max(0, done); totals[lot] += result[lot][n]; committed += result[lot][n];
                     eligible[lot][n] = on == 0;
                 }
             }
             int remaining = Mathf.Max(0, Mathf.RoundToInt(native * percent / 100f) - committed);
-            int offset = TownPlanner.Hash(site.Plan.Key + "/balance/" + kind) % lots;
+            int offset = TownPlanner.Hash(site.Plan.Key + "/balance/" + kind) % lots; // refs-ok: REFACTOR-REQUEST B15-2
             while (remaining-- > 0)
             {
                 int bestLot = -1, bestGroup = -1, best = int.MaxValue;
@@ -118,7 +98,14 @@ namespace WildWasteland.Modules.Towns
             }
             return result;
         }
-        internal static void Configure(TownSite site, int lot, TownAssets assets, TownSettings settings)
+
+        /// <summary>
+        /// Configures the spawners of one built lot from the town budget: shopkeepers/sale stock keep native counts (Coyotes towns
+        /// keep their merchant), bosses off, unique loot by seeded loot percentage, enemies/loot/one vehicle group forced to their
+        /// allocated counts with the town faction pool (a Scrapyard hound may take a one-actor group after a human group).
+        /// Zero or finished groups are disabled or parked.
+        /// </summary>
+        internal static void Configure(TownSite site, int lot, TownAssets assets, TownSettings settings) // refs-ok: REFACTOR-REQUEST B15-2
         {
             var item = site.Plan.Lots[lot]; var fsms = site.Spawners[lot]; var asset = assets.Buildings[item.Prefab];
             if (site.PopulationCounts == null) Budget(site, assets, settings);
@@ -131,11 +118,11 @@ namespace WildWasteland.Modules.Towns
                 int kind = asset.Budgets[n].Kind;
                 if (kind == 4)
                 {
-                    if (item.IsMerchant && Get(f, "OnOff") == 0) f.enabled = site.Plan.Faction == TownFaction.Coyotes;   // (WW) a Coyotes town always keeps its merchant
+                    if (item.IsMerchant && NativeSpawners.Read(f, "OnOff") == 0) f.enabled = site.Plan.Faction == TownFaction.Coyotes;   // (WW) a Coyotes town always keeps its merchant // refs-ok: REFACTOR-REQUEST B15-2
                     continue; // Authored shopkeepers and paid sale stock retain native placement/counts.
                 }
-                if (kind == 6) { Set(f, "OnOff", 1); f.enabled = false; continue; }
-                if (kind == 5) { if (Get(f, "OnOff") == 0) f.enabled = TownPlanner.Hash(site.Plan.Key + "/unique/" + lot + "/" + n) % 100 < loot; continue; }
+                if (kind == 6) { NativeSpawners.Write(f, "OnOff", 1); f.enabled = false; continue; }
+                if (kind == 5) { if (NativeSpawners.Read(f, "OnOff") == 0) f.enabled = TownPlanner.Hash(site.Plan.Key + "/unique/" + lot + "/" + n) % 100 < loot; continue; } // refs-ok: REFACTOR-REQUEST B15-2
                 bool actor = kind == 1, common = kind == 2, vehicle = kind == 3;
                 bool selected = actor || common || vehicle && !usedVehicle && item.Vehicles > 0;
                 int count = actor ? site.PopulationCounts[lot][n] : common ? site.LootCounts[lot][n]
@@ -143,72 +130,32 @@ namespace WildWasteland.Modules.Towns
                 usedVehicle |= vehicle;
                 // A hound may use a one-actor native group only after a positive human group.
                 // This preserves spawn-point distribution and cannot generate a dogs-only base.
-                bool companion = actor && site.Plan.Faction == TownFaction.Scrapyard && item.Hounds && !houndUsed && humanReserved > 0 && count == 1 && assets.Hounds.Count > 0;
+                bool companion = actor && site.Plan.Faction == TownFaction.Scrapyard && item.Hounds && !houndUsed && humanReserved > 0 && count == 1 && assets.Hounds.Count > 0; // refs-ok: REFACTOR-REQUEST B15-2
                 if (actor && count > 0) { if (companion) houndUsed = true; else humanReserved += count; }
-                if (selected && count == 0 && Get(f, "OnOff") == 0 && Get(f, "number") == 0)
+                if (selected && count == 0 && NativeSpawners.Read(f, "OnOff") == 0 && NativeSpawners.Read(f, "number") == 0)
                 { f.enabled = false; continue; }
-                if (count == 0 || Get(f, "OnOff") > 0 || Get(f, "number") >= count)
-                { Set(f, "OnOff", 1); f.Fsm.SetState("spawned"); continue; }
+                if (count == 0 || NativeSpawners.Read(f, "OnOff") > 0 || NativeSpawners.Read(f, "number") >= count)
+                { NativeSpawners.Write(f, "OnOff", 1); f.Fsm.SetState("spawned"); continue; }
                 List<GameObject> pool = null;
                 if (actor && (!assets.Population.TryGetValue(site.Plan.Faction, out pool) || pool.Count == 0))
                     throw new InvalidOperationException("No native " + site.Plan.Faction + " population prefabs in this world graph.");
                 if (companion) pool = assets.Hounds;
-                if (actor)
-                    foreach (var proxy in f.GetComponents<PlayMakerArrayListProxy>())
-                        if (proxy.referenceName != null && proxy.referenceName.StartsWith("EnemySpawn", StringComparison.Ordinal))
-                        {
-                            // Inactive native spawn nodes have not run Awake yet. Supply their
-                            // authored prefill too, so later activation uses this town's faction.
-                            proxy.preFillGameObjectList = new List<GameObject>(pool); proxy.preFillCount = pool.Count;
-                            if (proxy.arrayList != null) { proxy.arrayList.Clear(); foreach (var prefab in pool) proxy.arrayList.Add(prefab); }
-                        }
-                foreach (var state in f.FsmStates) foreach (var action in state.Actions)
-                {
-                    var roll = action as RandomInt;
-                    if (roll != null && roll.storeResult != null && roll.storeResult.Name == "numberEnd")
-                    { roll.min = new FsmInt(count); roll.max = new FsmInt(count); roll.inclusiveMax = true; }
-                    var select = action as SelectRandomInt;
-                    if (actor && select != null && select.storeInt != null && select.storeInt.Name == "index")
-                    {
-                        select.ints = new FsmInt[pool.Count]; select.weights = new FsmFloat[pool.Count];
-                        for (int i = 0; i < pool.Count; i++) { select.ints[i] = new FsmInt(i); select.weights[i] = new FsmFloat(1); }
-                    }
-                }
-                Set(f, "numberEnd", count);
-                if (!f.enabled) f.enabled = true;
+                // Inactive native spawn nodes have not run Awake yet: Apply also supplies the authored prefill, so later
+                // activation uses this town's faction. Loot groups (pool null) keep their native item selector.
+                NativeSpawners.Apply(f, count, pool);
             }
+        }
 
-        }
-        // (WW) one stand-alone native spawner (the gas station's): exactly `count` spawns, actors drawn from `pool` (null = items)
-        internal static void Force(PlayMakerFSM f, int count, List<GameObject> pool)
-        {
-            if (f == null) return;
-            if (count <= 0 || Get(f, "OnOff") > 0 || Get(f, "numberEnd") > 0 && Get(f, "number") >= Get(f, "numberEnd")) { Set(f, "OnOff", 1); f.Fsm.SetState("spawned"); return; }
-            if (pool != null)
-                foreach (var proxy in f.GetComponents<PlayMakerArrayListProxy>())
-                    if (proxy.referenceName != null && proxy.referenceName.StartsWith("EnemySpawn", StringComparison.Ordinal))
-                    {
-                        proxy.preFillGameObjectList = new List<GameObject>(pool); proxy.preFillCount = pool.Count;
-                        if (proxy.arrayList != null) { proxy.arrayList.Clear(); foreach (var prefab in pool) proxy.arrayList.Add(prefab); }
-                    }
-            foreach (var state in f.FsmStates) foreach (var action in state.Actions)
-            {
-                var roll = action as RandomInt;
-                if (roll != null && roll.storeResult != null && roll.storeResult.Name == "numberEnd")
-                { roll.min = new FsmInt(count); roll.max = new FsmInt(count); roll.inclusiveMax = true; }
-                var select = action as SelectRandomInt;
-                if (pool != null && select != null && select.storeInt != null && select.storeInt.Name == "index")
-                {
-                    select.ints = new FsmInt[pool.Count]; select.weights = new FsmFloat[pool.Count];
-                    for (int i = 0; i < pool.Count; i++) { select.ints[i] = new FsmInt(i); select.weights[i] = new FsmFloat(1); }
-                }
-            }
-            Set(f, "numberEnd", count);
-            if (!f.enabled) f.enabled = true;
-        }
-        internal static int Read(PlayMakerFSM f, string name) { return f == null ? 0 : Get(f, name); }
-        internal static void Write(PlayMakerFSM f, string name, int value) { if (f != null) Set(f, name, value); }
-        private static int Get(PlayMakerFSM f, string name) { var v = f.FsmVariables.FindFsmInt(name); return v == null ? 0 : v.Value; }
-        private static void Set(PlayMakerFSM f, string name, int value) { var v = f.FsmVariables.FindFsmInt(name); if (v != null) v.Value = value; }
+        /// <summary>Stand-alone spawner, exact count (POI call sites); forwards to <see cref="NativeSpawners.Force"/>.</summary>
+        [Obsolete("refactor: Loot NativeSpawners.Force (REFACTOR-REQUEST B15-2)")]
+        internal static void Force(PlayMakerFSM f, int count, List<GameObject> pool) { NativeSpawners.Force(f, count, pool); }
+
+        /// <summary>Spawner int variable (POI call sites); forwards to <see cref="NativeSpawners.Read"/>.</summary>
+        [Obsolete("refactor: Loot NativeSpawners.Read / ILootSpawning.TryProgress (REFACTOR-REQUEST B15-2)")]
+        internal static int Read(PlayMakerFSM f, string name) { return NativeSpawners.Read(f, name); }
+
+        /// <summary>Sets a spawner int variable (POI call sites); forwards to <see cref="NativeSpawners.Write"/>.</summary>
+        [Obsolete("refactor: Loot NativeSpawners.Write (REFACTOR-REQUEST B15-2)")]
+        internal static void Write(PlayMakerFSM f, string name, int value) { NativeSpawners.Write(f, name, value); }
     }
 }

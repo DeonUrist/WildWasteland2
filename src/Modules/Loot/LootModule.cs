@@ -38,10 +38,11 @@ namespace WildWasteland.Modules.Loot
             catch (System.Exception e) { Log.Warn(this, "loot tables not loaded: " + e.Message); }
         }
 
-        /// <summary>Provides <see cref="ILootTables"/>.</summary>
+        /// <summary>Provides <see cref="ILootTables"/> and <see cref="ILootSpawning"/>.</summary>
         public override void ProvideApis()
         {
             ModApi.Provide<ILootTables>(this, new LootTablesApi(Tables));
+            ModApi.Provide<ILootSpawning>(this, new LootSpawningApi());
         }
 
         /// <summary>Re-imports Patrols loot profiles when PatrolsAndLoot.json changed (one file stamp read per world ready).</summary>
