@@ -96,13 +96,6 @@ namespace WildWasteland.Modules.Weather
             }
         }
 
-        /// <summary>Radical-inverse (Halton) sequence value of index in base radix (currently unused).</summary>
-        private static float Sequence(int index, int radix)
-        {
-            float value = 0, weight = 1f/radix;
-            while (index > 0) { value += index % radix * weight; index /= radix; weight /= radix; }
-            return value;
-        }
         /// <summary>Recomputes hurricane column positions when density/width/depth changed and applies the new radii to every region.</summary>
         private void UpdateLayout()
         {

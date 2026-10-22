@@ -36,8 +36,5 @@ namespace WildWasteland.Core
             try { Directory.CreateDirectory(d); } catch { }
             return d;
         }
-        /// <summary>Folder of a standalone plugin this module replaces (BepInEx\plugins\&lt;name&gt;), used for one-time data migration.</summary>
-        [System.Obsolete("refactor: D12 fresh start - no legacy asset folders")]
-        public static string LegacyPluginDir(string folder) { return Path.Combine(Paths.PluginPath, folder); }
     }
 }

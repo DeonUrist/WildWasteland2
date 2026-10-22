@@ -9,6 +9,17 @@ On Denis's PC agents build with `dotnet build WildWasteland.csproj -c Release -p
 
 ## Execution environment (D11-D16, overrides the Windows notes above)
 
+### Local continuation (2026-10-22; overrides cloud-only execution instructions)
+
+Denis authorized continued work in `V:\Repos\Apocalypter\WildWasteland2` after Wave A. The local coordinator uses `refactor/main`; implementation packages use their own `refactor/<package>` branch/worktree. Preserve these local commits when synchronizing with cloud work.
+
+- On this PC use Windows PowerShell and `dotnet build WildWasteland.csproj -c Release -p:Deploy=false`. Never use WSL/Mono/cloud scripts here; do not deploy or launch the game.
+- Keep each package's state/report/request files and commit completed steps under D15. Run the applicable Python lints with `python -B`; run `check_partials.py` after every merge. Retain full build output and review every unsuppressed warning; the historical cloud warning count is not a Windows warning baseline. CS0618 remains the explicitly temporary suppression until Wave C.
+- D12/D18 override P1, migration tasks, old-schema preservation and old-assembly save aliases in the original briefs. Keep current WW2 formats/keys and live cross-module forwarders until their consumers are converted. D13 asset ownership and frozen ModAPI contracts still apply.
+- Start with B01 Core-Kernel after the pre-B cleanup checkpoint; the remaining packages and their acceptance gates are unchanged. See `STATUS.md` and `state/pre-B-cleanup.md`.
+
+### Historical cloud execution
+
 - Repo: the coordinator's git repo `/home/claude/ww2` (branch `refactor/main`), mirrored to `V:\Repos\Apocalypter\WildWasteland2` at checkpoints. Each agent works in its own worktree `/home/claude/wt/<package>` on branch `refactor/<package>` (the coordinator creates it). Never touch another worktree or `refactor/main`.
 - Compile: `sh tools/refactor/compile.sh` from your worktree (about 5 s; must print `COMPILE OK`). No dotnet, no deployment, no game.
 - Commit identity: `git -c user.name=Denis -c user.email=denis.c@everworker.ai commit ...`; message `refactor(<package>): <what>` and end with the two attribution lines given by the coordinator.

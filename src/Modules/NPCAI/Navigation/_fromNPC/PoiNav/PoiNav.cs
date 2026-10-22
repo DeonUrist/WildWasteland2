@@ -90,17 +90,6 @@ namespace WildWasteland.Modules.NPC
                 return best;
             }
         }
-        internal static int NearestNode(PoiNavData d, Vector3 local, float within, int surface)
-        {
-            int best = -1; float bd = within * within;
-            for (int i = 0; i < d.Nodes.Count; i++)
-            {
-                if (surface >= 0 && d.Nodes[i].Surface != surface) continue;
-                Vector3 v = d.Nodes[i].Pos - local; v.y *= 2f;
-                float s = v.sqrMagnitude; if (s < bd) { bd = s; best = i; }
-            }
-            return best;
-        }
         private static readonly Dictionary<PoiNavData, Graph> _graphs = new Dictionary<PoiNavData, Graph>();
         internal static Graph GraphOf(PoiNavData d)
         {
@@ -598,27 +587,6 @@ namespace WildWasteland.Modules.NPC
             r.Guided = now;
             result = true;
             return true;
-        }
-
-        // where a stuck body slides: back onto the route (the node it last passed, when the next one is not in plain sight), then on to
-        // the next node or link start and the node after it (at most ~3 m in all)
-        static List<Vector3> GlidePoints(Inst inst, Route r, Vector3 pos, Vector3 next, float max)
-        {
-            var pts = new List<Vector3>();
-            if (!Clear(pos, next))
-                for (int k = r.Index - 1; k >= 0 && k >= r.Index - 2; k--) { int s = r.Steps[k]; if (s >= 0) { pts.Add(inst.World[s]); break; } }
-            pts.Add(next);
-            float len = 0f; Vector3 prev = pos; foreach (var p in pts) { len += Vector3.Distance(prev, p); prev = p; }
-            // on along the route's nodes (up to a link's start) until `max` metres
-            for (int k = r.Index + 1; k < r.Steps.Count && len < max && r.Steps[k - 1] >= 0; k++)
-            {
-                int s = r.Steps[k]; Vector3 to = s >= 0 ? inst.World[s] : StartOf(inst, s);
-                float seg = Vector3.Distance(prev, to);
-                if (len + seg > max) { pts.Add(Vector3.Lerp(prev, to, (max - len) / Mathf.Max(.01f, seg))); break; }
-                pts.Add(to); len += seg; prev = to;
-                if (s < 0) break;
-            }
-            return pts;
         }
 
         // a link step (-(code + 1), code = link * 2 + backwards): where it starts / lands

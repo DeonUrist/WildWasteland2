@@ -1,6 +1,6 @@
 # Wild Wasteland full refactor plan (2026-10-22, based on WW 1.0.9 / HEAD 2e98d0b)
 
-Status: PLAN, approved scope by Denis on 2026-10-22. Nothing in `src/` has been changed by this plan.
+Status: IN PROGRESS, approved scope by Denis on 2026-10-22. Wave 0 and Wave A are merged; Wave B has not started. See `STATUS.md` for the current local checkpoint, verification results and resume instructions. Section 0 amendments override older design text below.
 
 Files in `docs/refactor/`:
 

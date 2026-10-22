@@ -58,14 +58,13 @@ namespace WildWasteland.Modules.NPC
         }
         /// <summary>H with a plain description.</summary>
         private static ConfigEntry<T> H<T>(string section, string key, T value, string description) { return H(section, key, value, new ConfigDescription(description)); }
-        /// <summary>Binds a settings.cfg entry in [NPC] / [NPC / sub]. oldSection / oldKey name the NPCAI cfg entry it replaced (documentation
-        /// only since D12: no migration).</summary>
-        private static ConfigEntry<T> V<T>(string sub, string key, T value, ConfigDescription description, string oldSection, string oldKey)
+        /// <summary>Binds a settings.cfg entry in [NPC] / [NPC / sub].</summary>
+        private static ConfigEntry<T> V<T>(string sub, string key, T value, ConfigDescription description)
         {
             return _cfg.Main.Bind(_cfg.Section(sub), key, value, description);
         }
         /// <summary>V with a plain description.</summary>
-        private static ConfigEntry<T> V<T>(string sub, string key, T value, string description, string oldSection, string oldKey) { return V(sub, key, value, new ConfigDescription(description), oldSection, oldKey); }
+        private static ConfigEntry<T> V<T>(string sub, string key, T value, string description) { return V(sub, key, value, new ConfigDescription(description)); }
         /// <summary>Binds an F6 toggle in [NPC] (a hidden [Behaviour] switch in NPCAI).</summary>
         private static ConfigEntry<bool> B(string key, bool value, string description)
         {
@@ -104,13 +103,13 @@ namespace WildWasteland.Modules.NPC
             BindWomen(cfg);
             // ---------------- F6: one toggle per feature, in feature order (section "NPC", after Core's Enabled) ----------------
             SensesEnabled = V(null, "EnableNpcDetection", true,
-                "NPCs see (field of view, light, flashlight), hear gunshots, shouts, engines and explosions, remember where you were and search. Off = the game's own sensors.", "General", "EnableNpcDetection");
+                "NPCs see (field of view, light, flashlight), hear gunshots, shouts, engines and explosions, remember where you were and search. Off = the game's own sensors.");
             BrainEnabled = V(null, "EnableNpcPathfinding", true,
-                "NPCs steer around obstacles, use the maps of camps, caves and buildings, take shooting positions, kneel and aim. Off = the game's own movement.", "General", "EnableNpcPathfinding");
-            AimEnabled = V(null, "NpcAim", true, "NPC gunmen pace their bursts: they hold fire beyond their gun's reach, take longer to aim at a distance and lead moving targets.", "Gunplay", "NpcAim");
-            IdleEnabled = V(null, "EnableIdleBehavior", true, "Camp raiders who lose you go back to their spawn spot, and walk a short round in their camp while nothing happens.", "Pathfinding", "EnableIdleBehavior");
-            IdleCoyotes = V(null, "CoyotesIdle", true, "The idle behaviour also for the peaceful Coyote towns.", "Pathfinding", "CoyotesIdle");
-            FriendsPassThrough = V(null, "FriendsPassThrough", true, "NPCs of the same faction walk through each other while they fight, search or walk home - no bumping, no blocking a passage. Solid again once they are idle.", "Pathfinding", "FriendsPassThrough");
+                "NPCs steer around obstacles, use the maps of camps, caves and buildings, take shooting positions, kneel and aim. Off = the game's own movement.");
+            AimEnabled = V(null, "NpcAim", true, "NPC gunmen pace their bursts: they hold fire beyond their gun's reach, take longer to aim at a distance and lead moving targets.");
+            IdleEnabled = V(null, "EnableIdleBehavior", true, "Camp raiders who lose you go back to their spawn spot, and walk a short round in their camp while nothing happens.");
+            IdleCoyotes = V(null, "CoyotesIdle", true, "The idle behaviour also for the peaceful Coyote towns.");
+            FriendsPassThrough = V(null, "FriendsPassThrough", true, "NPCs of the same faction walk through each other while they fight, search or walk home - no bumping, no blocking a passage. Solid again once they are idle.");
             StormsEnabled = _cfg.Main.Bind(_cfg.Section(null), "Storms", true, "Sandstorms (and ApocaDustStorm's dust storms) dim NPC sight and hearing; tornado funnels make NPCs forget what they were doing. Off = storms do not affect the senses.");
             BurrowEnabled = B("Burrow", true, "Scorpions burrow into sand when nothing alerts them (and come up every 10-30 s), eyes above the surface. Big scorpions also hunt underground: they travel under the sand and come up behind their enemy.");
             AmbushEnabled = B("Ambush", true, "Scorpions wait until a target comes within 3-5 m. Spiders wait in darkness, but react to shouts, gunfire, light and a nest's web being touched.");
@@ -121,11 +120,11 @@ namespace WildWasteland.Modules.NPC
             DogJumpAttack = B("DogJumpAttack", true, "Optional short, collision-checked jumping bite. Native damage is applied only if the target remains within reach at contact.");
             DogCompanionCompatEnabled = _cfg.Main.Bind(_cfg.Section(null), "DogCompanionCompat", true, "With FlyingKlick's Dog Companion installed: the companion dog uses the same dog animations (locomotion, bites, sitting in vehicles, sneaking). Off = Dog Companion's own behaviour.");
             // ---------------- F6: player-facing settings ----------------
-            SightCone = V("Detection", "SightCone", 100f, new ConfigDescription("Width of an NPC's field of view, degrees.", new AcceptableValueRange<float>(10f, 360f)), "Detection", "SightCone");
-            SightRange = V("Detection", "SightRange", 100f, new ConfigDescription("How far an NPC sees in daylight, m (and at any light if your flashlight is on).", new AcceptableValueRange<float>(5f, 300f)), "Detection", "SightRange");
-            DarkSightRange = V("Detection", "DarkSightRange", 5f, new ConfigDescription("How far an NPC sees in full darkness, m.", new AcceptableValueRange<float>(0f, 100f)), "Detection", "DarkSightRange");
-            FootstepRadius = V("Detection", "FootstepRadius", 5f, new ConfigDescription("An NPC hears you walking this close, m: with a clear line between you it notices you whatever way it faces and however dark it is (standing still makes no footsteps). 0 = off.", new AcceptableValueRange<float>(0f, 30f)), "Detection", "FootstepRadius");
-            ScaleWithActors = V("Pathfinding", "ScaleWithActors", false, "With many NPCs around, each one thinks less often (saves CPU in big fights).", "Pathfinding", "ScaleWithActors");
+            SightCone = V("Detection", "SightCone", 100f, new ConfigDescription("Width of an NPC's field of view, degrees.", new AcceptableValueRange<float>(10f, 360f)));
+            SightRange = V("Detection", "SightRange", 100f, new ConfigDescription("How far an NPC sees in daylight, m (and at any light if your flashlight is on).", new AcceptableValueRange<float>(5f, 300f)));
+            DarkSightRange = V("Detection", "DarkSightRange", 5f, new ConfigDescription("How far an NPC sees in full darkness, m.", new AcceptableValueRange<float>(0f, 100f)));
+            FootstepRadius = V("Detection", "FootstepRadius", 5f, new ConfigDescription("An NPC hears you walking this close, m: with a clear line between you it notices you whatever way it faces and however dark it is (standing still makes no footsteps). 0 = off.", new AcceptableValueRange<float>(0f, 30f)));
+            ScaleWithActors = V("Pathfinding", "ScaleWithActors", false, "With many NPCs around, each one thinks less often (saves CPU in big fights).");
             // ---------------- [Keys] ----------------
             ShoutKey = cfg.Hotkey("Shout", Key.Q,
                 "Your shout (with 'Shout modifier' held): you yell like a raider and every NPC hostile to you within 25 m comes to check. None = off. (Alt+Q is shared on purpose with the Patrols merchant stop signal.)");

@@ -12,8 +12,6 @@ namespace WildWasteland.Modules.Quests
     {
         // ---- points of interest and enemies -------------------------------------------
 
-        static readonly string[] PoiKinds = { "Camp", "Cave", "Building", "Wreck" };
-
         // The game marks who a camp belongs to with child objects named after the faction: EnemySpawn_Coyotes_V1,
         // CoyotesMerchantSpawn_V1, EnemySpawn_Scrapyard_V1 ... Only human factions (see Factions.HumanFactions) count;
         // the wild / burrower spawners are animals and mutants.

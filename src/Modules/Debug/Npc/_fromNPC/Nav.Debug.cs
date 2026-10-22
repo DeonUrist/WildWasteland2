@@ -27,18 +27,6 @@ namespace WildWasteland.Modules.NPC
             return sb.ToString();
         }
 
-        // the cell of a world point on the map the NPC was traced on ("x,z" or "-")
-        /// <summary>The cell of a world point on the traced map ("x,z" or "-").</summary>
-        internal static string CellText(Vector3 p)
-        {
-            var s = _tS; int x, z;
-            if (s == null || s.Root == null || !CellOf(s, p, out x, out z)) return "-";
-            int i = z * s.W + x;
-            return x + "," + z + (float.IsNaN(s.FloorY[i]) ? (s.Why != null ? " (" + WhyName(s.Why[i]) + ")" : " (no floor)") : "");
-        }
-        /// <summary>Readable name of a no-floor reason byte.</summary>
-        private static string WhyName(byte w) { return w == 2 ? "too tight" : w == 3 ? "in rock" : w == 4 ? "why4" : "no floor"; }
-
         // A trace picture: the map, the NPC's area (from where the trace started) tinted, the route the map plans from the start cell to the
         // goal (cyan cells; to the exit when the goal is not reachable), and the NPC's real trail (white = on the map, orange = steering
         // without the map, red = backing up / resting). File <structure>_<x>_<z>_trace_<npc>.bmp

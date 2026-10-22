@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using BepInEx.Configuration;
 using UnityEngine.InputSystem;
 
@@ -54,25 +52,5 @@ namespace WildWasteland.Core
         {
             return TunedSettings.Bind(Main, "Keys", key, def, desc);
         }
-
-        /// <summary>D12 (fresh start): no-op. Used to copy a first-run value from a standalone mod's cfg; WW2 does not migrate
-        /// WW1/standalone configs. Callers are deleted in Wave A.</summary>
-        [Obsolete("refactor: D12 fresh start - no config migration")]
-        public void Migrate<T>(ConfigEntry<T> entry, string legacyCfgFile, string section, string key) { }
-    }
-
-    /// <summary>D12 (fresh start): the old raw reader for standalone mods' cfg files, now inert. <see cref="Get"/> returns null,
-    /// <see cref="Exists"/> false and the first-run flags stay false, so every legacy migration path is skipped. Deleted in Wave C.</summary>
-    [Obsolete("refactor: D12 fresh start - no config migration")]
-    public static class Legacy
-    {
-        /// <summary>Always false (no first-run migration).</summary>
-        public static readonly bool FirstRunMain = false, FirstRunTools = false;
-
-        /// <summary>Always null (no legacy value is read).</summary>
-        public static string Get(string cfgFile, string section, string key) { return null; }
-
-        /// <summary>Always false.</summary>
-        public static bool Exists(string cfgFile) { return false; }
     }
 }

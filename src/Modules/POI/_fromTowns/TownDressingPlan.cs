@@ -13,7 +13,6 @@ namespace WildWasteland.Modules.Towns
         internal bool TowerAvailable;
         internal Bounds TowerLocal;                                  // non-trigger collider AABB in the tower prefab frame
         internal readonly List<Bounds> TreeLocal = new List<Bounds>(); // per kit tree, same order as TownWallKit.Trees
-        internal readonly List<Bounds> ShellMesh = new List<Bounds>(); // per car shell mesh, same order as TownAssets.CarShells
     }
     // Deterministic placement of towers, border trees/wrecks and the central wreck garden, derived from the plan key only.
     // Positions and boxes use the town-centred world-axis frame (the frame of TownOutline and the cached gate graphs).

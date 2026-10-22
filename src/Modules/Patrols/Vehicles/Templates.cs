@@ -107,12 +107,6 @@ namespace WildWasteland.Modules.Patrols
         internal bool IsSmall { get { return HasKind("small"); } }
         internal string KindLabel { get { return Kinds != null && Kinds.Length > 0 ? string.Join(";", Kinds) : (IsTruck ? "truck" : IsJunker ? "medium" : "small"); } }
 
-        // front bumper rolls (Denis): small cars a third each nothing / bumper_8 / bumper_3; junkers nothing / junker_bumper_front / bumper_12;
-        // trucks always one of bumper_12..15
-        internal static readonly string[] SmallBumpers = { "", "bumper_8", "bumper_3" };
-        internal static readonly string[] JunkerBumpers = { "", "junker_bumper_front", "bumper_12" };
-        internal static readonly string[] TruckBumpers = { "bumper_12", "bumper_13", "bumper_14", "bumper_15" };
-
         internal string RollBumper()
         {
             if (Bumpers == null || Bumpers.Length == 0) return "";

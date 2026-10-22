@@ -49,7 +49,6 @@ namespace WildWasteland.Modules.Towns
         internal static TownGasStation Current;
         // Station-local layout (x = -glTF x, after the slab top is moved to y 0). The shop is x 3..11, z -11..13 (door at x 3.5, z -8);
         // the canopy lane x -4..2 runs the whole length, open at -z (the pumps stand at x -6, the bags/fence close +z beyond 11).
-        internal static readonly Vector3 LaneCenter = new Vector3(-1f, 0f, -1.25f);
         internal const float LaneSpread = 5.75f;   // resident bus at +4.5 (deep), visitors at -7 (by the open end)
         private readonly TownSettings _settings;
         private readonly List<Station> _stations = new List<Station>();
