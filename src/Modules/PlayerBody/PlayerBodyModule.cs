@@ -85,9 +85,7 @@ namespace WildWasteland.Modules.PlayerBody
             BindCameraKeys(cfg);               // Observe (third person)
             BindTraversalKeys(cfg);            // Climb (alternative key)
             BindVehiclesKeys(cfg);             // Cassette start/stop, volume down / up
-            BindDeveloperKeys(cfg);            // weapon pose editor keys (GunPose.BindEditorKeys)
             // ---- F7 (tools.cfg)
-            BindDeveloperTools(cfg);           // [PlayerBody / Editors]
             BindCameraTools(cfg);              // [PlayerBody / Camera]
             BindSeatsTools(cfg);               // [PlayerBody / Car seat]
             BindCameraCullingTools(cfg);       // [PlayerBody / Camera culling]
@@ -113,9 +111,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Part step, implemented in PlayerBodyModule.Vehicles.cs (Vehicles).</summary>
         partial void BindVehiclesKeys(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Developer.cs (Developer).</summary>
-        partial void BindDeveloperKeys(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Developer.cs (Developer).</summary>
-        partial void BindDeveloperTools(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraTools(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Seats.cs (Presentation/Seats).</summary>
@@ -140,7 +136,6 @@ namespace WildWasteland.Modules.PlayerBody
             InitTraversal();                   // climbing / ladder clips
             InitCamera();                      // third-person hooks (GetButtonDown before Crawling's), sway, MouseLook, pick assist
             InitGunplay();
-            InitDeveloperHints();                     // blast lance from the seat
             InitTraversalJobs();               // the old ClimbRunner loops ([DefaultExecutionOrder(-1000)])
             InitSeatsJobs();                   // steering-wheel arms (LateUpdateLast, before the NPC traversal poses)
             InitTraversalNpcJobs();            // NPC traversal poses (LateUpdateLast)

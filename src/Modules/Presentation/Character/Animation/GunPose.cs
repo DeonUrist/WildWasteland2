@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.PlayerBody
             _dir = PresentationModule.DataDir;
             Directory.CreateDirectory(_dir);
             _builtin.Clear(); _live = null; _liveKey = null; Dirty();
-            EditorTarget = 0; _binding = -1;
+            EditorTarget = 0;
             _file = Path.Combine(_dir, "weapon-poses.txt");
             _export = Path.Combine(_dir, "BuiltinPoses.generated.cs");
             foreach (var line in BuiltinPoses.Data)

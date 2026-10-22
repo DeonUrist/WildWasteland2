@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly char[] _invalidMapNameChars = System.IO.Path.GetInvalidFileNameChars();
         private static bool _highlightIndexReady, _highlightIndexValid, _highlightActive;
 
+        /// <summary>Normalizes a bounded native POI name for diagnostic lookup.</summary>
         private static string HighlightMapName(string name)
         {
             string result;
@@ -24,6 +25,7 @@ namespace WildWasteland.Modules.NPC
             _highlightNames.Add(name, result); return result;
         }
 
+        /// <summary>Tests whether an enabled diagnostic should mark this unbaked POI.</summary>
         internal static bool HighlightMissingPoiBake(string name)
         {
             return NavigationAuthoringApi.HighlightUnbaked
@@ -31,17 +33,20 @@ namespace WildWasteland.Modules.NPC
                 && !_capturedMapTypes.Contains(HighlightMapName(name));
         }
 
+        /// <summary>Drops diagnostic lookup state when its scene or settings change.</summary>
         private static void ResetMapHighlight()
         {
             _capturedMapTypes.Clear(); _highlightNames.Clear();
             _highlightIndexReady = _highlightIndexValid = _highlightActive = false;
         }
 
+        /// <summary>Indexes one captured map file for the missing-bake diagnostic.</summary>
         private static void RememberCapturedMap(Structure s)
         {
             if (s.MapFile != null) AddCapturedMap(s.MapFile);
         }
 
+        /// <summary>Extracts a canonical captured-map name from its hash suffix.</summary>
         private static void AddCapturedMap(string file)
         {
             string name = System.IO.Path.GetFileNameWithoutExtension(file); int dash = name.LastIndexOf('-');
@@ -50,6 +55,7 @@ namespace WildWasteland.Modules.NPC
             _capturedMapTypes.Add(name.Substring(0, dash));
         }
 
+        /// <summary>Refreshes diagnostic lookup state only when its scene or policy changes.</summary>
         private static void TickMapHighlight()
         {
             bool enabled = NavigationAuthoringApi.HighlightUnbaked;

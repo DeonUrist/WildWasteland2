@@ -152,6 +152,8 @@ namespace WildWasteland.Modules.Presentation
             ModApi.Withdraw<IAnimationApi>(this);
             ModApi.Withdraw<ICharacterPresentation>(this);
             ShutdownStep("saving poses", SavePoses);
+            PoseEditorApi.Clear();
+            WheelGripAuthoring.Clear();
             ShutdownStep("Women of Wasteland", WomenFeature.Shutdown);
             ShutdownWorld();
             ShutdownStep("body", BodyRunner.TearDown);
@@ -213,6 +215,8 @@ namespace WildWasteland.Modules.Presentation
             ModApi.Provide<ICharacterAppearance>(this, _appearance);
             ModApi.Provide<IWeaponPose>(this, _weaponPose);
             ModApi.Provide<IPoseAuthoring>(this, _poseAuthoring);
+            ModApi.Provide<ICharacterPoseAuthoring>(this, new PoseEditorApi());
+            ModApi.Provide<IWheelGripAuthoring>(this, new WheelGripAuthoring());
             WomenFeature.ProvideApis(this);
             ProvideApisWorld();
         }

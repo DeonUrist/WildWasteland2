@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.NPC
         };
 
         // Explicit debug action. Only generated files in these two exact directories are removed; no recursive deletion.
+        /// <summary>Removes locally generated navigation maps and invalidates their runtime caches.</summary>
         internal static void ResetCustomMaps()
         {
             var removed = new HashSet<Structure>();
@@ -47,6 +48,7 @@ namespace WildWasteland.Modules.NPC
             Core.Log.Always("[NPC] Nav: " + MapActionStatus);
         }
 
+        /// <summary>Deletes only derived map files directly inside the selected cache folder.</summary>
         private static void DeleteCustomMaps(string dir, ref int deleted, ref int failed)
         {
             try
@@ -63,6 +65,7 @@ namespace WildWasteland.Modules.NPC
         }
 
         // Capture candidates from a clean vanilla setup. Reviewed files go into NPC/Embedded/NavMaps/Vanilla in the repo.
+        /// <summary>Exports the current native bake candidates for explicit authoring.</summary>
         internal static void ExportVanillaMaps()
         {
             string export = System.IO.Path.Combine(Core.Assets.ModuleConfigDir("NPCAI"), "NavMaps", "VanillaExport");
@@ -118,6 +121,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
+        /// <summary>Resolves a stored bake resource name against known canonical POI names.</summary>
         private static string VanillaFileName(string name, HashSet<string> expected)
         {
             int dash = name.LastIndexOf('-');

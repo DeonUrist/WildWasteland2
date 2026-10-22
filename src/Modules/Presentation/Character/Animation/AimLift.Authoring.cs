@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.PlayerBody
     /// </summary>
     internal static partial class AimLift
     {
+        /// <summary>Publishes the complete live aim/head/arm record and invalidates resolved pose caches.</summary>
         public static void Set(string weapon, string clip, bool crouched, float[] v) { _v[weapon + "|" + Key(clip, crouched)] = v; Dirty = true; Revision++; }
         internal static string EditWeapon, EditClip;
         internal static int EditFrame = -1;
@@ -20,7 +21,9 @@ namespace WildWasteland.Modules.PlayerBody
         static float[] _armKeys;
         static int _armKeysRevision;
         static string _armWeapon, _armClip; static bool _armCrouched;
+        /// <summary>Saves an active arm edit on release and drops the live edit buffer.</summary>
         internal static void EndArmKeys() { if (_armKeys != null) SaveIfDirty(); _armKeys = null; }
+        /// <summary>Applies bounded movement and shoulder rotation to the eligible current arm pose.</summary>
         internal static void ArmKeys(bool left, UnityEngine.Vector3 move, UnityEngine.Vector3 rot, float dt)
         {
             if (!CanEditArms || move == UnityEngine.Vector3.zero && rot == UnityEngine.Vector3.zero) { EndArmKeys(); return; }
@@ -37,6 +40,7 @@ namespace WildWasteland.Modules.PlayerBody
             _armKeys[i + 4] = UnityEngine.Mathf.Clamp(_armKeys[i + 4] + rot.z * dt, -90f, 90f);
             Dirty = true;
         }
+        /// <summary>Adjusts one arm dimension immediately and saves the complete pose record.</summary>
         internal static void NudgeArm(bool left, int axis, float delta)
         {
             if (!CanEditArms) return;
@@ -46,6 +50,7 @@ namespace WildWasteland.Modules.PlayerBody
             v[i] = Math.Max(-limit, Math.Min(limit, v[i] + delta));
             Set(EditWeapon, EditClip, EditCrouched, v); Save();
         }
+        /// <summary>Clears one arm's five offsets while retaining aim, head and the other arm.</summary>
         internal static void ResetArm(bool left)
         {
             if (!CanEditArms) return;
