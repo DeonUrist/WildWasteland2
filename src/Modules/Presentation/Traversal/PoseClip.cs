@@ -22,6 +22,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float[][] _muscles; private Vector3[] _bodyPos; private Quaternion[] _bodyRot;
         private float[][] _contact;   // (v3) per frame, how planted the left [0] / right [1] foot is, 0..1
         internal bool HasContact { get { return _contact != null; } }
+        /// <summary>How planted the left (0) / right (1) foot is at a phase, 0..1.</summary>
         internal float Contact(float phase, int side)
         {
             if (_contact == null) return 0f;
@@ -31,10 +32,12 @@ namespace WildWasteland.Modules.PlayerBody
             return Mathf.Lerp(c[a], c[b], x - a);
         }
 
+        /// <summary>Empty clip with a name.</summary>
         private PoseClip(string name) { Name = name; }
 
         // one shared copy per animation (the player's ladders and NPC traversals); a failed load is not retried
         private static readonly System.Collections.Generic.Dictionary<string, PoseClip> _shared = new System.Collections.Generic.Dictionary<string, PoseClip>();
+        /// <summary>One shared copy per animation (ladder); built on first use or at world ready; a failed load is not retried.</summary>
         internal static PoseClip Shared(string name)
         {
             PoseClip c;
@@ -54,6 +57,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly string[] Fingers = { "Thumb","Thumb", "Index","Index", "Middle","Middle", "Ring","Ring", "Pinky","Little" };
         private static readonly string[] Phalanx = { "Proximal", "Intermediate", "Distal" };
 
+        /// <summary>Loads a baked pose animation resource into muscle poses through a temporary skeleton and runtime avatar.</summary>
         internal static PoseClip Load(string resource, string name)
         {
             var clip = new PoseClip(name);
@@ -136,6 +140,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>Adds a human bone mapping when the skeleton has the bone.</summary>
         private static void Add(System.Collections.Generic.List<HumanBone> list, string[] names, string bone, string human)
         {
             if (Array.IndexOf(names, bone) < 0) return;
@@ -145,6 +150,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // one stored pose: world position + rotation per bone (parents first), relative to the source root
+        /// <summary>Reads one stored pose (world position + rotation per bone, parents first) onto the temporary skeleton.</summary>
         private static void Pose(BinaryReader br, Transform[] t)
         {
             for (int i = 0; i < t.Length; i++)
@@ -156,6 +162,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // the pose at a cycle position (0..1, wrapping), blended over `weight` onto `pose` (which holds the rig's current pose)
+        /// <summary>Blends the pose at a cycle position onto the given human pose with a weight.</summary>
         internal void Blend(float phase, float weight, ref HumanPose pose)
         {
             int n = _muscles.Length;

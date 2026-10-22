@@ -34,6 +34,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // Harmony prefix on PlayMaker's ActivateGameObject.DoActivateGameObject: while zooming, the weapon's AimDownSights FSM may not switch
         // MouseCrosshair off
+        /// <summary>Core.Hooks.ActivateGameObjectDo prefix (every ActivateGameObject of every FSM; early-out unless aim-zooming): keeps MouseCrosshair on while zooming.</summary>
         public static bool BeforeActivateGameObject(HutongGames.PlayMaker.Actions.ActivateGameObject __instance)
         {
             if (!AimZoom) return true;
@@ -49,6 +50,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // (2.1.8) aiming down a scoped gun's sights: the game's own first-person scope view (its camera = where the shots start, FOV 25, overlay),
         // no camera behind her - as with the binoculars
+        /// <summary>True while aiming down a scoped rifle / pistol (the game scope view replaces the third-person camera).</summary>
         private static bool ScopedAds()
         {
             if (Game.Paused) return false;
@@ -58,6 +60,7 @@ namespace WildWasteland.Modules.PlayerBody
             return (k == Props.Kind.Rifle || k == Props.Kind.Pistol) && Game.AimDownSights;
         }
 
+        /// <summary>Updates the aim zoom state (non-scoped gun, right mouse) and its eased blend factor.</summary>
         private static void UpdateZoom()
         {
             string w = Game.DrawnWeapon;
@@ -68,6 +71,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!On) _zoomK = 0f;
             if (AimZoom && _crosshair != null && !_crosshair.activeSelf) _crosshair.SetActive(true);
         }
+        /// <summary>Smoothstep of the zoom blend factor.</summary>
         private static float ZoomEase { get { return _zoomK * _zoomK * (3f - 2f * _zoomK); } }
         public static Vector3 ViewPos;
         public static Quaternion ViewRot = Quaternion.identity;               // middle mouse held: the mouse turns the camera around her, the game's mouse look is paused
@@ -75,6 +79,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static bool _orbitOn;
 
         // Harmony prefix on PlayMaker's MouseLook: no player/camera turning while orbiting
+        /// <summary>Harmony prefix on PlayMaker MouseLook.OnUpdate (every frame): no mouse look while the camera orbits.</summary>
         public static bool BeforeMouseLook() { return !Orbiting; }
         private static bool _hooked;
         private static readonly List<Renderer> _hidden = new List<Renderer>();
@@ -90,10 +95,13 @@ namespace WildWasteland.Modules.PlayerBody
         private const int BtnNone = 0, BtnJump = 1, BtnHeadlight = 2, BtnCarCamera = 3;
         private sealed class RefEq : IEqualityComparer<HutongGames.PlayMaker.Fsm>
         {
+            /// <summary>Reference equality of two FSMs.</summary>
             public bool Equals(HutongGames.PlayMaker.Fsm x, HutongGames.PlayMaker.Fsm y) { return ReferenceEquals(x, y); }
+            /// <summary>Identity hash of an FSM.</summary>
             public int GetHashCode(HutongGames.PlayMaker.Fsm o) { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(o); }
         }
         private static readonly Dictionary<HutongGames.PlayMaker.Fsm, int> _buttonFsms = new Dictionary<HutongGames.PlayMaker.Fsm, int>(new RefEq());
+        /// <summary>Classifies a GetButtonDown FSM once by name: player Jump, headlight input, car DriveTrigger camera, or none.</summary>
         private static int ClassifyButtonFsm(HutongGames.PlayMaker.Fsm fsm)
         {
             string n = fsm.Name;
@@ -102,8 +110,10 @@ namespace WildWasteland.Modules.PlayerBody
             if (n == "Camera") return fsm.GameObjectName == "DriveTrigger" ? BtnCarCamera : BtnNone;
             return BtnNone;
         }
+        /// <summary>Forgets the FSM classification cache (scene load / shutdown).</summary>
         internal static void ClearCaches() { _buttonFsms.Clear(); }
 
+        /// <summary>Core.Hooks.GetButtonDownUpdate prefix (every GetButtonDown of every FSM each frame; one dictionary lookup for unrelated FSMs): the player Jump climbs when a ledge is in reach, the car Change Camera toggle is skipped while our third person handles it.</summary>
         public static bool BeforeGetButtonDown(HutongGames.PlayMaker.Actions.GetButtonDown __instance)
         {
             var fsm = __instance.Fsm;
@@ -129,6 +139,7 @@ namespace WildWasteland.Modules.PlayerBody
             return true;
         }
 
+        /// <summary>Per-frame camera state (called by BodyRunner): Change Camera toggles third person, binocular / scope peek, observing orbit, wheel zoom, cave / cutaway, camera writers registered with CameraArbiter, view-model hiding; publishes CameraModeChanged.</summary>
         public static void Tick()
         {
             bool allowed = PresentationModule.WorldRunning && CameraSettings.ThirdPersonOnFoot.Value && Game.Ready && Game.FirstPersonCameraOn;
@@ -209,6 +220,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         private static float _saveAt;
+        /// <summary>Mouse wheel zoom of the camera distance (on foot and in cars separately), not while the map is open or an item is carried.</summary>
         private static void Zoom()
         {
             if (!On || Peek || Game.Paused) { Save(); return; }
@@ -231,6 +243,7 @@ namespace WildWasteland.Modules.PlayerBody
             Save();
         }
         private static readonly float[] _zoomTo = { 0f, 0f };
+        /// <summary>Writes the zoomed distances to the config once the wheel rested for a second.</summary>
         private static void Save()
         {
             if (_saveAt <= 0f || Time.unscaledTime < _saveAt) return;
@@ -239,6 +252,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_zoomTo[1] > 0f) CameraSettings.ThirdCarDistance.Value = (float)System.Math.Round(_zoomTo[1], 2);
             _zoomTo[0] = _zoomTo[1] = 0f;   // the config is the source again (also edited from the Mods menu)
         }
+        /// <summary>Current camera distance (the pending zoom, else the config value).</summary>
         private static float Distance(bool car)
         {
             float z = _zoomTo[car ? 1 : 0];
@@ -251,7 +265,9 @@ namespace WildWasteland.Modules.PlayerBody
         private static Transform _vCar; private static bool _vCutaway;
         private static int _zoomLogs; private static Collider _xhairCol;
         private static string XhairWhat { get { return _xhairCol != null ? _xhairCol.name + " (layer " + _xhairCol.gameObject.layer + ")" : "nothing"; } } private static float _xhairDist;
+        /// <summary>Perspective projection of the camera with another field of view.</summary>
         public static Matrix4x4 Projection(Camera cam, float fov) { return Matrix4x4.Perspective(fov, cam.aspect, cam.nearClipPlane, cam.farClipPlane); }
+        /// <summary>Works out the third-person view of this frame once (pivot, orbit, collision or cutaway distance, convergence on the aim point); later calls only follow a floating-origin shift.</summary>
         private static void ComputeView(Camera cam)
         {
             var t = cam.transform;
@@ -381,8 +397,10 @@ namespace WildWasteland.Modules.PlayerBody
         private const int GunMask = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 14);   // the player guns' Raycast mask
 
         private static float _dynK;
+        /// <summary>True when the dynamic crosshair should follow the eye ray (setting on and a weapon drawn).</summary>
         private static bool DynamicWanted { get { return CameraSettings.DynamicCrosshair.Value && !string.IsNullOrEmpty(Game.DrawnWeapon); } }
 
+        /// <summary>LateUpdate (BodyRunner): casts the eye ray (and the muzzle ray with projectiles) and moves the game crosshair to where it lands in the third-person picture.</summary>
         public static void LateCrosshair()
         {
             HasCrosshair = false;
@@ -436,6 +454,7 @@ namespace WildWasteland.Modules.PlayerBody
             MoveCrosshair(CrosshairScreen);
         }
 
+        /// <summary>True for the player, her camera rig and her car (the eye ray ignores them).</summary>
         private static bool Mine(Transform t)
         {
             return Game.Player != null && t.IsChildOf(Game.Player.transform) || Game.PlayerCamera != null && t.IsChildOf(Game.PlayerCamera)
@@ -445,6 +464,7 @@ namespace WildWasteland.Modules.PlayerBody
 
 
         // driving in first person with her body shown: the picture is drawn from a few cm in front of the game's eye (along the seat's facing)
+        /// <summary>First person in the car with the body shown: the eye drawn CarCameraForward metres ahead along the seat facing.</summary>
         public static Vector3 CarShiftEye(Transform cam)
         {
             Vector3 f = Game.Player != null ? Game.Player.transform.forward : cam.forward; f.y = 0f;
@@ -458,6 +478,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Restores the real native eye before next-frame gameplay queries.</summary>
         public static void EndOfFrame() { Core.CameraArbiter.Restore(PresentationModule.WorldOwner, "Presentation.ThirdPerson"); }
 
+        /// <summary>Hides the first-person weapon / arm renderers under the player camera (rescanned twice a second; the carried item stays visible).</summary>
         private static void HideViewModel()
         {
             if (Time.unscaledTime < _nextScan || Game.PlayerCamera == null) return;
@@ -479,12 +500,14 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         private static readonly List<Renderer> _scanRenderers = new List<Renderer>();
+        /// <summary>Shows the hidden first-person renderers again.</summary>
         private static void ShowViewModel()
         {
             foreach (var r in _hidden) if (r != null) r.forceRenderingOff = false;
             _hidden.Clear();
         }
 
+        /// <summary>Turns third person off and restores the camera, crosshair, cutaway and view model (body teardown); publishes CameraModeChanged.</summary>
         public static void Off()
         {
             RestoreCrosshair(); HasCrosshair = false;

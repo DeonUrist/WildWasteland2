@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Patrols
         private Rigidbody _body;
         private bool _gunner;
 
+        /// <summary>Adds the guard to a mounted rider (Animator set to always animate so procedural poses do not reuse a culled pose).</summary>
         internal static void Attach(GameObject who, RiderGuard rider, Transform anchor, bool gunner)
         {
             var guard = who.AddComponent<RiderAnchorGuard>();
@@ -22,6 +23,7 @@ namespace WildWasteland.Modules.Patrols
             if (animator != null) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         }
 
+        /// <summary>After animation and pose work: keeps the rider parented and on its anchor with a kinematic body that follows the transform.</summary>
         private void LateUpdate()
         { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             if (_rider == null || !_rider.Mounted || _anchor == null) return;

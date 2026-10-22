@@ -30,6 +30,7 @@ namespace WildWasteland.Modules.PlayerBody
         // (≈45 degrees left). Per clip, an extra chest yaw is learned from where the barrel points against the aim (sideways only), every frame
         private readonly Dictionary<string, float> _carYawFix = new Dictionary<string, float>();
         private readonly Dictionary<string, float> _carW = new Dictionary<string, float>();
+        /// <summary>Learns the extra chest yaw per car aiming clip from where the barrel points against the aim (sideways only).</summary>
         private void LearnCarYaw(Transform player, float aimYaw)
         {
             if (_prop == null || _propBarrel == Vector3.zero || string.IsNullOrEmpty(_upperClip)) return;
@@ -44,6 +45,7 @@ namespace WildWasteland.Modules.PlayerBody
         private readonly Dictionary<string, Quaternion> _carAll = new Dictionary<string, Quaternion>();
 
         // chest to the aim: yaw over Spine/Spine1/Spine2, pitch like on foot
+        /// <summary>Turns the chest to the aim from the seat: yaw over the three spine bones, pitch as on foot.</summary>
         private void AimPitch(float pitch, float yaw)
         {
             if (Mathf.Abs(yaw) > 0.1f)
@@ -63,6 +65,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // the base layer in the car: the drawn gun's set, crouch idle (used when she has turned off the seat)
+        /// <summary>Selects the base layer in the car: the drawn gun set or crouch idle.</summary>
         private void CarBase(Props.Kind kind, bool crouch)
         {
             if (!_base.IsValid()) return;
@@ -73,6 +76,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         private int _wheelPoseFrame = -1;
         private string _wheelArmOwner = "off";
+        /// <summary>Applies the steering-wheel arms after the seat pose (LateUpdateLast job through BodyRunner.WheelTick).</summary>
         internal void LateWheelArms()
         {
             if (_wheelPoseFrame != Time.frameCount) return;
@@ -81,6 +85,7 @@ namespace WildWasteland.Modules.PlayerBody
             else WheelArms.Solve(Bones, _wheelArmOwner);
         }
 
+        /// <summary>Late update of the body in the driver seat (pose copied from the seat, aiming and throws); exceptions are logged once.</summary>
         public void LateCar(Transform player, bool firstPerson)
         {
             float dt = Time.deltaTime;
@@ -102,6 +107,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>The driver-seat pose: copies the seated man pose, places the hips, blends aiming / throwing clips and hides parts in first person.</summary>
         private void LateCarInner(Transform player, bool firstPerson)
         {
             if (!_inCar) { _inCar = true; _animator.enabled = false; _crouch = _prone = 0f; UpdateProp(""); _carArmsReady = false; _carWeapon = ""; }
@@ -237,6 +243,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // a throw from the seat goes where she aims: when her throwing hand passes the release point of the clip, its sideways angle from her
         // chest is compared with the aim and the chest turn for that clip is corrected (per clip, learned throw by throw like the punches)
+        /// <summary>Learns the chest turn per throw clip from where the throwing hand passes the release point compared with the aim.</summary>
         private void LearnCarThrow(Transform player, float aimYaw, bool turned)
         {
             if (_aimMeasured || !_upper.IsValid() || _upperClip != _throwClip || _upper.GetTime() < ThrowRelease) return;

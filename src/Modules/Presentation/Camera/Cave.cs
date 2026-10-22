@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static GameObject _for;
         private static float _next;
 
+        /// <summary>Polls (4 per second) the Player CaveDarkness FSM bool while camera culling is wanted; Inside true while the player is in a cave.</summary>
         public static void Tick(bool want)
         {
             if (!want) { Inside = false; return; }
@@ -39,6 +40,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (inside != Inside) { Inside = inside; if (Log.L1) Log.Main(PresentationModule.WorldOwner, inside ? "Camera culling: off in the cave" : "Camera culling: out of the cave, back on"); }
         }
 
+        /// <summary>Forgets the cave state and the cached FSM (player body reset).</summary>
         public static void Reset() { Inside = false; _fsm = null; _for = null; }
     }
 }

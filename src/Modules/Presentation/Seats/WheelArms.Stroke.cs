@@ -14,21 +14,28 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly float[] _turn = new float[2], _release = new float[2];
         private static int _releaseHand = -1, _spinDirection;
         private static float _releaseTime, _releaseDuration, _releaseStart, _releaseEnd;
+        /// <summary>Start index of one pose / arm block in the grip setup values.</summary>
         private static int PoseOffset(int pose, int arm) { return 12 + pose * 24 + arm * 12; }
+        /// <summary>Blend between the side and top grip vectors of a pose block.</summary>
         private static Vector3 PoseVector(float[] v, int side, int top, float blend)
         { return Vector3.Lerp(new Vector3(v[side], v[side + 1], v[side + 2]), new Vector3(v[top], v[top + 1], v[top + 2]), blend); }
+        /// <summary>Mirrors a vector across the wheel plane frame.</summary>
         private static Vector3 MirrorVector(Vector3 v, Quaternion frame)
         { v = Quaternion.Inverse(frame) * v; v.x = -v.x; return frame * v; }
+        /// <summary>Mirrors a rotation delta across the wheel plane frame.</summary>
         private static Quaternion MirrorRotation(Quaternion q, Quaternion frame)
         { q = Quaternion.Inverse(frame) * q * frame; return frame * new Quaternion(q.x, -q.y, -q.z, q.w) * Quaternion.Inverse(frame); }
+        /// <summary>Mirrors an orientation across the wheel plane frame.</summary>
         private static Quaternion MirrorOrientation(Quaternion q, Quaternion frame)
         { q = Quaternion.Inverse(frame) * q; return frame * new Quaternion(q.x, -q.y, -q.z, q.w); }
+        /// <summary>Copies one arm pose block to the other arm, mirrored.</summary>
         private static void MirrorPose(float[] v, int pose, int sourceArm)
         {
             int source = PoseOffset(pose, sourceArm), target = PoseOffset(pose, 1 - sourceArm);
             for (int k = 0; k < 12; k++) v[target + k] = v[source + k] * (k == 0 || k == 4 || k == 5 || k == 7 || k == 8 || k == 9 ? -1f : 1f);
         }
 
+        /// <summary>Resets the hand-over-hand stroke state at a steering angle.</summary>
         private static void ResetStroke(float spin)
         {
             spin = -Mathf.Abs(spin);
@@ -36,6 +43,7 @@ namespace WildWasteland.Modules.PlayerBody
             _lastSpin = spin; _returning = false; _releaseHand = -1; _spinDirection = 0;
         }
 
+        /// <summary>Advances the hand-over-hand steering stroke (release and regrip phases) for the wheel spin.</summary>
         private static void TickStroke(float spin, float stroke)
         {
             spin = -Mathf.Abs(spin); // One working right-turn sequence; Solve reflects its arm roles for left steering.

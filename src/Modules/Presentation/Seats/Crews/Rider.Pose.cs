@@ -14,8 +14,10 @@ namespace WildWasteland.Modules.Patrols
     {
         // the player animation framework's humanoid clips (WW: Core.Services.Animation.GetClip, ex reflection on Apocaplayer.Anims.Get)
         // - null without the provider (PlayerBody off) or the clip
+        /// <summary>A humanoid clip of the animation service, or null without the provider or the clip.</summary>
         internal static AnimationClip Clip(string name) { return PlayerAnims.Clip(name); }
 
+        /// <summary>The transform under root whose name tail equals the bone name.</summary>
         internal static Transform Bone(Transform root, string bone)
         {
             foreach (var t in root.GetComponentsInChildren<Transform>(true))

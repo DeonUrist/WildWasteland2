@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal struct Pair
         {
             public string Src, Dst; public Quaternion Rot; public Vector3 Off;
+            /// <summary>One retarget pair: seated-man bone, mixamo bone, rotation delta and offset.</summary>
             public Pair(string src, string dst, Quaternion rot, Vector3 off) { Src = src; Dst = dst; Rot = rot; Off = off; }
         }
 
@@ -47,8 +48,10 @@ namespace WildWasteland.Modules.PlayerBody
         private static Transform[] _src;                // per pair, the seat's bone
         private static readonly List<Renderer> _hidden = new List<Renderer>();
 
+        /// <summary>The PlayerModel_Sit of the car the player sits in, or null.</summary>
         public static Transform Seat { get { return _seat; } }
         private static Transform _failedCar; private static float _failedRetry;
+        /// <summary>Logs once per car why no seat was found.</summary>
         private static void Fail(Transform car, string why)
         {
             if (car != _failedCar) Log.Warn(PresentationModule.WorldOwner, "Car " + car.name + ": " + why);   // once per car, not every frame
@@ -56,6 +59,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // finds the seated driver of the car the player is in (Player is a child of the car's sitPos while driving)
+        /// <summary>Finds the seated driver model of the player car (the player is a child of its sitPos), hides its renderers; false when none.</summary>
         public static bool Attach(Transform player)
         {
             if (player == null) { Detach(); return false; }
@@ -80,6 +84,7 @@ namespace WildWasteland.Modules.PlayerBody
             return true;
         }
 
+        /// <summary>Shows the seated driver model again and forgets the seat.</summary>
         public static void Detach()
         {
             foreach (var r in _hidden) if (r != null) r.enabled = true;
@@ -88,6 +93,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // pose her skeleton from the seat's bones (her body root must not be mirrored here)
+        /// <summary>Poses the player skeleton from the seat bones (her body root must not be mirrored here).</summary>
         public static void Pose(Dictionary<string, Transform> bones, Dictionary<string, Quaternion> bindLocal)
         {
             if (_seat == null) return;
@@ -97,6 +103,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (CarSeatSettings.SeatDrop.Value != 0f && bones.TryGetValue("mixamorig:Hips", out hips)) hips.position -= _seat.root.up * CarSeatSettings.SeatDrop.Value;
         }
 
+        /// <summary>Poses a skeleton from the given seat bone array with the retarget pairs.</summary>
         public static void PoseFrom(Transform[] src, Dictionary<string, Transform> bones, Dictionary<string, Quaternion> bindLocal)
         {
             for (int i = 0; i < Pairs.Length; i++)

@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.PlayerBody
         public string Rejection { get; private set; }
         public bool Valid { get { return primary != null && capsules.Length > 0; } }
 
+        /// <summary>Captures the player capsule geometry for climb tests.</summary>
         public ClimbGeometry(Rigidbody player)
         {
             body = player;
@@ -23,6 +24,7 @@ namespace WildWasteland.Modules.PlayerBody
                     && (primary == null || c.bounds.size.y > primary.bounds.size.y)) primary = c;
         }
 
+        /// <summary>World capsule end points, radius and feet of the player capsule at an offset.</summary>
         void Capsule(CapsuleCollider c, Vector3 offset, out Vector3 bottom, out Vector3 top, out float radius, out Vector3 feet)
         {
             var s = c.transform.lossyScale;
@@ -37,6 +39,7 @@ namespace WildWasteland.Modules.PlayerBody
             top = center + Vector3.up * (height * .5f - radius);
         }
 
+        /// <summary>True for a solid collider that is not the player.</summary>
         bool Solid(Collider other, CapsuleCollider capsule)
         {
             return other != null && other.enabled && !other.isTrigger && other.gameObject.activeInHierarchy
@@ -45,6 +48,7 @@ namespace WildWasteland.Modules.PlayerBody
                 && !Physics.GetIgnoreLayerCollision(capsule.gameObject.layer, other.gameObject.layer);
         }
 
+        /// <summary>True when the collider is static or moves slowly enough to climb onto.</summary>
         public static bool Slow(Collider c)
         {
             if (c == null) return false;
@@ -52,6 +56,7 @@ namespace WildWasteland.Modules.PlayerBody
             return rb == null || rb.velocity.sqrMagnitude < .5625f && rb.angularVelocity.sqrMagnitude < .25f;
         }
 
+        /// <summary>The nearest valid hit among the cast results.</summary>
         bool Nearest(int count, out RaycastHit hit)
         {
             hit = default(RaycastHit);
@@ -63,8 +68,10 @@ namespace WildWasteland.Modules.PlayerBody
             return hit.collider != null;
         }
 
+        /// <summary>Records why a climb was rejected and returns false.</summary>
         bool Reject(string reason) { Rejection = reason; return false; }
 
+        /// <summary>Searches a climbable ledge ahead (face distance, ledge height, standing room); fills the climb target or records the rejection.</summary>
         public bool Find(Vector3 forward, float minHeight, float maxHeight, float reach, bool allowAirborne, out ClimbTarget target)
         {
             target = default(ClimbTarget);
@@ -125,6 +132,7 @@ namespace WildWasteland.Modules.PlayerBody
             return Reject(last);
         }
 
+        /// <summary>True when the player capsule can move from one point to another without entering geometry.</summary>
         public bool Clear(Vector3 from, Vector3 to)
         {
             Vector3 delta = to - from;
@@ -151,6 +159,7 @@ namespace WildWasteland.Modules.PlayerBody
             return true;
         }
 
+        /// <summary>True when a movement leaves an existing contact instead of going deeper.</summary>
         bool EscapesExistingContact(CapsuleCollider capsule, Collider other, Vector3 from, Vector3 to)
         {
             // PhysX contact pressure can leave a few millimetres of penetration.

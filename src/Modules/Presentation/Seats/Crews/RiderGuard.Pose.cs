@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Visual part of a human turret: PlayableGraph/animation-service clips (crouch, throw, jump, stand), lance prop offset, own weapons hidden, body facing; Presentation (Wave A split of Crews/Rider.cs).</summary>
     internal sealed partial class RiderGuard
     {
+        /// <summary>Builds the rider animation: the animation-service body when available, else its own PlayableGraph (crouch / idle, throw, jump, stand).</summary>
         private void BuildGraph()
         {
             // 2.6.1: with Apocaplayer's ModAPI the player's own logic animates him: crouched (CrouchIdle), the lance thrown with ThrowRight on the
@@ -61,6 +62,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // 0 = crouch idle, 1 = throw, 2 = jump (one-shots restart from 0), 3 = standing idle
+        /// <summary>Starts a one-shot (1 = throw, 2 = jump) from the start.</summary>
         private void Play(int clip)
         {
             if (_body != null) { if (clip == 1) PlayerAnims.Throw(_body); else if (clip == 2) PlayerAnims.Jump(_body); return; }
@@ -69,6 +71,7 @@ namespace WildWasteland.Modules.Patrols
             if (clip == 2) { _jump.SetTime(0.0); _jump.Play(); }
         }
 
+        /// <summary>Blends towards the target clip over <paramref name="seconds"/> (animation-service body: its own blends).</summary>
         private void Blend(int target, float seconds)
         {
             // ModAPI: crouched while riding / throwing (the throw is on the upper body), standing (3), in the air (2) - its own blends
@@ -78,6 +81,7 @@ namespace WildWasteland.Modules.Patrols
             for (int i = 0; i < 4; i++) { float w = Mathf.MoveTowards(_w[i], i == target ? 1f : 0f, step); if (w == _w[i]) continue; _w[i] = w; _mixer.SetInputWeight(i, w); }   // compare-before-write
         }
 
+        /// <summary>Places the lance prop in the throwing hand from the Turret pose settings.</summary>
         internal void ApplyLanceOffset()
         {
             if (Lance == null) return;
@@ -85,11 +89,13 @@ namespace WildWasteland.Modules.Patrols
             Lance.localRotation = Quaternion.Euler(Rider.ParseV3(SeatPoseSettings.RiderLanceRotation.Value, Vector3.zero));
         }
 
+        /// <summary>Hides the rider own weapon renderers (not the lance).</summary>
         private void HideOwnWeapons()
         {
             foreach (var r in _ownWeapons) if (r != null && r.enabled && (Lance == null || !r.transform.IsChildOf(Lance))) r.enabled = false;
         }
 
+        /// <summary>Turns the rider towards a direction on the vehicle plane (bike seats limited to BikeArc).</summary>
         private void Face(Vector3 dir)
         {
             var up = _car != null ? _car.transform.up : Vector3.up;

@@ -68,6 +68,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // things a pick is for: items and parts (a Rigidbody) or anything with its own FSM (switches, doors, ignition, cassette ...)
+        /// <summary>True for a vehicle part of the player car that must not take fire / wheel input in third person (the DriveTrigger stays pickable).</summary>
         private static bool BlockedVehiclePart(Transform target)
         {
             var car = Game.CarRoot;
@@ -76,17 +77,20 @@ namespace WildWasteland.Modules.PlayerBody
             return drive == null || !target.IsChildOf(drive);
         }
 
+        /// <summary>True when a pick is meant for the collider: it has a Rigidbody (items, parts) or a PlayMaker FSM (switches, doors...).</summary>
         private static bool Usable(Collider c)
         {
             return c.attachedRigidbody != null || c.GetComponent<PlayMakerFSM>() != null;
         }
 
+        /// <summary>True for the player and her rig.</summary>
         private static bool Mine(Collider c)
         {
             var t = c.transform;
             return Game.Player != null && t.IsChildOf(Game.Player.transform) || Game.PlayerCamera != null && t.IsChildOf(Game.PlayerCamera);
         }
 
+        /// <summary>Screen-space nearest usable collider to the cursor within the pick distance and PickAssistRadius, visible from the third-person camera; the eye ray to it is the result.</summary>
         private static bool Find(float distance, int layerMask, out RaycastHit result)
         {
             result = default(RaycastHit);
@@ -157,12 +161,14 @@ namespace WildWasteland.Modules.PlayerBody
             return found;
         }
 
+        /// <summary>True when two colliders belong to the same object (same rigidbody or root).</summary>
         private static bool Same(Collider a, Collider b)
         {
             return a == b || a.attachedRigidbody != null && a.attachedRigidbody == b.attachedRigidbody;
         }
 
         // what you see is what you can pick: nothing but her and the thing itself between the third-person camera and the point
+        /// <summary>True when nothing but the player and the target lies between the third-person camera and the point.</summary>
         private static bool Visible(Vector3 from, Vector3 to, Collider target)
         {
             Vector3 d = to - from; float len = d.magnitude;

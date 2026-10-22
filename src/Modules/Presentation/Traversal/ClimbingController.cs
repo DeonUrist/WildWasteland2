@@ -46,6 +46,7 @@ namespace WildWasteland.Modules.PlayerBody
         struct RendererState { public Renderer Renderer; public bool Enabled; }
 
         // module Init (was the constructor at config time): one controller, the clips loaded once
+        /// <summary>World part Init: creates the controller and loads the climb clips from the climbing bundle once per session.</summary>
         internal static void Init()
         {
             if (Instance == null) Instance = new ClimbingController();
@@ -69,15 +70,22 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { Log.Error(PresentationModule.WorldOwner, "Climbing animation bundle: " + e.Message); waist = high = null; }
         }
         internal static bool ClipsLoaded { get { return waist != null && high != null; } }
+        /// <summary>The waist or high climb clip (NPC traversals reuse them).</summary>
         internal static AnimationClip Clip(bool highClimb) { return highClimb ? high : waist; }
+        /// <summary>True while a climb runs.</summary>
         internal bool Climbing { get { return climbing; } }
 
         // the scheduler jobs (was ClimbRunner, [DefaultExecutionOrder(-1000)]: Update -> Phase.EarlyUpdate, FixedUpdate -> EarlyFixedUpdate)
+        /// <summary>Job Presentation.Climbing (EarlyUpdate).</summary>
         internal static void TickInstance() { if (Instance != null) Instance.Tick(); }
+        /// <summary>Job Presentation.Climbing (physics) (EarlyFixedUpdate).</summary>
         internal static void FixedTickInstance() { if (Instance != null) Instance.FixedTick(); }
+        /// <summary>Cancels a running climb (shutdown).</summary>
         internal static void StopInstance() { if (Instance != null) Instance.Stop(); }
+        /// <summary>Cancels and forgets the player body (player reset).</summary>
         internal static void ResetInstance() { if (Instance != null) Instance.Reset(); }
         // (WW) floating origin: the climb path and the last safe spot are world positions kept for the climb's duration
+        /// <summary>Floating-origin jump: moves the climb path and the last safe spot with the world.</summary>
         internal static void ShiftInstance(Vector3 delta)
         {
             var c = Instance;
@@ -85,6 +93,7 @@ namespace WildWasteland.Modules.PlayerBody
             c.target.Start += delta; c.target.Lift += delta; c.target.End += delta; c.lastSafe += delta;
         }
 
+        /// <summary>Jump pressed: starts a climb onto a reachable ledge (also mid-jump); true when the jump is consumed.</summary>
         internal bool TryJumpClimb()
         {
             if (!jumpTriggers.Value || !GameBindings.Down("Jump", KeyCode.Space) || !enabledMod.Value
@@ -101,6 +110,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // (WW ladders) the top of a ladder: mantle onto the platform the ladder faces
         Vector3 mantleForward;
+        /// <summary>Ladder top: mantles onto the platform the ladder faces.</summary>
         internal bool TryMantle(Vector3 forward)
         {
             mantleForward = forward;
@@ -108,6 +118,7 @@ namespace WildWasteland.Modules.PlayerBody
             finally { mantleForward = Vector3.zero; }
         }
 
+        /// <summary>Starts a climb when allowed and a ledge is found.</summary>
         bool TryStart(bool allowAirborne)
         {
             if (climbing || !PresentationModule.WorldRunning || !enabledMod.Value || waist == null || high == null
@@ -124,6 +135,7 @@ namespace WildWasteland.Modules.PlayerBody
             return climbing;
         }
 
+        /// <summary>Per frame: checks a running climb (surface, player) and samples the clip, else watches the jump / climb key.</summary>
         internal void Tick()
         {
             try
@@ -153,6 +165,7 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { Finish(false, "Exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
         }
 
+        /// <summary>Begins the climb: body animation lease, physics and game FSMs suspended, first-person weapons hidden; publishes TraversalStarted.</summary>
         void Begin()
         {
             highClimb = target.Rise > waistLimit.Value && !target.LowCatch;
@@ -189,12 +202,16 @@ namespace WildWasteland.Modules.PlayerBody
             if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Climb " + clip.name + " onto " + target.Surface.name + ", height " + target.Rise.ToString("0.00") + "m");
         }
 
+        /// <summary>True when a parent (or the transform) has the name.</summary>
         static bool Under(Transform t, string name)
         { for (; t != null; t = t.parent) if (t.name == name) return true; return false; }
+        /// <summary>Disables an FSM and remembers it.</summary>
         void Suspend(PlayMakerFSM fsm) { suspended.Add(fsm); fsm.enabled = false; }
         internal static string LastReject = "", LastResult = "";   // (WW) F7 "Climbing" page
+        /// <summary>Records the rejection reason.</summary>
         void Reject(string why) { LastReject = why; }
 
+        /// <summary>Physics step: moves the body along the climb path while it stays clear.</summary>
         internal void FixedTick()
         {
             if (!climbing || body == null || Time.timeScale < .01f) return;
@@ -210,6 +227,7 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { Finish(false, "Physics exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
         }
 
+        /// <summary>Ends the climb and restores physics, FSMs and renderers; publishes TraversalEnded.</summary>
         void Finish(bool completed, string why)
         {
             if (!climbing && animation == null) return;
@@ -233,7 +251,9 @@ namespace WildWasteland.Modules.PlayerBody
             if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Climb " + (completed ? "finished" : "cancelled") + ": " + why);
         }
 
+        /// <summary>Cancels a running climb.</summary>
         internal void Stop() { Finish(false, "Runner disabled"); }
+        /// <summary>Cancels and clears every cached reference.</summary>
         internal void Reset()
         { Stop(); body = null; geometry = null; cooldown = jumpProbeUntil = nextJumpProbe = 0; jumpAttemptFrame = -1; jumpConsumed = false; }
         

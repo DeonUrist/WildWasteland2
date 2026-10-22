@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.PlayerBody
     // A handful of vector operations per active sway object and frame; anything else (other FSMs, Enabled off) runs the game's own code.
     internal static class FirstPersonSway
     {
+        /// <summary>Per-action smoothed sway state (rotation, local target, owner object, last frame).</summary>
         private sealed class State { public Quaternion Rot; public Vector3 LocalTarget; public bool Ready; public GameObject Go; public int Frame; }
         private static readonly Dictionary<SmoothLookAt, State> _state = new Dictionary<SmoothLookAt, State>();
         // (WW) every SmoothLookAt action is classified once: NotSway marks the ones of other FSMs (one dictionary lookup, no string compare per frame)
@@ -29,23 +30,18 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly Action<SmoothLookAt, GameObject> _previousGo = Setter<GameObject>("previousGo");
         private const float RateScale = 1.65f, TargetRate = 30f;
 
+        /// <summary>Generated setter of a private SmoothLookAt field (Core Access, built once; README 4.1 replaces Expression.Compile, interpreted on this runtime); null when the field is missing.</summary>
         private static Action<SmoothLookAt, T> Setter<T>(string name)
         {
-            var f = HarmonyLib.AccessTools.Field(typeof(SmoothLookAt), name);
-            if (f == null || f.FieldType != typeof(T)) return null;
-            try
-            {
-                var a = System.Linq.Expressions.Expression.Parameter(typeof(SmoothLookAt), "a");
-                var v = System.Linq.Expressions.Expression.Parameter(typeof(T), "v");
-                return System.Linq.Expressions.Expression.Lambda<Action<SmoothLookAt, T>>(
-                    System.Linq.Expressions.Expression.Assign(System.Linq.Expressions.Expression.Field(a, f), v), a, v).Compile();
-            }
-            catch (Exception) { return (x, val) => f.SetValue(x, val); }
+            try { return Access.Setter<SmoothLookAt, T>(typeof(SmoothLookAt), name); }
+            catch (Exception) { return null; }
         }
 
+        /// <summary>Drops every sway record (World part shutdown).</summary>
         internal static void Clear() { _state.Clear(); }
         // scene load: drop the actions whose FSM is gone
         private static readonly List<SmoothLookAt> _dead = new List<SmoothLookAt>();
+        /// <summary>Scene load: drops the records whose FSM object is gone.</summary>
         internal static void Sweep()
         {
             _dead.Clear();
@@ -55,6 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // Core.Hooks.SmoothLookAtDo prefix (subscribed in PlayerBodyModule.Init)
+        /// <summary>Core.Hooks.SmoothLookAtDo prefix (every SmoothLookAt update of every FSM): replaces the first-person weapon / item sway with a frame-rate independent one; other FSMs or the switch off run the game code.</summary>
         public static bool BeforeSmoothLookAt(SmoothLookAt __instance)
         {
             State s;

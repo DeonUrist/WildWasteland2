@@ -14,7 +14,9 @@ namespace WildWasteland.Modules.Patrols
         private Transform _hips, _spine, _spine1, _spine2;
         private Transform _lUpLeg, _lLeg, _lFoot, _rUpLeg, _rLeg, _rFoot, _lArm, _lForeArm, _lHand, _rArm, _rForeArm, _rHand;
         private bool _busPassenger;
+        /// <summary>True for a bus passenger with a seat anchor (not a turret).</summary>
         internal bool IsBusPassenger=>_busPassenger&&_anchor!=null&&!_turret;
+        /// <summary>Uses the shared bus passenger preset for this occupant (loads it now).</summary>
         internal void ConfigureBusPassenger(){_busPassenger=true;var preset=BusPassengerPoseStore.Current;}
         private ArmPoseProfile _armPose;
         private readonly List<WeaponRoot> _weapons = new List<WeaponRoot>();
@@ -37,6 +39,7 @@ namespace WildWasteland.Modules.Patrols
         private object _body;
         private Transform _bodyGun; private float _nextGunCheck;
 
+        /// <summary>Adds (or reuses) the seat pose on an occupant: anchor, bike detection, per-human arm profile and bones.</summary>
         internal static Pose Apply(GameObject occupant, Transform anchor, string humanType)
         {
             var p = occupant.GetComponent<Pose>() ?? occupant.AddComponent<Pose>();
@@ -52,6 +55,7 @@ namespace WildWasteland.Modules.Patrols
         private const string MotorcycleBody = "Motorcycle";
 
         // the vehicle the seat belongs to is a motorcycle body (Motorcycle = the true bike, Halfbreed)
+        /// <summary>True when the seat belongs to a motorcycle body (Motorcycle, Halfbreed).</summary>
         private static bool IsBike(Transform anchor)
         {
             var root = anchor != null ? anchor.root : null;
@@ -60,6 +64,7 @@ namespace WildWasteland.Modules.Patrols
             return string.Equals(body, MotorcycleBody, System.StringComparison.OrdinalIgnoreCase) || string.Equals(body, "Halfbreed", System.StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>Finds the hips, spine, leg and arm bones by their name tail and logs missing ones (level 2).</summary>
         private void FindBones()
         {
             var all = _root.GetComponentsInChildren<Transform>(true);
@@ -79,6 +84,7 @@ namespace WildWasteland.Modules.Patrols
             if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: bones " + (missing.Count == 0 ? "all found" : "missing " + string.Join(", ", missing.ToArray())));
         }
 
+        /// <summary>Records the rendered weapon roots under the left hand with their rest pose (ranged profiles only).</summary>
         private void FindWeapons()
         {
             _weapons.Clear();
@@ -93,6 +99,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Sets the aim point and whether the occupant aims at it.</summary>
         internal void SetAim(Vector3 point, bool active)
         {
             _aimPoint = point;
@@ -100,14 +107,17 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // A shooting mob at the wheel: generic driver arms (hands on the wheel), the per-human shooting profile only while firing.
+        /// <summary>A shooting driver: the per-human shooting profile only while firing, the generic wheel arms otherwise.</summary>
         internal void SetShooting(bool on) { _useProfile = on; }
 
+        /// <summary>A passenger who aims: the seat rotation is locked, only the spine turns.</summary>
         internal void ConfigurePassengerAim()
         {
             _lockSeatRotation = true;
             _seatRotation = _root.localRotation;
         }
 
+        /// <summary>Turns the pose into a turret gunner (standing or crouched, bike seat, Warboy); a human roof gunner gets the animation service crouch when available.</summary>
         internal void ConfigureTurret(bool standing,bool bike,bool warboy=false)
         {
             _turret = true; _turretSeated = !standing;_turretBike=bike;_turretWarboy=warboy;
@@ -123,15 +133,18 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // the ModAPI body ends (death, jump-off): its gun back in its own hand, the Animator's own controller back
+        /// <summary>Ends the animation-service body (death, jump-off): its gun back in its hand, the Animator controller back.</summary>
         internal void ReleaseBody()
         {
             if (_body == null) return;
             try { PlayerAnims.Dispose(_body); } catch (System.Exception) { }
             _body = null; _bodyGun = null;
         }
+        /// <summary>Unity teardown: releases the animation-service body.</summary>
         private void OnDestroy() { ReleaseBody(); }
 
         // the gun the game shows (WeaponType picks one of the LeftHand models a frame after the spawn and may swap it) -> the body's right hand
+        /// <summary>Hands the gun the game shows to the animation-service body (checked twice a second).</summary>
         private void BodyWeapon()
         {
             if (Time.time < _nextGunCheck) return;
@@ -161,6 +174,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // the occupant changed seats (passenger promoted to driver): follow the new anchor, no passenger aiming any more
+        /// <summary>The occupant changed seats (passenger promoted to driver): follows the new anchor, no passenger aiming any more.</summary>
         internal void Reseat(Transform anchor)
         {
             _anchor = anchor;
@@ -170,6 +184,7 @@ namespace WildWasteland.Modules.Patrols
             _useProfile = false;   // now the driver: hands on the wheel (a shooting driver's guard switches to the gun pose while it fires)
         }
 
+        /// <summary>The transform whose name tail (after : or _) equals the bone name.</summary>
         private static Transform Find(Transform[] all, string bone)
         {
             foreach (var t in all)
@@ -186,6 +201,7 @@ namespace WildWasteland.Modules.Patrols
         // the camera position, read once per frame for every occupant
         private static int _camFrame = -1; private static bool _camOk; private static Vector3 _camPos;
 
+        /// <summary>Main camera position, read once per frame for all occupants.</summary>
         private static bool CameraPos(out Vector3 pos)
         {
             if (_camFrame != Time.frameCount)
@@ -199,6 +215,7 @@ namespace WildWasteland.Modules.Patrols
             return _camOk;
         }
 
+        /// <summary>Applies the seated pose after animation (distance throttled: every 4th frame beyond 120 m, every 16th beyond 300 m): legs, arms (bus preset, profile or generic), spine aim and hips on the anchor.</summary>
         private void LateUpdate()
         { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             if (_root == null || _anchor == null) return;
@@ -286,6 +303,7 @@ namespace WildWasteland.Modules.Patrols
             if (!_logged) { _logged = true; if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: applied, hips at " + target + " root at " + _root.position); }
         }
 
+        /// <summary>Turret gunner pose: body turned to the target (bike seats limited), animation-service crouch or the bone squat with the shooting arms.</summary>
         private void TurretPose()
         {
             if(_turretWarboy)
@@ -352,6 +370,7 @@ namespace WildWasteland.Modules.Patrols
             if (!_logged) { _logged = true; if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + (_turretSeated ? (_turretBike?"seated":"crouched") : "standing")); }
         }
 
+        /// <summary>Turret legs: standing on the spot, or the crouch / bike seat bend with the hips at the configured height.</summary>
         private void TurretLegs(bool standing,bool forceCrouch=false)
         {
             if(standing){_root.position=_anchor.position;return;}
@@ -363,12 +382,14 @@ namespace WildWasteland.Modules.Patrols
             _root.position+=target-(_hips!=null?_hips.position:_root.position);
         }
 
+        /// <summary>Rotates a bone by degrees about a world axis.</summary>
         private static void Swing(Transform bone, float degrees, Vector3 axis)
         {
             if (bone == null || degrees == 0f) return;
             bone.rotation = Quaternion.AngleAxis(degrees, axis) * bone.rotation;
         }
 
+        /// <summary>Applies one bus preset joint (bend, swing, twist about the limb axis).</summary>
         private static void BusJoint(Transform bone,Transform joint,Vector3 angles,Vector3 right,Vector3 up,bool hand=false)
         {
             if(bone==null)return;
@@ -378,6 +399,7 @@ namespace WildWasteland.Modules.Patrols
             if(axis.sqrMagnitude>.000001f)Swing(bone,angles.z,axis.normalized);
         }
 
+        /// <summary>Turns one spine bone by its share of the aim yaw and pitch.</summary>
         private void AimSpine(Transform bone, float weight, Vector3 up, Vector3 right)
         {
             Swing(bone, _aimYaw * weight, up);
@@ -385,6 +407,7 @@ namespace WildWasteland.Modules.Patrols
             Swing(bone, -_aimPitch * weight, yawedRight);
         }
 
+        /// <summary>Applies one profile bone (vertical, horizontal, twist about the limb axis).</summary>
         private static void ApplyBone(Transform bone, Transform joint, BonePoseConfig config, Vector3 right, Vector3 up, bool hand)
         {
             if (bone == null || config == null) return;
@@ -396,6 +419,7 @@ namespace WildWasteland.Modules.Patrols
             if (axis.sqrMagnitude > 0.000001f) Swing(bone, config.Rotation.Value, axis.normalized);
         }
 
+        /// <summary>Offsets the held weapons by the profile weapon pose.</summary>
         private void ApplyWeapons()
         {
             if (_armPose == null || _armPose.Weapon == null) return;
@@ -416,6 +440,7 @@ namespace WildWasteland.Modules.Patrols
             internal readonly Vector3 LocalPosition;
             internal readonly Quaternion LocalRotation;
 
+            /// <summary>Remembers a weapon root and its rest pose.</summary>
             internal WeaponRoot(Transform transform, Vector3 localPosition, Quaternion localRotation)
             {
                 Transform = transform;

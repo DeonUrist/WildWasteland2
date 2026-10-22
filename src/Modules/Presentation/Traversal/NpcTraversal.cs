@@ -30,8 +30,10 @@ namespace WildWasteland.Modules.PlayerBody
 
         public bool Valid { get { return !_disposed && _animator != null; } }
         public float Phase { get; set; }
+        /// <summary>Natural length of one cycle / of the climb clip, seconds.</summary>
         public float Length { get { return _length; } }
 
+        /// <summary>Suspends the ModAPI character on the animator for the lease.</summary>
         private NpcTraversal(Animator animator)
         {
             _animator = animator;
@@ -40,6 +42,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_character != null) { _wasSuspended = _character.Suspended; _character.Suspended = true; }
         }
 
+        /// <summary>Starts a ladder pose or climb clip lease on a humanoid NPC animator; null when not possible.</summary>
         internal static INpcTraversalAnimation Begin(Animator animator, string kind)
         {
             if (!PresentationModule.WorldRunning || animator == null || animator.avatar == null || !animator.avatar.isHuman) return null;
@@ -72,6 +75,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // LateUpdateLast: the ladder pose over whatever the Animator evaluated; climb clips follow Phase
+        /// <summary>Job Presentation.NPC traversal poses (LateUpdateLast): writes every live lease pose; dead animators end their lease.</summary>
         internal static void LateTick()
         {
             for (int i = _live.Count - 1; i >= 0; i--)
@@ -83,6 +87,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>One lease late update: ladder pose blend or climb clip time from Phase.</summary>
         private void Late()
         {
             if (Time.timeScale < .01f) return;
@@ -96,6 +101,7 @@ namespace WildWasteland.Modules.PlayerBody
             else if (_clip.IsValid()) _clip.SetTime(Mathf.Clamp01(Phase) * _length);
         }
 
+        /// <summary>Ends the lease: pose handler / graph destroyed, root motion and the ModAPI character restored.</summary>
         public void Dispose()
         {
             if (_disposed) return;
@@ -107,6 +113,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_character != null && _character.Valid && !_wasSuspended) _character.Suspended = false;
         }
 
+        /// <summary>Ends every lease.</summary>
         internal static void Clear() { for (int i = _live.Count - 1; i >= 0; i--) _live[i].Dispose(); _live.Clear(); }
     }
 }

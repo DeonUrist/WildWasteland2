@@ -67,6 +67,7 @@ namespace WildWasteland.Modules.Patrols
                 } },
         };
         private static MaterialPropertyBlock _block;
+        /// <summary>Shared property block for the paint writes.</summary>
         internal static MaterialPropertyBlock Block { get { if (_block == null) _block = new MaterialPropertyBlock(); return _block; } }
         private static readonly int MainTexId = Shader.PropertyToID("_MainTex");
 
@@ -76,6 +77,7 @@ namespace WildWasteland.Modules.Patrols
         // loads when the first car needs it.
         private static bool Enabled { get { return VehicleSkinSettings.CustomPaintjobs == null || VehicleSkinSettings.CustomPaintjobs.Value; } }
 
+        /// <summary>Decodes every vehicle texture once at Init (paintjobs on); later calls are no-ops.</summary>
         internal static void Preload()
         {
             if (_preloaded) return;   // Presentation preloads at its Init; the old Patrols call is then a no-op
@@ -99,6 +101,7 @@ namespace WildWasteland.Modules.Patrols
             if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Paint: " + n + " texture(s) preloaded in " + sw.ElapsedMilliseconds + " ms");
         }
 
+        /// <summary>Paints the frame renderers of a car for its body and faction with property blocks (materials stay the game ones).</summary>
         internal static void Apply(GameObject car, string body,string faction=null)
         {
             if (car == null || !Enabled || _dir == null || !Directory.Exists(_dir)) return;
@@ -198,11 +201,13 @@ namespace WildWasteland.Modules.Patrols
         private const float WallInset = 0.069f, EndInset = 0.066f;
         private static readonly Dictionary<string, Material> _cargoMat = new Dictionary<string, Material>();   // "<container mat id>|<file>"
 
+        /// <summary>Names of the loaded cargo textures (template editor list).</summary>
         internal static string[] CargoTextures()
         {
             return _tex.Where(p => p.Key.StartsWith("cargo_", StringComparison.OrdinalIgnoreCase) && p.Value != null).Select(p => p.Key).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToArray();
         }
 
+        /// <summary>Cargo picture file for a Loot cargo key (cargo_food for food/rats/corpses, cargo_<key>, cargo; none = no panels).</summary>
         internal static string CargoFile(string lootKey)
         {
             string k = (lootKey ?? "").Trim().ToLowerInvariant();
@@ -216,6 +221,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Lays the cargo picture panels over the container sides (and the inside picture when present).</summary>
         internal static void ApplyCargo(GameObject car, string lootKey)
         {
             if (car == null || !Enabled || _dir == null || !Directory.Exists(_dir)) return;
@@ -254,6 +260,7 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { Log.Warn(PresentationModule.WorldOwner, "Paint: cargo: " + e.Message); }
         }
 
+        /// <summary>Cached material copy of the container material with a cargo texture.</summary>
         private static Material CargoMaterial(Material container, string file, Texture2D tex)
         {
             string key = container.GetInstanceID() + "|" + file;
@@ -275,6 +282,7 @@ namespace WildWasteland.Modules.Patrols
         }
         private static readonly Dictionary<int, List<PanelSpec>> _panels = new Dictionary<int, List<PanelSpec>>();   // mesh id -> panels
 
+        /// <summary>The panel renderer of a spec under the container (created once).</summary>
         private static MeshRenderer Panel(MeshRenderer container, PanelSpec spec)
         {
             var t = container.transform.Find(spec.Name);
@@ -295,6 +303,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // outer long sides (picture 0..1) + inside walls, floor, roof and closed end (tiled), built once per container mesh
+        /// <summary>Panel specs (outer sides, inside walls, floor, roof, closed end) of a container mesh, built once.</summary>
         private static List<PanelSpec> Panels(Mesh mesh, Transform container, Transform car)
         {
             List<PanelSpec> list;
@@ -358,6 +367,7 @@ namespace WildWasteland.Modules.Patrols
             return list;
         }
 
+        /// <summary>Quad mesh of a panel spec.</summary>
         private static Mesh Quad(PanelSpec q)
         {
             var r = q.Right.normalized * q.HalfW; var u = q.Up.normalized * q.HalfH;
@@ -371,6 +381,7 @@ namespace WildWasteland.Modules.Patrols
             return m;
         }
 
+        /// <summary>Signed principal axis of a local direction.</summary>
         private static Vector3 Axis(Vector3 local)
         {
             float ax = Mathf.Abs(local.x), ay = Mathf.Abs(local.y), az = Mathf.Abs(local.z);
@@ -379,9 +390,11 @@ namespace WildWasteland.Modules.Patrols
             return new Vector3(0f, 0f, Mathf.Sign(local.z));
         }
 
+        /// <summary>Absolute extent of a vector along an axis.</summary>
         private static float Along(Vector3 v, Vector3 axis) { return Mathf.Abs(Vector3.Dot(v, axis)); }
 
         // the frame's own renderers: not the attached parts, occupants, carcasses or cargo
+        /// <summary>True for frame renderers (not parts, occupants, carcasses, cargo or the merchant shop).</summary>
         private static bool OnFrame(GameObject car, Transform t)
         {
             for (var a = t; a != null && a != car.transform; a = a.parent)
@@ -395,6 +408,7 @@ namespace WildWasteland.Modules.Patrols
         // After a load: frame material slots that a pre-1.9.0 save broke (an unresolvable reference to the old runtime paint copy or
         // the charred instance -> null = pink, or a leftover "(Apocapatrol ...)" copy) get the body prefab's own material back, by the
         // renderer's path under the car. Runs before the paint; harmless on cars saved by 1.9.0+ (nothing to fix).
+        /// <summary>Restores frame material slots broken by old saves from the body prefab (Patrols calls it after a load).</summary>
         internal static int RepairFrame(GameObject car, GameObject prefab)
         {
             if (car == null || prefab == null) return 0;
@@ -423,6 +437,7 @@ namespace WildWasteland.Modules.Patrols
             return n;
         }
 
+        /// <summary>Relative path of a transform under a root.</summary>
         private static string PathFrom(Transform root, Transform t)
         {
             if (t == root) return "";
@@ -432,6 +447,7 @@ namespace WildWasteland.Modules.Patrols
             return string.Join("/", parts.ToArray());
         }
 
+        /// <summary>Texture key of a name for a faction (faction subfolder when the folder uses them).</summary>
         internal static string VehicleTextureKey(string name,string faction)
         {
             if(name.StartsWith("cargo",StringComparison.OrdinalIgnoreCase))return name;
@@ -440,7 +456,9 @@ namespace WildWasteland.Modules.Patrols
             bool scoped=Directory.Exists(Path.Combine(_dir,"coyotes"))||Directory.Exists(Path.Combine(_dir,"scrapyard"))||Directory.Exists(Path.Combine(_dir,"scapyard"));
             return scoped?folder+"/"+name:name;
         }
+        /// <summary>Texture of a name for a faction.</summary>
         private static Texture2D VehicleTexture(string name,string faction)=>Load(VehicleTextureKey(name,faction));
+        /// <summary>Loads (once) and caches a texture of the folder; null when missing or undecodable.</summary>
         private static Texture2D Load(string name)
         {
             Texture2D t;

@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.Patrols
     internal partial class Patrol
     {
         // Gives every bone of a ragdoll the same velocity (a shove), waking it up.
+        /// <summary>Gives every non-kinematic bone of a ragdoll the same velocity (a shove), waking it up.</summary>
         internal static void Launch(Transform root, Vector3 velocity)
         {
             foreach (var rb in root.GetComponentsInChildren<Rigidbody>(true))
@@ -25,6 +26,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Moves a ragdoll as a whole (every rigidbody by the same offset) and gives all of it one velocity (zero = put down asleep).
+        /// <summary>Moves a ragdoll as a whole and gives all of it one velocity (zero = put down asleep).</summary>
         internal static void Throw(Transform root, Vector3 to, Vector3 velocity)
         {
             var rbs = root.GetComponentsInChildren<Rigidbody>(true);

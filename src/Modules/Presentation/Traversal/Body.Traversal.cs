@@ -19,6 +19,7 @@ namespace WildWasteland.Modules.PlayerBody
         private HumanPose _humanPose;
 
         // (WW ladders) the ordinary layers keep playing underneath; LateTraversal writes the pose animation over them
+        /// <summary>Starts a pose-clip traversal (ladders): the normal layers keep playing, LateTraversal writes the pose over them.</summary>
         internal PlayerTraversal BeginPoseTraversal(PoseClip pose, Quaternion facing)
         {
             if (!_graph.IsValid() || _animator == null || !_animator.isHuman || _animator.avatar == null) return null;
@@ -29,6 +30,7 @@ namespace WildWasteland.Modules.PlayerBody
             return Traversal;
         }
 
+        /// <summary>Starts a clip traversal (ledge climbs) on the body graph with a mixer over the normal layers.</summary>
         internal PlayerTraversal BeginTraversal(AnimationClip clip, Quaternion facing)
         {
             if (!_graph.IsValid() || _animator == null || !_animator.isHuman) return null;
@@ -49,6 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
             return Traversal;
         }
 
+        /// <summary>Late update of a running traversal: places the body, samples the clip or blends the pose clip, applies neck / rung extras; false when none.</summary>
         private bool LateTraversal(View view)
         {
             if (Traversal == null) return false;
@@ -96,6 +99,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // after the pose: the neck tilted back (first person sees forward, not its own neck) and planted feet onto the real rungs
+        /// <summary>After the pose: the neck tilted back and planted feet bent onto the real rungs.</summary>
         private void PoseExtras()
         {
             var tr = Traversal;
@@ -109,6 +113,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         private const float ToeAboveSole = .03f, RungReach = .3f;
+        /// <summary>Bends one leg so its sole reaches the nearest rung within reach.</summary>
         private void FootOnRung(string side, float weight, float[] rungs)
         {
             if (weight <= .01f) return;
@@ -125,6 +130,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // two-bone IK: bend b so a..c spans the target distance (in the existing bend plane), then aim a at the target
+        /// <summary>Two-bone IK: bends b so a..c spans the target distance in the existing bend plane, then aims a at the target.</summary>
         private static void TwoBone(Transform a, Transform b, Transform c, Vector3 target)
         {
             Vector3 pa = a.position, pb = b.position, pc = c.position;
@@ -143,6 +149,7 @@ namespace WildWasteland.Modules.PlayerBody
             a.rotation = Quaternion.FromToRotation(c.position - pa, target - pa) * a.rotation;
         }
 
+        /// <summary>Ends the traversal: removes the mixer / pose handler and fades back to the normal pose.</summary>
         internal void EndTraversal()
         {
             bool pose = Traversal != null && Traversal.Pose != null;

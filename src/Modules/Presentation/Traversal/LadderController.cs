@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.PlayerBody
     internal sealed class LadderController
     {
         internal static LadderController Instance;
-        internal const string Resource = "PlayerBody.Ladder.climbing-ladder.wwpose";
+        internal const string Resource = "Presentation.Ladder.climbing-ladder.wwpose";
         static PoseClip clip;
         static bool clipTried;
 
@@ -40,10 +40,15 @@ namespace WildWasteland.Modules.PlayerBody
         Quaternion facing;
         internal static string LastResult = "";
 
+        /// <summary>World part Init: creates the controller.</summary>
         internal static void Init() { if (Instance == null) Instance = new LadderController(); }
+        /// <summary>Job Presentation.Ladders (EarlyUpdate).</summary>
         internal static void TickInstance() { if (Instance != null) Instance.Tick(); }
+        /// <summary>Job Presentation.Ladders (physics) (EarlyFixedUpdate).</summary>
         internal static void FixedTickInstance() { if (Instance != null) Instance.FixedTick(); }
+        /// <summary>Cancels a running ladder climb (shutdown).</summary>
         internal static void StopInstance() { if (Instance != null) Instance.Finish(Exit.Cancel, "stopped"); }
+        /// <summary>Cancels and forgets the player references (player reset).</summary>
         internal static void ResetInstance() { if (Instance != null) { Instance.Finish(Exit.Cancel, "reset"); Instance.body = null; Instance.useLadder = null; Instance.fsmOwner = null; } }
         internal static bool Active { get { return Instance != null && Instance.active; } }
 
@@ -55,6 +60,7 @@ namespace WildWasteland.Modules.PlayerBody
             ladder = c.ladder; side = c.side;
             return true;
         }
+        /// <summary>Floating-origin jump: moves the ladder line, rungs and heights with the world.</summary>
         internal static void ShiftInstance(Vector3 delta)
         {
             var c = Instance;
@@ -64,13 +70,16 @@ namespace WildWasteland.Modules.PlayerBody
             c.axisPoint += delta; c.snapFrom += delta; c.bottomY += delta.y; c.topY += delta.y; c.platformY += delta.y; c.feetY += delta.y;
         }
 
+        /// <summary>Climbing speed up, m/s.</summary>
         static float Speed { get { return TraversalSettings.LadderSpeed.Value; } }
         bool sliding; float slideV;
+        /// <summary>Body distance from the rung line (animation toe depth + LadderOffset).</summary>
         static float Distance { get { return (clip != null ? clip.ToeDepth : .4f) + TraversalSettings.LadderOffset.Value; } }
         const float Snap = .2f, MantleBelow = .95f;
 
         enum Exit { Cancel, Bottom, Top, Mantle, Jump }
 
+        /// <summary>Per frame: drives a running ladder climb (jump lets go) or starts one when the game UseLadder FSM holds the player.</summary>
         void Tick()
         {
             try
@@ -111,6 +120,7 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { Finish(Exit.Cancel, "exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
         }
 
+        /// <summary>Takes over a ladder: frame, side, platform, pose lease, rungs, suspended FSMs and hidden weapons; publishes TraversalStarted.</summary>
         void Begin(GameObject player, GameObject ladderGo)
         {
             cooldown = Time.unscaledTime + 1f;   // a refused grab is retried after a second, not every frame
@@ -216,6 +226,7 @@ namespace WildWasteland.Modules.PlayerBody
         float[] rungs;                                // world heights, ascending (shared with the animation for the foot IK)
         readonly List<float> found = new List<float>();
         string rungSource = "";
+        /// <summary>Finds the rung heights (ladder mesh table, cast, else the animation spacing).</summary>
         void FindRungs(Transform trigger, Vector3 center)
         {
             found.Clear();
@@ -240,6 +251,7 @@ namespace WildWasteland.Modules.PlayerBody
             rung0 = rungs[0]; rungStep = rungs.Length > 1 ? (rungs[rungs.Length - 1] - rungs[0]) / (rungs.Length - 1) : clip.Rise * .5f;
             animation.Rungs = rungSource == "animation spacing" ? null : rungs;
         }
+        /// <summary>Adds the rungs of a known native ladder mesh.</summary>
         void MeshRungs(MeshFilter mf)
         {
             if (mf == null || mf.sharedMesh == null) return;
@@ -254,6 +266,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
         // ladders built into another mesh (the crane's: bars every .75 m inside crane.001): a small sphere cast down the ladder's centre
         // line, restarted below each bar it lands on
+        /// <summary>Finds rungs of ladders built into another mesh by sphere casts down the centre line.</summary>
         void CastRungs()
         {
             float y = topY + .3f;
@@ -272,6 +285,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (step < .2f || step > 1.2f) found.Clear();
         }
         // phase 0, 1, 2... = the left sole on every other rung (one animation cycle climbs two rungs, whatever their spacing)
+        /// <summary>Animation phase for the feet height (one cycle = two rungs).</summary>
         float PhaseAt(float feet)
         {
             var r = rungs;
@@ -284,6 +298,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // the body centre for feet at `feet`: on the ladder's (leaning) centre line at the hips' height, Distance out on the climber's side
+        /// <summary>Body centre for feet at a height: on the ladder centre line, Distance out on the climber side.</summary>
         Vector3 OnLine(Vector3 dir, float feet)
         {
             float y = feet + Game.StandingHeight * .5f;
@@ -292,9 +307,12 @@ namespace WildWasteland.Modules.PlayerBody
             return p;
         }
 
+        /// <summary>True when a parent (or the transform) has the name.</summary>
         static bool Under(Transform t, string name) { for (; t != null; t = t.parent) if (t.name == name) return true; return false; }
+        /// <summary>Disables an FSM and remembers it.</summary>
         void Suspend(PlayMakerFSM fsm) { if (fsm == null) return; suspended.Add(fsm); fsm.enabled = false; }
 
+        /// <summary>Physics step: climbs or slides by the Vertical axis, ends at the ground or the platform, mantles at the top.</summary>
         void FixedTick()
         {
             if (!active || body == null || Time.timeScale < .01f) return;
@@ -336,6 +354,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // NPCs on this ladder (POI navigation) cannot be climbed through: stop a body length short of them
         readonly List<Vector3> occupants = new List<Vector3>();
+        /// <summary>Limits the movement so the player stops a body length short of NPCs on the same ladder (ITraversal occupants).</summary>
         float Blocked(float feet, float next)
         {
             if (next == feet) return next;
@@ -353,6 +372,7 @@ namespace WildWasteland.Modules.PlayerBody
             return next;
         }
 
+        /// <summary>Moves the body onto the ladder line (snaps in over the first 0.2 s).</summary>
         void Place()
         {
             var target = OnLine(side, feetY);
@@ -360,6 +380,7 @@ namespace WildWasteland.Modules.PlayerBody
             body.MovePosition(target);
         }
 
+        /// <summary>Ground height under the feet, if any.</summary>
         bool Ground(float feet, out float y)
         {
             y = float.NegativeInfinity;
@@ -374,6 +395,7 @@ namespace WildWasteland.Modules.PlayerBody
             return y > float.NegativeInfinity;
         }
 
+        /// <summary>Ends the ladder climb, restores physics / FSMs / renderers, steps off or mantles; publishes TraversalEnded.</summary>
         void Finish(Exit how, string why)
         {
             if (!active) { if (animation != null) { animation.Dispose(); animation = null; } return; }

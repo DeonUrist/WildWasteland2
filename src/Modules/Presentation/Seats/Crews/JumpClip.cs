@@ -23,6 +23,7 @@ namespace WildWasteland.Modules.Patrols
         private Rigidbody _rb; private Collider _col;
         private static readonly RaycastHit[] _hits = new RaycastHit[8];
 
+        /// <summary>Starts the Jump clip on the mob Animator through a PlayableGraph (when the animation service has it).</summary>
         private void Start()
         {
             _start = Time.time;
@@ -42,6 +43,7 @@ namespace WildWasteland.Modules.Patrols
             catch (Exception e) { if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "JumpClip: " + e.Message); }
         }
 
+        /// <summary>Applies the jump velocity once the mob FSMs have started (second physics step).</summary>
         private void FixedUpdate()
         { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             if (_pushed || ++_frames < 2) return;
@@ -49,6 +51,7 @@ namespace WildWasteland.Modules.Patrols
             if (_rb != null && !_rb.isKinematic) _rb.velocity = Velocity;
         }
 
+        /// <summary>Ends the clip on landing (or after 1.5 s), turns the mob to the player and alerts it, then removes the component.</summary>
         private void Update()
         { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
             float t = Time.time - _start;
@@ -84,6 +87,7 @@ namespace WildWasteland.Modules.Patrols
             Alert(gameObject); Destroy(this);
         }
 
+        /// <summary>Sends the mob Detection FSM from notDetected to inLOS (it noticed the player).</summary>
         internal static void Alert(GameObject mob)
         {
             if (mob == null) return;
@@ -95,6 +99,7 @@ namespace WildWasteland.Modules.Patrols
                 }
         }
 
+        /// <summary>Destroys the jump graph if it still runs.</summary>
         private void OnDestroy() { if (_graphOk) { try { _graph.Destroy(); } catch (Exception) { } _graphOk = false; } }
     }
 }

@@ -18,6 +18,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             // Original 12 values, then arm poses; handlebars append sitting XYZ and straight/left/right torso Euler.
             internal readonly float[] V = new float[_handlebars ? 96 : 60];
+            /// <summary>Default grip setup values.</summary>
             internal Setup() { V[0] = .95f; V[1] = .03f; V[2] = .85f; V[5] = 75f; }
         }
         private sealed class Arm
@@ -50,6 +51,7 @@ namespace WildWasteland.Modules.PlayerBody
         private static float _traceUntil, _traceNext;
         private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
+        /// <summary>The fitted wheel part (active vehPart child) under the steering mount, or null.</summary>
         private static Transform FittedWheel(Transform mount)
         {
             if (mount != null) for (int i = 0; i < mount.childCount; i++)
@@ -62,6 +64,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>True while the steering-wheel / handlebar hand IK drives the player's hands (ISeatPoses.PlayerHandsOnWheel).</summary>
         internal static bool HandsOnWheel { get { return _setup != null && _wheel != null && (_owner == "wheel" || _owner == "tool"); } }
 
+        /// <summary>Forgets the car, wheel, setup and arm bindings (car change, body reset).</summary>
         internal static void Clear()
         {
             StopEditor();
@@ -74,6 +77,7 @@ namespace WildWasteland.Modules.PlayerBody
             _traceInput = 0; _traceUntil = _traceNext = 0f;
         }
 
+        /// <summary>Per frame (BodyRunner): follows the player car, its steering mount and fitted wheel / handlebars and loads the matching grip setup (checked twice a second).</summary>
         internal static void Tick()
         {
             var car = PresentationModule.WorldRunning && !SaveBus.Busy && Game.Ready && Game.InCar && !Game.Dead ? Game.CarRoot : null;
@@ -149,6 +153,7 @@ namespace WildWasteland.Modules.PlayerBody
                 + "; motion mirrored right reference");
         }
 
+        /// <summary>Binds the arm bones of one side (shoulder, upper, lower, hand, finger frame).</summary>
         private static Arm Bind(Dictionary<string, Transform> bones, string side)
         {
             var a = new Arm(); string prefix = "mixamorig:" + side;
@@ -166,6 +171,7 @@ namespace WildWasteland.Modules.PlayerBody
             return a;
         }
 
+        /// <summary>Steering-wheel hand IK on the body bones for the current owner (wheel or editor tool); other owners keep the seat pose.</summary>
         internal static void Solve(Dictionary<string, Transform> bones, string owner)
         {
             if (_setup == null || _mount == null || _wheel == null || _wheel.parent != _mount) return;
@@ -251,6 +257,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (report) _nextLog = Time.unscaledTime + 5f;
         }
 
+        /// <summary>Handlebar hand IK and torso lean for motorcycles.</summary>
         private static void SolveHandlebars(Dictionary<string, Transform> bones, string owner)
         {
             if (_grips[0] == null || _grips[1] == null) return;
@@ -297,6 +304,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (report) _nextLog = Time.unscaledTime + 5f;
         }
 
+        /// <summary>Rests the passenger hands on the knees.</summary>
         internal static void RestPassengerArms(Dictionary<string, Transform> bones, string owner)
         {
             if (owner != "wheel" && owner != "tool") return;
@@ -319,6 +327,7 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // WWW ArmIK.Solve: two rigid bones, projected fresh seat elbow, clamped reach; never translate or stretch a hand.
+        /// <summary>Two-bone arm reach: rigid bones, projected elbow, clamped reach; never translates or stretches the hand.</summary>
         private static void Reach(Arm a, Vector3 target, float swing, Vector3 elbowOffset, Transform frame = null)
         {
             if (frame == null) frame = _car;
@@ -344,7 +353,9 @@ namespace WildWasteland.Modules.PlayerBody
             a.Lower.rotation = Quaternion.FromToRotation(a.Hand.position - a.Lower.position, sp + dir * d - a.Lower.position) * a.Lower.rotation;
         }
 
-        private static string FilePath { get { return Path.Combine(PlayerBodyModule.DataDir, "WheelGrips", _key + ".txt"); } }
+        /// <summary>User grip file of the current key (config/WildWasteland/Presentation/WheelGrips/<key>.txt).</summary>
+        private static string FilePath { get { return Path.Combine(Assets.ModuleConfigDir("Presentation"), "WheelGrips", _key + ".txt"); } }
+        /// <summary>Loads a grip setup: the user file, else the built-in calibrated defaults, else zeros; values are validated and clamped.</summary>
         private static Setup Load(bool defaultsOnly = false)
         {
             var s = new Setup();
@@ -354,7 +365,7 @@ namespace WildWasteland.Modules.PlayerBody
                 var path = FilePath;
                 if (!defaultsOnly && File.Exists(path)) text = File.ReadAllText(path);
                 else
-                    using (var stream = WildWasteland.Core.DiskResources.Open("PlayerBody.WheelGrips." + _key + ".txt"))
+                    using (var stream = WildWasteland.Core.DiskResources.Open("Presentation.WheelGrips." + _key + ".txt"))
                     {
                         if (stream == null) return s;
                         using (var reader = new StreamReader(stream)) text = reader.ReadToEnd();

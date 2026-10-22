@@ -30,6 +30,7 @@ namespace WildWasteland.Modules.PlayerBody
         internal sealed class ClearViewCapture : MonoBehaviour
         {
             internal OcclusionCutaway Owner;
+            /// <summary>Copies the clear view depth into the capture buffer, then passes the image through.</summary>
             private void OnRenderImage(RenderTexture source, RenderTexture destination)
             {
                 var texture = Shader.GetGlobalTexture(IdDepthTex);
@@ -52,12 +53,14 @@ namespace WildWasteland.Modules.PlayerBody
         private const float ScanInterval = .1f, ClearShadowDistance = 20f, VehicleRescan = 2f;
         private const int MaxOwnerRenderers = 24;
         private float _nextScan;
+        /// <summary>What a blocking collider stands for: its renderers, terrain flag, roof / vehicle flag and when it was last seen.</summary>
         private sealed class Blocker { public Renderer[] Renderers; public bool Terrain, RoofOrVehicle; public float At; }
         private readonly Dictionary<Collider, Blocker> _blockers = new Dictionary<Collider, Blocker>();
         private static readonly Renderer[] NoRenderers = new Renderer[0];
         private Transform _vehicle; private Renderer[] _vehicleRenderers = NoRenderers; private float _vehicleAt;
         private bool _depthOn;
         private Vector3 _scanPos, _scanFwd;
+        /// <summary>Saved draw flags of a terrain hidden in the clear view.</summary>
         private struct TerrainState { public Terrain Terrain; public bool Height, Trees; }
         private static readonly int IdDepthTex = Shader.PropertyToID("_CameraDepthTexture"), IdEnds = Shader.PropertyToID("_Ends"),
             IdRadius = Shader.PropertyToID("_Radius"), IdAspect = Shader.PropertyToID("_Aspect"), IdStrength = Shader.PropertyToID("_Strength"),
@@ -84,6 +87,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>Called from the third-person view writer before each render: finds blockers between camera and body (10 per second) and renders the clear view; any failure restores the scene.</summary>
         internal static void Prepare(Camera main, Vector3 pos, Quaternion rotation, Transform vehicle)
         {
             if (!Available || !Game.Ready) return;
@@ -97,6 +101,7 @@ namespace WildWasteland.Modules.PlayerBody
             catch (Exception e) { _active.Restore(); _active._prepared = false; Log.Warn(PresentationModule.WorldOwner, "Camera cutaway: " + e.Message); }
         }
 
+        /// <summary>Sphere casts from the camera to head and feet (plus an overhead probe) and records every blocker hit.</summary>
         private void FindBlockers(Vector3 camera, Vector3 head, Vector3 feet, Transform vehicle)
         {
             float now = Time.unscaledTime;
@@ -119,6 +124,7 @@ namespace WildWasteland.Modules.PlayerBody
             foreach (var item in _removeTerrains) _terrains.Remove(item);
         }
 
+        /// <summary>One sphere cast segment: adds every non-player collider it touches above the floor height.</summary>
         private void Trace(Vector3 from, Vector3 to, float floor, float now)
         {
             Vector3 delta = to - from; float distance = delta.magnitude;
@@ -135,6 +141,7 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
 
+        /// <summary>True for the player, her camera rig and objects of this mod (never cut away).</summary>
         private static bool Mine(Transform target)
         {
             if (target == null) return true;
@@ -143,8 +150,10 @@ namespace WildWasteland.Modules.PlayerBody
         }
         // an object of this mod (its name starts with Apocaplayer, or a parent's does) - remembered per transform while its root stays the same
         // (Transform.name allocates a string on every read)
+        /// <summary>Cached mod-name answer of a transform while its root stays the same.</summary>
         private struct Owned { public int Root; public bool Mod; }
         private static readonly Dictionary<int, Owned> _owned = new Dictionary<int, Owned>();
+        /// <summary>True when the transform or a parent is a mod object (name starts with Apocaplayer); cached per transform.</summary>
         private static bool ModNamed(Transform t)
         {
             int id = t.GetInstanceID(), root = t.root.GetInstanceID(); Owned o;
@@ -155,11 +164,13 @@ namespace WildWasteland.Modules.PlayerBody
             _owned[id] = o; return o.Mod;
         }
 
+        /// <summary>Marks one renderer as a blocker seen at <paramref name="now"/>.</summary>
         private void Add(Renderer renderer, float now)
         {
             if (renderer != null && renderer.enabled && renderer.gameObject.activeInHierarchy && !renderer.forceRenderingOff && !Mine(renderer.transform)) _renderers[renderer] = now;
         }
 
+        /// <summary>Marks the renderers / terrain a collider stands for as blockers (overhead hits only for roofs and vehicles).</summary>
         private void Add(Collider collider, float now, bool overhead = false)
         {
             if (collider == null || Mine(collider.transform)) return;
@@ -174,6 +185,7 @@ namespace WildWasteland.Modules.PlayerBody
         // what a collider stands for, worked out once: its own renderer, else the renderers of the object it belongs to (LOD group, rigidbody,
         // parent) - but when that "object" is really an area (a camp, a building, a terrain tile with hundreds of meshes), only the meshes at the
         // collider itself (their bounds touching it)
+        /// <summary>What a collider stands for, worked out once and cached (own renderer, else the owner object renderers, limited for large areas).</summary>
         private Blocker BlockerOf(Collider collider)
         {
             Blocker b;
@@ -209,6 +221,7 @@ namespace WildWasteland.Modules.PlayerBody
             return b;
         }
 
+        /// <summary>True for roofs and vehicles (they get the larger cutaway window).</summary>
         private static bool RoofOrVehicle(Transform target)
         {
             for (var parent = target; parent != null; parent = parent.parent)
@@ -221,6 +234,7 @@ namespace WildWasteland.Modules.PlayerBody
             return false;
         }
 
+        /// <summary>Renders the clear view (blockers hidden) and the front view into the buffers and enables the composite.</summary>
         private void RenderClear(Vector3 pos, Quaternion rotation, Transform vehicle)
         {
             _prepared = false;
@@ -307,6 +321,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         // the main camera's depth texture (the composite needs it) only while something is cut away
         private bool _addedDepth;
+        /// <summary>Turns the main camera depth texture on (only while something is cut away).</summary>
         private void DepthOn()
         {
             if (_main == null) return;
@@ -314,6 +329,7 @@ namespace WildWasteland.Modules.PlayerBody
             var m = _main.depthTextureMode;
             if ((m & DepthTextureMode.Depth) == 0) { _main.depthTextureMode = m | DepthTextureMode.Depth; _addedDepth = true; }   // re-checked every frame: someone else may set the mode
         }
+        /// <summary>Turns the main camera depth texture back to its previous mode.</summary>
         private void DepthOff()
         {
             if (!_depthOn || _main == null) return;
@@ -321,6 +337,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_addedDepth) { _main.depthTextureMode &= ~DepthTextureMode.Depth; _addedDepth = false; }   // only the bit we added; the game's own use stays
         }
 
+        /// <summary>Creates or resizes the render textures (3/4 resolution) and the clear camera.</summary>
         private void EnsureBuffers()
         {
             int width = Mathf.Max(16, _main.pixelWidth * 3 / 4), height = Mathf.Max(16, _main.pixelHeight * 3 / 4);   // 3/4 resolution (~44 % fewer pixels): seen only through the feathered window
@@ -342,6 +359,7 @@ namespace WildWasteland.Modules.PlayerBody
             _composite.SetTexture(IdFront, _front); _composite.SetTexture(IdFrontDepth, _frontDepth);
         }
 
+        /// <summary>Shows the hidden renderers and terrains again.</summary>
         private void Restore()
         {
             foreach (var renderer in _hidden) if (renderer != null) renderer.forceRenderingOff = false;
@@ -350,6 +368,7 @@ namespace WildWasteland.Modules.PlayerBody
             _hiddenTerrain.Clear();
         }
 
+        /// <summary>Main camera image effect: composites the clear view over the blockers inside the feathered window when prepared.</summary>
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
             if (_prepared && ThirdPerson.On && !ThirdPerson.Peek && CameraSettings.OcclusionPrototype.Value && (!Game.InCar || CameraSettings.OcclusionInVehicle.Value)) Graphics.Blit(source, destination, _composite, 0);
@@ -357,6 +376,7 @@ namespace WildWasteland.Modules.PlayerBody
             _prepared = false;
         }
 
+        /// <summary>Releases the render textures.</summary>
         private void ReleaseBuffers()
         {
             if (_clearCamera != null) _clearCamera.targetTexture = null;
@@ -367,6 +387,7 @@ namespace WildWasteland.Modules.PlayerBody
             _captureDepth = null;
         }
 
+        /// <summary>Unity teardown: restores the scene, depth mode and buffers.</summary>
         private void OnDestroy()
         {
             Restore(); ReleaseBuffers();
@@ -376,6 +397,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_active == this) _active = null;
         }
 
+        /// <summary>Stops the cutaway (off, first person, cave, menus): restores everything and removes the component.</summary>
         internal static void Stop()
         {
             Blockers = 0;
