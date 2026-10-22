@@ -1,13 +1,13 @@
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// Core part of the CleanHUD entry (Wave A split, B01): theme (accent, embedded textures, glyph font), scene cache, pause cursor
-    /// fix and the release check. Each method runs at the exact position of the original call in CleanHudModule.
+    /// fix and the release check. Each method runs at the exact position of the original call in HudModule.
     /// </summary>
-    public sealed partial class CleanHudModule
+    public sealed partial class HudModule
     {
         private Coroutine _updateCheck;
 

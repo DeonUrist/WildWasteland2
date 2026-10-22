@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace WildWasteland.Modules.Patrols
+namespace WildWasteland.Modules.HUD
 {
     // One texture draw per map. Reuse pixel storage; route segments never rotate the GUI matrix or draw
     // thousands of individual textures. Sparse route arrays retain bends in both map projections.
@@ -49,3 +49,4 @@ namespace WildWasteland.Modules.Patrols
         {if(Mathf.Abs(d)<0.00001f)return a>=min&&a<=max;float x=(min-a)/d,y=(max-a)/d;lo=Mathf.Max(lo,Mathf.Min(x,y));hi=Mathf.Min(hi,Mathf.Max(x,y));return lo<=hi;}
     }
 }
+

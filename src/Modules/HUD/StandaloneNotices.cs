@@ -3,7 +3,7 @@ using System.Text;
 using UnityEngine;
 using WildWasteland.Core.UI;
 using WildWasteland.Core;
-using CleanHud = WildWasteland.Modules.CleanHUD;
+using CleanHud = WildWasteland.Modules.HUD;
 
 namespace WildWasteland.Modules.HUD
 {

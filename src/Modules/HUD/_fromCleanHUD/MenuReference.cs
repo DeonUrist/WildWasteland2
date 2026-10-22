@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal sealed partial class Menu
     {
@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.CleanHUD
             var source = SettingsModel.FindPath(name + "_Canvas");
             var canvas = source != null ? source.GetComponent<Canvas>() : null;
             var native = source != null ? source.Find(name) : null;
-            if (canvas == null || native == null) { CleanHudModule.Warn("Menu: " + name + " content unavailable"); return; }
+            if (canvas == null || native == null) { HudModule.Warn("Menu: " + name + " content unavailable"); return; }
             ResetToMain();
             if (!alreadyOpen && !Click("MainMenu_Canvas/MainMenu/" + name)) return;
             _referenceCanvas = canvas; _referenceNative = native; _referenceTutorial = tutorial;
@@ -60,7 +60,7 @@ namespace WildWasteland.Modules.CleanHUD
             Row(_sub, 1450, top + height - 78, 290, 60, "NEXT", 30, () => TurnReference(true));
             _referenceAt = 0; _referenceSince = Time.unscaledTime;
             RefreshReference();
-            CleanHudModule.Log("Menu: opened native " + name + " in CleanHUD (" + _referencePages.Count + " pages)");
+            HudModule.Log("Menu: opened native " + name + " in CleanHUD (" + _referencePages.Count + " pages)");
         }
 
         private void TickReference()
@@ -104,7 +104,7 @@ namespace WildWasteland.Modules.CleanHUD
                     signature = signature * 31 + (text.text ?? "").GetHashCode() + (text.gameObject.activeInHierarchy ? 1 : 0);
                 foreach (var image in _referenceImages) if (image != null)
                     signature = signature * 31 + (image.texture != null ? image.texture.GetInstanceID() : 0) + image.uvRect.GetHashCode();
-                signature = signature * 31 + (CleanHudModule.CleanFont.Value ? 1 : 0);
+                signature = signature * 31 + (HudModule.CleanFont.Value ? 1 : 0);
             }
             if (!changed && signature == _referenceSignature) return;
             _referenceSignature = signature;
@@ -150,7 +150,7 @@ namespace WildWasteland.Modules.CleanHUD
                 var image = entry.GetComponent<RawImage>(); if (image == null) continue;
                 float x = index % 5 * 320, y = index / 5 * (cardHeight + 8), captionHeight = 0;
                 var texts = entry.GetComponentsInChildren<Text>(true);
-                foreach (var text in texts) if (text.gameObject.activeInHierarchy) captionHeight += TalkDialogue.Wrap(text.text, 276, 23).Count * 23 * 1.3f;
+                foreach (var text in texts) if (text.gameObject.activeInHierarchy) captionHeight += GlyphFont.Wrap(text.text, 276, 23).Count * 23 * 1.3f;
                 float captionY = y + cardHeight - 12 - captionHeight;
                 Frame(_referenceContent, x, y, 300, cardHeight, 1, new Color(Gold.r, Gold.g, Gold.b, .4f));
                 ReferenceImage(image, x + 12, y + 12, 276, Mathf.Max(1, Mathf.Min(160, captionY - y - 24)));
@@ -164,7 +164,7 @@ namespace WildWasteland.Modules.CleanHUD
         private float ReferenceLines(string text, float x, float y, float width, float size, Color color)
         {
             float height = 0;
-            foreach (string line in TalkDialogue.Wrap(text ?? "", width, size))
+            foreach (string line in GlyphFont.Wrap(text ?? "", width, size))
             {
                 T(_referenceContent, "line", x, y + height, width, size * 1.3f, size, TextAnchor.UpperLeft, color, line);
                 height += size * 1.3f;

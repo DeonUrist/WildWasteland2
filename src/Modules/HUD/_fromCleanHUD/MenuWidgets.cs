@@ -9,7 +9,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // Row / tab / setting control: a Button whose look is driven by code (gold text + bar when hovered or selected).
     public sealed class MenuButton : Button

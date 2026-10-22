@@ -1,5 +1,5 @@
 using WildWasteland.Core;
-using WildWasteland.Modules.CleanHUD;
+using WildWasteland.Modules.HUD;
 
 namespace WildWasteland.Modules.Compatibility
 {
@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Compatibility
             VistasWorldGen.Init(scope);
             if (!VistasWorldGen.Present) return;
             ModApi.Provide<IWorldGenFacts>(scope, new VistasFacts());
+            ModApi.Provide<IPlaceBanners>(scope, new PlaceBanners());
             VistasEngineHud.Install(scope);
         }
 

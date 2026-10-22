@@ -5,7 +5,7 @@ using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal static class QuestJournal
     {
@@ -18,8 +18,8 @@ namespace WildWasteland.Modules.CleanHUD
         private static string _shownKey;
         private static readonly List<GlyphText> Rows = new List<GlyphText>();
 
-        internal static bool Shown { get { return _root != null && _root.activeSelf && CleanHudModule.Running && CleanHudModule.Enabled.Value; } }
-        internal static void Install(CleanHudModule owner) { Clear(); }
+        internal static bool Shown { get { return _root != null && _root.activeSelf && HudModule.Running && HudModule.CleanHudEnabled.Value; } }
+        internal static void Install(HudModule owner) { Clear(); }
         private static void Build()
         {
             _root = new GameObject("CleanHUD.Journal", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static void Tick()
         {
             var api = Core.Services.Quests; if (api == null) { Hide(); return; }
-            if (!CleanHudModule.Enabled.Value || !api.Ready || !api.JournalOpen || !Core.GameRefs.InGame
+            if (!HudModule.CleanHudEnabled.Value || !api.Ready || !api.JournalOpen || !Core.GameRefs.InGame
                 || Core.UI.EditorSession.Busy || (Cursor.visible && Cursor.lockState != CursorLockMode.Locked)) { Hide(); return; }
             try
             {
@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.CleanHUD
             foreach (string paragraph in text.Replace("\r", "").Split('\n'))
             {
                 bool heading = paragraph.StartsWith("<b>", StringComparison.Ordinal);
-                foreach (string line in TalkDialogue.Wrap(paragraph.Replace("<b>", "").Replace("</b>", ""), 1080))
+                foreach (string line in GlyphFont.Wrap(paragraph.Replace("<b>", "").Replace("</b>", ""), 1080))
                 {
                     if (row == Rows.Count) Rows.Add(DialogueWidgets.Text(_content, "line", 10, y, 1080, 32, 26, Color.white, ""));
                     var label = Rows[row++]; label.rectTransform.anchoredPosition = new Vector2(10, -y);

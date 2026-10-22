@@ -33,12 +33,13 @@ namespace WildWasteland.Modules.HUD
         Job _crosshairJob;
 
         public override string Id { get { return "HUD"; } }
-        public override string DisplayName { get { return "Combat HUD"; } }
-        public override string[] ConflictsWith { get { return new[] { "com.denis.apocalypter.gunplayhud" }; } }
+        public override string DisplayName { get { return "HUD"; } }
+        public override string[] ConflictsWith { get { return new[] { "com.denis.apocalypter.gunplayhud", GUID }; } }
 
         public override void BindConfig(ModuleConfig cfg)
         {
             Instance = this;
+            BindCleanConfig(cfg);
             // ---- F6: one toggle per feature first (crosshair style, selection dot, hit feedback group, hit marker, damage numbers, headshot sound)
             Crosshair = cfg.Player("", "Crosshair", 1, "Weapon crosshair: 0 = none, 1 = vanilla, 2 = two horizontal lines, 3 = dot. Follows the game's weapon and aiming visibility.",
                 new AcceptableValueRange<int>(0, 3));
@@ -72,11 +73,18 @@ namespace WildWasteland.Modules.HUD
             HeadshotVolume.SettingChanged += (s, a) => { if (_running) HeadshotAudio.ApplyVolume(); };
         }
 
+        private TrafficMapView _trafficMap;
         public override void Init()
         {
+            InitClean();
+            _trafficMap = new TrafficMapView();
+            Scheduler.Gui(this, "Traffic map", _trafficMap.Gui, _trafficMap.GuiWanted);
+            var questFallback = new QuestFallbackView();
+            Scheduler.Gui(this, "Quest fallback windows", questFallback.Render, questFallback.Wanted);
+            SavingPresentation.Install(this);
             StandaloneNotices.Install(this);
             Instance = this;
-            Dir = Assets.ModuleDir(Id);
+            Dir = Core.Assets.ModuleDir(Id);
             _running = true;
             HitFeedbackService.External = false;
             Services.Hud = new HitFeedbackService();
@@ -87,16 +95,15 @@ namespace WildWasteland.Modules.HUD
 
             InitGunplay();
 
-            // old Runner: Update = crosshair + headshot audio, LateUpdate = VanillaHits.Flush + Hud.Flush, OnGUI = Hud.OnGUI
+            // old Runner: Update = crosshair + headshot audio, LateUpdate = VanillaHits.Flush + HitFeedbackOverlay.Flush, OnGUI = HitFeedbackOverlay.OnGUI
             _crosshairJob = Scheduler.Interval(this, "Crosshair", 0.25f, CrosshairController.Tick);
             Scheduler.EveryFrame(this, "Hit feedback flush", FlushHits, Phase.LateUpdate);
-            Scheduler.Gui(this, "Hit feedback draw", Hud.OnGUI, Hud.GuiWanted);   // (WW perf) IMGUI only while a number, line or marker shows
             _crosshairJob.RunNow();
             HeadshotAudio.Refresh();
-            Log.Info("[HUD] Combat HUD (ex Gunplay HUD 1.2.2) started");
+            Core.Log.Info("[HUD] Combat HUD (ex Gunplay HUD 1.2.2) started");
         }
 
-        static void FlushHits() { VanillaHits.Flush(); Hud.Flush(); }
+        static void FlushHits() { VanillaHits.Flush(); HitFeedbackOverlay.Flush(); }
 
         static void OnFeedbackSettingChanged()
         {
@@ -107,15 +114,21 @@ namespace WildWasteland.Modules.HUD
 
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            VanillaHits.Clear(); Hud.OnSceneLoaded(); CrosshairController.OnSceneLoaded(); HeadshotAudio.Stop();
+            SavingPresentation.Clear();
+            SceneLoadedClean(scene, mode);
+            if (_trafficMap != null) _trafficMap.Reset();
+            VanillaHits.Clear(); HitFeedbackOverlay.OnSceneLoaded(); CrosshairController.OnSceneLoaded(); HeadshotAudio.Stop();
             HeadshotAudio.Refresh();
             if (_crosshairJob != null) _crosshairJob.RunNow();
         }
 
-        public override void OnOriginShift(Vector3 delta) { Hud.Shift(delta); VanillaHits.Shift(delta); }
+        public override void OnOriginShift(Vector3 delta) { OriginShiftClean(delta); HitFeedbackOverlay.Shift(delta); VanillaHits.Shift(delta); }
 
         public override void Shutdown()
         {
+            SavingPresentation.Clear();
+            if (_trafficMap != null) _trafficMap.Dispose(); _trafficMap = null;
+            ShutdownClean();
             _running = false;
             if (Services.Hud is HitFeedbackService) Services.Hud = null;
             HitFeedbackService.External = false;
@@ -123,16 +136,19 @@ namespace WildWasteland.Modules.HUD
             VanillaHits.UpdateFlags();
             CrosshairController.Shutdown();
             HeadshotAudio.Shutdown();
-            Hud.Shutdown();
+            HitFeedbackOverlay.Shutdown();
             _crosshairJob = null;
         }
+
+        public override void OnLoadBegin(string slot) { SavingPresentation.Clear(); LoadBeginClean(slot); }
+        public override void OnWorldReady() { WorldReadyClean(); }
 
         // ------------------------------------------------------------------ assets
 
         /// <summary>Path of a module asset: BepInEx\plugins\WildWasteland\HUD\&lt;sub&gt;\&lt;name&gt;. Null if it does not exist.</summary>
         internal static string AssetPath(string sub, string name)
         {
-            string p = Path.Combine(Path.Combine(Dir ?? Assets.ModuleDir("HUD"), sub), name);
+            string p = Path.Combine(Path.Combine(Dir ?? Core.Assets.ModuleDir("HUD"), sub), name);
             return File.Exists(p) ? p : null;
         }
 
@@ -158,7 +174,8 @@ namespace WildWasteland.Modules.HUD
 
         public override IEnumerable<ToolPage> ToolPages()
         {
-            return new ToolPage[] { new HudToolPage(this, Config.Tools) };
+            yield return new HudToolPage(this, Config.Tools);
+            foreach (var page in CleanToolPages()) yield return page;
         }
 
         sealed class HudToolPage : ToolPage
@@ -181,7 +198,7 @@ namespace WildWasteland.Modules.HUD
                 l.Space(4);
                 l.Text("Tests close this window and fake one hit in front of the camera with the current settings.");
                 int b = l.Buttons("TEST HIT", "TEST HEADSHOT");
-                if (b >= 0 && on) { bool head = b == 1; ToolWindow.CloseThen(() => Hud.Test(head)); }
+                if (b >= 0 && on) { bool head = b == 1; ToolWindow.CloseThen(() => HitFeedbackOverlay.Test(head)); }
                 _settings.Draw(l);
             }
         }
@@ -200,8 +217,8 @@ namespace WildWasteland.Modules.HUD
                        (HudModule.DamageNumbers.Value != 0 || HudModule.HitMarker.Value || HudModule.HeadshotSound.Value);
             }
         }
-        public void PlayerHit(GameObject target, Vector3 point, float damage, bool head) { Hud.PlayerHit(target, point, damage, head); }
-        public void PartHit(GameObject target, Vector3 point, float percent) { Hud.PartHit(target, point, percent); }
+        public void PlayerHit(GameObject target, Vector3 point, float damage, bool head) { HitFeedbackOverlay.PlayerHit(target, point, damage, head); }
+        public void PartHit(GameObject target, Vector3 point, float percent) { HitFeedbackOverlay.PartHit(target, point, percent); }
         public bool ExternalReporter
         {
             get { return External; }

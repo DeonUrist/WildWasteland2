@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>Immersive Map coexistence (Wave A split, B17): while the standalone Immersive Map plugin is loaded the WW fog of war stands down until restart.</summary>
     internal static partial class MapFog

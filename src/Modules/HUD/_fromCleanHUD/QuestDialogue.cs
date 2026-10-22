@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal static class QuestDialogue
     {
@@ -20,7 +20,7 @@ namespace WildWasteland.Modules.CleanHUD
         static MenuButton _close;
         static int _revision = -1;
         static IQuestConversation _source;
-        internal static bool Shown { get { return _root != null && _root.activeSelf && CleanHudModule.Running && CleanHudModule.Enabled.Value; } }
+        internal static bool Shown { get { return _root != null && _root.activeSelf && HudModule.Running && HudModule.CleanHudEnabled.Value; } }
         static void Build()
         {
             _root = new GameObject("CleanHUD.QuestDialogue", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -43,7 +43,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static void Tick()
         {
             var api = Services.Quests; var source = api != null ? api.Conversation : null;
-            if (!CleanHudModule.Enabled.Value || source == null || !api.Ready || (!source.Open && string.IsNullOrEmpty(source.Prompt))) { Hide(); return; }
+            if (!HudModule.CleanHudEnabled.Value || source == null || !api.Ready || (!source.Open && string.IsNullOrEmpty(source.Prompt))) { Hide(); return; }
             if (_root == null) Build();
             if (!ReferenceEquals(_source, source)) { Pointer.Clear(); _source = source; _revision = -1; }
             if (!_root.activeSelf) { _root.SetActive(true); _revision = -1; }
@@ -62,7 +62,7 @@ namespace WildWasteland.Modules.CleanHUD
             {
                 string text = paragraph.Replace("<b>", "").Replace("</b>", "");
                 if (!text.StartsWith("You:", StringComparison.OrdinalIgnoreCase) && !text.StartsWith(source.Name + ":", StringComparison.OrdinalIgnoreCase)) text = source.Name + ": " + text;
-                foreach (string line in TalkDialogue.Wrap(text, 1060))
+                foreach (string line in GlyphFont.Wrap(text, 1060))
                 {
                     if (row == Lines.Count) Lines.Add(DialogueWidgets.Text(_chat, "line", 10, y, 1060, 32, 26, Color.white, ""));
                     var label = Lines[row++]; label.rectTransform.anchoredPosition = new Vector2(10, -y); label.Set(line); label.gameObject.SetActive(true); y += 32;
@@ -83,7 +83,7 @@ namespace WildWasteland.Modules.CleanHUD
                 var choice = source.Choices[i]; var b = Buttons[i]; var labels = Labels[i];
                 string key = choice.Key;
                 b.onClick.RemoveAllListeners(); b.onClick.AddListener(delegate { if (_source == source && source.Open) source.Choose(key); });
-                var lines = TalkDialogue.Wrap(choice.Text, 1040, 20); float h = Mathf.Max(36, lines.Count * 24 + 8);
+                var lines = GlyphFont.Wrap(choice.Text, 1040, 20); float h = Mathf.Max(36, lines.Count * 24 + 8);
                 var rect = (RectTransform)b.transform; rect.anchoredPosition = new Vector2(0, -y); rect.sizeDelta = new Vector2(1080, h);
                 for (int n = 0; n < lines.Count; n++)
                 {

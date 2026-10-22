@@ -1,4 +1,5 @@
 using WildWasteland.Core.UI;
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,15 +11,15 @@ using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
-    /// <summary>HANDOVER to HUD (B10; REFACTOR-REQUEST B04-1). Save/load pieces of the title and pause menus: load start, latest save, Continue, the save library and the legacy 10-slot screens used only without the WW save manager.</summary>
+    /// <summary>Save/load pieces of the title and pause menus: load start, latest save, Continue, the save library and the legacy 10-slot screens used only without the WW save manager.</summary>
     internal sealed partial class Menu
     {
         /// <summary>Starts the native loading screen and respects recovery admission only while Saves owns the framework.</summary>
         private bool BeginLoad(string path)
         {
-            if (Core.SaveSystem.Installed && Core.SaveSystem.RecoveryError != null) { Confirm(Core.SaveSystem.RecoveryError, null); return false; }
+            if (ModApi.Get<ISaveMenu>() != null && ModApi.Get<ISaveMenu>().RecoveryError != null) { Confirm(ModApi.Get<ISaveMenu>().RecoveryError, null); return false; }
             _loadingScreen.Begin();
             if (Click(path)) return true;
             _loadingScreen.End(); return false;
@@ -29,13 +30,13 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>True when native slot n holds a real (larger than 1 KB) save.</summary>
         private static bool SlotUsed(int n) { var f = new FileInfo(SaveFile(n)); return f.Exists && f.Length > 1024; }
 
-        private string _latestSaveFile;
         /// <summary>Selects named snapshots while Saves runs; otherwise chooses only the newest usable native ten-slot save.</summary>
         private string LatestSave(out int slot)
         {
-            if (!Core.SaveSystem.Installed)
+            var saves = ModApi.Get<ISaveMenu>();
+            if (saves == null)
             {
-                _latestSaveFile = null; slot = 0; DateTime newest = DateTime.MinValue;
+                slot = 0; DateTime newest = DateTime.MinValue;
                 for (int n = 1; n <= 10; n++)
                 {
                     if (!SlotUsed(n)) continue;
@@ -44,9 +45,8 @@ namespace WildWasteland.Modules.CleanHUD
                 }
                 return slot == 0 ? "" : SlotLabel(slot, true);
             }
-            _latestSaveFile = Core.SaveRuntime.Latest(); slot = _latestSaveFile == null ? 0 : 1;
-            if (_latestSaveFile == null) return "";
-            string name = Core.SaveSystem.Info(_latestSaveFile).Name;
+            slot = saves.HasLatest ? 1 : 0;
+            string name = saves.LatestCaption;
             return name.Length > 26 ? name.Substring(0, 25) + "…" : name;
         }
 
@@ -56,10 +56,10 @@ namespace WildWasteland.Modules.CleanHUD
         {
             string s = null;
             var path = _ctx == Ctx.Title ? "LoadGame_Canvas/LoadGame/load slot " + n + "/load " + n + " time" : "SaveGame_Canvas/SaveGame/save slot " + n + "/save " + n + " time";
-            var t = SettingsModel.FindPath(path); // refs-ok: handover file owned by HUD (B10), REFACTOR-REQUEST B04-1
+            var t = SettingsModel.FindPath(path);
             var tx = t != null ? t.GetComponent<Text>() : null;
             if (tx != null && !string.IsNullOrEmpty(tx.text)) s = tx.text;
-            if (string.IsNullOrEmpty(s)) s = SettingsModel.ReadString("saveTime" + n); // refs-ok: handover file owned by HUD (B10), REFACTOR-REQUEST B04-1
+            if (string.IsNullOrEmpty(s)) s = SettingsModel.ReadString("saveTime" + n);
             if (string.IsNullOrEmpty(s)) s = SlotUsed(n) ? File.GetLastWriteTime(SaveFile(n)).ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture) : "";
             s = SeedPart.Replace(s ?? "", "").Trim().ToUpperInvariant();
             if (shortForm && s.Length > 26) s = s.Substring(0, 25) + "…";
@@ -70,19 +70,21 @@ namespace WildWasteland.Modules.CleanHUD
         private void ContinueLatest()
         {
             int slot; LatestSave(out slot);
-            if (Core.SaveSystem.Installed) { if (_latestSaveFile != null) Core.SinglePlayerSaving.Load(_latestSaveFile); }
+            var saves = ModApi.Get<ISaveMenu>();
+            if (saves != null) { if (!saves.TryContinue() && saves.RecoveryError != null) Confirm(saves.RecoveryError, null); }
             else if (slot > 0) BeginLoad("LoadGame_Canvas/LoadGame/load slot " + slot + "/load_game_" + slot);
         }
 
         /// <summary>Opens the named save library while enabled, with the native ten-slot screen as the disabled fallback.</summary>
         private void OpenSave()
-        { if (Core.SaveSystem.Installed) WildWasteland.Modules.Saves.SaveLibraryPage.Open(true); else ShowSlots(false); }
+        { var saves = ModApi.Get<ISaveMenu>(); if (saves != null) { if (!saves.TryOpen(true) && saves.RecoveryError != null) Confirm(saves.RecoveryError, null); } else ShowSlots(false); }
 
         // ---------------------------------------------------------------- load / save slots
         /// <summary>Opens the WW save library while Saves runs, otherwise the native ten-slot load/save screen.</summary>
         private void ShowSlots(bool load)
         {
-            if (Core.SaveSystem.Installed) { WildWasteland.Modules.Saves.SaveLibraryPage.Open(!load); return; }
+            var saves = ModApi.Get<ISaveMenu>();
+            if (saves != null) { if (!saves.TryOpen(!load) && saves.RecoveryError != null) Confirm(saves.RecoveryError, null); return; }
             ResetToMain();
             _screen = load ? "load" : "save";
             _main.gameObject.SetActive(false);

@@ -19,32 +19,9 @@ namespace WildWasteland.Modules.HUD
         private static Vector3 _dotScale, _crossScale;
         private static Image _image;
         private static Color _originalColor;
-        private static Transform _weapons;
-        private static PlayMakerFSM[] _weaponFsms;
-        private static float _nextWeapons;
+        /// <summary>Reads the canonical weapon state instead of rescanning weapon FSMs.</summary>
+        private static bool NeedsCocking() { var state = ModApi.Get<IWeaponState>(); return state != null && state.NeedsCocking; }
 
-        private static bool NeedsCocking()
-        {
-            if (_weapons == null)
-            {
-                if (Time.unscaledTime < _nextWeapons) return false;
-                _nextWeapons = Time.unscaledTime + 2f;
-                var holder = GameRefs.PlayerCameraHolder;
-                _weapons = holder != null ? holder.transform.Find("PlayerCamera/WeaponsArm/Parent") : null;
-                _weaponFsms = _weapons != null ? _weapons.GetComponentsInChildren<PlayMakerFSM>(true) : null;
-            }
-            if (_weapons == null || _weaponFsms == null) return false;
-            for (int i = 0; i < _weaponFsms.Length; i++)
-            {
-                var fsm = _weaponFsms[i];
-                if (fsm == null || fsm.FsmName != "Attack" || !fsm.gameObject.activeInHierarchy) continue;
-                if (fsm.Fsm.GetState("pump") == null && fsm.Fsm.GetState("bolt action") == null && fsm.Fsm.GetState("hammer") == null) continue;
-                // Native firing tests hammer before pumping / working the bolt; false means the next click cocks it.
-                var hammer = fsm.FsmVariables.FindFsmBool("hammer");
-                if (hammer != null && !hammer.Value) return true;
-            }
-            return false;
-        }
         private static RawImage _raw;
         private static Sprite _originalSprite, _originalOverride, _linesSprite, _dotSprite;
         private static Texture _originalTexture;
@@ -201,7 +178,6 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Restore the vanilla dot/crosshair and forget the cached UI objects (they belong to the old scene).</summary>
         internal static void OnSceneLoaded()
         {
-            _weapons = null; _weaponFsms = null; _nextWeapons = 0f;
             if (_dot != null) _dot.localScale = _dotScale;
             RestoreCross(); _dot = null; _cross = null; _image = null; _raw = null; _nextLook = 0f; _appliedMode = -1;
             _originalSprite = null; _originalOverride = null; _originalTexture = null;
