@@ -25,7 +25,6 @@ namespace WildWasteland.Modules.Patrols
                 new ActionPage(this, p, "Bus passenger pose editor", BusPosePage) { IsTool = true },
                 new ActionPage(this, m, "Merchant item placement", MerchantSpotPage) { IsTool = true },
                 new ActionPage(this, v, "War Rig", WarRigPage) { IsTool = true },
-                new ActionPage(this, v, "AI overlay & debug spawns", DebugPage) { IsTool = true },
                 new ActionPage(this, v, "World traffic", WorldTrafficPage),
                 new ActionPage(this, v, "Spawning & cleanup", SpawningPage),
                 new ActionPage(this, m, "Merchants", MerchantsPage),
@@ -62,7 +61,7 @@ namespace WildWasteland.Modules.Patrols
             l.Value("Road cache", TrafficRoads.Status);
             l.Heading("Debug map");
             l.Text("Open the game's debug map: routes, group labels, cleared camps, battle skulls and merchants are drawn on it.");
-            l.Toggle(TrafficDebugMap, "Draw routes on the debug map (DebugMap)");
+            l.Text("Traffic route diagnostics are configured in Debug.");
             l.Toggle(RealPatrolNames, "Real patrol names");
             l.Toggle(HideRouteType, "Hide route type (all gray, \"Distant traffic\")");
             l.Heading("Values");

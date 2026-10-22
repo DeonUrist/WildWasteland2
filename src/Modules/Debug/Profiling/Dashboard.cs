@@ -19,9 +19,10 @@ namespace WildWasteland.Modules.Debug
         private static int _selected;
         private static bool _deep;
         internal static readonly List<string> Counters = new List<string>();
-        private static readonly List<WildWasteland.Core.UI.ToolPage> Tools = new List<WildWasteland.Core.UI.ToolPage>();
+        private static readonly List<WildWasteland.Core.UI.ToolPage> ToolPages = new List<WildWasteland.Core.UI.ToolPage>();
         private static GUIStyle _mono, _heading;
         private static readonly CultureInfo C = CultureInfo.InvariantCulture;
+        /// <summary>Clamps the non-pausing dashboard window to the display and restores GUI depth after rendering.</summary>
         internal static void Draw(DebugRuntime runtime)
         {
             _runtime = runtime;
@@ -32,6 +33,7 @@ namespace WildWasteland.Modules.Debug
             _window = GUI.Window(0x574457, _window, Window, "WILD WASTELAND DEBUG  |  " + DebugModule.MenuKey.Value);
             GUI.depth = depth;
         }
+        /// <summary>Draws the dashboard tabs, capture controls and selected content inside one bounded scroll view.</summary>
         private static void DrawWindow(int id)
         {
             GUILayout.BeginHorizontal();
@@ -61,6 +63,7 @@ namespace WildWasteland.Modules.Debug
             GUILayout.Label("Live menu does not pause the world. Input is held while open; close it to play while capturing. Timing is disabled during hook installation.");
             GUI.DragWindow(new Rect(0, 0, _window.width, 20));
         }
+        /// <summary>Draws the shared frame ring and measurement attribution/engine summaries.</summary>
         private static void Overview()
         {
             GUILayout.Label("Frame pacing", _heading);
@@ -85,6 +88,7 @@ namespace WildWasteland.Modules.Debug
             GUILayout.Label("Scheduler cost by system (observed ms/second, overlapping/nested calls are not an extra total)", _heading);
             foreach (var pair in Measurements.SystemCosts) if (Matches(pair.Key)) Bar(pair.Key, pair.Value, Math.Max(1, Measurements.SchedulerMsPerSecond));
         }
+        /// <summary>Lists scheduler job rates without patching the already timed scheduler.</summary>
         private static void Jobs()
         {
             GUILayout.Label("All scheduler jobs, sampled each second", _heading);
@@ -96,6 +100,7 @@ namespace WildWasteland.Modules.Debug
                 Bar("", row.Milliseconds, Math.Max(1, Measurements.SchedulerMsPerSecond));
             }
         }
+        /// <summary>Shows inclusive, self, main-thread and worker method rates with their attribution limitations.</summary>
         private static void Methods()
         {
             GUILayout.Label("Calls outside and inside scheduler jobs", _heading);
@@ -111,6 +116,7 @@ namespace WildWasteland.Modules.Debug
                 Bar("", row.Self, Measurements.Methods.Count == 0 ? 1 : Math.Max(1, Measurements.Methods[0].Self));
             }
         }
+        /// <summary>Controls optional diagnostic probe installation and shows per-system coverage and failures.</summary>
         private static void Systems()
         {
             GUILayout.Label("Per-system timing and independent logging", _heading);
@@ -135,6 +141,7 @@ namespace WildWasteland.Modules.Debug
             GUILayout.Label("Module state", _heading); foreach (var state in Measurements.ModuleStates) if (Matches(state)) GUILayout.Label(state, _mono);
             foreach (var failure in Instrumentation.Failures) if (Matches(failure)) GUILayout.Label("PATCH FAILURE: " + failure, _mono);
         }
+        /// <summary>Displays explicitly requested static collection sizes; no hierarchy walk runs per frame.</summary>
         private static void CounterView()
         {
             GUILayout.Label("Collection / queue / cache sizes", _heading);
@@ -145,6 +152,7 @@ namespace WildWasteland.Modules.Debug
             if (GUILayout.Button("Refresh selected system counters")) RefreshCounters(Instrumentation.Scopes[_selected]);
             foreach (string row in Counters) if (Matches(row)) GUILayout.Label(row, _mono);
         }
+        /// <summary>Reads the selected scope's static collection counts once on user request.</summary>
         private static void RefreshCounters(Scope scope)
         {
             Counters.Clear();
@@ -154,6 +162,7 @@ namespace WildWasteland.Modules.Debug
                 catch (Exception e) { Counters.Add(field.DeclaringType.FullName + "." + field.Name + " = unavailable: " + e.GetBaseException().Message); }
             }
         }
+        /// <summary>Draws shared log policy, allocation controls and controlled A/B capture actions.</summary>
         private static void Logs()
         {
             GUILayout.Label("LLM diagnosis / controlled A-B captures", _heading);
@@ -179,24 +188,25 @@ namespace WildWasteland.Modules.Debug
             GUILayout.Label("Trace queue is bounded; dropped events: " + Instrumentation.Dropped + ". Errors from instrumented calls are always retained. Last 512 lines kept for export.");
             foreach (var line in _runtime.Trace) if (Matches(line)) GUILayout.Label(line, _mono);
         }
+        /// <summary>Lists existing module tool pages and opens the selected editor through Core.</summary>
         private static void DevelopmentTools()
         {
             GUILayout.Label("Existing WW editors, bakers and diagnostic pages", _heading);
             GUILayout.Label("Open hands control to the existing WW tool UI and enables its Debug/Developer visibility flags. It never enables global verbose logging.");
             if (GUILayout.Button("Load / refresh development tool catalogue"))
             {
-                Tools.Clear();
+                ToolPages.Clear();
                 foreach (var entry in WildWasteland.Core.ModuleHost.Entries)
                 {
                     try
                     {
                         var pages = entry.Module.ToolPages(); if (pages == null) continue;
-                        foreach (var page in pages) { if (page.Owner == null) page.Owner = entry.Module; Tools.Add(page); }
+                        foreach (var page in pages) { if (page.Owner == null) page.Owner = entry.Module; ToolPages.Add(page); }
                     }
                     catch (Exception e) { _runtime.Status = "Tool catalogue: " + entry.Module.Id + ": " + e.GetBaseException().Message; }
                 }
             }
-            foreach (var page in Tools)
+            foreach (var page in ToolPages)
             {
                 string name = (page.Owner == null ? "Core" : page.Owner.Id) + " / " + page.Group + " / " + page.Title;
                 if (!Matches(name)) continue;
@@ -205,14 +215,18 @@ namespace WildWasteland.Modules.Debug
                 GUILayout.EndHorizontal();
             }
         }
+        /// <summary>Applies the dashboard's case-insensitive text filter.</summary>
         private static bool Matches(string value) { return _filter.Length == 0 || value.IndexOf(_filter, StringComparison.OrdinalIgnoreCase) >= 0; }
+        /// <summary>Formats a compact invariant-culture numeric measurement.</summary>
         private static string F(double value) { return value.ToString("0.###", C); }
+        /// <summary>Draws a proportional cost bar and optional label within the requested GUI rect.</summary>
         private static void Bar(string label, double value, double maximum)
         {
             Rect rect = GUILayoutUtility.GetRect(100, string.IsNullOrEmpty(label) ? 5 : 22, GUILayout.ExpandWidth(true));
             Fill(rect, new Color(.1f, .13f, .17f)); Fill(new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01((float)(value / maximum)), rect.height), new Color(.13f, .45f, .5f));
             if (label.Length > 0) GUI.Label(rect, label + "  " + F(value) + " ms/s", _mono);
         }
+        /// <summary>Fills one dashboard rectangle and restores GUI color.</summary>
         private static void Fill(Rect rect, Color color) { Color old = GUI.color; GUI.color = color; GUI.DrawTexture(rect, Texture2D.whiteTexture); GUI.color = old; }
     }
 }

@@ -88,21 +88,17 @@ namespace WildWasteland.Modules.Patrols
 
         // [Debug] AiOverlay: one OnGUI for every pilot (an OnGUI on each car would be dispatched per IMGUI event whether or not it draws)
         // WW: was OnGUI (Gui job); GuiWanted = its gate (the Gui job's predicate)
-        internal static bool GuiWanted() { return PatrolsModule.AiOverlay.Value && Time.timeScale > 0f; }
-        internal void Gui()
+        /// <summary>Copies the existing pilot overlay lines; Debug owns their GUI rendering and visibility setting.</summary>
+        internal static void CollectDiagnosticLines(List<string> into)
         {
-            if (!GuiWanted()) return;
-            var all = Pilot.All;
-            int shown = 0;
+            var all = Pilot.All; int shown = 0;
             for (int i = 0; i < all.Count; i++)
             {
-                var p = all[i];
-                if (p == null) continue;
-                GUI.Label(new Rect(10, 10 + 18 * i, 1400, 22), p.OverlayLine());
-                shown++;
+                var pilot = all[i];
+                into.Add(pilot != null ? pilot.OverlayLine() : null);
+                if (pilot != null) shown++;
             }
-            // no raider car on the road: the spawn clock instead (only read here - nothing is computed while the overlay is off)
-            if (shown == 0) GUI.Label(new Rect(10, 10, 1400, 22), Convoy.OverlayLine());
+            if (shown == 0) { into.Clear(); into.Add(Convoy.OverlayLine()); }
         }
 
         // builds a template (from the F8 menu); one at a time

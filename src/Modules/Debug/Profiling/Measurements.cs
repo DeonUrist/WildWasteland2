@@ -16,12 +16,15 @@ namespace WildWasteland.Modules.Debug
     internal sealed class EngineCounter : IDisposable
     {
         internal string Name, Unit, Display = "n/a"; private ProfilerRecorder _recorder; private double _scale;
+        /// <summary>Starts one optional engine recorder and retains n/a semantics when the player does not publish it.</summary>
         internal EngineCounter(ProfilerCategory category, string name, string unit, double scale = 1)
         {
             Name = name; Unit = unit; _scale = scale;
             try { _recorder = ProfilerRecorder.StartNew(category, name); } catch { }
         }
+        /// <summary>Reads the latest valid engine-counter value and formats its declared units.</summary>
         internal void Update() { Display = _recorder.Valid ? (_recorder.LastValue * _scale).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " " + Unit : "n/a (not published by player)"; }
+        /// <summary>Disposes owned engine recorders without keeping duplicate profiler handles.</summary>
         public void Dispose() { if (_recorder.Valid) _recorder.Dispose(); }
     }
     internal static class Measurements
@@ -42,6 +45,7 @@ namespace WildWasteland.Modules.Debug
         internal static List<JobRow> Jobs = new List<JobRow>();
         internal static List<MethodRow> Methods = new List<MethodRow>();
         internal static readonly Dictionary<string, double> SystemCosts = new Dictionary<string, double>();
+        /// <summary>Retains the last scheduler totals used to compute one-second deltas.</summary>
         private sealed class Previous { internal long Calls; internal double Ms; }
         private static readonly Dictionary<Job, Previous> Old = new Dictionary<Job, Previous>();
         private static readonly List<Job> Dead = new List<Job>();
@@ -49,12 +53,15 @@ namespace WildWasteland.Modules.Debug
         private static int _gc0, _gc1, _gc2;
         internal static string Context = "", Coverage = "";
         internal static readonly List<string> ModuleStates = new List<string>();
+        /// <summary>Starts a fresh shared frame/job measurement window.</summary>
         internal static void Initialize() { Reset(); }
+        /// <summary>Owns one engine-recorder set only while a dashboard or capture requests engine measurements.</summary>
         internal static void SetMeasuring(bool measuring)
         {
             if (measuring) StartEngine();
             else if (Engine.Count > 0) Dispose();
         }
+        /// <summary>Starts the single engine-counter set once for the active measurement session.</summary>
         private static void StartEngine()
         {
             if (Engine.Count > 0) return;
@@ -68,6 +75,7 @@ namespace WildWasteland.Modules.Debug
             Engine.Add(new EngineCounter(ProfilerCategory.Render, "Triangles Count", "triangles/frame"));
             Engine.Add(new EngineCounter(ProfilerCategory.Render, "Shadow Casters Count", "casters/frame"));
         }
+        /// <summary>Appends one finite frame duration and its lifecycle bitmask to the shared 8192-frame ring.</summary>
         internal static void Frame()
         {
             Instrumentation.Frame = Time.frameCount;
@@ -78,6 +86,7 @@ namespace WildWasteland.Modules.Debug
             RecordedSeconds += ms / 1000.0; if (Time.timeScale == 0) PausedFrames++;
             if (DebugRuntime.Instance != null && DebugRuntime.Instance.Visible) DashboardFrames++;
         }
+        /// <summary>Summarizes frame percentiles and scheduler/probe/handler deltas once per measurement snapshot.</summary>
         internal static void Snapshot(double seconds)
         {
             double total = 0; Worst = 0;
@@ -110,6 +119,7 @@ namespace WildWasteland.Modules.Debug
             int patched = 0, failed = 0, eligible = 0; foreach (var scope in Instrumentation.Scopes) { patched += scope.Patched; failed += scope.Failed; eligible += scope.Eligible; }
             Coverage = patched + " detailed methods installed; " + failed + " patch failures; " + Instrumentation.PendingCount + " waiting; " + eligible + " discovered entry points across " + Instrumentation.Scopes.Count + " systems";
         }
+        /// <summary>Resets the shared frame/capture epoch and establishes fresh scheduler/probe baselines.</summary>
         internal static void Reset()
         {
             Count = Head = Samples = 0; Average = P50 = P95 = P99 = Worst = 0; _pendingTags = FrameLifecycle.None;
@@ -139,6 +149,7 @@ namespace WildWasteland.Modules.Debug
             if (tag.IndexOf("work", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.WorldWork;
             if (tag.IndexOf("spawn", StringComparison.OrdinalIgnoreCase) >= 0) _pendingTags |= FrameLifecycle.Spawn;
         }
+        /// <summary>Disposes owned engine recorders without keeping duplicate profiler handles.</summary>
         internal static void Dispose() { foreach (var counter in Engine) counter.Dispose(); Engine.Clear(); }
     }
 }

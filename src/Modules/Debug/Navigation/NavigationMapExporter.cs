@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.Debug
                         int i = z * W + x; byte r, g, b;
                         if (float.IsNaN(s.FloorY[i]))
                         {
-                            switch (s.Widthhy[i]) { case 2: r = 200; g = 30; b = 30; break; case 3: r = 110; g = 70; b = 30; break; case 4: r = 20; g = 20; b = 110; break; default: r = 0; g = 0; b = 0; break; }
+                            switch (s.Why[i]) { case 2: r = 200; g = 30; b = 30; break; case 3: r = 110; g = 70; b = 30; break; case 4: r = 20; g = 20; b = 110; break; default: r = 0; g = 0; b = 0; break; }
                             if (area != null && !float.IsInfinity(area[i])) { r = (byte)Math.Min(255, r + 60); g = (byte)Math.Min(255, g + 90); b = (byte)Math.Min(255, b + 80); }
                         }
                         else
@@ -55,7 +55,7 @@ namespace WildWasteland.Modules.Debug
                     }
                 if (route != null) foreach (int i in route) Paint(px, row, sc, i % W, i / W, 0, 200, 255);
                 if (trail != null)
-                    for (int t = 0; t < trail.Count; t++)
+                    for (int t = 0; t < trail.Length; t++)
                     {
                         byte k = trailKind[t];
                         if (k == 0) Paint(px, row, sc, trail[t] % W, trail[t] / W, 255, 255, 255);

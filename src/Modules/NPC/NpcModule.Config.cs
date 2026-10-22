@@ -86,10 +86,14 @@ namespace WildWasteland.Modules.NPC
         /// <summary>Presentation: [NPC / Brain] ApocaplayerClips.</summary>
         static partial void BindPresentationClips();
 
+        /// <summary>Tools owns the navigation bake collection aid setting.</summary>
+        static partial void BindNavigationDiagnostics();
+
         /// <summary>Binds every NPC entry (F6 toggles and settings, [Keys], tools.cfg tuning) in the original order; target parts are partial calls.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             _cfg = cfg;
+            BindNavigationDiagnostics();
             BindWomen(cfg);
             // ---------------- F6: one toggle per feature, in feature order (section "NPC", after Core's Enabled) ----------------
             SensesEnabled = V(null, "EnableNpcDetection", true,

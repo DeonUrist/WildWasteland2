@@ -23,17 +23,23 @@ namespace WildWasteland.Modules.Debug
         private static readonly List<string> WindowEvents = new List<string>();
         private static string _lastContext;
         internal static string BaselineLabel { get { return _baseline == null ? "No baseline A retained." : "Baseline A: " + _baseline["scenario"] + " | " + _baseline["utc"]; } }
+        /// <summary>Captures starting settings and instrumentation coverage for later contamination checks.</summary>
         internal static void ResetWindow() { _startSettings = Settings(); _coverageAtReset = CoverageSignature(); WindowEvents.Clear(); _lastContext = null; }
+        /// <summary>Builds the current installed-probe/allocation signature used to detect sample-window changes.</summary>
         private static string CoverageSignature() { return string.Join(";", Instrumentation.Scopes.Select(s => s.Name + ":" + s.Enabled + ":" + s.Patched).ToArray()) + ";alloc=" + DebugModule.AllocationTiming.Value; }
+        /// <summary>Records bounded scene/save/pause transitions and instrumentation changes within the measurement window.</summary>
         internal static void Observe()
         {
             string context = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name + ":" + GameRefs.SaveLoadState + ":scale=" + Time.timeScale;
             if (context != _lastContext && WindowEvents.Count < 128) { WindowEvents.Add(DateTime.UtcNow.ToString("O") + " " + context); _lastContext = context; }
             if (_coverageAtReset != CoverageSignature() && !WindowEvents.Contains("Instrumentation changed since reset")) WindowEvents.Add("Instrumentation changed since reset");
         }
+        /// <summary>Retains the current copied capture in memory as baseline A.</summary>
         internal static void KeepBaseline(DebugRuntime runtime) { _baseline = Capture(runtime); }
+        /// <summary>Builds a capture-schema object from alternating key/value pairs.</summary>
         private static Dictionary<string, object> D(params object[] pairs)
         { var d = new Dictionary<string, object>(); for (int i = 0; i < pairs.Length; i += 2) d.Add((string)pairs[i], pairs[i + 1]); return d; }
+        /// <summary>Copies all shared WW configuration values for capture comparison.</summary>
         private static Dictionary<string, string> Settings()
         {
             var result = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -45,12 +51,14 @@ namespace WildWasteland.Modules.Debug
             }
             return result;
         }
+        /// <summary>Reports added, removed and changed setting values between two copied snapshots.</summary>
         private static List<string> Differences(Dictionary<string, string> a, Dictionary<string, string> b)
         {
             var result = new List<string>(); if (a == null) { result.Add("Initial settings unavailable"); return result; }
             foreach (string key in a.Keys.Union(b.Keys).OrderBy(k => k)) { string av, bv; a.TryGetValue(key, out av); b.TryGetValue(key, out bv); if (av != bv) result.Add(key + ": " + (av ?? "absent") + " -> " + (bv ?? "absent")); }
             return result;
         }
+        /// <summary>Builds the preserved capture-v1 schema with cumulative timing, hardware, configuration, coverage and caveats.</summary>
         internal static Dictionary<string, object> Capture(DebugRuntime runtime)
         {
             var settings = Settings();
@@ -105,7 +113,9 @@ namespace WildWasteland.Modules.Debug
                 "manual_collection_snapshot", Dashboard.Counters.ToArray(),
                 "engine_counters_latest", counters, "methods_since_reset", methods, "scheduler_latest_snapshot", jobs, "warnings", warnings);
         }
+        /// <summary>Converts a capture numeric field with invariant culture.</summary>
         private static double Number(Dictionary<string, object> d, string key) { return Convert.ToDouble(d[key], CultureInfo.InvariantCulture); }
+        /// <summary>Adds the machine-readable capture and human-readable analysis/comparison files without claiming causal attribution.</summary>
         internal static void AddFiles(Dictionary<string, string> files, DebugRuntime runtime)
         {
             var current = Capture(runtime); files.Add("capture.json", Json(current));
@@ -134,6 +144,24 @@ namespace WildWasteland.Modules.Debug
             files.Add("comparison.md", comparison.ToString());
         }
         /// <summary>Serializes the unchanged capture schema through Core's shared JSON implementation.</summary>
-        internal static string Json(object value) { return Core.Json.Write(value); }
+        internal static string Json(object value) { return Core.Json.Write(JsonValue(value)); }
+        /// <summary>Normalizes typed dictionaries to Core JSON value trees while preserving the capture schema and scalar values.</summary>
+        private static object JsonValue(object value)
+        {
+            if (value == null || value is string || value is bool) return value;
+            var dictionary = value as System.Collections.IDictionary;
+            if (dictionary != null)
+            {
+                var result = new Dictionary<string, object>();
+                foreach (System.Collections.DictionaryEntry pair in dictionary) result.Add(pair.Key.ToString(), JsonValue(pair.Value));
+                return result;
+            }
+            var sequence = value as System.Collections.IEnumerable;
+            if (sequence != null)
+            {
+                var result = new List<object>(); foreach (var item in sequence) result.Add(JsonValue(item)); return result;
+            }
+            return value;
+        }
     }
 }

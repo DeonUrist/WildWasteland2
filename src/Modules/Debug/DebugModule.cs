@@ -20,7 +20,9 @@ namespace WildWasteland.Modules.Debug
         internal static ConfigEntry<Key> MenuKey;
         internal static ConfigEntry<bool> AllocationTiming;
         internal static ConfigEntry<float> SpikeThreshold;
-        private static ConfigEntry<bool> _traceHandlers;
+        private static ConfigEntry<bool> _traceHandlers, _navigationOverlay, _patrolOverlay, _trafficDebugMap, _recordNpcNames;
+        private static ConfigEntry<Key> _factionDumpKey;
+        private readonly QuestNameRecorder _nameRecorder = new QuestNameRecorder();
         private DebugRuntime _runtime;
         private bool _running;
 
@@ -37,6 +39,11 @@ namespace WildWasteland.Modules.Debug
         public override void BindConfig(ModuleConfig cfg)
         {
             VerboseLevel = cfg.Player(null, "VerboseLevel", 0, "Logging: 0 off, 1 main actions, 2 deep traces and diagnostic probes.", new AcceptableValueList<int>(0, 1, 2));
+            _navigationOverlay = cfg.Tool("Navigation", "Show navigation", false, "Draw copied NPC ghosts, states and waypoints.");
+            _patrolOverlay = cfg.Tool("Patrols", "AI overlay", false, "Show the existing per-pilot driving state lines.");
+            _trafficDebugMap = cfg.Tool("Patrols", "Traffic debug map", true, "Draw routes on the native debug map when HUD has no route policy provider.");
+            _recordNpcNames = cfg.Tool("Quests", "Record NPC names", false, "Record talked-to NPC names and locations for quest authoring.");
+            _factionDumpKey = cfg.Hotkey("Faction diagnostic dump", Key.None, "Write nearby faction/FSM/quest details under Debug.");
             MenuKey = cfg.Hotkey("Performance dashboard", Key.F4, "Open Debug performance measurements and A/B capture controls.");
             _traceHandlers = cfg.Tool("Measurements", "Trace handlers", false, "Measure individual Core hook, event and named-scope handlers.");
             AllocationTiming = cfg.Tool("Measurements", "Thread allocation timing", false, "Measure allocation deltas inside optional method probes; adds overhead.");
@@ -50,12 +57,20 @@ namespace WildWasteland.Modules.Debug
             _runtime = new DebugRuntime();
             VerboseLevel.SettingChanged += PolicyChanged;
             _traceHandlers.SettingChanged += PolicyChanged;
+            _navigationOverlay.SettingChanged += PolicyChanged;
+            _patrolOverlay.SettingChanged += PolicyChanged;
+            _trafficDebugMap.SettingChanged += PolicyChanged;
+            _recordNpcNames.SettingChanged += PolicyChanged;
+            QuestDiagnosticState.NpcIdentified += _nameRecorder.Record;
             ApplyPolicy();
             Core.Trace.Marked += Measurements.MarkTag;
             OptimizationMetrics.Marked += Measurements.MarkTag;
             WeatherDiagnosticState.StateChanged += WeatherDiagnosticTools.OnStateChanged;
             WeatherDiagnosticState.CameraRecordRequested += WeatherDiagnosticTools.OnCameraRecord;
             WeatherDiagnosticState.Reset();
+            Hotkeys.Register(this, _factionDumpKey, WriteFactionDump, CanDumpFaction);
+            Scheduler.Gui(this, "Debug.PatrolOverlay", PatrolDiagnosticOverlay.Draw, PatrolOverlayWanted);
+            Scheduler.Gui(this, "Debug.NavigationOverlay", NavigationOverlay.Draw, NavigationWanted);
             Scheduler.Gui(this, "Debug.WeatherOverlay", WeatherDiagnosticTools.DrawOverlay, WeatherDiagnosticTools.WantsOverlay);
             Hotkeys.Register(this, MenuKey, _runtime.Toggle, null, true);
             Scheduler.EveryFrame(this, "Debug.Measurements", _runtime.Tick, Phase.EarlyUpdate);
@@ -67,6 +82,7 @@ namespace WildWasteland.Modules.Debug
         {
             ModApi.Provide<ILogPolicy>(this, this);
             ModApi.Provide<ITraceControl>(this, this);
+            ModApi.Provide<INavigationDiagnosticSink>(this, new NavigationMapExporter());
             ModApi.Provide<IWeatherDiagnosticControls>(this, new WeatherDiagnosticTools());
         }
 
@@ -74,6 +90,13 @@ namespace WildWasteland.Modules.Debug
         public override void Settings(SettingsShell shell)
         {
             shell.Row(this, SettingsShell.Page.Debug, "Logging", VerboseLevel, "Logging level");
+            shell.Row(this, SettingsShell.Page.Debug, "Navigation", _navigationOverlay, "Show navigation overlay");
+            shell.Custom(this, SettingsShell.Page.Debug, "Navigation", DrawNavigation);
+            shell.Row(this, SettingsShell.Page.Debug, "Patrols", _patrolOverlay, "Driving AI overlay");
+            shell.Row(this, SettingsShell.Page.Debug, "Patrols", _trafficDebugMap, "Traffic debug map");
+            shell.Custom(this, SettingsShell.Page.Debug, "Patrols", DrawPatrolStatus);
+            shell.Row(this, SettingsShell.Page.Debug, "Quest authoring", _recordNpcNames, "Record NPC names and locations");
+            shell.Custom(this, SettingsShell.Page.Debug, "Quest authoring", DrawQuestDiagnostics);
             shell.Row(this, SettingsShell.Page.Debug, "Measurements", _traceHandlers, "Trace hook and event handlers");
             shell.Custom(this, SettingsShell.Page.Debug, "Measurements", DrawMeasurements);
             shell.Custom(this, SettingsShell.Page.Developer, "Optimizations", OptimizationDiagnosticsPage.DrawDeveloper);
@@ -81,6 +104,42 @@ namespace WildWasteland.Modules.Debug
             shell.Resettable(this, SettingsShell.Page.Debug, _traceHandlers);
         }
 
+        /// <summary>Draws private Patrols status through the Core diagnostic source.</summary>
+        private void DrawPatrolStatus(ToolLayout layout)
+        {
+            var source = ModApi.Get<IPatrolDiagnosticSource>();
+            layout.Text(source != null ? source.Status : "Patrol diagnostics unavailable (Patrols disabled).");
+        }
+        /// <summary>Shows the faction dump action; Debug owns its hotkey and output directory.</summary>
+        private void DrawQuestDiagnostics(ToolLayout layout)
+        {
+            if (layout.Button("Write faction diagnostic dump", CanDumpFaction())) WriteFactionDump();
+        }
+        /// <summary>Native debug dumps require an active playable world and player position.</summary>
+        private bool CanDumpFaction() { return GameRefs.InGame && GameRefs.Player != null; }
+        /// <summary>Writes the original faction dump content using native data plus copied quest context.</summary>
+        private void WriteFactionDump()
+        {
+            var source = ModApi.Get<IQuestDiagnosticSource>();
+            try { FactionDump.Run(GameRefs.Player.transform.position, 60f, System.IO.Path.Combine(Assets.ModuleConfigDir("Debug"), "faction_dump.txt"), source != null ? source.PeopleWords : new string[0]); }
+            catch (Exception error) { Core.Log.Error(this, "Faction dump failed", error); }
+        }
+        /// <summary>Requests GUI work only while the pilot overlay is visible and the game is unpaused.</summary>
+        private bool PatrolOverlayWanted() { return RuntimeDiagnosticState.AiOverlay && Time.timeScale > 0; }
+        /// <summary>Requests an IMGUI pass only while the NPC overlay is enabled.</summary>
+        private bool NavigationWanted() { return NavigationDiagnosticState.Overlay; }
+        /// <summary>Shows current NPC status and offers a one-shot map capture instead of a persistent dump logging switch.</summary>
+        private void DrawNavigation(ToolLayout layout)
+        {
+            var source = ModApi.Get<INpcDiagnosticSource>();
+            if (source == null) { layout.Text("NPC diagnostics are unavailable while NPCAI is disabled."); return; }
+            layout.Text(source.Status);
+            if (layout.Button("Capture navigation map pictures"))
+            {
+                NavigationDiagnosticState.Capture = true;
+                try { source.CaptureMaps(); } finally { NavigationDiagnosticState.Capture = false; }
+            }
+        }
         /// <summary>Reports whether the dashboard needs an IMGUI pass.</summary>
         private bool DashboardWanted() { return _runtime != null && _runtime.Visible; }
 
@@ -89,6 +148,7 @@ namespace WildWasteland.Modules.Debug
         {
             layout.Value("Managed frame budget", "average <= 0.5 ms/frame; worst <= 2 ms");
             layout.Value("Frame samples", Measurements.Count.ToString());
+            if (layout.Button("Write FSM and scene census", _runtime != null)) DebugCensus.WriteCensus();
             layout.Value("Frame avg / p95 / p99", Measurements.Average.ToString("0.00") + " / " + Measurements.P95.ToString("0.00") + " / " + Measurements.P99.ToString("0.00") + " ms");
             if (layout.Button("Open performance dashboard", _runtime != null)) ToolWindow.CloseThen(_runtime.Toggle);
         }
@@ -124,6 +184,10 @@ namespace WildWasteland.Modules.Debug
         private void ApplyPolicy()
         {
             Core.Log.Level = _running ? Level : 0;
+            NavigationDiagnosticState.Overlay = _running && _navigationOverlay.Value;
+            RuntimeDiagnosticState.AiOverlay = _running && _patrolOverlay.Value;
+            RuntimeDiagnosticState.TrafficDebugMap = _running && _trafficDebugMap.Value;
+            QuestDiagnosticState.RecordNpcNames = _running && _recordNpcNames.Value;
             Core.Trace.On = _running && (_traceHandlers.Value || Level >= 2);
             if (!Core.Log.L2 && Instrumentation.Probes.Count > 0) Instrumentation.Remove();
         }
@@ -132,7 +196,7 @@ namespace WildWasteland.Modules.Debug
         private void PolicyChanged(object sender, EventArgs args) { ApplyPolicy(); }
 
         /// <summary>Tags scene transitions in the capture context without creating a second scene subscription.</summary>
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { DebugRuntime.SceneMarker = scene.name; }
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { DebugRuntime.SceneMarker = scene.name; Measurements.MarkTag("scene"); }
 
         /// <summary>Stops measurements, removes diagnostic probes and leaves Core's log level and trace switch disabled.</summary>
         public override void Shutdown()
@@ -145,6 +209,12 @@ namespace WildWasteland.Modules.Debug
             WeatherDiagnosticState.CameraRecordRequested -= WeatherDiagnosticTools.OnCameraRecord;
             VerboseLevel.SettingChanged -= PolicyChanged;
             _traceHandlers.SettingChanged -= PolicyChanged;
+            _navigationOverlay.SettingChanged -= PolicyChanged;
+            _patrolOverlay.SettingChanged -= PolicyChanged;
+            _trafficDebugMap.SettingChanged -= PolicyChanged;
+            _recordNpcNames.SettingChanged -= PolicyChanged;
+            QuestDiagnosticState.NpcIdentified -= _nameRecorder.Record;
+            NavigationDiagnosticState.Reset(); NavigationOverlay.Release();
             if (_runtime != null) _runtime.Dispose();
             _runtime = null;
             ApplyPolicy();

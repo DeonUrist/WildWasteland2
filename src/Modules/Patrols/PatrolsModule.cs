@@ -213,7 +213,6 @@ namespace WildWasteland.Modules.Patrols
             RegisterToolsLateTicks();
 
             // (WW perf) each with a predicate (built once here): IMGUI stops when none of them (and no other module) has anything to draw
-            Scheduler.Gui(this, "Patrol.Gui", () => { if (_patrol != null) _patrol.Gui(); }, () => _patrol != null && Patrol.GuiWanted());
             RegisterToolsGui();
             RegisterDeveloperSeatGui();
             Scheduler.Gui(this, "WorldTraffic.Gui", () => { if (_traffic != null) _traffic.Gui(); }, () => _traffic != null && _traffic.GuiWanted());

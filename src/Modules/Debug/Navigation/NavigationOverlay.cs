@@ -6,6 +6,7 @@ namespace WildWasteland.Modules.Debug
     {
         private static Texture2D _white;
         private static GUIStyle _floatStyle, _lineStyle;
+        /// <summary>Creates the owned one-pixel marker texture and centered label styles on first draw.</summary>
         private static void EnsureStyles()
         {
             if (_white != null) return;
@@ -17,6 +18,7 @@ namespace WildWasteland.Modules.Debug
 
         // debug helpers (Senses ghosts): a diamond and a label at a world point; nothing beyond Range m (WW perf: a raid's labels cost 1-4 ms/frame)
         internal const float Range = 200f;
+        /// <summary>Draws a diamond only when the point projects within the existing 200-metre overlay range.</summary>
         internal static void Mark(Vector3 world, Color c, float size)
         {
             var cam = Core.GameRefs.MainCamera; if (cam == null) return;
@@ -31,6 +33,7 @@ namespace WildWasteland.Modules.Debug
             GUI.color = old;
         }
 
+        /// <summary>Draws a centered world-point label within the existing overlay range.</summary>
         internal static void Label(Vector3 world, string text, Color c)
         {
             var cam = Core.GameRefs.MainCamera; if (cam == null) return;
@@ -57,6 +60,7 @@ namespace WildWasteland.Modules.Debug
             if (_white != null) UnityEngine.Object.Destroy(_white);
             _white = null; _floatStyle = _lineStyle = null; Markers.Clear();
         }
+        /// <summary>Draws a one-pixel text shadow and restores the caller's GUI color.</summary>
         private static void DrawText(Rect r, string text, GUIStyle style, Color c)
         {
             var old = GUI.color;
