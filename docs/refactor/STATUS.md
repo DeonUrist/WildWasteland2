@@ -5,7 +5,7 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 
 ## How to resume
 1. Read this file and `state/pre-B-cleanup.md`, then the state of any package marked in progress. Read the package's brief, relevant inventories and all requests/reports addressed to it before implementation.
-2. Next package: **B01 Core-Kernel**. No Wave B branches/worktrees exist at this checkpoint. From this repo create an isolated checkout: `git worktree add ..\WW2-B01 -b refactor/B01 refactor/main`. Create `state/B01.md` before editing code; keep D15 step commits and the B01 report/request files up to date.
+2. Active package: **B01 Core-Kernel**, branch `refactor/B01`, worktree `V:\Repos\Apocalypter\WW2-B01`. Read that worktree's `state/B01.md` and commits to resume; do not recreate/reset it. Keep D15 step commits and the B01 report/request files up to date.
 3. Follow B01 ownership and frozen contracts. Its first preparation step is to inventory existing Core/_from* and CorePages contributions and consolidate the W0/A requests (including AtomicFile backup support and Clock's Quests fallback). Do not remove forwarders still used by pending packages or bypass the package's acceptance gates.
 4. On this PC use Windows `dotnet build WildWasteland.csproj -c Release -p:Deploy=false` and the applicable `python -B tools/refactor/` lints. Retain full compiler diagnostics; never infer code cleanliness from the old cloud warning count. CS0618 remains temporarily suppressed until Wave C. No WSL/Mono/game launch/deployment.
 5. Merge only completed, reviewed package branches into `refactor/main`; after each merge run `check_partials.py` and the Windows build, update this file and record outstanding cross-package requests. Historical cloud instructions apply only in cloud workspaces.
@@ -22,7 +22,8 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 | W0 | W0-A Core kernel | refactor/W0-A | done | 37c5df5 | contracts frozen; requests in requests/W0-A.md |
 | W0 | W0-B Core utilities | refactor/W0-B | done | 67f9b61 | requests in requests/W0-B.md |
 | A | A1..A8 | refactor/A1..A8 | done | all merged | compile OK (36 warnings); check_partials fixed 1 (EngineSim BindCompatibility, original was empty); questions answered as D18 |
-| B | B01..B18 | | not started | | |
+| B | B01 Core-Kernel | refactor/B01 | in progress | | isolated local worktree; see its state/B01.md |
+| B | B02..B18 | | not started | | start sequentially after B01 acceptance |
 | C | C | | not started | | |
 
 ## Coordinator decisions
@@ -33,7 +34,7 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 - 2026-10-22: W0-B questions: KeyMap.FromKeyCodeName was scheduled for deletion if unused (D12); removed in pre-B cleanup after confirming no callers. Broader WAV decoder accepted.
 
 ## Device mirror
-Originally a cloud mirror; Denis authorized local continuation on 2026-10-22. Preserve local commits and changes when synchronizing with cloud work; do not reset this checkout to an older cloud checkpoint. Local continuation started from 473fef9 (Wave A merged). Wave B remains not started.
+Originally a cloud mirror; Denis authorized local continuation on 2026-10-22. Preserve local commits and changes when synchronizing with cloud work; do not reset this checkout to an older cloud checkpoint. Local continuation started from 473fef9 (Wave A merged). B01 is now in progress in its isolated worktree; other Wave B packages remain pending.
 
 ## Open questions for Denis
 (none)
