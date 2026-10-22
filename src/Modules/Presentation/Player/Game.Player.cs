@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -90,20 +91,40 @@ namespace WildWasteland.Modules.PlayerBody
         private static readonly List<SkinnedMeshRenderer> _fpScan = new List<SkinnedMeshRenderer>();
         private static readonly Dictionary<long, bool> _fpVerdict = new Dictionary<long, bool>();
         private static Transform _fpArmsHolder;
+        private static int _fpScanRevision, _fpArmsRevision = -1;
+
+        /// <summary>(B05 perf, README 8 #10) the skinned renderers under the camera holder, rescanned at most once a second (or when the
+        /// holder changes) and shared by <see cref="GameArmsShown"/> and the arm skin (Arms.Tick).</summary>
+        internal static List<SkinnedMeshRenderer> HolderSkins
+        {
+            get
+            {
+                var holder = PlayerState.CameraHolder;
+                if (holder == null) { _fpScan.Clear(); return _fpScan; }
+                if (Time.unscaledTime >= _fpArmsScan || _fpArmsHolder != holder)
+                {
+                    _fpArmsScan = Time.unscaledTime + 1f;
+                    _fpArmsHolder = holder;
+                    holder.GetComponentsInChildren<SkinnedMeshRenderer>(true, _fpScan);   // (WW perf) List overload
+                    _fpScanRevision++;
+                }
+                return _fpScan;
+            }
+        }
+
         public static bool GameArmsShown
         {
             get
             {
-                if (CameraHolder == null) return false;
-                if (Time.unscaledTime >= _fpArmsScan || _fpArmsHolder != CameraHolder)
+                if (PlayerState.CameraHolder == null) return false;
+                var skins = HolderSkins;
+                if (_fpArmsRevision != _fpScanRevision)
                 {
-                    _fpArmsScan = Time.unscaledTime + 1f;
-                    _fpArmsHolder = CameraHolder;
+                    _fpArmsRevision = _fpScanRevision;
                     _fpArmRenderers.Clear();
-                    CameraHolder.GetComponentsInChildren<SkinnedMeshRenderer>(true, _fpScan);   // (WW perf) List overload, verdict memo per renderer+material
-                    for (int k = 0; k < _fpScan.Count; k++)
+                    for (int k = 0; k < skins.Count; k++)   // verdict memo per renderer+material
                     {
-                        var r = _fpScan[k];
+                        var r = skins[k];
                         if (r == null) continue;
                         var m = r.sharedMaterial;
                         if (m == null) continue;
@@ -117,7 +138,6 @@ namespace WildWasteland.Modules.PlayerBody
                         }
                         if (arm) _fpArmRenderers.Add(r);
                     }
-                    _fpScan.Clear();
                 }
                 for (int i = 0; i < _fpArmRenderers.Count; i++)
                 {

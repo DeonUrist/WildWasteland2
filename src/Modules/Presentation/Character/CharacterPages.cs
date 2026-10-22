@@ -79,6 +79,7 @@ namespace WildWasteland.Modules.Presentation
             l.Value("Ready (player set present)", YesNo(ModAPI.Ready));
             l.Value("Clips offered", ModAPI.Ready ? ModAPI.ClipNames().Length.ToString(CultureInfo.InvariantCulture) : "-");
             l.Value("Attached characters", ModAPI.Count.ToString(CultureInfo.InvariantCulture));
+            l.Toggle(CharacterSettings.AnimationLod);
             int shown = 0;
             for (int i = 0; i < ModAPI.Count && shown < 24; i++)
             {

@@ -36,6 +36,13 @@ namespace WildWasteland.Modules.PlayerBody
             return null;
         }
 
+        /// <summary>(B05 perf, README 8 #6) module start: opens the bundle one frame after Init instead of on the first clip request mid-play.</summary>
+        internal static System.Collections.IEnumerator Preload()
+        {
+            yield return null;
+            if (PresentationModule.Running) Load();
+        }
+
         private static void Load()
         {
             if (_tried) return;

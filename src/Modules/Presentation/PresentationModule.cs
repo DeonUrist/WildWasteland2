@@ -105,6 +105,7 @@ namespace WildWasteland.Modules.Presentation
             GunPose.Bind();
             AimLift.Load(DataDir);
             Scheduler.StartCoroutine(FemalePain.LoadClips());
+            Scheduler.StartCoroutine(Anims.Preload());
             AimTransition.Patch(this);
             FemalePain.Patch(this);
         }

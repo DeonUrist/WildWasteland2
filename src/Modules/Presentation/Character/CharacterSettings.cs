@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.Presentation
         internal static ConfigEntry<float> HipsDrift, ClipWalkSpeed, ClipRunSpeed, ClipCrouchSpeed, ThighSwing, KneeBend, ArmSwing, HipBob, CrouchDrop;
 
         // ------------------------------------------------------------------ NPC characters (ex [NPC] / [NPC / Brain|NpcAim|Behaviour])
-        internal static ConfigEntry<bool> DogAnimationsEnabled, DogsLieDown, ApocaplayerClips, AimPose;
+        internal static ConfigEntry<bool> DogAnimationsEnabled, DogsLieDown, ApocaplayerClips, AimPose, AnimationLod;
         internal static ConfigEntry<float> ReloadVolume, ReloadSoundRange, DogLieFrontLift;
 
         // ------------------------------------------------------------------ Women of Wasteland (ex [NPC / Women of Wasteland|Gungirl|Shoota])
@@ -194,6 +194,7 @@ namespace WildWasteland.Modules.Presentation
         {
             ApocaplayerClips = cfg.Tool("NPC animation", "ApocaplayerClips", true, "Gunmen are animated with the player's own clips and logic (8-way walk / run / sprint, crouch for rifles and pistols, aim and fire, reloads incl. one round at a time, pump / bolt after a burst, turns in place, hops) with the gun in the right hand at the player's weapon poses. false = the game's own clips (also a quick A/B for performance).");
             AimPose = cfg.Tool("NPC animation", "AimPose", true, "A gunman holding a shooting position keeps the gun up and aimed at you between bursts (the game lowered it to the idle pose and raised it only for the shot).");
+            AnimationLod = cfg.Tool("NPC animation", "AnimationLod", true, "Performance: a character animated with the player's clips that no camera sees and that is more than 40 m away updates its animation logic every third frame (the game still poses it every frame). false = every character every frame (as before 2.0).");
             ReloadVolume = cfg.Tool("NPC sounds", "ReloadVolume", 1f, "Volume of a gunman's reload sounds (the clips the player's copy of the gun plays while reloading). 0 = silent.", new AcceptableValueRange<float>(0f, 1f));
             ReloadSoundRange = cfg.Tool("NPC sounds", "ReloadSoundRange", 35f, "How far a reload is heard, m (linear falloff from 2 m).", new AcceptableValueRange<float>(5f, 100f));
             DogLieFrontLift = cfg.Tool("Dog poses", "DogLieFrontLift", 0f, "Lying quadrupeds: the front half (chest, front legs, head) is tilted up at the waist until the shoulders stand as high over the hips as they do standing. This adds to (or, negative, takes from) that height, m.", new AcceptableValueRange<float>(-0.15f, 0.3f));

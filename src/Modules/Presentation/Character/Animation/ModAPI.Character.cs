@@ -80,7 +80,7 @@ namespace WildWasteland.Modules.PlayerBody
             /// <summary>The weapon model this character holds (null = unarmed).</summary>
             internal Transform HeldWeapon { get { return _w; } }
             /// <summary>Animation update tier (0 = every frame; higher = cheaper, distance LOD).</summary>
-            internal int Tier { get { return 0; } }
+            internal int Tier { get { return _tier; } }
             public void Dispose()
             {
                 if (_disposed) return;
@@ -218,16 +218,13 @@ namespace WildWasteland.Modules.PlayerBody
                 {
                     if (_rigRoot == null) { _rigRoot = new GameObject("Apocaplayer.ModAPI.Rigs") { hideFlags = HideFlags.HideAndDontSave }; UnityEngine.Object.DontDestroyOnLoad(_rigRoot); }
                     var holder = new GameObject("Apocaplayer.ModAPI.RigHolder");
-                    holder.SetActive(false);                       // nothing in the copy wakes up before it is stripped
-                    var go = UnityEngine.Object.Instantiate(_a.gameObject, holder.transform, false);
+                    holder.SetActive(false);                       // nothing in the copy wakes up before it is complete
+                    // (B05 perf, README 8 #3) a Transform-only copy of the Animator object's hierarchy (same names, paths and local poses) plus
+                    // an Animator with the same avatar, instead of instantiating the whole NPC (FSMs, colliders, renderers) and stripping it
+                    var go = CopySkeleton(_a.transform, holder.transform);
                     go.name = "UpperRig." + _a.gameObject.name;
-                    var keep = go.GetComponent<Animator>();
-                    for (int pass = 0; pass < 3; pass++)
-                        foreach (var c in go.GetComponentsInChildren<Component>(true))
-                        {
-                            if (c == null || c is Transform || c == keep) continue;
-                            try { UnityEngine.Object.DestroyImmediate(c); } catch (Exception) { }
-                        }
+                    var keep = go.AddComponent<Animator>();
+                    keep.avatar = _a.avatar;
                     // nothing in the game may take the copy for the character: no tag, no layer, hidden
                     foreach (var t in go.GetComponentsInChildren<Transform>(true))
                     {
@@ -268,6 +265,17 @@ namespace WildWasteland.Modules.PlayerBody
                     _rg.Play();
                 }
                 catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "ModAPI: no upper rig for " + _a.gameObject.name + " (" + e.Message + ") - the legs' clips move its hands"); _pairs.Clear(); _rigGo = null; }
+            }
+
+            /// <summary>Copies <paramref name="src"/> and its whole child hierarchy as bare GameObjects (name and local pose only) under <paramref name="parent"/>.</summary>
+            private static GameObject CopySkeleton(Transform src, Transform parent)
+            {
+                var go = new GameObject(src.name);
+                var t = go.transform;
+                t.SetParent(parent, false);
+                t.localPosition = src.localPosition; t.localRotation = src.localRotation; t.localScale = src.localScale;
+                for (int i = 0; i < src.childCount; i++) CopySkeleton(src.GetChild(i), t);
+                return go;
             }
 
             private static string PathOf(Transform t, Transform root)
@@ -351,11 +359,12 @@ namespace WildWasteland.Modules.PlayerBody
                 if (_w != null) { _w.SetParent(_wParent, false); _w.localPosition = _wPos; _w.localRotation = _wRot; _w.localScale = _wScale; }
             }
 
+            private readonly Dictionary<string, float> _idleOnly = new Dictionary<string, float>(1);
             private void PoseWeapon()
             {
                 if (!_wMoved || _w == null) return;
                 Vector3 p; Quaternion r;
-                if (_p.PoseW.Count == 0) { var d = new Dictionary<string, float>(); d[IdleOf(_kind)] = 1f; GunPose.BlendFor(_wKey, d, IdleOf(_kind), _defPos, _defRot, out p, out r); }
+                if (_p.PoseW.Count == 0) { _idleOnly.Clear(); _idleOnly[IdleOf(_kind)] = 1f; GunPose.BlendFor(_wKey, _idleOnly, IdleOf(_kind), _defPos, _defRot, out p, out r); }   // (B05 perf) no Dictionary per frame
                 else GunPose.BlendFor(_wKey, _p.PoseW, IdleOf(_kind), _defPos, _defRot, out p, out r);
                 _w.localPosition = p; _w.localRotation = r;
             }
@@ -368,7 +377,9 @@ namespace WildWasteland.Modules.PlayerBody
                 if (_a == null) { Dispose(); return; }
                 if (_suspended) { _hasLast = false; return; }
                 if (!_a.isActiveAndEnabled) { _hasLast = false; return; }
-                try { TickInner(); }
+                float dt = Time.deltaTime;
+                if (SkipByLod(ref dt)) return;
+                try { TickInner(dt); }
                 catch (Exception e)
                 {
                     if (++_errors <= 3) Core.Log.Error(PresentationModule.Instance, "ModAPI " + _a.gameObject.name + ": " + e);
@@ -376,10 +387,34 @@ namespace WildWasteland.Modules.PlayerBody
                 }
             }
 
-            private void TickInner()
+            // ---- (B05 perf, README 8 #3) distance / visibility LOD: tier 1 = no renderer of the character visible and more than LodDistance
+            // from the player camera: the decision + procedural pass runs every LodStride-th frame with the frames' summed delta time (the
+            // Animator keeps evaluating the graph every frame, so no stale bones add up). Visible or near = tier 0 (every frame).
+            private const float LodDistance = 40f; private const int LodStride = 3;
+            private int _tier, _lodSkipped; private float _lodDt;
+            private SkinnedMeshRenderer[] _renderers;
+            /// <summary>True when this frame's tick is skipped by the LOD (its delta time is kept); otherwise <paramref name="dt"/> includes the skipped frames.</summary>
+            private bool SkipByLod(ref float dt)
+            {
+                if (!CharacterSettings.AnimationLod.Value || !ModAPI.CameraKnown || AnyVisible() || (ModAPI.CameraPosition - _root.position).sqrMagnitude < LodDistance * LodDistance)
+                { _tier = 0; dt += _lodDt; _lodDt = 0f; _lodSkipped = 0; return false; }
+                _tier = 1;
+                if (++_lodSkipped < LodStride && dt > 0f) { _lodDt += dt; return true; }
+                dt += _lodDt; _lodDt = 0f; _lodSkipped = 0;
+                return false;
+            }
+            /// <summary>True when any skinned renderer of the character was visible to a camera last frame.</summary>
+            private bool AnyVisible()
+            {
+                if (_renderers == null) _renderers = _a.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                for (int i = 0; i < _renderers.Length; i++) { var r = _renderers[i]; if (r != null && r.isVisible) return true; }
+                return _renderers.Length == 0;
+            }
+
+            private void TickInner(float dt)
             {
                 if (!_g.IsValid()) BuildGraph();
-                float dt = Time.deltaTime, now = Time.time;
+                float now = Time.time;
                 if (dt <= 0f) return;                                            // paused: the pose stays (nothing evaluated, nothing added)
                 if (_w == null && _wMoved) _wMoved = false;                      // the weapon model was destroyed
                 // velocity in its own frame

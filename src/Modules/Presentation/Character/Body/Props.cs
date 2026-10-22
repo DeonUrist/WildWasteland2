@@ -29,6 +29,7 @@ namespace WildWasteland.Modules.PlayerBody
             return n.Trim();
         }
 
+        private static float _nextBuild;
         private static void Build()
         {
             _built = true;
@@ -53,7 +54,8 @@ namespace WildWasteland.Modules.PlayerBody
         // NPC prop for the player's weapon (first-person object name), with a stand-in of the same kind when no NPC carries it
         public static Prop Find(string weapon)
         {
-            if (!_built || _catalog.Count == 0) Build();
+            // (B05 perf, README 8 #5) an empty catalog (prefabs not loaded yet) is rescanned at most every 2 s, not on every call
+            if (!_built || _catalog.Count == 0 && Time.unscaledTime >= _nextBuild) { _nextBuild = Time.unscaledTime + 2f; Build(); }
             if (string.IsNullOrEmpty(weapon) || KindOf(weapon) == Kind.None) return null;   // bare hands: nothing in them
             string w = Norm(weapon);
             Prop p;

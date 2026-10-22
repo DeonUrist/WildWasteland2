@@ -14,7 +14,18 @@ namespace WildWasteland.Modules.PlayerBody
     /// </summary>
     internal static partial class Crawling
     {
-        internal static bool Active { get { return PresentationModule.Running && !PlayerState.InCar && !PlayerState.Dead && PlayerState.MoveState == "Crawling"; } }
+        // (B05 perf, README 8 #1) asked by hooks on every GetButton/GetButtonDown/FSM event: evaluated once per frame, and again right
+        // after the Movement FSM enters a state (Stance), so the crawl starts / ends blocking input in the same frame as before
+        static int _activeFrame = -1; static bool _active;
+        internal static bool Active
+        {
+            get
+            {
+                if (_activeFrame == Time.frameCount) return _active;
+                _activeFrame = Time.frameCount;
+                return _active = PresentationModule.Running && !PlayerState.InCar && !PlayerState.Dead && PlayerState.MoveState == "Crawling";
+            }
+        }
         static Transform _camera;
         static PlayMakerFSM _weapons, _inHand;
         static bool _holstered;
@@ -31,7 +42,7 @@ namespace WildWasteland.Modules.PlayerBody
             Scheduler.EveryFrame(owner, "Presentation.Crawling", Tick, Phase.EarlyUpdate);
             Log.Always("[PlayerBody] Low Crawl ready: native Y stance, forward/back only, weapons holstered.");
         }
-        internal static void Reset() { _camera = null; _weapons = _inHand = null; _holstered = false; }
+        internal static void Reset() { _camera = null; _weapons = _inHand = null; _holstered = false; _activeFrame = -1; }
         static void Tick()
         {
             if (!Game.Ready) { Reset(); return; }
@@ -54,7 +65,12 @@ namespace WildWasteland.Modules.PlayerBody
             }
         }
         static void Stance(Fsm fsm, FsmState state)
-        { if (PlayerState.MovementFsm != null && fsm == PlayerState.MovementFsm.Fsm && state.Name == "Crawling" && Game.Ready && !SaveBus.Busy) Holster(); }
+        {
+            var movement = PlayerState.MovementFsm;
+            if (movement == null || fsm != movement.Fsm) return;
+            _activeFrame = -1;   // the stance changed: Active is evaluated again
+            if (state.Name == "Crawling" && Game.Ready && !SaveBus.Busy) Holster();
+        }
         static bool HeldButton(GetButton action)
         {
             if (!Active || action.buttonName.Value != "Fire" || action.Owner == null || PlayerState.PlayerCamera == null || !action.Owner.transform.IsChildOf(PlayerState.PlayerCamera)) return true;
@@ -76,7 +92,8 @@ namespace WildWasteland.Modules.PlayerBody
         }
         static bool WeaponEvent(Fsm fsm, FsmEvent ev, FsmEventData data)
         {
-            if (!Active || ev == null) return true;
+            // (B05 perf) Fsm.ProcessEvent runs for every FSM event: only the two weapon FSMs matter, compared by reference first
+            if (ev == null || (_inHand == null || fsm != _inHand.Fsm) && (_weapons == null || fsm != _weapons.Fsm) || !Active) return true;
             if (_inHand != null && fsm == _inHand.Fsm) return ev.Name != "Activate" && !ev.Name.StartsWith("Slot_", StringComparison.Ordinal);
             if (_weapons != null && fsm == _weapons.Fsm) return (ev.Name == "weapon off" || !ev.Name.StartsWith("weapon ", StringComparison.Ordinal)) && !ev.Name.StartsWith("Slot_", StringComparison.Ordinal);
             return true;

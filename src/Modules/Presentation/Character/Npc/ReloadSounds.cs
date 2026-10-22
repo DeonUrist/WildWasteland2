@@ -54,7 +54,19 @@ namespace WildWasteland.Modules.NPC
             return list;
         }
 
-        internal static void Clear() { _clips.Clear(); }
+        /// <summary>Forgets the per-weapon clip lists and destroys the pooled sound sources (NPC scene reset).</summary>
+        internal static void Clear()
+        {
+            _clips.Clear();
+            for (int i = 0; i < _pool.Count; i++) if (_pool[i] != null) UnityEngine.Object.Destroy(_pool[i].gameObject);
+            _pool.Clear();
+        }
+
+        // (B05 perf, README 6.1) pooled 3D sources instead of a new GameObject per sound: a free (not playing) source is reused, at most
+        // PoolMax exist (all busy: the one started longest ago is restarted)
+        private const int PoolMax = 16;
+        private static readonly List<AudioSource> _pool = new List<AudioSource>();
+        private static int _next;
 
         // called every frame while the NPC reloads: plays clip i at (i + 0.5) / count of the reload time
         internal static void Tick(Brain.Npc n, float now)
@@ -70,16 +82,33 @@ namespace WildWasteland.Modules.NPC
             Play(clip, at, CharacterSettings.ReloadVolume.Value);
         }
 
+        /// <summary>Plays one reload clip as a linear-rolloff 3D sound at <paramref name="at"/> on a pooled source.</summary>
         private static void Play(AudioClip clip, Vector3 at, float volume)
         {
-            var go = new GameObject("NPCAI.ReloadSound");
-            go.transform.position = at;
-            var src = go.AddComponent<AudioSource>();
+            var src = Source();
+            src.transform.position = at;
             src.clip = clip; src.volume = Mathf.Clamp01(volume); src.spatialBlend = 1f;
             src.rolloffMode = AudioRolloffMode.Linear; src.minDistance = 2f; src.maxDistance = Mathf.Max(5f, CharacterSettings.ReloadSoundRange.Value);
             src.dopplerLevel = 0f;
             src.Play();
-            UnityEngine.Object.Destroy(go, clip.length + 0.1f);
+        }
+
+        /// <summary>A free pooled source (dead entries dropped), a new one while the pool is below PoolMax, else the oldest one.</summary>
+        private static AudioSource Source()
+        {
+            for (int i = _pool.Count - 1; i >= 0; i--) if (_pool[i] == null) _pool.RemoveAt(i);
+            for (int i = 0; i < _pool.Count; i++) if (!_pool[i].isPlaying) return _pool[i];
+            if (_pool.Count < PoolMax)
+            {
+                var go = new GameObject("NPCAI.ReloadSound");
+                var created = go.AddComponent<AudioSource>();
+                created.playOnAwake = false;
+                _pool.Add(created);
+                return created;
+            }
+            var oldest = _pool[_next % _pool.Count]; _next++;
+            oldest.Stop();
+            return oldest;
         }
     }
 }

@@ -183,8 +183,16 @@ namespace WildWasteland.Modules.PlayerBody
         internal static Character CharacterAt(int i) { return i >= 0 && i < _chars.Count ? _chars[i] : null; }
 
         // every LateUpdate (job "ModAPI characters", after the Animators): animate them all; a destroyed Animator ends its character
+        /// <summary>Player camera position of this LateUpdate (the characters' LOD distance), valid while <see cref="CameraKnown"/>.</summary>
+        internal static Vector3 CameraPosition;
+        /// <summary>True when the player camera was found this LateUpdate.</summary>
+        internal static bool CameraKnown;
+
         internal static void LateTick()
         {
+            var cam = PlayerState.PlayerCamera;
+            CameraKnown = cam != null;
+            if (CameraKnown) CameraPosition = cam.position;
             for (int i = _chars.Count - 1; i >= 0; i--)
             {
                 var c = _chars[i];

@@ -25,8 +25,10 @@ namespace WildWasteland.Modules.PlayerBody
             var tex = Model.Arms();
             if (tex == null) return;
             int added = 0;
-            foreach (var smr in PlayerState.CameraHolder.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            var skins = Game.HolderSkins;   // (B05 perf) the camera-holder scan shared with Game.GameArmsShown (at most once a second)
+            for (int k = 0; k < skins.Count; k++)
             {
+                var smr = skins[k];
                 if (smr == null || _orig.ContainsKey(smr)) continue;
                 var m = smr.sharedMaterial;
                 if (m == null || !m.name.StartsWith("Player2")) continue;
