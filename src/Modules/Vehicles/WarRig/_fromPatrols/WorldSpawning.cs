@@ -5,10 +5,8 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols.WarRig
 {
-    internal static class WorldSpawning
+    internal static partial class WorldSpawning
     {
-        internal static readonly List<GameObject> NaturalRigs = new List<GameObject>();
-        internal static float NaturalNoticeUntil;
         private static Bounds clearance;
         private static Vector3 modelOffset;
         private static bool clearanceReady;
@@ -69,6 +67,5 @@ namespace WildWasteland.Modules.Patrols.WarRig
             var prefab = go != null ? go.GetComponent<ES3Prefab>() : null;
             return prefab != null && prefab.prefabId == Factory.PrefabId;
         }
-
     }
 }
