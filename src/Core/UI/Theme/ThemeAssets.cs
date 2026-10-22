@@ -19,6 +19,7 @@ namespace WildWasteland.Core.UI
         private static readonly HashSet<string> Missing = new HashSet<string>();
         private static Texture2D _white;
 
+        /// <summary>Loads and caches an owned theme texture from the external resource index.</summary>
         internal static Texture2D Tex(string name)
         {
             Texture2D t;
@@ -54,6 +55,7 @@ namespace WildWasteland.Core.UI
         }
 
         // Vertical gradient, white at the top to `bottom` grey (bar fill = colour * gradient, as linear-gradient(c, shade(c)) in the mockup).
+        /// <summary>Creates a cached vertical alpha gradient for theme shading.</summary>
         internal static Texture2D VGradient(float bottom)
         {
             var key = "vgrad" + bottom.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
@@ -64,6 +66,7 @@ namespace WildWasteland.Core.UI
         }
 
         // Compass line: horizontal fade (0..12% / 88..100%) x vertical colour ramp.
+        /// <summary>Builds the compass tick-line texture used by theme presentation.</summary>
         internal static Texture2D CompassLine()
         {
             Texture2D t; if (Embedded.TryGetValue("cmpline", out t) && t != null) return t;
@@ -80,6 +83,7 @@ namespace WildWasteland.Core.UI
             t.Apply(false, true); Embedded["cmpline"] = t; return t;
         }
         // Soft shadow under the line (box-shadow 0 2px 4px rgba(0,0,0,.6)).
+        /// <summary>Builds the compass background shadow texture.</summary>
         internal static Texture2D CompassShadow()
         {
             Texture2D t; if (Embedded.TryGetValue("cmpshadow", out t) && t != null) return t;
@@ -93,12 +97,14 @@ namespace WildWasteland.Core.UI
             }
             t.Apply(false, true); Embedded["cmpshadow"] = t; return t;
         }
+        /// <summary>Applies the existing smooth fade curve to a normalized position.</summary>
         internal static float Fade(float t)
         {
             if (t < .12f) return Mathf.Clamp01(t / .12f);
             if (t > .88f) return Mathf.Clamp01((1f - t) / .12f);
             return 1f;
         }
+        /// <summary>Creates the shared caret indicator texture.</summary>
         internal static Texture2D Caret()
         {
             Texture2D t; if (Embedded.TryGetValue("caret", out t) && t != null) return t;
@@ -115,6 +121,7 @@ namespace WildWasteland.Core.UI
             t.Apply(false, true); Embedded["caret"] = t; return t;
         }
 
+        /// <summary>Destroys cached owned textures and clears generated texture handles.</summary>
         internal static void Dispose()
         {
             foreach (var t in Embedded.Values) if (t != null) UnityEngine.Object.Destroy(t);
@@ -122,6 +129,7 @@ namespace WildWasteland.Core.UI
             if (_white != null) UnityEngine.Object.Destroy(_white); _white = null;
         }
 
+        /// <summary>Loads the standard menu theme textures before their first presentation.</summary>
         internal static void Preload()
         {
             const string prefix = "Core.Theme.";

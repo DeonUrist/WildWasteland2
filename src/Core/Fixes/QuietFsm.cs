@@ -21,6 +21,7 @@ namespace WildWasteland.Core
         /// <summary>Removes this fix's hooks and patches so installation can be repeated safely.</summary>
         internal static void Remove() { Owner.Remove(); _installed = false; _buf.Clear(); _hidden = 0; }
 
+        /// <summary>Installs native FSM lookup and performance-warning guards once.</summary>
         internal static void Install()
         {
             if (_installed) return; _installed = true;
@@ -31,8 +32,10 @@ namespace WildWasteland.Core
             Patches.Patch(Owner, target, prefix: AccessTools.Method(typeof(QuietFsm), nameof(Prefix)));
         }
 
+        /// <summary>Allows native performance warnings only at the deep diagnostic logging level.</summary>
         private static void PerformanceWarnings(ref bool __result) { __result = __result && Log.L2; }
 
+        /// <summary>Preserves native named-FSM lookup and fallback while hiding missing-FSM warnings below level two.</summary>
         private static bool Prefix(GameObject __0, string __1, ref PlayMakerFSM __result)
         {
             if (Log.L2) return true;

@@ -17,6 +17,7 @@ namespace WildWasteland.Core
         /// <summary>Removes this fix's hooks and patches so installation can be repeated safely.</summary>
         internal static void Remove() { Owner.Remove(); _installed = false; }
 
+        /// <summary>Registers quick-slot charge merging unless the standalone HealthStacks plugin is active.</summary>
         internal static void Install()
         {
             if (_installed) return; _installed = true;
@@ -33,6 +34,7 @@ namespace WildWasteland.Core
 
     internal static class TakeItemUsePatch
     {
+        /// <summary>Handles Use on an occupied medical slot only when compatible charges can be transferred.</summary>
         internal static bool Prefix(GetButtonDown __instance)
         {
             var fsm = __instance.Fsm;
@@ -56,6 +58,7 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Transfers available matching charges up to the native quick-slot capacity and updates both items.</summary>
         static bool Merge(Fsm takeFsm, GameObject slot)
         {
             var itemVar = takeFsm.Variables.GetFsmGameObject("Item");
@@ -95,12 +98,14 @@ namespace WildWasteland.Core
             return true;
         }
 
+        /// <summary>Finds the native item quantity variable, or returns null for unsupported objects.</summary>
         static FsmInt QuantityVar(GameObject go)
         {
             var f = FsmUtil.Find(go, "Quantity");
             return f != null ? f.FsmVariables.GetFsmInt("Quantity") : null;
         }
 
+        /// <summary>Reads the native item identity used to reject mismatched medical supplies.</summary>
         static string ItemId(GameObject go)
         {
             var f = FsmUtil.Find(go, "ID");
@@ -109,6 +114,7 @@ namespace WildWasteland.Core
         }
 
         // SlotEmptyFull writes the counter only when it enters "full": write it directly and keep its cached var in sync.
+        /// <summary>Synchronizes the native quick-slot quantity variable and displayed counter.</summary>
         static void RefreshSlotUi(GameObject slot, int quantity)
         {
             var sef = FsmUtil.Find(slot, "SlotEmptyFull");
@@ -127,6 +133,7 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Reuses the native pickup state sound after a charge transfer.</summary>
         static void PlayPickupSound(Fsm takeFsm, GameObject slot)
         {
             var st = FindState(takeFsm, "takeWeapon");
@@ -141,6 +148,7 @@ namespace WildWasteland.Core
             }
         }
 
+        /// <summary>Finds an exact native state name without changing FSM state.</summary>
         static FsmState FindState(Fsm fsm, string name)
         {
             foreach (var s in fsm.States)

@@ -60,6 +60,7 @@ namespace WildWasteland.Core
         private static bool BeforeMenuToggle(bool ____open) { return ____open || !LoadingProgress.MenusBlocked; }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
+        /// <summary>Queues the existing installer disable operation, or records a disabled-plugin manifest when its installer is unavailable.</summary>
         internal static bool QueueDisable(PluginInfo info, out string error)
         {
             error = null;
@@ -122,6 +123,7 @@ namespace WildWasteland.Core
 
         // Updates.Stage logs disk-write failures rather than throwing; only promise a restart after the operation is saved.
         [MethodImpl(MethodImplOptions.NoInlining)]
+        /// <summary>Persists a disabled-plugin manifest through the optional Apocasetter path API.</summary>
         static bool DisableSaved(Assembly assembly, string guid, out string error)
         {
             error = "Apocasetter could not save the disable operation";

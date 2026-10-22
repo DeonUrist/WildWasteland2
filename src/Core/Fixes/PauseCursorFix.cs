@@ -21,6 +21,7 @@ namespace WildWasteland.Core
         { if (_installed) return; _installed = true; Hooks.EnterState.Postfix(Owner, AfterEnterState); }
         /// <summary>Removes the native state observer.</summary>
         internal static void Remove() { Owner.Remove(); _installed = false; }
+        /// <summary>Stops the delayed native GUI cursor override immediately when the pause menu returns to play.</summary>
         internal static void AfterEnterState(Fsm fsm, FsmState state)
         {
             if (fsm == null || state == null) return;

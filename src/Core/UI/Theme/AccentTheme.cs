@@ -16,27 +16,35 @@ namespace WildWasteland.Core.UI
         internal static ConfigEntry<string> Setting;
         internal static int Index;
         private static readonly HashSet<AccentTint> Graphics = new HashSet<AccentTint>();
+        /// <summary>Owned panel texture and bounded recoloring progress with its immutable original pixels.</summary>
         private sealed class Panel { internal Texture2D Texture; internal Color32[] Original, Pixels; internal int Position, Choice; }
         private static readonly List<Panel> Panels = new List<Panel>();
 
+        /// <summary>Resolves the configured accent and subscribes to later changes.</summary>
         internal static void Init()
         {
             Index = Math.Max(0, Array.IndexOf(Names, Setting.Value));
             Setting.SettingChanged += Changed;
         }
+        /// <summary>Unsubscribes the accent setting and releases panel recoloring references.</summary>
         internal static void Clear() { Setting.SettingChanged -= Changed; Panels.Clear(); }
+        /// <summary>Tracks a live accent mesh effect for setting-change invalidation.</summary>
         internal static void Register(AccentTint tint) { Graphics.Add(tint); }
+        /// <summary>Stops tracking a disabled accent mesh effect.</summary>
         internal static void Remove(AccentTint tint) { Graphics.Remove(tint); }
+        /// <summary>Creates a UI graphic together with the shared accent-color mesh effect.</summary>
         internal static T AddAccent<T>(this GameObject go) where T : Graphic
         {
             var graphic = go.AddComponent<T>(); go.AddComponent<AccentTint>(); return graphic;
         }
+        /// <summary>Selects the new accent, invalidates live graphics and restarts owned panel recoloring.</summary>
         private static void Changed(object sender, EventArgs args)
         {
             Index = Math.Max(0, Array.IndexOf(Names, Setting.Value));
             foreach (var graphic in Graphics) if (graphic != null) graphic.Refresh();
             foreach (var panel in Panels) { panel.Position = 0; panel.Choice = -1; }
         }
+        /// <summary>Maps the original gold or border color into the selected accent while preserving alpha.</summary>
         internal static Color Resolve(Color original)
         {
             if (Index == 0) return original;
@@ -46,12 +54,14 @@ namespace WildWasteland.Core.UI
             if (!gold && !border) return original;
             var color = border ? Color.Lerp(Colors[Index], Color.white, .55f) : Colors[Index]; color.a = original.a; return color;
         }
+        /// <summary>Retains original pixels for reversible recoloring of an owned panel texture.</summary>
         internal static void RegisterPanel(Texture2D texture)
         {
             var original = texture.GetPixels32();
             Panels.Add(new Panel { Texture = texture, Original = original, Pixels = new Color32[original.Length], Choice = 0 });
         }
         // Only owned panel textures are recolored, in the existing scheduler's bounded slices.
+        /// <summary>Recolors at most 256 pixels of one pending panel in the current scheduler slice.</summary>
         internal static bool Step()
         {
             foreach (var panel in Panels)
@@ -78,9 +88,13 @@ namespace WildWasteland.Core.UI
 
     public sealed class AccentTint : BaseMeshEffect
     {
+        /// <summary>Registers the live mesh effect after the native UI enable callback.</summary>
         protected override void OnEnable() { base.OnEnable(); AccentTheme.Register(this); }
+        /// <summary>Unregisters the mesh effect before the native UI disable callback.</summary>
         protected override void OnDisable() { AccentTheme.Remove(this); base.OnDisable(); }
+        /// <summary>Invalidates graphic vertices after an accent change.</summary>
         internal void Refresh() { if (graphic != null) graphic.SetVerticesDirty(); }
+        /// <summary>Recolors existing UI vertices using the shared accent mapping.</summary>
         public override void ModifyMesh(VertexHelper mesh)
         {
             if (!IsActive() || AccentTheme.Index == 0) return;
