@@ -16,7 +16,7 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 10. WorldIndex
 - [x] 11. WorldTiles
 - [x] 12. FsmIndex
-- [ ] 13. FsmPause
+- [x] 13. FsmPause
 - [ ] 14. PrefabCatalog
 - [ ] 15. ItemSpawner.RegisterSaved
 - [ ] 16. Clock
@@ -28,10 +28,10 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-f385a97 (COMPILE OK; state line updated in next commit)
+6d6d8c9 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 13 FsmPause: read Performance FsmEdits FsmPause + FsmSleepFeature ManualUpdate.
+Item 14 PrefabCatalog: read Patrols Prefabs, Towns PoiPropCatalog/PoiSpawnCatalog, Quests FindPrefab/ScanForPrefab, Patrols PickupCatalog.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -49,3 +49,4 @@ Item 13 FsmPause: read Performance FsmEdits FsmPause + FsmSleepFeature ManualUpd
 - WorldTiles: OnPrepare/OnFinalized(worker)/OnApplied/OnMoved/OnEdited with owner, copy-on-write handler arrays, per-handler try/catch, worker errors logged on main thread; Edited source = VistasWorldGen.TerrainEdited += WorldTiles.EditedSource (Wave A wiring).
 - WorldIndex: WatchName/WatchPrefix/WatchComponent<T>/Watch(filter) + PruneBelow; Found lists with sliced destroyed-sweep (Removed(id)); roots from scene load, WorldTiles Applied, QueueRoot, Rescan; Core sliced job 'Core.WorldIndex' 300us; self-subscribes SceneManager.sceneLoaded. NOTE: compile.sh prints COMPILE OK from a stale outdir on failure - always use a fresh outdir / grep 'Compilation succeeded'.
 - FsmIndex: IFsmIndexProvider (PM1 registers in Wave A); ByOwner fallback = GetComponents filtered isActiveAndEnabled; ByName/All via Track(owner,name) and one sliced FsmList pass (256/step, 0.5 s) publishing atomically; Int/Float/String/Bool/Go var helpers.
+- FsmPause: verbatim Performance logic + FsmSleep bit 8, dynamic Bit(owner, reason), Own/ReleaseAll(owner), Paused, ClearCopiedFlag (Awake postfix rule).
