@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Quests
     internal sealed partial class Plugin : IQuestApi
     {
         internal string DataDir;
+        QuestsModule _saveOwner;
         int _generation;
         string _sessionSlot;
         bool _newWorld;
@@ -35,6 +36,7 @@ namespace WildWasteland.Modules.Quests
         internal void Start(QuestsModule owner, HireSettings hiring, VoiceSettings voices)
         {
             ModApi.Provide<IQuestDiagnosticSource>(owner, new QuestDiagnosticSource());
+            _saveOwner = owner;
             I = this; logStarted = true; logged.Clear(); DataDir = owner.Dir; _generation++;
             foreach (var file in QuestContent.Import(DataDir)) Core.Log.Always("[Quests] imported missing content: " + file);
             ApplyTakeoverSettings(); ApplyFactionSettings(); ParseGenTypes();
@@ -104,15 +106,10 @@ namespace WildWasteland.Modules.Quests
                 _newWorld = false; RefreshLines(Game.Player()); SnapshotRows();
                 Core.Log.Always("[Quests] World ready: " + _sessionSlot + ", " + book.Active.Count + " active quests" + (saveBlocked ? "; unreadable data protected" : ""));
             }
-            // Write both cached copies and disk before native flushing; save-and-quit never reaches AfterSave.
-            if ((state == "wait" || state == "SaveGame") && ready && _sessionSlot == SaveBus.Slot)
+            // Capture before native serialization; the shared transaction verifies both keys before publication.
+            if (state == "SaveGame" && ready && _sessionSlot == SaveBus.Slot)
             {
-                SaveBook(); CrewHistory.Save(_sessionSlot, CrewHistory.Snapshot());
-                if (state == "SaveGame")
-                {
-                    int generation = _generation; string slot = _sessionSlot;
-                    SaveBus.AfterSave(delegate { if (I == this && ready && generation == _generation && slot == _sessionSlot && slot == SaveBus.Slot) SaveBook(); });
-                }
+                SaveBook(); CrewHistory.Save(_saveOwner, _sessionSlot);
             }
         }
         void CaptureBook()

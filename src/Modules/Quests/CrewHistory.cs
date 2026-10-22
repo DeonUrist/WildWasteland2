@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 using WildWasteland.Core;
 
@@ -9,8 +8,9 @@ namespace WildWasteland.Modules.Quests
     internal static class CrewHistory
     {
         private static readonly HashSet<string> Names = new HashSet<string>(StringComparer.Ordinal);
-        private static bool _fresh;
-        internal static void Clear() { Names.Clear(); _fresh = false; }
+        private const string SaveKey = "WildWasteland.Quests.CrewHistory";
+        private static bool _fresh, _readFailed;
+        internal static void Clear() { Names.Clear(); _fresh = false; _readFailed = false; }
         internal static void Restore(string[] names) { if (names != null) foreach (string name in names) Names.Add(name); }
         internal static void Begin(bool fresh) { Clear(); _fresh = fresh; }
         internal static void Observe(GameObject npc)
@@ -38,28 +38,33 @@ namespace WildWasteland.Modules.Quests
             if (fsms != null) foreach (var f in fsms) if (f != null && f.FsmName == "Health") Observe(f.gameObject);
             var names = new string[Names.Count]; Names.CopyTo(names); return names;
         }
-        private static string FileName(string slot)
-        { return Path.Combine(Path.Combine(Assets.ModuleConfigDir("Quests"), "Saves"), slot + ".crew.txt"); }
+        /// <summary>Loads former crew identities from the selected world save only.</summary>
         internal static void Load(bool fresh)
         {
             fresh |= _fresh; Clear(); string slot = SaveBus.Slot; if (fresh || slot == null) return;
             try
             {
-                string path = FileName(slot);
-                if (File.Exists(path)) foreach (string name in File.ReadAllLines(path)) if (!string.IsNullOrEmpty(name)) Names.Add(name);
+                string value = SaveBus.Key(SaveKey).Read(slot);
+                if (value == null) return;
+                if (!value.StartsWith("WW-CREW-1\n", StringComparison.Ordinal)) throw new InvalidOperationException("Invalid crew history");
+                foreach (string encoded in value.Substring(10).Split('\n'))
+                    if (encoded.Length > 0) Names.Add(System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(encoded)));
             }
-            catch (Exception e) { Log.Warn("[Quests] Could not load former crew: " + e.Message); }
+            catch (Exception e) { _readFailed = true; Log.Warn("[Quests] Could not load former crew; saving blocked: " + e.Message); }
         }
-        internal static void Save(string slot, string[] names)
+        /// <summary>Stages former crew identities in the world-save transaction.</summary>
+        internal static void Save(IModule owner, string slot)
         {
-            if (slot == null) return;
+            if (_readFailed) { SaveBus.ReportFailure(owner, "Former crew history is unreadable; preserving the previous save."); return; }
             try
             {
-                string path = FileName(slot); Directory.CreateDirectory(Path.GetDirectoryName(path));
-                File.WriteAllLines(path + ".tmp", names);
-                AtomicFile.Replace(path + ".tmp", path);
+                var names = Snapshot();
+                var text = new System.Text.StringBuilder("WW-CREW-1\n");
+                Array.Sort(names, StringComparer.Ordinal);
+                foreach (string name in names) text.Append(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(name))).Append('\n');
+                SaveBus.Key(SaveKey).Write(owner, slot, text.ToString());
             }
-            catch (Exception e) { Log.Warn("[Quests] Could not save former crew: " + e.Message); }
+            catch (Exception e) { SaveBus.ReportFailure(owner, "Former crew save failed: " + e.Message); Log.Warn("[Quests] Could not save former crew: " + e.Message); }
         }
     }
 }

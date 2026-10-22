@@ -23,22 +23,7 @@ namespace WildWasteland.Modules.Towns
                 using (var hash = SHA256.Create()) writer.Write(hash.ComputeHash(payload));
                 writer.Flush(); value = Convert.ToBase64String(stream.ToArray());
             }
-            var cache = new ES3Settings(slot) { location = ES3.Location.Cache };
-            ES3.Save<string>(Key, value, cache);
-            // Native save actions flush their cache before AfterSave. Repeat into that same cache,
-            // then verify the disk record while the robust working-file transaction is still open.
-            SaveBus.AfterSave(() =>
-            {
-                try
-                {
-                    ES3.Save<string>(Key, value, cache); ES3.StoreCachedFile(slot);
-                    var disk = new ES3Settings(slot) { location = ES3.Location.File };
-                    if (!ES3.KeyExists(Key, disk) || ES3.Load<string>(Key, disk) != value)
-                        throw new IOException("Embedded Towns record did not persist");
-                    Log.Always("[Towns] embedded save verified: " + slot + "; layouts, spawners and interior identities participate in the world transaction/backups.");
-                }
-                catch (Exception error) { SaveBus.ReportFailure("Embedded Towns save failed: " + error.Message); Log.Error("[Towns] embedded save verification failed", error); }
-            });
+            SaveBus.Key(Key).Write(null, slot, value);
         }
         internal static Dictionary<string, TownRecord> Load(string slot)
         {

@@ -68,7 +68,7 @@ namespace WildWasteland.Core.Events
         public bool Ok;
     }
 
-    /// <summary>SaveLoadGame returned to isPlay after a save (sidecar writes still go through SaveBus.AfterSave). Local only.</summary>
+    /// <summary>Native serialization returned to isPlay; embedded records are still verified before save publication. Local only.</summary>
     public struct SaveEnd : IModEvent
     {
         /// <summary>Slot file name or null.</summary>

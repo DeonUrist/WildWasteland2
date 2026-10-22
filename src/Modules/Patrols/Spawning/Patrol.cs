@@ -20,7 +20,6 @@ namespace WildWasteland.Modules.Patrols
         // WW: was Update (registered as the module's first Update job)
         internal void Tick()
         {
-            PatrolPersistence.Tick();
             if (!InGame()) return;
             Ram.Tick();
             ExitSpeed.Tick();

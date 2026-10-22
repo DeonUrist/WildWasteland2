@@ -120,7 +120,7 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Dog Companion", DogCompanionCompat.Present ? (NpcaiSettings.DogCompanionCompatEnabled.Value ? I(DogCompanionCompat.Count) + " companion(s) driven" : "installed, compatibility off (F6)") : "not installed");   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
             }, NSec("Behaviour"), NSec("Burrow"), NSec("Hunt"), NSec("Ambush"), NSec("Pounce"), NSec("Dogs")));
 
-            pages.Add(new LivePage(m, "Hazards (nests, webs, storms)", "Spider nests and their webs (built in slices while you are far away, layouts kept in config/WildWasteland/NPCAI/nest-layouts.txt) and sandstorms.", l =>
+            pages.Add(new LivePage(m, "Hazards (nests, webs, storms)", "Spider nests and their webs (built in slices while you are far away, layouts kept inside the world save) and sandstorms.", l =>
             {
                 l.Value("Nests", I(Nests.Count) + " (" + I(Nests.Ready) + " built), " + I(Nests.Pending) + " spider(s) not placed yet");
                 l.Value("Webs", I(Webs.Count));

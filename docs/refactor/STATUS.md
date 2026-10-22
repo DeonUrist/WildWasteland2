@@ -5,6 +5,10 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 
 ## Current local execution (2026-10-22, resumed after Claude)
 
+**Save persistence correction (D20):** all world records, save descriptions and thumbnails now reside in ES3. External module save-state readers/writers/registrations were removed; authored content/settings/derived geometry caches and recovery journals remain external. See `reports/save-file-only.md`. Preserve this correction when integrating older B10/B13 checkpoints; their sidecar implementations are superseded. Full refactor acceptance is still pending.
+
+Validation for D20: Windows `dotnet build WildWasteland.csproj -c Release -p:Deploy=false` succeeded with **0 warnings, 0 errors**; partial check **183 declared, 0 missing implementations**. Source/whitespace review passed. No deployment or in-game acceptance.
+
 Denis authorized completing the remaining refactor locally. This section supersedes historical execution/status rows below. Base `ea39ee4` contains Claude batches 1 and 2. B01-B09, B12, B15 and B17 have completed package passes, with outstanding integration requests still to close; green `refs-ok` exemptions are not final dependency acceptance.
 
 - Active parallel packages: B10 HUD (`../WW2-B10`, `codex/b10-hud`), B11 Patrols (`../WW2-B11`, `codex/b11-patrols`), B13 POI (`../WW2-B13`, `codex/b13-poi`). Coordinator handles Core extensions, B14 Survival and merges. B16 Tools/Developer and B18 Quests follow as slots free up.

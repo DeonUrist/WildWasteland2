@@ -1,5 +1,7 @@
 # Refactor work packages (parallel agents)
 
+**Persistence override:** README D20 (2026-10-22) supersedes all sidecar requirements in this document and prior package reports. World state, save metadata and thumbnails belong inside ES3. Use the common verified `SaveBus.Key` transaction; remove sidecar files/registrations/fallbacks. Do not reintroduce these when merging older agent checkpoints. Recovery journals and authored data/settings are separate from world persistence.
+
 How to run: a coordinator (Denis, or one lead Claude session) starts the agents of one wave in parallel, each with the brief below copied as its task. Each agent works on its own branch in its own git worktree. The coordinator merges finished branches into `refactor/main`, runs the gates, and only then starts the next wave.
 
 ```
