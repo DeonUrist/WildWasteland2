@@ -44,20 +44,18 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Retains the native engine and bounded crank deadline for one requested switch.</summary>
         private sealed class StartRequest { internal EngineComponent Engine; internal float Until; }
 
-        /// <summary>Init part: resets the bridge state, tries to install now and keeps trying once a second until Engine Sim is found.</summary>
+        /// <summary>Defers native detection/discovery to a runner frame or loaded-scene callback, keeping Plugin.Awake free of scene queries.</summary>
         public override void Init()
         {
             _owner = this; _ready = _dispatch = _attempted = false; _playerFrame = -1;
-            TryInstall();
             Scheduler.Interval(this, "Engine Sim discovery", 1f, TryInstall);
-            if (!_attempted) Log.Always("[EngineSimCompat] Engine Sim not loaded; compatibility idle");
         }
 
+        /// <summary>Detects Engine Sim on a loaded runner frame and resolves the native surface before installing owned callbacks.</summary>
         [MethodImpl(MethodImplOptions.NoInlining)]
-        /// <summary>Detects Engine Sim and resolves the reflective native surface before installing owned callbacks.</summary>
         private static void TryInstall()
         {
-            if (_attempted) return;
+            if (_attempted || SceneManager.sceneCount == 0 || !SceneManager.GetActiveScene().isLoaded) return;
             BepInEx.PluginInfo info;
             if (!Chainloader.PluginInfos.TryGetValue("com.burner.apocalypter.enginesim", out info) || ReferenceEquals(info.Instance, null)) return;
             _attempted = true;
@@ -286,7 +284,7 @@ namespace WildWasteland.Modules.Compatibility
             Starts.Clear();
         }
         /// <summary>Scene part: reseeds the discovery cache and forgets start requests and the player's switch.</summary>
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (_ready) EngineDiscovery.Init(_owner); ClearStarts(); _playerSwitch = null; _playerFrame = -1; }
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (_ready) EngineDiscovery.Init(_owner); else TryInstall(); ClearStarts(); _playerSwitch = null; _playerFrame = -1; }
         /// <summary>Shutdown part: withdraws the ignition provider and clears every cached Engine Sim reference.</summary>
         public override void Shutdown()
         {
