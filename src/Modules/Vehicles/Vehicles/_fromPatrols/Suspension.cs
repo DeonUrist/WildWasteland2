@@ -16,27 +16,8 @@ namespace WildWasteland.Modules.Patrols
     // model is stretched on X and moved up, the lift-kit hinge moves with it, and each hinge_wheel_* mount (what NWH casts its suspension
     // from) follows the end of its axle (width) and the height. Only a car with a lift kit on hinge_suspension takes an adjustment: the
     // game's checkSuspension decides stock / lifted by that child, and the tool itself needs the kit (Denis: "no kit, no adjustment").
-    internal static class Suspension
+    internal static partial class Suspension
     {
-        private static bool _apiLooked; private static MethodInfo _apiSet, _apiGet;
-
-        private static void LookForApi()
-        {
-            if (_apiLooked) return;
-            _apiLooked = true;
-            try
-            {
-                var asm = AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(a => a.GetName().Name == "PartAdjustment");
-                var t = asm != null ? asm.GetType("PartAdjustment.SuspensionApi") : null;
-                if (t != null)
-                {
-                    _apiSet = t.GetMethod("Set", new[] { typeof(GameObject), typeof(float), typeof(float) });
-                    _apiGet = t.GetMethod("Get", new[] { typeof(GameObject), typeof(float).MakeByRefType(), typeof(float).MakeByRefType() });
-                }
-                PatrolsModule.Verbose("Suspension: Part Adjustment " + (asm == null ? "not loaded - own geometry" : _apiSet != null ? "API found" : "loaded without SuspensionApi (older than 1.2.0) - own geometry"));
-            }
-            catch (Exception e) { Core.Log.Warn("[Patrols] " + "Suspension: API lookup: " + e.Message); }
-        }
 
         internal static Transform KitHinge(GameObject car) { return car != null ? car.transform.Find("hinge_suspension_parent/hinge_suspension") : null; }
 
