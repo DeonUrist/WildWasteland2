@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
@@ -11,7 +12,7 @@ namespace WildWasteland.Modules.NPC
     {
         // [Debug] NavTrace (NavDump + VerboseLog): a line per moving NPC per second and a picture of its trail when a chase ends / it rests
         /// <summary>NavTrace on: NavDump and the NPC verbose log are both on.</summary>
-        private static bool Tracing { get { return NpcModule.NavDump.Value && NpcModule.VerboseLog.Value; } }
+        private static bool Tracing { get { return WildWasteland.Core.NavigationDiagnosticState.Capture && WildWasteland.Core.Log.L2; } }
         /// <summary>Writes a trace picture of the NPC's trail (at most every 15 s per NPC).</summary>
         private static void TraceDump(Npc n, string why)
         {

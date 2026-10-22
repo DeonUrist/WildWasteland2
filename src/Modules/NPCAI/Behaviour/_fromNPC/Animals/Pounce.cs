@@ -97,7 +97,7 @@ namespace WildWasteland.Modules.NPC
             catch (Exception) { }
             p.NextTry = Time.time + 1f;
             _list.Add(p);
-            if (NpcModule.PounceLog.Value) NpcModule.Log.LogInfo("Pounce: " + a.Owner.name + " can pounce (bite " + p.Damage.ToString("0") + ", body " + p.BodyH.ToString("0.00") + " m)");
+            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Pounce: " + a.Owner.name + " can pounce (bite " + p.Damage.ToString("0") + ", body " + p.BodyH.ToString("0.00") + " m)");
         }
 
         internal static void Tick()
@@ -374,6 +374,6 @@ namespace WildWasteland.Modules.NPC
             return f;
         }
 
-        private static void Log(P p, string s) { if (NpcModule.PounceLog.Value) NpcModule.Log.LogInfo("Pounce: " + (p.A != null && p.A.Owner != null ? p.A.Owner.name : "?") + " " + s); }
+        private static void Log(P p, string s) { if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Pounce: " + (p.A != null && p.A.Owner != null ? p.A.Owner.name : "?") + " " + s); }
     }
 }

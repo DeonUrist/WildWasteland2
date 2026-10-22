@@ -9,6 +9,7 @@ using BepInEx.Configuration;
 using BepInEx.Bootstrap;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Core.Optimization;
 
 namespace WildWasteland.Modules.Debug
 {
@@ -53,12 +54,11 @@ namespace WildWasteland.Modules.Debug
         internal static Dictionary<string, object> Capture(DebugRuntime runtime)
         {
             var settings = Settings();
-            var modules = new List<object>(); string performance = "absent";
+            var modules = new List<object>(); string performance = "requested=" + (OptimizationRuntime.EnabledEntry != null && OptimizationRuntime.EnabledEntry.Value) + "; actual=" + (OptimizationRuntime.Instance != null && OptimizationRuntime.Instance.Running ? "Running" : "Off");
             foreach (var e in ModuleHost.Entries)
             {
                 bool requested = e.Config.Enabled != null && e.Config.Enabled.Value;
                 modules.Add(D("id", e.Module.Id, "requested_enabled", requested, "state", e.State.ToString(), "errors_lifetime", e.Errors, "last_error", e.LastError));
-                if (e.Module.Id == "Performance") performance = "requested=" + requested + "; actual=" + e.State;
             }
             double seconds = Measurements.RecordedSeconds, factor = 1000.0 / System.Diagnostics.Stopwatch.Frequency;
             var methods = new List<Dictionary<string, object>>();
@@ -97,7 +97,7 @@ namespace WildWasteland.Modules.Debug
                 "context", Measurements.Context, "scene", UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
                 "player_position", new object[] { pos.x, pos.y, pos.z }, "performance_module", performance,
                 "hardware", D("cpu", SystemInfo.processorType, "logical_processors", SystemInfo.processorCount, "ram_mb", SystemInfo.systemMemorySize, "gpu", SystemInfo.graphicsDeviceName, "vram_mb", SystemInfo.graphicsMemorySize, "resolution", Screen.width + "x" + Screen.height, "vsync", QualitySettings.vSyncCount, "target_fps", Application.targetFrameRate, "quality", QualitySettings.GetQualityLevel()),
-                "frame", D("recorded_seconds", seconds, "total_frames", Measurements.Samples, "rolling_samples", Measurements.Count, "paused_frames", Measurements.PausedFrames, "average_ms", Measurements.Average, "p95_ms", Measurements.P95, "p99_ms", Measurements.P99, "worst_ms", Measurements.Worst),
+                "frame", D("recorded_seconds", seconds, "total_frames", Measurements.Samples, "rolling_samples", Measurements.Count, "paused_frames", Measurements.PausedFrames, "average_ms", Measurements.Average, "p50_ms", Measurements.P50, "p95_ms", Measurements.P95, "p99_ms", Measurements.P99, "worst_ms", Measurements.Worst),
                 "gc", D("managed_bytes", Measurements.ManagedBytes, "collections_gen0", Measurements.Gc0, "collections_gen1", Measurements.Gc1, "collections_gen2", Measurements.Gc2),
                 "active_fsm_count", PlayMakerFSM.FsmList.Count, "developer_update_gui_ms_per_frame", Measurements.OwnMilliseconds,
                 "instrumentation", D("timing_active", Instrumentation.Timing, "pending", Instrumentation.PendingCount, "fault", Instrumentation.Fault, "allocation_enabled_at_export", DebugModule.AllocationTiming.Value, "dropped_trace_events_lifetime", Instrumentation.Dropped, "coverage", coverage, "failures", Instrumentation.Failures.ToArray()),
@@ -133,14 +133,7 @@ namespace WildWasteland.Modules.Debug
             comparison.AppendLine("Compare player positions and action manually. Check BOTH captures' warnings, warm-up, scene population, camera and timing settings. Changed world activity or hook coverage can explain differences. This comparison establishes observations, not causation.");
             files.Add("comparison.md", comparison.ToString());
         }
-        internal static string Json(object value)
-        {
-            if (value == null) return "null";
-            string s = value as string; if (s != null) { var b = new StringBuilder("\""); foreach (char c in s) { switch (c) { case '"': b.Append("\\\""); break; case '\\': b.Append("\\\\"); break; case '\n': b.Append("\\n"); break; case '\r': b.Append("\\r"); break; case '\t': b.Append("\\t"); break; default: if (c < 32) b.Append("\\u" + ((int)c).ToString("x4")); else b.Append(c); break; } } return b.Append('"').ToString(); }
-            if (value is bool) return (bool)value ? "true" : "false";
-            var dict = value as IDictionary; if (dict != null) { var entries = new List<string>(); foreach (DictionaryEntry pair in dict) entries.Add(Json(pair.Key.ToString()) + ": " + Json(pair.Value)); return "{\n" + string.Join(",\n", entries) + "\n}"; }
-            var list = value as IEnumerable; if (list != null) { var entries = new List<string>(); foreach (var item in list) entries.Add(Json(item)); return "[" + string.Join(",\n", entries) + "]"; }
-            double number = Convert.ToDouble(value, CultureInfo.InvariantCulture); return double.IsNaN(number) || double.IsInfinity(number) ? "null" : Convert.ToString(value, CultureInfo.InvariantCulture);
-        }
+        /// <summary>Serializes the unchanged capture schema through Core's shared JSON implementation.</summary>
+        internal static string Json(object value) { return Core.Json.Write(value); }
     }
 }

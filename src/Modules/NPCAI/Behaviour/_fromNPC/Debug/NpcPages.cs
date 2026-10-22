@@ -40,10 +40,6 @@ namespace WildWasteland.Modules.NPC
         // ---- pages / page parts owned by other target modules (Wave A split); called where the moved lines were
         /// <summary>Presentation: the "Female appearance & voices" config page.</summary>
         static partial void AddPresentationPages(NpcModule m, List<ToolPage> pages);
-        /// <summary>Debug: the debug overlay toggles and the per-job frame times at the end of "AI overview".</summary>
-        static partial void DrawAiOverviewDebug(ToolLayout l, IModule m);
-        /// <summary>Debug: the "Debug" page (overlay switch, status lines, log button; its baked-data part is Tools').</summary>
-        static partial void AddDebugPages(NpcModule m, List<ToolPage> pages);
         /// <summary>Tools: the "Pathfinding baked data" block of the Debug page (map highlight, reset / export of maps).</summary>
         static partial void DrawToolsMapData(ToolLayout l);
         /// <summary>Tools: the "POI pathfinding" page (editor / setup).</summary>
@@ -69,7 +65,7 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Idle controllers", I(Idle.Count) + " (" + I(Idle.Walking) + " walking)");
                 l.Value("Animation framework", ApBody.Available ? "in use (gunmen use the player's clips)" : "not available (game clips)");
                 l.Value("Guns integration", Services.Guns != null ? (WeaponRanges.ProjectilesEnabled ? "Guns module, projectiles on" : "Guns module, vanilla hitscan") : "off (fallback ranges)");
-                DrawAiOverviewDebug(l, m);
+
             }));
 
             pages.Add(new LivePage(m, "Detection", "Sight cones per creature group, light, hearing ranges, ghosts, taunts, the player's shout, engines and explosions (F6 has SightCone / SightRange / DarkSightRange / FootstepRadius).", l =>
@@ -117,7 +113,6 @@ namespace WildWasteland.Modules.NPC
                 l.Value("Storms", NpcModule.StormsEnabled.Value ? I(Storm.StormCount) + " sandstorm(s), " + I(Storm.FunnelCount) + " funnel(s)" : "off (F6 Storms)");
             }, Sec("Nests"), Sec("Webs")));
 
-            AddDebugPages(m, pages);
             AddToolsPages(m, pages);
             return pages;
         }

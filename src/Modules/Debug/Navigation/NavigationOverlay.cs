@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
-namespace WildWasteland.Modules.NPC
+namespace WildWasteland.Modules.Debug
 {
-    internal static class DebugOverlay
+    internal static class NavigationOverlay
     {
         private static Texture2D _white;
         private static GUIStyle _floatStyle, _lineStyle;
@@ -41,12 +41,21 @@ namespace WildWasteland.Modules.NPC
         }
 
 
-        public static void OnGUI()      // (WW) a Core Gui job, enabled while [NPC / Debug] ShowNavigation is on
+        private static readonly System.Collections.Generic.List<Core.DiagnosticMarker> Markers = new System.Collections.Generic.List<Core.DiagnosticMarker>();
+        /// <summary>Renders copied NPC primitives on repaint only; no NPC implementation type crosses the Core API.</summary>
+        internal static void Draw()
         {
-            if (Event.current.type != EventType.Repaint || !NpcModule.Running) return;
-            try { Senses.DrawDebug(); } catch (Exception e) { NpcModule.Log.LogError("Senses overlay: " + e); }
-            try { Idle.DrawDebug(); } catch (Exception e) { NpcModule.Log.LogError("Idle overlay: " + e); }
-            try { Nav.DrawDebug(); } catch (Exception e) { NpcModule.Log.LogError("Nav overlay: " + e); }
+            if (!Core.NavigationDiagnosticState.Overlay || Event.current.type != EventType.Repaint) return;
+            var source = Core.ModApi.Get<Core.INpcDiagnosticSource>(); if (source == null) return;
+            Markers.Clear(); source.CollectMarkers(Markers);
+            foreach (var marker in Markers)
+                if (marker.Text == null) Mark(marker.World, marker.Color, marker.Size); else Label(marker.World, marker.Text, marker.Color);
+        }
+        /// <summary>Releases the owned marker texture and cached frame buffer.</summary>
+        internal static void Release()
+        {
+            if (_white != null) UnityEngine.Object.Destroy(_white);
+            _white = null; _floatStyle = _lineStyle = null; Markers.Clear();
         }
         private static void DrawText(Rect r, string text, GUIStyle style, Color c)
         {

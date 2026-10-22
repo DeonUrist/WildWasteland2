@@ -40,7 +40,7 @@ namespace WildWasteland.Modules.NPC
                     n.Weapon = w; n.WeaponKey = ApBody.WeaponKey(w);
                     n.Shots = 0; n.Reloading = false; n.ReloadShown = false; n.Magazine = MagazineOf(n.WeaponKey);
                     n.Cocks = w != null && ApBody.Cocks(n.WeaponKey);
-                    if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " now holds " + (w != null ? n.WeaponKey + (n.Cocks ? " (cocked after each burst)" : "") : "nothing"));
+                    if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " now holds " + (w != null ? n.WeaponKey + (n.Cocks ? " (cocked after each burst)" : "") : "nothing"));
                 }
                 ApBody.SetWeapon(body, w != null && w.gameObject.activeInHierarchy && GunPoses(n, now) ? w : null, n.WeaponKey);   // a gun goes to the right hand; anything else stays where it is
             }
@@ -154,7 +154,7 @@ namespace WildWasteland.Modules.NPC
                     float h = Mathf.Max(n.Capsule.radius * 2f, n.CapHeight - n.Drop);
                     n.Capsule.height = h; n.Capsule.center = new Vector3(n.CapCenter.x, bottom + h * 0.5f, n.CapCenter.z);
                 }
-                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " crouches");
+                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " crouches");
             }
             else
             {
@@ -186,7 +186,7 @@ namespace WildWasteland.Modules.NPC
                 n.Body = ApBody.Attach(n.Anim);
                 if (n.Body == null) { n.RigTried = Time.time + 30f; return false; }      // not a humanoid: the game's clips (asked again much later)
                 n.WeaponDirty = true;      // Drive() finds the held gun model (and follows the game's swaps of it)
-                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " animated by Apocaplayer's ModAPI");
+                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Brain: " + n.Owner.name + " animated by Apocaplayer's ModAPI");
             }
             catch (Exception e) { n.Body = null; NpcModule.Warn("Brain: Apocaplayer's ModAPI for " + n.Owner.name + ": " + e.Message); }
             return false;

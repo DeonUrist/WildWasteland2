@@ -102,7 +102,7 @@ namespace WildWasteland.Modules.NPC
             }
         }
         private static readonly List<long> _expired = new List<long>();
-        internal static bool LogOn { get { return NpcModule.VerboseLog != null && NpcModule.VerboseLog.Value; } }
+        internal static bool LogOn { get { return WildWasteland.Core.Log.L2; } }
 
         private static readonly List<Structure> _structures = new List<Structure>();
         private static readonly HashSet<int> _known = new HashSet<int>();
@@ -186,7 +186,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (take != null && take != _baking)
             {
-                if (_baking != null && NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Nav: pauses the bake of " + _baking.Name + " for " + take.Name);
+                if (_baking != null && WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nav: pauses the bake of " + _baking.Name + " for " + take.Name);
                 _baking = take;
                 if (take.FloorY == null) BeginBake(take);        // else: resumes where it stopped
                 curD = Dist(take, pp);
@@ -228,7 +228,7 @@ namespace WildWasteland.Modules.NPC
                 _sweepFrom = pp; _swept = true;
                 foreach (var s in _structures) if (s.Root == null) CloseMap(s);
                 int gone = _structures.RemoveAll(s => s.Root == null);      // despawned camps: drop their grids and cached routes
-                if (gone > 0) { _compRing.Clear(); if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Nav: " + gone + " structure(s) gone"); }   // _compRing holds whole structures (grids)
+                if (gone > 0) { _compRing.Clear(); if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nav: " + gone + " structure(s) gone"); }   // _compRing holds whole structures (grids)
                 if (_baking != null && _baking.Root == null) _baking = null;
                 if (_nodeKind.Count > 200000) _nodeKind.Clear();
                 for (int i = 0; i < SceneManager.sceneCount; i++)
@@ -261,7 +261,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (_sweep.Count == 0)
             {
-                if (_sweepAdded > 0 && NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Nav: " + _sweepAdded + " new structure(s), " + _structures.Count + " known");
+                if (_sweepAdded > 0 && WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nav: " + _sweepAdded + " new structure(s), " + _structures.Count + " known");
                 _sweepAdded = 0;
                 _nextSweep = now + 2f;      // a full pass takes a few dozen frames; then a short pause
             }
@@ -292,7 +292,7 @@ namespace WildWasteland.Modules.NPC
                 if (s == null) return 0;
                 _known.Add(t.GetInstanceID());
                 _structures.Add(s);
-                if (NpcModule.VerboseLog.Value) NpcModule.Log.LogInfo("Nav: found " + Path(t) + " at " + t.position + ", footprint " + s.Box.size.x.ToString("0") + " x " + s.Box.size.z.ToString("0") + " m");
+                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Nav: found " + Path(t) + " at " + t.position + ", footprint " + s.Box.size.x.ToString("0") + " x " + s.Box.size.z.ToString("0") + " m");
                 return 1;
             }
             if (depth >= 4 || t.childCount > 3000) return 0;
@@ -464,15 +464,15 @@ namespace WildWasteland.Modules.NPC
                 s.EdgeCells = 0; s.EdgeWalkable = 0;
                 for (int i = 0; i < n; i++) if (IsEdge(s, i)) { s.EdgeCells++; if (!float.IsNaN(s.FloorY[i])) s.EdgeWalkable++; }
                 if (s.LoadedMap) NpcModule.Log.LogInfo("Nav: loaded map " + s.Name + ": " + s.W + " x " + s.H + ", " + s.Walkable + " walkable, " + s.CompSize.Length + " areas (" + (s.LoadedVanilla ? "vanilla" : "custom cache") + "); " + s.MapSource);
-                if (!NpcModule.VerboseLog.Value && !NpcModule.NavDump.Value) return;     // the rest is statistics for the log
+                if (!WildWasteland.Core.Log.L2 && !WildWasteland.Core.NavigationDiagnosticState.Capture) return;     // the rest is statistics for the log
                 int open = 0; for (int i = 0; i < n; i++) if (s.Open[i]) open++;
                 int areas = 0, biggest = 0, islands = 0, walls = 0;
                 foreach (int sz in s.CompSize) { if (sz >= MinArea) areas++; else islands += sz; if (sz > biggest) biggest = sz; }
                 for (int i = 0; i < n; i++) if (WallNext(s, i)) walls++;
-                if (NpcModule.VerboseLog.Value && !s.LoadedMap) NpcModule.Log.LogInfo("Nav: baked " + s.Name + ": " + s.W + " x " + s.H + " cells of " + s.Cell.ToString("0.00") + " m, " + s.Walkable + " walkable (" + (100f * s.Walkable / Mathf.Max(1, s.W * s.H)).ToString("0") + " %, " + open + " under open sky), "
+                if (WildWasteland.Core.Log.L2 && !s.LoadedMap) NpcModule.Log.LogInfo("Nav: baked " + s.Name + ": " + s.W + " x " + s.H + " cells of " + s.Cell.ToString("0.00") + " m, " + s.Walkable + " walkable (" + (100f * s.Walkable / Mathf.Max(1, s.W * s.H)).ToString("0") + " %, " + open + " under open sky), "
                     + s.NoFloor + " no floor (" + s.ScanLimit + " of them ran out of ray hits), " + s.Tight + " too tight, " + s.Solid + " inside rock; outer ring " + s.EdgeWalkable + "/" + s.EdgeCells + " walkable; " + floorCols + " new floor collider(s); " + areas + " area(s), largest " + biggest + " cells, " + islands + " cells in small islands, " + walls + " cells with a wall to a neighbour; "
                     + s.BakeMs.ToString("0") + " ms over " + s.BakeFrames + " frames");
-                if (NpcModule.NavDump.Value) Dump(s, "baked", -1, -1, -1, null);
+                if (WildWasteland.Core.NavigationDiagnosticState.Capture) Dump(s, "baked", -1, -1, -1, null);
             }
         }
 
@@ -1342,11 +1342,11 @@ namespace WildWasteland.Modules.NPC
             }
             if (best < 0) best = bestAny;
             _exits[mkey] = new ExitMemo { Exit = best, Until = now + 2f, Relaxed = relaxed, S = s };
-            if (NpcModule.VerboseLog.Value)
+            if (WildWasteland.Core.Log.L2)
                 NpcModule.Log.LogInfo("Nav: " + (owner != null ? owner.name : "?") + " has no map route to its goal on " + s.Name + " (goal " + (goalInside ? "inside, cell " + (goalCell % s.W) + "," + (goalCell / s.W) : "outside the footprint")
                     + " at " + goal.x.ToString("0") + "," + goal.z.ToString("0") + "; its area " + size + " cells, " + open + " under open sky, " + (edge ? "reaches" : "does NOT reach") + " the outer ring ("
                     + s.EdgeWalkable + "/" + s.EdgeCells + " ring cells walkable)) -> " + (best < 0 ? "nowhere to go" : "heads for cell " + (best % s.W) + "," + (best / s.W) + (relaxed ? " (open sky, across cells the map has no floor for)" : s.Open != null && s.Open[best] ? " (open sky)" : " (no open sky in its area)")));
-            if (NpcModule.NavDump.Value && now >= s.NextDump)
+            if (WildWasteland.Core.NavigationDiagnosticState.Capture && now >= s.NextDump)
             {
                 s.NextDump = now + 20f;
                 Dump(s, "noroute_" + (owner != null ? owner.name.Replace("(Clone)", "") : "npc"), from, goalInside ? goalCell : -1, best, mine.Dist);
@@ -1596,7 +1596,7 @@ namespace WildWasteland.Modules.NPC
         private static readonly List<GameObject> _dead = new List<GameObject>();
         private static void Remember(GameObject owner, Vector3 next, Structure s)
         {
-            if (owner == null || !NpcModule.ShowNav.Value) return;
+            if (owner == null || !WildWasteland.Core.NavigationDiagnosticState.Overlay) return;
             _debug[owner] = new Mark { Next = next, Where = s.Name, At = Time.time };
         }
 

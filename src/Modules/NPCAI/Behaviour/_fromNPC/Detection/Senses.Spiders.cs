@@ -137,7 +137,7 @@ namespace WildWasteland.Modules.NPC
             Vector3 pos = light.transform.position;
             var g = GetOrMake(Src.Vision, OnGround(pos, pos.y), source, "a light", 0f, 1f, now);
             bool had = a.Ghost == g;
-            if (Assign(a, g, Src.Vision, now)) { if (!had) if (NpcModule.VerboseLog.Value) Log(a, "is illuminated, investigates a light (ghost #" + g.Id + ")"); }
+            if (Assign(a, g, Src.Vision, now)) { if (!had) if (WildWasteland.Core.Log.L2) Log(a, "is illuminated, investigates a light (ghost #" + g.Id + ")"); }
             else if (g.Holders.Count == 0) { int i = _ghosts.IndexOf(g); if (i >= 0) KillGhost(i); }
         }
     }
