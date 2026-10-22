@@ -136,7 +136,7 @@ namespace WildWasteland.Modules.NPC
             {
                 _nextMaint = now + 1f;
                 if (_player != null && NpcaiSettings.StormsEnabled.Value) Storm.Refresh(); else Storm.Reset();      // menu / loading / (WW) storms toggle off: no storms, no lookups
-                _playerInStorm = _player != null && Storm.In(_player.transform.position);
+                _playerInStorm = _player != null && Storm.InForSenses(_player.transform.position);
                 // (perf) the per-agent part runs as a round robin over the next 8 frames (MaintStep): every agent is still visited once a
                 // second, the factions present are swapped in when the round is complete
                 if (_maintPos < _maintKeys.Count) { _maintPer = _maintKeys.Count; MaintStep(on); }     // below 8 fps: the last round finishes first (no agent / faction swap starved)
@@ -213,7 +213,7 @@ namespace WildWasteland.Modules.NPC
                     if (a.Done.Count > 16) PruneDone(a);
                     a.LastPos = a.T.position; PublishState(a);
                     _presentNext.Add(a.Tag);
-                    a.InStorm = Storm.Any && Storm.In(a.T.position);
+                    a.InStorm = Storm.AnyForSenses && Storm.InForSenses(a.T.position);
                     bool blown = Storm.AnyFunnel && Storm.InBlast(a.T.position);
                     if (blown != a.Blown) { a.Blown = blown; if (blown) Log(a, "is shoved by a tornado"); }
                 }
@@ -346,10 +346,10 @@ namespace WildWasteland.Modules.NPC
 
         private static bool InStormOf(GameObject go)
         {
-            if (go == null || !Storm.Any) return false;
+            if (go == null || !Storm.AnyForSenses) return false;
             if (go == _player) return _playerInStorm;
             var b = Get(go.transform.root.gameObject);
-            return b != null ? b.InStorm : Storm.In(go.transform.position);
+            return b != null ? b.InStorm : Storm.InForSenses(go.transform.position);
         }
 
         private static readonly List<int> _pruneIds = new List<int>();
@@ -1031,8 +1031,8 @@ namespace WildWasteland.Modules.NPC
             float r2 = radius * radius;
             // a sandstorm swallows gunfire, explosions, shouts and engines: the range shrinks once (never twice) when the sound starts in a
             // storm or the listener stands in one. No storm loaded: nothing is tested.
-            bool stormy = (src == Src.Gunshot || src == Src.Shout || src == Src.Engine) && Storm.Any;
-            bool srcStorm = stormy && Storm.In(pos);
+            bool stormy = (src == Src.Gunshot || src == Src.Shout || src == Src.Engine) && Storm.AnyForSenses;
+            bool srcStorm = stormy && Storm.InForSenses(pos);
             float hf = Storm.HearingFactor, rs2 = r2 * hf * hf;
             foreach (var kv in _agents)
             {
