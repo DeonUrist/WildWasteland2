@@ -134,6 +134,8 @@ namespace WildWasteland.Modules.Debug
                 probe.EpochMain = System.Threading.Interlocked.Read(ref probe.Main); probe.EpochWorker = System.Threading.Interlocked.Read(ref probe.Worker); probe.EpochAllocated = System.Threading.Interlocked.Read(ref probe.Allocated);
             }
             Instrumentation.Snapshot(1); Old.Clear();
+            foreach (var job in Scheduler.AllJobs()) Old[job] = new Previous { Calls = job.Calls, Ms = job.TotalMs };
+            HandlerMeasurements.Snapshot(1);
             Diagnosis.ResetWindow();
         }
         /// <summary>Tags the next frame sample with Core/Optimization lifecycle transitions without allocating a per-frame string.</summary>

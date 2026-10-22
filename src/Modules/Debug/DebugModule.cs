@@ -6,6 +6,7 @@ using UnityEngine.SceneManagement;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 using WildWasteland.Core.Optimization;
+using WildWasteland.Core.Events;
 
 namespace WildWasteland.Modules.Debug
 {
@@ -64,6 +65,8 @@ namespace WildWasteland.Modules.Debug
             QuestDiagnosticState.NpcIdentified += _nameRecorder.Record;
             ApplyPolicy();
             Core.Trace.Marked += Measurements.MarkTag;
+            ModEvents.Subscribe<TileApplied>(this, TileAppliedTag);
+            ModEvents.Subscribe<OriginShifted>(this, OriginTag);
             OptimizationMetrics.Marked += Measurements.MarkTag;
             WeatherDiagnosticState.StateChanged += WeatherDiagnosticTools.OnStateChanged;
             WeatherDiagnosticState.CameraRecordRequested += WeatherDiagnosticTools.OnCameraRecord;
@@ -134,11 +137,12 @@ namespace WildWasteland.Modules.Debug
             var source = ModApi.Get<INpcDiagnosticSource>();
             if (source == null) { layout.Text("NPC diagnostics are unavailable while NPCAI is disabled."); return; }
             layout.Text(source.Status);
-            if (layout.Button("Capture navigation map pictures"))
+            if (layout.Button(NavigationDiagnosticState.Capture ? "Stop navigation trace capture" : "Start navigation trace capture"))
             {
-                NavigationDiagnosticState.Capture = true;
-                try { source.CaptureMaps(); } finally { NavigationDiagnosticState.Capture = false; }
+                NavigationDiagnosticState.Capture = !NavigationDiagnosticState.Capture;
+                if (NavigationDiagnosticState.Capture) source.CaptureMaps();
             }
+            layout.Text("Trace capture is temporary, writes existing map/trail BMPs and stops when Debug is disabled. Deep logging enables detailed chase traces.");
         }
         /// <summary>Reports whether the dashboard needs an IMGUI pass.</summary>
         private bool DashboardWanted() { return _runtime != null && _runtime.Visible; }
@@ -195,6 +199,10 @@ namespace WildWasteland.Modules.Debug
         /// <summary>Reapplies logging and handler timing after a live settings change.</summary>
         private void PolicyChanged(object sender, EventArgs args) { ApplyPolicy(); }
 
+        /// <summary>Tags completed tile publication in the next frame sample.</summary>
+        private void TileAppliedTag(ref TileApplied value) { Measurements.MarkTag("tile"); }
+        /// <summary>Tags floating-origin relocation without persisting a scene-space position.</summary>
+        private void OriginTag(ref OriginShifted value) { Measurements.MarkTag("origin"); }
         /// <summary>Tags scene transitions in the capture context without creating a second scene subscription.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { DebugRuntime.SceneMarker = scene.name; Measurements.MarkTag("scene"); }
 
