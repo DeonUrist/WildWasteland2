@@ -155,48 +155,10 @@ namespace WildWasteland.Core.UI
             var old = GUI.contentColor; GUI.contentColor = c; GUI.Label(r, text, st); GUI.contentColor = old;
         }
 
-        /// A wooden plank button with an outlined label. Returns true when clicked.
-        public static bool PlankButton(Rect r, string text, Color c, GUIStyle font = null, bool enabled = true, float alpha = 1f)
-        {
-            var oldEnabled = GUI.enabled; var oldColor = GUI.color;
-            GUI.enabled = enabled && oldEnabled;
-            if (!GUI.enabled || alpha < 1f) GUI.color = new Color(1, 1, 1, enabled ? alpha : 0.45f);
-            bool hit = GUI.Button(r, GUIContent.none, PlankStyle);
-            Out(r, text, font ?? Btn, c);
-            GUI.enabled = oldEnabled; GUI.color = oldColor;
-            return hit;
-        }
-
-        public static void Frame(Rect r, float thick)
-        {
-            if (RebarH == null || RebarV == null) { Fill(new Rect(r.x, r.y, r.width, thick), Hex("3A3634")); Fill(new Rect(r.x, r.yMax - thick, r.width, thick), Hex("3A3634")); Fill(new Rect(r.x, r.y, thick, r.height), Hex("3A3634")); Fill(new Rect(r.xMax - thick, r.y, thick, r.height), Hex("3A3634")); return; }
-            float hRepeat = r.width / (RebarH.width * thick / RebarH.height);
-            float vRepeat = r.height / (RebarV.height * thick / RebarV.width);
-            GUI.DrawTextureWithTexCoords(new Rect(r.x, r.y + thick * 0.1f, r.width, thick), RebarH, new Rect(0, 0, hRepeat, 1));
-            GUI.DrawTextureWithTexCoords(new Rect(r.x, r.yMax - thick * 1.1f, r.width, thick), RebarH, new Rect(0, 0, hRepeat, 1));
-            GUI.DrawTextureWithTexCoords(new Rect(r.x + thick * 0.1f, r.y, thick, r.height), RebarV, new Rect(0, 0, 1, vRepeat));
-            GUI.DrawTextureWithTexCoords(new Rect(r.xMax - thick * 1.1f, r.y, thick, r.height), RebarV, new Rect(0, 0, 1, vRepeat));
-        }
-
         public static void RustBack(Rect r)
         {
             Fill(r, Hex("141110"));
             if (Rust != null) GUI.DrawTexture(r, Rust, ScaleMode.ScaleAndCrop);
-        }
-
-        public static void PitBox(Rect r)
-        {
-            Fill(r, Pit);
-            Fill(new Rect(r.x, r.y, r.width, 2), Hex("040302")); Fill(new Rect(r.x, r.yMax - 2, r.width, 2), Hex("040302"));
-            Fill(new Rect(r.x, r.y, 2, r.height), Hex("040302")); Fill(new Rect(r.xMax - 2, r.y, 2, r.height), Hex("040302"));
-            if (Rivet != null)
-            {
-                float k = 12 * S, m = 8 * S;
-                GUI.DrawTexture(new Rect(r.x + m, r.y + m, k, k), Rivet);
-                GUI.DrawTexture(new Rect(r.xMax - m - k, r.y + m, k, k), Rivet);
-                GUI.DrawTexture(new Rect(r.x + m, r.yMax - m - k, k, k), Rivet);
-                GUI.DrawTexture(new Rect(r.xMax - m - k, r.yMax - m - k, k, k), Rivet);
-            }
         }
 
         /// IMGUI centres a font's whole line box (ascent + descent), so digits and capitals sit off-centre with fonts that have a big
@@ -231,12 +193,6 @@ namespace WildWasteland.Core.UI
             catch (Exception e) { WildWasteland.Core.Log.Warn("CenterText: " + e.Message); }
         }
 
-        public static void SlotBox(Rect r)
-        {
-            Fill(new Rect(r.x - 2, r.y - 2, r.width + 4, r.height + 4), Hex("2A1D14"));
-            GUI.Box(r, GUIContent.none, SlotStyle);
-        }
-
         private static GUIStyle _slotStyle;
         private static GUIStyle SlotStyle
         {
@@ -245,13 +201,6 @@ namespace WildWasteland.Core.UI
                 if (_slotStyle == null) { _slotStyle = new GUIStyle(GUIStyle.none) { border = new RectOffset(3, 3, 3, 3) }; _slotStyle.normal.background = Slot; }
                 return _slotStyle;
             }
-        }
-
-        public static void HazardStrip(Rect r)
-        {
-            if (Hazard == null) { Fill(r, Yellow); return; }
-            float tile = 18 * S;
-            GUI.DrawTextureWithTexCoords(r, Hazard, new Rect(0, 0, r.width / tile, r.height / tile));
         }
 
         // ---------------------------------------------------------------- textures
