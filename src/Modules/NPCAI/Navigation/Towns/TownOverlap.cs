@@ -54,7 +54,7 @@ namespace WildWasteland.Modules.Towns
         private static readonly Dictionary<Nav.Structure, TownOverlap> Owners = new Dictionary<Nav.Structure, TownOverlap>();
         private static float _step;
         private static IModule _ownerModule { get { return NavRuntime.Owner; } }
-        private readonly TownSite _site;
+        private readonly TownSite _site;   // refs-ok: REFACTOR-REQUEST B08-6
         private Grid[] _grids;
         private int _grid, _cell, _phase, _blocked, _edges;
         private float _retry;
@@ -62,7 +62,7 @@ namespace WildWasteland.Modules.Towns
         internal bool Ready { get; private set; }
         internal float Progress { get { return _grids == null ? 0 : _grid >= _grids.Length ? 1
             : (_grid + (_phase + (_phase == 2 ? _grids[_grid].Scan : _cell) / (float)_grids[_grid].Floor.Length) / 3) / _grids.Length; } }
-        internal TownOverlap(TownSite site, bool dressing) { _site = site; _dressing = dressing; }
+        internal TownOverlap(TownSite site, bool dressing) { _site = site; _dressing = dressing; }   // refs-ok: REFACTOR-REQUEST B08-6
         // Walls/towers/props arrived after the first overlay (ownership confirmed later): redo it with the dressing boxes.
         internal void Reapply(bool dressing)
         { Restore(); _grids = null; _grid = _cell = _phase = _blocked = _edges = 0; _dressing = dressing; _warming = false; _retry = 0; Ready = false; }

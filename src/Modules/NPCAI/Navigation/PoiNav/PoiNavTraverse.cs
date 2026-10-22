@@ -106,7 +106,7 @@ namespace WildWasteland.Modules.NPC
             if (l.Kind == PoiLinkKind.Ladder)
             {
                 // the body stands off the rung line by the animation's hips-to-rung distance, on the climber's side
-                float depth = Services.Animation != null ? Services.Animation.LadderToeDepth : .44f;
+                float depth = ModApi.Get<IAnimationApi>() != null ? ModApi.Get<IAnimationApi>().LadderToeDepth : .44f;
                 Vector3 back = -(run.Facing * Vector3.forward) * depth;
                 // an NPC standing behind the ladder (or level with it) first walks round to the climbing side
                 Vector3 line = run.Bottom; Vector3 rel = run.Start - line; rel.y = 0f;
@@ -130,8 +130,8 @@ namespace WildWasteland.Modules.NPC
             rb.useGravity = false; rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.Interpolate;
             owner.transform.rotation = run.Facing;
             var anim = owner.GetComponentInChildren<Animator>();
-            if (Services.Animation != null && anim != null && l.Kind != PoiLinkKind.Drop)
-                run.Anim = Services.Animation.BeginNpcTraversal(anim, l.Kind == PoiLinkKind.Ladder ? "Ladder" : (run.To.y - run.From.y) > 1.25f ? "ClimbHigh" : "ClimbWaist");
+            if (ModApi.Get<IAnimationApi>() != null && anim != null && l.Kind != PoiLinkKind.Drop)
+                run.Anim = ModApi.Get<IAnimationApi>().BeginNpcTraversal(anim, l.Kind == PoiLinkKind.Ladder ? "Ladder" : (run.To.y - run.From.y) > 1.25f ? "ClimbHigh" : "ClimbWaist");
             NoShove(run, true); NoAttack(run, true);
             _runs[owner.GetInstanceID()] = run;
             if (WildWasteland.Core.Log.L2) Log.Info("[NPC] " + owner.name + " takes the " + l.Kind + " of " + inst.Poi + " (" + (run.To.y - run.From.y).ToString("0.0") + " m)");
@@ -264,7 +264,7 @@ namespace WildWasteland.Modules.NPC
                         }
                         r.H = Mathf.Min(cap, r.H + dt * PoiNav.LadderSpeed.Value); float h = Mathf.Clamp(r.H, 0f, r.Climb);
                         Move(r, Vector3.Lerp(r.Bottom, r.Top, h / r.Climb));
-                        float rise = Services.Animation != null ? Services.Animation.LadderCycleRise : 1.24f;
+                        float rise = ModApi.Get<IAnimationApi>() != null ? ModApi.Get<IAnimationApi>().LadderCycleRise : 1.24f;
                         Phase(r, h / Mathf.Max(.2f, rise));
                         if (h >= r.Climb) { r.Stage = 2; r.T = 0f; if (r.Anim != null) { r.Anim.Dispose(); r.Anim = null; } }
                         return false;
@@ -305,7 +305,7 @@ namespace WildWasteland.Modules.NPC
         // down a ladder: from the platform onto the top of the rung line, down the rungs (the animation plays backwards), off at the foot
         static bool StepDown(Run r)
         {
-            float rise = Services.Animation != null ? Services.Animation.LadderCycleRise : 1.24f;
+            float rise = ModApi.Get<IAnimationApi>() != null ? ModApi.Get<IAnimationApi>().LadderCycleRise : 1.24f;
             if (r.Stage == 0)
             {
                 float u = Mathf.Clamp01(r.T / .5f);

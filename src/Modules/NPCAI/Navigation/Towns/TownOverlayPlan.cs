@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.Towns
             internal bool Any(bool dressing) { return BaseSolid.Length + EdgeCells.Length + (dressing ? DressSolid.Length : 0) > 0; }
         }
         internal LotPatch[] Lots;
-        internal TownDressingPlan Dressing;
+        internal TownDressingPlan Dressing;   // refs-ok: REFACTOR-REQUEST B08-6
         internal int Blocked, Edges;
         private static bool Solid(TownBakeData map, int i) { return i >= 0 && (map.Why[i] == 2 || map.Why[i] == 3); }
         private static bool Step(TownBakeData map, int a, int b, float step)
@@ -33,9 +33,9 @@ namespace WildWasteland.Modules.Towns
         }
         private static bool Inside(Bounds box, Vector3 p, float floor)
         { return p.x >= box.min.x && p.x <= box.max.x && p.z >= box.min.z && p.z <= box.max.z && floor + 1.8f >= box.min.y && floor + .1f <= box.max.y; }
-        internal static TownOverlayPlan Build(TownPlan plan, BuildingSpec[] specs, TownDressingKit kit, List<Bounds> shells, float step, StopToken stop)
+        internal static TownOverlayPlan Build(TownPlan plan, BuildingSpec[] specs, TownDressingKit kit, List<Bounds> shells, float step, StopToken stop)   // refs-ok: REFACTOR-REQUEST B08-6
         {
-            int count = plan.LotCount; var result = new TownOverlayPlan { Lots = new LotPatch[count], Dressing = TownDressingPlan.Make(plan, kit, shells) };
+            int count = plan.LotCount; var result = new TownOverlayPlan { Lots = new LotPatch[count], Dressing = TownDressingPlan.Make(plan, kit, shells) };   // refs-ok: REFACTOR-REQUEST B08-6
             var maps = new TownBakeData[count]; var toRoot = new Quaternion[count]; var fromRoot = new Quaternion[count]; var boxes = new Vector4[count];
             var town = Quaternion.Euler(0, plan.Yaw, 0);
             for (int i = 0; i < count; i++)
@@ -111,13 +111,13 @@ namespace WildWasteland.Modules.Towns
             return result;
         }
         // Fallback for plans that reach the main thread without a worker-computed overlay (retained saved record, module restart).
-        internal static TownDressingPlan DressingFor(TownPlan plan, TownAssets assets)
+        internal static TownDressingPlan DressingFor(TownPlan plan, TownAssets assets)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             if (plan.Overlay != null && plan.Overlay.Dressing != null) return plan.Overlay.Dressing;
-            if (plan.DressingOnly == null) plan.DressingOnly = TownDressingPlan.Make(plan, assets.WallKit.Dressing, assets.ShellBounds);
+            if (plan.DressingOnly == null) plan.DressingOnly = TownDressingPlan.Make(plan, assets.WallKit.Dressing, assets.ShellBounds);   // refs-ok: REFACTOR-REQUEST B08-6
             return plan.DressingOnly;
         }
-        internal static bool SameLayout(TownPlan a, TownPlan b)
+        internal static bool SameLayout(TownPlan a, TownPlan b)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             if (a == null || b == null || a.LotCount != b.LotCount || a.Yaw != b.Yaw || a.LayoutVersion != b.LayoutVersion) return false;
             for (int i = 0; i < a.LotCount; i++)

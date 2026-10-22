@@ -22,14 +22,14 @@ namespace WildWasteland.Modules.Towns
         private static uint Sum(uint sum, float y, byte why, byte sky, byte edge)
         { unchecked { sum = (sum ^ new Bits { F = y }.U) * 16777619; sum = (sum ^ why) * 16777619; sum = (sum ^ sky) * 16777619; return (sum ^ edge) * 16777619; } }
         internal static string LastMiss = "";
-        internal static TownBakeData Load(BuildingSpec spec, float margin, float cell)
+        internal static TownBakeData Load(BuildingSpec spec, float margin, float cell)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             // exact maps first; then (WW) a map of the same grid whose collider count differs (loose / dynamic props counted
             // differently by the runtime baker): the footprint, floors and walls are the same grid
             var map = Load(spec, margin, cell, true);
             return map ?? Load(spec, margin, cell, false);
         }
-        private static TownBakeData Load(BuildingSpec spec, float margin, float cell, bool strict)
+        private static TownBakeData Load(BuildingSpec spec, float margin, float cell, bool strict)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             cell = Mathf.Max(cell, Mathf.Max(spec.HalfX * 2 + margin * 2, spec.HalfZ * 2 + margin * 2) / 600f);
             int w = Mathf.Max(2, Mathf.CeilToInt((spec.HalfX * 2 + margin * 2) / cell));
@@ -49,7 +49,7 @@ namespace WildWasteland.Modules.Towns
             LastMiss = "wants " + w + "x" + h + " cells of " + cell.ToString("0.###") + " m, " + spec.ColliderCount + " colliders";
             return null;
         }
-        private static TownBakeData Read(Stream stream, string source, BuildingSpec spec, int w, int h, float cell, float margin, bool strict)
+        private static TownBakeData Read(Stream stream, string source, BuildingSpec spec, int w, int h, float cell, float margin, bool strict)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             using (var r = new BinaryReader(stream))
             {
@@ -92,7 +92,7 @@ namespace WildWasteland.Modules.Towns
             int k = dz == 0 ? 0 : dx == 0 ? 1 : dx > 0 ? 2 : 3;
             return (Edges[a] & (1 << k)) != 0 || (k < 2 && (Edges[a] & (1 << (k + 4))) != 0);
         }
-        internal bool FindEntry(BuildingSpec spec)
+        internal bool FindEntry(BuildingSpec spec)   // refs-ok: REFACTOR-REQUEST B08-6
         {
             // Exterior sky cells reachable from the map boundary, without crossing a wall or roof.
             var outside = new bool[Floor.Length]; var queue = new Queue<int>();

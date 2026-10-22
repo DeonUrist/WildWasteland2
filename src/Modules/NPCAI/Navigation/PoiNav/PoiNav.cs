@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.NPC
 {
     // (WW) Runtime POI navigation: human NPCs inside a POI whose type has pre-recorded data (PoiNavData) route over its node graph with
     // A* (a few hundred nodes, no physics) and take its ladders, ledge climbs and drops as scripted traversals with the ladder / climb
-    // animations (Core.Services.Animation.BeginNpcTraversal). Outside such POIs, or for creatures, Nav's grid maps and feelers carry on.
+    // animations (IAnimationApi.BeginNpcTraversal). Outside such POIs, or for creatures, Nav's grid maps and feelers carry on.
     internal static partial class PoiNav
     {
         /// <summary>[NPCAI / Pathfinding] PoiNavigation (bound by <see cref="NavSettings.Bind"/>; null = unbound = off).</summary>
@@ -117,7 +117,7 @@ namespace WildWasteland.Modules.NPC
             if (!force && now < _nextScan) return;
             _nextScan = now + 1f;
             Nav.Roots(_roots);
-            PoiNavSetup.Roots(_roots);
+            PoiNavSetup.Roots(_roots);   // refs-ok: REFACTOR-REQUEST B08-7
             _dead.Clear();
             foreach (var kv in _inst) if (kv.Value.Root == null || !kv.Value.Root.gameObject.activeInHierarchy) _dead.Add(kv.Key);
             foreach (int k in _dead) _inst.Remove(k);

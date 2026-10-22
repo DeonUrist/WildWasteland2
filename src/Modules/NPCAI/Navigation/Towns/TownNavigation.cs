@@ -11,8 +11,8 @@ namespace WildWasteland.Modules.Towns
         // Same static-world layers as the existing baker; triggers, actors, cars and loose items are excluded.
         /// <summary>Navigation solid mask (POI/Loot/Tools still read it; README A6-9: Core Layers is the final home, request B08-4).</summary>
         internal const int Mask = NavMasks.Solid;
-        private readonly TownSite _site;
-        private readonly TownOutline _outline;
+        private readonly TownSite _site;   // refs-ok: REFACTOR-REQUEST B08-6
+        private readonly TownOutline _outline;   // refs-ok: REFACTOR-REQUEST B08-6
         private readonly List<Vector3> _cells = new List<Vector3>(256);
         private readonly Vector3[] _nodes; // map-anchor-relative positions, so origin jumps need no cached correction
         private readonly float[,] _distance;
@@ -33,9 +33,9 @@ namespace WildWasteland.Modules.Towns
         internal string FailureReason { get; private set; }
         internal float Progress { get { return Ready ? 1 : !_streetsChecked ? _edgeCheck / (float)Mathf.Max(1, _site.Plan.StreetEdges.Length) * .3f
             : _floyd < 0 ? .3f + .3f * _lot / _site.Plan.LotCount : .6f + .4f * _floyd / _nodes.Length; } }
-        internal TownNavigation(TownSite site)
+        internal TownNavigation(TownSite site)   // refs-ok: REFACTOR-REQUEST B08-6
         {
-            _site = site; _outline = TownPerimeter.Outline(site.Plan); int n = site.Plan.StreetNodes.Length + site.Plan.LotCount;
+            _site = site; _outline = TownPerimeter.Outline(site.Plan); int n = site.Plan.StreetNodes.Length + site.Plan.LotCount;   // refs-ok: REFACTOR-REQUEST B08-6
             _nodes = new Vector3[n]; _distance = new float[n, n]; _hop = new int[n, n];
             _links = new List<Arc>[n]; for (int i = 0; i < n; i++) _links[i] = new List<Arc>();
             for (int a = 0; a < n; a++) for (int b = 0; b < n; b++)
@@ -45,7 +45,7 @@ namespace WildWasteland.Modules.Towns
         private Vector3 Scene(int i) { return _site.Anchor.TransformPoint(_nodes[i]); }
         internal bool Step()
         {
-            if (Ready || Services.Npc == null || Time.unscaledTime < _retry) return false;
+            if (Ready || ModApi.Get<INpcApi>() == null || Time.unscaledTime < _retry) return false;
             int streets = _site.Plan.StreetNodes.Length;
             if (!_streetsChecked)
             {
@@ -115,8 +115,8 @@ namespace WildWasteland.Modules.Towns
             foreach (var box in _site.DebrisBlockers)
             {
                 float lo = 0, hi = 1;
-                if (TownPerimeter.Clip(_nodes[a].x - box.center.x, _nodes[b].x - _nodes[a].x, box.extents.x + 3, ref lo, ref hi)
-                    && TownPerimeter.Clip(_nodes[a].z - box.center.z, _nodes[b].z - _nodes[a].z, box.extents.z + 3, ref lo, ref hi)) return true;
+                if (TownPerimeter.Clip(_nodes[a].x - box.center.x, _nodes[b].x - _nodes[a].x, box.extents.x + 3, ref lo, ref hi)   // refs-ok: REFACTOR-REQUEST B08-6
+                    && TownPerimeter.Clip(_nodes[a].z - box.center.z, _nodes[b].z - _nodes[a].z, box.extents.z + 3, ref lo, ref hi)) return true;   // refs-ok: REFACTOR-REQUEST B08-6
             }
             return false;
         }
@@ -127,7 +127,7 @@ namespace WildWasteland.Modules.Towns
         }
         private void BuildRoutes(int source)
         {
-            var closed = new bool[_nodes.Length]; var open = new TownPaths.Heap(); open.Push(source, 0);
+            var closed = new bool[_nodes.Length]; var open = new TownPaths.Heap(); open.Push(source, 0);   // refs-ok: REFACTOR-REQUEST B08-6
             while (open.Count > 0)
             {
                 int a = open.Pop(); if (closed[a]) continue; closed[a] = true;

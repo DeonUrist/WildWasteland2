@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Towns
     internal sealed class TownVehicleGates
     {
         private readonly Bounds _frame;
-        private readonly TownOutline _outline;
+        private readonly TownOutline _outline;   // refs-ok: REFACTOR-REQUEST B08-6
         private readonly List<Bounds> _props;
         private readonly Bounds[] _buildings;
         private readonly Quaternion[] _inverse;
@@ -28,10 +28,10 @@ namespace WildWasteland.Modules.Towns
         private long _fromKey = long.MinValue, _toKey = long.MinValue;
         private float _fromAt, _toAt;
         private static long Bucket(Vector3 p) { return ((long)Mathf.FloorToInt(p.x / 2f) << 32) ^ ((long)Mathf.FloorToInt(p.z / 2f) & 0xFFFFFFFFL); }
-        internal TownVehicleGates(TownPlan plan, bool walking = false, List<Bounds> props = null)
+        internal TownVehicleGates(TownPlan plan, bool walking = false, List<Bounds> props = null)   // refs-ok: REFACTOR-REQUEST B08-6
         {
-            _frame = TownPerimeter.Frame(plan); _walking = walking; _margin = walking ? .5f : 3f;
-            _outline = TownPerimeter.Outline(plan); _props = props ?? new List<Bounds>();
+            _frame = TownPerimeter.Frame(plan); _walking = walking; _margin = walking ? .5f : 3f;   // refs-ok: REFACTOR-REQUEST B08-6
+            _outline = TownPerimeter.Outline(plan); _props = props ?? new List<Bounds>();   // refs-ok: REFACTOR-REQUEST B08-6
             int n = 8 + _outline.Vertices.Length * 2; _nodes = new Vector3[n]; _cost = new float[n, n]; _next = new int[n, n]; _from = new bool[n]; _to = new bool[n];
             _buildings = new Bounds[plan.LotCount]; _inverse = new Quaternion[plan.LotCount];
             var rotation = Quaternion.Euler(0, plan.Yaw, 0);
@@ -42,12 +42,12 @@ namespace WildWasteland.Modules.Towns
                 _buildings[i] = new Bounds(rotation * (lot.LocalPosition + Quaternion.Euler(0, lot.Yaw, 0) * lot.BoundsCenter), new Vector3(lot.HalfX * 2, 1, lot.HalfZ * 2));
             }
             for (int i = 0; i < 4; i++)
-            { _nodes[i * 2] = TownPerimeter.Gate(_frame, i) - TownPerimeter.Normal(i) * 7;
-                _nodes[i * 2 + 1] = TownPerimeter.Gate(_frame, i) + TownPerimeter.Normal(i) * 16; }
+            { _nodes[i * 2] = TownPerimeter.Gate(_frame, i) - TownPerimeter.Normal(i) * 7;   // refs-ok: REFACTOR-REQUEST B08-6
+                _nodes[i * 2 + 1] = TownPerimeter.Gate(_frame, i) + TownPerimeter.Normal(i) * 16; }   // refs-ok: REFACTOR-REQUEST B08-6
             for (int i = 0; i < _outline.Vertices.Length; i++)
             { _nodes[8 + i * 2] = _outline.Offset(i, -3.2f); _nodes[9 + i * 2] = _outline.Offset(i, 10); }
             if (!walking)
-            { _nodes = new Vector3[4]; for (int i = 0; i < 4; i++) _nodes[i] = TownPerimeter.Corner(_frame, i, 20f); }
+            { _nodes = new Vector3[4]; for (int i = 0; i < 4; i++) _nodes[i] = TownPerimeter.Corner(_frame, i, 20f); }   // refs-ok: REFACTOR-REQUEST B08-6
         }
         private bool Clear(Vector3 a, Vector3 b)
         {
@@ -57,24 +57,24 @@ namespace WildWasteland.Modules.Towns
             {
                 var box = _buildings[i]; if (box.size.y == 0) continue;
                 var from = _inverse[i] * (a - box.center); var to = _inverse[i] * (b - box.center); float lo = 0, hi = 1;
-                if (TownPerimeter.Clip(from.x, to.x - from.x, box.extents.x + _margin, ref lo, ref hi)
-                    && TownPerimeter.Clip(from.z, to.z - from.z, box.extents.z + _margin, ref lo, ref hi)) return false;
+                if (TownPerimeter.Clip(from.x, to.x - from.x, box.extents.x + _margin, ref lo, ref hi)   // refs-ok: REFACTOR-REQUEST B08-6
+                    && TownPerimeter.Clip(from.z, to.z - from.z, box.extents.z + _margin, ref lo, ref hi)) return false;   // refs-ok: REFACTOR-REQUEST B08-6
             }
             return true;
         }
         private bool CrossesFrame(Vector3 a, Vector3 b)
         {
             float lo = 0, hi = 1;
-            return TownPerimeter.Clip(a.x - _frame.center.x, b.x - a.x, _frame.extents.x + 6f, ref lo, ref hi)
-                && TownPerimeter.Clip(a.z - _frame.center.z, b.z - a.z, _frame.extents.z + 6f, ref lo, ref hi);
+            return TownPerimeter.Clip(a.x - _frame.center.x, b.x - a.x, _frame.extents.x + 6f, ref lo, ref hi)   // refs-ok: REFACTOR-REQUEST B08-6
+                && TownPerimeter.Clip(a.z - _frame.center.z, b.z - a.z, _frame.extents.z + 6f, ref lo, ref hi);   // refs-ok: REFACTOR-REQUEST B08-6
         }
         private bool Props(Vector3 a, Vector3 b)
         {
             foreach (var box in _props)
             {
                 float lo = 0, hi = 1;
-                if (TownPerimeter.Clip(a.x - box.center.x, b.x - a.x, box.extents.x + _margin, ref lo, ref hi)
-                    && TownPerimeter.Clip(a.z - box.center.z, b.z - a.z, box.extents.z + _margin, ref lo, ref hi)) return true;
+                if (TownPerimeter.Clip(a.x - box.center.x, b.x - a.x, box.extents.x + _margin, ref lo, ref hi)   // refs-ok: REFACTOR-REQUEST B08-6
+                    && TownPerimeter.Clip(a.z - box.center.z, b.z - a.z, box.extents.z + _margin, ref lo, ref hi)) return true;   // refs-ok: REFACTOR-REQUEST B08-6
             }
             return false;
         }
