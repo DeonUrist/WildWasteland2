@@ -58,8 +58,8 @@ namespace WildWasteland.Modules.Patrols
                 var rg = r.GetComponent<RiderGuard>(); if (rg != null) rg.JumpOff("the car blows up");
                 marker.Riders[ri] = null;
             }
-            Core.ModApi.Get<Core.IVehicleDrive>().SetInput(car, 0f, 0f, truck ? 1f : 0f);
-            if (truck) { Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(car); Patrol.Handbrake(car, true); Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(car, 1f); }
+            Core.ModApi.Get<Core.IVehicleDrive>()?.SetInput(car, 0f, 0f, truck ? 1f : 0f);
+            if (truck) { Core.ModApi.Get<Core.IVehicleDrive>()?.StopEngine(car); Patrol.Handbrake(car, true); Core.ModApi.Get<Core.IVehicleDrive>()?.SetHandbrake(car, 1f); }
 
             if (!truck) Darken(car);
             Blast(car);
@@ -124,7 +124,7 @@ namespace WildWasteland.Modules.Patrols
         internal static void BattleWreck(GameObject car)
         {
             var marker=car.GetComponent<PatrolMarker>();if(marker==null||marker.PlayerEntered)return;
-            marker.Exploded=true;marker.DriverDied=true;Core.ModApi.Get<Core.IVehicleDrive>().StopEngine(car);Core.ModApi.Get<Core.IVehicleDrive>().SetHandbrake(car,1f);
+            marker.Exploded=true;marker.DriverDied=true;Core.ModApi.Get<Core.IVehicleDrive>()?.StopEngine(car);Core.ModApi.Get<Core.IVehicleDrive>()?.SetHandbrake(car,1f);
             foreach(var part in Parts(car))SetCondition(part,0f);
             bool truck=IsTruck(marker.BodyPrefab);if(!truck)Darken(car);Blast(car);QuietHinges(car);Patrol.Headlights(car,false);Deaden(car,truck);
         }

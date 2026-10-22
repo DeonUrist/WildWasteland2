@@ -93,14 +93,14 @@ namespace WildWasteland.Modules.Patrols
             yield return null;
             if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;   // blew up mid-start: no more ignition
             start.Fsm.SetState("Start");
-            if (loading) { Core.ModApi.Get<Core.IVehicleDrive>().StartEngine(car); yield break; } // native physics will spin it up at handoff; no scaled-time wait while loading
+            if (loading) { Core.ModApi.Get<Core.IVehicleDrive>()?.StartEngine(car); yield break; } // native physics will spin it up at handoff; no scaled-time wait while loading
             yield return new WaitForSeconds(1.5f);
             if (Explode.IsWreck(car) || car.GetComponent<Crew>()?.MerchantWaiting==true) yield break;
-            bool running = Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(car);
+            bool running = Core.ModApi.Get<Core.IVehicleDrive>()?.EngineRunning(car)==true;
             if (Log.L2) Deep("START state: " + start.ActiveStateName + "  engine running: " + running);
             if (!running)
             {
-                Core.ModApi.Get<Core.IVehicleDrive>().StartEngine(car);
+                Core.ModApi.Get<Core.IVehicleDrive>()?.StartEngine(car);
                 yield return new WaitForSeconds(1f);
                 if (Explode.IsWreck(car)) yield break;
                 if (Log.L2) Deep("After NWH StartEngine(): running=" + Core.ModApi.Get<Core.IVehicleDrive>().EngineRunning(car) + "  START state: " + start.ActiveStateName);

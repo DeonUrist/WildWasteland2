@@ -58,6 +58,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Stops the native merchant vehicle in its accepted waiting state.</summary>
         internal void Park()
         {
+            if(Core.ModApi.Get<Core.IVehicleDrive>()==null)return;
             if(_marker==null)_marker=GetComponent<PatrolMarker>();if(_crew==null)_crew=GetComponent<Crew>();
             var marker=_marker;if(marker?.PlayerEntered==true)return;
             var journey=WorldTraffic.Find(marker?.TrafficId);var crew=_crew;
