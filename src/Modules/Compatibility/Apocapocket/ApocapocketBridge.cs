@@ -1,5 +1,5 @@
 using WildWasteland.Core;
-using WildWasteland.Modules.CleanHUD;
+using WildWasteland.Modules.HUD;
 
 namespace WildWasteland.Modules.Compatibility
 {
@@ -18,13 +18,13 @@ namespace WildWasteland.Modules.Compatibility
         {
             Scope = scope;
             ApocapocketInventory.Install(scope);
-            if (ApocapocketInventory.Ready) ModApi.Provide<IInventorySlots>(scope, new ApocapocketSlots());
+            if (ApocapocketInventory.Ready) { ModApi.Provide<IInventorySlots>(scope, new ApocapocketSlots()); ModApi.Provide<IPocketHud>(scope, new PocketHudAdapter()); }
         }
 
         /// <summary>Withdraws the query and forgets the reader.</summary>
         internal static void Shutdown()
         {
-            if (Scope != null) ModApi.Withdraw<IInventorySlots>(Scope);
+            if (Scope != null) { ModApi.Withdraw<IInventorySlots>(Scope); ModApi.Withdraw<IPocketHud>(Scope); }
             ApocapocketInventory.Clear(); Scope = null;
         }
     }

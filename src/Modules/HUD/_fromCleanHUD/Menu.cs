@@ -10,7 +10,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // ------------------------------------------------------------------ the menus
     // Title (level0 Canvas_MM) and pause (level1 MainMenu_Canvas) menus in the HUD style. The game's own buttons stay in place,
@@ -94,8 +94,8 @@ namespace WildWasteland.Modules.CleanHUD
         // ---------------------------------------------------------------- tick
         internal void Tick()
         {
-            if (!CleanHudModule.Running) return;
-            if (CleanHudModule.MenuEnabled.Value)
+            if (!HudModule.Running) return;
+            if (HudModule.MenuEnabled.Value)
             {
                 HideGo(SettingsModel.FindPath("Canvas/TutorialImage"));
                 HideGo(SettingsModel.FindPath("MainMenu_Canvas/MainMenu/TutorialArrow"));
@@ -107,7 +107,7 @@ namespace WildWasteland.Modules.CleanHUD
                 return;
             }
             RunQueued();
-            if (!CleanHudModule.MenuEnabled.Value) { Teardown(); return; }
+            if (!HudModule.MenuEnabled.Value) { Teardown(); return; }
             var scene = SceneManager.GetActiveScene();
             if (scene.handle != _sceneHandle) { Teardown(); _sceneHandle = scene.handle; _nextScan = 0; }
             if (_loadingScreen.Active) { if (_root != null && _root.activeSelf) _root.SetActive(false); return; }
@@ -173,7 +173,7 @@ namespace WildWasteland.Modules.CleanHUD
             if (_later.Count > 0) { var a = _later.ToArray(); _later.Clear(); foreach (var x in a) Safe(x); }
             if (_nextFrame.Count > 0) { _later.AddRange(_nextFrame); _nextFrame.Clear(); }
         }
-        private static void Safe(Action a) { try { a(); } catch (Exception e) { CleanHudModule.Throttled("menu", e); } }
+        private static void Safe(Action a) { try { a(); } catch (Exception e) { HudModule.Throttled("menu", e); } }
 
         internal void Teardown() { Teardown(false); }
         private void Teardown(bool keepVanilla)
@@ -244,7 +244,7 @@ namespace WildWasteland.Modules.CleanHUD
         private static bool Click(string path)
         {
             var f = ButtonFsm(path);
-            if (f == null || !f.isActiveAndEnabled) { CleanHudModule.Warn("Menu: game button not available: " + path); return false; }
+            if (f == null || !f.isActiveAndEnabled) { HudModule.Warn("Menu: game button not available: " + path); return false; }
             f.SendEvent("Clicked");
             return true;
         }
@@ -439,7 +439,7 @@ namespace WildWasteland.Modules.CleanHUD
 
             BuildMain();
             _screen = "main";
-            CleanHudModule.Log("Menu attached to " + _van.name + " (" + _ctx + ")");
+            HudModule.Log("Menu attached to " + _van.name + " (" + _ctx + ")");
             _nextFrame.Add(() => SelectFirst(_main));
         }
 
@@ -545,7 +545,7 @@ namespace WildWasteland.Modules.CleanHUD
             }
             if (_warnText != null)
             {
-                if (!_warnChecked && KeyCatalog.ScanDone && (WildWasteland.Core.GameRefs.GameManager == null || SceneCache.KeysReady)) { _warnChecked = true; try { KeyCatalog.Collect(); } catch (Exception e) { CleanHudModule.Warn("Keys: " + e.Message); } }
+                if (!_warnChecked && KeyCatalog.ScanDone && (WildWasteland.Core.GameRefs.GameManager == null || SceneCache.KeysReady)) { _warnChecked = true; try { KeyCatalog.Collect(); } catch (Exception e) { HudModule.Warn("Keys: " + e.Message); } }
                 int n = KeyCatalog.ClashCount;
                 _warnText.Set(_screen == "main" && _warnChecked && n > 0 ? n + (n == 1 ? " KEY IS" : " KEYS ARE") + " USED TWICE  -  SETTINGS > CONTROLS" : "");
             }
@@ -869,7 +869,7 @@ namespace WildWasteland.Modules.CleanHUD
         {
             var ctl = SettingsModel.FindPath(canvas);
             var c = ctl != null ? ctl.GetComponent<Canvas>() : null;
-            if (c == null) { CleanHudModule.Warn("Menu: game screen not found: " + canvas); return; }
+            if (c == null) { HudModule.Warn("Menu: game screen not found: " + canvas); return; }
             if (!Click(button)) return;
             _van.enabled = false;
             _vanillaWatch = c; _vanillaWatchSince = Time.unscaledTime;
@@ -1121,7 +1121,7 @@ namespace WildWasteland.Modules.CleanHUD
                     if (ns != null && ns.Clash.Count > 0)
                     { _keyMsg = kt + " IS ALSO USED BY " + string.Join(", ", ns.Clash.ToArray()); _keyMsgBad = true; }
                     else { _keyMsg = row.B.Label + ": " + (key.Value == KeyCode.None ? "CLEARED" : kt); _keyMsgBad = false; }
-                    CleanHudModule.Log("Keys: " + row.B.Who + " = " + kt + (ns != null && ns.Clash.Count > 0 ? " (also used by " + string.Join(", ", ns.Clash.ToArray()) + ")" : ""));
+                    HudModule.Log("Keys: " + row.B.Who + " = " + kt + (ns != null && ns.Clash.Count > 0 ? " (also used by " + string.Join(", ", ns.Clash.ToArray()) + ")" : ""));
                 }
             }
             else { _keyMsg = null; }
@@ -1164,7 +1164,7 @@ namespace WildWasteland.Modules.CleanHUD
     {
         internal static bool Prefix(HutongGames.PlayMaker.Actions.GetButtonDown __instance)
         {
-            if (!CleanHudModule.Running || !CleanHudModule.MenuEnabled.Value || (!Core.LoadingProgress.ScreenVisible && Menu.BlockCancelFrame < Time.frameCount)) return true;
+            if (!HudModule.Running || !HudModule.MenuEnabled.Value || (!Core.LoadingProgress.ScreenVisible && Menu.BlockCancelFrame < Time.frameCount)) return true;
             var b = __instance.buttonName;
             return b == null || b.Value != "Cancel";
         }

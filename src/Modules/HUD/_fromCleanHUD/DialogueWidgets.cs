@@ -3,7 +3,7 @@ using System;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal static partial class DialogueWidgets
     {

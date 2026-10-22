@@ -8,7 +8,7 @@ using UnityEngine.UI;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>Equipment drop through the native TakeItem/Visibility recipe plus the armor/backpack capacity resets (Wave A split; B01 -> a Core inventory service IInventory.DropEquipment, overlapping Gunplay BackpackOverflow).</summary>
     internal static partial class InventoryStyle

@@ -7,18 +7,18 @@ using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
-using WildWasteland.Modules.CleanHUD;
+using WildWasteland.Modules.HUD;
 
 namespace WildWasteland.Modules.Towns
 {
     /// <summary>
-    /// Town name labels and icon tint on the CleanHUD map (reflection into QuestMap entries, GlyphText label, QuestMap.Tick postfix),
+    /// Town name labels and icon tint on the CleanHUD map (reflection into MapMarkers entries, GlyphText label, MapMarkers.Tick postfix),
     /// hiding native map icons of town buildings and the starting-camp tent icon (LocationMarkers.Observe patches).
     /// Wave A (A6): partial split of Towns/TownMarkers.cs (HUD part, B10: becomes an IMapMarkers label/colour feature).
     /// </summary>
     internal static partial class TownMarkers
     {
-        /// <summary>HUD half of a town marker: the cached QuestMap entry, its icon root/image and the name label.</summary>
+        /// <summary>HUD half of a town marker: the cached MapMarkers entry, its icon root/image and the name label.</summary>
         private sealed partial class Marker
         {
             internal object Entry;
@@ -33,8 +33,8 @@ namespace WildWasteland.Modules.Towns
         internal static void Install(TownsModule owner)
         {
             var assembly = typeof(Services).Assembly;
-            var locations = assembly.GetType("WildWasteland.Modules.CleanHUD.LocationMarkers", true);
-            var map = assembly.GetType("WildWasteland.Modules.CleanHUD.QuestMap", true);
+            var locations = assembly.GetType("WildWasteland.Modules.HUD.LocationMarkers", true);
+            var map = assembly.GetType("WildWasteland.Modules.HUD.MapMarkers", true);
             var entry = map.GetNestedType("Entry", BindingFlags.NonPublic);
             var nativeLocation = locations.GetNestedType("Location", BindingFlags.NonPublic);
             var flags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
@@ -42,7 +42,7 @@ namespace WildWasteland.Modules.Towns
             _nativeIcon = nativeLocation.GetField("Icon", flags);
             _entries = map.GetField("_entries", flags); _id = entry.GetField("Id", flags);
             _root = entry.GetField("Root", flags); _image = entry.GetField("Image", flags);
-            var hud = typeof(CleanHudModule);
+            var hud = typeof(HudModule);
             _locations = (ConfigEntry<bool>)hud.GetField("ShowLocations", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
             _compass = (ConfigEntry<bool>)hud.GetField("ShowCompass", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
             if (!Patches.Patch(owner, Patches.Method(locations, "Observe"), prefix: typeof(TownMarkers).GetMethod("Observe", BindingFlags.Static | BindingFlags.NonPublic),

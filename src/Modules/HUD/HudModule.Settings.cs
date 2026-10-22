@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Registers only combat-owned rows in their original HUD order.</summary>
         public override void Settings(SettingsShell shell)
         {
+            CleanSettings(shell);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawCombatStart, 100);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawHitMarkers, 130);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawHeadshot, 150);

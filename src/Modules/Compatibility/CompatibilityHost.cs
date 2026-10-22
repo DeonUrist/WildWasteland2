@@ -54,7 +54,7 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Old Guns entry (Gunplay after Wave C).</summary>
         internal static readonly CompatibilityHost Guns = new CompatibilityHost("Guns", "Gunplay");
         /// <summary>Old CleanHUD entry (HUD after Wave C).</summary>
-        internal static readonly CompatibilityHost CleanHud = new CompatibilityHost("CleanHUD", "HUD");
+        internal static readonly CompatibilityHost CleanHud = new CompatibilityHost("HUD");
         /// <summary>Patrols entry (it still installs the War Rig and vehicle parts).</summary>
         internal static readonly CompatibilityHost Patrols = new CompatibilityHost("Patrols");
         /// <summary>Survival entry (Stew Pot).</summary>

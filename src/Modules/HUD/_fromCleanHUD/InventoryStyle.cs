@@ -8,7 +8,7 @@ using UnityEngine.UI;
 using WildWasteland.Core;
 using WildWasteland.Core.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // The native sheet owns opening and data. This view borrows its textures and reads live text/FSM variables.
     internal static partial class InventoryStyle
@@ -50,7 +50,7 @@ namespace WildWasteland.Modules.CleanHUD
         }
         private static void TickCore()
         {
-            if (!CleanHudModule.Enabled.Value) { if (_native != null || Session.Open) Restore(); return; }
+            if (!HudModule.CleanHudEnabled.Value) { if (_native != null || Session.Open) Restore(); return; }
             if (_native == null && Time.unscaledTime >= _lookup)
             {
                 _lookup = Time.unscaledTime + 1f;

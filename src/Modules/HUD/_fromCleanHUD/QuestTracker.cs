@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal sealed class QuestTracker
     {
@@ -18,8 +18,8 @@ namespace WildWasteland.Modules.CleanHUD
         // Inputs of the last placement; the root is only moved when one of them changes.
         private Vector2 _inMin, _inMax, _inPos, _inPivot, _inSize; private Vector3 _inScale, _inCompass; private float _inLossy; private bool _inActive, _placed;
 
-        internal static bool Owned { get { return _owned && CleanHudModule.Running && CleanHudModule.Enabled.Value; } }
-        internal static void Install(CleanHudModule owner) { Clear(); }
+        internal static bool Owned { get { return _owned && HudModule.Running && HudModule.CleanHudEnabled.Value; } }
+        internal static void Install(HudModule owner) { Clear(); }
         internal static void Clear() { _owned = false; }
 
         internal QuestTracker(Transform parent, Font font, Color gold, Color white)

@@ -14,7 +14,7 @@ using InsaneSystems.InputManager;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // One key box of a binding row.
     internal sealed class KeySlot
@@ -74,7 +74,7 @@ namespace WildWasteland.Modules.CleanHUD
         }
         private static string GameName(string name)
         {
-            var pocket = ApocapocketInventory.ActionLabel(name); if (pocket != null) return pocket;
+            var pocket = WildWasteland.Core.ModApi.Get<WildWasteland.Core.IPocketHud>()?.ActionLabel(name); if (pocket != null) return pocket;
             string s;
             if (Names.TryGetValue(name, out s)) return s;
             if (name.StartsWith("Adjust-", StringComparison.OrdinalIgnoreCase)) name = name.Substring(7);
@@ -94,7 +94,7 @@ namespace WildWasteland.Modules.CleanHUD
             new Hard { Key = KeyCode.End, Label = "SPAWN ITEM (OFF IN THIS VERSION)", Tab = "DEBUG", Ctx = "off", Fsm = "SpawnItem" },
         };
 
-        private static string HardFile { get { return Path.Combine(WildWasteland.Core.Assets.ModuleConfigDir("CleanHUD"), "game_keys.txt"); } }
+        private static string HardFile { get { return Path.Combine(WildWasteland.Core.Assets.ModuleConfigDir("HUD"), "game_keys.txt"); } }
         private static readonly List<string[]> _fsmExtra = new List<string[]>();
         private static readonly HashSet<string> _fsmSeen = new HashSet<string>();
         internal static void SceneReset()
@@ -130,7 +130,7 @@ namespace WildWasteland.Modules.CleanHUD
                 foreach (var p in _fsmExtra) sb.Append(p[0]).Append('\t').Append(p[1]).Append('\t').Append(p[2]).Append('\n');
                 Directory.CreateDirectory(Path.GetDirectoryName(HardFile)); File.WriteAllText(HardFile, sb.ToString());
             }
-            catch (Exception e) { CleanHudModule.Warn("Keys: FSM cache write failed: " + e.Message); }
+            catch (Exception e) { HudModule.Warn("Keys: FSM cache write failed: " + e.Message); }
         }
         // ---- collect
         internal static int ClashCount;
@@ -139,7 +139,7 @@ namespace WildWasteland.Modules.CleanHUD
         {
             var all = new List<KeyBind>();
             int order = 0;
-            try { AddGame(all, ref order); } catch (Exception e) { CleanHudModule.Warn("Keys: game controls unavailable: " + e.Message); }
+            try { AddGame(all, ref order); } catch (Exception e) { HudModule.Warn("Keys: game controls unavailable: " + e.Message); }
             foreach (var h in HardKeys)
             {
                 var b = new KeyBind { Tab = h.Tab, Label = h.Label, Ctx = h.Ctx, Fixed = true, Note = h.Ctx == "off" ? "NOT ACTIVE" : "HARDCODED", Order = 10000 + order++ };
@@ -153,8 +153,8 @@ namespace WildWasteland.Modules.CleanHUD
                 b.Slots.Add(new KeySlot { Key = k });
                 all.Add(b);
             }
-            try { AddMods(all, ref order); } catch (Exception e) { CleanHudModule.Warn("Keys: mod settings: " + e.Message); }
-            try { AddModCode(all, ref order); } catch (Exception e) { CleanHudModule.Warn("Keys: mod code scan: " + e.Message); }
+            try { AddMods(all, ref order); } catch (Exception e) { HudModule.Warn("Keys: mod settings: " + e.Message); }
+            try { AddModCode(all, ref order); } catch (Exception e) { HudModule.Warn("Keys: mod code scan: " + e.Message); }
             all.Sort((a, b) => a.Order.CompareTo(b.Order));
             ClashCount = FindClashes(all);
             return all;
@@ -396,7 +396,7 @@ namespace WildWasteland.Modules.CleanHUD
             {
                 foreach (var info in Chainloader.PluginInfos.Values)
                 {
-                    if (info.Metadata.GUID == CleanHudModule.GUID || string.IsNullOrEmpty(info.Location) || !File.Exists(info.Location)) continue;
+                    if (info.Metadata.GUID == HudModule.GUID || string.IsNullOrEmpty(info.Location) || !File.Exists(info.Location)) continue;
                     var name = (info.Metadata.Name ?? info.Metadata.GUID).ToUpperInvariant();
                     bool dup = false; foreach (var j in jobs) if (j.Value == info.Location) dup = true;
                     if (!dup) jobs.Add(new KeyValuePair<string, string>(name, info.Location));
@@ -426,7 +426,7 @@ namespace WildWasteland.Modules.CleanHUD
             lock (_sync)
             {
                 keys = _codeKeys;
-                if (_scanWarnings != null) { foreach (var warning in _scanWarnings) CleanHudModule.Warn(warning); _scanWarnings = null; }
+                if (_scanWarnings != null) { foreach (var warning in _scanWarnings) HudModule.Warn(warning); _scanWarnings = null; }
             }
             if (keys == null) return;
             foreach (var c in keys)
@@ -450,7 +450,7 @@ namespace WildWasteland.Modules.CleanHUD
                     foreach (var t in m.GetTypes())
                         foreach (var md in t.Methods)
                         {
-                            if (t.Namespace != null && t.Namespace.StartsWith("WildWasteland.Modules.CleanHUD", StringComparison.Ordinal)) continue;
+                            if (t.Namespace != null && t.Namespace.StartsWith("WildWasteland.Modules.HUD", StringComparison.Ordinal)) continue;
                             if (!md.HasBody || md.Name.IndexOf("Rebind", StringComparison.OrdinalIgnoreCase) >= 0) continue;
                             var ins = md.Body.Instructions;
                             for (int i = 1; i < ins.Count; i++)
@@ -551,7 +551,7 @@ namespace WildWasteland.Modules.CleanHUD
                 }
             }
             var text = logged.ToString();
-            if (text != _lastLog) { _lastLog = text; if (n > 0) CleanHudModule.Warn("Keys used twice (" + n + "):" + text); }
+            if (text != _lastLog) { _lastLog = text; if (n > 0) HudModule.Warn("Keys used twice (" + n + "):" + text); }
             return n;
         }
         private static string _lastLog = "";

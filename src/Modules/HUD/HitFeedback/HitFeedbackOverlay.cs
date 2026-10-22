@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.HUD
     // nothing is drawn (and the job returns at once) while there is nothing to show.
     // WW: lifetimes/limits/merge window come from tools.cfg ([HUD / Hit feedback], defaults = 1.2.2 constants), Camera.main is
     // GameRefs.MainCamera, world points follow floating-origin jumps (Shift), Shutdown destroys the white texture.
-    internal static class Hud
+    internal static class HitFeedbackOverlay
     {
         private struct Pending { public GameObject Target; public Vector3 Point; public float Damage; public bool Head, Part; public float Time; }
         private struct Floater { public Vector3 Point; public string Text; public bool Head, Part; public float Born; }

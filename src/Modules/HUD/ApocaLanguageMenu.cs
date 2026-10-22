@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>Adapts the typed optional language menu into the HUD's existing menu rows.</summary>
     internal static class ApocaLanguageMenu

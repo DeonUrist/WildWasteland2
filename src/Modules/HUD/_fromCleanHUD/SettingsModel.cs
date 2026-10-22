@@ -9,7 +9,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // ------------------------------------------------------------------ settings model
     internal sealed class SettingDef
@@ -25,7 +25,7 @@ namespace WildWasteland.Modules.CleanHUD
         internal static List<string> Tabs()
         {
             var l = new List<string> { "GRAPHICS", "AUDIO", "GAMEPLAY", "PLAYER & CAR", "CONTROLS" };
-            if (CleanHudModule.EnableCheats.Value) l.Add("CHEATS");
+            if (HudModule.EnableCheats.Value) l.Add("CHEATS");
             return l;
         }
         internal static readonly List<SettingDef> Defs = new List<SettingDef>();
@@ -108,7 +108,7 @@ namespace WildWasteland.Modules.CleanHUD
                 if (ES3.KeyExists(d.Key, fs))
                     return d.Kind == "bool" ? (ES3.Load<bool>(d.Key, fs) ? 1 : 0) : ES3.Load<float>(d.Key, fs);
             }
-            catch (Exception e) { CleanHudModule.Warn("Settings read " + d.Key + ": " + e.Message); }
+            catch (Exception e) { HudModule.Warn("Settings read " + d.Key + ": " + e.Message); }
             return d.Def;
         }
 
@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.CleanHUD
                 if (d.Kind == "bool") { ES3.Save<bool>(d.Key, v > .5f, FileSet()); var cs = CacheSet(); if (ES3.FileExists(cs)) ES3.Save<bool>(d.Key, v > .5f, cs); }
                 else { ES3.Save<float>(d.Key, v, FileSet()); var cs = CacheSet(); if (ES3.FileExists(cs)) ES3.Save<float>(d.Key, v, cs); }
             }
-            catch (Exception e) { CleanHudModule.Warn("Settings write " + d.Key + ": " + e.Message); }
+            catch (Exception e) { HudModule.Warn("Settings write " + d.Key + ": " + e.Message); }
         }
 
         internal static string Format(SettingDef d, float v)
@@ -195,7 +195,7 @@ namespace WildWasteland.Modules.CleanHUD
                 File.WriteAllText(PathXml, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<Settings xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\r\n" +
                     "  <screenWidth>" + W + "</screenWidth>\r\n  <screenHeight>" + H + "</screenHeight>\r\n  <screenMode>" + Mode + "</screenMode>\r\n  <qualityLevel>" + Quality + "</qualityLevel>\r\n</Settings>");
             }
-            catch (Exception e) { CleanHudModule.Warn("Settings.xml not written: " + e.Message); }
+            catch (Exception e) { HudModule.Warn("Settings.xml not written: " + e.Message); }
         }
         internal string ResText { get { return W + "x" + H; } }
         internal string QualityText { get { var n = QualitySettings.names; return Quality >= 0 && Quality < n.Length ? n[Quality].ToUpperInvariant() : Quality.ToString(); } }

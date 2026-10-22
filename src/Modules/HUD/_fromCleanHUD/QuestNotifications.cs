@@ -1,5 +1,5 @@
 using WildWasteland.Core;
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal sealed class QuestNotifications : IQuestPresentation
     {
@@ -8,10 +8,10 @@ namespace WildWasteland.Modules.CleanHUD
         public bool Conversation { get { return QuestDialogue.Shown; } }
         public bool Notify(string text)
         {
-            if (!CleanHudModule.Running || !CleanHudModule.Enabled.Value || string.IsNullOrEmpty(text)) return false;
+            if (!HudModule.Running || !HudModule.CleanHudEnabled.Value || string.IsNullOrEmpty(text)) return false;
             MessageHook.Push(text); return true;
         }
-        internal static void Install(CleanHudModule owner) { Services.QuestUi = new QuestNotifications(); }
+        internal static void Install(HudModule owner) { Services.QuestUi = new QuestNotifications(); }
         internal static void Clear() { if (Services.QuestUi is QuestNotifications) Services.QuestUi = null; }
     }
 }

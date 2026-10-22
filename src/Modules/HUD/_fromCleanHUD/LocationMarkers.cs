@@ -8,7 +8,7 @@ using MapMagic.Terrains;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     internal static class LocationMarkers
     {
@@ -19,6 +19,30 @@ namespace WildWasteland.Modules.CleanHUD
             internal string Icon, GenericIcon, Label, Key, Caption; internal Color Color; internal IMapMarkers Map; internal bool Known, Cleared;
             internal Vector3 Position() { return Root != null ? Root.position : Vector3.zero; }
         }
+        private static readonly HashSet<Transform> Excluded = new HashSet<Transform>();
+        private static readonly Dictionary<Transform, string> Icons = new Dictionary<Transform, string>();
+        private static readonly Dictionary<Transform, string> Labels = new Dictionary<Transform, string>();
+        /// <summary>Excludes a structure root and removes already registered automatic markers.</summary>
+        internal static void Exclude(Transform root, bool excluded)
+        {
+            if (root == null) return;
+            if (excluded) Excluded.Add(root); else Excluded.Remove(root);
+            foreach (var pair in Locations)
+            {
+                if (!ExcludedRoot(pair.Key)) continue;
+                var location = pair.Value;
+                if (location.Map != null) location.Map.Remove(location.MapMarker); location.MapMarker = 0;
+                if (location.Marker != 0) Api.Compass.Remove(location.Marker); location.Marker = 0;
+            }
+        }
+        /// <summary>Returns whether an automatic location belongs to an excluded root.</summary>
+        static bool ExcludedRoot(Transform root) { for (var t = root; t != null; t = t.parent) if (Excluded.Contains(t)) return true; return false; }
+        /// <summary>Sets a location's artwork override and refreshes its presentation.</summary>
+        internal static void SetIcon(Transform root, string icon) { if (root == null) return; if (icon == null) Icons.Remove(root); else Icons[root] = icon; RefreshIcons(); }
+        /// <summary>Sets a location's display caption without changing its saved discovery identity.</summary>
+        internal static void SetLabel(Transform root, string label) { if (root == null) return; if (label == null) Labels.Remove(root); else Labels[root] = label; Location location; if (Locations.TryGetValue(root, out location)) location.Caption = label ?? CaptionName(location.Label); }
+        /// <summary>True when the persisted identity has been discovered.</summary>
+        internal static bool Known(string key) { return key != null && Discovered.Contains(key); }
         private static readonly Dictionary<Transform, Location> Locations = new Dictionary<Transform, Location>();
         private static readonly List<Transform> Dead = new List<Transform>();
         private static readonly HashSet<string> Discovered = new HashSet<string>(StringComparer.Ordinal);
@@ -41,7 +65,7 @@ namespace WildWasteland.Modules.CleanHUD
         }
         private static void StateChanged(string previous, string now) { if (now == "setSeed") Begin(true); else if (now == "wait" || now == "SaveGame") SaveEnded(SaveBus.Slot); }
         private static int Seed() { var fsm = GameRefs.SaveLoadGame; var seed = fsm != null ? fsm.FsmVariables.FindFsmInt("seed") : null; return seed != null ? seed.Value : int.MinValue; }
-        private static string SavePath(string slot) { return Path.Combine(Path.Combine(Core.Assets.ModuleConfigDir("CleanHUD"), "Saves"), Path.GetFileName(slot) + ".locations.txt"); }
+        private static string SavePath(string slot) { return Path.Combine(Path.Combine(Core.Assets.ModuleConfigDir("HUD"), "Saves"), Path.GetFileName(slot) + ".locations.txt"); }
         internal static void WorldReady(string slot)
         {
             int seed = Seed(); if (_loaded && slot == _slot && seed == _seed) return;
@@ -55,9 +79,9 @@ namespace WildWasteland.Modules.CleanHUD
                         for (int i = 1; i < lines.Length; i++) if (lines[i].Length > 0) Discovered.Add(lines[i]);
                 }
             }
-            catch (Exception e) { CleanHudModule.Warn("Location discoveries could not be read: " + e.Message); }
+            catch (Exception e) { HudModule.Warn("Location discoveries could not be read: " + e.Message); }
             _fresh = false;
-            CleanHudModule.Log("Location discoveries loaded: " + Discovered.Count + " (seed " + seed + ")");
+            HudModule.Log("Location discoveries loaded: " + Discovered.Count + " (seed " + seed + ")");
         }
         internal static void SaveEnded(string slot)
         {
@@ -79,7 +103,7 @@ namespace WildWasteland.Modules.CleanHUD
         }
         private static void Applied(TerrainTile tile, TileData data, StopToken stop)
         {
-            if (!CleanHudModule.Running || tile == null) return;
+            if (!HudModule.Running || tile == null) return;
             SceneCache.QueueRoot(tile.transform);
         }
         internal static void Observe(Transform icon)
@@ -96,15 +120,16 @@ namespace WildWasteland.Modules.CleanHUD
                 if (int.TryParse(label.Substring(5), out number)) color = number == 10 || number == 15 || number == 16 ? new Color(.31f, .86f, .39f) : new Color(1f, .31f, .31f);
             }
             var renderer = icon.GetComponent<Renderer>();
-            string generic = glyph;
-            if (!CleanHudModule.SimpleMapIcons.Value && MapIcons.Get(label) != null) glyph = label;
-            Locations.Add(root, new Location { Root = root, Icon = glyph, GenericIcon = generic, Color = color, Label = label, Caption = CaptionName(label), Native = renderer, ForceOff = renderer != null && renderer.forceRenderingOff });
+            string generic = root.name == "Starter_Area" ? "tent" : glyph; glyph = generic;
+            if (!HudModule.SimpleMapIcons.Value && MapIcons.Get(label) != null) glyph = label;
+            string overrideIcon; if (Icons.TryGetValue(root, out overrideIcon)) glyph = overrideIcon;
+            Locations.Add(root, new Location { Root = root, Icon = glyph, GenericIcon = generic, Color = color, Label = label, Caption = Labels.ContainsKey(root) ? Labels[root] : CaptionName(label), Native = renderer, ForceOff = renderer != null && renderer.forceRenderingOff });
         }
         internal static void RefreshIcons()
         {
             foreach (var location in Locations.Values)
             {
-                location.Icon = !CleanHudModule.SimpleMapIcons.Value && MapIcons.Get(location.Label) != null ? location.Label : location.GenericIcon;
+                string overrideIcon; location.Icon = Icons.TryGetValue(location.Root, out overrideIcon) ? overrideIcon : !HudModule.SimpleMapIcons.Value && MapIcons.Get(location.Label) != null ? location.Label : location.GenericIcon;
                 if (location.Map != null) location.Map.Remove(location.MapMarker); location.MapMarker = 0;
                 if (location.Marker != 0) Api.Compass.Remove(location.Marker); location.Marker = 0;
             }
@@ -120,8 +145,8 @@ namespace WildWasteland.Modules.CleanHUD
         {
             if (!_loaded && GameRefs.InGame && !SaveBus.Busy) WorldReady(SaveBus.Slot);
             var player = Core.GameRefs.Player;
-            bool hud = CleanHudModule.Running && CleanHudModule.Enabled.Value;
-            bool visible = hud && CleanHudModule.ShowCompass.Value && CleanHudModule.ShowLocations.Value && player != null;
+            bool hud = HudModule.Running && HudModule.CleanHudEnabled.Value;
+            bool visible = hud && HudModule.ShowCompass.Value && HudModule.ShowLocations.Value && player != null;
             var camera = Core.GameRefs.MainCamera;
             var origin = camera != null ? camera.transform.position : player != null ? player.transform.position : Vector3.zero;
             Dead.Clear();
@@ -152,12 +177,13 @@ namespace WildWasteland.Modules.CleanHUD
                     }
                 }
                 var color = location.Cleared ? Color.white : location.Color;
-                if (location.Native != null) location.Native.forceRenderingOff = hud && CleanHudModule.MapEnabled.Value ? true : location.ForceOff;
+                if (location.Native != null) location.Native.forceRenderingOff = hud && HudModule.MapEnabled.Value ? true : location.ForceOff;
                 if (location.Map != Services.Map) { if (location.Map != null) location.Map.Remove(location.MapMarker); location.Map = Services.Map; location.MapMarker = 0; }
-                bool onMap = pair.Key != null && hud && CleanHudModule.MapEnabled.Value && location.Map != null && location.Map.Markers != MapDetail.Off;
+                bool excluded = ExcludedRoot(pair.Key);
+                bool onMap = !excluded && pair.Key != null && hud && HudModule.MapEnabled.Value && location.Map != null && location.Map.Markers != MapDetail.Off;
                 if (!onMap) { if (location.Map != null) location.Map.Remove(location.MapMarker); location.MapMarker = 0; }
                 else if (!location.Map.Exists(location.MapMarker)) location.MapMarker = location.Map.Add(Owner, location.Position, location.Icon, color, location.Label);
-                if (pair.Key == null || !visible || (pair.Key.position - origin).sqrMagnitude > 1000000f * VantageDiscovery.Scale * VantageDiscovery.Scale)
+                if (excluded || pair.Key == null || !visible || (pair.Key.position - origin).sqrMagnitude > 1000000f * VantageDiscovery.Scale * VantageDiscovery.Scale)
                 {
                     if (location.Marker != 0) Api.Compass.Remove(location.Marker);
                     location.Marker = 0;
@@ -175,7 +201,7 @@ namespace WildWasteland.Modules.CleanHUD
                 if (location.Map != null) location.Map.Remove(location.MapMarker);
                 if (location.Native != null) location.Native.forceRenderingOff = location.ForceOff;
             }
-            Api.Compass.RemoveAll(Owner); Locations.Clear(); Dead.Clear();
+            Api.Compass.RemoveAll(Owner); Locations.Clear(); Dead.Clear(); Excluded.Clear(); Icons.Clear(); Labels.Clear();
         }
         internal static void Shutdown()
         {

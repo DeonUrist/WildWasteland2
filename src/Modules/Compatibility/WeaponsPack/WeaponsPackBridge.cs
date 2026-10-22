@@ -2,7 +2,7 @@ using System;
 using BepInEx.Bootstrap;
 using WildWasteland.Core;
 using WildWasteland.Core.Events;
-using WildWasteland.Modules.CleanHUD;
+using WildWasteland.Modules.HUD;
 using WildWasteland.Modules.Guns;
 using WildWasteland.Modules.NPC;
 using WildWasteland.Modules.PlayerBody;
@@ -28,6 +28,7 @@ namespace WildWasteland.Modules.Compatibility
         internal static void Start(IModule scope)
         {
             _scope = scope; _attempted = false;
+            ModApi.Provide<IWeaponIconModels>(scope, new WeaponIconModels());
             _discovery = Scheduler.Interval(scope, "Compatibility.WeaponsPack.Discovery", .5f, Discover);
             Scheduler.Interval(scope, "Compatibility.WeaponsPack.Cuts", 2f, WeaponsPackFear.Tick, Phase.Update, true);
             Hooks.CreateObjectEnter.Postfix(scope, WeaponsPackFear.AfterCorpse);
@@ -57,6 +58,7 @@ namespace WildWasteland.Modules.Compatibility
         /// <summary>Releases every part's state; the scope then removes the patches, jobs and hooks.</summary>
         internal static void Shutdown()
         {
+            if (_scope != null) ModApi.Withdraw<IWeaponIconModels>(_scope);
             try { WeaponsPackShadows.Shutdown(); } catch (Exception e) { Log.Warn(_scope, "Weapons Pack shadows shutdown: " + e.Message); }
             WeaponsPackFear.Shutdown(); WeaponsPackIcons.Shutdown(); WeaponsPackSound.Shutdown();
             _discovery = null; _attempted = false; _scope = null;

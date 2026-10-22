@@ -1,5 +1,5 @@
 using WildWasteland.Core;
-using WildWasteland.Modules.CleanHUD;
+using WildWasteland.Modules.HUD;
 
 namespace WildWasteland.Modules.Compatibility
 {

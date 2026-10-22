@@ -6,7 +6,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// Vistas World Gen part serving the HUD: the mod's engine-heat overlay is replaced by HUD notifications ("OVERHEATING, POWER CUT",
@@ -42,7 +42,7 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Prefix of the mod's engine-heat HUD draw (every GUI frame): pushes a HUD notice on a new warning state and skips the original.</summary>
         private static bool Draw()
         {
-            if (!CompatibilityHost.CleanHud.Running || !CleanHudModule.Enabled.Value || _active == null) { _last = null; _state = 0; return true; } // refs-ok: REFACTOR-REQUEST B17-16
+            if (!CompatibilityHost.CleanHud.Running || !HudModule.CleanHudEnabled.Value || _active == null) { _last = null; _state = 0; return true; } // refs-ok: REFACTOR-REQUEST B17-16
             var active = _active(null) as UnityEngine.Object;
             int state = active != null && ((ConfigEntry<bool>)_enabled).Value ? (_stalled(active) ? 2 : _temperature(active) >= 105f ? 1 : 0) : 0;
             if (!ReferenceEquals(_last, active)) { _last = active; _state = 0; }

@@ -2,7 +2,7 @@ using WildWasteland.Core.UI;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // Native MapCheatUI: a 900 px RawImage frame behind the 850 px RawImage_Map and the "press (M) to close" Text below it.
     // With Clean HUD on, the frame and text are hidden (components kept) and a CleanHUD plate and glyph hint take their place.
@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.CleanHUD
         {
             if (map != _map) { Restore(); _map = map; }
             if (_map == null || _map.parent == null) return;
-            bool want = CleanHudModule.Running && CleanHudModule.Enabled.Value;
+            bool want = HudModule.Running && HudModule.CleanHudEnabled.Value;
             if (want == _styled) return;
             if (!want) { Restore(); _map = map; return; }
             var root = (RectTransform)_map.parent;

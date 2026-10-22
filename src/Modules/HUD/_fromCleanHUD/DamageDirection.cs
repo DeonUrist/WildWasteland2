@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // Existing NPC notifications cover native attacks and Guns hits, including armor-only hits.
     internal sealed class DamageDirection : IDisposable
@@ -35,7 +35,7 @@ namespace WildWasteland.Modules.CleanHUD
 
         private void Hurt(GameObject victim, GameObject attacker)
         {
-            if (!CleanHudModule.DamageDirection.Value || !GameRefs.InGame || !_parent.gameObject.activeInHierarchy) return;
+            if (!HudModule.DamageDirection.Value || !GameRefs.InGame || !_parent.gameObject.activeInHierarchy) return;
             var player = GameRefs.Player;
             if (player == null || victim == null || attacker == null || !victim.transform.IsChildOf(player.transform) || attacker.transform.IsChildOf(player.transform)) return;
             var target = attacker.transform;
@@ -73,9 +73,9 @@ namespace WildWasteland.Modules.CleanHUD
         {
             if (_active == 0) return;
             var camera = GameRefs.MainCamera; var player = GameRefs.Player;
-            bool show = visible && CleanHudModule.DamageDirection.Value && GameRefs.InGame && camera != null && player != null;
+            bool show = visible && HudModule.DamageDirection.Value && GameRefs.InGame && camera != null && player != null;
             float now = Time.unscaledTime, heading = camera != null ? camera.transform.eulerAngles.y : 0f;
-            float scale = CleanHudModule.Scale.Value; var size = Vector3.one * (scale * 1.15f);
+            float scale = HudModule.Scale.Value; var size = Vector3.one * (scale * 1.15f);
             var playerPosition = player != null ? player.transform.position : Vector3.zero;
             foreach (var a in _arrows)
             {

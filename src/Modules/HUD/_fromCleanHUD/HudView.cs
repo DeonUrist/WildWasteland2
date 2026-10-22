@@ -1,17 +1,18 @@
 using WildWasteland.Core.UI;
 using System;
+using WildWasteland.Core;
 using System.Collections.Generic;
 using System.Globalization;
-using ApiCompass = WildWasteland.Modules.CleanHUD.Api.Compass;
+using ApiCompass = WildWasteland.Modules.HUD.Api.Compass;
 using UnityEngine;
 using UnityEngine.UI;
 using InsaneSystems.InputManager;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     // The HUD itself. Every number below is the approved mockup's geometry in 1920x1080 design units
     // (measured from the mockup DOM), so the in-game result matches it.
-    internal sealed class Hud : IDisposable
+    internal sealed class HudView : IDisposable
     {
         static RectTransform _saveCompass;
         internal static Vector2 SaveWarningAnchor()
@@ -135,7 +136,7 @@ namespace WildWasteland.Modules.CleanHUD
 
         internal bool Valid { get { return !_disposed && _src.Canvas != null && _root != null; } }
 
-        private Hud(Bindings src, LayoutFile layout)
+        private HudView(Bindings src, LayoutFile layout)
         {
             _src = src; _layoutFile = layout;
             _font = FindFont(src);
@@ -162,11 +163,11 @@ namespace WildWasteland.Modules.CleanHUD
             catch { UnityEngine.Object.Destroy(_root); throw; }
         }
 
-        internal static Hud TryCreate(LayoutFile layout)
+        internal static HudView TryCreate(LayoutFile layout)
         {
             var src = Bindings.Find(); if (src == null) return null;
-            var hud = new Hud(src, layout);
-            CleanHudModule.Log("CleanHUD attached to the game HUD (font: " + (hud._font != null ? hud._font.name : "none") + ").");
+            var hud = new HudView(src, layout);
+            HudModule.Log("CleanHUD attached to the game HUD (font: " + (hud._font != null ? hud._font.name : "none") + ").");
             return hud;
         }
 
@@ -321,23 +322,24 @@ namespace WildWasteland.Modules.CleanHUD
 
         private void TickDriving()
         {
-            bool visible = ChaseCameraHud.Refresh();
-            if (_driving.gameObject.activeSelf && !visible) ChaseCameraHud.TraceHidden();
+            var driving = ModApi.Get<IDrivingHud>(); DrivingHudState reading = default(DrivingHudState);
+            bool visible = driving != null && driving.TryRead(HudModule.DrivingHudOnlyThirdPerson.Value, out reading);
+            if (_driving.gameObject.activeSelf && !visible) driving?.TraceHidden();
             if (_driving.gameObject.activeSelf != visible) _driving.gameObject.SetActive(visible);
             if (!visible) return;
-            float scale = ChaseCameraHud.Scale;
+            float scale = reading.Scale;
             var ls = new Vector3(scale, scale, 1); if (_driving.localScale != ls) _driving.localScale = ls;
-            var ap = new Vector2(356 - 356 * scale, 40 + 8 * scale + ChaseCameraHud.Gap); if (_driving.anchoredPosition != ap) _driving.anchoredPosition = ap;
-            var color = ChaseCameraHud.Fraction >= .9f ? new Color(.95f, .22f, .12f) : Gold;
+            var ap = new Vector2(356 - 356 * scale, 40 + 8 * scale + reading.Gap); if (_driving.anchoredPosition != ap) _driving.anchoredPosition = ap;
+            var color = reading.Fraction >= .9f ? new Color(.95f, .22f, .12f) : Gold;
             _rpm.color = color;
             if (Time.unscaledTime >= _nextDrivingText)
             {
                 _nextDrivingText = Time.unscaledTime + .1f;
-                _speed.text = Mathf.RoundToInt(ChaseCameraHud.Speed).ToString(CultureInfo.InvariantCulture) + " KM/H";
-                _rpm.text = (Mathf.RoundToInt(ChaseCameraHud.Rpm / 10) * 10).ToString(CultureInfo.InvariantCulture) + " RPM";
-                _gear.text = "GEAR " + ChaseCameraHud.Gear;
+                _speed.text = Mathf.RoundToInt(reading.Speed).ToString(CultureInfo.InvariantCulture) + " KM/H";
+                _rpm.text = (Mathf.RoundToInt(reading.Rpm / 10) * 10).ToString(CultureInfo.InvariantCulture) + " RPM";
+                _gear.text = "GEAR " + reading.Gear;
             }
-            ChaseCameraHud.HideNative();
+            driving.HideNative();
         }
 
         internal void SetVehicleStatus(bool ignitionOff, bool handbrakeOn, bool playing, string volume)
@@ -502,7 +504,7 @@ namespace WildWasteland.Modules.CleanHUD
         // so a bigger HUD grows away from the edge instead of off the screen.
         private void ApplyLayout(Layout l)
         {
-            float global = Mathf.Clamp(CleanHudModule.Scale.Value, 0.5f, 1.5f);
+            float global = Mathf.Clamp(HudModule.Scale.Value, 0.5f, 1.5f);
             foreach (var id in Layout.Ids)
             {
                 var p = l.Elements[id]; var size = SizeOf(id); var t = _groups[id];
@@ -550,7 +552,7 @@ namespace WildWasteland.Modules.CleanHUD
             _damageDirection.Tick(visible);
             if (_root.activeSelf != visible) _root.SetActive(visible);
             MessageHook.Active = visible;
-            if (!visible) { ChaseCameraHud.TraceState(_rpm, false); if (_wasVisible) _src.Restore(); _wasVisible = false; return; }
+            if (!visible) { ModApi.Get<IDrivingHud>()?.Trace(_rpm, false); if (_wasVisible) _src.Restore(); _wasVisible = false; return; }
             _wasVisible = true;
             _src.RefreshHiddenIfNeeded();
             bool panels = !Binoculars.Raised;
@@ -558,23 +560,23 @@ namespace WildWasteland.Modules.CleanHUD
             if (_groups["weapon"].gameObject.activeSelf != panels) _groups["weapon"].gameObject.SetActive(panels);
             if (_groups["slots"].gameObject.activeSelf != panels) _groups["slots"].gameObject.SetActive(panels);
             var l = _layoutFile.Current;
-            bool needs = CleanHudModule.ShowNeeds.Value, nums = CleanHudModule.ShowHealthNumbers.Value; float sc = CleanHudModule.Scale.Value;
+            bool needs = HudModule.ShowNeeds.Value, nums = HudModule.ShowHealthNumbers.Value; float sc = HudModule.Scale.Value;
             if (_appliedRevision != _layoutFile.Revision || needs != _needsOn || nums != _numbersOn || !Mathf.Approximately(sc, _scaleOn))
             {
                 _appliedRevision = _layoutFile.Revision; _needsOn = needs; _numbersOn = nums; _scaleOn = sc;
                 ApplyLayout(l);
             }
-            try { TickVitals(); } catch (Exception e) { CleanHudModule.Throttled("vitals", e); }
+            try { TickVitals(); } catch (Exception e) { HudModule.Throttled("vitals", e); }
             _quests.Tick(_insanity, _cmp);
             TickVehicleStatus();
             TickDriving();
-            ChaseCameraHud.TraceState(_rpm, true);
-            _src.Pocket.Read();
+            ModApi.Get<IDrivingHud>()?.Trace(_rpm, true);
+            _src.ReadPocket();
             int sel = _src.Selected;
-            try { TickSlots(l, sel); } catch (Exception e) { CleanHudModule.Throttled("slots", e); }
-            try { TickWeapon(sel); } catch (Exception e) { CleanHudModule.Throttled("weapon", e); }
-            try { TickCompass(l); } catch (Exception e) { CleanHudModule.Throttled("compass", e); }
-            try { TickEvents(); _log.Tick(); } catch (Exception e) { CleanHudModule.Throttled("log", e); }
+            try { TickSlots(l, sel); } catch (Exception e) { HudModule.Throttled("slots", e); }
+            try { TickWeapon(sel); } catch (Exception e) { HudModule.Throttled("weapon", e); }
+            try { TickCompass(l); } catch (Exception e) { HudModule.Throttled("compass", e); }
+            try { TickEvents(); _log.Tick(); } catch (Exception e) { HudModule.Throttled("log", e); }
             // The vanilla hide runs in willRenderCanvases (BeforeRender), after this tick in the same frame.
         }
 
@@ -594,7 +596,7 @@ namespace WildWasteland.Modules.CleanHUD
                 if (a != _arValue) { _arValue = a; b.ArNum.text = a.ToString(CultureInfo.InvariantCulture); }
             }
             // insanity (top right of the screen) while above 0
-            float sanV = CleanHudModule.ShowInsanity.Value ? Bindings.Number(_src.Sanity) : 0f;
+            float sanV = HudModule.ShowInsanity.Value ? Bindings.Number(_src.Sanity) : 0f;
             var sg = _insanity.gameObject;
             if (sg.activeSelf != sanV > 0f) sg.SetActive(sanV > 0f);
             if (sanV > 0f)
@@ -644,7 +646,7 @@ namespace WildWasteland.Modules.CleanHUD
                 if (content) { _slotItem[k] = item; _ordinary[k] = ordinary; _slotTexture[k] = null; _iconAttempts[k] = 0; changed = true; _weaponDirty = true; }
                 if (item != null && (!ordinary && changed || ordinary && _slotTexture[k] == null && _iconAttempts[k] < 20 && (content || retry)))
                 {
-                    var tex = ordinary ? ApocapocketInventory.ItemIcon(item) : Assets.WeaponIcon(item);
+                    var tex = ordinary ? ModApi.Get<IPocketHud>()?.ItemIcon(item) : Assets.WeaponIcon(item);
                     if (ordinary) _iconAttempts[k]++;
                     if (tex != _slotTexture[k]) { _slotTexture[k] = tex; changed = true; _weaponDirty = true; }
                 }
@@ -757,7 +759,7 @@ namespace WildWasteland.Modules.CleanHUD
         private readonly List<Shown> _shown = new List<Shown>();
         private void TickCompass(Layout l)
         {
-            bool show = CleanHudModule.ShowCompass.Value;
+            bool show = HudModule.ShowCompass.Value;
             if (_cmp.gameObject.activeSelf != show) _cmp.gameObject.SetActive(show);
             if (!show) return;
             var cam = WildWasteland.Core.GameRefs.MainCamera;
@@ -765,7 +767,7 @@ namespace WildWasteland.Modules.CleanHUD
             if (eye == null) return;
             float heading = eye.eulerAngles.y;
             float chaseHeading;
-            if (ChaseCameraHud.TryHeading(out chaseHeading)) heading = chaseHeading;
+            if (ModApi.Get<IDrivingHud>() != null && ModApi.Get<IDrivingHud>().TryHeading(out chaseHeading)) heading = chaseHeading;
             float arc = l.VisibleArc, half = arc / 2f, ppd = 1100f / arc, cx = 550f;
             int ti = 0, li = 0;
             for (int d = 0; d < 360; d += 15)
@@ -822,8 +824,8 @@ namespace WildWasteland.Modules.CleanHUD
             for (int si = 0; si < _shown.Count; si++)
             {
                 var s = _shown[si];
-                bool ambiguous = s.E.Owner == "WildWasteland.VehicleGroups" ? CleanHudModule.AmbiguousPatrols.Value && !s.E.Identified
-                    : s.E.Owner == "WildWasteland.Locations" && CleanHudModule.AmbiguousLocations.Value && !LocationMarkers.Known(s.E.Target);
+                bool ambiguous = s.E.Owner == "WildWasteland.VehicleGroups" ? HudModule.AmbiguousPatrols.Value && !s.E.Identified
+                    : s.E.Owner == "WildWasteland.Locations" && HudModule.AmbiguousLocations.Value && !LocationMarkers.Known(s.E.Target);
                 var tex = IconFor(s.E, ambiguous && s.E.Owner == "WildWasteland.Locations" ? "unknown" : s.E.Style.Icon);
                 if (tex == null) continue;
                 var mv = Mark(mi++);
@@ -875,7 +877,7 @@ namespace WildWasteland.Modules.CleanHUD
             if (e.Getter != null && !e.Broken)
             {
                 try { pos = e.Getter(); return true; }
-                catch (Exception ex) { e.Broken = true; CleanHudModule.Warn("Compass marker " + e.Id + " (" + e.Owner + ") position callback threw; marker hidden: " + ex.Message); }
+                catch (Exception ex) { e.Broken = true; HudModule.Warn("Compass marker " + e.Id + " (" + e.Owner + ") position callback threw; marker hidden: " + ex.Message); }
             }
             return false;
         }
@@ -924,6 +926,7 @@ namespace WildWasteland.Modules.CleanHUD
 
         public void Dispose()
         {
+            if (_log != null) _log.Dispose();
             if (_saveCompass == _cmp) _saveCompass = null;
             if (_disposed) return; _disposed = true;
             MessageHook.Active = false;

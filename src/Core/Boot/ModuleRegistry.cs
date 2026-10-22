@@ -22,7 +22,6 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.Guns.GunsModule());
             ModuleHost.Add(new Modules.Gunplay.GunplayModule());
             ModuleHost.Add(new Modules.HUD.HudModule());
-            ModuleHost.Add(new Modules.CleanHUD.CleanHudModule());
             ModuleHost.Add(new Modules.Patrols.PatrolsModule());
             ModuleHost.Add(new Modules.POI.PoiModule());
             ModuleHost.Add(new Modules.Weather.WeatherModule());

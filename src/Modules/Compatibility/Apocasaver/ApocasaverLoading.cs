@@ -5,7 +5,7 @@ using UnityEngine;
 using WildWasteland.Core;
 using WildWasteland.Modules.Compatibility;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>
     /// Apocasaver presentation part serving the HUD: the standalone's autosave Begin/End drive the WW loading screen, its save-name
@@ -21,7 +21,7 @@ namespace WildWasteland.Modules.CleanHUD
         private static Func<bool> _saveActive;
         private static IModule _owner;
         /// <summary>True while WW serializes a save or the standalone's coordinator is active.</summary>
-        internal static bool SaveActive { get { return Core.SinglePlayerSaving.Serializing || _saveActive != null && _saveActive(); } }
+        internal static bool SaveActive { get { return (ModApi.Get<ISaves>() != null && ModApi.Get<ISaves>().Phase == SavePhase.Saving && ModApi.Get<ISaves>().Progress >= .1f) || _saveActive != null && _saveActive(); } }
         private static Action _confirmName, _cancelName;
         private static GUIStyle _namePlate, _nameField;
 
@@ -62,7 +62,7 @@ namespace WildWasteland.Modules.CleanHUD
         /// <summary>Prefix of SaveNaming.OnGUI (every GUI event while the popup is open): draws the WW-styled popup and skips the original.</summary>
         private static bool BeforeNameGui(bool ____open, ref string ____text, float ____openedAt, ref bool ____focusPending)
         {
-            if (!CompatibilityHost.CleanHud.Running || !CleanHudModule.MenuEnabled.Value || _confirmName == null || !____open) return true; // refs-ok: REFACTOR-REQUEST B17-10
+            if (!CompatibilityHost.CleanHud.Running || !HudModule.MenuEnabled.Value || _confirmName == null || !____open) return true; // refs-ok: REFACTOR-REQUEST B17-10
             var matrix = GUI.matrix; var color = GUI.color; var background = GUI.backgroundColor; int depth = GUI.depth;
             try
             {

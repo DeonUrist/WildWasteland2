@@ -1,6 +1,6 @@
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
     /// <summary>Menu presentation forwards release discovery to the Core version service.</summary>
     internal sealed partial class Menu

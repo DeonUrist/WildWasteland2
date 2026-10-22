@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace WildWasteland.Modules.CleanHUD.Api
+namespace WildWasteland.Modules.HUD.Api
 {
     // Style of one compass marker. Icons are white silhouettes tinted by Color.
     public sealed class Marker
@@ -104,7 +104,7 @@ namespace WildWasteland.Modules.CleanHUD.Api
         }
 
         // MapMagic root used for AddAnchored; null until the world exists.
-        public static Transform MapRoot { get { return WildWasteland.Modules.CleanHUD.Hud.MapRoot(); } }
+        public static Transform MapRoot { get { return WildWasteland.Modules.HUD.HudView.MapRoot(); } }
 
         private static Entry Get(int id) { for (int i = 0; i < Entries.Count; i++) if (Entries[i].Id == id) return Entries[i]; return null; }
         private static int Put(Entry e) { e.Id = _next++; Entries.Add(e); return e.Id; }

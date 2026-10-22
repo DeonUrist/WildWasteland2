@@ -8,14 +8,14 @@ using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Modules.HUD
 {
-    /// <summary>HANDOVER to HUD (B10; REFACTOR-REQUEST B04-1). Fog-of-war sidecar I/O: config/WildWasteland/CleanHUD/Saves/&lt;slot&gt;.fog.bin (gzip "IMFP" v4, world seed checked), read at world ready, written when a save starts and at SaveAll.</summary>
+    /// <summary>Fog-of-war sidecar I/O: config/WildWasteland/HUD/Saves/&lt;slot&gt;.fog.bin (gzip "IMFP" v4, world seed checked), read at world ready, written when a save starts and at SaveAll.</summary>
     internal static partial class MapFog
     {
         private static string _saves;
 
-        // ---- saves: config/WildWasteland/CleanHUD/Saves/<slot>.fog.bin (Immersive Map slot import removed, D12)
+        // ---- saves: config/WildWasteland/HUD/Saves/<slot>.fog.bin (Immersive Map slot import removed, D12)
         /// <summary>World seed from the SaveLoadGame FSM, or int.MinValue when unknown.</summary>
         private static int Seed()
         {
@@ -38,8 +38,8 @@ namespace WildWasteland.Modules.CleanHUD
                     if (File.Exists(own) && Read(File.ReadAllBytes(own))) from = own;
                 }
             }
-            catch (Exception e) { Chunks.Clear(); CleanHudModule.Warn("Fog of war could not be read: " + e.Message); }
-            CleanHudModule.Log("Fog of war loaded from " + from + " (" + Chunks.Count + " chunks, seed " + _seed + ")");
+            catch (Exception e) { Chunks.Clear(); HudModule.Warn("Fog of war could not be read: " + e.Message); }
+            HudModule.Log("Fog of war loaded from " + from + " (" + Chunks.Count + " chunks, seed " + _seed + ")");
         }
 
         /// <summary>Writes the slot's fog sidecar through AtomicFile (seed checked); failures fail the save transaction.</summary>
@@ -47,7 +47,7 @@ namespace WildWasteland.Modules.CleanHUD
         {
             if (!_loaded || _standDown || string.IsNullOrEmpty(slot)) return;
             int seed = Seed();
-            if (seed == int.MinValue || seed != _seed) { CleanHudModule.Warn("Fog of war not saved: world seed " + seed + " differs from " + _seed); return; }
+            if (seed == int.MinValue || seed != _seed) { HudModule.Warn("Fog of war not saved: world seed " + seed + " differs from " + _seed); return; }
             // Plain sidecar, not ES3: written at once. Save-and-quit leaves for the title during the save, before isPlay/AfterSave.
             try
             {
@@ -56,9 +56,9 @@ namespace WildWasteland.Modules.CleanHUD
                 string path = Path.Combine(_saves, Path.GetFileName(slot) + ".fog.bin");
                 File.WriteAllBytes(path + ".tmp", data);
                 AtomicFile.Replace(path + ".tmp", path);
-                CleanHudModule.Log("Fog of war saved: " + Path.GetFileName(path) + " (" + Chunks.Count + " chunks, " + data.Length + " bytes)");
+                HudModule.Log("Fog of war saved: " + Path.GetFileName(path) + " (" + Chunks.Count + " chunks, " + data.Length + " bytes)");
             }
-            catch (Exception e) { Core.SaveBus.ReportFailure("Fog of war save failed: " + e.Message); CleanHudModule.Warn("Fog of war could not be saved: " + e.Message); }
+            catch (Exception e) { Core.SaveBus.ReportFailure("Fog of war save failed: " + e.Message); HudModule.Warn("Fog of war could not be saved: " + e.Message); }
         }
 
         // SaveGame (global event) -> wait -> SaveGame -> isPlay. Write when the save starts and again at SaveAll.
