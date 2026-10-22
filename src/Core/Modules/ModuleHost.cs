@@ -37,6 +37,10 @@ namespace WildWasteland.Core
         public static Entry Of(IModule m) { Entry e; return m != null && _byModule.TryGetValue(m, out e) ? e : null; }
         public static bool IsRunning(IModule m) { var e = Of(m); return e != null && e.State == ModuleState.Running; }
 
+        /// <summary>The module whose Init/ProvideApis/Shutdown (or deferred init) is running right now, else null. Lets the
+        /// [Obsolete] Services setters register providers with the right owner.</summary>
+        public static IModule Current { get; private set; }
+
         const int ErrorWindowLimit = 40;      // errors per 10 s that disable a module
         static bool _quitting;
 
@@ -58,7 +62,12 @@ namespace WildWasteland.Core
                 e.Config = cfg;
                 var mb = m as ModuleBase; if (mb != null) mb.Config = cfg;
                 try { m.BindConfig(cfg); }
-                catch (Exception ex) { Log.Error("[" + m.Id + "] BindConfig failed", ex); e.State = ModuleState.InitFailed; e.LastError = ex.Message; }
+                catch (Exception ex) { Log.Error("[" + m.Id + "] BindConfig failed", ex); e.LastError = ex.Message; SetState(e, ModuleState.InitFailed); }
+                if (e.State != ModuleState.InitFailed)
+                {
+                    try { UI.SettingsShell.Shared.RemoveAll(m); m.Settings(UI.SettingsShell.Shared); }
+                    catch (Exception ex) { Log.Error(m, "Settings contribution failed", ex); }
+                }
                 var captured = e;
                 cfg.Enabled.SettingChanged += (s, a) => OnEnabledChanged(captured);
             }
@@ -72,11 +81,11 @@ namespace WildWasteland.Core
                 string conflict = FindConflict(e.Module);
                 if (conflict != null)
                 {
-                    e.State = ModuleState.OffConflict; e.Conflict = conflict;
+                    e.Conflict = conflict; SetState(e, ModuleState.OffConflict);
                     Log.Warn("[" + e.Module.Id + "] waiting for standalone replacement: " + conflict + ".");
                     continue;
                 }
-                if (!e.Config.Enabled.Value) { e.State = ModuleState.OffByConfig; continue; }
+                if (!e.Config.Enabled.Value) { SetState(e, ModuleState.OffByConfig); continue; }
                 Start(e);
             }
             Hooks.ApplyUsed();
@@ -101,19 +110,22 @@ namespace WildWasteland.Core
             var m = e.Module;
             try
             {
-                m.Init();
+                Current = m;
+                try { m.Init(); m.ProvideApis(); } finally { Current = null; }
                 SetActive(m, true);
-                e.State = ModuleState.Running;
+                SetState(e, ModuleState.Running);
                 e.WindowErrors = 0;
                 Log.Always("[" + m.Id + "] started (" + Patches.Count(m.Id) + " patches" + (Patches.Failed(m.Id) > 0 ? ", " + Patches.Failed(m.Id) + " FAILED" : "") + ")");
             }
             catch (Exception ex)
             {
-                e.State = ModuleState.InitFailed; e.LastError = ex.Message;
+                e.LastError = ex.Message; SetState(e, ModuleState.InitFailed);
                 Log.Error("[" + m.Id + "] Init failed - module stays off (switch it off and on in F6 / the F7 Modules page to retry)", ex);
                 // a half-run Init may have set its service field / Running flag / created objects: Shutdown undoes that (modules keep
                 // Shutdown safe to call after a partial Init), then Core removes patches, jobs, hooks and hotkeys
+                Current = m;
                 try { m.Shutdown(); } catch (Exception sx) { Log.Error("[" + m.Id + "] Shutdown after the failed Init", sx); }
+                finally { Current = null; }
                 Cleanup(m);
             }
         }
@@ -123,10 +135,12 @@ namespace WildWasteland.Core
             var m = e.Module;
             if (e.State == ModuleState.Running)
             {
+                Current = m;
                 try { m.Shutdown(); } catch (Exception ex) { Log.Error("[" + m.Id + "] Shutdown", ex); }
+                finally { Current = null; }
             }
             Cleanup(m);
-            e.State = newState;
+            SetState(e, newState);
             Log.Always("[" + m.Id + "] stopped (" + newState + ")");
         }
 
@@ -139,8 +153,20 @@ namespace WildWasteland.Core
             Patches.Unpatch(m);
             ModApi.RemoveAll(m);
             ModEvents.RemoveAll(m);
+            Services.RemoveHandlersOf(m);
         }
 
+        /// <summary>Changes a module's state and publishes <see cref="Events.ModuleStateChanged"/> (local event) when it differs.</summary>
+        static void SetState(Entry e, ModuleState state)
+        {
+            var old = e.State;
+            e.State = state;
+            if (old == state || !ModEvents.HasListeners<Events.ModuleStateChanged>()) return;
+            var ev = new Events.ModuleStateChanged { ModuleId = e.Module.Id, Old = (Events.ModuleStateKind)old, New = (Events.ModuleStateKind)state, Error = e.LastError };
+            ModEvents.Publish(ref ev);
+        }
+
+        /// <summary>Sets ModuleBase.Active.</summary>
         static void SetActive(IModule m, bool on) { var mb = m as ModuleBase; if (mb != null) mb.Active = on; }
 
         static void OnEnabledChanged(Entry e)
@@ -173,7 +199,12 @@ namespace WildWasteland.Core
                 conflict = FindConflict(module);
                 Stop(entry, ModuleState.OffConflict); entry.Conflict = entry.LastError = conflict; Log.Warn("[" + module.Id + "] " + conflict); return false;
             }
-            try { initialize(); Hooks.ApplyUsed(); Hotkeys.CheckConflicts(); return true; }
+            try
+            {
+                Current = module;
+                try { initialize(); } finally { Current = null; }
+                Hooks.ApplyUsed(); Hotkeys.CheckConflicts(); return true;
+            }
             catch (Exception error)
             {
                 Stop(entry, ModuleState.InitFailed); entry.LastError = error.Message;

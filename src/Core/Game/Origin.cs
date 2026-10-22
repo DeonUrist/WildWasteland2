@@ -1,4 +1,5 @@
 using UnityEngine;
+using WildWasteland.Core.Events;
 using NwhOrigin = NWH.Common.FloatingOrigin.FloatingOrigin;
 
 namespace WildWasteland.Core
@@ -14,8 +15,6 @@ namespace WildWasteland.Core
         static Vector3 _before;
         static Transform _anchor;
         static float _nextFind;
-        public static int Jumps;
-        public static Vector3 LastDelta;
 
         /// <summary>MapMagic root position (scene space); Vector3.zero until found (1 s retry while missing).</summary>
         public static Vector3 Anchor
@@ -31,21 +30,30 @@ namespace WildWasteland.Core
                 return _anchor != null ? _anchor.position : Vector3.zero;
             }
         }
+        /// <summary>MapMagic root transform (looked up like <see cref="Anchor"/>), or null.</summary>
         public static Transform AnchorTransform { get { var a = Anchor; return _anchor; } }
         /// <summary>Scene position -> stable world position.</summary>
         public static Vector3 World(Vector3 scene) { return scene - Anchor; }
         /// <summary>Stable world position -> current scene position.</summary>
         public static Vector3 Scene(Vector3 world) { return world + Anchor; }
 
+        /// <summary>Forgets the anchor on scene load (looked up again on next use).</summary>
         internal static void Reset() { _anchor = null; _nextFind = 0f; }
 
+        /// <summary>FloatingOrigin.Jump prefix: remembers the offset before the jump.</summary>
         internal static void BeforeJump(NwhOrigin o) { _before = o.TotalOffset; }
+
+        /// <summary>FloatingOrigin.Jump postfix: raises IModule.OnOriginShift and publishes <see cref="OriginShifted"/> when the offset changed.</summary>
         internal static void AfterJump(NwhOrigin o)
         {
             var delta = _before - o.TotalOffset;
             if (delta == Vector3.zero) return;
-            Jumps++; LastDelta = delta;
             ModuleHost.OriginShift(delta);
+            if (ModEvents.HasListeners<OriginShifted>())
+            {
+                var e = new OriginShifted { Delta = delta, TotalOffset = o.TotalOffset };
+                ModEvents.Publish(ref e);
+            }
         }
     }
 }

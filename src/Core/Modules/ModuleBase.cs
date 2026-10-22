@@ -40,6 +40,12 @@ namespace WildWasteland.Core
         void Shutdown();
         /// <summary>Pages shown in the F7 tool window (debug/config tools). May return null.</summary>
         IEnumerable<ToolPage> ToolPages();
+        /// <summary>Registers this module's ModAPI providers (<c>ModApi.Provide</c>); called by ModuleHost right after Init succeeds.
+        /// Providers are withdrawn automatically when the module shuts down.</summary>
+        void ProvideApis();
+        /// <summary>Adds rows to the shared F3 pages (PLAYER/WORLD/HUD/SYSTEM/Debug/Developer). Core lays them out; values stay the
+        /// module's ConfigEntries. Called once per module after BindConfig (enabled or not).</summary>
+        void Settings(SettingsShell shell);
     }
 
     public abstract class ModuleBase : IModule
@@ -65,5 +71,9 @@ namespace WildWasteland.Core
         public virtual void OnOriginShift(Vector3 delta) { }
         public virtual void Shutdown() { }
         public virtual IEnumerable<ToolPage> ToolPages() { return null; }
+        /// <summary>Default: provides nothing.</summary>
+        public virtual void ProvideApis() { }
+        /// <summary>Default: contributes no shared settings rows.</summary>
+        public virtual void Settings(SettingsShell shell) { }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using WildWasteland.Core.Events;
 
 namespace WildWasteland.Core
 {
@@ -14,6 +15,7 @@ namespace WildWasteland.Core
     /// </summary>
     public static class Hotkeys
     {
+        /// <summary>One registered hotkey.</summary>
         public sealed class Binding
         {
             public IModule Owner; public ConfigEntry<Key> Entry; public Action Pressed; public Func<bool> When; public bool AllowWhilePaused;
@@ -21,6 +23,7 @@ namespace WildWasteland.Core
         static readonly List<Binding> _b = new List<Binding>();
         static readonly Key[] GameKeys = { Key.F2, Key.F9, Key.F11 };
 
+        /// <summary>Registers a hotkey of <paramref name="owner"/>; removed by <see cref="RemoveAll"/> on shutdown.</summary>
         /// <param name="when">optional extra gate (e.g. InGame); null = always.</param>
         /// <param name="allowWhilePaused">fire even when timeScale == 0 (for closing tool windows).</param>
         public static Binding Register(IModule owner, ConfigEntry<Key> entry, Action pressed, Func<bool> when = null, bool allowWhilePaused = false)
@@ -29,14 +32,17 @@ namespace WildWasteland.Core
             _b.Add(b);
             return b;
         }
+        /// <summary>Removes every hotkey of <paramref name="owner"/> (ModuleHost.Cleanup).</summary>
         public static void RemoveAll(IModule owner) { for (int i = _b.Count - 1; i >= 0; i--) if (_b[i].Owner == owner) _b.RemoveAt(i); }
 
+        /// <summary>True in the frame the key went down.</summary>
         public static bool Pressed(Key k)
         {
             if (k == Key.None) return false;
             var kb = Keyboard.current;
             try { return kb != null && kb[k].wasPressedThisFrame; } catch { return false; }
         }
+        /// <summary>True while the key is held.</summary>
         public static bool Held(Key k)
         {
             if (k == Key.None) return false;
@@ -44,6 +50,7 @@ namespace WildWasteland.Core
             try { return kb != null && kb[k].isPressed; } catch { return false; }
         }
 
+        /// <summary>Polls every binding once per frame (Core.Frame job, EarlyUpdate) and fires pressed ones.</summary>
         internal static void Tick()
         {
             if (_b.Count == 0 || !Application.isFocused) return;
@@ -57,6 +64,11 @@ namespace WildWasteland.Core
                 if (!b.AllowWhilePaused && Time.timeScale <= 0f) continue;
                 if (b.When != null && !b.When()) continue;
                 try { b.Pressed(); } catch (Exception e) { ModuleHost.ReportHookException(b.Owner, "hotkey " + b.Entry.Definition.Key, e); }
+                if (ModEvents.HasListeners<HotkeyPressed>())
+                {
+                    var ev = new HotkeyPressed { Key = b.Entry.Definition.Key, OwnerId = b.Owner != null ? b.Owner.Id : "Core" };
+                    ModEvents.Publish(ref ev);
+                }
             }
         }
 
