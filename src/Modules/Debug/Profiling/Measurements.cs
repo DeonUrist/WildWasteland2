@@ -4,7 +4,7 @@ using Unity.Profiling;
 using UnityEngine;
 using WildWasteland.Core;
 
-namespace WildWastelandDeveloper
+namespace WildWasteland.Modules.Debug
 {
     internal sealed class JobRow
     {
@@ -44,8 +44,15 @@ namespace WildWastelandDeveloper
         private static int _gc0, _gc1, _gc2;
         internal static string Context = "", Coverage = "";
         internal static readonly List<string> ModuleStates = new List<string>();
-        internal static void Initialize()
+        internal static void Initialize() { Reset(); }
+        internal static void SetMeasuring(bool measuring)
         {
+            if (measuring) StartEngine();
+            else if (Engine.Count > 0) Dispose();
+        }
+        private static void StartEngine()
+        {
+            if (Engine.Count > 0) return;
             Engine.Add(new EngineCounter(ProfilerCategory.Internal, "Main Thread", "ms", .000001));
             Engine.Add(new EngineCounter(ProfilerCategory.Internal, "Render Thread", "ms", .000001));
             Engine.Add(new EngineCounter(ProfilerCategory.Render, "GPU Frame Time", "ms", .000001));
@@ -55,7 +62,6 @@ namespace WildWastelandDeveloper
             Engine.Add(new EngineCounter(ProfilerCategory.Render, "SetPass Calls Count", "passes/frame"));
             Engine.Add(new EngineCounter(ProfilerCategory.Render, "Triangles Count", "triangles/frame"));
             Engine.Add(new EngineCounter(ProfilerCategory.Render, "Shadow Casters Count", "casters/frame"));
-            Reset();
         }
         internal static void Frame()
         {
@@ -64,7 +70,7 @@ namespace WildWastelandDeveloper
             if (ms <= 0 || float.IsNaN(ms) || float.IsInfinity(ms)) return;
             Frames[Head] = ms; Head = (Head + 1) % Capacity; Count = Math.Min(Count + 1, Capacity); Samples++;
             RecordedSeconds += ms / 1000.0; if (Time.timeScale == 0) PausedFrames++;
-            if (Runtime.Instance != null && Runtime.Instance.Visible) DashboardFrames++;
+            if (DebugRuntime.Instance != null && DebugRuntime.Instance.Visible) DashboardFrames++;
         }
         internal static void Snapshot(double seconds)
         {
