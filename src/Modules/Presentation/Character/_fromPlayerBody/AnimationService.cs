@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -23,7 +24,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             position = Vector3.zero;
             var body = BodyRunner.PlayerBody;
-            return PlayerBodyModule.Running && PlayerThirdPerson && !Game.Dead && body != null && body.Alive && body.TryWeaponMuzzle(out position);
+            return PresentationModule.Running && PlayerThirdPerson && !Game.Dead && body != null && body.Alive && body.TryWeaponMuzzle(out position);
         }
         public string[] ClipNames() { return ModAPI.ClipNames(); }
         public bool IsPlayerClip(string name) { return ModAPI.IsPlayerClip(name); }
@@ -110,7 +111,7 @@ namespace WildWasteland.Modules.PlayerBody
             public void Dispose()
             {
                 _c.Dispose();
-                var s = Services.Animation as AnimationService;
+                var s = PresentationModule.Animation;
                 if (s != null) s.Forget(_c);
             }
         }

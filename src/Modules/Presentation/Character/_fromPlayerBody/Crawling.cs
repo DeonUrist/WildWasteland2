@@ -18,7 +18,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (Clip == null)
             {
-                _bundle = AssetBundle.LoadFromFile(DiskResources.FilePath("PlayerBody.Crawl.low-crawl.bundle"));
+                _bundle = AssetBundle.LoadFromFile(DiskResources.FilePath("Presentation.Crawl.low-crawl.bundle"));
                 if (_bundle != null) foreach (var clip in _bundle.LoadAllAssets<AnimationClip>()) if (clip.name == "LowCrawl") Clip = clip;
                 if (Clip == null || !Clip.humanMotion) throw new InvalidOperationException("Low Crawl humanoid clip unavailable");
             }

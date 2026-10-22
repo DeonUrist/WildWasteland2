@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -39,12 +40,12 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (_tried) return;
             _tried = true;
-            string path = PlayerBodyModule.ModPath(PlayerBodyModule.AnimBundleFile.Value);
-            if (!File.Exists(path)) { PlayerBodyModule.Info("No animation bundle (" + Path.GetFileName(path) + "): using the game's raider clips + procedural walk"); return; }
+            string path = PresentationModule.AssetPath(CharacterSettings.AnimBundleFile.Value);
+            if (!File.Exists(path)) { if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "No animation bundle (" + Path.GetFileName(path) + "): using the game's raider clips + procedural walk"); return; }
             try
             {
                 _bundle = AssetBundle.LoadFromFile(path);
-                if (_bundle == null) { PlayerBodyModule.Error("Animation bundle " + path + " could not be opened (built with a different Unity version / platform?)"); return; }
+                if (_bundle == null) { Core.Log.Error(PresentationModule.Instance, "Animation bundle " + path + " could not be opened (built with a different Unity version / platform?)"); return; }
                 foreach (var c in _bundle.LoadAllAssets<AnimationClip>())
                 {
                     if (c == null || c.name.StartsWith("__preview__")) continue;
@@ -60,10 +61,10 @@ namespace WildWasteland.Modules.PlayerBody
                     }
                 var names = new List<string>(_clips.Keys); names.Sort();
                 int nonHuman = 0; foreach (var c in _clips.Values) if (!c.humanMotion) nonHuman++;
-                PlayerBodyModule.Info("Animation bundle: " + _clips.Count + " clips (" + string.Join(", ", names.ToArray()) + ")"
+                if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Animation bundle: " + _clips.Count + " clips (" + string.Join(", ", names.ToArray()) + ")"
                                    + (nonHuman > 0 ? "; " + nonHuman + " are NOT humanoid and won't fit her - set Animation Type = Humanoid in Unity" : ""));
             }
-            catch (Exception e) { PlayerBodyModule.Error("Animation bundle: " + e.Message); }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Animation bundle: " + e.Message); }
         }
     }
 }

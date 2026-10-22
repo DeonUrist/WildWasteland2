@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -54,7 +55,7 @@ namespace WildWasteland.Modules.NPC
                     break;
                 }
             }
-            catch (Exception e) { NpcModule.Warn("Pounce: carcass: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Pounce: carcass: " + e.Message); }
         }
     }
 }

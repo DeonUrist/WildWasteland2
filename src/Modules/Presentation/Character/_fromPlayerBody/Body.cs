@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -48,7 +49,7 @@ namespace WildWasteland.Modules.PlayerBody
                 SetVisible(true, false);
                 SetFirstPersonArms(false);
                 _ragdoll = new Ragdoll(Bones, velocity, vehicle);
-                PlayerBodyModule.Verbose("Death: animation stopped, jointed ragdoll activated");
+                Core.Log.Deep(PresentationModule.Instance, "Death: animation stopped, jointed ragdoll activated");
             }
             _ragdoll.Apply();
         }
@@ -174,7 +175,7 @@ namespace WildWasteland.Modules.PlayerBody
             _throwFrom = timed ? Mathf.Clamp(ThrowRelease - ThrowLead, 0f, c.length * 0.5f) : 0f;
             _throwUntil = Time.time + Mathf.Clamp(c.length - _throwFrom, 0.5f, 2f);
             _upperClip = ""; _throwFresh = true;   // restart the clip
-            PlayerBodyModule.Verbose("Throw: " + n + " from " + _throwFrom.ToString("0.00") + " s");
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Throw: " + n + " from " + _throwFrom.ToString("0.00") + " s");
         }
         // the throw runs on its own clock (started at _throwAt from _throwFrom): a weapon change during it (the lance leaving her hand, the
         // grenade holstering the drawn weapon) resets the upper clip, which must not start the throw over
@@ -205,7 +206,7 @@ namespace WildWasteland.Modules.PlayerBody
             var animSrc = flexa.transform.Find("Anim");
             var selected = CharacterModels.SelectedSource(); if (selected != null) animSrc = selected.transform;
             if (CharacterModels.NativeSelection && selected == null) return null;
-            if (animSrc == null) { PlayerBodyModule.Error("Flexa prefab has no Anim child"); return null; }
+            if (animSrc == null) { Core.Log.Error(PresentationModule.Instance, "Flexa prefab has no Anim child"); return null; }
 
             var b = new Body();
             b.Root = new GameObject("ApocaplayerBody");
@@ -229,10 +230,10 @@ namespace WildWasteland.Modules.PlayerBody
             var smrs = clone.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             foreach (var s in smrs) if (s.bones.Length >= 20) { b._smr = s; break; }
             foreach (var s in smrs) if (s != b._smr) UnityEngine.Object.DestroyImmediate(s.gameObject);
-            if (b._smr == null) { PlayerBodyModule.Error("Flexa's body renderer not found"); UnityEngine.Object.Destroy(b.Root); return null; }
+            if (b._smr == null) { Core.Log.Error(PresentationModule.Instance, "Flexa's body renderer not found"); UnityEngine.Object.Destroy(b.Root); return null; }
             foreach (var t in clone.GetComponentsInChildren<Transform>(true)) { t.gameObject.layer = 0; if (t.name.StartsWith("mixamorig:")) b.Bones[t.name] = t; }
 
-            var characterMaterial = (int)PlayerBodyModule.Character.Value >= 8 ? Model.CharacterSkin(b._smr, (int)PlayerBodyModule.Character.Value) : null;
+            var characterMaterial = (int)CharacterSettings.Character.Value >= 8 ? Model.CharacterSkin(b._smr, (int)CharacterSettings.Character.Value) : null;
             if (!Model.Build(b._smr)) { if (characterMaterial != null) UnityEngine.Object.Destroy(characterMaterial); UnityEngine.Object.Destroy(b.Root); return null; }
             b._mat = characterMaterial ?? new Material(b._smr.sharedMaterial) { name = "Apocaplayer body" };
             var tex = Model.Body();
@@ -307,7 +308,7 @@ namespace WildWasteland.Modules.PlayerBody
             b.BuildGraph(flexa);
             if (b._mixamo) b.BuildUpperRig(clone);
             b.MeasureLegs();
-            PlayerBodyModule.Info("Body built from Flexa's skeleton (" + b.Bones.Count + " bones)");
+            if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Body built from Flexa's skeleton (" + b.Bones.Count + " bones)");
             return b;
         }
 
@@ -333,7 +334,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (c == null)
                 foreach (var a in Resources.FindObjectsOfTypeAll<AnimationClip>())
                     if (a != null && a.name == name) { c = a; break; }
-            if (c == null) PlayerBodyModule.Verbose("Animation clip " + name + " not found");
+            if (c == null) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Animation clip " + name + " not found"); }
             _clips[name] = c;
             return c;
         }
@@ -344,11 +345,11 @@ namespace WildWasteland.Modules.PlayerBody
             _graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
             var output = AnimationPlayableOutput.Create(_graph, "body", _animator);
             _mixamo = Anims.Loaded && Anims.Get("RifleIdle") != null && (Anims.Get("RifleWalk") != null || Anims.Get("RifleWalkLow") != null);   // 2.0: the rifle pack's legs carry every weapon
-            if (Anims.Loaded && !_mixamo) PlayerBodyModule.Warn("Animation bundle without RifleIdle + RifleWalk / RifleWalkLow: the bundle's locomotion is OFF (the game's clips + procedural legs)");
+            if (Anims.Loaded && !_mixamo) Core.Log.Warn(PresentationModule.Instance, "Animation bundle without RifleIdle + RifleWalk / RifleWalkLow: the bundle's locomotion is OFF (the game's clips + procedural legs)");
             if (_mixamo) { BuildMixamo(output); return; }
             _loco = AnimationMixerPlayable.Create(_graph, 2);
-            var idle = Clip(PlayerBodyModule.IdleClip.Value);
-            var run = Clip(PlayerBodyModule.RunClip.Value);
+            var idle = Clip(CharacterSettings.IdleClip.Value);
+            var run = Clip(CharacterSettings.RunClip.Value);
             if (idle == null) idle = Clip("enemy_1_idle");
             if (run == null) run = idle;
             _fallback = idle;
@@ -374,7 +375,7 @@ namespace WildWasteland.Modules.PlayerBody
             _layers.SetLayerMaskFromAvatarMask((uint)_lUpper, mask);
             output.SetSourcePlayable(_layers);
             _graph.Play();
-            PlayerBodyModule.Verbose("Animation graph: idle " + (idle != null ? idle.name : "-") + ", run " + (run != null ? run.name : "-"));
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Animation graph: idle " + (idle != null ? idle.name : "-") + ", run " + (run != null ? run.name : "-"));
         }
 
 
@@ -382,7 +383,7 @@ namespace WildWasteland.Modules.PlayerBody
         {
             if (_meleeStart > 0f)
             {
-                string mc = Anims.Get("Melee") != null ? "Melee" : PlayerBodyModule.MeleeClip.Value;
+                string mc = Anims.Get("Melee") != null ? "Melee" : CharacterSettings.MeleeClip.Value;
                 if (UpdateMelee(mc)) { SetUpper(mc, 1f, _meleeSpeed); return; }
                 _strikeEnd = Time.time;
             }
@@ -391,7 +392,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_striking && el >= _strikeCycle) { _striking = false; _strikeEnd = Time.time; }
             if (_striking)
             {
-                float w = Mathf.Min(PlayerBodyModule.StrikeWindup.Value, _strikeCycle * 0.4f);
+                float w = Mathf.Min(CharacterSettings.StrikeWindup.Value, _strikeCycle * 0.4f);
                 t = el < w ? Mathf.Lerp(_strike.From, _strike.Hit, el / Mathf.Max(0.001f, w))
                            : Mathf.Lerp(_strike.Hit, _strike.To, (el - w) / Mathf.Max(0.01f, _strikeCycle - w));
             }
@@ -457,7 +458,7 @@ namespace WildWasteland.Modules.PlayerBody
         // ---------------------------------------------------------------- per frame
         public void SetVisible(bool body, bool shadow)
         {
-            if (_equipment != null) { if (PlayerBodyModule.EquipmentOnBody.Value) _equipment.SetVisible(body, shadow); else _equipment.SetVisible(false, false); }
+            if (_equipment != null) { if (CharacterSettings.EquipmentOnBody.Value) _equipment.SetVisible(body, shadow); else _equipment.SetVisible(false, false); }
             if (_smr.enabled != body) _smr.enabled = body;
             if (_shadow.enabled != shadow) _shadow.enabled = shadow;
             bool inner = body && _innerOn && _inner != null && _inner.sharedMesh != null;
@@ -591,7 +592,7 @@ namespace WildWasteland.Modules.PlayerBody
                 pos = feet - yaw * Vector3.forward * (1.45f * _prone) + Vector3.up * (0.12f * _prone);
             }
             Root.transform.SetPositionAndRotation(pos, rot);
-            bool mirror = PlayerBodyModule.MirrorBody.Value && !_mixamo;   // Mixamo clips hold guns right-handed already
+            bool mirror = CharacterSettings.MirrorBody.Value && !_mixamo;   // Mixamo clips hold guns right-handed already
             Root.transform.localScale = new Vector3(mirror ? -1f : 1f, 1f, 1f);
             _anim.localPosition = Vector3.zero; _anim.localRotation = Quaternion.identity;
 
@@ -603,13 +604,13 @@ namespace WildWasteland.Modules.PlayerBody
             var local = Quaternion.Inverse(yaw) * v;
             float speed = v.magnitude;
             _speedSmooth = Mathf.Lerp(_speedSmooth, speed, 1f - Mathf.Exp(-dt * 10f));
-            float runW = Mathf.Clamp01((_speedSmooth - PlayerBodyModule.RunFrom.Value) / 0.8f);
+            float runW = Mathf.Clamp01((_speedSmooth - CharacterSettings.RunFrom.Value) / 0.8f);
             if (_crouch > 0.5f || _prone > 0.5f) runW = 0f;
             _runW = Mathf.MoveTowards(_runW, runW, dt * 4f);
             _loco.SetInputWeight(0, 1f - _runW);
             _loco.SetInputWeight(1, _runW);
             var run = (AnimationClipPlayable)_loco.GetInput(1);
-            if (run.IsValid()) run.SetSpeed(Mathf.Max(0.6f, _speedSmooth / Mathf.Max(0.5f, PlayerBodyModule.RunClipSpeed.Value)));
+            if (run.IsValid()) run.SetSpeed(Mathf.Max(0.6f, _speedSmooth / Mathf.Max(0.5f, CharacterSettings.RunClipSpeed.Value)));
 
             // weapon -> upper-body clip
             string weapon = Game.DrawnWeapon;
@@ -618,12 +619,12 @@ namespace WildWasteland.Modules.PlayerBody
             if (kind == Props.Kind.Melee || kind == Props.Kind.None || kind == Props.Kind.Throw)
             {
                 if (kind == Props.Kind.Melee && !Game.Paused && (Input.GetMouseButtonDown(0) || Input.GetMouseButton(0) && _meleeStart <= 0f)) StartMelee(weapon);
-                if (UpdateMelee(PlayerBodyModule.MeleeClip.Value)) SetUpper(PlayerBodyModule.MeleeClip.Value, 1f, _meleeSpeed);
+                if (UpdateMelee(CharacterSettings.MeleeClip.Value)) SetUpper(CharacterSettings.MeleeClip.Value, 1f, _meleeSpeed);
                 else SetUpper("", 0f, 0f);
             }
             else
             {
-                string clip = kind == Props.Kind.Pistol ? PlayerBodyModule.PistolClip.Value : PlayerBodyModule.RifleClip.Value;
+                string clip = kind == Props.Kind.Pistol ? CharacterSettings.PistolClip.Value : CharacterSettings.RifleClip.Value;
                 SetUpper(clip, 1f, fire ? 1f : 0f);
                 if (!fire && _upper.IsValid()) _upper.SetTime(0);
             }
@@ -634,7 +635,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (walkW > 0.001f)
             {
                 float dir = local.z < -0.2f ? -1f : 1f;
-                _phase += dt * (_speedSmooth / Mathf.Max(0.3f, PlayerBodyModule.WalkStride.Value)) * Mathf.PI * 2f * dir;
+                _phase += dt * (_speedSmooth / Mathf.Max(0.3f, CharacterSettings.WalkStride.Value)) * Mathf.PI * 2f * dir;
                 if (_phase > Mathf.PI * 2f) _phase -= Mathf.PI * 2f; else if (_phase < 0f) _phase += Mathf.PI * 2f;
             }
             // strafe: legs turn toward the movement direction, the chest keeps facing the camera
@@ -653,7 +654,7 @@ namespace WildWasteland.Modules.PlayerBody
 
             // aim pitch: the spine follows the camera (looking down = positive)
             // (not in first person: bending the torso toward the camera put her chest in front of the lens)
-            float pitch = view == View.FirstPerson ? 0f : camPitch * PlayerBodyModule.AimPitchShare.Value * (1f - _prone);
+            float pitch = view == View.FirstPerson ? 0f : camPitch * CharacterSettings.AimPitchShare.Value * (1f - _prone);
             if (Mathf.Abs(pitch) > 0.5f)
             {
                 Turn("mixamorig:Spine", Vector3.right, pitch * 0.3f);
@@ -673,15 +674,15 @@ namespace WildWasteland.Modules.PlayerBody
             if (view != View.FirstPerson || _prone > 0.01f || Game.PlayerCamera == null) return;
             Transform head;
             if (!Bones.TryGetValue("mixamorig:Head", out head)) return;
-            Vector3 want = Game.PlayerCamera.position - yaw * Vector3.forward * (PlayerBodyModule.BodyBack.Value + PlayerBodyModule.BodyBackDown.Value * Mathf.Clamp01(camPitch / 70f));
+            Vector3 want = Game.PlayerCamera.position - yaw * Vector3.forward * (CharacterSettings.BodyBack.Value + CharacterSettings.BodyBackDown.Value * Mathf.Clamp01(camPitch / 70f));
             // a weapon drawn: the game's first-person arms hang right in front of the camera, where her chest is - lean her back and bend the
             // chest back (more the further you look down) so the arms don't sink into it. Moving HER back = the camera forward, without
             // touching the camera (which would also push the game's arms closer and distort them).
             _fpWeaponW = Mathf.MoveTowards(_fpWeaponW, Game.DrawnWeapon != "" ? 1f : 0f, Time.deltaTime * 4f);
-            want -= yaw * Vector3.forward * (PlayerBodyModule.FirstPersonWeaponBack.Value * _fpWeaponW);
+            want -= yaw * Vector3.forward * (CharacterSettings.FirstPersonWeaponBack.Value * _fpWeaponW);
             Vector3 d = want - head.position; d.y = 0f;
             Root.transform.position += d;
-            float lean = PlayerBodyModule.FirstPersonChestLean.Value * _fpWeaponW * (0.6f + 0.4f * Mathf.Clamp01(camPitch / 60f));
+            float lean = CharacterSettings.FirstPersonChestLean.Value * _fpWeaponW * (0.6f + 0.4f * Mathf.Clamp01(camPitch / 60f));
             if (lean > 0.1f)
             {
                 Turn("mixamorig:Spine1", Vector3.right, -lean * 0.4f);
@@ -695,7 +696,7 @@ namespace WildWasteland.Modules.PlayerBody
 
         public void SetMesh(bool firstPerson, bool inCar, bool gameArms = false)
         {
-            var want = !firstPerson ? Model.Full : inCar && !gameArms && PlayerBodyModule.ArmsInCar ? Model.NoHead : Model.NoArms;   // arms on the wheel only with FirstPersonArms
+            var want = !firstPerson ? Model.Full : inCar && !gameArms && CharacterSettings.ArmsInCar ? Model.NoHead : Model.NoArms;   // arms on the wheel only with FirstPersonArms
             if (firstPerson && want == Model.NoHead && Game.ToolInHand) want = Model.NoHeadRightArm;
             if (_smr.sharedMesh != want) _smr.sharedMesh = want;
             _innerOn = firstPerson;
@@ -763,7 +764,7 @@ namespace WildWasteland.Modules.PlayerBody
             bool known;
             bool arms = Game.ArmsReloading(weapon, out known);
             bool fsm = Game.IsReloading(weapon);
-            if (fsm && arms && _armsShowReload.Add(weapon)) PlayerBodyModule.Verbose("Reload: " + weapon + " - following its first-person arms' reload animation");
+            if (fsm && arms && _armsShowReload.Add(weapon)) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Reload: " + weapon + " - following its first-person arms' reload animation"); }
             if (known && _armsShowReload.Contains(weapon)) return arms || (fsm && Game.ReloadsPerRound(weapon));   // (2.1.8) one round at a time: the arms rest between rounds
             if (!fsm) { _reloadFresh = true; _fsmReloadSince = 0f; return false; }
             if (!_reloadFresh) return false;                           // already "reloading" when drawn: stale
@@ -846,7 +847,7 @@ namespace WildWasteland.Modules.PlayerBody
         private void Walk(float w, bool swingArms)
         {
             float s = Mathf.Sin(_phase), c = Mathf.Cos(_phase);
-            float A = PlayerBodyModule.ThighSwing.Value * w, K = PlayerBodyModule.KneeBend.Value * w;
+            float A = CharacterSettings.ThighSwing.Value * w, K = CharacterSettings.KneeBend.Value * w;
             // thighs: forward swing = negative about the right axis
             Turn("mixamorig:LeftUpLeg", Vector3.right, -A * s);
             Turn("mixamorig:RightUpLeg", Vector3.right, A * s);
@@ -858,18 +859,18 @@ namespace WildWasteland.Modules.PlayerBody
             Turn("mixamorig:RightFoot", Vector3.right, -0.5f * kr - 0.3f * A * s);
             Transform hips;
             if (Bones.TryGetValue("mixamorig:Hips", out hips))
-                hips.localPosition += Vector3.up * (-PlayerBodyModule.HipBob.Value * w * (1f - Mathf.Abs(c)));
+                hips.localPosition += Vector3.up * (-CharacterSettings.HipBob.Value * w * (1f - Mathf.Abs(c)));
             Turn("mixamorig:Spine1", Vector3.up, 4f * w * s);
             if (swingArms)
             {
-                Turn("mixamorig:LeftArm", Vector3.right, PlayerBodyModule.ArmSwing.Value * w * s);
-                Turn("mixamorig:RightArm", Vector3.right, -PlayerBodyModule.ArmSwing.Value * w * s);
+                Turn("mixamorig:LeftArm", Vector3.right, CharacterSettings.ArmSwing.Value * w * s);
+                Turn("mixamorig:RightArm", Vector3.right, -CharacterSettings.ArmSwing.Value * w * s);
             }
         }
 
         private void Crouch(float k, float jumpDrop = -1f)
         {
-            float drop = jumpDrop >= 0f ? jumpDrop : PlayerBodyModule.CrouchDrop.Value * k;
+            float drop = jumpDrop >= 0f ? jumpDrop : CharacterSettings.CrouchDrop.Value * k;
             float L = _legThigh + _legShin;
             float a = Mathf.Acos(Mathf.Clamp(1f - drop / L, -1f, 1f)) * Mathf.Rad2Deg;
             Transform hips;
@@ -904,7 +905,7 @@ namespace WildWasteland.Modules.PlayerBody
         private void ShowProp(bool on)
         {
             if (_propBolt != null && _propBoltAmmo != null && _propBolt.gameObject.activeSelf != (_propBoltAmmo.Value > 0)) _propBolt.gameObject.SetActive(_propBoltAmmo.Value > 0);
-            bool shadow = !on && PlayerBodyModule.BodyFirstPerson.Value && (!Game.InCar || PlayerBodyModule.BodyInCar);
+            bool shadow = !on && CharacterSettings.BodyFirstPerson.Value && (!Game.InCar || CharacterSettings.BodyInCar);
             if (_prop == null || _propShown == on && _propShadow == shadow) return;
             _propShown = on; _propShadow = shadow;
             var mode = on ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
@@ -920,7 +921,7 @@ namespace WildWasteland.Modules.PlayerBody
             var kind = Props.KindOf(weapon); _propIsGun = kind == Props.Kind.Rifle || kind == Props.Kind.Pistol;
             if (weapon == "" || kind == Props.Kind.None) return;   // bare hands ("hands"): no weapon model
             var p = Props.Find(weapon);
-            if (p == null) { PlayerBodyModule.Verbose("No third-person model for " + weapon); return; }
+            if (p == null) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "No third-person model for " + weapon); return; }
             Transform hand;
             if (!Bones.TryGetValue(p.Hand, out hand)) return;
             bool otherHand = _mixamo && p.Hand == "mixamorig:LeftHand";   // raider guns sit in the left hand; Mixamo clips hold them right-handed
@@ -952,8 +953,8 @@ namespace WildWasteland.Modules.PlayerBody
             _propPos = _prop.transform.localPosition; _propRot = _prop.transform.localRotation; _propHand = hand;
             _propSince = Time.time; GunPose.Note("");
             _propShown = true; ShowProp(false);
-            PlayerBodyModule.Verbose("Third person: barrel axis of " + p.Key + " = " + _propBarrel);
-            PlayerBodyModule.Verbose("Third person: " + weapon + " -> " + p.Owner + "'s " + p.Source.name + " on " + p.Hand);
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Third person: barrel axis of " + p.Key + " = " + _propBarrel);
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Third person: " + weapon + " -> " + p.Owner + "'s " + p.Source.name + " on " + p.Hand);
         }
     }
 }

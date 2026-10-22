@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -150,7 +151,7 @@ namespace WildWasteland.Modules.PlayerBody
             {
                 var shaft = LocalBounds(mount.Visual, true);
                 mount.LanceRadius = Mathf.Min(shaft.size.x, shaft.size.z) * .5f;
-                PlayerBodyModule.Verbose("Blast lance mount " + i + ": shaft radius=" + mount.LanceRadius);
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Blast lance mount " + i + ": shaft radius=" + mount.LanceRadius);
             }
             Vector3 axis = MajorAxis(bounds.size), thin = ThinAxis(bounds.size, axis);
             Vector3 major = i >= 1 && i <= 6 ? Props.Barrel(mount.Visual) : axis;
@@ -165,7 +166,7 @@ namespace WildWasteland.Modules.PlayerBody
             mount.Visual.transform.localPosition = -(rotation * bounds.center);
             mount.Depth = LocalBounds(mount.Visual).size.z;
             if (i == 0) { _packDepth = mount.Depth; _packWidth = LocalBounds(mount.Visual).size.x; }
-            PlayerBodyModule.Verbose("Equipment mount " + i + ": " + item.name + " bounds=" + bounds.size);
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Equipment mount " + i + ": " + item.name + " bounds=" + bounds.size);
         }
 
         private void MountFlashlight(Mount mount, GameObject item)
@@ -193,7 +194,7 @@ namespace WildWasteland.Modules.PlayerBody
             _glow.color = new Color(1f, .93f, .78f);
             _glow.shadows = LightShadows.None;
             _glow.enabled = false;
-            PlayerBodyModule.Verbose("Equipment mount " + FlashIndex + ": " + item.name + (_flashPolice ? " (police: left belt)" : " (left chest)") + " bounds=" + b.size);
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Equipment mount " + FlashIndex + ": " + item.name + (_flashPolice ? " (police: left belt)" : " (left chest)") + " bounds=" + b.size);
         }
 
         private bool FlashlightOn

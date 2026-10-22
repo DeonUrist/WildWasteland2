@@ -3,6 +3,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -13,12 +14,12 @@ namespace WildWasteland.Modules.PlayerBody
     /// </summary>
     internal static partial class Crawling
     {
-        internal static bool Active { get { return PlayerBodyModule.Running && !Game.InCar && !Game.Dead && Game.MoveState == "Crawling"; } }
+        internal static bool Active { get { return PresentationModule.Running && !Game.InCar && !Game.Dead && Game.MoveState == "Crawling"; } }
         static Transform _camera;
         static PlayMakerFSM _weapons, _inHand;
         static bool _holstered;
 
-        internal static void Init(PlayerBodyModule owner)
+        internal static void Init(PresentationModule owner)
         {
             Reset();
             LoadClip();
@@ -27,7 +28,7 @@ namespace WildWasteland.Modules.PlayerBody
             Hooks.GetButtonDo.Prefix(owner, HeldButton);
             Hooks.ProcessEvent.Prefix(owner, WeaponEvent);
             Hooks.EnterState.Postfix(owner, Stance);
-            Scheduler.EveryFrame(owner, "PlayerBody.Crawling", Tick, Phase.EarlyUpdate);
+            Scheduler.EveryFrame(owner, "Presentation.Crawling", Tick, Phase.EarlyUpdate);
             Log.Always("[PlayerBody] Low Crawl ready: native Y stance, forward/back only, weapons holstered.");
         }
         internal static void Reset() { _camera = null; _weapons = _inHand = null; _holstered = false; }

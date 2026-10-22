@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -33,10 +34,10 @@ namespace WildWasteland.Modules.PlayerBody
             if (CharacterModels.NativeSelection) return BuildNative(smr);
             if (_tried) return false;
             _tried = true;
-            string path = PlayerBodyModule.ModPath(PlayerBodyModule.BodyModelFile);
+            string path = PresentationModule.AssetPath(CharacterSettings.BodyModelFile);
             SkinModel model;
             try { model = Gltf.Load(path, "PlayerBody"); }
-            catch (Exception e) { PlayerBodyModule.Error("Model " + path + " could not be read: " + e.Message); return false; }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Model " + path + " could not be read: " + e.Message); return false; }
 
             var bones = smr.bones;
             var names = new string[bones.Length];
@@ -45,7 +46,7 @@ namespace WildWasteland.Modules.PlayerBody
             for (int i = 0; i < bones.Length; i++)
             {
                 float[] v;
-                if (names[i] == null || !Bindposes.Human.TryGetValue(names[i], out v)) { PlayerBodyModule.Error("No bind pose for bone " + names[i]); return false; }
+                if (names[i] == null || !Bindposes.Human.TryGetValue(names[i], out v)) { Core.Log.Error(PresentationModule.Instance, "No bind pose for bone " + names[i]); return false; }
                 var m = Matrix4x4.identity;
                 for (int r = 0; r < 3; r++) for (int c = 0; c < 4; c++) m[r, c] = v[r * 4 + c];
                 bp[i] = m;
@@ -97,8 +98,8 @@ namespace WildWasteland.Modules.PlayerBody
             string msg = "Body " + Path.GetFileName(path) + ": " + model.Info + "; first-person meshes " + (NoArms.triangles.Length / 3) + " / " + (NoHead.triangles.Length / 3)
                          + " triangles; skeleton offset max " + (worst * 100f).ToString("0.0") + " cm (" + worstName + ")"
                          + (unmapped.Count > 0 ? "; joints without a game bone: " + string.Join(", ", unmapped.ToArray()) : "");
-            if (worst > 0.05f) PlayerBodyModule.Warn(msg + " - the armature differs from Flexa's, she will look deformed");
-            else PlayerBodyModule.Info(msg);
+            if (worst > 0.05f) Core.Log.Warn(PresentationModule.Instance, msg + " - the armature differs from Flexa's, she will look deformed");
+            else Core.Log.Main(PresentationModule.Instance, msg);
             return true;
         }
 
@@ -185,7 +186,7 @@ namespace WildWasteland.Modules.PlayerBody
             r.RecalculateBounds();
             r.hideFlags = HideFlags.DontUnloadUnusedAsset;
             _inside[m] = r;
-            if (caps > 0) PlayerBodyModule.Verbose("First person: " + caps + " cut opening(s) closed in " + m.name);
+            if (caps > 0) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "First person: " + caps + " cut opening(s) closed in " + m.name); }
             return r;
         }
 
@@ -309,37 +310,30 @@ namespace WildWasteland.Modules.PlayerBody
 
         public static Texture2D Body()
         {
-            if (!_texTried) { _texTried = true; BodyTex = Load(PlayerBodyModule.BodyTextureFile, PlayerBodyModule.Female ? "Apocaplayer" : "Apocaplayer_male"); }
+            if (!_texTried) { _texTried = true; BodyTex = Load(CharacterSettings.BodyTextureFile, CharacterSettings.Female ? "Apocaplayer" : "Apocaplayer_male"); }
             return BodyTex;
         }
 
         public static Texture2D Arms()
         {
-            if (!_armsTried) { _armsTried = true; ArmsTex = Load(PlayerBodyModule.ArmsTextureFile.Value, "Apocaplayer_arms"); }
+            if (!_armsTried) { _armsTried = true; ArmsTex = Load(CharacterSettings.ArmsTextureFile.Value, "Apocaplayer_arms"); }
             return ArmsTex;
         }
 
         public static Texture2D Kick()
         {
-            if (PlayerBodyModule.ArmsTextureFile.Value != "Models/Player2_female_arms.png") return Arms();
+            if (CharacterSettings.ArmsTextureFile.Value != "Models/Player2_female_arms.png") return Arms();
             if (_kickTried) return KickTex;
             _kickTried = true;
+            // (D13) shipped at plugins/WildWasteland/Presentation/Models/Player2_female_kick.png (source Embedded/Models)
             const string file = "Models/Player2_female_kick.png";
-            string path = PlayerBodyModule.ModPath(file);
-            try
-            {
-                if (!File.Exists(path))
-                    using (var source = WildWasteland.Core.DiskResources.Open("PlayerBody.Textures.female_kick.png"))
-                        if (source != null) { Directory.CreateDirectory(Path.GetDirectoryName(path)); using (var output = File.Create(path)) source.CopyTo(output); }
-                KickTex = Load(file, "Apocaplayer_kick");
-            }
-            catch (Exception e) { PlayerBodyModule.Warn("Kick texture " + path + ": " + e.Message); }
+            KickTex = Load(file, "Apocaplayer_kick");
             return KickTex;
         }
 
         private static Texture2D Load(string rel, string name)
         {
-            string path = PlayerBodyModule.ModPath(rel);
+            string path = PresentationModule.AssetPath(rel);
             try
             {
                 var bytes = File.ReadAllBytes(path);
@@ -349,10 +343,10 @@ namespace WildWasteland.Modules.PlayerBody
                 tex.filterMode = FilterMode.Trilinear;
                 tex.anisoLevel = 4;
                 tex.hideFlags = HideFlags.DontUnloadUnusedAsset;
-                PlayerBodyModule.Info("Texture " + Path.GetFileName(path) + " (" + tex.width + "x" + tex.height + ")");
+                if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Texture " + Path.GetFileName(path) + " (" + tex.width + "x" + tex.height + ")");
                 return tex;
             }
-            catch (Exception e) { PlayerBodyModule.Error("Texture " + path + " could not be loaded: " + e.Message); return null; }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Texture " + path + " could not be loaded: " + e.Message); return null; }
         }
     }
 }

@@ -7,6 +7,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -33,7 +34,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Module Init: loads the built-in table and the user's weapon-poses.txt from config/WildWasteland/PlayerBody.</summary>
         public static void Bind()
         {
-            _dir = PlayerBodyModule.DataDir;
+            _dir = PresentationModule.DataDir;
             Directory.CreateDirectory(_dir);
             _builtin.Clear(); _live = null; _liveKey = null; Dirty();
             EditorTarget = 0; _binding = -1;
@@ -46,7 +47,7 @@ namespace WildWasteland.Modules.PlayerBody
                 if (p.Length == 3 && (v = Parse(p[2])) != null) _builtin[p[0] + "|" + p[1]] = v;
             }
             LoadUser();
-            PlayerBodyModule.Info("Weapon poses: " + _user.Count + " in weapon-poses.txt, " + _builtin.Count + " built in");
+            if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Weapon poses: " + _user.Count + " in weapon-poses.txt, " + _builtin.Count + " built in");
         }
 
         private static float[] Parse(string s)
@@ -222,7 +223,7 @@ namespace WildWasteland.Modules.PlayerBody
                 File.WriteAllText(_file, sb.ToString());
                 ExportBuiltinTable();   // (Wave A) the C# export lives with the editor (Developer)
             }
-            catch (Exception e) { PlayerBodyModule.Warn("Weapon poses: saving failed: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Weapon poses: saving failed: " + e.Message); }
         }
 
         // weapon, then animation in clip order

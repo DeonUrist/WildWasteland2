@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -46,10 +47,10 @@ namespace WildWasteland.Modules.NPC
                     break;
                 }
             }
-            catch (Exception e) { NpcModule.Warn("Reload sounds: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Reload sounds: " + e.Message); }
             list = found.ToArray();
             _clips[key] = list;
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Reload sounds for " + key + ": " + (list.Length == 0 ? "none found" : string.Join(", ", Array.ConvertAll(list, c => c.name))));
+            if (WildWasteland.Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Reload sounds for " + key + ": " + (list.Length == 0 ? "none found" : string.Join(", ", Array.ConvertAll(list, c => c.name))));
             return list;
         }
 
@@ -58,7 +59,7 @@ namespace WildWasteland.Modules.NPC
         // called every frame while the NPC reloads: plays clip i at (i + 0.5) / count of the reload time
         internal static void Tick(Brain.Npc n, float now)
         {
-            if (NpcModule.ReloadVolume.Value <= 0f || n.ReloadLen <= 0.05f) return;
+            if (CharacterSettings.ReloadVolume.Value <= 0f || n.ReloadLen <= 0.05f) return;
             var clips = ClipsOf(n.WeaponKey);
             if (clips.Length == 0 || n.ReloadSoundsPlayed >= clips.Length) return;
             float start = n.ReloadUntil - n.ReloadLen;
@@ -66,7 +67,7 @@ namespace WildWasteland.Modules.NPC
             if (now < due) return;
             var clip = clips[n.ReloadSoundsPlayed++];
             Vector3 at = n.Weapon != null ? n.Weapon.position : n.T.position + Vector3.up * 1.3f;
-            Play(clip, at, NpcModule.ReloadVolume.Value);
+            Play(clip, at, CharacterSettings.ReloadVolume.Value);
         }
 
         private static void Play(AudioClip clip, Vector3 at, float volume)
@@ -75,7 +76,7 @@ namespace WildWasteland.Modules.NPC
             go.transform.position = at;
             var src = go.AddComponent<AudioSource>();
             src.clip = clip; src.volume = Mathf.Clamp01(volume); src.spatialBlend = 1f;
-            src.rolloffMode = AudioRolloffMode.Linear; src.minDistance = 2f; src.maxDistance = Mathf.Max(5f, NpcModule.ReloadSoundRange.Value);
+            src.rolloffMode = AudioRolloffMode.Linear; src.minDistance = 2f; src.maxDistance = Mathf.Max(5f, CharacterSettings.ReloadSoundRange.Value);
             src.dopplerLevel = 0f;
             src.Play();
             UnityEngine.Object.Destroy(go, clip.length + 0.1f);

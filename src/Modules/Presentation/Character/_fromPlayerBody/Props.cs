@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -46,7 +47,7 @@ namespace WildWasteland.Modules.PlayerBody
                 }
             }
             var keys = new List<string>(_catalog.Keys); keys.Sort();
-            PlayerBodyModule.Info("Props: " + _catalog.Count + " NPC weapon models found (" + string.Join(", ", keys.ToArray()) + ")");
+            if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Props: " + _catalog.Count + " NPC weapon models found (" + string.Join(", ", keys.ToArray()) + ")");
         }
 
         // NPC prop for the player's weapon (first-person object name), with a stand-in of the same kind when no NPC carries it
@@ -77,9 +78,9 @@ namespace WildWasteland.Modules.PlayerBody
             // where the stand-in sits
             var item = ItemModel(w);
             if (item == null && KindOf(weapon) == Kind.Throw) item = SceneItem(w);
-            if (KindOf(weapon) == Kind.Throw && item == null) { PlayerBodyModule.Verbose("Props: no model for " + weapon); return null; }
-            if (item != null && stand != null) { PlayerBodyModule.Verbose("Props: no NPC model for " + weapon + ", using its world item model (placed like " + stand.Key + ")"); return new Prop { Key = w, Source = item, Hand = stand.Hand, Owner = "item", Item = true, Ref = stand }; }
-            if (stand != null) { PlayerBodyModule.Verbose("Props: no NPC model for " + weapon + ", using " + stand.Key); return stand; }
+            if (KindOf(weapon) == Kind.Throw && item == null) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Props: no model for " + weapon); return null; }
+            if (item != null && stand != null) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Props: no NPC model for " + weapon + ", using its world item model (placed like " + stand.Key + ")"); return new Prop { Key = w, Source = item, Hand = stand.Hand, Owner = "item", Item = true, Ref = stand }; }
+            if (stand != null) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Props: no NPC model for " + weapon + ", using " + stand.Key); return stand; }
             return null;
         }
 
@@ -98,7 +99,7 @@ namespace WildWasteland.Modules.PlayerBody
                 best = go; break;
             }
             _items[w] = best != null ? new Prop { Key = w, Source = best } : null;
-            if (best == null) PlayerBodyModule.Verbose("Props: no world item model named " + w);
+            if (best == null) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Props: no world item model named " + w); }
             return best;
         }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -56,11 +57,11 @@ namespace WildWasteland.Modules.NPC
                             if (st == null || st.Actions == null) continue;
                             foreach (var act in st.Actions) { var sc = act as SetAudioClip; if (sc != null && sc.audioClip != null && sc.audioClip.Value as AudioClip != null) _clip = sc.audioClip.Value as AudioClip; }
                         }
-                    if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Burrow: sand effect found (" + (_clip != null ? _clip.name : "no clip") + ")");
+                    if (WildWasteland.Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Burrow: sand effect found (" + (_clip != null ? _clip.name : "no clip") + ")");
                     break;
                 }
             }
-            catch (Exception e) { NpcModule.Warn("Burrow: effect lookup: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Burrow: effect lookup: " + e.Message); }
         }
 
         /// <summary>Plays a sand puff and sound at a point (pooled, small scale, low volume).</summary>
@@ -105,7 +106,7 @@ namespace WildWasteland.Modules.NPC
                 }
                 _fxLive.Add(fx); _fxUntil.Add(Time.time + life);
             }
-            catch (Exception e) { NpcModule.Warn("Burrow: effect: " + e.Message); }
+            catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Burrow: effect: " + e.Message); }
         }
 
         // puffs whose time is up: off, and back to the free list (at most 6 kept; more are destroyed as before)

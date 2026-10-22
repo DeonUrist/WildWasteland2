@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -22,7 +23,7 @@ namespace WildWasteland.Modules.PlayerBody
         public static void Patch(Core.IModule owner)
         {
             var m = HarmonyLib.AccessTools.Method(typeof(iTweenMoveTo), "OnEnter");
-            if (m == null) { PlayerBodyModule.Warn("Aim transition: iTweenMoveTo.OnEnter not found - aiming down sights stays instant"); return; }
+            if (m == null) { Core.Log.Warn(PresentationModule.Instance, "Aim transition: iTweenMoveTo.OnEnter not found - aiming down sights stays instant"); return; }
             Core.Patches.Patch(owner, m, prefix: HarmonyLib.AccessTools.Method(typeof(AimTransition), nameof(BeforeMoveTo)));
         }
 
@@ -60,7 +61,7 @@ namespace WildWasteland.Modules.PlayerBody
                     _orig[__instance] = o;
                 }
                 float t = PlayerBodyModule.AdsTime.Value;
-                if (!PlayerBodyModule.Running || !PlayerBodyModule.SmoothAimDownSights.Value || t <= 0.001f || __instance.speed.IsNone || __instance.vectorPosition == null || __instance.vectorPosition.IsNone
+                if (!PresentationModule.Running || !CharacterSettings.SmoothAimDownSights.Value || t <= 0.001f || __instance.speed.IsNone || __instance.vectorPosition == null || __instance.vectorPosition.IsNone
                     || __instance.transformPosition != null && __instance.transformPosition.Value != null)
                 {   // the game's own move
                     __instance.speed.Value = o.Speed; if (EaseField != null && o.Ease != null) EaseField.SetValue(__instance, o.Ease);
@@ -77,7 +78,7 @@ namespace WildWasteland.Modules.PlayerBody
                     EaseField.SetValue(__instance, _easeOut);
                 }
             }
-            catch (Exception e) { PlayerBodyModule.Verbose("Aim transition: " + e.Message); }
+            catch (Exception e) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Aim transition: " + e.Message); }
         }
     }
 }

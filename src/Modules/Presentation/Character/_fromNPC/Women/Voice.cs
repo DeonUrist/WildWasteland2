@@ -7,6 +7,7 @@ using HutongGames.PlayMaker;
 using UnityEngine;
 using UnityEngine.Networking;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -55,10 +56,10 @@ namespace WildWasteland.Modules.NPC
         private static IEnumerator Load()
         {
             _ready.Clear();     // clips already read by a load that was cut short (runner destroyed) are kept, not re-created
-            string dir = Gungirl.ModPath(NpcModule.GungirlVoice.Value);
+            string dir = Gungirl.ModPath(CharacterSettings.GungirlVoice.Value);
             if (!Directory.Exists(dir))
             {
-                NpcModule.Log.LogInfo("Gungirl voice: no folder " + dir + " - she keeps Flexa's voice");
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Gungirl voice: no folder " + dir + " - she keeps Flexa's voice");
                 _loaded = true; _loader = null;
                 yield break;
             }
@@ -111,8 +112,8 @@ namespace WildWasteland.Modules.NPC
                 yield return null;
             }
             _native.Clear();
-            NpcModule.Log.LogInfo("Gungirl voice: " + _clips.Count + " clip(s) from " + dir + " (" + wavs + " wav, " + oggs + " ogg)");
-            if (failed.Count > 0) NpcModule.Log.LogWarning("Gungirl voice: could not read " + string.Join(", ", failed.ToArray()));
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Gungirl voice: " + _clips.Count + " clip(s) from " + dir + " (" + wavs + " wav, " + oggs + " ogg)");
+            if (failed.Count > 0) Core.Log.Warn(PresentationModule.Instance, "Gungirl voice: could not read " + string.Join(", ", failed.ToArray()));
             _loaded = true; _loader = null;
         }
 
@@ -152,7 +153,7 @@ namespace WildWasteland.Modules.NPC
             if (_request != null) { _request.Dispose(); _request = null; }
             foreach (var state in _states)
                 if (state.Root != null) for (int i = state.Undo.Count - 1; i >= 0; i--)
-                    try { state.Undo[i](); } catch (Exception e) { NpcModule.Warn("Female voice restore: " + e.Message); }
+                    try { state.Undo[i](); } catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Female voice restore: " + e.Message); }
             var destroy = new HashSet<AudioClip>(_clips.Values); destroy.UnionWith(_ready.Values);
             foreach (var clip in destroy) if (clip != null) UnityEngine.Object.Destroy(clip);
             _clips.Clear(); _ready.Clear(); _native.Clear(); _pending.Clear(); _states.Clear(); _current = null; _loaded = false;
@@ -186,7 +187,7 @@ namespace WildWasteland.Modules.NPC
             }
             int labels = Gungirl.Label(root);
             if (WildWasteland.Core.Log.L2 || Core.Log.Verbose)
-                NpcModule.Verbose("Female voice: " + root.name + " - " + n + " sound reference(s) replaced, " + timers + " shout timer(s) set" + (labels > 0 ? ", label set" : ""));
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Female voice: " + root.name + " - " + n + " sound reference(s) replaced, " + timers + " shout timer(s) set" + (labels > 0 ? ", label set" : ""));
             _current = null;
             return true;
         }
@@ -195,7 +196,7 @@ namespace WildWasteland.Modules.NPC
         // (RandomWait 0.1..4 s) -> attack ... for as long as she fights. [Gungirl] VoiceIntervalMin/Max replace that pause.
         private static int SetPause(Fsm fsm)
         {
-            float lo = Mathf.Max(0f, NpcModule.GungirlVoiceIntervalMin.Value), hi = Mathf.Max(lo, NpcModule.GungirlVoiceIntervalMax.Value);
+            float lo = Mathf.Max(0f, CharacterSettings.GungirlVoiceIntervalMin.Value), hi = Mathf.Max(lo, CharacterSettings.GungirlVoiceIntervalMax.Value);
             int n = 0;
             if (fsm.States == null) return 0;
             foreach (var st in fsm.States)
@@ -292,8 +293,8 @@ namespace WildWasteland.Modules.NPC
         {
             try
             {
-                bool match = NpcModule.GungirlVoiceMatch.Value;
-                double volume = NpcModule.GungirlVoiceVolume.Value;
+                bool match = CharacterSettings.GungirlVoiceMatch.Value;
+                double volume = CharacterSettings.GungirlVoiceVolume.Value;
                 if (!match && Math.Abs(volume - 1.0) < 1e-4) return mine;
                 var d = new float[mine.samples * mine.channels];
                 if (d.Length == 0 || !mine.GetData(d, 0)) return mine;
@@ -303,7 +304,7 @@ namespace WildWasteland.Modules.NPC
                     if (original.loadState != AudioDataLoadState.Loaded) original.LoadAudioData();
                     var o = new float[original.samples * original.channels];
                     if (o.Length > 0 && original.GetData(o, 0)) target = Audio.Level(o);
-                    else NpcModule.Log.LogWarning("Gungirl voice: could not read the game's " + original.name + " to match its loudness (only VoiceVolume applies)");
+                    else Core.Log.Warn(PresentationModule.Instance, "Gungirl voice: could not read the game's " + original.name + " to match its loudness (only VoiceVolume applies)");
                 }
                 int limited;
                 double gain = Audio.Process(d, target, volume, out limited);
@@ -311,7 +312,7 @@ namespace WildWasteland.Modules.NPC
                 var c = AudioClip.Create(mine.name, mine.samples, mine.channels, mine.frequency, false);
                 c.SetData(d, 0);
                 c.hideFlags = HideFlags.DontUnloadUnusedAsset;
-                NpcModule.Log.LogInfo(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, string.Format(System.Globalization.CultureInfo.InvariantCulture,
                     "Gungirl voice: {0} {1:+0.0;-0.0} dB{2}{3}", mine.name, 20.0 * Math.Log10(gain),
                     target > 0 ? " (matched to the game's clip)" : "",
                     limited > 0 ? string.Format(System.Globalization.CultureInfo.InvariantCulture, ", {0:0.0} % of samples limited", 100.0 * limited / d.Length) : ""));
@@ -319,7 +320,7 @@ namespace WildWasteland.Modules.NPC
             }
             catch (Exception e)
             {
-                NpcModule.Log.LogWarning("Gungirl voice: leveling " + mine.name + " failed, used as is: " + e.Message);
+                Core.Log.Warn(PresentationModule.Instance, "Gungirl voice: leveling " + mine.name + " failed, used as is: " + e.Message);
                 return mine;
             }
         }

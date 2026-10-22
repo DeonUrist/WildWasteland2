@@ -1,104 +1,53 @@
-using System;
-using System.Collections.Generic;
-using BepInEx.Configuration;
-using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
 
 namespace WildWasteland.Modules.NPC
 {
     /// <summary>
-    /// NpcModule part owned by Presentation (Wave A split of NpcModule.cs / NpcModule.Config.cs): the dog animation bundle, Women of
-    /// Wasteland lifecycle, the rig / visual LateUpdate jobs, the Pounce carcass hook, the taunt AudioPlay patch and the presentation
-    /// config entries. Every method is a partial method called from the NPC entry at the position of the lines it replaced.
+    /// NpcModule part owned by Presentation (B05). Wave B moved everything these partial methods did into PresentationModule: the dog
+    /// animation bundle and its hooks, Women of Wasteland, the NPC rig builder and the visual LateUpdate ticks, the Pounce carcass hook,
+    /// the taunt AudioPlay patch and the presentation config entries ([Presentation / ...], CharacterSettings). The implementations stay
+    /// empty until Wave C deletes the declarations in NpcModule.cs / NpcModule.Config.cs.
     /// </summary>
     public sealed partial class NpcModule
     {
-        internal static ConfigEntry<bool> ApocaplayerClips, AimPose, DogAnimationsEnabled, DogsLieDown;
-        internal static ConfigEntry<float> ReloadVolume, ReloadSoundRange, DogLieFrontLift;
+        /// <summary>Empty (B05): the dog animation bundle and hooks start in PresentationModule.</summary>
+        partial void InitPresentationDogs() { }
 
-        /// <summary>Loads the dog animation bundle and installs its hooks / patch (DogAnimations.Initialize).</summary>
-        partial void InitPresentationDogs()
-        {
-            DogAnimations.Initialize(this);
-        }
+        /// <summary>Empty (B05): Women of Wasteland starts in PresentationModule.</summary>
+        partial void InitPresentationWomen() { }
 
-        /// <summary>Starts Women of Wasteland (female bodies, voices, providers, jobs).</summary>
-        partial void InitPresentationWomen()
-        {
-            WomenFeature.Initialize(this);
-        }
+        /// <summary>Empty (B05): "Presentation.NpcRigs" and the visual LateUpdate ticks are PresentationModule jobs.</summary>
+        partial void InitPresentationJobs() { }
 
-        /// <summary>Registers the rig builder (LateUpdate, sliced) and the visual LateUpdate ticks of Burrow, Pounce and DogBite, in the old order.</summary>
-        partial void InitPresentationJobs()
-        {
-            Scheduler.Sliced(this, "NPC.Rigs", 1000, Brain.BuildRig, Phase.LateUpdate);
-            Scheduler.EveryFrame(this, "Burrow.Late", Burrow.LateTick, Phase.LateUpdate);
-            Scheduler.EveryFrame(this, "Pounce.Late", Pounce.LateTick, Phase.LateUpdate);
-            Scheduler.EveryFrame(this, "DogBite.Late", DogBite.LateTick, Phase.LateUpdate);
-        }
+        /// <summary>Empty (B05): Women of Wasteland stops in PresentationModule.Shutdown.</summary>
+        static partial void ShutdownPresentationWomen() { }
 
-        /// <summary>Shutdown step "Women of Wasteland": restores female bodies, stops voices.</summary>
-        static partial void ShutdownPresentationWomen()
-        {
-            Step("Women of Wasteland", WomenFeature.Shutdown);
-        }
+        /// <summary>Empty (B05): Gungirl's scene caches are reset by PresentationModule.OnSceneLoaded.</summary>
+        static partial void SceneLoadedPresentation() { }
 
-        /// <summary>Scene load: Gungirl caches.</summary>
-        static partial void SceneLoadedPresentation()
-        {
-            Gungirl.OnSceneLoaded();
-        }
+        /// <summary>Empty (B05): Gungirl's world scan starts in PresentationModule.OnWorldReady.</summary>
+        static partial void WorldReadyPresentation() { }
 
-        /// <summary>World ready: Gungirl's world scan.</summary>
-        static partial void WorldReadyPresentation()
-        {
-            Gungirl.BeginScan();
-        }
+        /// <summary>Empty (B05): the Pounce carcass CreateObject postfix is subscribed by PresentationModule.</summary>
+        partial void InstallHooksPresentation() { }
 
-        /// <summary>CreateObject.OnEnter postfix: the carcass of a spider killed mid-leap flies on (Pounce.AfterCreateObject).</summary>
-        partial void InstallHooksPresentation()
-        {
-            Hooks.CreateObjectEnter.Postfix(this, Pounce.AfterCreateObject);
-        }
+        /// <summary>Empty (B05): the taunt AudioPlay prefix is patched by PresentationModule.</summary>
+        partial void InstallPatchesPresentation() { }
 
-        /// <summary>AudioPlay.OnEnter prefix: NPC combat taunt audio (Senses.BeforeAudioPlay); module-only patch.</summary>
-        partial void InstallPatchesPresentation()
-        {
-            Patch(typeof(AudioPlay), "OnEnter", typeof(Senses), "BeforeAudioPlay", true);
-        }
+        /// <summary>Empty (B05): DogAnimations / DogsLieDown are [Presentation / Dogs] entries (CharacterSettings).</summary>
+        static partial void BindPresentationToggles() { }
 
-        /// <summary>F6 toggles DogAnimations and DogsLieDown (between DogBite and DogJumpAttack).</summary>
-        static partial void BindPresentationToggles()
-        {
-            DogAnimationsEnabled = B("DogAnimations", true, "Retargeted animations on hounds, Grimhound and nightwalkers. Requires NPC/Models/npcai_dogs.bundle; otherwise the existing procedural bite remains active.");
-            DogsLieDown = B("DogsLieDown", true, "Non-boss quadrupeds alternate standing and lying idle, spending a random 10-25 seconds in each pose. Threats interrupt rest through get-up.");
-        }
+        /// <summary>Empty (B05): DogLieFrontLift is a [Presentation / Dog poses] entry (CharacterSettings).</summary>
+        static partial void BindPresentationDogPose() { }
 
-        /// <summary>tools.cfg [NPC / Behaviour] DogLieFrontLift (after DogIdlePoseMaxSeconds).</summary>
-        static partial void BindPresentationDogPose()
-        {
-            DogLieFrontLift = H("Behaviour", "DogLieFrontLift", 0f, new ConfigDescription("Lying quadrupeds: the front half (chest, front legs, head) is tilted up at the waist until the shoulders stand as high over the hips as they do standing. This adds to (or, negative, takes from) that height, m.", new AcceptableValueRange<float>(-0.15f, 0.3f)));
-        }
+        /// <summary>Empty (B05): ReloadVolume / ReloadSoundRange are [Presentation / NPC sounds] entries (CharacterSettings).</summary>
+        static partial void BindPresentationReload() { }
 
-        /// <summary>tools.cfg [NPC / NpcAim] ReloadVolume and ReloadSoundRange (after SingleShotReload).</summary>
-        static partial void BindPresentationReload()
-        {
-            ReloadVolume = H("NpcAim", "ReloadVolume", 1f, new ConfigDescription("Volume of a gunman's reload sounds (the clips the player's copy of the gun plays while reloading). 0 = silent.", new AcceptableValueRange<float>(0f, 1f)));
-            ReloadSoundRange = H("NpcAim", "ReloadSoundRange", 35f, new ConfigDescription("How far a reload is heard, m (linear falloff from 2 m).", new AcceptableValueRange<float>(5f, 100f)));
-        }
+        /// <summary>Empty (B05): AimPose is a [Presentation / NPC animation] entry (CharacterSettings).</summary>
+        static partial void BindPresentationAimPose() { }
 
-        /// <summary>tools.cfg [NPC / Brain] AimPose (after TurnRate).</summary>
-        static partial void BindPresentationAimPose()
-        {
-            AimPose = H("Brain", "AimPose", true,
-                "A gunman holding a shooting position keeps the gun up and aimed at you between bursts (the game lowered it to the idle pose and raised it only for the shot).");
-        }
-
-        /// <summary>tools.cfg [NPC / Brain] ApocaplayerClips (after StuckGiveUpCount).</summary>
-        static partial void BindPresentationClips()
-        {
-            ApocaplayerClips = H("Brain", "ApocaplayerClips", true, "With Apocaplayer 2.2.0+ installed: gunmen are animated by its ModAPI - the player's own clips and logic (8-way walk / run / sprint, crouch for rifles and pistols, aim and fire, reloads incl. one round at a time, pump / bolt after a burst, turns in place, hops) with the gun in the right hand at the player's weapon poses. false = the game's own clips (also a quick A/B for performance).");
-        }
+        /// <summary>Empty (B05): ApocaplayerClips is a [Presentation / NPC animation] entry (CharacterSettings).</summary>
+        static partial void BindPresentationClips() { }
     }
 }

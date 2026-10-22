@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.NPC;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -12,8 +14,8 @@ namespace WildWasteland.Modules.PlayerBody
         internal static bool CustomSkin(int choice) { return choice < 2 || choice == 8 || choice == 9; }
         static readonly Dictionary<string, Animator> Sources = new Dictionary<string, Animator>();
         static float _nextFind;
-        internal static bool NativeSelection { get { return (int)PlayerBodyModule.Character.Value >= 2; } }
-        internal static Animator SelectedSource() { return NativeSelection ? Source((int)PlayerBodyModule.Character.Value) : null; }
+        internal static bool NativeSelection { get { return (int)CharacterSettings.Character.Value >= 2; } }
+        internal static Animator SelectedSource() { return NativeSelection ? Source((int)CharacterSettings.Character.Value) : null; }
         internal static Animator Source(int choice)
         {
             if (choice < 0 || choice >= Names.Length) return null;
@@ -40,9 +42,9 @@ namespace WildWasteland.Modules.PlayerBody
         static readonly Dictionary<int, Texture2D> CharacterTextures = new Dictionary<int, Texture2D>();
         internal static Material CharacterSkin(SkinnedMeshRenderer skin, int choice)
         {
-            string modelPath = PlayerBodyModule.ModPath(choice == 0 ? PlayerBodyModule.ModelFile.Value : "Models/Player_male.glb");
-            string texturePath = PlayerBodyModule.ModPath(choice == 0 ? PlayerBodyModule.TextureFile.Value : "Models/Player_male.png");
-            if (choice >= 8 && (Services.CharacterAssets == null || !Services.CharacterAssets.TryPaths(choice == 8 ? "Gungirl" : "Shoota", out modelPath, out texturePath)))
+            string modelPath = PresentationModule.AssetPath(choice == 0 ? CharacterSettings.ModelFile.Value : "Models/Player_male.glb");
+            string texturePath = PresentationModule.AssetPath(choice == 0 ? CharacterSettings.TextureFile.Value : "Models/Player_male.png");
+            if (choice >= 8 && !WomenFeature.Paths(choice == 8 ? "Gungirl" : "Shoota", out modelPath, out texturePath))
                 throw new InvalidOperationException("Women of Wasteland player assets are unavailable");
             Mesh mesh;
             if (!CharacterMeshes.TryGetValue(choice, out mesh) || mesh == null)
@@ -83,7 +85,7 @@ namespace WildWasteland.Modules.PlayerBody
             NativeGeometry(skin, out vertices, out normals, out uv, out tris);
             var binds = original.bindposes;
             if (vertices.Length == 0 || weights.Length != vertices.Length || tris.Length == 0)
-            { PlayerBodyModule.Error("Native body " + original.name + " has no valid readable geometry/weights"); return false; }
+            { Core.Log.Error(PresentationModule.Instance, "Native body " + original.name + " has no valid readable geometry/weights"); return false; }
             Full = Make("WW body", vertices, normals, uv, weights, binds, tris, normals.Length == vertices.Length);
             NoHead = Make("WW no head", vertices, normals, uv, weights, binds, Filter(tris, dominant, HeadBones, null), normals.Length == vertices.Length);
             NoArms = Make("WW no arms", vertices, normals, uv, weights, binds, Filter(tris, dominant, HeadNeckBones, ArmBones), normals.Length == vertices.Length);
@@ -91,7 +93,7 @@ namespace WildWasteland.Modules.PlayerBody
             NoHeadRightArm = Make("WW no right arm", vertices, normals, uv, weights, binds, Filter(tris, dominant, HeadNeckBones, RightArmBones), normals.Length == vertices.Length);
             LeftArmOnly = Make("WW left arm", vertices, normals, uv, weights, binds, Only(tris, dominant, LeftArmBones, HeadNeckBones), normals.Length == vertices.Length);
             BodyTex = skin.sharedMaterial != null ? skin.sharedMaterial.mainTexture as Texture2D : null; _texTried = true;
-            PlayerBodyModule.Info("Body " + PlayerBodyModule.Character.Value + ": " + vertices.Length + " vertices; first-person meshes ready" + (original.isReadable ? "" : " (native mesh baked)"));
+            if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Body " + CharacterSettings.Character.Value + ": " + vertices.Length + " vertices; first-person meshes ready" + (original.isReadable ? "" : " (native mesh baked)"));
             return true;
         }
         static void NativeGeometry(SkinnedMeshRenderer skin, out Vector3[] vertices, out Vector3[] normals, out Vector2[] uv, out int[] tris)

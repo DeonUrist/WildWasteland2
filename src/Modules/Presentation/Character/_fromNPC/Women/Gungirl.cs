@@ -6,6 +6,7 @@ using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -51,9 +52,9 @@ namespace WildWasteland.Modules.NPC
                     _variants = new[]
                     {
                         new Variant { Base = "Flexa", Female = Name, BaseCorpse = "Flexa_Dead", FemaleCorpse = CorpseName,
-                                      ModelCfg = NpcModule.GungirlModel, TexCfg = NpcModule.GungirlTexture, HideCfg = NpcModule.GungirlHideParts },
+                                      ModelCfg = CharacterSettings.GungirlModel, TexCfg = CharacterSettings.GungirlTexture, HideCfg = CharacterSettings.GungirlHideParts },
                         new Variant { Base = "Sprokka", Female = "Shoota", BaseCorpse = "Sprokka_Dead", FemaleCorpse = "Shoota_Dead",
-                                      ModelCfg = NpcModule.ShootaModel, TexCfg = NpcModule.ShootaTexture, HideCfg = NpcModule.ShootaHideParts },
+                                      ModelCfg = CharacterSettings.ShootaModel, TexCfg = CharacterSettings.ShootaTexture, HideCfg = CharacterSettings.ShootaHideParts },
                     };
                 return _variants;
             }
@@ -179,23 +180,23 @@ namespace WildWasteland.Modules.NPC
                     }
                     if (pn == v.Base)
                     {
-                        if (!NpcModule.EnableFemaleNpc.Value) return;
-                        if (UnityEngine.Random.Range(0, 100) >= NpcModule.FemalePopulation.Value) return;
+                        if (!CharacterSettings.EnableFemaleNpc.Value) return;
+                        if (UnityEngine.Random.Range(0, 100) >= CharacterSettings.FemalePopulation.Value) return;
                         Rename(go);                     // "Gungirl(Clone)"; the spawner appends the itemNameID number next
                         Queue(go, v);
                         return;
                     }
                 }
             }
-            catch (Exception e) { NpcModule.Log.LogError("CreateObject hook: " + e); }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "CreateObject hook: " + e); }
         }
 
         internal static void DressCrew(GameObject root, string identity, bool randomize)
         {
             if (root == null) return;
             Variant variant = FemaleOf(root.name) ?? FemaleOf(identity ?? "");
-            if (variant == null && randomize && NpcModule.EnableFemaleNpc.Value && NpcModule.FemaleCrew.Value
-                && UnityEngine.Random.Range(0, 100) < NpcModule.FemalePopulation.Value) variant = Rename(root);
+            if (variant == null && randomize && CharacterSettings.EnableFemaleNpc.Value && CharacterSettings.FemaleCrew.Value
+                && UnityEngine.Random.Range(0, 100) < CharacterSettings.FemalePopulation.Value) variant = Rename(root);
             if (variant != null) Queue(root, variant);
         }
 
@@ -307,7 +308,7 @@ namespace WildWasteland.Modules.NPC
             }
             int hidden = HideParts(root, v);
             if (swapped > 0) { Voice.Apply(root); Label(root); _dressed.Add(root.GetInstanceID()); }
-            if (swapped > 0) NpcModule.Verbose(v.Female + ": " + root.name + " (" + why + ") body swapped, " + hidden + " part(s) hidden");
+            if (swapped > 0) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, v.Female + ": " + root.name + " (" + why + ") body swapped, " + hidden + " part(s) hidden"); }
             return swapped > 0;
         }
 
@@ -368,9 +369,9 @@ namespace WildWasteland.Modules.NPC
             try
             {
                 v.Model = Gltf.Load(path, "NPC");
-                NpcModule.Log.LogInfo(v.Female + " model: " + Path.GetFileName(path) + " - " + v.Model.Info);
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, v.Female + " model: " + Path.GetFileName(path) + " - " + v.Model.Info);
             }
-            catch (Exception e) { NpcModule.Log.LogError(v.Female + " model " + path + " could not be loaded: " + e.Message); v.Model = null; }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, v.Female + " model " + path + " could not be loaded: " + e.Message); v.Model = null; }
             return v.Model;
         }
 
@@ -404,7 +405,7 @@ namespace WildWasteland.Modules.NPC
                     float[] v;
                     if (names[i] == null || !Bindposes.Human.TryGetValue(names[i], out v))
                     {
-                        NpcModule.Log.LogError("Gungirl: no bind pose for bone " + names[i] + " of " + smr.name);
+                        Core.Log.Error(PresentationModule.Instance, "Gungirl: no bind pose for bone " + names[i] + " of " + smr.name);
                         return null;
                     }
                     var m = Matrix4x4.identity;
@@ -463,8 +464,8 @@ namespace WildWasteland.Modules.NPC
             string msg = vr.Female + " mesh for " + smr.name + ": " + n + " vertices, bind poses from " + bpSource
                          + ", skeleton offset max " + (worst * 100f).ToString("0.0") + " cm (" + worstName + ")"
                          + (unmapped.Count > 0 ? ", joints without a game bone (use their parent): " + string.Join(", ", unmapped.ToArray()) : "");
-            if (worst > 0.05f) NpcModule.Log.LogWarning(msg + " - the armature was moved in Blender; she will be deformed");
-            else NpcModule.Log.LogInfo(msg);
+            if (worst > 0.05f) Core.Log.Warn(PresentationModule.Instance, msg + " - the armature was moved in Blender; she will be deformed");
+            else Core.Log.Deep(PresentationModule.Instance, msg);
 
             vr.Meshes[key] = mesh;
             _ours.Add(mesh);
@@ -502,17 +503,15 @@ namespace WildWasteland.Modules.NPC
                 tex.anisoLevel = 4;
                 tex.hideFlags = HideFlags.DontUnloadUnusedAsset;
                 v.Tex = tex;
-                NpcModule.Log.LogInfo(v.Female + " texture: " + Path.GetFileName(path) + " (" + tex.width + "x" + tex.height + ")");
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, v.Female + " texture: " + Path.GetFileName(path) + " (" + tex.width + "x" + tex.height + ")");
             }
-            catch (Exception e) { NpcModule.Log.LogError(v.Female + " texture " + path + " could not be loaded: " + e.Message); }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, v.Female + " texture " + path + " could not be loaded: " + e.Message); }
             return v.Tex;
         }
 
         internal static string ModPath(string rel)
         {
-            rel = (rel ?? "").Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
-            if (Path.IsPathRooted(rel)) return rel;
-            return Path.Combine(NpcModule.Instance.Dir, rel);
+            return PresentationModule.AssetPath(rel);
         }
 
         // ---------- debug spawn ----------
@@ -521,7 +520,7 @@ namespace WildWasteland.Modules.NPC
             var cam = GameRefs.MainCamera;
             if (cam == null) return;
             var prefab = FlexaPrefab();
-            if (prefab == null) { NpcModule.Log.LogWarning("Gungirl: Flexa prefab not found"); return; }
+            if (prefab == null) { Core.Log.Warn(PresentationModule.Instance, "Gungirl: Flexa prefab not found"); return; }
             Vector3 fwd = cam.transform.forward;
             fwd.y = 0f;
             if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward;
@@ -538,7 +537,7 @@ namespace WildWasteland.Modules.NPC
             Register(go, Name);
             Queue(go, Variants[0]);
             bool ok = true;
-            NpcModule.Log.LogInfo("Gungirl: spawned " + go.name + " at " + at.ToString("F1") + (ok ? "" : " - but the model could not be applied, see the errors above"));
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Gungirl: spawned " + go.name + " at " + at.ToString("F1") + (ok ? "" : " - but the model could not be applied, see the errors above"));
         }
 
         // distance from the root pivot down to the bottom of its solid capsule collider (world units)
@@ -564,7 +563,7 @@ namespace WildWasteland.Modules.NPC
                 var fv = FemaleOf(n);
                 if (fv != null) Queue(owner, fv);
             }
-            catch (Exception e) { NpcModule.Log.LogError("Gungirl: " + e); }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Gungirl: " + e); }
         }
 
         internal static GameObject FlexaPrefab()

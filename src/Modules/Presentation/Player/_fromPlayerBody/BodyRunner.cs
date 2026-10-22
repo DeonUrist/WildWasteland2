@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -68,7 +69,7 @@ namespace WildWasteland.Modules.PlayerBody
             OcclusionCutaway.Stop();
             ThirdPerson.EndOfFrame();
             Car.Reset();
-            PlayerBodyModule.Info("Disabled: the game's own player is back");
+            Core.Log.Main(PresentationModule.Instance, "Disabled: the game's own player is back");
         }
 
         // Male / Female: rebuild the body from the other model; her arms texture and TAB picture only for her
@@ -82,9 +83,9 @@ namespace WildWasteland.Modules.PlayerBody
                 Model.Reset();
                 Arms.Restore();   // the next character's arms (or the game's for Male)
                 InventoryModel.CharacterChanged();
-                PlayerBodyModule.Info("Character: " + PlayerBodyModule.Character.Value);
+                if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Character: " + CharacterSettings.Character.Value);
             }
-            catch (Exception e) { PlayerBodyModule.Error("Character switch: " + e); }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Character switch: " + e); }
         }
 
         private static void DestroyBody()
@@ -103,13 +104,13 @@ namespace WildWasteland.Modules.PlayerBody
                 WheelArms.Tick();
                 if (!Game.Ready) { OcclusionCutaway.Stop(); if (_body != null) DestroyBody(); return; }   // (2.2.6) the cutaway taken down in menus / loading too
                 if (!Game.Dead) { _lastVelocity = Game.Velocity; _lastCar = Game.InCar ? Game.CarRoot : null; }
-                if (PlayerBodyModule.FemaleArms.Value && PlayerBodyModule.Female) Arms.Tick(); else Arms.Restore();
+                if (CharacterSettings.FemaleArms.Value && CharacterSettings.Female) Arms.Tick(); else Arms.Restore();
                 ThirdPerson.Tick();
                 Car.Tick();
                 GunPose.ClearHint();                       // set again in LateUpdate while a weapon is being adjusted
                 if (!ThirdPerson.On || Game.InCar) GunPose.Flush();
             }
-            catch (Exception e) { PlayerBodyModule.Error("Update: " + e); }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Update: " + e); }
         }
 
         internal static void LateTick()
@@ -143,7 +144,7 @@ namespace WildWasteland.Modules.PlayerBody
                 bool fpArms = false;
                 if (inCar)
                 {
-                    bool replace = PlayerBodyModule.ReplaceDriver.Value;
+                    bool replace = CharacterSettings.ReplaceDriver.Value;
                     bool seated = replace && CarSeat.Attach(Game.Player.transform);   // (2.2.7) the game's driver: no seat search every frame
                     if (!seated || !replace)
                     {
@@ -158,10 +159,10 @@ namespace WildWasteland.Modules.PlayerBody
                         _body.LateCar(Game.Player.transform, firstPerson);
                         if (firstPerson) _body.ShiftFirstPerson(Game.Player.transform.rotation, PlayerBodyModule.CarViewBase + new Vector3(PlayerBodyModule.FpCarCamX.Value, PlayerBodyModule.FpCarCamY.Value, PlayerBodyModule.FpCarCamZ.Value));
                         _body.SetMesh(firstPerson, true, Game.DrawnWeapon != "");
-                        _body.SetVisible(!firstPerson || PlayerBodyModule.BodyInCar, firstPerson && PlayerBodyModule.BodyInCar);
-                        ThirdPerson.CarShift = firstPerson && PlayerBodyModule.BodyInCar && PlayerBodyModule.CarCameraForward.Value != 0f;
+                        _body.SetVisible(!firstPerson || CharacterSettings.BodyInCar, firstPerson && CharacterSettings.BodyInCar);
+                        ThirdPerson.CarShift = firstPerson && CharacterSettings.BodyInCar && PlayerBodyModule.CarCameraForward.Value != 0f;
                         // no body in first person: still her arms on the wheel while nothing is drawn (the body mesh has them when it is shown)
-                        fpArms = firstPerson && fpCam && !PlayerBodyModule.BodyInCar && PlayerBodyModule.ArmsInCar && Game.DrawnWeapon == "" && !Game.Binoculars && (Game.ToolInHand || !Game.GameArmsShown);
+                        fpArms = firstPerson && fpCam && !CharacterSettings.BodyInCar && CharacterSettings.ArmsInCar && Game.DrawnWeapon == "" && !Game.Binoculars && (Game.ToolInHand || !Game.GameArmsShown);
                         mode = firstPerson ? "car, first person" : "car, third person";
                     }
                 }
@@ -171,27 +172,27 @@ namespace WildWasteland.Modules.PlayerBody
                     bool third = ThirdPerson.On && !ThirdPerson.Peek;   // binoculars raised: drawn as in first person
                     _body.LateFoot(third ? Body.View.ThirdPerson : Body.View.FirstPerson, Time.deltaTime);
                     if (!third && Game.PlayerCamera != null)
-                        _body.ShiftFirstPerson(Quaternion.Euler(0f, Game.PlayerCamera.eulerAngles.y, 0f), new Vector3(PlayerBodyModule.FpCamX.Value, PlayerBodyModule.FpCamY.Value, PlayerBodyModule.FpCamZ.Value));
+                        _body.ShiftFirstPerson(Quaternion.Euler(0f, Game.PlayerCamera.eulerAngles.y, 0f), new Vector3(CharacterSettings.FpCamX.Value, CharacterSettings.FpCamY.Value, CharacterSettings.FpCamZ.Value));
                     _jumpHeadPlayerPosition = Game.Player.transform.position;
                     _jumpHeadReady = true;
                     _body.SetMesh(!third, false);
-                    bool show = third || PlayerBodyModule.BodyFirstPerson.Value;
+                    bool show = third || CharacterSettings.BodyFirstPerson.Value;
                     _body.SetVisible(show && fpCam, !third && show && fpCam);
                     // first person, nothing in hand: the game draws no arms - show the body's own, animated like the rest of her
                     fpArms = !third && fpCam && (Crawling.Active || ModAPI.PlayerTraversalActive
-                        || PlayerBodyModule.EmptyHandArms.Value && !Game.Binoculars && (Game.ToolInHand || !Game.GameArmsShown));
+                        || CharacterSettings.EmptyHandArms.Value && !Game.Binoculars && (Game.ToolInHand || !Game.GameArmsShown));
                     mode = third ? "on foot, third person" : "on foot, first person";
                 }
                 _body.SetFirstPersonArms(fpArms);
-                _body.LateEquipment(PlayerBodyModule.EquipmentOnBody.Value);
-                if (!ReferenceEquals(mode, _lastMode)) { _lastMode = mode; PlayerBodyModule.Verbose("View: " + mode); }
+                _body.LateEquipment(CharacterSettings.EquipmentOnBody.Value);
+                if (!ReferenceEquals(mode, _lastMode)) { _lastMode = mode; if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "View: " + mode); }
             }
-            catch (Exception e) { PlayerBodyModule.Error("LateUpdate: " + e); _nextBuild = Time.unscaledTime + 5f; }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "LateUpdate: " + e); _nextBuild = Time.unscaledTime + 5f; }
         }
 
         internal static void WheelTick()
         {
-            if (_body != null && _body.Alive && Game.Ready && Game.InCar && !Game.Dead && PlayerBodyModule.ReplaceDriver.Value && CarSeat.Seat != null)
+            if (_body != null && _body.Alive && Game.Ready && Game.InCar && !Game.Dead && CharacterSettings.ReplaceDriver.Value && CarSeat.Seat != null)
                 _body.LateWheelArms();
         }
 

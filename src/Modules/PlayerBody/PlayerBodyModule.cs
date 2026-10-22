@@ -20,24 +20,33 @@ namespace WildWasteland.Modules.PlayerBody
     // old order (config bind order = display order; job registration order = run order within a phase; hook order per dispatcher).
     // (D12) The Apocaplayer/Apocaclimber first-run config migrations, the config/Apocaplayer sidecar copy, the legacy ignition-key
     // read and the LadderSpeed old-default bump are gone (fresh start).
-    /// <summary>The PlayerBody module entry (old module; Wave B moves its parts to the Presentation/Vehicles/HUD/... entries).</summary>
+    // (Wave B, B05) The character body, the animation framework, the player driver (BodyRunner, Low Crawl) and their config moved to
+    // PresentationModule ([Presentation] sections). What is left is a shell that still runs the parts other Wave B packages own in this
+    // class (camera, traversal, seats: B06; HUD hints: B10; developer editors: B16; compatibility: B17); Wave C deletes it.
+    /// <summary>The PlayerBody module shell: runs the parts other packages still own in this class until Wave C deletes it.</summary>
     public sealed partial class PlayerBodyModule : ModuleBase
     {
-        public const string SourceVersion = "2.3.9";      // ModAPI.PluginVersion (consumers compare against Apocaplayer versions)
+        /// <summary>The Apocaplayer version the ModAPI mirrors (kept for the ChaseCamera type adapter).</summary>
+        public const string SourceVersion = "2.3.9";
+        /// <summary>The shell instance (hook/job owner of the remaining parts).</summary>
         internal static PlayerBodyModule Instance;
+        /// <summary>The config of the shell, kept for the parts bound after Presentation (see <see cref="BindAfterPresentation"/>).</summary>
+        static ModuleConfig _lateCfg;
 
         /// <summary>Module id: config section prefix, Harmony id suffix, asset folder.</summary>
         public override string Id { get { return "PlayerBody"; } }
         /// <summary>Name shown in the F3/F6 module lists.</summary>
-        public override string DisplayName { get { return "Player body & animation"; } }
+        public override string DisplayName { get { return "Player body (legacy parts: camera, climbing, vehicle hints)"; } }
         /// <summary>Standalone mods this module replaces (ReplacementGuard disables them).</summary>
         public override string[] ConflictsWith { get { return new[] { "com.denis.apocalypter.apocaplayer", "com.denis.apocalypter.apocaclimber" }; } }
 
         // ------------------------------------------------------------------ state shared with the ported code
         /// <summary>True between Init and Shutdown (replaces the old Plugin.Enabled.Value checks; Core removes the patches/jobs when off).</summary>
         internal static bool Running;
-        internal new static string Dir;            // BepInEx\plugins\WildWasteland\PlayerBody\
-        internal static string DataDir;        // BepInEx\config\WildWasteland\PlayerBody\
+        /// <summary>BepInEx\plugins\WildWasteland\PlayerBody\ (assets of the remaining parts).</summary>
+        internal new static string Dir;
+        /// <summary>BepInEx\config\WildWasteland\PlayerBody\ (data of the remaining parts, e.g. wheel grips).</summary>
+        internal static string DataDir;
         /// <summary>True while Core verbose logging is on.</summary>
         internal static bool VerboseOn { get { return Core.Log.Verbose; } }
 
@@ -61,18 +70,17 @@ namespace WildWasteland.Modules.PlayerBody
         }
 
         // ================================================================== config
-        /// <summary>Binds every entry, in the old order (see the partial files for the entries of each target).</summary>
+        /// <summary>Binds the entries of the remaining parts in the old order; the HUD part (it reacts to the Presentation ReplaceDriver entry)
+        /// is bound by <see cref="BindAfterPresentation"/> once Presentation has bound its entries (Presentation is registered after this shell).</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
             Instance = this;
-            // ---- F6 (settings.cfg): one toggle per feature (feature order), then the player options
-            BindCharacterChoice(cfg);          // [PlayerBody] Character                              (Presentation/Character)
+            _lateCfg = cfg;
+            // ---- F6 (settings.cfg)
             BindCameraView(cfg);               // [PlayerBody] ThirdPerson, ToggleObserving, DynamicCrosshair (Presentation/Camera)
-            BindCharacterBody(cfg);            // [PlayerBody] BodyFirstPerson .. SmoothAimDownSights  (Presentation/Character)
             BindCameraPickAssist(cfg);         // [PlayerBody] PickAssist                             (Presentation/Camera)
             BindTraversal(cfg);                // [PlayerBody / Climbing]                             (Presentation/Traversal)
             BindCameraCulling(cfg);            // [PlayerBody / Camera culling]                       (Presentation/Camera)
-            BindHud(cfg);                      // [PlayerBody / Vehicles] status / hotkey hints       (HUD)
             BindVehicles(cfg);                 // [PlayerBody / Vehicles] IgnitionKey                 (Vehicles)
             BindGunplay(cfg);                  // [PlayerBody / Vehicles] LanceIgnoresOwnCar          (Gunplay)
             // ---- [Keys]: gameplay keys keep Apocaplayer's defaults (polled in context: third person, climbing, driving)
@@ -83,19 +91,21 @@ namespace WildWasteland.Modules.PlayerBody
             // ---- F7 (tools.cfg)
             BindDeveloperTools(cfg);           // [PlayerBody / Editors]
             BindCameraTools(cfg);              // [PlayerBody / Camera]
-            BindCharacterFirstPersonTools(cfg);// [PlayerBody / First person]
             BindSeatsTools(cfg);               // [PlayerBody / Car seat]
             BindCameraCullingTools(cfg);       // [PlayerBody / Camera culling]
             BindTraversalTools(cfg);           // [PlayerBody / Climbing]
-            BindCharacterTools(cfg);           // [PlayerBody / Animation|Animation (fallback clips)|Model|ModAPI] + live reactions
         }
 
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void BindCharacterChoice(ModuleConfig cfg);
+        /// <summary>Called by PresentationModule.BindConfig after its entries exist: binds the HUD part ([PlayerBody / Vehicles] hints and
+        /// the TAB-picture reaction to the Presentation ReplaceDriver entry). No-op before this shell bound its own config.</summary>
+        internal static void BindAfterPresentation()
+        {
+            var cfg = _lateCfg; _lateCfg = null;
+            if (cfg != null && Instance != null) Instance.BindHud(cfg);
+        }
+
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraView(ModuleConfig cfg);
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void BindCharacterBody(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraPickAssist(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
@@ -120,19 +130,16 @@ namespace WildWasteland.Modules.PlayerBody
         partial void BindDeveloperTools(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraTools(ModuleConfig cfg);
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void BindCharacterFirstPersonTools(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Seats.cs (Presentation/Seats).</summary>
         partial void BindSeatsTools(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraCullingTools(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void BindTraversalTools(ModuleConfig cfg);
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void BindCharacterTools(ModuleConfig cfg);
 
         // ================================================================== lifecycle
-        /// <summary>Module Init: data, hooks/patches and jobs of every part, in the old order (job order = run order within a phase).</summary>
+        /// <summary>Module Init: data, hooks/patches and jobs of the remaining parts, in the old order (job order = run order within a phase).
+        /// The character / player parts now start in PresentationModule (registered right after this shell).</summary>
         public override void Init()
         {
             Instance = this;
@@ -140,51 +147,34 @@ namespace WildWasteland.Modules.PlayerBody
             DataDir = Assets.ModuleConfigDir(Id);
             Core.TunedSettings.InstallProfiles("PlayerBody");
             Running = true;
-            InitPlayer();                      // BodyRunner.ResetAll (clean state, also after a runtime off -> on)
             InitCompatibility();               // ChaseCamera type adapter (+ its discovery job), Weapons Pack shadow patch
             InitVehicles();                    // ignition row keys, Car / steering patches, "Ignition control" job
-            InitCharacter();                   // weapon poses, aim lift, female pain sounds, ADS / pain patches
             InitTraversal();                   // climbing / ladder clips
             InitCamera();                      // third-person hooks (GetButtonDown before Crawling's), sway, MouseLook, pick assist
             InitGunplay();                     // blast lance from the seat
-            InitPlayerCrawling();              // Low Crawl hooks + "PlayerBody.Crawling" (EarlyUpdate, before the climbing jobs)
             InitTraversalJobs();               // the old ClimbRunner loops ([DefaultExecutionOrder(-1000)])
-            InitPlayerJobs();                  // the old Runner Update / LateUpdate
-            InitCharacterJobs();               // the old ModApiRunner LateUpdate (after "Body late")
             InitSeatsJobs();                   // steering-wheel arms (LateUpdateLast, before the NPC traversal poses)
             InitTraversalNpcJobs();            // NPC traversal poses (LateUpdateLast)
             InitHud();                         // the one Gui job (editor hints + vehicle HUD)
             InitCameraEndOfFrame();            // end-of-frame camera reset coroutine
 
-            // keys polled in context (third person / climbing / driving); registered so [Keys] conflicts are reported
-            foreach (var k in new[] { ObserveKey, ClimbKey, CassetteKey, VolumeDownKey, VolumeUpKey }) Hotkeys.Register(this, k, NoOp, Never);
-
-            InitCharacterService();            // Services.Animation
-            Core.Log.Always("[PlayerBody] Player body & animation (Apocaplayer " + SourceVersion + ") ready; assets in " + Dir);
+            // keys polled in context (third person / climbing); registered so [Keys] conflicts are reported. The cassette / volume keys are
+            // registered by Vehicles now (B12-8).
+            foreach (var k in new[] { ObserveKey, ClimbKey }) Hotkeys.Register(this, k, NoOp, Never);
         }
 
-        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
-        partial void InitPlayer();
         /// <summary>Part step, implemented in PlayerBodyModule.Compatibility.cs (Compatibility).</summary>
         partial void InitCompatibility();
         /// <summary>Part step, implemented in PlayerBodyModule.Vehicles.cs (Vehicles).</summary>
         partial void InitVehicles();
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void InitCharacter();
         /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void InitTraversal();
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void InitCamera();
         /// <summary>Part step, implemented in PlayerBodyModule.Gunplay.cs (Gunplay).</summary>
         partial void InitGunplay();
-        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
-        partial void InitPlayerCrawling();
         /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void InitTraversalJobs();
-        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
-        partial void InitPlayerJobs();
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void InitCharacterJobs();
         /// <summary>Part step, implemented in PlayerBodyModule.Seats.cs (Presentation/Seats).</summary>
         partial void InitSeatsJobs();
         /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
@@ -193,60 +183,40 @@ namespace WildWasteland.Modules.PlayerBody
         partial void InitHud();
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void InitCameraEndOfFrame();
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void InitCharacterService();
 
         /// <summary>Hotkeys.Register action for context-polled keys (they are only registered for the conflict report).</summary>
         static void NoOp() { }
         /// <summary>Hotkeys.Register condition that never fires (see NoOp).</summary>
         static bool Never() { return false; }
 
-        /// <summary>Module Shutdown: undoes every part's game-state changes, in the old order.</summary>
+        /// <summary>Module Shutdown: undoes the remaining parts' game-state changes, in the old order.</summary>
         public override void Shutdown()
         {
             ShutdownCompatibility();           // Weapons Pack shadows, ChaseCamera adapter
-            ShutdownCharacterService();        // Services.Animation = null
-            ShutdownCharacterSave();           // weapon poses / aim lift written
             ShutdownTraversal();               // climb / ladder / NPC traversals stopped
-            ShutdownPlayer();                  // BodyRunner.TearDown: the game's own player is back
             ShutdownVehicles();                // ignition row removed
-            ShutdownCharacter();               // ADS tweens restored, ModAPI characters and service cleared
             ShutdownCamera();                  // end-of-frame loop stopped, sway / third-person caches cleared
             Running = false;
         }
 
         /// <summary>Part step, implemented in PlayerBodyModule.Compatibility.cs (Compatibility).</summary>
         partial void ShutdownCompatibility();
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void ShutdownCharacterService();
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void ShutdownCharacterSave();
         /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void ShutdownTraversal();
-        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
-        partial void ShutdownPlayer();
         /// <summary>Part step, implemented in PlayerBodyModule.Vehicles.cs (Vehicles).</summary>
         partial void ShutdownVehicles();
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void ShutdownCharacter();
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void ShutdownCamera();
 
-        /// <summary>Scene load: every part drops its scene references, in the old order.</summary>
+        /// <summary>Scene load: the remaining parts drop their scene references (the body / characters reset in PresentationModule).</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             SceneCameraRestart();              // the end-of-frame loop again if Core recreated its runner
-            ScenePlayer();                     // BodyRunner.OnSceneLoaded
-            SceneCharacter();                  // ModAPI characters, service, ADS tween sweep
             SceneCamera();                     // third-person caches, sway sweep
         }
 
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void SceneCameraRestart();
-        /// <summary>Part step, implemented in PlayerBodyModule.Player.cs (Presentation/Player).</summary>
-        partial void ScenePlayer();
-        /// <summary>Part step, implemented in PlayerBodyModule.Character.cs (Presentation/Character).</summary>
-        partial void SceneCharacter();
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void SceneCamera();
 

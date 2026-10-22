@@ -1,4 +1,5 @@
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -21,8 +22,8 @@ namespace WildWasteland.Modules.Patrols
             {
                 var api = Core.Services.Animation;
                 bool ok = api != null && api.ApiVersion >= 1 && api.Ready;
-                if (ok && _logged != 2) { _logged = 2; Core.Log.Info("[Patrols] Human turrets: animated by the player animation framework"); }
-                else if (!ok && _logged == 0) { _logged = 1; Core.Log.Info("[Patrols] Human turrets: player animations not available (PlayerBody off or bundle missing) - the old crouch"); }
+                if (ok && _logged != 2) { _logged = 2; Core.Log.Main(PresentationModule.Instance, "Human turrets: animated by the player animation framework"); }
+                else if (!ok && _logged == 0) { _logged = 1; Core.Log.Main(PresentationModule.Instance, "Human turrets: player animations not available (PlayerBody off or bundle missing) - the old crouch"); }
                 return ok;
             }
         }

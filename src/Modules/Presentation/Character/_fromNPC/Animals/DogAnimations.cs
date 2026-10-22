@@ -6,6 +6,7 @@ using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -45,12 +46,12 @@ namespace WildWasteland.Modules.NPC
         private static readonly Dictionary<int, Dog> Dogs = new Dictionary<int, Dog>();
         private static readonly Dictionary<string, Dictionary<string, AnimationClip>> Clips = new Dictionary<string, Dictionary<string, AnimationClip>>(StringComparer.OrdinalIgnoreCase);
         // (WW) the six [Behaviour] entries are bound in NpcModule.BindConfig (F6: DogAnimations, DogsLieDown, DogJumpAttack; F7: the rest)
-        private static ConfigEntry<bool> enabled { get { return NpcModule.DogAnimationsEnabled; } }
-        private static ConfigEntry<bool> resting { get { return NpcModule.DogsLieDown; } }
+        private static ConfigEntry<bool> enabled { get { return CharacterSettings.DogAnimationsEnabled; } }
+        private static ConfigEntry<bool> resting { get { return CharacterSettings.DogsLieDown; } }
         private static ConfigEntry<bool> jumping { get { return NpcModule.DogJumpAttack; } }
         private static ConfigEntry<float> idleMin { get { return NpcModule.DogIdlePoseMin; } }
         private static ConfigEntry<float> idleMax { get { return NpcModule.DogIdlePoseMax; } }
-        private static ConfigEntry<float> frontLift { get { return NpcModule.DogLieFrontLift; } }
+        private static ConfigEntry<float> frontLift { get { return CharacterSettings.DogLieFrontLift; } }
         private static AssetBundle bundle; private static bool _loadTried;
         internal static bool BundleLoaded { get { return Clips.Count > 0; } }
         internal static int DogCount { get { return Dogs.Count; } }
@@ -61,11 +62,11 @@ namespace WildWasteland.Modules.NPC
         private static Dictionary<string, AnimationClip> wildHoundClips;
         private const int Solid = (1 << 0) | (1 << 8) | (1 << 9) | (1 << 11) | (1 << 14) | (1 << 16);
         private const int Floor = (1 << 0) | (1 << 8) | (1 << 11) | (1 << 14);
-        private static bool On { get { return enabled != null && enabled.Value && NpcModule.DogBiteEnabled != null && NpcModule.DogBiteEnabled.Value && Senses.On; } }
+        private static bool On { get { return PresentationModule.Running && enabled != null && enabled.Value && NpcModule.DogBiteEnabled != null && NpcModule.DogBiteEnabled.Value && Senses.On; } }
 
         // (WW) the bundles load once per session (an AssetBundle cannot be loaded twice; a module restart reuses the clips); the hooks /
         // patch are installed on every Init, only when clips are there (no bundle = the procedural DogBite only, as before)
-        internal static void Initialize(NpcModule module)
+        internal static void Initialize(PresentationModule module)
         {
             if (!_loadTried) { _loadTried = true; LoadBundles(); }
             if (Clips.Count == 0) return;
@@ -73,13 +74,13 @@ namespace WildWasteland.Modules.NPC
             Core.SaveBus.StateChanged += OnSaveState;
             Core.Hooks.ProcessEvent.Prefix(module, BeforeDamageEvent);
             Core.Hooks.SetVelocityDo.Prefix(module, BeforeSetVelocity);
-            module.Patch(typeof(Wait), "OnEnter", typeof(DogAnimations), "BeforeDamageWait", true);
+            module.PatchAction(typeof(Wait), "OnEnter", typeof(DogAnimations), "BeforeDamageWait", true);
         }
 
         private static void LoadBundles()
         {
-            string path = Path.Combine(NpcModule.ModelDir, "npcai_dogs.bundle");
-            if (!File.Exists(path)) { NpcModule.Log.LogInfo("Dog animations: bundle absent (" + path + "); using procedural bite."); return; }
+            string path = PresentationModule.AssetPath("Models/npcai_dogs.bundle");
+            if (!File.Exists(path)) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Dog animations: bundle absent (" + path + "); using procedural bite."); return; }
             string models = Path.GetDirectoryName(path);
             try
             {
@@ -106,13 +107,13 @@ namespace WildWasteland.Modules.NPC
                         if (new[] { "Idle", "Walk", "Run", "LieDown", "LieIdle", "GetUp", "Bite", "MovingBite", "JumpAttack" }.Any(action => !nativeClips.ContainsKey(action)))
                             throw new InvalidDataException("Native Wild Hound bundle is incomplete");
                         wildHoundClips = nativeClips;
-                        NpcModule.Log.LogInfo("Wild Hound: loaded independent native offsets; personal dog keeps companion offsets.");
+                        Core.Log.Deep(PresentationModule.Instance, "Wild Hound: loaded independent native offsets; personal dog keeps companion offsets.");
                     }
-                    catch (Exception e) { wildHoundClips = null; NpcModule.Log.LogWarning("Native Wild Hound offsets unavailable; using shared clips: " + e.Message); }
+                    catch (Exception e) { wildHoundClips = null; Core.Log.Warn(PresentationModule.Instance, "Native Wild Hound offsets unavailable; using shared clips: " + e.Message); }
                 }
-                NpcModule.Log.LogInfo("Dog animations: loaded " + Clips.Values.Sum(c => c.Count) + " clips for " + Clips.Count + " creature rigs.");
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Dog animations: loaded " + Clips.Values.Sum(c => c.Count) + " clips for " + Clips.Count + " creature rigs.");
             }
-            catch (Exception e) { Clips.Clear(); NpcModule.Log.LogError("Dog animations unavailable; procedural fallback: " + e); }
+            catch (Exception e) { Clips.Clear(); Core.Log.Error(PresentationModule.Instance, "Dog animations unavailable; procedural fallback: " + e); }
         }
 
         // (WW) module shutdown: every dog (native and companion) released - bones back to the Animator's pose, culling / IK / Damage waits /
@@ -120,7 +121,7 @@ namespace WildWasteland.Modules.NPC
         internal static void Shutdown()
         {
             Core.SaveBus.StateChanged -= OnSaveState;
-            foreach (var dog in Dogs.Values) { try { Release(dog); } catch (Exception e) { NpcModule.Warn("Dog animations shutdown: " + e.Message); } }
+            foreach (var dog in Dogs.Values) { try { Release(dog); } catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Dog animations shutdown: " + e.Message); } }
             Dogs.Clear();
             DogCompanionCompat.Shutdown();
         }
@@ -168,7 +169,7 @@ namespace WildWasteland.Modules.NPC
             }
             if (companion != null) dog.NextBite = companion.NativeNextBite;
             Dogs[id] = dog;
-            if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Dog animations: " + agent.Owner.name + " mapped " + bones.Length + " bones; " + clips.Count + " clips.");
+            if (WildWasteland.Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Dog animations: " + agent.Owner.name + " mapped " + bones.Length + " bones; " + clips.Count + " clips.");
         }
 
         private static bool Eligible(Dog d)
@@ -204,7 +205,7 @@ namespace WildWasteland.Modules.NPC
                 for (int i = 0; i < d.Meshes.Length; i++) if (d.Meshes[i] != null)
                 { d.MeshOffscreen[i] = d.Meshes[i].updateWhenOffscreen; d.MeshBounds[i] = d.Meshes[i].localBounds; }
                 MeshCulling(d, !Core.SaveBus.Busy);
-                if (WildWasteland.Core.Log.L2) NpcModule.Log.LogInfo("Dog animations: " + d.Agent.Owner.name + " companion mesh bounds updating (" + d.Meshes.Length + " renderers).");
+                if (WildWasteland.Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Dog animations: " + d.Agent.Owner.name + " companion mesh bounds updating (" + d.Meshes.Length + " renderers).");
             }
             for (int i = 0; i < d.Ik.Length; i++) if (d.Ik[i] != null) { d.IkEnabled[i] = d.Ik[i].enabled; d.Ik[i].enabled = false; }
             d.Prepared = true;
@@ -471,7 +472,7 @@ namespace WildWasteland.Modules.NPC
             if (WildWasteland.Core.Log.L2 && d.Pose == Pose.Rest && !d.LevelLogged)
             {
                 d.LevelLogged = true;
-                NpcModule.Log.LogInfo("Dog animations: " + d.Agent.Owner.name + " lying: shoulders " + (s.y - gs.point.y).ToString("F3") + " m, hips " + (h.y - gh.point.y).ToString("F3") + " m above the ground (standing: shoulders " + d.ShoulderOverHip.ToString("F3") + " m over the hips); front raised " + lift.ToString("F3") + " m at " + d.FrontRoot.name);
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Dog animations: " + d.Agent.Owner.name + " lying: shoulders " + (s.y - gs.point.y).ToString("F3") + " m, hips " + (h.y - gh.point.y).ToString("F3") + " m above the ground (standing: shoulders " + d.ShoulderOverHip.ToString("F3") + " m over the hips); front raised " + lift.ToString("F3") + " m at " + d.FrontRoot.name);
             }
             if (d.Pose != Pose.Rest) d.LevelLogged = false;
             if (lift <= .003f) return;

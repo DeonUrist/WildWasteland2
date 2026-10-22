@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -21,7 +22,7 @@ namespace WildWasteland.Modules.PlayerBody
             string st; float tv;
             if (!Game.Attack(weapon, out st, out tv)) { if (click) StartThrow(true); _throwFor = ""; return; }
             if (weapon != _throwFor) { _throwFor = weapon; _throwState = st; return; }
-            if (_throwState == "on" && st != "on" && st != "" && st != "InMenu") { PlayerBodyModule.Verbose("Throw: " + weapon + " [Attack] on -> " + st); StartThrow(true, true); }
+            if (_throwState == "on" && st != "on" && st != "" && st != "InMenu") { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Throw: " + weapon + " [Attack] on -> " + st); StartThrow(true, true); }
             _throwState = st;
         }
         // melee swing in third person timed to the first-person one: the drawn weapon's arm Animator switches to its swing state on the click;
@@ -54,7 +55,7 @@ namespace WildWasteland.Modules.PlayerBody
                     _meleeLen = Mathf.Clamp(st.length / Mathf.Max(0.1f, sp), 0.2f, 2f);
                     _meleeMeasuring = false;
                     _meleeLens[_meleeFor] = _meleeLen;
-                    PlayerBodyModule.Verbose("Melee: first-person swing " + _meleeLen.ToString("0.00") + " s");
+                    if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Melee: first-person swing " + _meleeLen.ToString("0.00") + " s");
                 }
             }
             else _meleeMeasuring = false;
@@ -133,7 +134,7 @@ namespace WildWasteland.Modules.PlayerBody
             _strikeHand = kind == Props.Kind.None ? (s.Hand ?? (s.Clip == "Punch1" || s.Clip == "Melee1" ? RH : LH)) : null;
             _aimMeasured = false;
             _strike = s; _striking = true; _strikeAt = Time.time; _strikeCycle = cycle; _strikeW = 1f;
-            PlayerBodyModule.Verbose("Strike: " + s.Clip + " " + s.From.ToString("0.00") + "-" + s.Hit.ToString("0.00") + "-" + s.To.ToString("0.00") + " in " + cycle.ToString("0.00") + " s" + (chained ? " (chained)" : ""));
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Strike: " + s.Clip + " " + s.From.ToString("0.00") + "-" + s.Hit.ToString("0.00") + "-" + s.To.ToString("0.00") + " in " + cycle.ToString("0.00") + " s" + (chained ? " (chained)" : ""));
         }
 
         // punches land on the middle line in front of her chest: the spine turns (Spine, Spine1, Spine2 a third each) by an angle learned per clip -
@@ -171,7 +172,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (v.z < 0.1f) return;
             float off = (Mathf.Atan2(v.x, v.z) - Mathf.Atan2(tx, Mathf.Max(0.3f, v.z))) * Mathf.Rad2Deg;   // + = hand right of the grenade's line
             _aimYaw[key] = Mathf.Clamp(aim - off * (k > 0.99f ? 1f : 0.5f), -45f, 45f);
-            PlayerBodyModule.Verbose("Throw aim: hand " + off.ToString("0.0") + " deg off the grenade's line (spawn " + tx.ToString("0.00") + " m) -> spine turn " + _aimYaw[key].ToString("0.0"));
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Throw aim: hand " + off.ToString("0.0") + " deg off the grenade's line (spawn " + tx.ToString("0.00") + " m) -> spine turn " + _aimYaw[key].ToString("0.0"));
         }
 
         // 1.7.4: during a strike the chest faces where the game hits (the eye's yaw = the crosshair), whatever the legs / strafe / the clip's own
@@ -180,7 +181,7 @@ namespace WildWasteland.Modules.PlayerBody
         private void PunchAim()
         {
             if (_strike == null || !_striking || Game.PlayerCamera == null) return;
-            float el = Time.time - _strikeAt, w = Mathf.Min(PlayerBodyModule.StrikeWindup.Value, _strikeCycle * 0.4f), back = (_strikeCycle - w) * 0.5f;
+            float el = Time.time - _strikeAt, w = Mathf.Min(CharacterSettings.StrikeWindup.Value, _strikeCycle * 0.4f), back = (_strikeCycle - w) * 0.5f;
             float k = el < w ? Mathf.Clamp01(el / Mathf.Max(0.001f, w * 0.5f)) : el < w + back ? 1f : Mathf.Clamp01(1f - (el - w - back) / Mathf.Max(0.01f, back));
             Transform s0, s1, s2, la, ra, chest;
             if (!Bones.TryGetValue("mixamorig:Spine", out s0) || !Bones.TryGetValue("mixamorig:Spine1", out s1) || !Bones.TryGetValue("mixamorig:Spine2", out s2)
@@ -207,7 +208,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (Vector3.Dot(v, aimF.normalized) < 0.1f) return;
             float off = Vector3.SignedAngle(aimF, v, up);   // + = fist right of the aim line
             _aimYaw[_strike.Key] = Mathf.Clamp(learned - off * (k > 0.99f ? 1f : 0.5f), -45f, 45f);
-            PlayerBodyModule.Verbose("Punch aim: " + _strike.Key + " landed " + off.ToString("0.0") + " deg off the aim (chest squared " + square.ToString("0.0") + ") -> blow offset " + _aimYaw[_strike.Key].ToString("0.0"));
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Punch aim: " + _strike.Key + " landed " + off.ToString("0.0") + " deg off the aim (chest squared " + square.ToString("0.0") + ") -> blow offset " + _aimYaw[_strike.Key].ToString("0.0"));
         }
     }
 }

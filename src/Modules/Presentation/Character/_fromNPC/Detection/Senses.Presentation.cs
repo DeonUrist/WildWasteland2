@@ -11,6 +11,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -43,7 +44,7 @@ namespace WildWasteland.Modules.NPC
                 a.NextShout = now + UnityEngine.Random.Range(Mathf.Max(1f, NpcModule.TauntMin.Value), Mathf.Max(NpcModule.TauntMin.Value, NpcModule.TauntMax.Value));
                 if (a.Human && NpcModule.TauntRange.Value > 0f) Taunt(a);
             }
-            catch (Exception e) { NpcModule.Log.LogError("Senses: " + e); }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Senses: " + e); }
             return true;
         }
 
@@ -77,7 +78,7 @@ namespace WildWasteland.Modules.NPC
                     if (Assign(f, shared, relay, now)) { told++; f.Heard.Add(shared.Id); }
                 }
                 if (shared != tg && shared.Holders.Count == 0) { int i = _ghosts.IndexOf(shared); if (i >= 0) KillGhost(i); }
-                if (WildWasteland.Core.Log.L2 && told > 0) NpcModule.Log.LogInfo("Senses: " + Name(t.Owner) + "'s shout sends " + told + " " + tag + " to " + (tg != null ? "ghost #" + tg.Id : "its target"));
+                if (WildWasteland.Core.Log.L2 && told > 0) Core.Log.Deep(PresentationModule.Instance, "Senses: " + Name(t.Owner) + "'s shout sends " + told + " " + tag + " to " + (tg != null ? "ghost #" + tg.Id : "its target"));
             }
             // enemies: the shouter gave itself away
             string ttag = t.Tag;

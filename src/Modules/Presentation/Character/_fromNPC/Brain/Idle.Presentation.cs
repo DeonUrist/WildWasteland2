@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -28,7 +29,7 @@ namespace WildWasteland.Modules.NPC
                 if (c.Rb != null) { var v = c.Rb.velocity; c.Rb.velocity = new Vector3(0f, v.y, 0f); }
                 Log(c, "was running in place (" + (fsmRun ? "game's Movement in Run" : "run animation left on") + "), now stands");
             }
-            catch (Exception e) { NpcModule.Log.LogError("Idle anim: " + e.Message); c.NextAnimCheck = Time.time + 30f; }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "Idle anim: " + e.Message); c.NextAnimCheck = Time.time + 30f; }
         }
     }
 }

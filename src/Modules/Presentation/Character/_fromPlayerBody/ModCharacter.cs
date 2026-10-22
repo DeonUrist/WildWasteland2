@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -33,7 +34,7 @@ namespace WildWasteland.Modules.PlayerBody
             public string ActionClip { get { return _p.ActionW > 0.01f ? _p.ActionClip : ""; } }   // the whole-body action (kick, jump, turn)
             public string UpperClip { get { return _p.UpperW > 0.01f ? _p.UpperClip : ""; } }     // a throw / strike
             // the fastest the body may move without its feet sliding (twice the clips' native speed: crouched / sprinting)
-            public float SpeedCap { get { return 2f * (Crouched ? PlayerBodyModule.ClipCrouchSpeed.Value : Anims.Get("RifleSprint") != null ? PlayerBodyModule.ClipSprintSpeed.Value : PlayerBodyModule.ClipRunSpeed.Value); } }
+            public float SpeedCap { get { return 2f * (Crouched ? CharacterSettings.ClipCrouchSpeed.Value : Anims.Get("RifleSprint") != null ? CharacterSettings.ClipSprintSpeed.Value : CharacterSettings.ClipRunSpeed.Value); } }
 
             // ---------------------------------------------------------------- commands
             public void SetWeapon(Transform model) { SetWeapon(model, null); }
@@ -137,11 +138,11 @@ namespace WildWasteland.Modules.PlayerBody
 
             private void ReadSettings()
             {
-                _p.RunFrom = PlayerBodyModule.RunFrom.Value; _p.SprintFrom = PlayerBodyModule.SprintFrom.Value; _p.DirBlendSpeed = PlayerBodyModule.DirBlendSpeed.Value; _p.RunLegsTurn = PlayerBodyModule.RunLegsTurn.Value;
-                _p.UpperPhase = PlayerBodyModule.UpperPhase.Value; _p.PumpSpeed = PlayerBodyModule.PumpClipSpeed.Value; _p.StrikeWindup = PlayerBodyModule.StrikeWindup.Value;
-                _p.WalkNative = PlayerBodyModule.ClipWalkSpeed.Value; _p.RunNative = PlayerBodyModule.ClipRunSpeed.Value; _p.SprintNative = PlayerBodyModule.ClipSprintSpeed.Value; _p.CrouchNative = PlayerBodyModule.ClipCrouchSpeed.Value;
-                _p.JumpClipStart = PlayerBodyModule.JumpClipStart.Value; _p.TurnStartRate = PlayerBodyModule.TurnStartRate.Value;
-                _p.TurnInPlace = PlayerBodyModule.TurnClipAngle.Value > 0f; _p.WalkToStop = PlayerBodyModule.WalkToStop.Value;
+                _p.RunFrom = CharacterSettings.RunFrom.Value; _p.SprintFrom = CharacterSettings.SprintFrom.Value; _p.DirBlendSpeed = CharacterSettings.DirBlendSpeed.Value; _p.RunLegsTurn = CharacterSettings.RunLegsTurn.Value;
+                _p.UpperPhase = CharacterSettings.UpperPhase.Value; _p.PumpSpeed = CharacterSettings.PumpClipSpeed.Value; _p.StrikeWindup = CharacterSettings.StrikeWindup.Value;
+                _p.WalkNative = CharacterSettings.ClipWalkSpeed.Value; _p.RunNative = CharacterSettings.ClipRunSpeed.Value; _p.SprintNative = CharacterSettings.ClipSprintSpeed.Value; _p.CrouchNative = CharacterSettings.ClipCrouchSpeed.Value;
+                _p.JumpClipStart = CharacterSettings.JumpClipStart.Value; _p.TurnStartRate = CharacterSettings.TurnStartRate.Value;
+                _p.TurnInPlace = CharacterSettings.TurnClipAngle.Value > 0f; _p.WalkToStop = CharacterSettings.WalkToStop.Value;
             }
 
             // ---- the main graph (rebuilt when un-suspended)
@@ -155,7 +156,7 @@ namespace WildWasteland.Modules.PlayerBody
                 for (int i = 0; i < LocoPlan.BN; i++)
                 {
                     _bp[i] = AnimationClipPlayable.Create(_g, Anims.Get(_p.SlotClip[i]) ?? _fallback);
-                    _bp[i].SetApplyFootIK(PlayerBodyModule.FootIK.Value && (i < LocoPlan.B_RUN || (i >= LocoPlan.B_CIDLE && i != LocoPlan.B_RRUN && i != LocoPlan.B_RSPRINT)));
+                    _bp[i].SetApplyFootIK(CharacterSettings.FootIK.Value && (i < LocoPlan.B_RUN || (i >= LocoPlan.B_CIDLE && i != LocoPlan.B_RRUN && i != LocoPlan.B_RSPRINT)));
                     _bp[i].SetSpeed(0);
                     _g.Connect(_bp[i], 0, _base, i);
                     _base.SetInputWeight(i, i == LocoPlan.B_IDLE ? 1f : 0f);
@@ -260,7 +261,7 @@ namespace WildWasteland.Modules.PlayerBody
                     _rigOut.SetSourcePlayable(_rigMix);
                     _rg.Play();
                 }
-                catch (Exception e) { PlayerBodyModule.Warn("ModAPI: no upper rig for " + _a.gameObject.name + " (" + e.Message + ") - the legs' clips move its hands"); _pairs.Clear(); _rigGo = null; }
+                catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "ModAPI: no upper rig for " + _a.gameObject.name + " (" + e.Message + ") - the legs' clips move its hands"); _pairs.Clear(); _rigGo = null; }
             }
 
             private static string PathOf(Transform t, Transform root)
@@ -364,8 +365,8 @@ namespace WildWasteland.Modules.PlayerBody
                 try { TickInner(); }
                 catch (Exception e)
                 {
-                    if (++_errors <= 3) PlayerBodyModule.Error("ModAPI " + _a.gameObject.name + ": " + e);
-                    if (_errors >= 3) { PlayerBodyModule.Warn("ModAPI: " + _a.gameObject.name + " suspended after errors"); Suspended = true; }
+                    if (++_errors <= 3) Core.Log.Error(PresentationModule.Instance, "ModAPI " + _a.gameObject.name + ": " + e);
+                    if (_errors >= 3) { Core.Log.Warn(PresentationModule.Instance, "ModAPI: " + _a.gameObject.name + " suspended after errors"); Suspended = true; }
                 }
             }
 
@@ -389,7 +390,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _p.Lx = local.x; _p.Lz = local.z; _p.Yaw = yaw.eulerAngles.y;
                 _p.Crouch = Crouched; _p.Aim = Aiming; _p.Fire = Firing; _p.Airborne = Airborne;
                 _p.Step(now, dt);
-                if (PlayerBodyModule.VerboseModApi.Value && _p.Log != "") PlayerBodyModule.Info("ModAPI " + _a.gameObject.name + ": " + _p.Log);
+                if (Core.Log.L2 && _p.Log != "") Core.Log.Deep(PresentationModule.Instance, "ModAPI " + _a.gameObject.name + ": " + _p.Log);   // (B05) ex [PlayerBody / ModAPI] VerboseModApi: Debug level 2
 
                 // ---- next frame's graph (the Animator evaluates it before the next LateUpdate)
                 for (int i = 0; i < LocoPlan.BN; i++)
@@ -423,10 +424,10 @@ namespace WildWasteland.Modules.PlayerBody
                 if (_b.TryGetValue(HumanBodyBones.Hips, out hips))
                 {
                     var hl = _root.InverseTransformPoint(hips.position);
-                    var xz = Vector2.ClampMagnitude(new Vector2(hl.x, hl.z), PlayerBodyModule.HipsDrift.Value);
+                    var xz = Vector2.ClampMagnitude(new Vector2(hl.x, hl.z), CharacterSettings.HipsDrift.Value);
                     if (xz.x != hl.x || xz.y != hl.z) hips.position = _root.TransformPoint(new Vector3(xz.x, hl.y, xz.y));
                 }
-                float pitch = AimPitch * PlayerBodyModule.AimPitchShare.Value, headPitch = AimPitch;
+                float pitch = AimPitch * CharacterSettings.AimPitchShare.Value, headPitch = AimPitch;
                 if (Mathf.Abs(pitch) > 0.5f)
                 {
                     Turn(HumanBodyBones.Spine, Vector3.right, pitch * 0.3f);

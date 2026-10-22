@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -47,7 +48,7 @@ namespace WildWasteland.Modules.PlayerBody
             Transform head;
             if (view == View.FirstPerson && Bones.TryGetValue("mixamorig:Head", out head))
             {
-                Vector3 offset = Game.PlayerCamera.position - yaw * Vector3.forward * PlayerBodyModule.BodyBack.Value - head.position;
+                Vector3 offset = Game.PlayerCamera.position - yaw * Vector3.forward * CharacterSettings.BodyBack.Value - head.position;
                 offset.y = 0; Root.transform.position += offset;
             }
             return true;

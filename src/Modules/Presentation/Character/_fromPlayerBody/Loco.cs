@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -83,7 +84,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _bp[i] = AnimationClipPlayable.Create(_graph, Anims.Get(n));
                 // foot IK only standing and walking (crouched too): the clips' foot goals come from X Bot and on Flexa's legs the solver twisted
                 // the shins in the long running strides and the jumps (2.0.2)
-                _bp[i].SetApplyFootIK(PlayerBodyModule.FootIK.Value && (i < LocoPlan.B_RUN || (i >= B_CIDLE && i != LocoPlan.B_RRUN && i != LocoPlan.B_RSPRINT)));
+                _bp[i].SetApplyFootIK(CharacterSettings.FootIK.Value && (i < LocoPlan.B_RUN || (i >= B_CIDLE && i != LocoPlan.B_RRUN && i != LocoPlan.B_RSPRINT)));
                 _graph.Connect(_bp[i], 0, _base, i);
                 _base.SetInputWeight(i, i == B_IDLE ? 1f : 0f);
             }
@@ -101,7 +102,7 @@ namespace WildWasteland.Modules.PlayerBody
             _layers.SetInputWeight(_lAction, 0f);
             output.SetSourcePlayable(_layers);
             _graph.Play();
-            PlayerBodyModule.Info("Animations from the bundle (rifle pack legs for every weapon): " + (BN - missing.Count) + "/" + BN + " locomotion clips"
+            if (Core.Log.L1) Core.Log.Main(PresentationModule.Instance, "Animations from the bundle (rifle pack legs for every weapon): " + (BN - missing.Count) + "/" + BN + " locomotion clips"
                 + (missing.Count > 0 ? ", missing (stand-ins used): " + string.Join(", ", missing.ToArray()) : "")
                 + "; uppers: " + Have("RifleAim", "RifleFire", "RifleCrouchAim", "RifleCrouchFire", "RifleReload", "PistolIdle", "PistolRun", "PistolFire", "PistolReload", "Idle", "Walk", "WalkBack", "Run", "CrouchIdle")
                 + "; relaxed: " + Have("Idle", "RifleWalkLow", "RifleRunLow", "WalkStrafeLeft", "WalkStrafeRight", "WalkBack", "RifleWalkToStop", "LeftTurn", "RightTurn")
@@ -153,9 +154,9 @@ namespace WildWasteland.Modules.PlayerBody
                 _rigMix.SetInputWeight(0, 1f); _rigMix.SetInputWeight(1, 0f);
                 output.SetSourcePlayable(_rigMix);
                 _rigGraph.Play();
-                PlayerBodyModule.Verbose("UpperRig: " + _rigPairs.Count + " bones above the spine");
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "UpperRig: " + _rigPairs.Count + " bones above the spine");
             }
-            catch (Exception e) { PlayerBodyModule.Error("UpperRig: " + e.Message); _rigPairs.Clear(); }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "UpperRig: " + e.Message); _rigPairs.Clear(); }
         }
 
         // the upper source's clip: a new clip starts at once, the old pose fades out under it (as SetUpper)
@@ -187,7 +188,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_phaseOf.TryGetValue(clip, out p)) return p;
             p = MeasurePhase(Anims.Get(clip));
             _phaseOf[clip] = p;
-            PlayerBodyModule.Verbose("Stride phase of " + clip + ": " + (p < 0f ? "none" : p.ToString("0.00")));
+            if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Stride phase of " + clip + ": " + (p < 0f ? "none" : p.ToString("0.00")));
             return p;
         }
         // samples the clip on the skeleton copy (its own source for a moment) and takes the first harmonic of left-minus-right foot height
@@ -216,7 +217,7 @@ namespace WildWasteland.Modules.PlayerBody
                 }
                 return d;
             }
-            catch (Exception e) { PlayerBodyModule.Warn("Sampling " + c.name + ": " + e.Message); return null; }
+            catch (Exception e) { Core.Log.Warn(PresentationModule.Instance, "Sampling " + c.name + ": " + e.Message); return null; }
             finally
             {
                 if (_rigOut.IsOutputValid()) _rigOut.SetSourcePlayable(_rigMix);
@@ -240,7 +241,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _rigCur.SetSpeed(_rigSpeed);
                 // in step with the legs: the same normalized time as the base's main moving clip
                 if (_rigSync && _baseDom >= 0 && cc != null && cc.length > 0.01f)
-                    _rigCur.SetTime(LocoPlan.Time01(_stride + PlayerBodyModule.UpperPhase.Value, PhaseOf(_rigClip), false) * cc.length);
+                    _rigCur.SetTime(LocoPlan.Time01(_stride + CharacterSettings.UpperPhase.Value, PhaseOf(_rigClip), false) * cc.length);
                 else if (cc != null && !cc.isLooping && _rigCur.GetTime() > cc.length) { if (_previewName != null) _rigCur.SetTime(0); else _rigCur.SetTime(cc.length - 0.001); }
             }
             if (_rigOld.IsValid())
@@ -374,7 +375,7 @@ namespace WildWasteland.Modules.PlayerBody
             var w = _bw;
             hipTurn = 0f;
             if (previewSlot >= 0) { for (int i = 0; i < BN; i++) w[i] = 0f; w[previewSlot] = 1f; }
-            else LocoPlan.Weights(m, r, sprint, local.x, local.z, crouch, relax, LocoPlan.CrouchMirror(_locoKind), PlayerBodyModule.RunLegsTurn.Value, w, out hipTurn);
+            else LocoPlan.Weights(m, r, sprint, local.x, local.z, crouch, relax, LocoPlan.CrouchMirror(_locoKind), CharacterSettings.RunLegsTurn.Value, w, out hipTurn);
             // one stride for all moving clips: every moving slot is put at its own phase (left foot highest) + the shared stride each frame
             // (a blend tree's "sync"); the stride advances at the weighted rate of the clips in use
             _baseDom = -1; float best = 0.05f, rate = 0f, rateW = 0f;
@@ -383,9 +384,9 @@ namespace WildWasteland.Modules.PlayerBody
                 _base.SetInputWeight(i, w[i]);
                 if (!LocoPlan.Moving(i)) continue;
                 if (w[i] > best) { best = w[i]; _baseDom = i; }
-                float native = i == LocoPlan.B_RSPRINT || (i >= LocoPlan.B_SPRINT && i < B_CIDLE) ? PlayerBodyModule.ClipSprintSpeed.Value
-                             : i == LocoPlan.B_RRUN || (i >= LocoPlan.B_RUN && i < LocoPlan.B_SPRINT) ? PlayerBodyModule.ClipRunSpeed.Value
-                             : (i >= LocoPlan.B_CWALK && i < B_RIDLE) || i == LocoPlan.B_RCLEFT ? PlayerBodyModule.ClipCrouchSpeed.Value : PlayerBodyModule.ClipWalkSpeed.Value;
+                float native = i == LocoPlan.B_RSPRINT || (i >= LocoPlan.B_SPRINT && i < B_CIDLE) ? CharacterSettings.ClipSprintSpeed.Value
+                             : i == LocoPlan.B_RRUN || (i >= LocoPlan.B_RUN && i < LocoPlan.B_SPRINT) ? CharacterSettings.ClipRunSpeed.Value
+                             : (i >= LocoPlan.B_CWALK && i < B_RIDLE) || i == LocoPlan.B_RCLEFT ? CharacterSettings.ClipCrouchSpeed.Value : CharacterSettings.ClipWalkSpeed.Value;
                 float sp = previewSlot >= 0 ? 1f : ClipSpeed(speed, Native(_bp[i], native));
                 var c = _bp[i].GetAnimationClip();
                 float len = c != null && c.length > 0.05f ? c.length : 1f;
@@ -475,8 +476,8 @@ namespace WildWasteland.Modules.PlayerBody
             float d = Mathf.DeltaAngle(_turnLastYaw, yawDeg);
             _turnLastYaw = yawDeg;
             bool mine = _turnClip != null && _actionClip == _turnClip && Time.time < _actionUntil;
-            if (PlayerBodyModule.TurnClipAngle.Value <= 0f || m > 0.15f || (Time.time < _actionUntil && !mine)) { EndTurn(mine && m <= 0.15f); return; }
-            if (Mathf.Abs(d) > PlayerBodyModule.TurnStartRate.Value * Mathf.Max(dt, 1e-3f))
+            if (CharacterSettings.TurnClipAngle.Value <= 0f || m > 0.15f || (Time.time < _actionUntil && !mine)) { EndTurn(mine && m <= 0.15f); return; }
+            if (Mathf.Abs(d) > CharacterSettings.TurnStartRate.Value * Mathf.Max(dt, 1e-3f))
             {
                 bool left = d < 0f;
                 string clip = crouch > 0.5f ? (left ? "RifleCrouchTurnLeft" : "RifleCrouchTurnRight") : relaxed && Has(left ? "LeftTurn" : "RightTurn") ? (left ? "LeftTurn" : "RightTurn") : (left ? "RifleTurnLeft" : "RifleTurnRight");
@@ -530,10 +531,10 @@ namespace WildWasteland.Modules.PlayerBody
             float speed = v.magnitude;
             _speedSmooth = Mathf.Lerp(_speedSmooth, speed, 1f - Mathf.Exp(-dt * 10f));
             float m = Mathf.Clamp01(_speedSmooth / 0.4f);
-            float r = Mathf.Clamp01((_speedSmooth - PlayerBodyModule.RunFrom.Value) / 0.8f);
+            float r = Mathf.Clamp01((_speedSmooth - CharacterSettings.RunFrom.Value) / 0.8f);
             if (_crouch > 0.5f) r = 0f;
             _runW = Mathf.MoveTowards(_runW, r, dt * 4f);
-            float sprint = _hasSprint ? Mathf.Clamp01((_speedSmooth - PlayerBodyModule.SprintFrom.Value) / 0.6f) : 0f;
+            float sprint = _hasSprint ? Mathf.Clamp01((_speedSmooth - CharacterSettings.SprintFrom.Value) / 0.6f) : 0f;
             _sprintW = Mathf.MoveTowards(_sprintW, sprint, dt * 4f);
             float crouch = _noCrouchClips ? 0f : _crouch;
 
@@ -545,7 +546,7 @@ namespace WildWasteland.Modules.PlayerBody
                 _lastWeapon = weapon; _weaponSince = Time.time;
                 _reloading = false; _reloadFresh = false; _upperClip = "";
                 GunPose.Flush();
-                PlayerBodyModule.Verbose("Weapon: " + (weapon == "" ? "none" : weapon + " (" + kind + ")"));
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Weapon: " + (weapon == "" ? "none" : weapon + " (" + kind + ")"));
             }
             SetPoseList(kind, weapon);
             bool live = !Game.Paused;
@@ -573,7 +574,7 @@ namespace WildWasteland.Modules.PlayerBody
             float hipWant;
             // (2.1.5) the legs' direction turns toward the way she moves at DirBlendSpeed °/s (strafe left -> forward passes the diagonal)
             float wantAng = local.sqrMagnitude > 1e-4f ? Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg : _moveAng;
-            _moveAng = (_snap || _speedSmooth < 0.15f) ? wantAng : LocoPlan.SlewAngle(_moveAng, wantAng, PlayerBodyModule.DirBlendSpeed.Value * dt);
+            _moveAng = (_snap || _speedSmooth < 0.15f) ? wantAng : LocoPlan.SlewAngle(_moveAng, wantAng, CharacterSettings.DirBlendSpeed.Value * dt);
             var legDir = new Vector3(Mathf.Sin(_moveAng * Mathf.Deg2Rad), 0f, Mathf.Cos(_moveAng * Mathf.Deg2Rad)) * local.magnitude;
             DriveBase(m, _runW, _sprintW, legDir, crouch, _speedSmooth, previewSlot, _relaxW, out hipWant);
             _hipTurn = Mathf.Lerp(_hipTurn, hipWant, 1f - Mathf.Exp(-dt * 8f));
@@ -585,9 +586,9 @@ namespace WildWasteland.Modules.PlayerBody
             if (cockNow && !_cocking && Has("ShotgunPump"))
             {
                 var pc = Anims.Get("ShotgunPump");
-                _pumpUntil = Time.time + (LocoPlan.PumpTo - LocoPlan.PumpFrom) * pc.length / Mathf.Max(0.1f, PlayerBodyModule.PumpClipSpeed.Value);
+                _pumpUntil = Time.time + (LocoPlan.PumpTo - LocoPlan.PumpFrom) * pc.length / Mathf.Max(0.1f, CharacterSettings.PumpClipSpeed.Value);
                 _pumpStart = true;
-                PlayerBodyModule.Verbose("Cocking " + weapon + " (" + atk + "): ShotgunPump");
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Cocking " + weapon + " (" + atk + "): ShotgunPump");
             }
             _cocking = cockNow;
             if (_reloading || kind != Props.Kind.Rifle) _pumpUntil = 0f;
@@ -599,7 +600,7 @@ namespace WildWasteland.Modules.PlayerBody
             _reloading = reloadingNow;
             _reloadUntil = _reloading ? Time.time + 0.05f : 0f;
             _aimingNow = aiming; _shootingNow = shooting && gunKind;
-            if (_snap) { _upperClip = ""; PlayerBodyModule.Verbose("View switched: animation state re-synced"); }
+            if (_snap) { _upperClip = ""; Core.Log.Deep(PresentationModule.Instance, "View switched: animation state re-synced"); }
 
             // kick (the game's Kick button) and jump: whole-body one-shots on the action layer
             string ks = Game.KickState;
@@ -631,7 +632,7 @@ namespace WildWasteland.Modules.PlayerBody
                 string jc = JumpClip(kind);
                 var jm = JumpMarksOf(jc);
                 var jcl = Anims.Get(jc);
-                float from = jm.x > 0f && jcl != null ? Mathf.Max(0f, jm.x - 0.1f / jcl.length) : jc == "RifleJumpUp" ? 0f : PlayerBodyModule.JumpClipStart.Value;
+                float from = jm.x > 0f && jcl != null ? Mathf.Max(0f, jm.x - 0.1f / jcl.length) : jc == "RifleJumpUp" ? 0f : CharacterSettings.JumpClipStart.Value;
                 StartAction(jc, from);
                 if (jc == "RifleJumpUp") _actionUntil = Time.time + 10f;     // held on until the loop / the landing takes over
                 _actionIsTurn = false; _actionFade = 10f;
@@ -665,7 +666,7 @@ namespace WildWasteland.Modules.PlayerBody
             // starting it at a fixed point once she had nearly stopped popped a leg back by up to a metre. No match (right foot swinging): no clip.
             bool walkingNow = relaxed && crouch < 0.5f && m > 0.6f && _runW < 0.5f && local.z > 0.9f * local.magnitude;
             if (walkingNow) _walkedAt = Time.time;
-            if (PlayerBodyModule.WalkToStop.Value && _previewName == null && relaxed && crouch < 0.5f && speed < 0.25f && m > 0.3f && Time.time - _walkedAt < 0.3f
+            if (CharacterSettings.WalkToStop.Value && _previewName == null && relaxed && crouch < 0.5f && speed < 0.25f && m > 0.3f && Time.time - _walkedAt < 0.3f
                 && Time.time > _actionUntil && Has("RifleWalkToStop") && _stopAt < _walkedAt && _bw[LocoPlan.B_RWALK] > 0.3f)
             {
                 _stopAt = Time.time;
@@ -702,7 +703,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (up == "ShotgunPump")
             {   // each cock starts the rack again (the same clip twice in a row: restart it)
                 if (_pumpStart && _rigClip == "ShotgunPump") _rigClip = "";
-                RigSet(up, false, false, LocoPlan.PumpFrom, PlayerBodyModule.PumpClipSpeed.Value);
+                RigSet(up, false, false, LocoPlan.PumpFrom, CharacterSettings.PumpClipSpeed.Value);
                 _pumpStart = false;
             }
             else if (up != null) RigSet(up, hold, sync);
@@ -745,7 +746,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (Bones.TryGetValue("mixamorig:Hips", out hips))
             {
                 var hp = hips.localPosition;
-                var xz = Vector2.ClampMagnitude(new Vector2(hp.x, hp.z), PlayerBodyModule.HipsDrift.Value);
+                var xz = Vector2.ClampMagnitude(new Vector2(hp.x, hp.z), CharacterSettings.HipsDrift.Value);
                 if (xz.x != hp.x || xz.y != hp.z) hips.localPosition = new Vector3(xz.x, hp.y, xz.y);
             }
             if (_crouch > 0.001f && _actionW > 0.001f && _actionClip != null && _actionClip.Contains("Jump"))
@@ -760,7 +761,7 @@ namespace WildWasteland.Modules.PlayerBody
             else if (_noCrouchClips && _crouch > 0.001f) Crouch(_crouch);
             // running: the pack's run / sprint cycles splay the thighs, and on her narrower hips that is a bow-legged, wide-footed stance -
             // each thigh is turned a little toward the middle about the hip (the Anim object's forward axis), the foot turned back so the sole stays flat
-            float legsIn = PlayerBodyModule.RunLegsIn.Value * m * _runW * (1f - crouch) * (1f - _actionW);
+            float legsIn = CharacterSettings.RunLegsIn.Value * m * _runW * (1f - crouch) * (1f - _actionW);
             if (Mathf.Abs(legsIn) > 0.05f)
             {
                 Turn("mixamorig:LeftUpLeg", Vector3.forward, legsIn);     // +deg about forward swings a hanging leg toward +x (her right) = inward for the left leg
@@ -768,7 +769,7 @@ namespace WildWasteland.Modules.PlayerBody
                 Turn("mixamorig:RightUpLeg", Vector3.forward, -legsIn);
                 Turn("mixamorig:RightFoot", Vector3.forward, legsIn);
             }
-            float pitch = view == View.FirstPerson ? 0f : camPitch * PlayerBodyModule.AimPitchShare.Value * (1f - _prone);
+            float pitch = view == View.FirstPerson ? 0f : camPitch * CharacterSettings.AimPitchShare.Value * (1f - _prone);
             if (Mathf.Abs(pitch) > 0.5f)
             {
                 Turn("mixamorig:Spine", Vector3.right, pitch * 0.3f);

@@ -2,6 +2,7 @@ using System;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -26,15 +27,15 @@ namespace WildWasteland.Modules.NPC
         private static void Init()
         {
             var api = Services.Animation;
-            if (api == null) { if (_ok || _api != null) { _ok = false; _api = null; _logged = false; NpcModule.Log.LogInfo("NPC animations: the player animation framework is off - the game's clips, no sidesteps"); } return; }
+            if (api == null) { if (_ok || _api != null) { _ok = false; _api = null; _logged = false; Core.Log.Deep(PresentationModule.Instance, "NPC animations: the player animation framework is off - the game's clips, no sidesteps"); } return; }
             if (_ok && ReferenceEquals(api, _api)) return;
             if (Time.unscaledTime < 3f || Time.unscaledTime < _nextProbe) return;     // let the framework finish loading its bundle
             _nextProbe = Time.unscaledTime + 5f;
             _api = api;
             try { _ok = Probe(api); }
-            catch (Exception e) { _ok = false; NpcModule.Warn("NPC animations: the animation framework failed (" + e.GetType().Name + ") - the game's clips"); return; }
-            if (_ok) NpcModule.Log.LogInfo("NPC animations: the player animation framework (ModAPI " + api.ApiVersion + ", " + api.ClipNames().Length + " player clips) in use");
-            else if (!_logged) { _logged = true; NpcModule.Log.LogInfo("NPC animations: the animation bundle is not ready (yet) - the game's clips"); }
+            catch (Exception e) { _ok = false; Core.Log.Warn(PresentationModule.Instance, "NPC animations: the animation framework failed (" + e.GetType().Name + ") - the game's clips"); return; }
+            if (_ok) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "NPC animations: the player animation framework (ModAPI " + api.ApiVersion + ", " + api.ClipNames().Length + " player clips) in use"); }
+            else if (!_logged) { _logged = true; Core.Log.Deep(PresentationModule.Instance, "NPC animations: the animation bundle is not ready (yet) - the game's clips"); }
         }
         private static bool Probe(IAnimationApi api) { return api.Ready; }
 

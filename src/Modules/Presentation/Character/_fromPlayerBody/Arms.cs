@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -43,7 +44,7 @@ namespace WildWasteland.Modules.PlayerBody
                 smr.sharedMaterial = kick && _matKick != null ? _matKick : _mat;
                 added++;
             }
-            if (added > 0) PlayerBodyModule.Verbose("Arms: " + added + " first-person arm/leg renderer(s) dressed");
+            if (added > 0) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "Arms: " + added + " first-person arm/leg renderer(s) dressed"); }
         }
 
         public static void Restore()

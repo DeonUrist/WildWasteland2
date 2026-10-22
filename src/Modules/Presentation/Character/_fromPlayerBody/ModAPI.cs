@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
 {
@@ -30,7 +31,7 @@ namespace WildWasteland.Modules.PlayerBody
     public static partial class ModAPI
     {
         public const int ApiVersion = 1;
-        public static string PluginVersion { get { return PlayerBodyModule.SourceVersion; } }   // (WW) the Apocaplayer version this API matches
+        public static string PluginVersion { get { return PresentationModule.SourceVersion; } }   // (WW) the Apocaplayer version this API matches
 
         // the animation bundle is there with the player's Mixamo set (what the player's body uses)
         public static bool Ready
@@ -140,10 +141,10 @@ namespace WildWasteland.Modules.PlayerBody
         {
             switch ((tier ?? "").ToLowerInvariant())
             {
-                case "run": return PlayerBodyModule.ClipRunSpeed.Value;
-                case "sprint": return PlayerBodyModule.ClipSprintSpeed.Value;
-                case "crouch": return PlayerBodyModule.ClipCrouchSpeed.Value;
-                default: return PlayerBodyModule.ClipWalkSpeed.Value;
+                case "run": return CharacterSettings.ClipRunSpeed.Value;
+                case "sprint": return CharacterSettings.ClipSprintSpeed.Value;
+                case "crouch": return CharacterSettings.ClipCrouchSpeed.Value;
+                default: return CharacterSettings.ClipWalkSpeed.Value;
             }
         }
 
@@ -163,10 +164,10 @@ namespace WildWasteland.Modules.PlayerBody
                 var c = new Character(animator);
                 if (!c.Valid) return null;
                 _chars.Add(c);
-                PlayerBodyModule.Verbose("ModAPI: animating " + animator.gameObject.name + " (" + _chars.Count + " characters)");
+                if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "ModAPI: animating " + animator.gameObject.name + " (" + _chars.Count + " characters)");
                 return c;
             }
-            catch (Exception e) { PlayerBodyModule.Error("ModAPI.Attach " + animator.gameObject.name + ": " + e); return null; }
+            catch (Exception e) { Core.Log.Error(PresentationModule.Instance, "ModAPI.Attach " + animator.gameObject.name + ": " + e); return null; }
         }
         public static Character Find(Animator animator)
         {
