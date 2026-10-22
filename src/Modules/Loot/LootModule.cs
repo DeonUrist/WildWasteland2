@@ -42,6 +42,7 @@ namespace WildWasteland.Modules.Loot
         public override void ProvideApis()
         {
             ModApi.Provide<INativeSpawners>(this, new NativeSpawnerApi());
+            ModApi.Provide<ICargoLoot>(this,new CargoLootApi(Tables));
             ModApi.Provide<ILootTables>(this, new LootTablesApi(Tables));
             ModApi.Provide<ILootSpawning>(this, new LootSpawningApi());
         }

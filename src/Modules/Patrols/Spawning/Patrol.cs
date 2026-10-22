@@ -221,19 +221,20 @@ namespace WildWasteland.Modules.Patrols
                 List<GameObject> trailerCargo = null;
                 string lootKey = null;
                 // a truck: its fixed cargo option (template "E" in the editor) when it has one, else a roll among the convoy's allowed cargo
-                var loot = tpl.IsTruck ? (tpl.SpawnLoot == null ? (EditorStore.Loot(true, tpl.LootPreset) ?? EditorStore.RollTruckLoot(() => UnityEngine.Random.value, tpl.SpawnCargoOptions)) : null) : EditorStore.Loot(false, tpl.LootPreset);
-                var rolled = tpl.SpawnLoot ?? (loot != null ? loot.Roll(() => UnityEngine.Random.value) : new Dictionary<string, int>());
-                lootKey = tpl.SpawnCargoKey ?? EditorStore.CargoTexture(rolled, loot != null ? loot.TextureKey : "");
-                if (rolled.Count > 0)
+                var cargoApi=Core.ModApi.Get<Core.ICargoLoot>();
+                string table=cargoApi!=null&&tpl.SpawnLoot==null?cargoApi.Select(tpl.IsTruck,tpl.LootPreset,tpl.SpawnCargoOptions,()=>UnityEngine.Random.value):null;
+                var rolled=tpl.SpawnLoot??(cargoApi!=null?cargoApi.Roll(table,()=>UnityEngine.Random.value):new Dictionary<string,int>());
+                lootKey=tpl.SpawnCargoKey??(cargoApi!=null?cargoApi.Texture(table):"none");
+                if (rolled.Count > 0 && cargoApi!=null)
                 {
                     cargo = new List<GameObject>();
-                    yield return Cargo.Load(car, rolled, tpl.IsTruck, cargo);
+                    yield return cargoApi.Load(car, rolled, tpl.IsTruck, cargo);
                     if (car == null) yield break;
                 }
-                if (trailer != null && tpl.Trailer.SpawnLoot != null)
+                if (trailer != null && tpl.Trailer.SpawnLoot != null && cargoApi!=null)
                 {
                     trailerCargo = new List<GameObject>();
-                    yield return Cargo.Load(trailer, tpl.Trailer.SpawnLoot, true, trailerCargo);
+                    yield return cargoApi.Load(trailer, tpl.Trailer.SpawnLoot, true, trailerCargo);
                     if (car == null || trailer == null) yield break;
                 }
 
@@ -278,8 +279,8 @@ namespace WildWasteland.Modules.Patrols
 
                 yield return new WaitForSeconds(1f);
                 if (car == null) yield break;
-                if (cargo != null) Cargo.SettleFsms(cargo);
-                if (trailerCargo != null) Cargo.SettleFsms(trailerCargo);
+                if (cargo != null) cargoApi.Settle(cargo);
+                if (trailerCargo != null) cargoApi.Settle(trailerCargo);
                 if (Explode.IsWreck(car)) yield break;   // crew killed during the build: it already blew up
                 var carFsms = car.GetComponentsInChildren<PlayMakerFSM>(true);
                 SetPartConditions(car, carFsms);

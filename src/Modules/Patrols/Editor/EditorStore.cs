@@ -66,10 +66,11 @@ namespace WildWasteland.Modules.Patrols
             if (convoy) foreach (var truck in list.Where(t => t.IsTruck)) truck.SpawnCargoOptions = (group.AllowedCargo ?? new List<string>()).ToArray();
             if (convoy && group.UniformCargo)
             {
-                var trucks = list.Where(t => t.IsTruck && t.SpawnLoot == null && Loot(true, t.LootPreset) == null).ToList();   // a fixed cargo option stays
-                var shared = trucks.Count > 0 ? RollTruckLoot(random, group.AllowedCargo) : null;
-                var roll = shared != null ? shared.Roll(random) : new Dictionary<string, int>();
-                    foreach (var truck in trucks) { truck.SpawnLoot = new Dictionary<string, int>(roll, StringComparer.OrdinalIgnoreCase); truck.SpawnCargoKey = CargoTexture(roll, shared != null ? shared.TextureKey : ""); }
+                var api=Core.ModApi.Get<Core.ICargoLoot>();
+                var trucks=list.Where(t=>t.IsTruck&&t.SpawnLoot==null&&(api==null||api.Select(true,t.LootPreset,new string[0],random)==null)).ToList();
+                string shared=api!=null&&trucks.Count>0?api.Select(true,null,group.AllowedCargo,random):null;
+                var roll=api!=null?api.Roll(shared,random):new Dictionary<string,int>();
+                foreach(var truck in trucks){truck.SpawnLoot=new Dictionary<string,int>(roll,StringComparer.OrdinalIgnoreCase);truck.SpawnCargoKey=api!=null?api.Texture(shared):"none";}
             }
             foreach(var car in list)car.Faction=TrafficFactions.Normalize(group.Faction);
             return list;

@@ -463,9 +463,10 @@ namespace WildWasteland.Modules.Patrols
             var loot = t.SpawnLoot;
             if (loot == null)
             {
-                var profile = EditorStore.Loot(t.IsTruck, t.LootPreset) ?? (t.IsTruck ? EditorStore.RollTruckLoot(() => UnityEngine.Random.value, t.SpawnCargoOptions) : null);
-                loot = profile != null ? profile.Roll(() => UnityEngine.Random.value) : new Dictionary<string, int>();
-                record.cargoKey = EditorStore.CargoTexture(loot, profile != null ? profile.TextureKey : "");
+                var api=Core.ModApi.Get<Core.ICargoLoot>();
+                string table=api!=null?api.Select(t.IsTruck,t.LootPreset,t.SpawnCargoOptions,()=>UnityEngine.Random.value):null;
+                loot=api!=null?api.Roll(table,()=>UnityEngine.Random.value):new Dictionary<string,int>();
+                record.cargoKey=api!=null?api.Texture(table):"none";
             }
             record.lootNames = loot.Keys.ToArray(); record.lootCounts = record.lootNames.Select(k => loot[k]).ToArray();
             return record;
