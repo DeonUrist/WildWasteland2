@@ -13,6 +13,7 @@ namespace WildWasteland.Modules.Quests
     /// <summary>Hired follower, crew-seat part (Wave A, from Quests/Hire.cs; B11/B12 crew-seat service): mounting into the player's passenger seat, the seat lock each late frame, Patrols PassengerGuard attach/detach with the combat-wiring snapshot, collision ignores and dismounting.</summary>
     internal static partial class Hire
     {
+        /// <summary>Keeps the mounted follower aligned with its seat and current combat target.</summary>
         public static void LateUpdate()
         {
             if (!mounted || npc == null || mountObj == null) return;
@@ -24,6 +25,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // puts the car back in the NPC's way once it has had time to walk off
+        /// <summary>Restores delayed follower/car collision pairs after dismount clearance.</summary>
         static void RestoreCollisions()
         {
             if (lateOwn.Count == 0 || Time.time < restoreAt) return;
@@ -35,6 +37,7 @@ namespace WildWasteland.Modules.Quests
 
         // ---- the car -----------------------------------------------------------------------------------------------
         // The player's FSM "InCar": state "InCar" with the car in its variable "Car" (the same thing Apocapatrol reads).
+        /// <summary>Reads the player native InCar state using a bounded cached FSM lookup.</summary>
         static GameObject PlayerCar(Transform pl, out bool inCar)
         {
             inCar = false;
@@ -55,6 +58,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // is something already sitting in the passenger seat (Apocapatrol's crews use a child called Apocapatrol.PassengerPos)?
+        /// <summary>Checks existing passenger anchors before reserving a follower seat.</summary>
         static bool SeatTaken(Transform car)
         {
             var queue = new Queue<Transform>();
@@ -70,11 +74,13 @@ namespace WildWasteland.Modules.Quests
         }
 
         // Apocapatrol's [Apocapatrol] ShootDistance: occupants only shoot at targets closer than this
-        static float PatrolShootDistance() { return Services.FollowerVehicles != null ? Services.FollowerVehicles.ShootDistance : 60f; }
+        /// <summary>Uses the active follower-vehicle combat provider range or the native fallback.</summary>
+        static float PatrolShootDistance() { return ModApi.Get<IFollowerVehicles>() != null ? ModApi.Get<IFollowerVehicles>().ShootDistance : 60f; }
 
         // The follower's own sensors look for the player's enemies the wrong way round, so while it rides the mod writes the target
         // it chose into the variable the game's Detection and Attack FSMs use (detectedObj); Apocapatrol's gunner reads it from there.
-        static void FeedTarget() { if (Services.FollowerVehicles != null) Services.FollowerVehicles.Combat(npc, target, reloadUntil); }
+        /// <summary>Supplies the actual hired follower target and reload state to seated combat.</summary>
+        static void FeedTarget() { if (ModApi.Get<IFollowerVehicles>() != null) ModApi.Get<IFollowerVehicles>().Combat(npc, target, reloadUntil); }
 
         static GameObject madeRaycast;
 
@@ -87,6 +93,7 @@ namespace WildWasteland.Modules.Quests
 
         static readonly List<KeyValuePair<PlayMakerFSM, bool>> preGuardFsms = new List<KeyValuePair<PlayMakerFSM, bool>>();
 
+        /// <summary>Records native attack events, action flags and damage FSM state before guard attachment.</summary>
         static void SnapCombat()
         {
             actSnap.Clear(); evtSnap.Clear(); preGuardFsms.Clear();
@@ -110,6 +117,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.LogOnce("HireSnapCombat", e); }
         }
 
+        /// <summary>Restores the pre-seat combat wiring and clears all captured records.</summary>
         static void RestoreCombat()
         {
             int n = 0;
@@ -130,6 +138,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // a fresh start for his fighting AI on foot: forget the car's target and let Detection look again
+        /// <summary>Clears stale seated targets and restarts native foot detection.</summary>
         static void ResetFight()
         {
             try
@@ -145,28 +154,29 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.LogOnce("HireResetFight", e); }
         }
 
+        /// <summary>Creates the native firing anchor when needed and attaches the typed seated-combat provider.</summary>
         static Component AttachGuard(GameObject car)
         {
-            if (Services.FollowerVehicles == null) return null;
+            if (ModApi.Get<IFollowerVehicles>() == null) return null;
             if (FindDeep(npc.transform, "AttackRaycast_Ranged") == null)
             {
                 madeRaycast = new GameObject("AttackRaycast_Ranged"); madeRaycast.transform.SetParent(npc.transform, false);
                 madeRaycast.transform.localPosition = new Vector3(0, 1.4f, .4f);
             }
             SnapCombat();
-            var guard = Services.FollowerVehicles.SeatCombat(npc, car, mountObj.transform);
+            var guard = ModApi.Get<IFollowerVehicles>().SeatCombat(npc, car, mountObj.transform);
             GunSetup(); return guard;
         }
 
+        /// <summary>Stops the guard, restores captured native state and releases visual/collider snapshots.</summary>
         static void DetachGuard()
         {
             if (flashObjs != null) foreach (GameObject g in flashObjs) if (g != null) g.SetActive(false);
             flashOff = 0f; gunArm = null; gunHand = null; soundQueue.Clear();
             if (madeRaycast != null) { UnityEngine.Object.Destroy(madeRaycast); madeRaycast = null; }
-            if (guardComp == null) return;
             Behaviour gb = guardComp as Behaviour;
             if (gb != null) gb.enabled = false;           // Destroy waits for the end of the frame; its Update must not mute his AI again before that
-            UnityEngine.Object.Destroy(guardComp);
+            if (guardComp != null) UnityEngine.Object.Destroy(guardComp);
             RestoreCombat();
             guardComp = null;
             foreach (var kv in rendSnap) if (kv.Key != null) kv.Key.enabled = kv.Value;
@@ -177,6 +187,7 @@ namespace WildWasteland.Modules.Quests
         static Animator seatAnim; static bool wasRootMotion; static float nextColCheck;
 
         // any collider of his that came on after he sat down (weapons, the fire-damage box...) must not touch the car either
+        /// <summary>Adds newly enabled follower colliders to the existing car collision ignores.</summary>
         static void IgnoreNewColliders()
         {
             if (npc == null) return;
@@ -192,6 +203,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.LogOnce("HireIgnoreCols", e); }
         }
 
+        /// <summary>Reserves the passenger anchor and transfers the follower into reversible seated behavior.</summary>
         static bool TryMount(GameObject car)
         {
             Transform ct = car.transform;
@@ -241,8 +253,8 @@ namespace WildWasteland.Modules.Quests
             npc.transform.SetParent(mountObj.transform, true);
 
             poseComp = null;
-            if (Services.FollowerVehicles != null)
-                poseComp = Services.FollowerVehicles.SeatPose(npc, mountObj.transform, Game.BaseName(npc.name), ArmTemplate(Game.BaseName(npc.name)));
+            if (ModApi.Get<IFollowerVehicles>() != null)
+                poseComp = ModApi.Get<IFollowerVehicles>().SeatPose(npc, mountObj.transform, Game.BaseName(npc.name), ArmTemplate(Game.BaseName(npc.name)));
 
             // ranged followers shoot from the seat with Apocapatrol's own passenger gunner
             guardComp = null;
@@ -260,6 +272,7 @@ namespace WildWasteland.Modules.Quests
             return true;
         }
 
+        /// <summary>Releases seated behavior and restores the follower parent, physics, animation and foot AI.</summary>
         static void Dismount(bool place)
         {
             if (!mounted) return;
@@ -275,7 +288,7 @@ namespace WildWasteland.Modules.Quests
             {
                 if (poseComp != null)
                 {
-                    if (Services.FollowerVehicles != null) Services.FollowerVehicles.ReleasePose(poseComp);
+                    if (ModApi.Get<IFollowerVehicles>() != null) ModApi.Get<IFollowerVehicles>().ReleasePose(poseComp);
                     UnityEngine.Object.Destroy(poseComp);
                 }
             }
