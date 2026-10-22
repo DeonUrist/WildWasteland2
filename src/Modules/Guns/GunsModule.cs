@@ -49,7 +49,6 @@ namespace WildWasteland.Modules.Guns
             InitNpcaiHooks();
             Hooks.CreateObjectEnter.Postfix(this, AfterCreateObject);
             InitCompatibility();
-            InitHud();
             InitSaves();
             InitNpcaiJobs();
         }
@@ -90,8 +89,6 @@ namespace WildWasteland.Modules.Guns
         static partial void EnsureCompatibility();
         /// <summary>Compatibility: bridge teardown.</summary>
         static partial void ShutdownCompatibility();
-        /// <summary>HUD: crossbow tooltip damage text patch.</summary>
-        partial void InitHud();
         /// <summary>Saves: ES3 patches of the per-gun magazine ledger.</summary>
         partial void InitSaves();
 

@@ -30,8 +30,7 @@ namespace WildWasteland.Modules.PlayerBody
         public const string SourceVersion = "2.3.9";
         /// <summary>The shell instance (hook/job owner of the remaining parts).</summary>
         internal static PlayerBodyModule Instance;
-        /// <summary>The config of the shell, kept for the parts bound after Presentation (see <see cref="BindAfterPresentation"/>).</summary>
-        static ModuleConfig _lateCfg;
+
 
         /// <summary>Module id: config section prefix, Harmony id suffix, asset folder.</summary>
         public override string Id { get { return "PlayerBody"; } }
@@ -75,7 +74,6 @@ namespace WildWasteland.Modules.PlayerBody
         public override void BindConfig(ModuleConfig cfg)
         {
             Instance = this;
-            _lateCfg = cfg;
             // ---- F6 (settings.cfg)
             BindCameraView(cfg);               // [PlayerBody] ThirdPerson, ToggleObserving, DynamicCrosshair (Presentation/Camera)
             BindCameraPickAssist(cfg);         // [PlayerBody] PickAssist                             (Presentation/Camera)
@@ -96,14 +94,6 @@ namespace WildWasteland.Modules.PlayerBody
             BindTraversalTools(cfg);           // [PlayerBody / Climbing]
         }
 
-        /// <summary>Called by PresentationModule.BindConfig after its entries exist: binds the HUD part ([PlayerBody / Vehicles] hints and
-        /// the TAB-picture reaction to the Presentation ReplaceDriver entry). No-op before this shell bound its own config.</summary>
-        internal static void BindAfterPresentation()
-        {
-            var cfg = _lateCfg; _lateCfg = null;
-            if (cfg != null && Instance != null) Instance.BindHud(cfg);
-        }
-
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraView(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
@@ -112,8 +102,6 @@ namespace WildWasteland.Modules.PlayerBody
         partial void BindTraversal(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void BindCameraCulling(ModuleConfig cfg);
-        /// <summary>Part step, implemented in PlayerBodyModule.Hud.cs (HUD).</summary>
-        partial void BindHud(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Vehicles.cs (Vehicles).</summary>
         partial void BindVehicles(ModuleConfig cfg);
         /// <summary>Part step, implemented in PlayerBodyModule.Gunplay.cs (Gunplay).</summary>
@@ -151,11 +139,11 @@ namespace WildWasteland.Modules.PlayerBody
             InitVehicles();                    // ignition row keys, Car / steering patches, "Ignition control" job
             InitTraversal();                   // climbing / ladder clips
             InitCamera();                      // third-person hooks (GetButtonDown before Crawling's), sway, MouseLook, pick assist
-            InitGunplay();                     // blast lance from the seat
+            InitGunplay();
+            InitDeveloperHints();                     // blast lance from the seat
             InitTraversalJobs();               // the old ClimbRunner loops ([DefaultExecutionOrder(-1000)])
             InitSeatsJobs();                   // steering-wheel arms (LateUpdateLast, before the NPC traversal poses)
             InitTraversalNpcJobs();            // NPC traversal poses (LateUpdateLast)
-            InitHud();                         // the one Gui job (editor hints + vehicle HUD)
             InitCameraEndOfFrame();            // end-of-frame camera reset coroutine
 
             // keys polled in context (third person / climbing); registered so [Keys] conflicts are reported. The cassette / volume keys are
@@ -180,7 +168,7 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Part step, implemented in PlayerBodyModule.Traversal.cs (Presentation/Traversal).</summary>
         partial void InitTraversalNpcJobs();
         /// <summary>Part step, implemented in PlayerBodyModule.Hud.cs (HUD).</summary>
-        partial void InitHud();
+
         /// <summary>Part step, implemented in PlayerBodyModule.Camera.cs (Presentation/Camera).</summary>
         partial void InitCameraEndOfFrame();
 

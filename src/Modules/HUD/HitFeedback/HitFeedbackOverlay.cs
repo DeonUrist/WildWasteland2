@@ -166,8 +166,8 @@ namespace WildWasteland.Modules.HUD
         private static void Render()
         {
             float now = Time.unscaledTime;
-            _floaters.RemoveAll(f => now - f.Born > HudModule.NumberSeconds.Value);
-            _lines.RemoveAll(l => now - l.Born > HudModule.ListSeconds.Value);
+            for (int i = _floaters.Count - 1; i >= 0; i--) if (now - _floaters[i].Born > HudModule.NumberSeconds.Value) _floaters.RemoveAt(i);
+            for (int i = _lines.Count - 1; i >= 0; i--) if (now - _lines[i].Born > HudModule.ListSeconds.Value) _lines.RemoveAt(i);
             bool wanted = _floaters.Count > 0 || _lines.Count > 0 || now < _markerUntil;
             if (!wanted) { if (_canvas != null) _canvas.SetActive(false); return; }
             EnsureCanvas(); _canvas.SetActive(true); _textCount = 0;
