@@ -167,7 +167,7 @@ namespace WildWasteland.Modules.Patrols
             var dt = Patrol.FindChild(car.transform, "DriveTrigger");
             if (dt != null) _enterTrigger = dt.GetComponents<Collider>().FirstOrDefault(c => c is SphereCollider);
             if (_ctl != null && _ctl.Taken) _ctl.Release();
-            _ctl = new InputControl(car);
+            _ctl = Core.ModApi.Get<Core.IVehicleDrive>().InputLease(car);
             _partDetach = fsms.Where(f => f.FsmName == "de_Attach").ToArray();
 
             // nobody else drives while the driver lives: no enter trigger (no F prompt), no Drive FSM (Activate events are ignored).

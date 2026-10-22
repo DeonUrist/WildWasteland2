@@ -22,7 +22,6 @@ namespace WildWasteland.Modules.Patrols
         {
             if (!InGame()) return;
             Ram.Tick();
-            ExitSpeed.Tick();
             if (Time.unscaledTime >= _nextLights) { _nextLights = Time.unscaledTime + 5f; LightsTick(); }
             if (Time.unscaledTime >= _nextPrune) { _nextPrune = Time.unscaledTime + 30f; PruneIgnoreSignatures(); }
         }
@@ -603,6 +602,15 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // Any occupant gets out on the given side (+1 right, -1 left, 0 = the side its seat is on relative to sitPos).
+        /// <summary>Publishes the native replacement handoff to typed consumers before end-of-frame destruction.</summary>
+        private static void PublishBailOut(GameObject car,GameObject previous,GameObject actor)
+        {
+            if(!Core.ModEvents.HasListeners<Core.Events.CrewBailedOut>())return;
+            var rigidbody=car!=null?car.GetComponent<Rigidbody>():null;
+            var ev=new Core.Events.CrewBailedOut { Vehicle=Core.Entities.Of(car),Passenger=Core.Entities.Of(previous),Npc=Core.Entities.Of(actor),Seat=previous!=null&&previous.name.IndexOf("(Driver)",StringComparison.Ordinal)>=0?0:1,Reason=Core.Events.CrewLeaveReason.Combat,WorldPos=Core.Origin.World(actor!=null?actor.transform.position:previous!=null?previous.transform.position:car!=null?car.transform.position:Vector3.zero),Velocity=rigidbody!=null?rigidbody.velocity:Vector3.zero };
+            Core.ModEvents.Publish(ref ev);
+        }
+
         internal static GameObject BailOut(GameObject car, GameObject pax, string prefabName, float side,bool record=true)
         {
             float health = GetHealth(pax);
@@ -640,6 +648,7 @@ namespace WildWasteland.Modules.Patrols
                 Core.Log.Warn("[Patrols] " + "Bail-out: prefab not found: " + prefabName + "; " + pax.name + " just disappears");
                 UnityEngine.Object.Destroy(pax);
                 if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
+                PublishBailOut(car,pax,null);
                 Core.Services.RaiseCrewBailedOut(car, pax, null);   // WW: ex a Harmony postfix other mods put on this method
                 return null;
             }
@@ -660,6 +669,7 @@ namespace WildWasteland.Modules.Patrols
             UnityEngine.Object.Destroy(pax);
             if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
             PatrolsModule.Verbose("Bail-out: " + mob.name + " got out of " + car.name + " with " + (health > 0f ? health.ToString("0") : "full") + " health at " + pos);
+            PublishBailOut(car,pax,mob);
             Core.Services.RaiseCrewBailedOut(car, pax, mob);   // WW: the NPC module subscribes (ex its Harmony postfix on Apocapatrol.Patrol.BailOut)
             // awareness handover + return-to-car membership (pax is destroyed at the end of the frame; its name still tells the seat)
             if(record)CrewReturn.Dismounted(car, mob, pax.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0 ? CrewReturn.RoleDriver : CrewReturn.RolePassenger, -1,
