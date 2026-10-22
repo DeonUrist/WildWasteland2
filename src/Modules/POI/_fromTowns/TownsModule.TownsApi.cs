@@ -12,10 +12,10 @@ namespace WildWasteland.Modules.Towns
 {
     /// <summary>
     /// Towns queries used by Patrols (TownsApi.Provider: travel stops, merchant seeding, patrol bases, parking, travel blocks,
-    /// vehicle gate waypoints) and the role/condition setters. Wave A (A6): entry split of Towns/TownsModule.cs (POI part, B13:
+    /// vehicle gate waypoints) and the role/condition setters. Wave A (A6): entry split of Towns/TownRuntime.cs (POI part, B13:
     /// becomes the ITownsApi provider with Core DTOs instead of Patrols.TownStop/TrafficBase/TrafficSpace).
     /// </summary>
-    public sealed partial class TownsModule
+    internal sealed partial class TownRuntime
     {
         public bool SetRole(string key, int lot, TownRole role)
         {

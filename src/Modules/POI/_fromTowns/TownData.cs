@@ -157,6 +157,6 @@ namespace WildWasteland.Modules.Towns
     /// </summary>
     public static class TownsApi
     {
-        internal static TownsModule Provider;
+        internal static TownRuntime Provider;
     }
 }

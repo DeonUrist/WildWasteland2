@@ -12,9 +12,9 @@ namespace WildWasteland.Modules.Towns
 {
     /// <summary>
     /// Towns diagnostics: Vistas starting-terrain seam trace and the (currently unused) status block Draw(ToolLayout).
-    /// Wave A (A6): entry split of Towns/TownsModule.cs (Debug part, B03: trace at level 2 or delete).
+    /// Wave A (A6): entry split of Towns/TownRuntime.cs (Debug part, B03: trace at level 2 or delete).
     /// </summary>
-    public sealed partial class TownsModule
+    internal sealed partial class TownRuntime
     {
         private string _startingTerrainState;
         /// <summary>Vistas only: logs (on change) hole counts and height steps at the edges of the starting tile when a tile next to the origin is applied.</summary>
@@ -50,7 +50,7 @@ namespace WildWasteland.Modules.Towns
                     state += " neighbourHeight=" + next.size.y.ToString("F1", CultureInfo.InvariantCulture) + " maxStep=" + step.ToString("F1", CultureInfo.InvariantCulture) + "m";
                 }
                 if (state == _startingTerrainState) return;
-                _startingTerrainState = state; Log.Deep(this, "Starting terrain (" + source + "): " + state);
+                _startingTerrainState = state; Log.Deep(Owner, "Starting terrain (" + source + "): " + state);
             }
             catch (Exception e) { Log.Warn("[Towns] Starting terrain trace failed: " + e.Message); }
         }

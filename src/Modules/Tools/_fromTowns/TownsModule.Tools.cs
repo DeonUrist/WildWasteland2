@@ -12,14 +12,14 @@ namespace WildWasteland.Modules.Towns
 {
     /// <summary>
     /// POI dresser (editor) lifecycle and the Debug tool pages "Gas stations" / "POI dresser".
-    /// Wave A (A6): entry split of Towns/TownsModule.cs (Tools part, B16).
+    /// Wave A (A6): entry split of Towns/TownRuntime.cs (Tools part, B16).
     /// </summary>
-    public sealed partial class TownsModule
+    internal sealed partial class TownRuntime
     {
         private PoiDresser _dresser;
-        public override IEnumerable<ToolPage> ToolPages()
-        { return new ToolPage[] { new ActionPage(this, ToolGroups.Debug, "Gas stations", DrawGasStation) { DebugOnly = true, IsTool = true },
-            new ActionPage(this, ToolGroups.Debug, "POI dresser", DrawDresser) { DebugOnly = true, IsTool = true } }; }
+        internal IEnumerable<ToolPage> ToolPages()
+        { return new ToolPage[] { new ActionPage(Owner, ToolGroups.Debug, "Gas stations", DrawGasStation) { DebugOnly = true, IsTool = true },
+            new ActionPage(Owner, ToolGroups.Debug, "POI dresser", DrawDresser) { DebugOnly = true, IsTool = true } }; }
         private void DrawDresser(ToolLayout l)
         { if (_dresser != null) _dresser.DrawPage(l, _settings); else l.Entry(_settings.PoiDresserKey); }
         private void DrawGasStation(ToolLayout l)
@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.Towns
             else { l.Entry(_settings.DesertGasStationChance); l.Entry(_settings.TestGasStation); l.Entry(_settings.GasStationScale); }
         }
         /// <summary>Creates the POI dresser on top of the dressing runtime (after PoiDressing.Install, as before).</summary>
-        partial void InitTools() { _dresser = new PoiDresser(_dressing); _dresser.Install(this, _settings); }
+        partial void InitTools() { _dresser = new PoiDresser(_dressing); _dresser.Install(Owner, _settings); }
         /// <summary>Drops the dresser reference (its jobs/hotkeys are removed by Core cleanup).</summary>
         partial void ShutdownTools() { _dresser = null; }
         /// <summary>Shifts the dresser camera/draft positions on a floating-origin jump.</summary>

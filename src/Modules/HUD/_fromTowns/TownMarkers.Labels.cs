@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.Towns
         private static ConfigEntry<bool> _locations, _compass;
         private static IDictionary _nativeLocations;
         private static FieldInfo _nativeIcon;
-        internal static void Install(TownsModule owner)
+        internal static void Install(TownRuntime owner)
         {
             var assembly = typeof(Services).Assembly;
             var locations = assembly.GetType("WildWasteland.Modules.CleanHUD.LocationMarkers", true);
@@ -45,9 +45,9 @@ namespace WildWasteland.Modules.Towns
             var hud = typeof(CleanHudModule);
             _locations = (ConfigEntry<bool>)hud.GetField("ShowLocations", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
             _compass = (ConfigEntry<bool>)hud.GetField("ShowCompass", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
-            if (!Patches.Patch(owner, Patches.Method(locations, "Observe"), prefix: typeof(TownMarkers).GetMethod("Observe", BindingFlags.Static | BindingFlags.NonPublic),
+            if (!Patches.Patch(owner.Owner, Patches.Method(locations, "Observe"), prefix: typeof(TownMarkers).GetMethod("Observe", BindingFlags.Static | BindingFlags.NonPublic),
                 postfix: typeof(TownMarkers).GetMethod("StartingCamp", BindingFlags.Static | BindingFlags.NonPublic))
-                || !Patches.Patch(owner, Patches.Method(map, "Tick"), postfix: typeof(TownMarkers).GetMethod("Draw", BindingFlags.Static | BindingFlags.NonPublic)))
+                || !Patches.Patch(owner.Owner, Patches.Method(map, "Tick"), postfix: typeof(TownMarkers).GetMethod("Draw", BindingFlags.Static | BindingFlags.NonPublic)))
                 throw new InvalidOperationException("Town marker bridge could not be installed.");
         }
         private static bool Observe(Transform icon)

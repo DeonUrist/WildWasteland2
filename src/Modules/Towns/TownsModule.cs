@@ -21,9 +21,9 @@ namespace WildWasteland.Modules.Towns
     /// <summary>
     /// Towns module entry (POI target, B13): terrain tile capture/plan/apply, sliced town construction, load handoff hold,
     /// world save/load of town records. Wave A (A6): parts owned by other targets are partial files in their folders
-    /// (POI/_fromTowns/TownsModule.TownsApi.cs, NPCAI/Navigation|Population/_fromTowns, HUD/_fromTowns, Tools/_fromTowns, Debug/_fromTowns).
+    /// (POI/_fromTowns/TownRuntime.TownsApi.cs, NPCAI/Navigation|Population/_fromTowns, HUD/_fromTowns, Tools/_fromTowns, Debug/_fromTowns).
     /// </summary>
-    public sealed partial class TownsModule : ModuleBase
+    internal sealed partial class TownRuntime
     {
         private sealed class Registration
         {
@@ -68,8 +68,8 @@ namespace WildWasteland.Modules.Towns
         private GameObject _staging;
         private readonly System.Diagnostics.Stopwatch _burst = new System.Diagnostics.Stopwatch();
         private const int PrepStepLimit = 60000;   // overlay/connection steps per town before preparation is cut short (work, not wall clock)
-        public override string Id { get { return "Towns"; } }
-        public override string DisplayName { get { return "Towns"; } }
+        internal readonly IModule Owner;
+        internal TownRuntime(IModule owner) { Owner = owner; }
         public int SiteCount { get { return _sites.Count; } }
         public TownSite GetSite(int index) { return _sites[index].Site; }
         internal TownSite MarkerTown(Transform root, out List<GameObject> pool)
@@ -84,7 +84,7 @@ namespace WildWasteland.Modules.Towns
                 }
             return null;
         }
-        public override void BindConfig(ModuleConfig cfg) { _settings.Bind(cfg); }
+        internal void BindConfig(ModuleConfig cfg) { _settings.Bind(cfg); TownPoiSettings.Configure(_settings); }
         // Wave A (A6) entry split: lifecycle parts owned by other target modules live in partial files in their folders.
         /// <summary>NPCAI/Navigation part: installs the Nav bridge (TownBakeBridge: Nav.Next waypoints, instance overlays).</summary>
         partial void InitNavigation();
@@ -106,7 +106,7 @@ namespace WildWasteland.Modules.Towns
         partial void TraceStartingTerrain(TerrainTile applied, string source);
         /// <summary>Debug part: forgets the last starting-terrain trace (world changed).</summary>
         partial void ClearDebug();
-        public override void Init()
+        internal void Init()
         {
             if (_running) return;
             _running = true; TownsApi.Provider = this;
@@ -119,10 +119,10 @@ namespace WildWasteland.Modules.Towns
             InitHud();
 
 
-            TownPoiSettings.Install(this, _settings);
+            
             SaveBus.StateChanged += StateChanged;
-            LoadingProgress.RegisterHold(this, "Towns", ReadyForHandoff);
-            LoadingProgress.Register(this, LoadProgress);
+            LoadingProgress.RegisterHold(Owner, "Towns", ReadyForHandoff);
+            LoadingProgress.Register(Owner, LoadProgress);
 
             _settings.PopulationMinPercent.SettingChanged += PopulationChanged; _settings.PopulationMaxPercent.SettingChanged += PopulationChanged;
             _settings.LootMinPercent.SettingChanged += PopulationChanged; _settings.LootMaxPercent.SettingChanged += PopulationChanged;
@@ -130,12 +130,12 @@ namespace WildWasteland.Modules.Towns
             TerrainTile.OnTileFinalized += Finalized; TerrainTile.OnTileApplied += Applied; TerrainTile.OnTileMoved += Moved;
             VistasWorldGen.TerrainEdited += TownTerrainEdited;
             if (VistasWorldGen.Present) Log.Always("[Towns] Vistas compatibility: planned town foundations flattened before buildings; no access roads.");
-            Scheduler.Sliced(this, "Build and connect", 700, BuildStep);
+            Scheduler.Sliced(Owner, "Build and connect", 700, BuildStep);
             // Behind a loading/generating screen this tick runs construction far beyond the shared frame budget; the predicate is one field read.
-            Scheduler.EveryFrame(this, "Load construction", LoadBurst).Wants = LoadWanted;
-            Scheduler.Interval(this, "Spawner state", .5f, Refresh, Phase.Update, true);
-            Scheduler.Interval(this, "Town discovery", .25f, TownMarkers.Refresh, Phase.Update, true);
-            Scheduler.Interval(this, "Gas stations", .25f, _gasStation.Tick, Phase.Update, true);
+            Scheduler.EveryFrame(Owner, "Load construction", LoadBurst).Wants = LoadWanted;
+            Scheduler.Interval(Owner, "Spawner state", .5f, Refresh, Phase.Update, true);
+            Scheduler.Interval(Owner, "Town discovery", .25f, TownMarkers.Refresh, Phase.Update, true);
+            Scheduler.Interval(Owner, "Gas stations", .25f, _gasStation.Tick, Phase.Update, true);
             foreach (var old in _resume)
             {
                 if (old.Tile == null || old.Tile.mapMagic == null || old.Tile.mapMagic.graph == null) continue;
@@ -542,7 +542,7 @@ namespace WildWasteland.Modules.Towns
                 TownFactory.Destroy(live.Site); _sites.RemoveAt(i);
             }
         }
-        public override void OnSaveBegin(string slot)
+        internal void OnSaveBegin(string slot)
         {
             if (!_running || string.IsNullOrEmpty(slot)) return;
             if (_blocked) { SaveBus.ReportFailure("Towns is blocked; its world data was not saved. See [Towns] error."); return; }
@@ -555,7 +555,7 @@ namespace WildWasteland.Modules.Towns
             }
             catch (Exception e) { SaveBus.ReportFailure("Towns save failed: " + e.Message); Block("saving", e); }
         }
-        public override void OnLoadBegin(string slot)
+        internal void OnLoadBegin(string slot)
         {
             ClearSites(); _resume.Clear(); _epoch++; _blocked = false;
             if (_gasStation != null) _gasStation.Load(slot);
@@ -566,8 +566,8 @@ namespace WildWasteland.Modules.Towns
         { ClearSites(); if (_dressing != null) _dressing.Markers.Load(null); if (_gasStation != null) _gasStation.NewWorld(); _resume.Clear(); _epoch++; _blocked = false;  _records.Clear(); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
         private void StateChanged(string previous, string current)
         { if (current == "setSeed" || current == "Start") NewWorld(); }
-        public override void OnWorldReady() { Refresh(); }
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        internal void OnWorldReady() { Refresh(); }
+        internal void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (mode == LoadSceneMode.Additive) return;
             ClearSites(); _resume.Clear(); _epoch++; _captures.Clear();
@@ -582,12 +582,12 @@ namespace WildWasteland.Modules.Towns
         {
             if (registration.Assets != null) registration.Assets.Dispose();
         }
-        public override void Shutdown()
+        internal void Shutdown()
         {
             if (!_running) return;
             _running = false; _epoch++;
             ShutdownPopulation();
-            LoadingProgress.Remove(this);
+            LoadingProgress.Remove(Owner);
             Patrols.WorldTraffic.TownsStopped();
             SaveBus.StateChanged -= StateChanged;
             _settings.PopulationMinPercent.SettingChanged -= PopulationChanged; _settings.PopulationMaxPercent.SettingChanged -= PopulationChanged;
@@ -607,9 +607,9 @@ namespace WildWasteland.Modules.Towns
 
             foreach (var r in _graphs.Values) Undo(r); _graphs.Clear();
             if (_staging != null) UnityEngine.Object.Destroy(_staging); _staging = null;
-            Scheduler.RemoveAll(this); Hotkeys.RemoveAll(this); Hooks.RemoveAll(this); ShutdownNavigation();
+             ShutdownNavigation();
             if (ReferenceEquals(TownsApi.Provider, this)) TownsApi.Provider = null;
         }
-        public override void OnOriginShift(Vector3 delta) { if (_gasStation != null) _gasStation.Shift(delta); ShiftTools(delta); }
+        internal void OnOriginShift(Vector3 delta) { if (_gasStation != null) _gasStation.Shift(delta); ShiftTools(delta); }
     }
 }

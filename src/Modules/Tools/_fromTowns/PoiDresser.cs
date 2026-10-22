@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Towns
         internal bool Opened { get { return _site != null; } }
         private bool Ready { get { return _draft != null && _built >= _draft.Props.Count; } }
         internal PoiDresser(PoiDressing runtime) { _runtime = runtime; runtime.Editor = this; _beforeNumber = RecordUndo; }
-        internal void Install(TownsModule owner, TownSettings settings)
+        internal void Install(IModule owner, TownSettings settings)
         {
             Hotkeys.Register(owner, settings.PoiDresserKey, Toggle, CanToggle, true);
             Scheduler.EveryFrame(owner, "POI dresser input", Tick);
