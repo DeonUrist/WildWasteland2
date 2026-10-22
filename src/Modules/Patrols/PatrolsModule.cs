@@ -94,6 +94,7 @@ namespace WildWasteland.Modules.Patrols
             TrafficRoads.CacheDir = Path.Combine(cfgDir, "roads");
 
             // hooks (Core dispatchers) and module patches, each in its own try like the old Awake
+            WarRig.PatrolRetention.InstallRetention(this);
             Try("Traffic roads", TrafficRoads.Install);
             Scheduler.Sliced(this, "Traffic final terrain", 500, TrafficRoads.GroundStep);
             Try("Camp status", () => TrafficCamps.Install(this));
@@ -131,6 +132,7 @@ namespace WildWasteland.Modules.Patrols
             SaveBus.CleanupSettings -= DrawSaveCleanupSettings;
             Running = false;
             LoadingProgress.Remove(this);
+            WarRig.PatrolRetention.Clear();
             VehicleRoutingApi.Reset();
             Try("build queue", BuildQueue.Reset);
             Try("vehicle build cache", VehiclePreparation.Reset);
@@ -158,6 +160,7 @@ namespace WildWasteland.Modules.Patrols
 
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            WarRig.PatrolRetention.Clear();
             TrafficCompass.Clear();
             PickupCatalog.Invalidate(); PatrolVisibility.Reset(); EnsureRunner(); Patrol.ResetForScene(); PlayerRef.Reset(); PatrolPersistence.ResetForScene(); Convoy.ResetForScene();
             WarRig.WarRigFeature.OnSceneLoaded();
@@ -165,7 +168,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Core.Origin (NWH FloatingOrigin.Jump): legacy physics caches of the pilots and PlayerRef move with the world
         public override void OnOriginShift(Vector3 delta) { TrafficSpace.OriginShift(delta); }
-        public override void OnWorldReady() { Prefabs.Refresh(); WarRig.PoiEncounter.Prepare(); WorldTraffic.RestoreTownGuards(); }
+        public override void OnWorldReady() { WarRig.PatrolRetention.Prepare(); Prefabs.Refresh(); WarRig.PoiEncounter.Prepare(); WorldTraffic.RestoreTownGuards(); }
         internal void SpawnPoi(CarTemplate template, Vector3 position, Quaternion rotation, Action<GameObject> onDone)
         { if (_patrol != null && Running) _patrol.SpawnAt(template, position, rotation, true, onDone); else onDone(null); }
 
