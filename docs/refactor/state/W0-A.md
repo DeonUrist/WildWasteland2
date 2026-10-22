@@ -9,7 +9,7 @@ Branch `refactor/W0-A`, worktree `/home/claude/wt/W0-A`.
 - [x] 4. Log levels/generic overloads, old wrappers [Obsolete]; Log.Error no SaveSystem.Fail; SaveBus.ReportFailure; Trace stub; [Debug] VerboseLevel
 - [x] 5. Scheduler (Removed, phase Interval, name prefix warn); Hooks table-driven, FsmEnable removal fix, Calls all kinds, timing behind Trace.On, new dispatchers
 - [x] 6. IModule ProvideApis/Settings; ModuleConfig.Migrate + Legacy.* obsolete no-ops; stop seeding settings.cfg from old main cfg
-- [ ] 7. Delete SaveTypes old-assembly aliases; Sidecars registry + SaveBus.Key + typed SaveBus events
+- [x] 7. Delete SaveTypes old-assembly aliases; Sidecars registry + SaveBus.Key + typed SaveBus events
 - [x] 8. SettingsShell API (contribution path next to existing rows)
 - [x] 8b. Plugin.VERSION = "2.0.0"
 - [ ] 9. Skeleton modules (Debug, Presentation, NPCAI, Gunplay, Vehicles, Loot, Tools, Developer, Compatibility, Saves) registered after existing ones
@@ -17,10 +17,10 @@ Branch `refactor/W0-A`, worktree `/home/claude/wt/W0-A`.
 - [ ] Report docs/refactor/reports/W0-A.md, ownership check
 
 ## Last good compile (commit)
-steps 1-6, 8, 8b, COMPILE OK
+steps 1-8b, COMPILE OK
 
 ## Next action
-Step 7: delete SaveTypes (aliases only; check nothing else needs the ES3 lookup hook), add Sidecars registry + SaveBus.Key helper + typed SaveBus events. Then 9, 10, report.
+Step 9: skeleton modules + Boot/ModuleRegistry.cs. Then 10 (tools), comments check, report.
 
 ## Blockers / questions for Denis
 - csproj has no NoWarn for CS0618: the [Obsolete] Services/Log wrappers will produce many warnings in `dotnet build` (compile.sh suppresses 618). Request: add `<NoWarn>$(NoWarn);CS0618</NoWarn>` to WildWasteland.csproj until Wave C (see requests/W0-A.md).
@@ -33,4 +33,5 @@ Step 7: delete SaveTypes (aliases only; check nothing else needs the ES3 lookup 
 - ModuleHost.Current = module in Init/ProvideApis/Shutdown; Services setters register with it. Services.RemoveHandlersOf(m) drops old-event handlers declared in the module namespace on Cleanup.
 - Hooks: table-driven (HookBase + Handlers<D> snapshots); new dispatchers SetAudioClipEnter, UiTextSetTextEnter, DoMousePick (RefHook<MousePickArgs>), GetGameObjectFsm, FsmAwake, FsmInnerEnable, FsmDisable, FsmDestroy, FsmPhysicsCallback, ExplosionShouldApplyForce - no subscribers yet, so never patched.
 - Scheduler: RemoveAll marks Removed; Interval NextAt += Interval (reset to now+Interval when behind); job name check logs once per name at level 1; Job.ToString no longer doubles an owner prefix.
+- SaveTypes.cs deleted (D12: only old-assembly aliases; no other user of the ES3Reflection.GetType prefix) -> one Core patch less in the startup summary. Persistence/Sidecars.cs (Register/PathFor/PathsFor, pattern with {slot}), Persistence/SaveKeys.cs (SaveKey via SaveBus.Key), SaveBus publishes LoadBegin/WorldReady/SaveBegin/SaveEnd events (Kind = Manual from Core).
 - W0-B creates src/Core/Util/** and src/Core/Game/{WorldIndex,WorldTiles,FsmIndex,FsmPause,PrefabCatalog,ItemSpawner,Factions,Clock,Names,Layers,CameraArbiter,PlayerState}.cs - never create those.

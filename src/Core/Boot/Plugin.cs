@@ -93,7 +93,6 @@ namespace WildWasteland
 
                 Core.Runner.Ensure();
                 RegisterCoreJobs();
-                Core.SaveTypes.Install();
                 Core.ReplacementGuard.Prepare();
                 Core.HealthStacks.Init();
                 Core.ColorGrading.Init();

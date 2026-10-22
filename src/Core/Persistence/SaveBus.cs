@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using WildWasteland.Core.Events;
 
 namespace WildWasteland.Core
 {
@@ -79,6 +80,19 @@ namespace WildWasteland.Core
 
 
 
+        static readonly Dictionary<string, SaveKey> _keys = new Dictionary<string, SaveKey>();
+
+        /// <summary>Helper for one ES3 key in the slot file (cache rule + StoreCachedFile + verify). One instance per key name.</summary>
+        public static SaveKey Key(string es3Key)
+        {
+            SaveKey k;
+            if (!_keys.TryGetValue(es3Key, out k)) { k = new SaveKey(es3Key); _keys[es3Key] = k; }
+            return k;
+        }
+
+        /// <summary>Slot of the save that is running (set on SaveGame, cleared on scene load/cancel), else null.</summary>
+        public static string SaveSlot { get { return Saving ? _saveSlot : null; } }
+
         /// <summary>Run <paramref name="a"/> once, <paramref name="delay"/> unscaled seconds after the next isPlay following a save.</summary>
         public static void AfterSave(Action a, float delay = 1f) { _after.Add(new KeyValuePair<float, Action>(-delay, a)); }
 
@@ -120,11 +134,13 @@ namespace WildWasteland.Core
                 case "SaveGame":
                     Saving = true; _saveSlot = Slot;
                     ModuleHost.Broadcast(ModuleHost.Event.SaveBegin, _saveSlot);
+                    if (ModEvents.HasListeners<SaveBegin>()) { var e = new SaveBegin { Slot = _saveSlot, Generation = Generation, Kind = SaveKind.Manual }; ModEvents.Publish(ref e); }
                     break;
                 case "LoadGame":
                     Generation++;
                     Loading = true; _pendingWorldReady = true; _after.Clear();
                     ModuleHost.Broadcast(ModuleHost.Event.LoadBegin, Slot);
+                    if (ModEvents.HasListeners<LoadBegin>()) { var e = new LoadBegin { Slot = Slot, Generation = Generation }; ModEvents.Publish(ref e); }
                     break;
                 case "setSeed":
                 case "Start":
@@ -132,8 +148,17 @@ namespace WildWasteland.Core
                     _pendingWorldReady = true;
                     break;
                 case "isPlay":
-                    if (Saving) { Saving = false; ModuleHost.Broadcast(ModuleHost.Event.SaveEnd, _saveSlot); }
-                    if (_pendingWorldReady) { _pendingWorldReady = false; Loading = false; ModuleHost.Broadcast(ModuleHost.Event.WorldReady, Slot); }
+                    if (Saving)
+                    {
+                        Saving = false; ModuleHost.Broadcast(ModuleHost.Event.SaveEnd, _saveSlot);
+                        if (ModEvents.HasListeners<SaveEnd>()) { var e = new SaveEnd { Slot = _saveSlot, Generation = Generation, Kind = SaveKind.Manual, Ok = true }; ModEvents.Publish(ref e); }
+                    }
+                    if (_pendingWorldReady)
+                    {
+                        bool fromLoad = Loading;
+                        _pendingWorldReady = false; Loading = false; ModuleHost.Broadcast(ModuleHost.Event.WorldReady, Slot);
+                        if (ModEvents.HasListeners<WorldReady>()) { var e = new WorldReady { Slot = Slot, Generation = Generation, FromLoad = fromLoad }; ModEvents.Publish(ref e); }
+                    }
                     break;
             }
         }
