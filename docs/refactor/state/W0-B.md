@@ -24,14 +24,14 @@ Rule: new files only (src/Core/Util/**, src/Core/Game/{listed}.cs); do not modif
 - [x] 18. Layers
 - [x] 19. Factions
 - [x] 20. CameraArbiter
-- [ ] 21. PlayerState
+- [x] 21. PlayerState
 - [ ] 22. check_ownership + report docs/refactor/reports/W0-B.md
 
 ## Last good compile (commit)
-9de795b (COMPILE OK; state line updated in next commit)
+db0e176 (COMPILE OK; state line updated in next commit)
 
 ## Next action
-Item 21 PlayerState: read PlayerBody Game.cs, Patrols PlayerRef, Quests Game.cs player bits.
+Item 22: run check_comments + check_ownership, write reports/W0-B.md.
 
 ## Blockers / questions for Denis
 (none yet)
@@ -57,3 +57,4 @@ Item 21 PlayerState: read PlayerBody Game.cs, Patrols PlayerRef, Quests Game.cs 
 - Layers: named layer numbers + shared masks (bit-identical to the literals they replace); 12/13 unnamed.
 - Factions: Stance enum, symmetric owned relations Set/SetPlayer/Relation/ToPlayer/Hostile, IFactionSource membership chain Of(go), RemoveAll(owner); no data until Quests/Patrols feed it (Wave B).
 - CameraArbiter: Projection/View/Fov channels, priority order, first claim wins, restore in onPostRender (Ironsights/Binoculars semantics), persistent view option (ThirdPerson); hooks Unity callbacks only while writers exist.
+- PlayerState: PlayerBody Game rig/FSM/Dead/MoveState/JumpState/StandingHeight/Velocity/CarRoot/CarFsm/DriveUse + Patrols PlayerRef Car/CarRigidbody/GodMode/Target/Kind/HasVehicleController + Quests UnderPlayer; on-foot velocity in Origin world space (no OnOriginShift wiring needed); weapon/arms queries stay in Gunplay/Presentation.
