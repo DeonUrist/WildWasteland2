@@ -23,6 +23,7 @@ namespace WildWasteland.Core
         static readonly Dictionary<string, GameObject> _exact = new Dictionary<string, GameObject>(StringComparer.Ordinal);
         static readonly Dictionary<string, GameObject> _folded = new Dictionary<string, GameObject>(StringComparer.OrdinalIgnoreCase);
         static readonly Dictionary<long, GameObject> _byId = new Dictionary<long, GameObject>();
+        static readonly List<MeshFilter> _meshes = new List<MeshFilter>();
         static readonly List<PlayMakerFSM> _fsms = new List<PlayMakerFSM>();
         static GameObject[] _scanGo;
         static PlayMakerFSM[] _scanFsm;
@@ -42,7 +43,7 @@ namespace WildWasteland.Core
         /// <summary>Drops the index (next query or Warm rebuilds it).</summary>
         public static void Invalidate()
         {
-            _exact.Clear(); _folded.Clear(); _byId.Clear(); _fsms.Clear();
+            _exact.Clear(); _folded.Clear(); _byId.Clear(); _fsms.Clear(); _meshes.Clear();
             _scanGo = null; _scanFsm = null; _managers = null; _managerCounts = null;
             _goIndex = _fsmIndex = 0; _ready = _building = false;
             Generation++;
@@ -101,6 +102,9 @@ namespace WildWasteland.Core
 
         /// <summary>Every PlayMakerFSM that lives on an asset (not in a scene). Shared list: do not modify.</summary>
         public static List<PlayMakerFSM> AssetFsms { get { Complete(); return _fsms; } }
+
+        /// <summary>Every asset MeshFilter, including child scenery and material variants; borrowed read-only list.</summary>
+        public static List<MeshFilter> AssetMeshes { get { Complete(); return _meshes; } }
 
         /// <summary>Copies every indexed asset root (distinct exact names) into into (editor/catalog use; allocates nothing itself).</summary>
         public static void AllRoots(List<GameObject> into)
@@ -165,6 +169,7 @@ namespace WildWasteland.Core
                 for (int end = Math.Min(_scanGo.Length, _goIndex + 256); _goIndex < end; _goIndex++)
                 {
                     var go = _scanGo[_goIndex];
+                    if(go!=null&&!go.scene.IsValid()){var mesh=go.GetComponent<MeshFilter>();if(mesh!=null)_meshes.Add(mesh); }
                     if (go != null && !go.scene.IsValid() && go.transform.parent == null && !_exact.ContainsKey(go.name)) _exact[go.name] = go;
                 }
                 return true;

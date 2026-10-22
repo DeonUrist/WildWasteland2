@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.POI
 {
     internal static class TownStore
     {
-        private const int Magic = 0x5757544E, Version = 8;
+        private const int Magic = 0x5757544E, Version = 9;
         internal static byte[] Serialize(Dictionary<string, TownRecord> records)
         {
             using (var stream = new MemoryStream())
@@ -30,7 +30,7 @@ namespace WildWasteland.Modules.POI
                         V(w, lot.BoundsCenter); w.Write(lot.HalfX); w.Write(lot.HalfZ); w.Write(lot.Street);
                         V(w, lot.Entry); w.Write(lot.HasEntry); w.Write(lot.EntryNode); w.Write(lot.Actors); w.Write(lot.Loot); w.Write(lot.Vehicles);
                         w.Write(lot.Hounds);
-                        w.Write(lot.Skipped);
+                        w.Write(lot.Skipped); w.Write(lot.External);
                     }
                     w.Write(p.StreetNodes.Length); foreach (var node in p.StreetNodes) V(w, node);
                     w.Write(p.StreetEdges.Length); foreach (int edge in p.StreetEdges) w.Write(edge);
@@ -81,7 +81,7 @@ namespace WildWasteland.Modules.POI
                             lot.Entry = V(r); lot.HasEntry = r.ReadBoolean(); lot.EntryNode = r.ReadInt32();
                             lot.Actors = Count(r, 320); lot.Loot = Count(r, 320); lot.Vehicles = Count(r, 1);
                             lot.Hounds = r.ReadBoolean();
-                            lot.Skipped = r.ReadBoolean();
+                            lot.Skipped = r.ReadBoolean(); lot.External = r.ReadBoolean();
                         }
                         p.Lots[j] = lot;
                     }

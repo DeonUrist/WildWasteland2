@@ -42,7 +42,7 @@ namespace WildWasteland.Modules.POI
             if (_prop >= _plan.Props.Length)
             {
                 Ready = true; Physics.SyncTransforms();
-                Log.Always("[Towns] border " + _site.Plan.Key + ": " + _plan.Towers.Length + "/" + _plan.TowerTarget + " small towers with inward ladders, " + _plan.Props.Length + " static wrecks/trees from the plan; independent tower map reused.");
+                Log.Main(null, "[POI] border " + _site.Plan.Key + ": " + _plan.Towers.Length + "/" + _plan.TowerTarget + " small towers with inward ladders, " + _plan.Props.Length + " static wrecks/trees from the plan; independent tower map reused.");
                 return true;
             }
             var prop = _plan.Props[_prop++];

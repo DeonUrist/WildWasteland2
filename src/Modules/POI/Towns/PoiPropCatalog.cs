@@ -27,7 +27,7 @@ namespace WildWasteland.Modules.POI
             var snapshot = new List<KeyValuePair<long, Object>>(manager.idRef);
             // The ES3 table is not a complete scenery inventory. Also walk every loaded native prefab mesh,
             // including non-saveable child decorations (spikes, bones, bathrooms, etc.), with a portable source path.
-            foreach (var filter in Resources.FindObjectsOfTypeAll<MeshFilter>())
+            foreach (var filter in WildWasteland.Core.PrefabCatalog.AssetMeshes)
             {
                 if (filter == null || filter.gameObject.scene.IsValid()) continue;
                 long id = manager.Get(filter); if (id < 0) id = SourceId(Source(filter));
@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.POI
             if (!_scan.MoveNext())
             {
                 _scan.Dispose(); _scan = null; Complete = true;
-                All.Sort(Compare); WildWasteland.Core.Log.Always("[Towns] POI dresser catalog: " + All.Count + " distinct vanilla mesh/material variants and markers; prefab children included, no size limit."); return false;
+                All.Sort(Compare); WildWasteland.Core.Log.Main(null, "[POI] POI dresser catalog: " + All.Count + " distinct vanilla mesh/material variants and markers; prefab children included, no size limit."); return false;
             }
             var pair = _scan.Current; var filter = pair.Value as MeshFilter;
             if (filter == null || filter.gameObject.scene.IsValid()) return true;

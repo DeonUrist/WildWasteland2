@@ -65,7 +65,7 @@ namespace WildWasteland.Modules.POI
             {
                 int corner = corners[t]; Vector3 point;
                 // Log.Always: this can run on the MapMagic worker, and Warn's rate-limit table is main-thread only.
-                if (!outline.Tower(plan, corner, result.Blockers, out point)) { Log.Always("[Towns] WARNING: no clear tower position " + plan.Key + "/" + corner + "; building and gate clearance retained."); continue; }
+                if (!outline.Tower(plan, corner, result.Blockers, out point)) { Log.Main(null, "[POI] WARNING: no clear tower position " + plan.Key + "/" + corner + "; building and gate clearance retained."); continue; }
                 var inward = frame.center - point; inward.y = 0;
                 float yaw = Mathf.Atan2(inward.x, inward.z) * Mathf.Rad2Deg - Mathf.Atan2(2.63f, -.71f) * Mathf.Rad2Deg;
                 var box = Rotated(kit.TowerLocal, yaw, 1, point);

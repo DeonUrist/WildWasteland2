@@ -134,7 +134,7 @@ namespace WildWasteland.Modules.POI
             if (File.ReadAllText(temp) != content) throw new IOException("POI layout readback failed");
             if (File.Exists(path)) File.Copy(path, path + ".bak", true);
             AtomicFile.Replace(temp, path);
-            Log.Always("[Towns] POI dresser saved " + layout.Type + ": " + layout.Props.Count + " static props; " + path);
+            Log.Main(null, "[POI] POI dresser saved " + layout.Type + ": " + layout.Props.Count + " static props; " + path);
         }
     }
 }

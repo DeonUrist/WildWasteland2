@@ -90,7 +90,7 @@ namespace WildWasteland.Modules.POI
                 site.Exits = layout.Props.FindAll(p => p.Kind == "Exit").ToArray();
                 foreach (var prop in layout.Props) if (prop.Marker) { Markers.Catalog.Start(); break; }
             }
-            catch (Exception e) { site.Error = e.Message; site.Ready = true; Log.Warn("[Towns] POI layout rejected for " + site.Type + ": " + e.Message); }
+            catch (Exception e) { site.Error = e.Message; site.Ready = true; Log.Warn("[POI] POI layout rejected for " + site.Type + ": " + e.Message); }
             _roots.Add(root.GetInstanceID(), site); Sites.Add(site); if (!site.Ready) _pending.Enqueue(site); return site;
         }
         private bool Step()
@@ -132,7 +132,7 @@ namespace WildWasteland.Modules.POI
             {
                 if (site.Dressing != null) { site.Dressing.SetActive(false); Object.Destroy(site.Dressing); site.Dressing = null; }
                 site.Error = e.Message; site.Ready = true;
-                Log.Warn("[Towns] POI dressing skipped for " + site.Type + ": " + e.Message);
+                Log.Warn("[POI] POI dressing skipped for " + site.Type + ": " + e.Message);
                 TownBakeBridge.Discover(site.Root.gameObject);
             }
         }

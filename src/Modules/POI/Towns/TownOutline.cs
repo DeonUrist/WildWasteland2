@@ -13,7 +13,7 @@ namespace WildWasteland.Modules.POI
             var frame = TownPerimeter.Frame(plan);
             var points = new List<Vector3>();
             var rotation = Quaternion.Euler(0, plan.Yaw, 0);
-            foreach (var lot in plan.Lots) if (!lot.IsParking)
+            foreach (var lot in plan.Lots) if (!lot.IsParking && !lot.External)
                 for (int corner = 0; corner < 4; corner++)
                 {
                     var point = rotation * (lot.LocalPosition + Quaternion.Euler(0, lot.Yaw, 0) * (lot.BoundsCenter

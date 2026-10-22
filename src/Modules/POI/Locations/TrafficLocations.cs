@@ -23,38 +23,22 @@ namespace WildWasteland.Modules.POI
         private sealed class MapRequest { internal Transform Root; internal Bounds? Box; internal object Structure; }
         private static readonly Queue<MapRequest> MapQueue=new Queue<MapRequest>();
         private static readonly HashSet<Transform> QueuedMaps=new HashSet<Transform>();
-        private static float _nextScan, _nextBake;
+        private static float _nextBake;
         private static readonly List<Core.NavStructure> _structures = new List<Core.NavStructure>();   // WW: Core.Services.Npc.Structures (ex NPCAI.Nav._structures reflection)
         internal static int Revision { get; private set; }
         private static bool _discoveryReady;
         internal static bool DiscoveryReady=>_discoveryReady;
-        internal static int DiscoveryLeft=>Scan.Count;   // diagnostics: transforms still queued for the deep camp scan
+        internal static int DiscoveryLeft=>Scan.Count+WorldIndex.Pending;   // diagnostics: transforms still queued for the deep camp scan
         internal static void Changed(){Revision++;}
 
-        internal static bool TownInterior(Vector3 world)
-        { Vector3 parking; return Modules.POI.TownsApi.Provider != null && Modules.POI.TownsApi.Provider.ParkingOutside(world, out parking); }
-        internal static Bounds[] Blocks() => Known.Values.Select(c=>new Bounds(new Vector3(c.center.x,0f,c.center.z),new Vector3(c.size.x+16f,10000f,c.size.z+16f))).ToArray();
-        internal static Bounds[] StartingBlocks() => Points.Values.Where(p => p.name.StartsWith("Starter_Area", StringComparison.Ordinal)).Select(p => new Bounds(new Vector3(p.position.x, 0, p.position.z), new Vector3(1000, 10000, 1000))).ToArray();
-        internal static bool StartingAllowed(Vector3 point)
-        { foreach (var p in Points.Values) if (p.name.StartsWith("Starter_Area", StringComparison.Ordinal) && Mathf.Abs(point.x - p.position.x) <= 500f && Mathf.Abs(point.z - p.position.z) <= 500f) return false; return true; }
-        internal static int StartingRevision { get { int revision = 0; foreach (var p in Points.Values) if (p.name.StartsWith("Starter_Area", StringComparison.Ordinal)) revision ^= p.position.GetHashCode(); return revision; } }
-        internal static bool Contains(CampDiscovery camp,Vector3 point,float margin=35f)
-        {return Mathf.Abs(point.x-camp.center.x)<=camp.size.x/2f+margin&&Mathf.Abs(point.z-camp.center.z)<=camp.size.z/2f+margin;}
-
-        private const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
-
         internal static void Reset()
-        { Known.Clear(); Points.Clear(); ExaminedPoints.Clear(); Roots.Clear(); Mapped.Clear(); Scan.Clear(); Shallow.Clear(); MapQueue.Clear();QueuedMaps.Clear();_nextScan = _nextBake = _nextDeep = 0f; _tileApplied = false; _structures.Clear();_discoveryReady=false; Revision++; }
+        { Known.Clear(); Points.Clear(); ExaminedPoints.Clear(); Roots.Clear(); Mapped.Clear(); Scan.Clear(); MapQueue.Clear();QueuedMaps.Clear();_nextBake = 0f; _structures.Clear();_discoveryReady=false; Revision++; }
 
-        // Perf: deep scene walk on scene load / tile apply / every 60 s (was every 15 s); the 15 s cadence keeps a roots-only pass
-        // (ObserveRoot camp-resident candidates, root camps/POIs). Time-budgeted per frame instead of a fixed 200 nodes.
-        private static readonly Stack<Transform> Shallow = new Stack<Transform>();
+        private static WorldWatch _watch;
         private static readonly System.Diagnostics.Stopwatch Budget = new System.Diagnostics.Stopwatch();
-        private static readonly long BudgetTicks = (long)(System.Diagnostics.Stopwatch.Frequency * 0.0003);
-        private static float _nextDeep;
-        private static volatile bool _tileApplied;
-        private static readonly List<GameObject> RootBuffer = new List<GameObject>();
-        internal static void TileApplied() { _tileApplied = true; }   // TrafficRoads forwards MapMagic TerrainTile.OnTileApplied
+        private static readonly long BudgetTicks = (long)(System.Diagnostics.Stopwatch.Frequency * .0003);
+        internal static void Install(IModule owner)
+        {_watch=WorldIndex.Watch(owner,(t,n)=>t.parent==null||IsCamp(n)||PoiName(n),(t,n,c)=>Scan.Push(t));}
         private static bool MaybeCoyote(string n)
         {
             // exact pre-filter for PrefabName(n) == "Camp_1x": PrefabName only strips a trailing suffix and trims whitespace
@@ -64,41 +48,11 @@ namespace WildWasteland.Modules.POI
 
         internal static void Tick()
         {
-            if (_tileApplied)
-            {
-                // MapMagic applied a tile: deep rescan shortly (objects finish spawning), queued behind a scan already running
-                _tileApplied = false; float due = Time.unscaledTime + 3f;
-                if (_nextDeep > due) _nextDeep = due; if (_nextScan > due) _nextScan = due;
-            }
-            if (Scan.Count == 0 && Shallow.Count == 0 && Time.unscaledTime >= _nextScan)
-            {
-                _nextScan = Time.unscaledTime + 15f;
-                bool deep = Time.unscaledTime >= _nextDeep;
-                if (deep) _nextDeep = Time.unscaledTime + 60f;
-                for (int i = 0; i < SceneManager.sceneCount; i++)
-                {
-                    var scene = SceneManager.GetSceneAt(i); if (!scene.isLoaded) continue;
-                    RootBuffer.Clear(); scene.GetRootGameObjects(RootBuffer);
-                    foreach (var root in RootBuffer) (deep ? Scan : Shallow).Push(root.transform);
-                }
-                RootBuffer.Clear();
-            }
             bool remembered=false;Budget.Reset();Budget.Start();
-            while (Scan.Count > 0 || Shallow.Count > 0)
-            {
-                bool deep = Scan.Count > 0;
-                var t = deep ? Scan.Pop() : Shallow.Pop(); if (t == null) continue;
-                string name = t.name; bool root = t.parent == null;
-                if(root)TrafficCamps.ObserveRoot(t);
-                RememberPoi(t, name);
-                if (IsCamp(name)) { Remember(t, null); remembered=true;break; }
-                // vehicles (scene roots) never hold camps/POIs: skip their part hierarchies
-                if (deep && !(root && t.GetComponent<NWH.VehiclePhysics2.VehicleController>() != null))
-                    for (int c = 0; c < t.childCount; c++) Scan.Push(t.GetChild(c));
-                if (Budget.ElapsedTicks >= BudgetTicks) break;
-            }
+            while(Scan.Count>0)
+            {var t=Scan.Pop();if(t==null)continue;string name=t.name;if(t.parent==null)TrafficCamps.ObserveRoot(t);RememberPoi(t,name);if(IsCamp(name)){Remember(t,null);remembered=true;break;}if(Budget.ElapsedTicks>=BudgetTicks)break;}
             Budget.Stop();
-            if(Scan.Count==0)_discoveryReady=true;
+            if(Scan.Count==0&&!WorldIndex.Busy)_discoveryReady=true;
             if(!remembered&&MapQueue.Count>0)
             {
                 var next=MapQueue.Dequeue();QueuedMaps.Remove(next.Root);
@@ -108,7 +62,7 @@ namespace WildWasteland.Modules.POI
             _nextBake = Time.unscaledTime + 5f;
             try
             {
-                var npc = Core.Services.Npc;
+                var npc = ModApi.Get<INavApi>();
                 if (npc == null) return;   // NPC module off: no baked camp maps (the old "NPC Overhaul not installed" path)
                 npc.Structures(_structures);
                 foreach (var s in _structures)
