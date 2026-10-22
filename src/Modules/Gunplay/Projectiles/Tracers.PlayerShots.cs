@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Core.Events;
 using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
@@ -99,13 +100,16 @@ namespace WildWasteland.Modules.Guns
                         Layers = gun.Layers, Gun = gun, Player = _player,
                         ShooterRoot = ft.root.gameObject,
                     };
+                    s.Id = CombatEvents.NextProjectileId();
+                    CombatEvents.Spawned(s.Id, s.ShooterRoot, s.Bolt ? ProjectileKind.Bolt : s.Shotgun ? ProjectileKind.Pellet : ProjectileKind.Bullet, s.Pos, s.Dir * s.Speed, s.Range);
                     LaunchBolt(ref s);
-                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); }
+                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); }
                     else _shots.Add(s);
                 }
                 if (gun.Kind == Kind.Shotgun && Core.Log.Verbose)
                     GunplayLog.Main("Shotgun spread: circular, " + pellets + " pellets, player accuracy " + GunplaySettings.Accuracy(true).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%");
                 Bridge.Shot(_player, muzzle, (int)gun.Kind, true);
+                CombatEvents.Fired(_player, gun.Handle, (WeaponKind)(int)gun.Kind, muzzle, ft.forward, pellets, true);
                 __instance.Finish();         // vanilla: no hit -> FINISHED -> wait -> next shot, same rhythm
                 return false;
             }

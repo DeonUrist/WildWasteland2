@@ -164,6 +164,7 @@ namespace WildWasteland.Modules.Guns
                 }
                 var mainCam = GameRefs.MainCamera;
                 Vector3 dir = mainCam != null ? mainCam.transform.forward : Vector3.forward;
+                CombatEvents.PartHit(part, GameRefs.Player, true, before, -1f, true);
                 if (GunplaySettings.WheelPopOff.Value && before > 0f) _meleeWheels.Add(new MeleeWheel { Part = part, Before = before, Dir = dir, Frame = Time.frameCount });
             }
             catch (Exception e) { Core.Log.Error("[Guns] Tracers melee", e); }
@@ -266,6 +267,7 @@ namespace WildWasteland.Modules.Guns
                 if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + active.gameObject.name + " (melee, fitted wheel) -> " + wheel.name + ", condition " + before.ToString("0.0") + " " + v.Value.ToString("0.0") + " (x" + mult.ToString("0.#") + ")");
                 break;
             }
+            CombatEvents.PartHit(wheel, GameRefs.Player, true, before, -1f, true);
             if (GunplaySettings.WheelPopOff.Value && before > 0f) _meleeWheels.Add(new MeleeWheel { Part = wheel, Before = before, Dir = _wCam.forward, Frame = Time.frameCount });
         }
 

@@ -84,7 +84,22 @@ namespace WildWasteland.Modules.Guns
             _at = Time.time; _weight = 1f; _lowering = false;
             if (Log.Verbose) Log.Info("[Guns] Weapon transition: raise " + action.Fsm.ActiveStateName);
         }
+        private static Core.Events.WeaponSwitchStage _lastStage = Core.Events.WeaponSwitchStage.Done;
+
+        /// <summary>Job "Gunplay.WeaponTransition" (EarlyUpdate): switch timing, then the WeaponSwitchPhase event while it moves.</summary>
         private static void Tick()
+        {
+            TickSwitch();
+            if (!ModEvents.HasListeners<Core.Events.WeaponSwitchPhase>()) return;
+            var stage = _lowering ? Core.Events.WeaponSwitchStage.Lowering : _pending != null ? Core.Events.WeaponSwitchStage.Switching
+                      : _weight > .001f ? Core.Events.WeaponSwitchStage.Raising : Core.Events.WeaponSwitchStage.Done;
+            if (stage == Core.Events.WeaponSwitchStage.Done && _lastStage == stage) return;
+            _lastStage = stage;
+            CombatEvents.SwitchPhase(stage, _weight);
+        }
+
+        /// <summary>The switch work of one frame: rig lookup, world-ready holster, lowering/raising weight and the delayed event replay.</summary>
+        private static void TickSwitch()
         {
             Restore();
             if (_handler == null && Time.unscaledTime >= _nextFind)

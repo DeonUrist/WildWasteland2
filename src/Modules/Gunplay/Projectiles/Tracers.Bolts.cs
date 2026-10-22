@@ -74,6 +74,7 @@ namespace WildWasteland.Modules.Guns
                 rb.angularVelocity = UnityEngine.Random.insideUnitSphere * 10f;
             }
             _landedBolts.Add(new LandedBolt { Visual = bolt, Owner = owner, Bone = owner != null ? BoltBonePath(anchor, owner) : null, Until = Time.time + 15f });
+            CombatEvents.BoltLanded(s.Id, soft ? (owner != null ? owner : target) : null, owner != null ? BoltBonePath(anchor, owner) : null, bolt, 15f);
             s.Visual = null;
             if (Core.Log.Verbose) GunplayLog.Main("Crossbow bolt: " + (soft ? "embedded halfway in " : "ricochet from ") + (target != null ? target.name : "world") + " (15 s)");
         }

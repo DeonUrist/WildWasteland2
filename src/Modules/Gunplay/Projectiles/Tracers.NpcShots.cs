@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Core.Events;
 using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
@@ -107,12 +108,15 @@ namespace WildWasteland.Modules.Guns
                         Layers = info.ObstructLayers | info.DetectLayers,
                         DetectLayers = info.DetectLayers,
                     };
+                    s.Id = CombatEvents.NextProjectileId();
+                    CombatEvents.Spawned(s.Id, s.ShooterRoot, s.Bolt ? ProjectileKind.Bolt : s.Shotgun ? ProjectileKind.Pellet : ProjectileKind.Bullet, s.Pos, s.Dir * s.Speed, s.Range);
                     LaunchBolt(ref s);
-                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); }   // over the cap: hitscan
+                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); }   // over the cap: hitscan
                     else _shots.Add(s);
                 }
 
                 Bridge.Shot(owner.transform.root.gameObject, from, (int)info.Kind, false);
+                CombatEvents.Fired(owner.transform.root.gameObject, info.Handle, (WeaponKind)(int)info.Kind, from, dir, pellets, false);
                 fsm.Event(__instance.isNotIntersectedEvent);    // vanilla goes down its miss branch: Wait rpm, next shot
                 return false;
             }

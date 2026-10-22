@@ -5,6 +5,7 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
 {
@@ -124,6 +125,7 @@ namespace WildWasteland.Modules.Guns
                     if (rb != null) { rb.isKinematic = false; if (caliber == "armorplate") rb.useGravity = true; rb.velocity = fwd * 1.5f; }
                 }
                 if (Core.Log.Verbose) Core.Log.Info("[Guns] Dropped " + rounds + " x " + caliber + " in " + created.Count + " save-registered item(s)");
+                CombatEvents.Dropped(caliber, rounds, created.Count > 0 ? created[0] : null, pos);
                 return true;
             }
             catch (Exception ex)

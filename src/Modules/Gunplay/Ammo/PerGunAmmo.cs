@@ -127,6 +127,7 @@ namespace WildWasteland.Modules.Guns
             var magazine = _ledger.Draw(item.name, itemType.Value, Read(reload));
             _item = item; _identity = item.name; _type = itemType.Value; _reload = reload; _handler = handler.FsmComponent;
             Apply(reload, magazine);
+            CombatEvents.Magazine(model.name, _identity, magazine.Rounds);
             if (Core.Log.Verbose) AmmoSettings.V("Magazine " + _identity + ": " + magazine.Rounds + " rounds");
         }
 

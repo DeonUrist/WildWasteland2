@@ -18,7 +18,9 @@ namespace WildWasteland.Modules.Guns
         private PlayMakerFSM _ammoFsm;
         private string _caliber;
         private float _deadline;
-        private bool _moved;
+        private bool _moved, _aborted;
+        private int _rounds;
+        private string _item;
 
         public bool Busy { get { return _phase != Phase.Idle; } }
         public string PhaseName { get { return _phase.ToString(); } }
@@ -54,7 +56,8 @@ namespace WildWasteland.Modules.Guns
                 foreach (var t in check.Transitions) if (t.EventName == "next") { start = FindState(reload, t.ToState); break; }
             if (start == null) { Core.Log.Warn("[Guns] " + "No start state found for " + reload.gameObject.name); return; }
 
-            _reload = reload; _weapon = reload.gameObject; _ammoFsm = ammoFsm; _caliber = caliber; _moved = false;
+            _reload = reload; _weapon = reload.gameObject; _ammoFsm = ammoFsm; _caliber = caliber; _moved = false; _rounds = inGun.Value; _item = PerGunAmmo.CurrentItem;
+            CombatEvents.UnloadStarted(_weapon.name, _item, _rounds);
             bool threePhase = false;
             foreach (var t in start.Transitions) if (t.EventName == "AnimStart") { threePhase = true; break; }
             if (Core.Log.Verbose) Core.Log.Info("[Guns] Unloading " + _weapon.name + ": " + inGun.Value + " x " + caliber + (threePhase ? " (3-phase)" : ""));
@@ -79,7 +82,7 @@ namespace WildWasteland.Modules.Guns
         public void Tick()
         {
             if (_phase == Phase.Idle) return;
-            if (_weapon == null || !_weapon.activeInHierarchy) { Core.Log.Warn("[Guns] Weapon vanished during unload; aborting"); Finish(); return; }
+            if (_weapon == null || !_weapon.activeInHierarchy) { Core.Log.Warn("[Guns] Weapon vanished during unload; aborting"); _aborted = true; Finish(); return; }
             if (Time.unscaledTime < _deadline) return;
             Core.Log.Warn("[Guns] Unload phase " + _phase + " timed out; continuing");
             if (_phase == Phase.WaitAnimStart) AfterAnimStart(); else Finish();
@@ -148,6 +151,8 @@ namespace WildWasteland.Modules.Guns
         {
             MoveAmmo();
             _phase = Phase.Idle; // Event replay can synchronously re-enter this hook.
+            CombatEvents.UnloadFinished(_weapon != null ? _weapon.name : null, _item, _rounds, !_aborted);
+            _aborted = false;
             var idle = FindState(_reload, "idle");
             if (idle != null && _weapon != null && _weapon.activeInHierarchy) ReplaySendEvents(idle); // MenuOut / Activate: re-enable firing etc.
             _reload = null; _weapon = null; _ammoFsm = null;

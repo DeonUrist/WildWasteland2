@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Core.Events;
 using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
@@ -53,6 +54,8 @@ namespace WildWasteland.Modules.Guns
             // StepLen seconds; the drawn bullet is between them (RenderOf)
             public float Ahead, StepLen;
             public Vector3 Prev;
+            public long Id;                  // session-unique projectile id (events)
+            public bool Hit;                 // ended by a hit (ProjectileEnded)
         }
 
         // A first-person gun under PlayerCamera/WeaponsArm/Parent/<gun>: its Attack FSM, the Raycast it fires and the states that
@@ -200,7 +203,7 @@ namespace WildWasteland.Modules.Guns
                     catch (Exception e) { s.Alive = false; Core.Log.Error("[Guns] Tracers: bullet dropped", e); }
                 }
                 if (s.Alive) { Vector3 rp; float rt; RenderOf(ref s, out rp, out rt); MoveBoltAt(ref s, rp); _shots[i] = s; }
-                else { if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); _shots.RemoveAt(i); }
+                else { if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); _shots.RemoveAt(i); }
             }
             if (Time.unscaledTime >= _nextSweep) { _nextSweep = Time.unscaledTime + 30f; Sweep(); }
             if (_pushes.Count > 0)

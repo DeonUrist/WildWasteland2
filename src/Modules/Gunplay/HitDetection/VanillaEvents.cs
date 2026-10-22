@@ -4,6 +4,9 @@ using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Core.Events;
+using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.NPC
 {
@@ -47,6 +50,8 @@ namespace WildWasteland.Modules.NPC
                 }
                 Vector3 origin = refs.Muzzle != null ? refs.Muzzle.position : owner.transform.position;
                 if (Senses.On) Senses.Shot(owner.transform.root.gameObject, origin, kind, false);
+                if (ModEvents.HasListeners<WeaponFired>())
+                    CombatEvents.Fired(owner.transform.root.gameObject, -1, (WeaponKind)(int)kind, origin, owner.transform.forward, 1, false);
             }
             catch (Exception e) { NpcModule.Warn("Vanilla NPC shot observation: " + e.Message); }
             return true;
@@ -133,7 +138,9 @@ namespace WildWasteland.Modules.NPC
         {
             try
             {
-                if (!Senses.On || WeaponRanges.ProjectilesEnabled) return true;
+                if (WeaponRanges.ProjectilesEnabled) return true;
+                bool senses = Senses.On;
+                if (!senses && !ModEvents.HasListeners<WeaponFired>()) return true;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Attack" || fsm.GameObject == null || __instance.repeatInterval == null || __instance.repeatInterval.Value != 0f) return true;
                 // (perf) per Attack FSM, once: has a Reload FSM (a gun), its kind and its muzzle transforms (the NPCs' Attack FSMs end here
@@ -159,7 +166,8 @@ namespace WildWasteland.Modules.NPC
                         { _muzzleBuf.Add(t); if (!found && t.gameObject.activeInHierarchy) { position = t.position; found = true; } }
                     si.Muzzles = _muzzleBuf.ToArray();
                 }
-                Senses.Shot(Core.GameRefs.Player, position, si.Kind, true);
+                if (senses) Senses.Shot(Core.GameRefs.Player, position, si.Kind, true);
+                CombatEvents.Fired(Core.GameRefs.Player, WeaponCatalog.Instance.Handle(fsm.GameObject.name), (WeaponKind)(int)si.Kind, position, fsm.GameObject.transform.forward, 1, true);
             }
             catch (Exception e) { NpcModule.Warn("Vanilla player shot observation: " + e.Message); }
             return true;
@@ -169,7 +177,8 @@ namespace WildWasteland.Modules.NPC
         {
             try
             {
-                if (!Senses.On || __instance.fsmName == null || __instance.fsmName.Value != "Bodypart" || __instance.variableName == null || __instance.variableName.Value != "Damage" || __instance.setValue == null || __instance.setValue.Value >= 0f) return;
+                bool senses = Senses.On;
+                if ((!senses && !ModEvents.HasListeners<Hurt>()) || __instance.fsmName == null || __instance.fsmName.Value != "Bodypart" || __instance.variableName == null || __instance.variableName.Value != "Damage" || __instance.setValue == null || __instance.setValue.Value >= 0f) return;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.GameObject == null) return;
                 bool player = fsm.Name == "Attack" && PlayerWeapon(fsm.GameObject);
@@ -183,6 +192,14 @@ namespace WildWasteland.Modules.NPC
                 if (gun && WeaponRanges.ProjectilesEnabled) return;
                 var target = fsm.GetOwnerDefaultTarget(__instance.gameObject);
                 if (target == null) return;
+                var attacker = player ? Core.GameRefs.Player : fsm.GameObject;
+                if (ModEvents.HasListeners<Hurt>())
+                {
+                    var root = ActorQuery.RootOf(target.transform);
+                    CombatEvents.Hurt(root != null ? root.gameObject : target, attacker, -__instance.setValue.Value, gun ? HurtKind.Vanilla : HurtKind.Melee, target.name,
+                        target.transform.position, player ? WeaponCatalog.Instance.Handle(fsm.GameObject.name) : -1, ActorQuery.IsHead(target), false);
+                }
+                if (!senses) return;
                 if(melee&&!player){Core.Services.RaiseNpcHurt(target,fsm.GameObject);return;}
                 Senses.Hurt(target, player ? Core.GameRefs.Player : fsm.GameObject);
             }

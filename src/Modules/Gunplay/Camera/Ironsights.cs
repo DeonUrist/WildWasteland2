@@ -62,7 +62,24 @@ namespace WildWasteland.Modules.Guns
             }
         }
 
+        private static bool _lastAiming;
+        private static float _lastTarget = 1f;
+
+        /// <summary>Job "Gunplay.Ironsights" (EarlyUpdate): rig lookup, toggle state, wheel zoom; then the AdsChanged event when it changed.</summary>
         private static void Tick()
+        {
+            TickZoom();
+            if (!ModEvents.HasListeners<Core.Events.AdsChanged>()) return;
+            bool aiming = Aiming;
+            if (aiming == _lastAiming && _target == _lastTarget) return;
+            _lastAiming = aiming; _lastTarget = _target;
+            WeaponInfo info;
+            bool scoped = aiming && WeaponCatalog.Instance.TryGet(WeaponState.Instance.WeaponKey, out info) && info.Scoped;
+            CombatEvents.Ads(aiming, 1f / Mathf.Max(0.0001f, _target), scoped);
+        }
+
+        /// <summary>The ironsight work of one frame (rig lookup, world-ready reset, toggle state, wheel zoom target and smoothing).</summary>
+        private static void TickZoom()
         {
             if (_camera == null && Time.unscaledTime >= _nextFind)
             {

@@ -5,6 +5,7 @@ using HutongGames.PlayMaker.Actions;
 using Micosmo.SensorToolkit.PlayMaker;
 using UnityEngine;
 using WildWasteland.Core;
+using WildWasteland.Core.Events;
 using WildWasteland.Modules.Gunplay;
 
 namespace WildWasteland.Modules.Guns
@@ -86,7 +87,10 @@ namespace WildWasteland.Modules.Guns
                 float dealt = !float.IsNaN(before) && !float.IsNaN(after) && after < before ? after - before : nominal;
                 bool head = col_isHead(go);
                 Bridge.PlayerHit(RootOf(go.transform).gameObject, h.point, dealt, head);
+                CombatEvents.Hurt(RootOf(go.transform).gameObject, s.Player, Mathf.Abs(dealt), HurtKind.Projectile, go.name, h.point, gun.Handle, head, !float.IsNaN(after) && after <= 0f && before > 0f);
             }
+            CombatEvents.ProjectileHit(s.Id, s.Player, isPart || creature || corpse ? RootOf(go.transform).gameObject : null, go.name, h.point, h.normal,
+                gun.Damage != null ? Mathf.Abs(gun.Damage.Value * falloff) : 0f, creature && col_isHead(go), false);
             if (Core.Log.Verbose)
             {
                 Core.Log.Info("[Guns] Hit: " + fsm.GameObject.name + " -> " + RootOf(go.transform).name + "/" + go.name + " at " + (s.Travelled + h.distance).ToString("0.0") + " m, damage "
@@ -255,7 +259,7 @@ namespace WildWasteland.Modules.Guns
                     PlayerHit(ref s, h, pf);
                     MetalSparks(col, h.point, h.normal);
                     HitWorld(ref s, col, h.point, (s.Gun.Damage != null ? s.Gun.Damage.Value : 0f) * pf);   // vehicle part rules
-                    s.Pos = h.point; s.Travelled = pd; s.Alive = false;
+                    s.Pos = h.point; s.Travelled = pd; s.Alive = false; s.Hit = true;
                     return;
                 }
                 if (s.ShooterRoot != null && tr.IsChildOf(s.ShooterRoot.transform)) continue;        // own body / own car
@@ -271,10 +275,10 @@ namespace WildWasteland.Modules.Guns
                 {
                     UnityEngine.Object.Instantiate(s.Impact, h.point, Quaternion.identity);   // as HitTarget does
                 }
-                else { WorldImpact(col, h.point, h.normal, s.Dir); HitWorld(ref s, col, h.point, s.Damage * falloff); }
+                else { WorldImpact(col, h.point, h.normal, s.Dir); HitWorld(ref s, col, h.point, s.Damage * falloff); CombatEvents.ProjectileHit(s.Id, s.ShooterRoot, null, col.name, h.point, h.normal, 0f, false, false); }
                 s.Pos = h.point;
                 s.Travelled = dist;
-                s.Alive = false;
+                s.Alive = false; s.Hit = true;
                 return;
             }
             if (vcap != null && vt < float.MaxValue)
@@ -287,7 +291,7 @@ namespace WildWasteland.Modules.Guns
                 HitTarget(ref s, s.Pos + s.Dir * vt, s.Damage * falloff * mult, vhead && s.Head != null ? s.Head : s.Target, dist);
                 s.Pos += s.Dir * vt;
                 s.Travelled = dist;
-                s.Alive = false;
+                s.Alive = false; s.Hit = true;
                 return;
             }
             s.Pos += s.Dir * move;
@@ -423,6 +427,14 @@ namespace WildWasteland.Modules.Guns
             float before = Core.Log.Verbose ? HealthOf(target) : 0f;
             foreach (var f in fsms) if (s.EventFsm == null || f.FsmName == s.EventFsm) f.SendEvent(s.EventName);
             Bridge.Hurt(target, s.ShooterRoot);
+            if (ModEvents.HasListeners<ProjectileHit>() || ModEvents.HasListeners<Hurt>())
+            {
+                bool head = col_isHead(target);
+                var victim = RootOf(target.transform).gameObject;
+                CombatEvents.ProjectileHit(s.Id, s.ShooterRoot, victim, target.name, point, -s.Dir, Mathf.Abs(damage), head, false);
+                float hp = HealthOf(target);
+                CombatEvents.Hurt(victim, s.ShooterRoot, Mathf.Abs(damage), HurtKind.Projectile, target.name, point, -1, head, !float.IsNaN(hp) && hp <= 0f);
+            }
             if (Core.Log.Verbose)
                 Core.Log.Info("[Guns] Hit: " + (s.ShooterRoot != null ? s.ShooterRoot.name : "?") + " -> " + RootOf(target.transform).name + "/" + target.name + " at "
                     + dist.ToString("0.0") + " m, damage " + damage.ToString("0.0")
@@ -438,13 +450,13 @@ namespace WildWasteland.Modules.Guns
             if (part == null) return;
 
             Core.Services.RaiseVehiclePartHit(part.gameObject, s.ShooterRoot ?? s.Player);
-            if (!GunplaySettings.VehicleDamage.Value) return;
+            if (!GunplaySettings.VehicleDamage.Value) { CombatEvents.PartHit(part, s.ShooterRoot ?? s.Player, false, -1f, -1f, IsWheel(col.transform, part)); return; }
             float pct = Mathf.Abs(damage) / Mathf.Max(1f, GunplaySettings.VehicleDamagePer1.Value);   // [Tracers] VehicleDamagePer1 bullet damage = 1 % condition
             bool wheel = IsWheel(col.transform, part);
             if (wheel) pct *= Mathf.Max(0f, GunplaySettings.WheelDamageMultiplier.Value);
-            if (pct <= 0f) return;
+            if (pct <= 0f) { CombatEvents.PartHit(part, s.ShooterRoot ?? s.Player, false, -1f, -1f, wheel); return; }
             if (s.Gun != null) Bridge.PartHit(part.gameObject, point, pct);
-            bool broke = false;
+            bool broke = false; float first = -1f, last = -1f;
             foreach (var f in part.GetComponentsInChildren<PlayMakerFSM>(true))
             {
                 if (f.FsmName != "Condition" && f.FsmName != "Repair") continue;
@@ -454,8 +466,10 @@ namespace WildWasteland.Modules.Guns
                 if (v == null) continue;
                 float before = v.Value;
                 v.Value = Mathf.Max(0f, v.Value - pct);
+                if (first < 0f) { first = before; last = v.Value; }
                 if (before > 0f && v.Value <= 0f) broke = true;
             }
+            CombatEvents.PartHit(part, s.ShooterRoot ?? s.Player, false, first, last, wheel);
             if (wheel && broke && GunplaySettings.WheelPopOff.Value) PopOff(part, s.Dir);
         }
 
@@ -537,6 +551,7 @@ namespace WildWasteland.Modules.Guns
             try { part.tag = "vehPartRemoved"; } catch (Exception e) { GunplayLog.Main("Tracers: wheel tag: " + e.Message); }
             Vector3 d = dir; d.y = 0f; d = d.sqrMagnitude > 0.001f ? d.normalized : Vector3.zero;
             _popped.Add(new KeyValuePair<GameObject, Vector3>(part.gameObject, d * 2.5f + Vector3.up * 4f));
+            CombatEvents.WheelOff(part, part.root, d * 2.5f + Vector3.up * 4f);
             _forceFree.Add(part.gameObject);
             _poppedFrame = Time.frameCount + 2;
             if (Core.Log.Verbose) GunplayLog.Main("Tracers: " + part.name + " " + why);
