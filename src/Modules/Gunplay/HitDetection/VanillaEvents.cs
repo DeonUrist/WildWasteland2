@@ -188,7 +188,11 @@ namespace WildWasteland.Modules.NPC
                 // Melee stays vanilla with Gunplay installed, and still needs this observer.
                 bool gun = ranged;
                 if (player)
-                    foreach (var f in fsm.GameObject.GetComponents<PlayMakerFSM>()) if (f != null && f.FsmName == "Reload") { gun = true; break; }
+                {
+                    var fl = FsmBuffers.Rent(); fsm.GameObject.GetComponents(fl);
+                    foreach (var f in fl) if (f != null && f.FsmName == "Reload") { gun = true; break; }
+                    FsmBuffers.Return(fl);
+                }
                 if (gun && WeaponRanges.ProjectilesEnabled) return;
                 var target = fsm.GetOwnerDefaultTarget(__instance.gameObject);
                 if (target == null) return;

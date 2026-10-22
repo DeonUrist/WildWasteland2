@@ -35,6 +35,17 @@ namespace WildWasteland.Modules.Guns
             if (Core.Log.Verbose) GunplayLog.Main("Tracers: impact effects " + (_rangedHit != null ? "RangedHit_Effect" : "none") + (_metalImpact != null ? " + MetalImpact" : ""));
         }
 
+        /// <summary>
+        /// World ready (loading screen): looks the impact prefabs up now instead of at the first impact mid-combat (README 8 #5). When one
+        /// of them is not loaded yet, the first impact looks again once, exactly as before.
+        /// </summary>
+        internal static void WarmEffects()
+        {
+            if (_effectsLooked) return;
+            FindEffects();
+            if (_rangedHit == null || _metalImpact == null) _effectsLooked = false;
+        }
+
         private static void WorldImpact(Collider col, Vector3 point, Vector3 normal, Vector3 dir)
         {
             if (!GunplaySettings.ImpactEffects.Value) return;
@@ -56,15 +67,43 @@ namespace WildWasteland.Modules.Guns
             FindEffects();
             if (_metalImpact == null) return;
             if (!IsCarMetal(col.transform)) return;
-            var fx = UnityEngine.Object.Instantiate(_metalImpact, point + normal * 0.01f, Quaternion.LookRotation(normal));
             float k = Mathf.Clamp(GunplaySettings.MetalSparksScale.Value, 0.05f, 4f);
-            if (Mathf.Abs(k - 1f) > 0.001f)
-            {
-                // the asset-store prefab is sized for a demo scene: scale the whole effect (sizes, speeds, the decal) through the hierarchy
-                foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true)) { var main = ps.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
-                fx.transform.localScale *= k;
-            }
+            var source = Mathf.Abs(k - 1f) > 0.001f ? ScaledSparks(k) : _metalImpact;
+            var fx = UnityEngine.Object.Instantiate(source, point + normal * 0.01f, Quaternion.LookRotation(normal));
+            if (!fx.activeSelf) { fx.hideFlags = HideFlags.None; fx.SetActive(true); }   // clones of the inactive scaled template start inactive
             UnityEngine.Object.Destroy(fx, 4f);                            // the prefab has no auto-destroy of its own
+        }
+
+        // (WW perf) The asset-store prefab is sized for a demo scene: the whole effect (sizes, speeds, the decal) is scaled through the
+        // hierarchy. Done once per scale value on an inactive hidden template instead of a GetComponentsInChildren + rescale per spark.
+        private static GameObject _sparksTemplate, _sparksTemplateOf;
+        private static float _sparksTemplateScale;
+
+        /// <summary>Inactive copy of MetalImpact with hierarchy scaling and localScale x <paramref name="k"/> (rebuilt when k or the prefab changes).</summary>
+        private static GameObject ScaledSparks(float k)
+        {
+            if (_sparksTemplate != null && _sparksTemplateOf == _metalImpact && Mathf.Approximately(_sparksTemplateScale, k)) return _sparksTemplate;
+            DestroySparksTemplate();
+            var staging = new GameObject("WildWasteland.Gunplay.SparksStaging");
+            staging.SetActive(false);                                      // the copy made under an inactive parent never wakes (no stray play)
+            var t = UnityEngine.Object.Instantiate(_metalImpact, staging.transform);
+            t.SetActive(false);
+            t.transform.SetParent(null, false);
+            UnityEngine.Object.Destroy(staging);
+            t.name = _metalImpact.name;
+            t.hideFlags = HideFlags.HideAndDontSave;
+            UnityEngine.Object.DontDestroyOnLoad(t);
+            foreach (var ps in t.GetComponentsInChildren<ParticleSystem>(true)) { var main = ps.main; main.scalingMode = ParticleSystemScalingMode.Hierarchy; }
+            t.transform.localScale = _metalImpact.transform.localScale * k;
+            _sparksTemplate = t; _sparksTemplateOf = _metalImpact; _sparksTemplateScale = k;
+            return t;
+        }
+
+        /// <summary>Destroys the scaled sparks template (scene change, shutdown, scale change).</summary>
+        private static void DestroySparksTemplate()
+        {
+            if (_sparksTemplate != null) UnityEngine.Object.Destroy(_sparksTemplate);
+            _sparksTemplate = null; _sparksTemplateOf = null;
         }
 
         // Any part of a car (attached parts, the frame/body itself, loose parts) except wheels. A car = a root carrying NWH's VehicleController

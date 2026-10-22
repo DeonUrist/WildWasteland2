@@ -162,6 +162,7 @@ namespace WildWasteland.Modules.Guns
 
 
         // ---------- shooter info (once per FSM owner) ----------
+        private static readonly List<Transform> _walk = new List<Transform>(256);
         private static ShooterInfo Info(Fsm fsm, GameObject owner)
         {
             ShooterInfo info;
@@ -171,16 +172,22 @@ namespace WildWasteland.Modules.Guns
             info = new ShooterInfo { Owner = owner, LeadSkill = UnityEngine.Random.Range(0.5f, 1f), Tries = tries, Retry = tries < 10 ? Time.time + 1f : float.MaxValue };
             _shooters[id] = info;
 
-            // the weapon in the hand: a model with a fire_effect child (guns) or an active "crossbow"
-            foreach (var t in owner.GetComponentsInChildren<Transform>(true))
+            // the weapon in the hand: a model with a fire_effect child (guns) or an active "crossbow" - one hierarchy walk into a reused
+            // buffer (WW perf: was two allocating walks, repeated up to 10 times for gunless monsters)
+            owner.GetComponentsInChildren(true, _walk);
+            try
             {
-                if (t.name == "fire_effect" && t.parent != null && t.parent.name != "fire_effect" && t.parent.gameObject.activeInHierarchy)
-                { info.Weapon = t.parent; info.Muzzle = t; break; }
+                foreach (var t in _walk)
+                {
+                    if (t.name == "fire_effect" && t.parent != null && t.parent.name != "fire_effect" && t.parent.gameObject.activeInHierarchy)
+                    { info.Weapon = t.parent; info.Muzzle = t; break; }
+                }
+                if (info.Weapon == null)
+                    foreach (var t in _walk)
+                        if (t.gameObject.activeInHierarchy && t.name.StartsWith("crossbow", StringComparison.OrdinalIgnoreCase) && t.GetComponent<Renderer>() != null)
+                        { info.Weapon = t; break; }
             }
-            if (info.Weapon == null)
-                foreach (var t in owner.GetComponentsInChildren<Transform>(false))
-                    if (t.name.StartsWith("crossbow", StringComparison.OrdinalIgnoreCase) && t.GetComponent<Renderer>() != null)
-                    { info.Weapon = t; break; }
+            finally { _walk.Clear(); }
             if (info.Weapon == null) return info;    // a monster: vanilla
             info.IsGun = true;
             info.Kind = Classify(info.Weapon.name);

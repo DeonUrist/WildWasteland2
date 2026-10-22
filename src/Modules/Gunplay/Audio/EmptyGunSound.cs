@@ -17,8 +17,11 @@ namespace WildWasteland.Modules.Guns
         {
             var fsm = __instance.Fsm;
             if (fsm == null) return true;
-            bool empty = fsm.Name == "Attack" && fsm.ActiveStateName == "empty";
-            if (!empty && fsm.Name != "AnimSound" && fsm.Name != "Reload") return true;
+            string n = fsm.Name;
+            int len = n != null ? n.Length : 0;                      // (WW perf) Attack/Reload = 6, AnimSound = 9: one int compare rejects most sounds
+            if (len != 6 && len != 9) return true;
+            bool empty = n == "Attack" && fsm.ActiveStateName == "empty";
+            if (!empty && n != "AnimSound" && n != "Reload") return true;
             var weapon = __instance.Owner;
             if (weapon == null || weapon.transform.parent != PlayerState.WeaponsParent) return true;
             var animation = Services.Animation;

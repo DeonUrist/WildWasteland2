@@ -168,8 +168,9 @@ namespace WildWasteland.Modules.Guns
                         var tgt = fsm.GetOwnerDefaultTarget(sf.gameObject);
                         if (tgt == null || sf.setValue == null) continue;
                         string fn = sf.fsmName != null ? sf.fsmName.Value : "", vn = sf.variableName != null ? sf.variableName.Value : "";
-                        foreach (var f in tgt.GetComponents<PlayMakerFSM>())
-                            if (f.FsmName == fn) { var v = f.FsmVariables.GetFsmFloat(vn); if (v != null) v.Value = sf.setValue.Value * falloff; break; }
+                        var fl = FsmBuffers.Rent(); tgt.GetComponents(fl);
+                        try { foreach (var f in fl) if (f.FsmName == fn) { var v = f.FsmVariables.GetFsmFloat(vn); if (v != null) v.Value = sf.setValue.Value * falloff; break; } }
+                        finally { FsmBuffers.Return(fl); }
                         continue;
                     }
                     var sg = a as SetFsmGameObject;
@@ -178,8 +179,9 @@ namespace WildWasteland.Modules.Guns
                         var tgt = fsm.GetOwnerDefaultTarget(sg.gameObject);
                         if (tgt == null || sg.setValue == null) continue;
                         string fn = sg.fsmName != null ? sg.fsmName.Value : "", vn = sg.variableName != null ? sg.variableName.Value : "";
-                        foreach (var f in tgt.GetComponents<PlayMakerFSM>())
-                            if (f.FsmName == fn) { var v = f.FsmVariables.GetFsmGameObject(vn); if (v != null) v.Value = sg.setValue.Value; break; }
+                        var gl = FsmBuffers.Rent(); tgt.GetComponents(gl);
+                        try { foreach (var f in gl) if (f.FsmName == fn) { var v = f.FsmVariables.GetFsmGameObject(vn); if (v != null) v.Value = sg.setValue.Value; break; } }
+                        finally { FsmBuffers.Return(gl); }
                         continue;
                     }
                     var se = a as SendEvent;
@@ -417,15 +419,21 @@ namespace WildWasteland.Modules.Guns
             if (s.Impact != null) UnityEngine.Object.Instantiate(s.Impact, point, Quaternion.identity);
             if (target == null || Mathf.Abs(damage) < 0.01f) return;
             if (col_isHead(target) && !IsPlayerObj(target)) damage *= HeadFactor(target);
-            var fsms = target.GetComponents<PlayMakerFSM>();
-            foreach (var f in fsms)
-                if (f.FsmName == "Bodypart")
-                {
-                    var v = f.FsmVariables.GetFsmFloat("Damage");
-                    if (v != null) v.Value = damage;
-                }
-            float before = Core.Log.Verbose ? HealthOf(target) : 0f;
-            foreach (var f in fsms) if (s.EventFsm == null || f.FsmName == s.EventFsm) f.SendEvent(s.EventName);
+            var fsms = FsmBuffers.Rent();
+            target.GetComponents(fsms);
+            float before = 0f;
+            try
+            {
+                foreach (var f in fsms)
+                    if (f.FsmName == "Bodypart")
+                    {
+                        var v = f.FsmVariables.GetFsmFloat("Damage");
+                        if (v != null) v.Value = damage;
+                    }
+                before = Core.Log.Verbose ? HealthOf(target) : 0f;
+                foreach (var f in fsms) if (s.EventFsm == null || f.FsmName == s.EventFsm) f.SendEvent(s.EventName);
+            }
+            finally { FsmBuffers.Return(fsms); }
             Bridge.Hurt(target, s.ShooterRoot);
             if (ModEvents.HasListeners<ProjectileHit>() || ModEvents.HasListeners<Hurt>())
             {
@@ -457,7 +465,9 @@ namespace WildWasteland.Modules.Guns
             if (pct <= 0f) { CombatEvents.PartHit(part, s.ShooterRoot ?? s.Player, false, -1f, -1f, wheel); return; }
             if (s.Gun != null) Bridge.PartHit(part.gameObject, point, pct);
             bool broke = false; float first = -1f, last = -1f;
-            foreach (var f in part.GetComponentsInChildren<PlayMakerFSM>(true))
+            var parts = FsmBuffers.Rent();
+            part.GetComponentsInChildren(true, parts);
+            foreach (var f in parts)
             {
                 if (f.FsmName != "Condition" && f.FsmName != "Repair") continue;
                 if (f.Fsm == null || !f.Fsm.Initialized) continue;
@@ -469,6 +479,7 @@ namespace WildWasteland.Modules.Guns
                 if (first < 0f) { first = before; last = v.Value; }
                 if (before > 0f && v.Value <= 0f) broke = true;
             }
+            FsmBuffers.Return(parts);
             CombatEvents.PartHit(part, s.ShooterRoot ?? s.Player, false, first, last, wheel);
             if (wheel && broke && GunplaySettings.WheelPopOff.Value) PopOff(part, s.Dir);
         }

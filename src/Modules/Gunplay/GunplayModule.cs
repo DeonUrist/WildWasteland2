@@ -159,8 +159,8 @@ namespace WildWasteland.Modules.Gunplay
             VanillaEvents.OnSceneLoaded();
         }
 
-        /// <summary>World ready: weapons holstered and ironsights off once the native FSMs run.</summary>
-        public override void OnWorldReady() { WeaponTransition.StartWorld(); Ironsights.StartWorld(); }
+        /// <summary>World ready: weapons holstered and ironsights off once the native FSMs run; impact effect prefabs looked up.</summary>
+        public override void OnWorldReady() { WeaponTransition.StartWorld(); Ironsights.StartWorld(); Tracers.WarmEffects(); }
 
         /// <summary>FloatingOrigin jump: bullets in flight and landed bolts move with the world.</summary>
         public override void OnOriginShift(Vector3 delta) { Tracers.OriginShift(delta); }

@@ -91,14 +91,21 @@ namespace WildWasteland.Modules.Guns
             return false;
         }
 
+        // (WW perf) [Gunplay / Melee] StabWeapons parsed once per setting text instead of a string.Split per blade hit
+        private static string _bladeSource;
+        private static string[] _blades = new string[0];
+
+        /// <summary>The weapon name contains one of the StabWeapons entries (case-insensitive).</summary>
         private static bool IsBlade(string weapon)
         {
             string list = GunplaySettings.StabWeapons.Value ?? "";
-            foreach (var part in list.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+            if (!ReferenceEquals(list, _bladeSource))
             {
-                string k = part.Trim();
-                if (k.Length > 0 && weapon.IndexOf(k, StringComparison.OrdinalIgnoreCase) >= 0) return true;
+                var parts = new List<string>();
+                foreach (var part in list.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)) { string k = part.Trim(); if (k.Length > 0) parts.Add(k); }
+                _blades = parts.ToArray(); _bladeSource = list;
             }
+            for (int i = 0; i < _blades.Length; i++) if (weapon.IndexOf(_blades[i], StringComparison.OrdinalIgnoreCase) >= 0) return true;
             return false;
         }
 
@@ -152,7 +159,8 @@ namespace WildWasteland.Modules.Guns
                 if (part == null || !IsWheel(target.transform, part)) return;
                 float mult = Mathf.Max(0f, GunplaySettings.WheelDamageMultiplier.Value);
                 float before = PartCondition(part);
-                foreach (var f in target.GetComponents<PlayMakerFSM>())
+                var tf = FsmBuffers.Rent(); target.GetComponents(tf);
+                foreach (var f in tf)
                 {
                     if (f == null || f.FsmName != "Bodypart") continue;
                     var v = f.FsmVariables.FindFsmFloat("Damage");
@@ -162,6 +170,7 @@ namespace WildWasteland.Modules.Guns
                     if (Core.Log.Verbose) Core.Log.Info("[Guns] Hit: " + weapon.name + " (melee) -> " + part.name + ", condition " + before.ToString("0.0") + " " + v.Value.ToString("0.0") + " (x" + mult.ToString("0.#") + ")");
                     break;
                 }
+                FsmBuffers.Return(tf);
                 var mainCam = GameRefs.MainCamera;
                 Vector3 dir = mainCam != null ? mainCam.transform.forward : Vector3.forward;
                 CombatEvents.PartHit(part, GameRefs.Player, true, before, -1f, true);
@@ -318,14 +327,20 @@ namespace WildWasteland.Modules.Guns
 
         private static float PartCondition(Transform part)
         {
-            foreach (var f in part.GetComponentsInChildren<PlayMakerFSM>(true))
+            var fsms = FsmBuffers.Rent();
+            part.GetComponentsInChildren(true, fsms);
+            try
             {
-                if (f == null || (f.FsmName != "Condition" && f.FsmName != "Repair") || f.Fsm == null || !f.Fsm.Initialized) continue;
-                if (OwningPart(f.transform) != part) continue;
-                var v = f.FsmVariables.FindFsmFloat("Condition");
-                if (v != null) return v.Value;
+                foreach (var f in fsms)
+                {
+                    if (f == null || (f.FsmName != "Condition" && f.FsmName != "Repair") || f.Fsm == null || !f.Fsm.Initialized) continue;
+                    if (OwningPart(f.transform) != part) continue;
+                    var v = f.FsmVariables.FindFsmFloat("Condition");
+                    if (v != null) return v.Value;
+                }
+                return -1f;
             }
-            return -1f;
+            finally { FsmBuffers.Return(fsms); }
         }
 
         private static void CheckMeleeWheels()

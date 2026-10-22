@@ -175,8 +175,8 @@ namespace WildWasteland.Modules.Guns
             // (WW) the drawn model is an active Reload FSM under the player's WeaponsArm: search that subtree instead of the whole
             // scene every second (whole-scene scan only while the rig is not found)
             var arm = PlayerState.WeaponsArm;
-            if (arm != null) arm.GetComponentsInChildren(false, _buf);
-            else _buf.AddRange(UnityEngine.Object.FindObjectsOfType<PlayMakerFSM>());
+            if (arm == null) return;            // (WW perf) no whole-scene FindObjectsOfType while the rig is missing: retried next second
+            arm.GetComponentsInChildren(false, _buf);
             try
             {
                 for (int i = 0; i < _buf.Count; i++)
@@ -195,10 +195,8 @@ namespace WildWasteland.Modules.Guns
         {
             var r = HandlerIn(GameRefs.Player);
             if (r == null) r = HandlerIn(GameRefs.PlayerCameraHolder);
-            if (r != null) return r;
-            foreach (var f in UnityEngine.Object.FindObjectsOfType<PlayMakerFSM>())
-                if (f.FsmName == "WeaponInHand" && f.gameObject.name == "Weapons") return f;
-            return null;
+            return r;                           // (WW perf) no whole-scene scan: the handler lives under the player rig
+
         }
 
         private static PlayMakerFSM HandlerIn(GameObject root)

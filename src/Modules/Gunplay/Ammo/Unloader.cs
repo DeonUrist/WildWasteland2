@@ -191,7 +191,7 @@ namespace WildWasteland.Modules.Guns
                 try { var r = PickReload(_armFsms); if (r != null) return r; }
                 finally { _armFsms.Clear(); }
             }
-            return PickReload(UnityEngine.Object.FindObjectsOfType<PlayMakerFSM>());
+            return null;                        // (WW perf) no whole-scene scan: every accepted model sits under WeaponsArm anyway
         }
 
         private static PlayMakerFSM PickReload(IList<PlayMakerFSM> fsms)

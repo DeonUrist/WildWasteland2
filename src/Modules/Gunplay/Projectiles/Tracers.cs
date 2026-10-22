@@ -108,7 +108,7 @@ namespace WildWasteland.Modules.Guns
             _shots.Clear();
             _shooters.Clear();
             _counts.Clear();
-            _rangedHit = null; _metalImpact = null; _effectsLooked = false;
+            _rangedHit = null; _metalImpact = null; _effectsLooked = false; DestroySparksTemplate();
             _carRoots.Clear();
             _headMul.Clear(); 
             _reported.Clear();
