@@ -4,7 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
+
 
 namespace WildWasteland.Modules.POI
 {
@@ -27,7 +27,7 @@ namespace WildWasteland.Modules.POI
         { unchecked { sum = (sum ^ new Bits { F = y }.U) * 16777619; sum = (sum ^ why) * 16777619; sum = (sum ^ sky) * 16777619; return (sum ^ edge) * 16777619; } }
         internal static string LastMiss = "";
         /// <summary>The saved grid map of a building template: an exact match first, then one of the same grid whose collider count differs; null when none (LastMiss says why).</summary>
-        internal static TownBakeData Load(BuildingSpec spec, float margin, float cell)   // refs-ok: REFACTOR-REQUEST B08-6
+        internal static TownBakeData Load(BuildingSpec spec, float margin, float cell)
         {
             // exact maps first; then (WW) a map of the same grid whose collider count differs (loose / dynamic props counted
             // differently by the runtime baker): the footprint, floors and walls are the same grid
@@ -35,17 +35,17 @@ namespace WildWasteland.Modules.POI
             return map ?? Load(spec, margin, cell, false);
         }
         /// <summary>Searches the embedded vanilla pack, then the plugin vanilla and custom map folders of the grid baker, for a map of spec's grid size.</summary>
-        private static TownBakeData Load(BuildingSpec spec, float margin, float cell, bool strict)   // refs-ok: REFACTOR-REQUEST B08-6
+        private static TownBakeData Load(BuildingSpec spec, float margin, float cell, bool strict)
         {
             cell = Mathf.Max(cell, Mathf.Max(spec.HalfX * 2 + margin * 2, spec.HalfZ * 2 + margin * 2) / 600f);
             int w = Mathf.Max(2, Mathf.CeilToInt((spec.HalfX * 2 + margin * 2) / cell));
             int h = Mathf.Max(2, Mathf.CeilToInt((spec.HalfZ * 2 + margin * 2) / cell));
-            string prefix = Nav.VanillaResourcePrefix + spec.Name + "-";
+            string prefix = "NPCAI.NavMaps.Vanilla." + spec.Name + "-";
             foreach (string resource in WildWasteland.Core.DiskResources.Names)
                 if (resource.StartsWith(prefix, StringComparison.Ordinal) && resource.EndsWith(".wwnav", StringComparison.Ordinal))
                 { using (var stream = WildWasteland.Core.DiskResources.Open(resource)) { var map = Read(stream, resource, spec, w, h, cell, margin, strict); if (map != null) return map; } }
             // the folders of the grid baker (Nav): plugin vanilla pack, then the custom cache (A3-1 / D12: the old plugin NavMaps root is gone)
-            foreach (string directory in new[] { Nav.VanillaMapDir, Nav.CustomMapDir })
+            foreach (string directory in new[] { System.IO.Path.Combine(Assets.ModuleDir("NPCAI"),"NavMaps","Vanilla"), System.IO.Path.Combine(Assets.ModuleConfigDir("NPCAI"),"NavMaps","Custom") })
             {
                 if (!Directory.Exists(directory)) continue;
                 var files = Directory.GetFiles(directory, spec.Name + "-*.wwnav"); Array.Sort(files, StringComparer.Ordinal);
@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.POI
             return null;
         }
         /// <summary>Reads one .wwnav map when its grid matches (and its collider count, when strict); throws on a corrupt map.</summary>
-        private static TownBakeData Read(Stream stream, string source, BuildingSpec spec, int w, int h, float cell, float margin, bool strict)   // refs-ok: REFACTOR-REQUEST B08-6
+        private static TownBakeData Read(Stream stream, string source, BuildingSpec spec, int w, int h, float cell, float margin, bool strict)
         {
             using (var r = new BinaryReader(stream))
             {
@@ -104,7 +104,7 @@ namespace WildWasteland.Modules.POI
             return (Edges[a] & (1 << k)) != 0 || (k < 2 && (Edges[a] & (1 << (k + 4))) != 0);
         }
         /// <summary>Measures the building's entrance: a roofed walkable cell next to an outside sky cell reachable from the boundary with a clear way out (roofless ruins: a clear opening along the footprint); writes spec.Entry/Outward.</summary>
-        internal bool FindEntry(BuildingSpec spec)   // refs-ok: REFACTOR-REQUEST B08-6
+        internal bool FindEntry(BuildingSpec spec)
         {
             // Exterior sky cells reachable from the map boundary, without crossing a wall or roof.
             var outside = new bool[Floor.Length]; var queue = new Queue<int>();

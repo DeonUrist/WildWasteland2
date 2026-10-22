@@ -278,7 +278,7 @@ namespace WildWasteland.Modules.POI
             foreach (var c in prefab.GetComponentsInChildren<Collider>(true))
             {
                 if (!c.enabled || c.isTrigger || (c.attachedRigidbody != null && !c.attachedRigidbody.isKinematic)) continue;
-                if (((1 << c.gameObject.layer) & TownNavigation.Mask) == 0) continue;
+                if (((1 << c.gameObject.layer) & Layers.NavSolid) == 0) continue;
                 bool active = true;
                 for (var t = c.transform; t != prefab.transform; t = t.parent) if (!t.gameObject.activeSelf) { active = false; break; }
                 if (!active) continue;

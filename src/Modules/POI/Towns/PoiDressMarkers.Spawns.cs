@@ -75,7 +75,7 @@ namespace WildWasteland.Modules.POI
                 var point = new GameObject("Spawn " + i); point.transform.SetParent(points.transform, false);
                 point.transform.localPosition = new Vector3((float)random.NextDouble() - .5f, .03f, (float)random.NextDouble() - .5f);
                 RaycastHit floor; var position = point.transform.position;
-                if (Physics.Raycast(position + Vector3.up * .4f, Vector3.down, out floor, .8f, TownNavigation.Mask, QueryTriggerInteraction.Ignore) && floor.normal.y >= .65f)
+                if (Physics.Raycast(position + Vector3.up * .4f, Vector3.down, out floor, .8f, Layers.NavSolid, QueryTriggerInteraction.Ignore) && floor.normal.y >= .65f)
                     point.transform.position = floor.point + Vector3.up * .06f;
             }
             Spawners.Select(fsm, profile.Indices, profile.Weights);

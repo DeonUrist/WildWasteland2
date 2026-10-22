@@ -1,14 +1,15 @@
+using WildWasteland.Core;
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace WildWasteland.Modules.POI
+namespace WildWasteland.Modules.NPC
 {
     /// <summary>
     /// Numeric entrance selection outside the town; the street graph is only used inside its contour.
     /// </summary>
     internal sealed class TownApproach
     {
-        private readonly TownOutline _outline;   // refs-ok: REFACTOR-REQUEST B08-6
+        private readonly TownOutline _outline;
         private readonly Vector3[] _gates = new Vector3[4];
         private readonly Vector3[] _corners = new Vector3[4];
         private readonly float[,] _cost = new float[4, 4];
@@ -19,11 +20,11 @@ namespace WildWasteland.Modules.POI
         private readonly Dictionary<int, Detour> _detours = new Dictionary<int, Detour>();
         private readonly List<int> _dead = new List<int>();
         /// <summary>Gate positions, outside corners (12 m off the wall frame) and the shortest way round the wall between every two corners.</summary>
-        internal TownApproach(TownPlan plan)   // refs-ok: REFACTOR-REQUEST B08-6
+        internal TownApproach(TownNavGeometry plan)
         {
-            _outline = TownPerimeter.Outline(plan); var frame = TownPerimeter.Frame(plan);   // refs-ok: REFACTOR-REQUEST B08-6
-            for (int side = 0; side < 4; side++) _gates[side] = TownPerimeter.Gate(frame, side);   // refs-ok: REFACTOR-REQUEST B08-6
-            for (int i = 0; i < 4; i++) _corners[i] = TownPerimeter.Corner(frame, i, 12f);   // refs-ok: REFACTOR-REQUEST B08-6
+            _outline = TownPerimeter.Outline(plan); var frame = TownPerimeter.Frame(plan);
+            for (int side = 0; side < 4; side++) _gates[side] = TownPerimeter.Gate(frame, side);
+            for (int i = 0; i < 4; i++) _corners[i] = TownPerimeter.Corner(frame, i, 12f);
             float perimeter = 0f; for (int i = 0; i < 4; i++) perimeter += Vector3.Distance(_corners[i], _corners[(i + 1) % 4]);
             for (int a = 0; a < 4; a++) for (int b = 0; b < 4; b++)
             {
@@ -71,12 +72,12 @@ namespace WildWasteland.Modules.POI
             // Prefer a gate on a facing side: its approach stays outside the wall's bounding frame.
             for (int pass = 0; pass < 2 && best < 0; pass++) for (int side = 0; side < 4; side++)
             {
-                var normal = TownPerimeter.Normal(side);   // refs-ok: REFACTOR-REQUEST B08-6
+                var normal = TownPerimeter.Normal(side);
                 if (pass == 0 && Vector3.Dot(position - _gates[side], normal) < -1f) continue;
                 float distance = (position - _gates[side] - normal * 16f).sqrMagnitude;
                 if (distance < cost) { cost = distance; best = side; }
             }
-            var n = TownPerimeter.Normal(best); var delta = position - _gates[best];   // refs-ok: REFACTOR-REQUEST B08-6
+            var n = TownPerimeter.Normal(best); var delta = position - _gates[best];
             float outward = Vector3.Dot(delta, n);
             var lateral = delta - n * outward;
             // Line up outside first, then cross the opening to the existing inner gate node.

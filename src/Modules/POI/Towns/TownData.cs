@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.POI
 {
@@ -121,12 +122,13 @@ namespace WildWasteland.Modules.POI
         internal Transform Anchor;
         internal Terrain GroundTerrain;
         internal TownGroundPad GroundPad;
-        internal TownApproach Approach;
+        internal TownNavContext NavContext;
+        internal PopulationArea PopulationArea;
         internal GameObject Streets;
         internal GameObject[] Buildings;
         internal PlayMakerFSM[][] Spawners;
-        internal TownNavigation Navigation;
-        internal TownOverlap Overlap;
+        internal ITownNavWork Navigation;
+        internal ITownOverlayWork Overlap;
         internal TownLoading.Work Loading;
         internal int NextLot;
         internal bool PopulationReady;

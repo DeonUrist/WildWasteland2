@@ -1,5 +1,5 @@
 using UnityEngine;
-using WildWasteland.Modules.NPC;
+using WildWasteland.Core;
 
 namespace WildWasteland.Modules.POI
 {
@@ -51,6 +51,6 @@ namespace WildWasteland.Modules.POI
     {
         /// <summary>Drops root's structure; the sweep / Discover maps it again once the dressing is ready.</summary>
         [System.Obsolete("refactor: use ModApi.Get<INavApi>().ForgetStructure(root)")]
-        internal static void Forget(Transform root) { Nav.Forget(root); }
+        internal static void Forget(Transform root) { ModApi.Get<INavApi>()?.ForgetStructure(root); }
     }
 }

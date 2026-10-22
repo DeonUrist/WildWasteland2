@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.NPC;
 
-namespace WildWasteland.Modules.POI
+
+namespace WildWasteland.Modules.NPC
 {
     /// <summary>Street routing of one town between separately baked buildings: plan street nodes + one portal per building, validated links, all-pairs routes.</summary>
     internal sealed class TownNavigation
@@ -12,8 +12,8 @@ namespace WildWasteland.Modules.POI
         // Same static-world layers as the existing baker; triggers, actors, cars and loose items are excluded.
         /// <summary>Navigation solid mask (POI/Loot/Tools still read it; README A6-9: Core Layers is the final home, request B08-4).</summary>
         internal const int Mask = NavMasks.Solid;
-        private readonly TownSite _site;   // refs-ok: REFACTOR-REQUEST B08-6
-        private readonly TownOutline _outline;   // refs-ok: REFACTOR-REQUEST B08-6
+        private readonly TownNavContext _site;
+        private readonly TownOutline _outline;
         private readonly List<Vector3> _cells = new List<Vector3>(256);
         private readonly Vector3[] _nodes; // map-anchor-relative positions, so origin jumps need no cached correction
         private readonly float[,] _distance;
@@ -38,9 +38,9 @@ namespace WildWasteland.Modules.POI
         internal float Progress { get { return Ready ? 1 : !_streetsChecked ? _edgeCheck / (float)Mathf.Max(1, _site.Plan.StreetEdges.Length) * .3f
             : _floyd < 0 ? .3f + .3f * _lot / _site.Plan.LotCount : .6f + .4f * _floyd / _nodes.Length; } }
         /// <summary>Street nodes of the plan plus one portal node per lot, with empty distance / next-hop tables.</summary>
-        internal TownNavigation(TownSite site)   // refs-ok: REFACTOR-REQUEST B08-6
+        internal TownNavigation(TownNavContext site)
         {
-            _site = site; _outline = TownPerimeter.Outline(site.Plan); int n = site.Plan.StreetNodes.Length + site.Plan.LotCount;   // refs-ok: REFACTOR-REQUEST B08-6
+            _site = site; _outline = TownPerimeter.Outline(site.Plan); int n = site.Plan.StreetNodes.Length + site.Plan.LotCount;
             _nodes = new Vector3[n]; _distance = new float[n, n]; _hop = new int[n, n];
             _links = new List<Arc>[n]; for (int i = 0; i < n; i++) _links[i] = new List<Arc>();
             for (int a = 0; a < n; a++) for (int b = 0; b < n; b++)
@@ -79,7 +79,7 @@ namespace WildWasteland.Modules.POI
                 {
                     bool known, baked;
                     int count = TownOverlap.PortalCandidates(building.transform, Scene(_site.Plan.Lots[_lot].EntryNode), _cells, out known, out baked);
-                    if (!known) TownBakeBridge.Discover(building);
+                    if (!known) Nav.Discover(building.transform);
                     if (!baked) { _retry = Time.unscaledTime + .5f; return false; }
                     if (count == 0) Log.Warn(NavRuntime.Owner, "Towns: no walkable cells beside measured entrance for " + building.name);
                     _probeAnchor = _site.Anchor.position; _portalCost = float.PositiveInfinity; _cellIndex = 0;
@@ -119,12 +119,12 @@ namespace WildWasteland.Modules.POI
         {
             if (_site.GroundTerrain != null) return true;
             var center = _site.Plan.WorldCenter; var pa = _nodes[a] - center; var pb = _nodes[b] - center;
-            if (_site.Walls != null && _outline.Crosses(pa, pb, 2.5f)) return true;
+            if (_site.HasWalls && _outline.Crosses(pa, pb, 2.5f)) return true;
             foreach (var box in _site.DebrisBlockers)
             {
                 float lo = 0, hi = 1;
-                if (TownPerimeter.Clip(_nodes[a].x - box.center.x, _nodes[b].x - _nodes[a].x, box.extents.x + 3, ref lo, ref hi)   // refs-ok: REFACTOR-REQUEST B08-6
-                    && TownPerimeter.Clip(_nodes[a].z - box.center.z, _nodes[b].z - _nodes[a].z, box.extents.z + 3, ref lo, ref hi)) return true;   // refs-ok: REFACTOR-REQUEST B08-6
+                if (TownPerimeter.Clip(_nodes[a].x - box.center.x, _nodes[b].x - _nodes[a].x, box.extents.x + 3, ref lo, ref hi)
+                    && TownPerimeter.Clip(_nodes[a].z - box.center.z, _nodes[b].z - _nodes[a].z, box.extents.z + 3, ref lo, ref hi)) return true;
             }
             return false;
         }
@@ -171,7 +171,7 @@ namespace WildWasteland.Modules.POI
         private bool Compute(Vector3 position, Vector3 goal, out Vector3 waypoint)
         {
             waypoint = goal;
-            int startLot = Lot(TownBakeBridge.Root(position)), endLot = Lot(TownBakeBridge.Root(goal));
+            int startLot = Lot(Nav.StructureRootAt(position)), endLot = Lot(Nav.StructureRootAt(goal));
             if (startLot >= 0 && startLot == endLot) return false; // existing local map handles the whole leg
             if (startLot < 0 && endLot < 0 && Clear(position, goal)) return false;
             int streets = _site.Plan.StreetNodes.Length;
@@ -202,7 +202,7 @@ namespace WildWasteland.Modules.POI
                 float t = Mathf.Clamp01(Vector3.Dot(flat, delta) / Mathf.Max(.001f, delta.sqrMagnitude));
                 Vector3 projection = pa + delta * t;
                 float offset = Horizontal(position, projection);
-                if (_site.Walls != null && _outline.Crosses(_site.Anchor.InverseTransformPoint(position) - _site.Plan.WorldCenter,
+                if (_site.HasWalls && _outline.Crosses(_site.Anchor.InverseTransformPoint(position) - _site.Plan.WorldCenter,
                     _site.Anchor.InverseTransformPoint(projection) - _site.Plan.WorldCenter, .4f)) continue;
                 float ca = t * delta.magnitude + _distance[a, end], cb = (1 - t) * delta.magnitude + _distance[b, end];
                 float route = Mathf.Min(ca, cb);
