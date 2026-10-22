@@ -16,12 +16,14 @@ namespace WildWasteland.Modules.Tools
         internal static Transform EditRoot;
         internal static int Selected = -1;
         internal static bool ShowSurfaces = true, ShowLadders = true, ShowClimbs = true, ShowDrops = true, ShowOff = true;   // editor filters
+        /// <summary>Checks link display switches before drawing a traversal.</summary>
         internal static bool Visible(PoiNavLink l)
         {
             if (l.Off && !ShowOff) return false;
             return l.Kind == PoiLinkKind.Ladder ? ShowLadders : l.Kind == PoiLinkKind.Climb ? ShowClimbs : ShowDrops;
         }
 
+        /// <summary>Reconciles the diagnostic render subscription with current settings and provider availability.</summary>
         internal static void Tick()
         {
             // (A3) PoiNav.LearnLadderSide (dead after its return) deleted; PoiNav.WalkerTick runs in NPCAI's own "PoiNav.Walkers" job,
@@ -33,8 +35,10 @@ namespace WildWasteland.Modules.Tools
             if (want) Camera.onPostRender += Draw; else Camera.onPostRender -= Draw;
             _hooked = want;
         }
+        /// <summary>Removes the render callback and releases draft references and generated material.</summary>
         internal static void Unhook() { if (_hooked) Camera.onPostRender -= Draw; _hooked = false; EditData = null; EditRoot = null; if (_mat != null) UnityEngine.Object.Destroy(_mat); _mat = null; }
 
+        /// <summary>Creates the reusable line material when the diagnostic renderer needs it.</summary>
         static bool Material()
         {
             if (_mat != null) return true;
@@ -48,6 +52,7 @@ namespace WildWasteland.Modules.Tools
             return true;
         }
 
+        /// <summary>Draws ready navigation graphs for the current gameplay camera.</summary>
         static void Draw(Camera cam)
         {
             try
@@ -69,9 +74,12 @@ namespace WildWasteland.Modules.Tools
             catch (Exception e) { Log.Warn("[NPC] POI navigation view: " + e.Message); }
         }
 
+        /// <summary>Refreshes reusable detached views from the navigation owner.</summary>
         private static System.Collections.Generic.List<NavigationAuthoringInstance> Instances() { NavigationTools.Source.Instances(_instances); return _instances; }
+        /// <summary>Returns a stable translucent diagnostic color for a surface index.</summary>
         internal static Color SurfaceColor(int s) { var c = Color.HSVToRGB(Mathf.Repeat(s * .618f, 1f), .65f, 1f); c.a = .85f; return c; }
 
+        /// <summary>Draws node surfaces and styled traversal links for one graph.</summary>
         static void DrawData(Transform root, PoiNavData d, Vector3[] world, int selected)
         {
             Vector3 up = Vector3.up * .05f;
@@ -126,8 +134,11 @@ namespace WildWasteland.Modules.Tools
                 Cross(f, .15f); Cross(t, .15f);
             }
         }
+        /// <summary>Resolves a node position from captured world data or the root transform.</summary>
         static Vector3 N(Transform root, PoiNavData d, Vector3[] world, int i) { return world != null && i < world.Length ? world[i] : root.TransformPoint(d.Nodes[i].Pos); }
+        /// <summary>Emits two vertices in the current diagnostic line batch.</summary>
         static void Line(Vector3 a, Vector3 b) { GL.Vertex(a); GL.Vertex(b); }
+        /// <summary>Emits two vertices in the current diagnostic line batch.</summary>
         static void Cross(Vector3 p, float s) { Line(p - Vector3.right * s, p + Vector3.right * s); Line(p - Vector3.forward * s, p + Vector3.forward * s); Line(p, p + Vector3.up * s * 2f); }
     }
 }

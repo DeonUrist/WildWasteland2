@@ -16,7 +16,9 @@ namespace WildWasteland.Modules.Tools
         internal bool Collision;
         internal string Kind, Id, Profile;
         internal int Minimum = 1, Maximum = 3, Chance = 100;
+        /// <summary>Identifies gameplay markers rather than static scenery entries.</summary>
         internal bool Marker { get { return !string.IsNullOrEmpty(Kind); } }
+        /// <summary>Copies editable layout values without sharing the mutable props collection.</summary>
         internal EditorProp Copy() { return (EditorProp)MemberwiseClone(); }
     }
     internal sealed class EditorLayout
@@ -24,12 +26,14 @@ namespace WildWasteland.Modules.Tools
         internal const int Limit = 512;
         internal string Type;
         internal readonly List<EditorProp> Props = new List<EditorProp>();
+        /// <summary>Copies editable layout values without sharing the mutable props collection.</summary>
         internal EditorLayout Copy()
         { var copy = new EditorLayout { Type = Type }; foreach (var prop in Props) copy.Props.Add(prop.Copy()); return copy; }
     }
     // These are portable POI authoring assets, shared by every instance; never world/save-slot sidecars.
     internal static class EditorLayoutJson
     {
+        /// <summary>Parses and validates the current layout schema into a detached draft.</summary>
         internal static EditorLayout Parse(string text, string type)
         {
             var root = Json.Parse(text) as Dictionary<string, object>;
@@ -61,12 +65,16 @@ namespace WildWasteland.Modules.Tools
             }
             return layout;
         }
+        /// <summary>Reads a required string field from the authored object.</summary>
         private static string String(Dictionary<string, object> data, string key)
         { object value; return data.TryGetValue(key, out value) ? value as string : null; }
+        /// <summary>Reads a finite numeric field from the authored object.</summary>
         private static double Number(Dictionary<string, object> data, string key)
         { object value; if (!data.TryGetValue(key, out value) || !(value is double)) throw new InvalidDataException("Invalid " + key); return (double)value; }
+        /// <summary>Reads an integer within the supported authored range.</summary>
         private static int Integer(Dictionary<string, object> data, string key, int min, int max)
         { double value = Number(data, key); if (value < min || value > max || value != Math.Floor(value)) throw new InvalidDataException("Invalid marker " + key); return (int)value; }
+        /// <summary>Reads and bounds-checks a three-coordinate authored value.</summary>
         private static Vector3 Vector(Dictionary<string, object> data, string key, float min, float max)
         {
             object value; var array = data.TryGetValue(key, out value) ? value as List<object> : null;
@@ -81,6 +89,7 @@ namespace WildWasteland.Modules.Tools
             }
             return vector;
         }
+        /// <summary>Escapes a string for portable layout JSON output.</summary>
         private static void Quote(StringBuilder text, string value)
         {
             text.Append('"');
@@ -90,8 +99,10 @@ namespace WildWasteland.Modules.Tools
                 else text.Append(c);
             text.Append('"');
         }
+        /// <summary>Serializes a three-coordinate authored value.</summary>
         private static void WriteVector(StringBuilder text, Vector3 value)
         { text.Append('[').Append(value.x.ToString("R", CultureInfo.InvariantCulture)).Append(',').Append(value.y.ToString("R", CultureInfo.InvariantCulture)).Append(',').Append(value.z.ToString("R", CultureInfo.InvariantCulture)).Append(']'); }
+        /// <summary>Serializes the current detached draft in the supported layout format.</summary>
         internal static string Serialize(EditorLayout layout)
         {
             var text = new StringBuilder("{\n  \"version\":2,\n  \"poi\":"); Quote(text, layout.Type); text.Append(",\n  \"props\":[\n");

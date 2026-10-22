@@ -26,12 +26,16 @@ namespace WildWasteland.Modules.Tools
         internal static PoiNavBake Baking;
         internal static int Baked, Failed;
 
+        /// <summary>Sets the real navigation generation hold while unsaved setup copies are active.</summary>
         private static void SetSuspended(bool value) { var navigation = ModApi.Get<INavApi>(); if (navigation != null) navigation.WorldGenerationSuspended = value; }
+        /// <summary>Appends live unsaved setup roots to native navigation discovery.</summary>
         internal static void Roots(List<Transform> into) { foreach (var t in _placed) if (t != null) into.Add(t); }
+        /// <summary>Reports the number of retained setup copies.</summary>
         internal static int Placed { get { return _placed.Count; } }
         internal static bool Active { get { return _holder != null; } }
 
         // every frame: follows the setting, places one POI per frame, runs the bake queue
+        /// <summary>Reconciles setup activation and advances placement and sliced baking.</summary>
         internal static void Tick()
         {
             if (NavigationTools.Source == null) { Reset(); return; }
@@ -43,6 +47,7 @@ namespace WildWasteland.Modules.Tools
             BakeTick();
         }
 
+        /// <summary>Collects native structure prefabs and prepares the unsaved setup area.</summary>
         static void Start()
         {
             _prefabs.Clear(); _placed.Clear(); _next = 0;
@@ -76,6 +81,7 @@ namespace WildWasteland.Modules.Tools
             Log.Always("[NPC] POI pathfinding setup: placing " + _prefabs.Count + " native POI types from " + _cursor.ToString("F0") + "; new towns paused.");
         }
 
+        /// <summary>Places and strips one native structure copy for explicit authoring.</summary>
         static void PlaceOne()
         {
             var prefab = _prefabs[_next++];
@@ -111,6 +117,7 @@ namespace WildWasteland.Modules.Tools
             if (_next >= _prefabs.Count) Log.Always("[NPC] POI pathfinding setup: " + _placed.Count + " POI types placed.");
         }
 
+        /// <summary>Converts collider bounds into setup-root local coordinates.</summary>
         static Bounds Local(Collider c, Transform root)
         {
             var box = c as BoxCollider;
@@ -127,6 +134,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // geometry only: every script / FSM / rigidbody / audio / particle goes (the copy is inactive while this runs, so nothing woke)
+        /// <summary>Removes gameplay scripts from an unsaved geometry-only setup copy.</summary>
         static void Strip(GameObject go)
         {
             foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true)) if (mb != null) Object.DestroyImmediate(mb);
@@ -137,6 +145,7 @@ namespace WildWasteland.Modules.Tools
             }
         }
 
+        /// <summary>Destroys setup copies and clears queued work and generation suspension.</summary>
         static void Clear()
         {
             if (_holder != null) Object.Destroy(_holder);
@@ -146,10 +155,14 @@ namespace WildWasteland.Modules.Tools
         }
 
         // ------------------------------------------------------------------ baking
+        /// <summary>Queues every placed root for rebaking and resets completion counters.</summary>
         internal static void BakeAll() { foreach (var t in _placed) if (t != null) _queue.Enqueue(t); Baked = Failed = 0; }
+        /// <summary>Queues one requested root for authoring bake.</summary>
         internal static void Bake(Transform root) { if (root != null) _queue.Enqueue(root); }
+        /// <summary>Counts queued roots and the currently active bake.</summary>
         internal static int Queued { get { return _queue.Count + (Baking != null ? 1 : 0); } }
 
+        /// <summary>Advances one bounded bake and publishes successful data through its owner.</summary>
         static void BakeTick()
         {
             if (Baking == null)
@@ -176,7 +189,9 @@ namespace WildWasteland.Modules.Tools
 
         // ------------------------------------------------------------------ test NPCs (unsaved native Scraffa, Scrapyard melee)
         private static readonly List<GameObject> _tests = new List<GameObject>();
+        /// <summary>Prunes destroyed test actors and reports the live count.</summary>
         internal static int Tests { get { _tests.RemoveAll(t => t == null); return _tests.Count; } }
+        /// <summary>Creates an unsaved native actor and initializes its real NPC navigation.</summary>
         internal static string SpawnTest(Vector3 feet)
         {
             var manager = ES3Internal.ES3ReferenceMgrBase.Current;
@@ -189,13 +204,17 @@ namespace WildWasteland.Modules.Tools
             _tests.Add(actor);
             return "Test NPC " + _tests.Count + " placed. Close the editor to watch; F11 (god mode) keeps it from seeing you.";
         }
+        /// <summary>Requests normal NPC travel for all retained test actors.</summary>
         internal static void SendTests(Vector3 point)
         {
             foreach (var t in _tests) if (t != null) ModApi.Get<INpcApi>()?.Travel(t, point, .6f);
         }
+        /// <summary>Destroys setup copies and clears queued work and generation suspension.</summary>
         internal static void ClearTests() { foreach (var t in _tests) if (t != null) Object.Destroy(t); _tests.Clear(); }
 
+        /// <summary>Adjusts the setup placement cursor after an origin jump.</summary>
         internal static void Shift(Vector3 d) { _cursor += d; }
+        /// <summary>Destroys every unsaved test actor and clears the registry.</summary>
         internal static void Reset() { ClearTests(); if (_holder != null) Object.Destroy(_holder); _holder = null; _placed.Clear(); _prefabs.Clear(); _queue.Clear(); Baking = null; SetSuspended(false); }
     }
 }

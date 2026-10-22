@@ -45,7 +45,9 @@ namespace WildWasteland.Modules.Tools
         private readonly Vector3[] _lines = new Vector3[16];
         internal bool Opened { get { return _site != null; } }
         private bool Ready { get { return _draft != null && _built >= _draft.Props.Count; } }
+        /// <summary>Binds numeric edits to the draft undo capture callback.</summary>
         internal PoiEditor() { _beforeNumber = RecordUndo; }
+        /// <summary>Registers owned input, camera, preview work and drawing with the module.</summary>
         internal void Install(IModule owner, BepInEx.Configuration.ConfigEntry<Key> key)
         {
             _owner = owner; _key = key;
@@ -54,9 +56,13 @@ namespace WildWasteland.Modules.Tools
             Scheduler.EveryFrame(owner, "POI dresser camera", CameraTick, Phase.LateUpdateLast);
             Scheduler.Gui(owner, "POI dresser", Draw, WantsGui);
         }
+        /// <summary>Reports whether the dedicated layout editor is open.</summary>
         private bool WantsGui() { return Opened; }
+        /// <summary>Allows closing an open editor or opening during authorized developer gameplay.</summary>
         private bool CanToggle() { return Opened || GameRefs.InPlay && Plugin.EnableDebug.Value && Plugin.DeveloperMode.Value; }
+        /// <summary>Opens or closes the dedicated layout authoring session.</summary>
         internal void Toggle() { if (Opened) Close(); else Open(); }
+        /// <summary>Acquires an editor session and loads the nearest reusable POI layout.</summary>
         internal void Open()
         {
             if (Opened || !GameRefs.InPlay || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value) return;
@@ -87,12 +93,14 @@ namespace WildWasteland.Modules.Tools
             }
             catch { if (Opened) Close(true); else _session.Close(true); throw; }
         }
+        /// <summary>Replaces the unsaved preview container for the current draft.</summary>
         private void NewPreview()
         {
             if (_preview != null) { _preview.SetActive(false); Object.Destroy(_preview); }
             _preview = new GameObject("POI dresser draft"); _preview.transform.SetParent(_site.Root, false);
             _visuals.Clear(); _built = 0;
         }
+        /// <summary>Builds preview objects incrementally from current draft entries.</summary>
         internal bool BuildPreview()
         {
             if (!Opened || _site.Root == null || _built >= _draft.Props.Count || _previewFrame == Time.frameCount) return false;
@@ -101,6 +109,7 @@ namespace WildWasteland.Modules.Tools
             if (asset == null) { _status = "Missing native mesh: " + prop.Mesh; Close(); return false; }
             _visuals.Add(_catalog.Create(asset, _preview.transform, prop)); _built++; return true;
         }
+        /// <summary>Processes editor input and maintains preview selection and placement state.</summary>
         private void Tick()
         {
             if (!Opened) return;
@@ -145,10 +154,13 @@ namespace WildWasteland.Modules.Tools
             }
             Outline();
         }
+        /// <summary>Checks that a screen point falls inside the editable scene viewport.</summary>
         private static bool InViewport(Vector2 point)
         { float x = point.x / Screen.width * 1600, y = (Screen.height - point.y) / Screen.height * 900; return x > 320 && x < 1280 && y > 62 && y < 844; }
+        /// <summary>Updates the authoring camera from its owned view state.</summary>
         private void CameraTick()
         { if (Opened && _camera != null) _camera.transform.SetPositionAndRotation(_view, Quaternion.Euler(_pitch, _yaw, 0)); }
+        /// <summary>Adjusts the authoring camera and preview after an origin jump.</summary>
         internal void Shift(Vector3 delta)
         {
             // Native origin shift moves POI parents. Saved/draft prop coordinates remain local, including the current ghost.
@@ -156,7 +168,9 @@ namespace WildWasteland.Modules.Tools
             if (_cameraParent == null) _cameraLocal += delta;
             if (_outline != null) { for (int i = 0; i < _lines.Length; i++) _lines[i] += delta; _outline.SetPositions(_lines); }
         }
+        /// <summary>Refreshes available owner-provided spawn profiles for the marker kind.</summary>
         private List<string> Profiles(string kind) { _runtime.Profiles(kind, _profiles); return _profiles; }
+        /// <summary>Selects a catalog asset and starts an unsaved placement preview.</summary>
         private void Choose(PoiAuthoringAsset asset)
         {
             CancelPlacement(); _asset = asset;
@@ -174,6 +188,7 @@ namespace WildWasteland.Modules.Tools
             _ghost = _catalog.Create(asset, _preview.transform, _placing); _ghost.SetActive(false);
             _selected = -1; Ledger.ClearNumbers();
         }
+        /// <summary>Commits the current preview prop to the detached draft.</summary>
         private void Place()
         {
             if (!_validHit || _draft.Props.Count >= EditorLayout.Limit) return;
@@ -183,6 +198,7 @@ namespace WildWasteland.Modules.Tools
             _visuals.Add(_catalog.Create(_asset, _preview.transform, _placing)); _built++;
             _dirty = true;
         }
+        /// <summary>Finds the nearest selectable preview prop along the scene ray.</summary>
         private void Pick(Ray ray)
         {
             float closest = float.MaxValue; int selected = -1;
@@ -197,14 +213,17 @@ namespace WildWasteland.Modules.Tools
             }
             _selected = selected; Ledger.ClearNumbers();
         }
+        /// <summary>Stores a detached bounded undo snapshot before draft mutation.</summary>
         private void RecordUndo()
         { if (_draft == null) return; if (_undo.Count >= 32) _undo.Clear(); _undo.Push(_draft.Copy()); }
+        /// <summary>Restores the preceding detached layout snapshot and rebuilds its preview.</summary>
         private void Undo()
         {
             if (!Ready || _undo.Count == 0) return;
             if (_moving) { CancelPlacement(); return; }
             CancelPlacement(); _draft = _undo.Pop(); _selected = -1; _dirty = true; NewPreview(); Ledger.ClearNumbers();
         }
+        /// <summary>Removes the selected prop after capturing undo state.</summary>
         private void Delete()
         {
             if (!Ready || _selected < 0) return;
@@ -212,6 +231,7 @@ namespace WildWasteland.Modules.Tools
             RecordUndo(); CancelPlacement(); Object.Destroy(_visuals[_selected]); _visuals.RemoveAt(_selected);
             _draft.Props.RemoveAt(_selected); _built--; _selected = -1; _dirty = true; Ledger.ClearNumbers();
         }
+        /// <summary>Copies the selected prop into a new draft entry and preview.</summary>
         private void Duplicate()
         {
             if (!Ready || _selected < 0 || _draft.Props.Count >= EditorLayout.Limit) return;
@@ -222,6 +242,7 @@ namespace WildWasteland.Modules.Tools
             _visuals.Add(_catalog.Create(asset, _preview.transform, prop)); _built++;
             _selected = _built - 1; _dirty = true; Ledger.ClearNumbers();
         }
+        /// <summary>Discards the active uncommitted placement object.</summary>
         private void CancelPlacement()
         {
             _profilesOpen = false;
@@ -230,8 +251,10 @@ namespace WildWasteland.Modules.Tools
             { _draft = _undo.Pop(); NewPreview(); _dirty = true; }
             _moving = false; _validHit = false;
         }
+        /// <summary>Applies edited draft coordinates to the selected preview.</summary>
         private void PoseSelected()
         { if (_selected >= 0 && _selected < _visuals.Count) PoiEditorCatalog.Pose(_visuals[_selected].transform, _draft.Props[_selected]); }
+        /// <summary>Submits the complete layout to its validating owner and rebuilds runtime instances.</summary>
         private void Save()
         {
             if (!Ready) return;
@@ -242,6 +265,7 @@ namespace WildWasteland.Modules.Tools
             }
             catch (Exception e) { _status = "Save failed: " + e.Message; Log.Warn("[Towns] POI dresser: " + _status); }
         }
+        /// <summary>Releases the authoring session, camera, previews and provider state.</summary>
         internal void Close(bool immediate = false)
         {
             if (!Opened) return;
@@ -260,6 +284,7 @@ namespace WildWasteland.Modules.Tools
             _site = null; _draft = null; _camera = null; _visuals.Clear(); _undo.Clear(); _moving = false;
             _session.Close(immediate); Ledger.ClearNumbers();
         }
+        /// <summary>Draws the menu entry and availability of the dedicated POI editor.</summary>
         internal void DrawPage(ToolLayout l)
         {
             l.Entry(_key);
@@ -268,7 +293,9 @@ namespace WildWasteland.Modules.Tools
             if (!string.IsNullOrEmpty(_status)) l.Text(_status);
             l.Value("Layout folder", _runtime != null ? _runtime.LayoutDirectory : "POI provider unavailable");
         }
+        /// <summary>Releases the tool window before opening the exclusive layout editor.</summary>
         private void OpenFromPage() { ToolWindow.CloseThen(Open); }
+        /// <summary>Rebuilds the visible catalog selection from category and search filters.</summary>
         private void Filter()
         {
             _catalog.Refresh();
@@ -277,6 +304,7 @@ namespace WildWasteland.Modules.Tools
             _filterCount = all.Count; _filterText = _search; _filterComplete = _catalog.Complete; _filtered.Clear();
             foreach (var asset in all) if (_search.Length == 0 || asset.Label.IndexOf(_search, StringComparison.OrdinalIgnoreCase) >= 0) _filtered.Add(asset);
         }
+        /// <summary>Draws the scaled layout editor, scene controls and catalog panels.</summary>
         private void Draw()
         {
             if (!Opened) return;
@@ -317,6 +345,7 @@ namespace WildWasteland.Modules.Tools
             }
             finally { GUI.skin = skin; GUI.matrix = matrix; GUI.depth = depth; }
         }
+        /// <summary>Draws position, rotation, scale and marker settings for the selected prop.</summary>
         private void DrawInspector()
         {
             float x = 1294;
@@ -361,6 +390,7 @@ namespace WildWasteland.Modules.Tools
             GUI.enabled = wasEnabled;
             if (spawn && _profilesOpen) DrawProfiles(prop, x);
         }
+        /// <summary>Draws category controls and filtered static or marker asset choices.</summary>
         private void DrawCatalog()
         {
             float height = 0;
@@ -384,6 +414,7 @@ namespace WildWasteland.Modules.Tools
             }
             GUI.EndScrollView();
         }
+        /// <summary>Draws chance, counts and randomized-profile controls for a spawn marker.</summary>
         private void DrawSpawnInspector(EditorProp prop, float x)
         {
             int min = prop.Minimum, max = prop.Maximum, chance = prop.Chance;
@@ -396,6 +427,7 @@ namespace WildWasteland.Modules.Tools
             if (Ledger.Button(new Rect(x,614,290,32), "List: " + (string.IsNullOrEmpty(prop.Profile) ? "choose..." : prop.Profile) + "  v")) _profilesOpen = !_profilesOpen;
             Ledger.Label(new Rect(x,650,290,34), "One-shot per instance; native weights. 50 m arrival queues the whole POI.", Ledger.Small);
         }
+        /// <summary>Draws owner-provided weighted spawn-profile choices.</summary>
         private void DrawProfiles(EditorProp prop, float x)
         {
             var profiles = Profiles(prop.Kind);
@@ -405,13 +437,16 @@ namespace WildWasteland.Modules.Tools
             { RecordUndo(); prop.Profile = profiles[i]; _profilesOpen = false; _dirty = true; }
             GUI.EndScrollView();
         }
+        /// <summary>Provides a non-mutating callback for controls that do not need undo capture.</summary>
         private static void NoChange() { }
+        /// <summary>Draws bounded three-coordinate editing controls with undo capture.</summary>
         private Vector3 VectorFields(float x, float y, string label, string key, Vector3 value, float min, float max)
         {
             Ledger.Label(new Rect(x, y, 292, 25), label, Ledger.Small);
             for (int i = 0; i < 3; i++) value[i] = Ledger.Number(new Rect(x + i * 100, y + 28, 92, 30), "Poi" + key + i, value[i], min, max, _beforeNumber);
             return value;
         }
+        /// <summary>Updates the selected preview bounds outline.</summary>
         private void Outline()
         {
             Transform t = null; PoiAuthoringAsset asset = null;
@@ -433,6 +468,7 @@ namespace WildWasteland.Modules.Tools
             SetCorner(12,min.x,max.y,max.z,t); _lines[13] = _lines[3]; _lines[14] = _lines[12]; _lines[15] = _lines[5];
             _outline.enabled = true; _outline.SetPositions(_lines);
         }
+        /// <summary>Transforms one local outline corner into world space.</summary>
         private void SetCorner(int i, float x, float y, float z, Transform t) { _lines[i] = t.TransformPoint(new Vector3(x,y,z)); }
     }
 }

@@ -9,18 +9,18 @@ Denis requested completion of the remaining owned packages, then a stop **before
 
 **D20 remains authoritative:** persistent world state, save descriptions and thumbnails live inside ES3. No module world-state sidecars or external fallback readers. Authored data/settings/derived geometry caches and recovery journals remain external. See `reports/save-file-only.md`.
 
-B01–B09, B12, B15 and B17 have prior package passes. Current owned-package progress:
+B01–B09, B12, B15 and B17 have prior package passes. Current owned-package progress (**completed, ready for Shared integrations**):
 
 | package | current checkpoint |
 |---|---|
 | B10 HUD | Completed owned source pass, merged `dc295d6`; strict references and comments pass. |
 | B11 Patrols | Completed owned runtime/source pass, merged through `d0d9921`; real vehicle/crew/cargo/routing providers and current-format ES3 records. |
-| B13 POI | Implementation merged through `6c88fda`; final lifecycle review, summaries and report being integrated. |
+| B13 POI | Implementation merged through `340d437`; completed final lifecycle/source pass, merged `340d437`; strict references and comments pass. |
 | B14 Survival | Completed owned source pass, merged `19fef59`; weather/stew ownership and real typed providers. |
-| B16 Tools/Developer | Navigation, POI/town editor and actual authoring backends merged; final Patrols/pose/placement consumers and package gates in progress. |
+| B16 Tools/Developer | Completed and merged independent Tools/Developer editors and actual providers; strict references and comments pass; see reports/B16.md. |
 | B18 Quests | Completed owned source pass through `bbb525e`; follower seat consumer included, current-format records and typed consumers. |
 
-Latest combined Windows Release/Deploy=false build: **0 warnings, 0 errors**. Last partial check: **151 declarations, 0 missing**; these counts will change as obsolete editor partials are removed. Last staged resource index: **406 entries, no duplicate logical names or paths, no missing files**. Package source gates are rerun after final merges. Existing CS0618 suppression is temporary until Wave C; a clean build is not full architecture/runtime acceptance.
+Latest combined Windows Release/Deploy=false build: **0 warnings, 0 errors**. Last partial check: **137 declarations, 0 missing**; obsolete editor partials were removed in B16. Last staged resource index: **407 entries, no duplicate logical names or paths, no missing files**. All six owned package reference/summary gates pass at their final checkpoints. Existing CS0618 suppression is temporary until Wave C; a clean build is not full architecture/runtime acceptance.
 
 Shared integrations remain explicit: distributed character/crew/Hire/Takeover/TalkBridge private partials and Core/Compatibility legacy entry adapters, followed by Wave C namespace/forwarder/registry/packaging/docs/global gates. Passing owner-folder scans does not certify those reverse dependencies. Package state and reports contain exact handoffs.
 
@@ -28,7 +28,7 @@ Shared integrations remain explicit: distributed character/crew/Hire/Takeover/Ta
 
 1. Read this current section, the relevant `state/Bxx.md` and `reports/Bxx.md`. Historical sections below do not override it or D20.
 2. Reuse existing worktrees: B11 `../WW2-B11`, B13 `../WW2-B13`, B16 `../WW2-B16`. Preserve their local edits and completed commits. Root handles integration, B14/B18 and focused typed-provider extensions.
-3. Finish and review B13/B16 checkpoints, merge into `refactor/main`, run Windows `dotnet build WildWasteland.csproj -c Release -p:Deploy=false` and applicable `python -B tools/refactor/` source gates, then update this section. No stubs or new blanket refs-ok exceptions.
+3. Owned work through B18 is complete and merged. Resume from `state/shared-integrations.md` when authorized to proceed; do not restart completed packages. Final combined build and B16 source checks pass. No stubs or new blanket refs-ok exceptions.
 4. Stop before Shared integrations after this iteration is complete. Do not start a game, harness, deployment or release. All earlier historical requests for staged intermediate testing are superseded by Denis's deferred acceptance instruction.
 
 ## Local pre-B checkpoint (2026-10-22)

@@ -36,6 +36,7 @@ namespace WildWasteland.Modules.Tools
         private void OpenPatrolEditor(){if(_patrolMenu!=null)_patrolMenu.TryOpen();}
         /// <summary>Attempts to acquire the supported seated-vehicle recorder.</summary>
         private void OpenRecorder(){if(_recorder!=null)_recorder.TryOpen();}
+        /// <summary>Closes authoring sessions when their actual gameplay providers change.</summary>
         private void PatrolProviderChanged(Type contract) { if(contract==typeof(IPatrolAuthoring)||contract==typeof(IVehicleAuthoring)||contract==typeof(ICargoLoot)) { ClosePatrolEditors(); PatrolEditor.Data=null; PatrolEditor.Park.Clear(); } }
         /// <summary>Releases both editor sessions and discards detached workspace state.</summary>
         private void ClosePatrolEditors(){if(_patrolMenu!=null)_patrolMenu.Close();if(_recorder!=null)_recorder.Close();}

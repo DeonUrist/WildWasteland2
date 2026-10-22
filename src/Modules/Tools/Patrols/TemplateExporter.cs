@@ -32,8 +32,10 @@ namespace WildWasteland.Modules.Tools
         private static readonly string[] Shaking = { "engine", "exhaust", "radiator", "HP " };
 
         private readonly EditorSession _session = new EditorSession();
+        /// <summary>Reports whether the recorder owns an active editor session.</summary>
         internal bool IsOpen { get { return _session.Open; } }
         // the F7 "Template recorder" page shows its button only while this is true
+        /// <summary>Checks for an available vehicle owner and a supported seated vehicle.</summary>
         internal static bool Seated { get { string how; return ModApi.Get<IVehicleAuthoring>() != null && FindCar(out how) != null; } }
         private Transform _draftCar;
         private string _templateName = "", _driverName = "Scraffa", _passengerName = "Sprokka", _lootId = "";
@@ -49,6 +51,7 @@ namespace WildWasteland.Modules.Tools
         private Rect _rect;
 
         // WW: was Update (Update job); the open key is the Core hotkey [Keys] Template recorder -> TryOpen
+        /// <summary>Maintains recorder state and cancels when its seated source or provider disappears.</summary>
         internal void Tick()
         {
             if (_session.Open)
@@ -58,6 +61,7 @@ namespace WildWasteland.Modules.Tools
                 if (Core.Hotkeys.Pressed(Key.Escape)) { if (_ledgerDropdown.IsOpen) _ledgerDropdown.Close(); else Close(); }
             }
         }
+        /// <summary>Acquires the exclusive session and captures current vehicle and crew authoring defaults.</summary>
         internal bool TryOpen()
         {
             if (_session.Open || EditorSession.Busy || !Application.isFocused) return false;
@@ -80,11 +84,16 @@ namespace WildWasteland.Modules.Tools
             }
             catch { Close(); throw; }
         }
+        /// <summary>Releases the recorder session and drops source vehicle and dropdown references.</summary>
         internal void Close() { _session.Close(); _draftCar = null; _draftTrailer = null; _ledgerDropdown.Close(); }
+        /// <summary>Releases the recorder session and drops source vehicle and dropdown references.</summary>
         private void OnDestroy() { _session.Close(true); }
+        /// <summary>Maintains the recorder session after gameplay updates.</summary>
         internal void LateTick() { _session.Maintain(); }
         // the Gui job's predicate: the recorder window (and its queued _afterDraw, run in the same call) or a toast still up
+        /// <summary>Reports an open recorder or an unexpired result toast.</summary>
         internal bool GuiWanted() { return _session.Open || (_toast.Length > 0 && Time.unscaledTime <= _toastUntil); }
+        /// <summary>Draws the recorder and applies deferred actions after GUI layout.</summary>
         internal void Gui()
         {
             if (!_session.Open || _draftCar == null) { DrawToast(); return; }   // just saved/closed: the session lets go a frame later
@@ -100,6 +109,7 @@ namespace WildWasteland.Modules.Tools
             DrawToast();
         }
         private readonly LedgerDropdown _ledgerDropdown = new LedgerDropdown();
+        /// <summary>Draws current template name, faction, crew and cargo choices.</summary>
         private void DrawDraft(int id)
         {
             if (_draftCar == null) return;   // closed during this OnGUI pass (Save/Cancel run after the Layout event; Repaint still comes)
@@ -163,14 +173,17 @@ namespace WildWasteland.Modules.Tools
             Ledger.Rule(6, 634, _rect.width - 12);
             GUI.enabled = enabled; _ledgerDropdown.Draw();
         }
+        /// <summary>Resolves a supported turret occupant through actual body slot rules.</summary>
         private string TurretFor(int i, string body) { return i < PatrolEditor.Source.TurretSlots(body, _truck, false) ? PatrolEditor.Source.TurretStored(_turrets[i]) : ""; }
 
+        /// <summary>Draws a labeled deferred-choice dropdown inside the recorder panel.</summary>
         private void DraftLedgerDropdown(Rect r, string label, string value, List<KeyValuePair<string, string>> people, Action<string> setter, float bottom)
         {
             Ledger.Label(new Rect(r.x - 160, r.y, 144, 34), label);
             if (Ledger.Dropdown(r, value)) _ledgerDropdown.Open(r, people, value, setter, bottom);
         }
 
+        /// <summary>Draws an unexpired template recording result.</summary>
         private void DrawToast()
         {
             if (Time.unscaledTime > _toastUntil || _toast.Length == 0) return;
@@ -180,11 +193,14 @@ namespace WildWasteland.Modules.Tools
             GUI.Box(new Rect((Screen.width - w) / 2f, 40f, w, 90f), _toast, style);
         }
 
+        /// <summary>Stores a recorder result for a bounded on-screen lifetime.</summary>
         private void Toast(string s) { _toast = s; _toastUntil = Time.unscaledTime + 8f; }
 
         // =============================================================== which car
 
+        /// <summary>Normalizes a native instance name to its canonical prefab name.</summary>
         private static string PrefabName(string instance) { return Names.Prefab(instance); }
+        /// <summary>Recognizes a native vehicle controller on the supplied transform.</summary>
         private static bool IsVehicle(Transform t)
         {
             if (t == null) return false;
@@ -192,12 +208,14 @@ namespace WildWasteland.Modules.Tools
             return false;
         }
 
+        /// <summary>Finds the first native vehicle root in the ancestor chain.</summary>
         private static Transform VehicleOf(Transform t)
         {
             for (var a = t; a != null; a = a.parent) if (IsVehicle(a)) return a;
             return null;
         }
 
+        /// <summary>Resolves the current seated vehicle from the player parent chain.</summary>
         private static Transform FindCar(out string how)
         {
             how = "seated vehicle";
@@ -207,18 +225,22 @@ namespace WildWasteland.Modules.Tools
 
         // =============================================================== dump
 
+        /// <summary>Resolves the exact native prefab through the shared catalog.</summary>
         private GameObject Asset(string name)
         {
             return PrefabCatalog.Exact(name);
         }
 
+        /// <summary>Asks the vehicle owner whether a transform is a fitted part.</summary>
         private static bool IsPart(Transform t)
         {
             try { return ModApi.Get<IVehicleAuthoring>().IsPart(t); } catch (Exception) { return false; }
         }
 
+        /// <summary>Recognizes native moving assemblies whose transient offsets must not be recorded.</summary>
         private static bool IsMoving(string name) { return Has(name, Moving); }
 
+        /// <summary>Checks a normalized name against the configured native component words.</summary>
         private static bool Has(string name, string[] words)
         {
             string n = (name ?? "").ToLowerInvariant();
@@ -226,6 +248,7 @@ namespace WildWasteland.Modules.Tools
             return false;
         }
 
+        /// <summary>Builds an unambiguous relative hierarchy path for recorded parts.</summary>
         private static string RelPath(Transform root, Transform t)
         {
             var names = new List<string>();
@@ -235,6 +258,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // a path segment: the name, plus "#k" when k earlier siblings share that name (frames have several "collider" children)
+        /// <summary>Disambiguates equal-named sibling transforms using their occurrence index.</summary>
         private static string Seg(Transform a)
         {
             var parent = a.parent;
@@ -245,6 +269,7 @@ namespace WildWasteland.Modules.Tools
         }
 
         // same as Apocapatrol's Patrol.FindPath
+        /// <summary>Resolves an occurrence-qualified authored path inside a vehicle hierarchy.</summary>
         private static Transform FindPath(Transform root, string path)
         {
             if (root == null) return null;
@@ -264,7 +289,9 @@ namespace WildWasteland.Modules.Tools
             return t;
         }
 
+        /// <summary>Copies rounded vector coordinates into an authored numeric array.</summary>
         private static float[] V(Vector3 v) { return new[] { R(v.x), R(v.y), R(v.z) }; }
+        /// <summary>Rounds an authored coordinate to four decimal places.</summary>
         private static float R(float f) { return Mathf.Round(f * 10000f) / 10000f; }
 
         private class Walker
@@ -277,6 +304,7 @@ namespace WildWasteland.Modules.Tools
             internal int Moved;
 
             // container = the frame or a part (hinge paths are relative to it); prefabRoot = its asset, for the moved-hinge check
+            /// <summary>Captures fitted parts and adjusted hinges while excluding native animated offsets.</summary>
             internal void Walk(Transform t, Transform container, GameObject prefabRoot, int parentIdx)
             {
                 for (int i = 0; i < t.childCount; i++)
@@ -321,6 +349,7 @@ namespace WildWasteland.Modules.Tools
             }
         }
 
+        /// <summary>Enumerates matching native frame children for mechanical capture.</summary>
         private static IEnumerable<Transform> FrameChildren(Transform t, string name)
         {
             for (int i = 0; i < t.childCount; i++)
@@ -332,6 +361,7 @@ namespace WildWasteland.Modules.Tools
             }
         }
 
+        /// <summary>Captures the complete seated vehicle and atomically saves its validated template.</summary>
         private void Dump()
         {
             string how;
@@ -417,6 +447,7 @@ namespace WildWasteland.Modules.Tools
                 + "\nOpen the Apocapatrol spawner menu to build it.");
         }
 
+        /// <summary>Removes unsupported characters from a proposed template filename.</summary>
         private static string Sanitize(string s)
         {
             var sb = new StringBuilder();
