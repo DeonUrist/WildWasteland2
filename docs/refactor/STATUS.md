@@ -18,6 +18,7 @@ Imported from WildWasteland HEAD 2e98d0b (WW 1.0.9) on 2026-10-22. Baseline comp
 
 ## Claude takeover (2026-10-22 evening)
 Denis stopped Codex; Claude completes Wave B and C (see work-packages.md "Claude takeover"). Merged: B01+B02 (coord-wiring), B03 -> refactor/main 25b90be; Presentation/NPCAI partial entries re-applied. B04 continues on claude/B04 (= main + save-bootstrap WIP; session-compat's 3 extra commits to integrate), B17 on claude/B17 (= main + Codex B17 WIP, merge conflict left for the agent). D19: delete weather diagnostics (B14).
+Batch 1 (B04, B17, B09, B12, B15): DONE, merged into refactor/main, compile OK, partials 0 missing, repo-wide module refs 867 (was 1078). Registry: Presentation/NPCAI/Gunplay now register right after PlayerBody/NPC/Guns (B09-1).
 Batches: 1 = B04, B17, B09, B12, B15; 2 = B05, B06, B07, B08; 3 = B10, B11, B13, B14, B16, B18; then Wave C.
 
 ## Waves
@@ -45,8 +46,12 @@ Batches: 1 = B04, B17, B09, B12, B15; 2 = B05, B06, B07, B08; 3 = B10, B11, B13,
 ## Device mirror
 Originally a cloud mirror; Denis authorized local continuation on 2026-10-22. Preserve local commits and changes when synchronizing with cloud work; do not reset this checkout to an older cloud checkpoint. Local continuation started from 473fef9 (Wave A merged). Active Wave B branches are listed above; agent work remains isolated until reviewed integration.
 
-## Open questions for Denis
-(none)
+## Open questions for Denis (behaviour-preserving default in place; answer any time)
+- B04-6: save-library menu entry points: Core `UiActions` registry (Codex) or a new `ISaveMenu` contract? (Menu.Saves.cs calls Saves directly meanwhile.)
+- B09 Q1: switching Gunplay off also disables vanilla HUD hit feedback, NPC reaction to vanilla shots, and the driver-seat blast lance fix - OK? Q2: move NPC magazine/reload and follower gun code to NPCAI?
+- B12 Q1: move War Rig model files to plugins/WildWasteland/Vehicles/WarRig (fallback to Patrols folder now)? Q3: should Patrols still spawn vehicles when Vehicles is off (it does now)?
+- B15 Q1: Patrols editor profile edits should write LootTables.json directly (Wave C)? Q2: should Loot off also stop town/marker/cargo spawner code?
+- B17 Q1: delete Apocasaver loading-screen hooks and Convoy.AutosaveSoon (never fire after the session takeover) or keep as fallback? Q2: retire `[NPC] DogCompanionCompat` in favour of the Compatibility switch? Q3: Vistas toggle only on title screen?
 
 - 2026-10-22 resume: Coordinator accepted B02 and B03 in `refactor/coord-wiring`; Windows Release/Deploy=false after shared-services and Vistas integration passed with zero warnings/errors. B02/B03 references and summaries pass; combined partial check: 181 declarations, none missing. B03 authored-commit audit: 106 changed paths, none outside base ownership plus 60 exact approved exceptions recorded centrally. B01 consolidation and the Saves bootstrap integration remain active. No deployment or runtime verification.
 
