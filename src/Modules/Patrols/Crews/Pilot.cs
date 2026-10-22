@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace WildWasteland.Modules.Patrols
 {
+    /// <summary>Native vehicle pursuit, recovery and route-following modes.</summary>
     internal enum PilotState { Charge, Overshoot, Turnaround, Recover, Wait, Idle, Travel }
 
     // The driving AI. Lives on the car next to Crew, which decides WHETHER the car drives (driver alive, delay, death);
@@ -76,6 +77,7 @@ namespace WildWasteland.Modules.Patrols
         private readonly float[] _feelerLen = new float[5];
         private readonly float[] _feelerHit = new float[5];      // hit distance or -1
         private float _cliffAt = -1f;
+        /// <summary>Cached obstacle classification and its expiry time.</summary>
         private struct Verdict { public bool Obstacle; public float Until; }
         private readonly Dictionary<Collider, Verdict> _obstacleCache = new Dictionary<Collider, Verdict>();   // per-collider, 5 s each
         private readonly List<Collider> _expired = new List<Collider>();
@@ -92,12 +94,14 @@ namespace WildWasteland.Modules.Patrols
         private float _rollLimit = 8f, _wheelbase = 2.5f, _tanSteer = 0.7f, _nextGeometry;
         private float _roll;                                               // current body roll, degrees (+ = right side higher = leaning left)
 
+        /// <summary>Returns the current state used by pilot.</summary>
         internal PilotState State { get { return _state; } }
         internal float EscortUntil;                                        // 2.1.4: a "Witness me!" rider wants a ride alongside the player until then
         private float _nextEscortLog;
         private float _nextDecision,_lastDecision;
         private Crew _crew;
 
+        /// <summary>Creates or reuses the runtime component and binds the supplied native objects.</summary>
         internal static Pilot Attach(GameObject car)
         {
             var p = car.GetComponent<Pilot>() ?? car.AddComponent<Pilot>();
@@ -114,14 +118,17 @@ namespace WildWasteland.Modules.Patrols
             return p;
         }
 
+        /// <summary>Releases current native driving ownership and its retained runtime association.</summary>
         internal void Detach()
         {
             All.Remove(this);
             Destroy(this);
         }
 
+        /// <summary>Releases this component runtime registrations and owned native state.</summary>
         private void OnDestroy() { All.Remove(this); }
 
+        /// <summary>Moves retained scene-space caches by the native floating-origin delta.</summary>
         internal void OriginShift(Vector3 shift)
         {
             _aim += shift;
@@ -129,16 +136,19 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // the transmission's gear index, refreshed 5x a second (a reflection read + boxing per step per car otherwise)
+        /// <summary>the transmission's gear index, refreshed 5x a second (a reflection read + boxing per step per car otherwise)</summary>
         private int Gear()
         {
             if (Time.fixedTime >= _gearNext) { _gearNext = Time.fixedTime + 0.2f; _gear = Core.ModApi.Get<Core.IVehicleDrive>().GearIndex(_car); }
             return _gear;
         }
 
+        /// <summary>Requests the native gear and updates the local driving cache.</summary>
         private void Shift(int gear) { Core.ModApi.Get<Core.IVehicleDrive>().ShiftInto(_car, gear); _gear = gear; _gearNext = Time.fixedTime + 0.2f; }   // assume it lands; re-read shortly
 
         // ------------------------------------------------------------ main step (called by Crew from FixedUpdate)
 
+        /// <summary>Performs the next bounded step of the current runtime state machine.</summary>
         internal void Step()
         {
             if (_abandoned) return;
@@ -273,6 +283,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ states
 
+        /// <summary>Checks the current step travel condition for pilot.</summary>
         private void StepTravel(Vector3 goal, float cruise, bool stop, float speed, float forwardSpeed, float dt, bool gateRoute = false)
         {
             if (stop) { Apply(0f, MoveSteer(0f, dt), 0.7f); return; }
@@ -300,6 +311,7 @@ namespace WildWasteland.Modules.Patrols
         // 2.1.4 escort: the rider on the roof is about to leap ("Witness me!"), so the driver runs alongside the player's car - same heading,
         // same speed, a lane 5 m to the side it is already on - instead of ramming or passing. Player (nearly) stopped, or we face the other
         // way: the normal charge / turnaround until we are going the same way.
+        /// <summary>2.1.4 escort: the rider on the roof is about to leap ("Witness me!"), so the driver runs alongside the player's car - same heading, same speed, a lane 5 m to the side it is already on - instead of ramming or passing. Player (nearly) stopped, or we face the other way: the normal charge / turnaround until we are going the same way.</summary>
         private void StepEscort(Vector3 tpos, Vector3 tvel, float speed, float forwardSpeed, float dt)
         {
             var tv = Flat(tvel); float ts = tv.magnitude;
@@ -345,6 +357,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Checks the current step charge condition for pilot.</summary>
         private void StepCharge(Vector3 tpos, Vector3 tvel, float speed, float forwardSpeed, float dt, bool turning)
         {
             if (Gear() <= 0) Shift(1);
@@ -437,6 +450,7 @@ namespace WildWasteland.Modules.Patrols
             Stuck(throttle, speed, dt);
         }
 
+        /// <summary>Completes the current pass before selecting the next pursuit manoeuvre.</summary>
         private void StepOvershoot(float speed, float forwardSpeed, float dt)
         {
             if (Gear() <= 0) Shift(1);
@@ -453,6 +467,7 @@ namespace WildWasteland.Modules.Patrols
             Stuck(PatrolsModule.AiThrottle.Value * avoidThrottle, speed, dt);
         }
 
+        /// <summary>Applies the current reverse-and-turn obstacle recovery manoeuvre.</summary>
         private void StepRecover(float forwardSpeed, float dt)
         {
             // something behind: stop backing up, go forward instead (the wheels are already turned toward the target)
@@ -478,6 +493,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ transitions
 
+        /// <summary>Starts overshoot for the current pilot.</summary>
         private void StartOvershoot(string why)
         {
             _attackRun++;
@@ -485,6 +501,7 @@ namespace WildWasteland.Modules.Patrols
             Enter(PilotState.Overshoot, why);
         }
 
+        /// <summary>Starts recover for the current pilot.</summary>
         private void StartRecover(string why, float obstacleSide)
         {
             bool repeat = Time.time - _lastRecover < PatrolsModule.AiRecoverWindow.Value;
@@ -507,6 +524,7 @@ namespace WildWasteland.Modules.Patrols
             Enter(PilotState.Recover, why);
         }
 
+        /// <summary>Changes the runtime phase and resets its phase timing.</summary>
         private void Enter(PilotState s, string why)
         {
             if (Core.Log.Verbose && (_state != s || _stateTime > 0f)) PatrolsModule.Verbose("Pilot: " + _state + " -> " + s + " (" + why + ")");
@@ -518,6 +536,7 @@ namespace WildWasteland.Modules.Patrols
 
         // Not moving in a forward state for StuckSeconds = stuck (whatever the pedals say: the feelers may be holding the car
         // in front of a wall with the throttle cut, and that is exactly when it has to back out).
+        /// <summary>Not moving in a forward state for StuckSeconds = stuck (whatever the pedals say: the feelers may be holding the car in front of a wall with the throttle cut, and that is exactly when it has to back out).</summary>
         private void Stuck(float throttle, float speed, float dt)
         {
             if (speed < 0.5f) _stuckTime += dt; else _stuckTime = 0f;
@@ -526,6 +545,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ steering / input helpers
 
+        /// <summary>Limits requested steering using current speed and native vehicle geometry.</summary>
         private float MaxSteerFor(float speed)
         {
             return Mathf.Lerp(1f, PatrolsModule.AiMaxSteerAtSpeed.Value, Mathf.InverseLerp(5f, 20f, speed));
@@ -537,6 +557,7 @@ namespace WildWasteland.Modules.Patrols
         // COM past the car's own colliders) -> the lateral acceleration the chassis takes before the inner wheels lift: g x (track/2) / h,
         // with a 0.8 margin. A low PipeRat lands near 10 m/s^2 (above the tyres' grip: no change to how it drives); a lifted one on truck
         // wheels with plates on the roof around 6, which is what tipped it. Also NWH's maximum steer angle for the curvature of a steering input.
+        /// <summary>Track width (hinge_wheel_FL &lt;-&gt; FR), wheelbase (FL &lt;-&gt; RL) and the centre of mass height over the ground (a ray down from the COM past the car's own colliders) -&gt; the lateral acceleration the chassis takes before the inner wheels lift: g x (track/2) / h, with a 0.8 margin. A low PipeRat lands near 10 m/s^2 (above the tyres' grip: no change to how it drives); a lifted one on truck wheels with plates on the roof around 6, which is what tipped it. Also NWH's maximum steer angle for the curvature of a steering input.</summary>
         private void Geometry()
         {
             try
@@ -559,9 +580,11 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // lateral acceleration (m/s^2) of this speed at this steering input (bicycle model: curvature = tan(steer x maxAngle) / wheelbase)
+        /// <summary>lateral acceleration (m/s^2) of this speed at this steering input (bicycle model: curvature = tan(steer x maxAngle) / wheelbase)</summary>
         private float LateralFor(float speed, float steer) { return speed * speed * (steer * _tanSteer) / _wheelbase; }
 
         // the steering input at which the lateral acceleration reaches the roll limit at this speed (1 = no cap)
+        /// <summary>the steering input at which the lateral acceleration reaches the roll limit at this speed (1 = no cap)</summary>
         private float RollSafeSteer(float speed)
         {
             if (speed < 3f) return 1f;
@@ -570,6 +593,7 @@ namespace WildWasteland.Modules.Patrols
 
         // The body leans outward in the turn (the inner wheels unload): from 5 degrees the steering and the gas are cut in proportion,
         // from 10 degrees the gas is off and it brakes, beyond 16 the wheel is centred - better a missed turn than a car on its roof.
+        /// <summary>The body leans outward in the turn (the inner wheels unload): from 5 degrees the steering and the gas are cut in proportion, from 10 degrees the gas is off and it brakes, beyond 16 the wheel is centred - better a missed turn than a car on its roof.</summary>
         private void LeanGuard(ref float steer, ref float throttle, ref float brakes)
         {
             float lean = Mathf.Abs(_roll);
@@ -582,23 +606,27 @@ namespace WildWasteland.Modules.Patrols
             if (lean >= 16f) steer = 0f;
         }
 
+        /// <summary>Moves steering toward the requested angle at the existing bounded rate.</summary>
         private float MoveSteer(float desired, float dt)
         {
             _steer = Mathf.MoveTowards(_steer, desired, PatrolsModule.AiSteerRate.Value * dt);
             return _steer;
         }
 
+        /// <summary>Applies the accepted result to the bound native objects.</summary>
         private void Apply(float throttle, float steer, float brakes)
         {
             _throttle = throttle; _brakes = brakes;
             Core.ModApi.Get<Core.IVehicleDrive>().SetInput(_car, throttle, PatrolsModule.AiInvertSteering.Value ? -steer : steer, brakes);
         }
 
+        /// <summary>Returns a horizontal copy of the supplied vector.</summary>
         private static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
 
         // ------------------------------------------------------------ obstacle feelers
 
         // Casts the front feelers and the cliff probe; returns a steering correction (+ = right), a throttle factor and a brake amount.
+        /// <summary>Casts the front feelers and the cliff probe; returns a steering correction (+ = right), a throttle factor and a brake amount.</summary>
         private void Sense(float speed, out float steer, out float throttleFactor, out float brake)
         {
             // every other physics step (25 Hz is plenty for a car; halves the raycasts of a convoy), every 4th beyond 150 m from the
@@ -609,6 +637,7 @@ namespace WildWasteland.Modules.Patrols
             _senseSteer = steer; _senseThrottle = throttleFactor; _senseBrake = brake;
         }
 
+        /// <summary>Performs the existing bounded forward obstacle probes.</summary>
         private void SenseNow(float speed, out float steer, out float throttleFactor, out float brake)
         {
             steer = 0f; throttleFactor = 1f; brake = 0f;
@@ -658,6 +687,7 @@ namespace WildWasteland.Modules.Patrols
         private static readonly float[] RearAngles = { 180f, 150f, 210f };
 
         // Three rays backwards from the tail while reversing; returns the nearest obstacle distance or -1.
+        /// <summary>Three rays backwards from the tail while reversing; returns the nearest obstacle distance or -1.</summary>
         private float SenseRear(float forwardSpeed)
         {
             float len = 2.5f + Mathf.Abs(Mathf.Min(forwardSpeed, 0f)) * 0.8f;
@@ -675,6 +705,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // first hit along the ray that counts as an obstacle, or -1
+        /// <summary>first hit along the ray that counts as an obstacle, or -1</summary>
         private float Cast(Vector3 origin, Vector3 dir, float len, float radius, float minSlopeNormalY)
         {
             int n = radius > 0f
@@ -694,6 +725,7 @@ namespace WildWasteland.Modules.Patrols
             return best;
         }
 
+        /// <summary>Checks the current ground below condition for pilot.</summary>
         private bool GroundBelow(Vector3 from, float depth)
         {
             int n = Physics.RaycastNonAlloc(from, Vector3.down, _hits, depth, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
@@ -709,6 +741,7 @@ namespace WildWasteland.Modules.Patrols
         // What the car should NOT steer around: itself, other patrol cars' occupants... no - the player, the player's car,
         // any creature/NPC (they have a Health FSM) and loose light items. Everything else (terrain walls, rocks, buildings,
         // wrecks, parked cars) is an obstacle.
+        /// <summary>What the car should NOT steer around: itself, other patrol cars' occupants... no - the player, the player's car, any creature/NPC (they have a Health FSM) and loose light items. Everything else (terrain walls, rocks, buildings, wrecks, parked cars) is an obstacle.</summary>
         private bool IsObstacle(Collider c)
         {
             Verdict v;
@@ -720,6 +753,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
         // every 30 s: drop verdicts nobody asked for again (destroyed colliders, things passed long ago)
+        /// <summary>every 30 s: drop verdicts nobody asked for again (destroyed colliders, things passed long ago)</summary>
         private void PruneObstacleCache()
         {
             _cachePrune = Time.time + 30f;
@@ -728,6 +762,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var c in _expired) _obstacleCache.Remove(c);
         }
 
+        /// <summary>Classifies native geometry under current obstacle-avoidance rules.</summary>
         private bool Classify(Collider c)
         {
             var t = c.transform;
@@ -759,6 +794,7 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>Formats the current bounded obstacle-probe diagnostics.</summary>
         private string Feelers()
         {
             var s = " feelers";
@@ -769,6 +805,7 @@ namespace WildWasteland.Modules.Patrols
 
         // ------------------------------------------------------------ collisions (the car's Rigidbody is on the root, so they arrive here)
 
+        /// <summary>Handles the qualifying native event for collision enter for the current pilot.</summary>
         private void OnCollisionEnter(Collision col)
         { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null) return;
             if (col.collider == null || col.contactCount == 0) return;
@@ -798,6 +835,7 @@ namespace WildWasteland.Modules.Patrols
 
         // A slow, sustained frontal contact with an obstacle (shoving a parked car, leaning on a wall) is tracked here and
         // turned into a recovery by Step() once it lasts a second; a single Enter at speed is handled above.
+        /// <summary>A slow, sustained frontal contact with an obstacle (shoving a parked car, leaning on a wall) is tracked here and turned into a recovery by Step() once it lasts a second; a single Enter at speed is handled above.</summary>
         private void OnCollisionStay(Collision col)
         { if (!PatrolsModule.Running || Core.ModApi.Get<Core.IVehicleDrive>()==null) return;
             if (col.collider == null || col.contactCount == 0) return;
@@ -818,6 +856,7 @@ namespace WildWasteland.Modules.Patrols
         // ------------------------------------------------------------ overlay
 
         // one line of the [Debug] AiOverlay (drawn by the runner's OnGUI for every pilot in All)
+        /// <summary>one line of the [Debug] AiOverlay (drawn by the runner's OnGUI for every pilot in All)</summary>
         internal string OverlayLine()
         {
             var vel = _rb != null ? _rb.velocity : Vector3.zero;

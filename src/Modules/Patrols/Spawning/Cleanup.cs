@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Patrols
         private Patrol _patrol;
 
         // WW: was Update (Update job)
+        /// <summary>WW: was Update (Update job)</summary>
         internal void Tick()
         {
             if (_patrol == null) _patrol = GetComponent<Patrol>();
@@ -92,6 +93,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Removes the accepted record and its eligible owned physical representation.</summary>
         internal static void Remove(PatrolMarker m, string why)
         {
             var car = m.gameObject;

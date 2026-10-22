@@ -44,7 +44,7 @@ namespace WildWasteland.Modules.POI
                     var names = new string[count]; for (int i = 0; i < count; i++) names[i] = reader.ReadString();
                     if (reader.BaseStream.Position != reader.BaseStream.Length) throw new InvalidDataException("Trailing embedded Towns data");
                     InteriorPopulation.RestoreNames(names);
-                    Log.Always("[Towns] loaded " + records.Count + " chunk decisions/layouts directly from " + slot);
+                    Log.Main(null, "[POI] loaded " + records.Count + " chunk decisions/layouts directly from " + slot);
                     return records;
                 }
             }

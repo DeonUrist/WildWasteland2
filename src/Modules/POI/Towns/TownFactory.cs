@@ -31,23 +31,7 @@ namespace WildWasteland.Modules.POI
                 // Keep the open parking apron; the station stands beside its north edge, outside the walls.
                 site.Spawners[index] = new PlayMakerFSM[0]; if (staged != null) UnityEngine.Object.Destroy(staged);
                 if (site.Buildings[index] != null) { site.Buildings[index].transform.SetParent(parent, true); site.Buildings[index].SetActive(true); return; }
-                var station = TownGasStation.Current;
-                if (settings.GasStationParking.Value && site.Plan.Rules != null && Array.IndexOf(site.Plan.Rules.ExternalParkingPois, "TownsGasStation") >= 0 && station != null && station.Available)
-                {
-                    var shell = station.Shell(staging, "TownsGasStation (Towns " + TownPlanner.Hash(site.Plan.Key) + "/" + index + ")");
-                    var parkingRotation = site.Anchor.rotation * Quaternion.Euler(0, site.Plan.Yaw + lot.Yaw, 0);
-                    var rotation = parkingRotation * Quaternion.Euler(0, 180, 0);
-                    var bounds = shell.GetComponent<MeshFilter>().sharedMesh.bounds;
-                    var center = site.Scene(lot.LocalPosition) + parkingRotation * Vector3.left * (lot.HalfX + 2 + bounds.extents.x);
-                    center = site.Ground(center);
-                    shell.transform.position = center - rotation * new Vector3(bounds.center.x, 0, bounds.center.z) + Vector3.up * .05f;
-                    shell.transform.rotation = rotation;
-                    shell.transform.SetParent(parent, true); shell.SetActive(true);
-                    site.Buildings[index] = shell;
-                    Physics.SyncTransforms(); TownBakeBridge.Discover(shell);
-                    Log.Always("[Towns] lot " + site.Plan.Key + "/" + index + ": gas station beside open parking; 2 m gap outside the walls");
-                }
-                else Log.Always("[Towns] lot " + site.Plan.Key + "/" + index + ": reserved 24 x 40 m ground parking slot");
+                Log.Main(null,"Town ground parking slot " + site.Plan.Key + "/" + index + "; companion POIs are independent persisted lots.");
                 return;
             }
             if (site.Buildings[index] != null)
@@ -65,7 +49,7 @@ namespace WildWasteland.Modules.POI
                 if (fsm.FsmName != "BasementDoor" || fsm.transform.parent == null || fsm.transform.parent.name != "to_basement") continue;
                 fsm.enabled = false;
                 var label = FsmUtil.Find(fsm.gameObject, "ItemName"); if (label != null) label.enabled = false;
-                Log.Always("[Towns] laboratory entrance disabled on town copy " + lot.Prefab);
+                Log.Main(null, "[POI] laboratory entrance disabled on town copy " + lot.Prefab);
             }
             foreach (string path in asset.Markers)
             { var icon = go.transform.Find(path); var renderer = icon == null ? null : icon.GetComponent<Renderer>(); if (renderer != null) renderer.forceRenderingOff = true; }
@@ -99,7 +83,7 @@ namespace WildWasteland.Modules.POI
             TownPopulation.Configure(site, index, assets, settings);
             InteriorPopulation.OwnTown(site, index);
             TownBakeBridge.Discover(go);
-            Log.Always("[Towns] lot " + site.Plan.Key + "/" + index + ": " + lot.Prefab + ", role=" + lot.Role + ", town=" + site.Plan.Condition);
+            Log.Main(null, "[POI] lot " + site.Plan.Key + "/" + index + ": " + lot.Prefab + ", role=" + lot.Role + ", town=" + site.Plan.Condition);
         }
 
         internal static GameObject Streets(TownSite site, TownAssets assets, Transform parent)

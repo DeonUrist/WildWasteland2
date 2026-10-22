@@ -25,7 +25,6 @@ namespace WildWasteland.Modules.PlayerBody
             var pages = new List<ToolPage>();   // (B05) "Animation framework" / "Body & model" moved to PresentationModule (CharacterPages)
             AddCameraPages(m, pages);
             AddTraversalPages(m, pages);
-            AddDeveloperPages(m, pages);
             return pages;
         }
         /// <summary>Adds the Camera page (PlayerBodyPages.Camera.cs).</summary>
@@ -33,6 +32,5 @@ namespace WildWasteland.Modules.PlayerBody
         /// <summary>Adds the Climbing page (PlayerBodyPages.Traversal.cs).</summary>
         static partial void AddTraversalPages(PlayerBodyModule m, List<ToolPage> pages);
         /// <summary>Adds the weapon pose editor and steering-wheel pages (PlayerBodyPages.Developer.cs).</summary>
-        static partial void AddDeveloperPages(PlayerBodyModule m, List<ToolPage> pages);
     }
 }

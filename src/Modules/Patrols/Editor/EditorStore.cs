@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Patrols
         internal static EditorData Data;
         internal static string Root, StatePath;
 
+        /// <summary>Reads the current shipped authoring defaults.</summary>
         internal static EditorData Defaults()
         {
             using (var stream = WildWasteland.Core.DiskResources.Open("Patrols.EditorDefaults.json"))
@@ -20,6 +21,7 @@ namespace WildWasteland.Modules.Patrols
             }
         }
 
+        /// <summary>Loads current owned authoring or runtime data without rerolling valid records.</summary>
         internal static void Load(string root)
         {
             Root = Path.GetFullPath(root); StatePath = Path.Combine(Root, "PatrolsAndLoot.json");
@@ -41,6 +43,7 @@ namespace WildWasteland.Modules.Patrols
 
 
         // avoid = the group id of the previous spawn: left out of the roll when at least one other group of that list is eligible
+        /// <summary>avoid = the group id of the previous spawn: left out of the roll when at least one other group of that list is eligible</summary>
         internal static SpawnGroup Roll(float km, int bosses, float patrolPercent, Func<double> random, out bool convoy, string avoid = null)
         {
             bool p = Data.Patrols.Any(g => g.Eligible(km, bosses)), c = Data.Convoys.Any(g => g.Eligible(km, bosses));
@@ -49,10 +52,13 @@ namespace WildWasteland.Modules.Patrols
             return SpawnGroup.Roll(convoy ? Data.Convoys : Data.Patrols, km, bosses, random, avoid);
         }
 
+        /// <summary>Checks the current compose condition for editor store.</summary>
         internal static List<CarTemplate> Compose(SpawnGroup group, bool convoy, Func<double> random)
         {return ComposeRoster(group,convoy,random,true);}
+        /// <summary>Composes full for the current editor store.</summary>
         internal static List<CarTemplate> ComposeFull(SpawnGroup group,bool convoy,Func<double> random)
         {return ComposeRoster(group,convoy,random,false);}
+        /// <summary>Composes roster for the current editor store.</summary>
         private static List<CarTemplate> ComposeRoster(SpawnGroup group,bool convoy,Func<double> random,bool cap)
         {
             var list = new List<CarTemplate>();
@@ -82,6 +88,7 @@ namespace WildWasteland.Modules.Patrols
 
         // [Scaling] PatrolSizePercent (2.6.0): below 100 the group is cut to that share of its cars - floor(n x %), never below 1 - by removing
         // cars at random; a convoy's trucks are never removed (the escort shrinks, the trucks count toward the total)
+        /// <summary>[Scaling] PatrolSizePercent (2.6.0): below 100 the group is cut to that share of its cars - floor(n x %), never below 1 - by removing cars at random; a convoy's trucks are never removed (the escort shrinks, the trucks count toward the total)</summary>
         internal static void Shrink(List<CarTemplate> list, bool convoy, Func<double> random)
         {
             float percent = PatrolsModule.PatrolSizePercent != null ? PatrolsModule.PatrolSizePercent.Value : 100f;
@@ -97,6 +104,7 @@ namespace WildWasteland.Modules.Patrols
         }
 
 
+        /// <summary>Clears retained runtime state at the owning lifecycle boundary.</summary>
         internal static void Reset(bool recycleCustom)
         {
             CarTemplates.Refresh(true);

@@ -68,7 +68,7 @@ namespace WildWasteland.Modules.POI
                     if (!placed) Core.Log.Warn("[Patrols] War Rig POI: no clear ground for " + prefab.name);
                 }
                 EncounterNotices.NoticeUntilValue = Time.unscaledTime + 10f;
-                Core.Log.Always("[Patrols] WAR RIG SPAWNED: abandoned Rustchief + tanker, worn wheels, no engine, 3 zombies, 2 dead Lugnuts, tanker supplies.");
+                Core.Log.Main(null, "[Patrols] WAR RIG SPAWNED: abandoned Rustchief + tanker, worn wheels, no engine, 3 zombies, 2 dead Lugnuts, tanker supplies.");
                 Done(truck);
             }
         }

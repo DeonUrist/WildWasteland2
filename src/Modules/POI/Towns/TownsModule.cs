@@ -113,12 +113,10 @@ namespace WildWasteland.Modules.POI
             LoadingProgress.RegisterHold(Owner, "Towns", ReadyForHandoff);
             LoadingProgress.Register(Owner, LoadProgress);
 
-            _settings.PopulationMinPercent.SettingChanged += PopulationChanged; _settings.PopulationMaxPercent.SettingChanged += PopulationChanged;
-            _settings.LootMinPercent.SettingChanged += PopulationChanged; _settings.LootMaxPercent.SettingChanged += PopulationChanged;
             TerrainTile.OnBeforeTilePrepare += Prepare;
             TerrainTile.OnTileFinalized += Finalized; TerrainTile.OnTileApplied += Applied; TerrainTile.OnTileMoved += Moved;
             WorldTiles.OnEdited(Owner,TownTerrainEdited);
-            if (WorldGeneration.Present) Log.Always("[Towns] Vistas compatibility: planned town foundations flattened before buildings; no access roads.");
+            if (WorldGeneration.Present) Log.Main(null, "[POI] Vistas compatibility: planned town foundations flattened before buildings; no access roads.");
             Scheduler.Sliced(Owner, "Build and connect", 700, BuildStep);
             // Behind a loading/generating screen this tick runs construction far beyond the shared frame budget; the predicate is one field read.
             Scheduler.EveryFrame(Owner, "Load construction", LoadBurst).Wants = LoadWanted;
@@ -138,7 +136,7 @@ namespace WildWasteland.Modules.POI
                 _sites.Add(new Live { Tile = old.Tile, Registration = registration, Site = resumed }); _revision++;
             }
             _resume.Clear();
-            Log.Always("[Towns] ready: " + _settings.Min.Value + "-" + _settings.Max.Value + " buildings, " + _settings.Chance.Value + "% per main chunk; ensure selected towns=" + _settings.EnsureTown.Value
+            Log.Main(null, "[POI] ready: " + _settings.Min.Value + "-" + _settings.Max.Value + " buildings, " + _settings.Chance.Value + "% per main chunk; ensure selected towns=" + _settings.EnsureTown.Value
                 + "; preferred terrain " + _settings.Relief.Value + " m relief / " + _settings.Earthwork.Value + " m cut-fill.");
         }
         private static bool NativePoi(ObjectsOutput output)
@@ -167,7 +165,7 @@ namespace WildWasteland.Modules.POI
                 }
                 registration.Avoid = avoid.ToArray();
                 _graphs.Add(graph, registration);
-                Log.Always("[Towns] catalog registered: " + registration.Assets.Specs.Length + " building templates; native graph unchanged; towns and access roads follow native road capture.");
+                Log.Main(null, "[POI] catalog registered: " + registration.Assets.Specs.Length + " building templates; native graph unchanged; towns and access roads follow native road capture.");
                 return registration;
             }
             catch { Undo(registration); throw; }
@@ -200,7 +198,7 @@ namespace WildWasteland.Modules.POI
                 bool startingChunk = tile.coord.x == 0 && tile.coord.z == 0 && !_settings.PoiNearSpawn.Value;
                 _captures[data] = new Capture { Registration = registration, Input = input, Epoch = _epoch, GasStation = _gasStation.Capture(tile, data, key, startingChunk, registration.Assets) };
             }
-            catch (Exception e) { Log.Warn("[Towns] skipped terrain preparation: " + e.Message); }
+            catch (Exception e) { Log.Warn("[POI] skipped terrain preparation: " + e.Message); }
         }
         private void Finalized(TerrainTile tile, TileData data, StopToken stop)
         {
@@ -232,7 +230,7 @@ namespace WildWasteland.Modules.POI
                     // Building-map overlay (neighbour walls, wreck garden, towers, border props) from the read-only templates, off the main thread.
                     // A failure here only loses the shortcut: the runtime projection remains the fallback.
                     try { if (!WorldGeneration.Present) capture.Plan.Overlay = TownOverlayPlan.Build(capture.Plan, assets.Specs, assets.WallKit.Dressing, assets.ShellBounds, assets.NavMaxStep, stop); }
-                    catch (Exception e) { capture.Plan.Overlay = null; Log.Always("[Towns] WARNING: overlay plan skipped for " + capture.Plan.Key + ": " + e.Message); }
+                    catch (Exception e) { capture.Plan.Overlay = null; Log.Main(null, "[POI] WARNING: overlay plan skipped for " + capture.Plan.Key + ": " + e.Message); }
                     _planned.Enqueue(capture);
                 }
             }
@@ -247,8 +245,8 @@ namespace WildWasteland.Modules.POI
             if (data == null || !_captures.TryRemove(data, out capture)) return;
             if (!_running || _blocked || data.isDraft || tile == null || capture.Epoch != _epoch || (stop != null && stop.stop)) return;
             try { _gasStation.Applied(capture.GasStation, tile, capture.Registration.Assets, _dressing); }
-            catch (Exception e) { Log.Warn("[Towns] gas station placement stopped: " + e.Message); }
-            if (capture.Input.Error != null) { Log.Warn("[Towns] skipped generation: " + capture.Input.Error); return; }
+            catch (Exception e) { Log.Warn("[POI] gas station placement stopped: " + e.Message); }
+            if (capture.Input.Error != null) { Log.Warn("[POI] skipped generation: " + capture.Input.Error); return; }
             if (capture.Plan == null) return;
             try
             {
@@ -260,17 +258,17 @@ namespace WildWasteland.Modules.POI
                 var plan = record.Plan;
                 if (plan != capture.Plan && plan.Overlay == null && capture.Plan.Overlay != null && TownOverlayPlan.SameLayout(plan, capture.Plan)) plan.Overlay = capture.Plan.Overlay;
                 _names.Assign(plan);
-                Log.Always("[Towns] " + plan.Key + ": " + plan.Decision + (plan.HasTown ? "; " + plan.LotCount + " lots, " + plan.Condition + ", relief " + plan.OriginalRelief.ToString("0.00", CultureInfo.InvariantCulture) + " m, max cut/fill " + plan.MaximumEarthwork.ToString("0.00", CultureInfo.InvariantCulture) + " m at " + plan.WorldCenter : ""));
+                Log.Main(null, "[POI] " + plan.Key + ": " + plan.Decision + (plan.HasTown ? "; " + plan.LotCount + " lots, " + plan.Condition + ", relief " + plan.OriginalRelief.ToString("0.00", CultureInfo.InvariantCulture) + " m, max cut/fill " + plan.MaximumEarthwork.ToString("0.00", CultureInfo.InvariantCulture) + " m at " + plan.WorldCenter : ""));
                 if (!plan.HasTown)
                 {
                     if (plan.Decision.StartsWith("town placement pending:", StringComparison.Ordinal))
                     {
-                        Log.Warn("[Towns] unmet town request " + plan.Key + ": " + plan.Decision + "; retained for retry, no existing town moved.");
+                        Log.Warn("[POI] unmet town request " + plan.Key + ": " + plan.Decision + "; retained for retry, no existing town moved.");
 
                     }
                     return;
                 }
-                if (plan.GradeAccess) Log.Always("[Towns] graded access corridor " + plan.Key + ": road approach retained.");
+                if (plan.GradeAccess) Log.Main(null, "[POI] graded access corridor " + plan.Key + ": road approach retained.");
 
                 var site = NewSite(plan, tile.mapMagic.transform, tile.main.terrain, capture.Registration.Assets.Specs);
                 record.Plan = site.Plan;
@@ -279,7 +277,7 @@ namespace WildWasteland.Modules.POI
                 site.Loading = capture.Input.Progress;
                 _sites.Add(new Live { Tile = tile, Registration = capture.Registration, Site = site }); _revision++;
             }
-            catch (Exception e) { Log.Warn("[Towns] stopped applying town; existing objects retained: " + e.Message); }
+            catch (Exception e) { Log.Warn("[POI] stopped applying town; existing objects retained: " + e.Message); }
         }
         private static string ChunkKey(int seed, int x, int z)
         { return "v1/" + seed.ToString(CultureInfo.InvariantCulture) + "/" + x.ToString(CultureInfo.InvariantCulture) + "/" + z.ToString(CultureInfo.InvariantCulture); }
@@ -363,11 +361,11 @@ namespace WildWasteland.Modules.POI
                     catch (Exception e)
                     {
                         if (site.Staged != null) { UnityEngine.Object.Destroy(site.Staged); site.Staged = null; }
-                        Log.Warn("[Towns] lot " + site.Plan.Key + "/" + site.NextLot + " attempt " + (++live.LotFailures) + ": " + e.Message);
+                        Log.Warn("[POI] lot " + site.Plan.Key + "/" + site.NextLot + " attempt " + (++live.LotFailures) + ": " + e.Message);
                         if (live.LotFailures >= 2)
                         {
                             try { TownFactory.KeepGeometry(site, site.NextLot, live.Tile.objectsPool.transform); }
-                            catch (Exception keepError) { Log.Warn("[Towns] retained partial lot: " + keepError.Message); }
+                            catch (Exception keepError) { Log.Warn("[POI] retained partial lot: " + keepError.Message); }
                             site.NextLot++; live.LotFailures = 0; site.PopulationCounts = site.LootCounts = null;
                         }
                     }
@@ -399,7 +397,7 @@ namespace WildWasteland.Modules.POI
                     if (!TownBakeBridge.Enabled) { Finish(live, "NPC navigation off; placed objects and individual maps retained"); return true; }
                     if (site.PrepSteps > PrepStepLimit || Time.unscaledTime - live.PreparedAt >= 60)
                     {
-                        Log.Warn("[Towns] preparation budget reached " + site.Plan.Key + " after " + site.PrepSteps + " steps / " + (Time.unscaledTime - live.PreparedAt).ToString("0", CultureInfo.InvariantCulture)
+                        Log.Warn("[POI] preparation budget reached " + site.Plan.Key + " after " + site.PrepSteps + " steps / " + (Time.unscaledTime - live.PreparedAt).ToString("0", CultureInfo.InvariantCulture)
                             + " s; overlay " + (site.Overlap != null && site.Overlap.Ready ? "ready" : "partial") + ", street routing " + (site.Navigation != null && site.Navigation.Ready ? "ready" : "incomplete") + ".");
                         Finish(live, "preparation budget reached; placed objects and individual maps retained"); return true;
                     }
@@ -415,7 +413,7 @@ namespace WildWasteland.Modules.POI
                 }
                 catch (Exception e)
                 {
-                    Log.Warn("[Towns] preparation " + site.Plan.Key + " attempt " + (++live.MapFailures) + ": " + e.Message);
+                    Log.Warn("[POI] preparation " + site.Plan.Key + " attempt " + (++live.MapFailures) + ": " + e.Message);
                     if (live.MapFailures >= 2)
                     {
                         if (NeedsWalls(live)) { live.WallFailed = true; if (site.Walls != null) site.Walls.Dispose(); site.Walls = null; }
@@ -435,7 +433,7 @@ namespace WildWasteland.Modules.POI
         {
             _revision++; live.Finished = true; live.Site.NavigationStopped = true;
             if (live.Site.Overlap != null && !live.Site.Overlap.Ready)
-                try { live.Site.Overlap.FinishPartial(); } catch (Exception e) { Log.Warn("[Towns] stopped partial overlap: " + e.Message); }
+                try { live.Site.Overlap.FinishPartial(); } catch (Exception e) { Log.Warn("[POI] stopped partial overlap: " + e.Message); }
             if (live.Site.Loading != null) live.Site.Loading.Finish(reason);
         }
         private void Refresh()
@@ -458,19 +456,6 @@ namespace WildWasteland.Modules.POI
                     live.Site.MerchantReady = true;
                 }
             }
-        }
-        private void PopulationChanged(object sender, EventArgs args)
-        {
-            if (!_running || _blocked) return;
-            try
-            {
-                foreach (var live in _sites) { live.Site.PopulationCounts = live.Site.LootCounts = null; live.Site.PopulationReady = false; }
-                foreach (var live in _sites) for (int i = 0; i < live.Site.Spawners.Length; i++)
-                    if (!live.Site.Plan.Lots[i].IsParking && !live.Site.Plan.Lots[i].Skipped && live.Site.Spawners[i] != null)
-                    { TownPopulation.Configure(live.Site, i, live.Registration.Assets, _settings); InteriorPopulation.OwnTown(live.Site, i); }
-                Log.Always("[Towns] DEBUG ranges: population=" + _settings.PopulationMinPercent.Value + "-" + _settings.PopulationMaxPercent.Value + "%, loot=" + _settings.LootMinPercent.Value + "-" + _settings.LootMaxPercent.Value + "% of native totals per town (balanced pending spawns; existing objects retained).");
-            }
-            catch (Exception e) { Log.Warn("[Towns] population update stopped; existing actors/items retained: " + e.Message); }
         }
         private void Moved(TerrainTile tile)
         {
@@ -519,8 +504,8 @@ namespace WildWasteland.Modules.POI
             if (!_running) return true;
             bool pending = false;
             foreach (var live in _sites) if (live.Tile != null && live.Site.Anchor != null && (!live.Finished || NeedsWalls(live) || !InteriorPopulation.TownReady(live.Site))) { pending = true; break; }
-            if (pending && !_waitingForTowns) Log.Always("[Towns] Load handoff waiting: restoring town buildings and population before play.");
-            if (!pending && _waitingForTowns) Log.Always("[Towns] Load handoff ready: town buildings and population restored before play.");
+            if (pending && !_waitingForTowns) Log.Main(null, "[POI] Load handoff waiting: restoring town buildings and population before play.");
+            if (!pending && _waitingForTowns) Log.Main(null, "[POI] Load handoff ready: town buildings and population restored before play.");
             _waitingForTowns = pending;
             return !pending;
         }
@@ -537,7 +522,7 @@ namespace WildWasteland.Modules.POI
         internal void OnSaveBegin(string slot)
         {
             if (!_running || string.IsNullOrEmpty(slot)) return;
-            if (_blocked) { SaveBus.ReportFailure("Towns is blocked; its world data was not saved. See [Towns] error."); return; }
+            if (_blocked) { SaveBus.ReportFailure("Towns is blocked; its world data was not saved. See [POI] error."); return; }
             try
             {
                 foreach (var live in _sites) TownFactory.Capture(live.Site, _records[live.Site.Plan.Key], live.Registration.Assets);
@@ -568,7 +553,7 @@ namespace WildWasteland.Modules.POI
         private void ClearSites()
         { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
         private void Block(string stage, Exception e)
-        { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[Towns] blocked during " + stage + "; no replacement layout will be invented", e); }
+        { _blocked = true; TownLoading.Failed(e.Message); Log.Error("[POI] blocked during " + stage + "; no replacement layout will be invented", e); }
         private static void Undo(Registration registration)
         {
             if (registration.Assets != null) registration.Assets.Dispose();
@@ -580,8 +565,6 @@ namespace WildWasteland.Modules.POI
             LoadingProgress.Remove(Owner);
             var stopped=new TownTrafficStopped();ModEvents.Publish(ref stopped);
             SaveBus.StateChanged -= StateChanged;
-            _settings.PopulationMinPercent.SettingChanged -= PopulationChanged; _settings.PopulationMaxPercent.SettingChanged -= PopulationChanged;
-            _settings.LootMinPercent.SettingChanged -= PopulationChanged; _settings.LootMaxPercent.SettingChanged -= PopulationChanged;
             TerrainTile.OnBeforeTilePrepare -= Prepare; TerrainTile.OnTileFinalized -= Finalized;
             TerrainTile.OnTileApplied -= Applied; TerrainTile.OnTileMoved -= Moved;
             WorldTiles.Remove(Owner,(WorldTiles.TileEvent)TownTerrainEdited);

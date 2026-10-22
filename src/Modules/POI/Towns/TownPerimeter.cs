@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.POI
         internal static Bounds Buildings(TownPlan plan)
         {
             var bounds = new Bounds(); bool any = false;
-            foreach (var lot in plan.Lots) if (!lot.IsParking)
+            foreach (var lot in plan.Lots) if (!lot.IsParking && !lot.External)
                 for (int c = 0; c < 4; c++)
                 {
                     var p = Quaternion.Euler(0, plan.Yaw, 0) * (lot.LocalPosition + Quaternion.Euler(0, lot.Yaw, 0)

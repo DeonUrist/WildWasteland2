@@ -6,6 +6,7 @@ namespace WildWasteland.Modules.Patrols
     internal sealed partial class WorldTraffic
     {
         private Camera _gameMap;
+        /// <summary>Returns the accepted offscreen materialization point for a retained journey.</summary>
         private Vector3 OffscreenTrafficPoint(Vector3 center,Vector3 direction)
         {
             // Route creation only; include the inactive native camera when M is closed.
@@ -40,6 +41,7 @@ namespace WildWasteland.Modules.Patrols
             reach=MapExitDistance(new Vector2(center.x,center.z),new Vector2(direction.x,direction.z),corners);
             return center+direction*(reach+100f);
         }
+        /// <summary>Calculates the current map departure visibility distance.</summary>
         internal static float MapExitDistance(Vector2 origin,Vector2 direction,Vector2[] corners)
         {
             float exit=0f;
@@ -53,6 +55,7 @@ namespace WildWasteland.Modules.Patrols
             return exit;
         }
 
+        /// <summary>Checks the current map name condition for traffic map.</summary>
         internal static string MapName(TrafficJourney journey,bool reveal=false)
         {bool known=reveal||TrafficCompass.Known(journey);return MapUnknown&&!known?"Unknown":(MapNames||known)&&!string.IsNullOrEmpty(journey.name)?journey.name:journey.merchant?"Merchant":journey.convoy?"Convoy":"Patrol";}
         // Map Routes and World traffic markers each use Off / Ambiguous / On for route lines and moving dots + names respectively.
@@ -62,6 +65,7 @@ namespace WildWasteland.Modules.Patrols
         private static bool InkUnknown {get{var m=Core.Services.Map;return m!=null?m.Routes==Core.MapDetail.Ambiguous:PatrolsModule.HideRouteType.Value;}}
         private static bool MapUnknown {get{var m=Core.Services.Map;return m!=null?m.TrafficMarkers==Core.MapDetail.Ambiguous:PatrolsModule.HideRouteType.Value;}}
         private static bool MapNames {get{var m=Core.Services.Map;return m!=null?m.TrafficMarkers!=Core.MapDetail.Ambiguous:PatrolsModule.RealPatrolNames.Value;}}
+        /// <summary>Checks the current route color condition for traffic map.</summary>
         internal static Color32 RouteColor(TrafficJourney journey,bool unknown)
         {
             if(unknown)return new Color32(150,150,150,255);

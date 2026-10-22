@@ -52,7 +52,7 @@ namespace WildWasteland.Modules.POI
                 if (state == _startingTerrainState) return;
                 _startingTerrainState = state; Log.Deep(Owner, "Starting terrain (" + source + "): " + state);
             }
-            catch (Exception e) { Log.Warn("[Towns] Starting terrain trace failed: " + e.Message); }
+            catch (Exception e) { Log.Warn("[POI] Starting terrain trace failed: " + e.Message); }
         }
         /// <summary>Forgets the last starting-terrain trace so the next applied tile logs again.</summary>
         partial void ClearDebug() { _startingTerrainState = null; }

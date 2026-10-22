@@ -21,7 +21,9 @@ namespace WildWasteland.Modules.Patrols
         private static TrafficBase TownGate(TownTrafficStop stop) { return new TrafficBase { id = stop.Id, apron = stop.Approach }; }
         /// <summary>Preserves the existing deterministic FNV identity used for town merchant choices.</summary>
         private static int TrafficHash(string value) { uint hash = 2166136261; foreach (char c in value) hash = unchecked((hash ^ c) * 16777619); return (int)(hash & 0x7fffffff); }
+        /// <summary>Checks the current town travel condition for town traffic.</summary>
         private static bool TownTravel { get { return ModApi.Get<ITownTraffic>() != null; } }
+        /// <summary>Checks the current town dismounted condition for town traffic.</summary>
         internal static bool TownDismounted(GameObject car, GameObject mob)
         {
             if (_instance == null || car == null || mob == null) return false;
@@ -31,20 +33,24 @@ namespace WildWasteland.Modules.Patrols
             journey.townGuards = names.ToArray(); _instance._townGuards[mob.name] = mob; _instance._townGuardJourneys[mob.name] = journey.id;
             return true;
         }
+        /// <summary>Refreshes town traffic stops for the current town traffic.</summary>
         private void RefreshTownTrafficStops()
         {
             if (Time.time < _nextTownTrafficStops) return;
             _nextTownTrafficStops = Time.time + 2f; _townStops.Clear();
             if (TownTravel) ModApi.Get<ITownTraffic>().TravelStops(_townStops);
         }
+        /// <summary>Resets town traffic for the current town traffic.</summary>
         private void ResetTownTraffic()
         { _townDepartures.Clear(); _townStops.Clear(); _townGuards.Clear(); _townGuardOrders.Clear(); _townGuardJourneys.Clear(); _townRetry.Clear(); _nextTownTrafficStops = _nextResident = 0f; }
+        /// <summary>Checks the current town planning condition for town traffic.</summary>
         internal static bool TownPlanning(string id)
         {
             if (_instance == null) return false;
             foreach (var request in _instance._townDepartures) if (request.Journey.id == id) return true;
             return false;
         }
+        /// <summary>Releases current town traffic planning when its actual provider stops.</summary>
         internal static void TownsStopped()
         {
             if (_instance == null) return;
@@ -52,6 +58,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var journey in _instance._journeys) if (journey.townBound && !journey.townParked)
             { journey.townBound = journey.townResident = false; journey.destinationSeconds = journey.unseenSeconds = 0f; }
         }
+        /// <summary>Checks the current retains town condition for town traffic.</summary>
         internal static bool RetainsTown(GameObject target)
         {
             if (_instance == null || target == null) return false;
@@ -65,6 +72,7 @@ namespace WildWasteland.Modules.Patrols
             }
             return journey != null && journey.townBound;
         }
+        /// <summary>Restores town guards for the current town traffic.</summary>
         internal static void RestoreTownGuards()
         {
             if (_instance == null) return;
@@ -73,6 +81,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var fsm in PlayMakerFSM.FsmList)
                 if (fsm != null && fsm.FsmName == "Health" && names.Contains(fsm.name)) _instance._townGuards[fsm.name] = fsm.gameObject;
         }
+        /// <summary>Checks equivalence of map area for the current town traffic.</summary>
         private bool SameMapArea(Vector3 world)
         {
             var player = PlayerRef.Player; if (player == null) return true;
@@ -81,9 +90,11 @@ namespace WildWasteland.Modules.Patrols
             // Uses the native, unzoomed map footprint even while M is closed.
             return TrafficLocations.FlatDistance(center, world) <= TrafficLocations.FlatDistance(center, OffscreenTrafficPoint(center, direction.normalized));
         }
+        /// <summary>Checks the current parking busy condition for town traffic.</summary>
         private bool ParkingBusy(string stop, string except = null)
         { return _journeys.Any(j => j.id != except && j.townBound && j.destination == stop && !j.townSeedBus)
             || _townDepartures.Any(p => p.Journey.id != except && p.Destination.Id == stop); }
+        /// <summary>Queues town departure for the current town traffic.</summary>
         private bool QueueTownDeparture(SpawnGroup group, int role, List<CarTemplate> roster)
         {
             RefreshTownTrafficStops();
@@ -106,11 +117,13 @@ namespace WildWasteland.Modules.Patrols
             Core.Log.Info("[Patrols] Town route planning: " + pair.A.Name + " -> " + pair.B.Name);
             return true;
         }
+        /// <summary>Checks the current park point condition for town traffic.</summary>
         private static Vector3 ParkPoint(TownTrafficStop stop, bool resident)
         {
             if (stop.Lane) return stop.Parking + stop.Heading * (resident ? -ModApi.Get<ITownTraffic>().LaneSpread : ModApi.Get<ITownTraffic>().LaneSpread);   // the bus deep under the canopy, visitors by its open end
             return stop.Parking + Vector3.Cross(Vector3.up, stop.Heading) * (resident ? -6f : 5f);
         }
+        /// <summary>Publishes a completed worker route into the accepted town journey.</summary>
         private static void AdoptTownRoute(TownDeparture pending)
         {
             var j = pending.Journey; var route = new List<Vector3>(); var roads = new List<bool>();
@@ -123,6 +136,7 @@ namespace WildWasteland.Modules.Patrols
             j.position = route[0]; j.leg = 1; j.arrived = false; j.TerrainRoute = pending.Job.Elevation;
             j.destinationSeconds = j.unseenSeconds = j.waitSeconds = j.townVisitSeconds = 0f;
         }
+        /// <summary>Advances queued town routes for the current town traffic.</summary>
         private void PumpTownRoutes()
         {
             if (!TownTravel) { _townStops.Clear(); _townDepartures.Clear(); return; }
@@ -183,6 +197,7 @@ namespace WildWasteland.Modules.Patrols
                 }
             }
         }
+        /// <summary>Populates town convoys for the current town traffic.</summary>
         private void PopulateTownConvoys()
         {
             if (!TownTravel || RoleCount(1) >= PatrolsModule.MaxConvoys.Value || _journeys.Count(j => !j.townParked && !j.townResident) >= PatrolsModule.TrafficMaxGroups.Value) return;
@@ -190,6 +205,7 @@ namespace WildWasteland.Modules.Patrols
             var roster = EditorStore.ComposeFull(group, true, () => UnityEngine.Random.value);
             if (roster.Count > 0 && roster.Any(t => t.IsTruck) && roster.All(t => t.Available)) QueueTownDeparture(group, 1, roster);
         }
+        /// <summary>Checks the current town visit condition for town traffic.</summary>
         private bool TownVisit(TrafficJourney j, float seconds, Transform player)
         {
             if (!j.townBound || !j.arrived) return false;
@@ -239,6 +255,7 @@ namespace WildWasteland.Modules.Patrols
             }
             return false;
         }
+        /// <summary>Dismounts eligible convoy occupants into accepted temporary town guard roles.</summary>
         private void ParkConvoyCrew(TrafficJourney j, Live live)
         {
             foreach (var pair in live.Cars.ToArray())
@@ -275,6 +292,7 @@ namespace WildWasteland.Modules.Patrols
                 }
             }
         }
+        /// <summary>Collects town guards for the current town traffic.</summary>
         private void CollectTownGuards(TrafficJourney j, Crew crew)
         {
             if (crew == null || crew.Regroup == null) return;
@@ -283,10 +301,12 @@ namespace WildWasteland.Modules.Patrols
                 if (member.Body != null && (member.Health == null || member.Health.Value > 0f)) { names.Add(member.Body.name); _townGuards[member.Body.name] = member.Body; _townGuardJourneys[member.Body.name] = j.id; }
             j.townGuards = names.ToArray();
         }
+        /// <summary>Binds the accepted parked crew member to its current guard role.</summary>
         private GameObject TownGuard(string name)
         {
             GameObject body; return _townGuards.TryGetValue(name, out body) ? body : null;
         }
+        /// <summary>Removes parked town for the current town traffic.</summary>
         private void RemoveParkedTown(TrafficJourney j)
         {
             foreach (string name in j.townGuards ?? new string[0])

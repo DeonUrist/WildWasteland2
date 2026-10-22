@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Patrols
     // None = rams nothing (drives past the player / their car in drive-by runs; creatures and cars are obstacles),
     // Pedestrians = runs over the player on foot and creatures, avoids cars (drive-bys on a driving player),
     // Cars = rams the player's car and other vehicles too (and, being that heavy, pedestrians as well).
+    /// <summary>Authored classes of native objects a driver may intentionally ram.</summary>
     internal enum RamTargets { None, Pedestrians, Cars }
 
     internal class CarTemplate
@@ -36,6 +37,7 @@ namespace WildWasteland.Modules.Patrols
         internal float[][] TurretPos = { new float[0], new float[0], new float[0], new float[0] };
         internal bool[] TurretStanding = new bool[4];
         internal CarTemplate Trailer; // optional attached trailer; four independent human turret slots
+        /// <summary>Returns the actor assigned to the primary rider slot.</summary>
         internal string Rider { get { return Turrets[0]; } }
         internal string RearWheel = "";       // wheel item for hinge_wheel_RL/RR; "" = the same as Wheel
         internal string[] Bumpers = null;     // front bumper rolled per build from these ("" = none); null = never a bumper
@@ -55,6 +57,7 @@ namespace WildWasteland.Modules.Patrols
         internal Dictionary<string, int> SpawnLoot;
         internal string SpawnCargoKey;
         internal string[] SpawnCargoOptions;
+        /// <summary>Copies per-spawn crew and turret state without modifying the authored definition.</summary>
         internal CarTemplate CloneForSpawn() {var copy=(CarTemplate)MemberwiseClone();copy.Turrets=(string[])Turrets.Clone();copy.TurretPos=(float[][])TurretPos.Clone();copy.TurretStanding=(bool[])TurretStanding.Clone();if(Trailer!=null)copy.Trailer=Trailer.CloneForSpawn();return copy;}
         internal string Origin = "built-in";  // built-in | embedded | file (for the log and the spawner menu)
 
@@ -78,6 +81,7 @@ namespace WildWasteland.Modules.Patrols
                 return _missingPrefab;
             }
         }
+        /// <summary>Finds missing prefab for the current templates.</summary>
         private string FindMissingPrefab()
         {
             if (Prefabs.Exact(Body) == null) return Body;
@@ -90,6 +94,7 @@ namespace WildWasteland.Modules.Patrols
         // the spawn roles (Convoy picks, spawner menu column)
         // A template may have several kinds ("small;motorcycle"): it counts as each of them. Without any kind the built-in rule decides:
         // truck = Rust* body, junker = Junker body, small = everything else.
+        /// <summary>the spawn roles (Convoy picks, spawner menu column) A template may have several kinds ("small;motorcycle"): it counts as each of them. Without any kind the built-in rule decides: truck = Rust* body, junker = Junker body, small = everything else.</summary>
         internal bool HasKind(string kind)
         {
             if (string.IsNullOrEmpty(kind)) return false;
@@ -102,20 +107,27 @@ namespace WildWasteland.Modules.Patrols
                 default: return false;
             }
         }
+        /// <summary>Checks whether the current value represents truck for the current templates.</summary>
         internal bool IsTruck { get { return HasKind("truck"); } }
+        /// <summary>Checks whether the current value represents junker for the current templates.</summary>
         internal bool IsJunker { get { return HasKind("medium") || HasKind("junker"); } }   // the medium car role ("junker" still read from older files)
+        /// <summary>Checks whether the current value represents motorcycle for the current templates.</summary>
         internal bool IsMotorcycle { get { return HasKind("motorcycle"); } }
+        /// <summary>Checks whether the current value represents small for the current templates.</summary>
         internal bool IsSmall { get { return HasKind("small"); } }
         internal string KindLabel { get { return Kinds != null && Kinds.Length > 0 ? string.Join(";", Kinds) : (IsTruck ? "truck" : IsJunker ? "medium" : "small"); } }
 
+        /// <summary>Rolls bumper for the current templates.</summary>
         internal string RollBumper()
         {
             if (Bumpers == null || Bumpers.Length == 0) return "";
             return Bumpers[UnityEngine.Random.Range(0, Bumpers.Length)] ?? "";
         }
 
+        /// <summary>Creates an authored template with its explicit native frame, parts and crew defaults.</summary>
         internal CarTemplate() { }
 
+        /// <summary>Creates an authored template with its explicit native frame, parts and crew defaults.</summary>
         internal CarTemplate(string name, string body, string wheel, string engine, string radiator, string steeringWheel, string exhaust,
             string seat, string passengerSeat, string driver, string passenger, RamTargets rams)
         {
@@ -134,6 +146,7 @@ namespace WildWasteland.Modules.Patrols
         // Declared after Builtin: static initialisers run in source order.
         internal static CarTemplate[] Park = Builtin;
 
+        /// <summary>Parses rams for the current templates.</summary>
         internal static RamTargets ParseRams(string s)
         {
             if (string.Equals(s, "None", StringComparison.OrdinalIgnoreCase)) return RamTargets.None;
@@ -141,6 +154,7 @@ namespace WildWasteland.Modules.Patrols
             return RamTargets.Pedestrians;
         }
 
+        /// <summary>Returns authored template names in their current display order.</summary>
         internal static string[] Names()
         {
             var names = new string[Park.Length];
@@ -148,6 +162,7 @@ namespace WildWasteland.Modules.Patrols
             return names;
         }
 
+        /// <summary>Finds the exact existing record without creating or rerolling it.</summary>
         internal static CarTemplate Find(string name)
         {
             if (string.IsNullOrEmpty(name)) return null;
@@ -156,6 +171,7 @@ namespace WildWasteland.Modules.Patrols
             return null;
         }
 
+        /// <summary>Formats the existing authored vehicle description for logs and tools.</summary>
         internal string Describe()
         {
             if (Parts != null)
@@ -167,6 +183,7 @@ namespace WildWasteland.Modules.Patrols
                 ;
         }
 
+        /// <summary>Quotes the supplied string for the existing diagnostic representation.</summary>
         private static string Q(string s) { return "\"" + (s ?? "").Replace("\"", "\\\"") + "\""; }
     }
 }

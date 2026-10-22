@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.Patrols
         private sealed class Metrics
         {
             internal readonly float[] Distance, Corner;
+            /// <summary>Returns retained distance metrics for the exact route array.</summary>
             internal Metrics(Vector3[] route)
             {
                 Distance = new float[route.Length]; Corner = new float[route.Length];
@@ -26,8 +27,10 @@ namespace WildWasteland.Modules.Patrols
         }
         private static readonly ConditionalWeakTable<Vector3[], Metrics> Cache = new ConditionalWeakTable<Vector3[], Metrics>();
         private static readonly ConditionalWeakTable<Vector3[], Metrics>.CreateValueCallback Create = r => new Metrics(r);
+        /// <summary>Prepares current native references or detached numeric route data.</summary>
         internal static void Prepare(Vector3[] route) { Cache.GetValue(route,Create); }
 
+        /// <summary>Projects current motion onto the accepted route distance metrics.</summary>
         internal static float Progress(Vector3[] route, int leg, Vector3 actual)
         {
             var metrics=Cache.GetValue(route,Create);
@@ -41,6 +44,7 @@ namespace WildWasteland.Modules.Patrols
             }
             return progress;
         }
+        /// <summary>Resolves a numeric position along the accepted route.</summary>
         internal static Vector3 Point(Vector3[] route, float distance)
         {
             if (route.Length == 0) return Vector3.zero;
@@ -53,9 +57,11 @@ namespace WildWasteland.Modules.Patrols
             float length=metrics.Distance[index]-metrics.Distance[index-1];
             return Vector3.Lerp(route[index-1],route[index],length>0.001f?(distance-metrics.Distance[index-1])/length:0f);
         }
+        /// <summary>Resolves the eligible target using current faction and visibility rules.</summary>
         internal static Vector3 Target(Vector3[] route, int leg, Vector3 actual, float speed)
         { return TargetAt(route, Progress(route, leg, actual), speed); }
         // Perf: the same maths from a progress the caller already has (Progress was computed 2-4x per pilot decision)
+        /// <summary>Perf: the same maths from a progress the caller already has (Progress was computed 2-4x per pilot decision)</summary>
         internal static Vector3 TargetAt(Vector3[] route, float progress, float speed)
         {
             float ahead = Mathf.Clamp(6f + speed * 0.45f, 6f, 16f);
@@ -64,11 +70,13 @@ namespace WildWasteland.Modules.Patrols
             ahead = Mathf.Min(ahead, 6f + safe * 0.45f);
             return Point(route, progress + ahead);
         }
+        /// <summary>Reads current speed for the accepted control or diagnostic operation.</summary>
         internal static float Speed(Vector3[] route, int leg, Vector3 actual, float cruise)
         {
             if (route.Length < 3) return cruise;
             return SpeedAt(route, Progress(route, leg, actual), cruise);
         }
+        /// <summary>Reads the accepted route speed at the requested progress.</summary>
         internal static float SpeedAt(Vector3[] route, float progress, float cruise)
         {
             if (route.Length < 3) return cruise;

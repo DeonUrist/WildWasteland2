@@ -10,6 +10,7 @@ namespace WildWasteland.Modules.Patrols
     {
         // Cars (ForCar/DriveTarget): the nearest opposed actor within 350 m, else the player whenever hostile (vehicle pursuit has its own
         // detection in TrafficAgent.Goal / the pilot's give-up distance).
+        /// <summary>Cars (ForCar/DriveTarget): the nearest opposed actor within 350 m, else the player whenever hostile (vehicle pursuit has its own detection in TrafficAgent.Goal / the pilot's give-up distance).</summary>
         internal static GameObject Target(string faction,Vector3 position)
         {
             var best=NearestOpposed(faction,position);
@@ -17,9 +18,11 @@ namespace WildWasteland.Modules.Patrols
             return PlayerHostile(faction)&&!PlayerRef.GodMode&&PlayerRef.Player!=null?PlayerRef.Player.gameObject:null;
         }
 
+        /// <summary>Checks the current drive target condition for traffic factions.</summary>
         internal static bool DriveTarget(GameObject car,out Vector3 pos,out Vector3 vel,out GameObject targetCar)
         {return DriveTarget(car,car!=null?car.GetComponent<PatrolMarker>():null,out pos,out vel,out targetCar);}
         // marker = car's PatrolMarker, cached by the caller
+        /// <summary>marker = car's PatrolMarker, cached by the caller</summary>
         internal static bool DriveTarget(GameObject car,PatrolMarker marker,out Vector3 pos,out Vector3 vel,out GameObject targetCar)
         {
             pos=vel=Vector3.zero;targetCar=null;
@@ -28,10 +31,12 @@ namespace WildWasteland.Modules.Patrols
             if(PlayerRef.Player!=null&&target==PlayerRef.Player.gameObject)return PlayerRef.Target(out pos,out vel,out targetCar);
             pos=target.transform.position;var body=target.GetComponentInParent<Rigidbody>();if(body!=null){vel=body.velocity;targetCar=body.gameObject;}return true;
         }
+        /// <summary>Resolves the current normalized faction and hostile-target policy of the vehicle.</summary>
         internal static GameObject ForCar(GameObject car)
         {
             return ForCar(car,car!=null?car.GetComponent<PatrolMarker>():null);
         }
+        /// <summary>Resolves the current normalized faction and hostile-target policy of the vehicle.</summary>
         internal static GameObject ForCar(GameObject car,PatrolMarker marker)
         {
             if(marker==null)return null;

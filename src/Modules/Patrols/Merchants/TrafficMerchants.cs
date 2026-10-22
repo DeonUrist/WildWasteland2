@@ -12,11 +12,15 @@ namespace WildWasteland.Modules.Patrols
         {internal int Role;internal string Name,Faction,Type;internal RoadJob Incoming,Outgoing;internal TrafficVehicle[] Vehicles;}
         private readonly List<NearbyDeparture> _nearDepartures=new List<NearbyDeparture>();
         private float _nextMerchant;private PlayMakerFSM _hornFsm;private GameObject _hornCar;private bool _hornOn;
+        /// <summary>Returns the current role count used by traffic merchants.</summary>
         private int RoleCount(int role)=>_journeys.Count(j=>!j.foot&&!j.townParked&&!j.townResident&&(j.merchant?2:j.convoy?1:0)==role)+_nearDepartures.Count(d=>d.Role==role)+_townDepartures.Count(d=>(d.Journey.merchant?2:1)==role&&(!_journeys.Contains(d.Journey)||d.Journey.townResident))+(role==0&&_roamingDeparture!=null?1:0)+(role<2&&_departures.ContainsKey(role==1)?1:0);
+        /// <summary>Checks the current merchant type in use condition for traffic merchants.</summary>
         internal static bool MerchantTypeInUse(string type)
         {return MerchantHost.All.Any(h=>h!=null&&h.Data!=null&&Find(h.GetComponent<PatrolMarker>()?.TrafficId)?.townResident!=true&&MerchantCatalog.Selected(h.Data.types)==type)||(_instance!=null&&(_instance._journeys.Any(j=>j.merchant&&!j.townResident&&j.vehicles.Any(v=>MerchantCatalog.Selected(v.merchantTypes)==type))||_instance._nearDepartures.Any(d=>d.Role==2&&d.Type==type)||_instance._townDepartures.Any(d=>d.Journey.merchant&&d.Journey.vehicles.Any(v=>MerchantCatalog.Selected(v.merchantTypes)==type))));}
+        /// <summary>Checks the current debug departure condition for traffic merchants.</summary>
         internal static bool DebugDeparture(SpawnGroup group,int role)
         {if(_instance==null||group==null||role<0||role>2||!PatrolsModule.ConvoyEnabled.Value){Core.Log.Warn("[Patrols] " + "Select New arrival or Fury road in Game > World > Enemy Vehicles and select a group before creating a route.");return false;}return _instance.QueueNearby(group,role);}
+        /// <summary>Queues nearby for the current traffic merchants.</summary>
         private bool QueueNearby(SpawnGroup group,int role)
         {
             if(role==2&&PatrolsModule.MerchantSpawnChance.Value<=0f){Core.Log.Warn("[Patrols] " + "Route not created: merchant spawn chance is zero.");return false;}
@@ -40,6 +44,7 @@ namespace WildWasteland.Modules.Patrols
             _nearDepartures.Add(new NearbyDeparture{Role=role,Name=group.Name,Faction=group.Faction,Type=type,Vehicles=roster.Select(Freeze).ToArray(),Incoming=RoadPlanner.RequestRoute(entry,middle,role!=0),Outgoing=RoadPlanner.RequestRoute(middle,exit,role!=0)});
             Core.Log.Info("[Patrols] " + "Planning nearby route for "+group.Name);return true;
         }
+        /// <summary>Advances queued nearby routes for the current traffic merchants.</summary>
         private void PumpNearbyRoutes()
         {
             foreach(var departure in _nearDepartures.ToArray())
@@ -54,6 +59,7 @@ namespace WildWasteland.Modules.Patrols
                     route=route,roadLegs=departure.Incoming.Roads.Concat(departure.Outgoing.Roads.Skip(1)).ToArray(),TerrainRoute=departure.Incoming.Elevation||departure.Outgoing.Elevation,position=route[0],vehicles=departure.Vehicles,speed=(departure.Role==0?PatrolsModule.TrafficPatrolSpeed.Value:PatrolsModule.TrafficConvoySpeed.Value)/3.6f});
             }
         }
+        /// <summary>Populates merchants for the current traffic merchants.</summary>
         private void PopulateMerchants()
         {
             if (TownTravel) return; // Settlement buses provide the persistent fleet and depart after their visits.
@@ -77,11 +83,15 @@ namespace WildWasteland.Modules.Patrols
                 groups.Remove(group);QueueNearby(group,2);
             }
         }
+        /// <summary>Returns the configured target count of current merchant journeys.</summary>
         internal static int MerchantPopulation(int maximum,float chance,float roll)
         {float expected=Mathf.Clamp(maximum,0,3)*Mathf.Clamp01(chance/100f);int whole=Mathf.FloorToInt(expected);return whole+(roll<expected-whole?1:0);}
+        /// <summary>Chooses the next eligible authored merchant role.</summary>
         private void NextMerchant(){_nextMerchant=Time.time+PatrolsModule.MerchantCheckMinutes.Value*60f;}
+        /// <summary>Stops merchants for the current traffic merchants.</summary>
         internal void StopMerchants(Vector3 player,float range)
         {foreach(var journey in _journeys)if(journey.merchant&&_live.ContainsKey(journey.id)&&TrafficLocations.FlatDistance(journey.position,player)<=range&&journey.waitSeconds<=0f)journey.waitSeconds=300f;}
+        /// <summary>Updates arrival and departure notifications from retained merchant journey state.</summary>
         private void MerchantSignals()
         {
             var player=PlayerRef.Player;if(player==null)return;var keyboard=Keyboard.current;

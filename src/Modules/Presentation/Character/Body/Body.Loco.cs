@@ -282,7 +282,7 @@ namespace WildWasteland.Modules.PlayerBody
         private float _relaxW, _hipTurn;
         // ---- (2.1.7) aim lift (AimLift.cs): both hands raised / pushed forward by a two-bone arm IK and the head tilted onto the stock while an aim /
         // fire clip moves her hands, per weapon and clip; live keys with WeaponAdjustment on
-        private float _aimLiftW; private string _aimLiftClip; private bool _aimDirty;
+        private float _aimLiftW; private string _aimLiftClip;
         private bool _aimCrouched;
         /// <summary>Raises both hands and tilts the head by the weapon's aim-lift entry while an aim / fire clip moves the hands (eased in and out).</summary>
         private void ApplyAimLift(string weapon, Props.Kind kind, float dt)

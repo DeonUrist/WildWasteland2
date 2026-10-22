@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Traffic queries on the known locations (patrol bases and counts, spawn rules, engine range, vehicle clearance, camp approach, coarse route); Patrols part (Wave A split of Traffic/TrafficLocations.cs).</summary>
     internal static partial class TrafficLocations
     {
+        /// <summary>Counts discovered eligible bases near the current world point.</summary>
         internal static int NearbyCount(Vector3 player,float range)
         {
             int count=0;foreach(var camp in Known.Values)
@@ -18,8 +19,10 @@ namespace WildWasteland.Modules.Patrols
             if (Core.ModApi.Get<Core.ITownTraffic>() != null) count += Core.ModApi.Get<Core.ITownTraffic>().PatrolCount(player, range);
             return count;
         }
+        /// <summary>Enumerates discovered bases eligible near the current world point.</summary>
         internal static TrafficBase[] NearbyBases(Vector3 player,float range)
         {return PatrolBases().Where(c=>BaseLoaded(c.id)&&FlatDistance(c.center,player)<=range).ToArray();}
+        /// <summary>Enumerates discovered origins under current faction and starting-area exclusions.</summary>
         internal static TrafficBase[] PatrolBases()
         {
             var bases = Known.Values.Where(c => c.faction != "Coyotes" && !c.cleared && !TownInterior(c.center)).ToList();
@@ -32,20 +35,25 @@ namespace WildWasteland.Modules.Patrols
             }
             return bases.ToArray();
         }
+        /// <summary>Checks the current base loaded condition for traffic locations.</summary>
         internal static bool BaseLoaded(string id)
         { return TrafficCamps.Loaded(id) || Core.ModApi.Get<Core.ITownTraffic>() != null && Core.ModApi.Get<Core.ITownTraffic>().PatrolBase(id); }
 
+        /// <summary>Checks the current player at condition for traffic locations.</summary>
         internal static bool PlayerAt(TrafficBase camp)
         {var player=PlayerRef.Player;return player!=null&&Contains(camp,TrafficSpace.World(player.position));}
+        /// <summary>Checks the current patrol spawn allowed condition for traffic locations.</summary>
         internal static bool PatrolSpawnAllowed(Vector3 point)
         {foreach(var camp in Known.Values)if(PlayerAt(camp)&&Contains(camp,point,60f))return false;return true;}
 
+        /// <summary>Returns the existing perception range of the native vehicle engine.</summary>
         internal static float EngineRange(GameObject car)
         {
             return PatrolVisibility.EngineDistance(car);
         }
 
         private static readonly RaycastHit[] Hits = new RaycastHit[64];
+        /// <summary>Checks the current vehicle clear condition for traffic locations.</summary>
         internal static bool VehicleClear(GameObject car, Vector3 from, Vector3 to, float radius)
         {
             var d = to - from; float length = d.magnitude; if (length < 0.1f) return true;
@@ -68,6 +76,7 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
 
+        /// <summary>Checks the current camp approach condition for traffic locations.</summary>
         internal static bool CampApproach(GameObject car, Vector3 target, out Vector3 approach, out bool hold)
         {
             approach = target; hold = false;
@@ -90,6 +99,7 @@ namespace WildWasteland.Modules.Patrols
             return false;
         }
 
+        /// <summary>Requests the worker route for the accepted discovered endpoints.</summary>
         internal static Vector3[] Route(TrafficBase source, TrafficBase destination)
         {
             var route = new List<Vector3> { source.apron, destination.apron };
@@ -123,6 +133,7 @@ namespace WildWasteland.Modules.Patrols
             return null; // overlapping geometry has no bounded route in this prototype
         }
 
+        /// <summary>Checks the current crosses condition for traffic locations.</summary>
         private static bool Crosses(Bounds box, Vector3 a, Vector3 b)
         { a.y = b.y = 0f; var d = b - a; return d.magnitude > 0.01f && box.IntersectRay(new Ray(a, d.normalized), out var hit) && hit < d.magnitude; }
     }

@@ -116,7 +116,7 @@ namespace WildWasteland.Modules.POI
         private void Sources()
         {
             if (_sourcesReady) return; _sourcesReady = true;
-            foreach (var filter in Resources.FindObjectsOfTypeAll<MeshFilter>()) if (filter != null && !filter.gameObject.scene.IsValid()) _sources[Source(filter)] = filter;
+            foreach (var filter in WildWasteland.Core.PrefabCatalog.AssetMeshes) if (filter != null && !filter.gameObject.scene.IsValid()) _sources[Source(filter)] = filter;
         }
         private static string Source(MeshFilter filter)
         {

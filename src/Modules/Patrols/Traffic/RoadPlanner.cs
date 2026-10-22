@@ -48,7 +48,9 @@ namespace WildWasteland.Modules.Patrols
         private static RoadTile[] _tiles;
         private static Bounds[] _blocks;
         internal static long Searches;
+        /// <summary>Clears retained runtime state at the owning lifecycle boundary.</summary>
         internal static void Reset(){Interlocked.Increment(ref _epoch);_snapshotRoad=_snapshotCamps=_snapshotCount=-1;}
+        /// <summary>Checks the current request route condition for road planner.</summary>
         internal static RoadJob RequestRoute(TrafficBase source,TrafficBase destination,bool convoy,bool foot=false,TrafficBase[] sources=null,TrafficBase[] destinations=null,Vector3[] existing=null)
         {
             if(PatrolsModule.TrafficRoadRouting.Value)TrafficRoads.RequestAlong(source.apron,destination.apron);
@@ -75,13 +77,16 @@ namespace WildWasteland.Modules.Patrols
                 Sources=Alternatives(sources,source),Destinations=Alternatives(destinations,destination),Existing=existing,Quiet=quiet});
             Start();return job;
         }
+        /// <summary>Chooses the bounded alternative endpoint set for worker planning.</summary>
         private static TrafficBase[] Alternatives(TrafficBase[] choices,TrafficBase fallback)
         {
             if(choices==null||choices.Length==0)return new[]{fallback};
             var result=new TrafficBase[Math.Min(4,choices.Length)];int start=UnityEngine.Random.Range(0,choices.Length);
             for(int i=0;i<result.Length;i++)result[i]=choices[(start+i)%choices.Length];return result;
         }
+        /// <summary>Resolves native references after the component enters the loaded scene.</summary>
         private static void Start(){if(Interlocked.CompareExchange(ref _running,1,0)==0)Task.Run((Action)Run);}
+        /// <summary>Drains detached numeric worker requests and publishes completed results.</summary>
         private static void Run()
         {
             try
