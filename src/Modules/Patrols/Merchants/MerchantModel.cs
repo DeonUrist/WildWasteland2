@@ -5,7 +5,7 @@ using System.Linq;
 using UnityEngine;
 namespace WildWasteland.Modules.Patrols
 {
-    internal static class MerchantCatalog
+    internal static partial class MerchantCatalog
     {
         internal static readonly string[] Types={"general","mechanic","organic"};
         internal static bool Known(string id)=>Types.Contains(id);
@@ -15,16 +15,6 @@ namespace WildWasteland.Modules.Patrols
         internal static string Station(string id)=>id=="mechanic"?"Sell_Items_mechanic":id=="organic"?"Sell_Items_organic_mechanic":"Sell_Items";
         internal static SpawnGroup DefaultGroup()=>new SpawnGroup{Id="coyote-merchant",Name="Coyote merchant",Faction="Coyotes",Chance=10,Templates=new List<string>{"Coyote_Trader"},MerchantTypes=new List<string>{"general"}};
         internal static List<SpawnGroup> DefaultGroups()=>Types.Select(type=>{var group=DefaultGroup();group.MerchantTypes=new List<string>{type};if(type!="general"){group.Id+="-"+type;group.Name="Coyote "+Label(type).ToLowerInvariant();}return group;}).ToList();
-        internal static GameObject[] Goods(string type)
-        {
-            var station=Prefabs.FindAny(Station(type));
-            var proxy=station!=null?station.GetComponent<PlayMakerArrayListProxy>():null;
-            if(proxy==null){var list=GameObject.Find("ItemBuySellList");if(list!=null)proxy=list.GetComponent<PlayMakerArrayListProxy>();}
-            var goods=proxy!=null?proxy.preFillGameObjectList.Where(g=>g!=null).ToArray():new GameObject[0];
-            if(goods.Length==0&&proxy?.arrayList!=null)goods=proxy.arrayList.OfType<GameObject>().Where(g=>g!=null).ToArray();
-            if(goods.Length==0)return new[]{Prefabs.FindAny("Repairbox_Small"),Prefabs.FindAny("Toolbox"),Prefabs.FindAny("first_aid_1")}.Where(g=>g!=null).ToArray();
-            return goods.Where(g=>g.GetComponents<PlayMakerFSM>().Any(f=>f.FsmName=="ForBuy")).ToArray();
-        }
     }
     [Serializable] public sealed class MerchantPose
     {public string id;public Vector3 position,rotation;}
@@ -42,13 +32,6 @@ namespace WildWasteland.Modules.Patrols
     {public int version=1;public string template,group;public string[] types=new string[0];public MerchantStock[] stock=new MerchantStock[0];public MerchantDemand[] demands=new MerchantDemand[0];public MerchantTurret[] turrets;public bool travelling;}
     public sealed class MerchantObject
     {public string Id,Label,Kind;public Transform Transform;}
-    public static class MerchantApi
-    {
-        public static GameObject[] Cars()=>MerchantHost.All.Where(h=>h!=null).Select(h=>h.gameObject).ToArray();
-        public static MerchantObject[] Objects(GameObject car)=>car!=null?car.GetComponent<MerchantHost>()?.Objects.ToArray()??new MerchantObject[0]:new MerchantObject[0];
-        public static string Save(GameObject car)=>MerchantLayouts.Save(car);
-        public static void Freeze(GameObject car){var host=car!=null?car.GetComponent<MerchantHost>():null;if(host==null)return;var journey=WorldTraffic.Find(car.GetComponent<PatrolMarker>()?.TrafficId);if(journey?.merchant==true)journey.waitSeconds=300f;else host.Park();}
-    }
     internal static class MerchantLayouts
     {
         private static MerchantLayoutFile _data;
