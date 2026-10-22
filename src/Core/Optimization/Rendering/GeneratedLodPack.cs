@@ -53,6 +53,7 @@ namespace WildWasteland.Core.Optimization
             using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(bytes)).Replace("-", "").ToLowerInvariant();
         }
 
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         internal static string Key(Mesh mesh)
         {
             var b = mesh.bounds;

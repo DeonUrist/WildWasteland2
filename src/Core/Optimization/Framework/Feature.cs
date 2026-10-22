@@ -40,10 +40,15 @@ namespace WildWasteland.Core.Optimization
         public abstract string Key { get; }             // config key, stable: "Targeted events"
         public abstract string Title { get; }           // shown on the tab
         public abstract string Category { get; }        // Categories.*
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public virtual string Help { get { return ""; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public virtual int Order { get { return 0; } }  // inside the category
+        /// <summary>Whether this feature can compare optimized answers while leaving the native path active.</summary>
         public virtual bool SupportsShadow { get { return false; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public virtual bool UsesPreset { get { return false; } }
+        /// <summary>Initial mode before an explicit per-feature override is set.</summary>
         public virtual FeatureMode DefaultMode { get { return FeatureMode.On; } }
 
         public OptimizationRuntime Module { get; internal set; }
@@ -65,10 +70,15 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Called once in module Init (before Core applies shared dispatchers): subscribe handlers to Core.Hooks targets here
         /// (Hooks.X.Prefix(Module, handler)); handlers must check the feature's static flag first. Core removes them on Shutdown.</summary>
         public virtual void SubscribeHooks() { }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public virtual void OnSceneLoaded() { }
+        /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public virtual void OnWorldReady() { }
+        /// <summary>Adjusts cached positions after the floating origin moves.</summary>
         public virtual void OnOriginShift(Vector3 delta) { }
+        /// <summary>Restores this feature-owned saved-object state before the native save transaction.</summary>
         public virtual void OnSaveBegin() { }
+        /// <summary>Resumes feature work after the native save transaction has completed.</summary>
         public virtual void OnSaveEnd() { }
         /// <summary>The preset or a knob changed while the feature runs: re-apply values (default: Disable + Enable).</summary>
         public virtual void OnSettingsChanged() { var m = Running; Stop(); Start(m); }
@@ -145,7 +155,9 @@ namespace WildWasteland.Core.Optimization
                 return _values[(int)OptimizationRuntime.Preset];
             }
         }
+        /// <summary>Unmodified preset value, before any quality override is applied.</summary>
         public float Vanilla { get { return _values[0]; } }
+        /// <summary>Effective knob value rounded to an integer for native settings.</summary>
         public int Int { get { return Mathf.RoundToInt(Value); } }
     }
 }

@@ -35,11 +35,17 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class GuiLoopFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "PM5"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "GUI loop"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "PlayMaker GUI loop and visibility events"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.PlayMaker; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 5; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "PlayMaker's GUI pass visits only the few FSMs that draw anything, unused OnGUI helpers stop running, and unhandled became-visible events are skipped. Same result."; } }
 
         internal static bool On;
@@ -69,6 +75,7 @@ namespace WildWasteland.Core.Optimization
         static readonly Dictionary<Type, bool> _guiType = new Dictionary<Type, bool>();
 
         // PlayMakerFSM.OnEnable is shared with Patrols and the registry: Core.Hooks.FsmEnable postfix
+        /// <summary>Registers the feature-owned shared Core dispatcher handlers; handlers gate on the feature state.</summary>
         public override void SubscribeHooks()
         {
             Hooks.FsmEnable.Postfix(Module, OnFsmEnabled);
@@ -87,6 +94,7 @@ namespace WildWasteland.Core.Optimization
             return true;
         }
         static void OnFsmEnabled(PlayMakerFSM f) { if (On) Added(f); }
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!EnsurePatched(typeof(Patch))) throw new Exception("PlayMakerGUI / visibility patches failed");
@@ -105,6 +113,7 @@ namespace WildWasteland.Core.Optimization
             DisableExistingProxies();
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             On = false;
@@ -113,8 +122,10 @@ namespace WildWasteland.Core.Optimization
             Array.Clear(_snap, 0, _snap.Length);
         }
 
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _isCand.Clear(); _dirty = true; _suspended = false; PruneProxies(); }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("GUI candidates / disabled OnGUI helpers", _cands.Count + " / " + _proxies.Count + (_suspended ? " (suspended)" : ""));

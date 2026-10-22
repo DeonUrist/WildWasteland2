@@ -21,15 +21,23 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class CullLods : Feature, IScanClient
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "RC2"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Size culling"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Cull-only LOD groups and LOD bias"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 8; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Props and buildings without LODs stop rendering when they are only a few pixels tall; LOD bias follows the preset."; } }
 
         Knob _bias, _scale;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _bias = NewKnob(cfg, "LOD bias", "QualitySettings.lodBias cap (vanilla Ultra 2).", 0.8f, 1.2f, 2f, 2f);
@@ -51,6 +59,7 @@ namespace WildWasteland.Core.Optimization
         public static int Failed;
         public ScanTypes Types { get { return ScanTypes.Roots; } }
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             _usedScale = Mathf.Clamp(_scale.Value, 0.1f, 10f);
@@ -58,6 +67,7 @@ namespace WildWasteland.Core.Optimization
             RenderScan.Register(this);
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             RenderScan.Unregister(this);
@@ -85,8 +95,11 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged() { QualityGuard.Set(QualityGuard.Q.LodBias, _bias.Value); }
+        /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded() { _done.Clear(); RenderScan.RequestFull(); }
+        /// <summary>Refreshes this feature after native gameplay objects have finished loading.</summary>
         public override void OnWorldReady() { RenderScan.RequestFull(); }
 
         public void OnRoot(Transform root, ref ScanCtx c)
@@ -168,9 +181,13 @@ namespace WildWasteland.Core.Optimization
             return rr != null && !rr.isKinematic;
         }
 
+        /// <summary>This scan client does not modify lights.</summary>
         public void OnLight(Light l, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify mesh renderers.</summary>
         public void OnRenderer(MeshRenderer r, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify particle systems.</summary>
         public void OnParticles(ParticleSystem p, ref ScanCtx c) { }
+        /// <summary>This scan client does not modify animators.</summary>
         public void OnAnimator(Animator a, ref ScanCtx c) { }
         public void OnPassDone()
         {
@@ -178,6 +195,7 @@ namespace WildWasteland.Core.Optimization
             if (_done.Count > 50000) _done.Clear();
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Injected LOD groups", _assetGroups.Count + " prefabs, " + _instGroups.Count + " live objects" + (Failed > 0 ? ", " + Failed + " failed" : ""));

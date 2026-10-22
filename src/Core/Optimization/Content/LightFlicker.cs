@@ -19,15 +19,23 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class LightFlickerFeature : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "CT6"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Light flicker"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Light flicker manager"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Content; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 6; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Flickering camp lights update at a fixed rate and only near the camera instead of every frame everywhere."; } }
 
         Knob _hz, _dist;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _hz = NewKnob(cfg, "Rate (Hz)", "Flicker update rate.", 15f, 20f, 30f, 0f);
@@ -41,6 +49,7 @@ namespace WildWasteland.Core.Optimization
         float _interval, _dist2;
         internal static long Steps;
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             On = true;
@@ -57,8 +66,10 @@ namespace WildWasteland.Core.Optimization
             float d = Mathf.Max(1f, _dist.Value); _dist2 = d * d;
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged() { Apply(); }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             On = false;
@@ -111,6 +122,7 @@ namespace WildWasteland.Core.Optimization
             }
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             int held = 0; for (int i = 0; i < _lamps.Count; i++) if (_lamps[i].Comp != null && FsmPause.Held(_lamps[i].Fsm, FsmPause.Stepped)) held++;

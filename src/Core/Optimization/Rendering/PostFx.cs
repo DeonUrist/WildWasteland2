@@ -25,11 +25,17 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class PostFxExact : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "EN2"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Dead post effects"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Skip zero-intensity screen-space shadows, lean Sharpen"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 2; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "Exact: no visible change. Skips the PPU screen-space-shadow effect while its intensity is 0 and renders Sharpen without its unused render texture."; } }
 
         internal static bool On;
@@ -42,6 +48,7 @@ namespace WildWasteland.Core.Optimization
         static object _lastSss, _lastSharp;
         public static long Skipped, SharpFast;
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!Resolve()) throw new Exception("PostProcessing types not found");
@@ -53,6 +60,7 @@ namespace WildWasteland.Core.Optimization
             On = true;
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable() { On = false; _lastSss = _lastSharp = null; }
 
         static bool _resolved, _ok;
@@ -174,6 +182,7 @@ namespace WildWasteland.Core.Optimization
             return false;
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l)
         {
             l.Value("Screen-space shadow frames skipped", Skipped.ToString());
@@ -190,15 +199,23 @@ namespace WildWasteland.Core.Optimization
     /// </summary>
     public sealed class AntiAliasing : Feature
     {
+        /// <summary>Stable performance-plan identifier used in diagnostics and capture comparisons.</summary>
         public override string PlanId { get { return "EN2"; } }
+        /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Anti-aliasing"; } }
+        /// <summary>Player-facing description of this optimization in the performance controls.</summary>
         public override string Title { get { return "Replace the no-op TAA with SMAA / FXAA"; } }
+        /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
+        /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
         public override int Order { get { return 3; } }
+        /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
+        /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
         public override string Help { get { return "The game's TAA has zero blending (costs time, smooths nothing). Performance uses FXAA, Balanced/Visuals SMAA."; } }
 
         Knob _mode, _quality, _nan;
+        /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg)
         {
             _mode = NewKnob(cfg, "Mode", "1 = FXAA, 2 = SMAA, 3 = keep TAA.", 1, 2, 2, 3);
@@ -212,6 +229,7 @@ namespace WildWasteland.Core.Optimization
         static Type _layerType;
         static FieldInfo _fMode, _fNan, _fTaa, _fStat, _fMotion, _fSmaa, _fSmaaQ, _fFxaa, _fFast;
 
+        /// <summary>Activates this feature-owned replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
             if (!Resolve()) throw new Exception("PostProcessLayer not found");
@@ -220,6 +238,7 @@ namespace WildWasteland.Core.Optimization
             Tick();
         }
 
+        /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
             if (_job != null) { _job.Remove(); _job = null; }
@@ -227,6 +246,7 @@ namespace WildWasteland.Core.Optimization
             _recs.Clear();
         }
 
+        /// <summary>Reapplies active feature settings after its preset or override values change.</summary>
         public override void OnSettingsChanged()
         {
             foreach (var r in _recs.Values) if (r.Layer != null) ApplyTo(r);
@@ -294,6 +314,7 @@ namespace WildWasteland.Core.Optimization
             var fxaa = _fFxaa.GetValue(layer); if (fxaa != null) _fFast.SetValue(fxaa, fast);
         }
 
+        /// <summary>Draws this feature-owned current counters and state without performing optimization work.</summary>
         public override void DrawStats(ToolLayout l) { l.Value("Cameras", _recs.Count.ToString()); }
     }
 }
