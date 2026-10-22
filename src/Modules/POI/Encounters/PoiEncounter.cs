@@ -1,3 +1,4 @@
+using WildWasteland.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -30,7 +31,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
             _deadLugnut = Prefabs.Exact("Lugnut_Dead");
             if (_zombie == null) Core.Log.Warn("[Patrols] War Rig POI: Zombie_Runner prefab is missing.");
             if (_deadLugnut == null) Core.Log.Warn("[Patrols] War Rig POI: Lugnut_Dead prefab is missing.");
-            if (_template != null) { VehicleBuildCache.Warm(_template); return; }
+            if (_template != null) { VehiclePreparation.Warm(_template); return; }
             using (var stream = WildWasteland.Core.DiskResources.Open("Patrols.DefaultTemplates.Truck_War_Rig.json"))
             using (var reader = new StreamReader(stream))
             {
@@ -50,7 +51,7 @@ namespace WildWasteland.Modules.Patrols.WarRig
                 _template = CarTemplates.Parse(file.ToJson(), file.name, "POI", "embedded War Rig POI");
                 if (_template == null) throw new InvalidOperationException("War Rig POI template could not be prepared");
                 _template.SetupOnly = true; _template.SpawnLoot = new Dictionary<string, int>();
-                VehicleBuildCache.Warm(_template);
+                VehiclePreparation.Warm(_template);
             }
         }
         private static void Spawn(Vector3 position, Quaternion rotation, Action<GameObject> onDone)

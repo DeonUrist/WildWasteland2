@@ -13,9 +13,9 @@ namespace WildWasteland.Modules.Patrols
         internal static void StateChanged(string state)
         {
             if (state == "LoadGame" || state == "setSeed")
-            { _loading = true; VehicleBuildCache.WarmPark(); }
+            { _loading = true; VehiclePreparation.WarmPark(); }
             if (_loading && state == "Wait for Terrain Gen")
-            { Prefabs.Refresh(); VehicleBuildCache.WarmPark(); WarRig.PoiEncounter.Prepare(); }
+            { Prefabs.Refresh(); VehiclePreparation.WarmPark(); WarRig.PoiEncounter.Prepare(); }
             if (state == "isPlay")
             {
                 if (_loading) Core.Log.Always("[Patrols] Load handoff ready: vehicle builds cached, saved patrol AI prepared; native vehicle/item deltas retained.");
@@ -26,7 +26,7 @@ namespace WildWasteland.Modules.Patrols
         private static bool ReadyForHandoff()
         {
             if (!_loading || !PatrolsModule.Running) return true;
-            return !VehicleBuildCache.Warming && !PatrolPersistence.Restoring;
+            return !VehiclePreparation.Warming && !PatrolPersistence.Restoring;
         }
         /// <summary>Clears pending work when a scene or patrol session ends.</summary>
         internal static void Reset() { _loading = false; }

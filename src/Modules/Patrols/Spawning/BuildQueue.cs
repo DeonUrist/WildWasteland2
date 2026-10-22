@@ -3,14 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using WildWasteland.Core;
-using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Patrols
 {
     /// <summary>
     /// Template vehicle assembly queue: one build at a time, stepped on one scheduler slice under Core WorldWork's Vehicles owner; native
-    /// frame/physics waits and ignition timing keep coroutine semantics. Requests come from Patrols (Patrol.Build); exactly one driver steps
-    /// the queue per frame: the Vehicles job while the Vehicles module runs, else the old Patrols job (so Patrols spawns never stall).
+    /// frame/physics waits and ignition timing keep coroutine semantics. Requests come from Patrols (Patrol.Build); Patrols owns this orchestration queue; Vehicles separately prepares mechanical structures.
     /// </summary>
     internal static class BuildQueue
     {
@@ -40,11 +38,10 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Old Patrols job step ("Patrols.Build"): drives the queue only while the Vehicles module is off (one driver per frame).</summary>
-        [Obsolete("refactor: the Vehicles module drives the build queue (BuildQueue.DriveFromVehicles)")]
-        internal static bool Step() { return !VehiclesModule.Running && StepCore(); }
+                internal static bool Step() { return StepCore(); }
 
         /// <summary>Sliced job "Vehicles.Build queue" (1 ms): steps the queue while the Vehicles module runs.</summary>
-        internal static bool DriveFromVehicles() { return VehiclesModule.Running && StepCore(); }
+
 
         /// <summary>
         /// One step of the active build (starting the next queued one first): nested iterators are pushed, null waits a frame, other yields wait
@@ -114,7 +111,7 @@ namespace WildWasteland.Modules.Patrols
             while (r.Stack.Count > 0)
             {
                 var disposable = r.Stack.Pop() as IDisposable;
-                if (disposable != null) { try { disposable.Dispose(); } catch (Exception e) { Log.Error(VehiclesModule.Instance, "Build cancellation", e); } }
+                if (disposable != null) { try { disposable.Dispose(); } catch (Exception e) { Log.Error(PatrolsModule.Instance, "Build cancellation", e); } }
             }
         }
 
