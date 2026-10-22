@@ -38,7 +38,8 @@ namespace WildWasteland.Core.Optimization
         public IList<Feature> Features { get { return _featuresView ?? (_featuresView = _features.AsReadOnly()); } }
         IList<Feature> _featuresView;
         readonly HashSet<string> _patched = new HashSet<string>();
-        bool _running, _initialized;
+        bool _running, _initialized, _sceneSafe;
+        Job _startup;
         /// <summary>Whether the Core optimization master is active, including deferred scene startup.</summary>
         public bool Running { get { return _running; } }
         public WeatherVisualDetail WeatherDetail { get { return Preset == PerfPreset.Low ? WeatherVisualDetail.Low : Preset == PerfPreset.Max ? WeatherVisualDetail.Max : WeatherVisualDetail.Balanced; } }
@@ -136,12 +137,21 @@ namespace WildWasteland.Core.Optimization
                 if (f is FsmSleepFeature || f is GuiLoopFeature) continue;
                 SubscribeFeature(f);
             }
-            // Features touch scene objects and render settings (RenderSettings.sun crashed natively when called from the
-            // BepInEx chainloader, before any scene exists): start them on the first loaded scene, or now when switched on in game.
-            _deferred = !SceneManager.GetActiveScene().isLoaded;
+            // Plugin.Awake may run while the chainloader still owns startup. Query the scene only from a runner frame
+            // or the scene-loaded callback; a loaded-looking scene alone does not make render access safe during Awake.
+            _deferred = !_sceneSafe;
             if (_deferred) { if (Log.L1) Log.Main(OptimizationRuntime.Instance, "waiting for the first scene to start " + _features.Count + " optimizations"); }
             else StartFeatures();
+            if (_deferred) _startup = Scheduler.EveryFrame(this, "Core.Optimization.Startup", StartWhenSceneReady, Phase.EarlyUpdate);
             Hooks.ApplyUsed();
+        }
+
+        /// <summary>First runner-frame startup barrier: scene/render features never execute inside Plugin.Awake.</summary>
+        void StartWhenSceneReady()
+        {
+            if (!_running || !_deferred || !SceneManager.GetActiveScene().isLoaded) return;
+            _sceneSafe = true;
+            StartFeatures();
         }
 
         /// <summary>Contains one feature's optional hook registration failure so unrelated features still initialize.</summary>
@@ -155,6 +165,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Applies the effective feature modes after scene-dependent startup becomes safe.</summary>
         void StartFeatures()
         {
+            if (_startup != null) { _startup.Remove(); _startup = null; }
             _deferred = false;
             ApplyAll(false);
             int on = 0; foreach (var f in _features) if (f.Running != FeatureMode.Off) on++;
@@ -177,6 +188,7 @@ namespace WildWasteland.Core.Optimization
             WorldTiles.RemoveAll(this);
             for (int i = _features.Count - 1; i >= 0; i--) _features[i].Stop();
             Scheduler.RemoveAll(this);
+            _startup = null;
             Hooks.RemoveAll(this);
             Patches.Unpatch(this);
             FsmPause.ReleaseAll(this);
@@ -264,6 +276,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Drops scene-bound references and refreshes this feature for the newly loaded scene.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            _sceneSafe = true;
             if (!_running) return;
             if (_deferred) { StartFeatures(); return; }   // features start against this scene: no separate OnSceneLoaded
             Each(f => f.OnSceneLoaded(), "OnSceneLoaded");

@@ -55,7 +55,7 @@ namespace WildWasteland.Core.Optimization
         {
             if (_logged || _batchState < 2) return;
             _logged = true;
-            if (_batchState == 2) if (Log.L1) Log.Main(OptimizationRuntime.Instance, "FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)");
+            if (_batchState == 2) { if (Log.L1) Log.Main(OptimizationRuntime.Instance, "FS4: compiled " + _batchCtors + " constructors and " + _batchSetters + " field setters in " + _batchMs + " ms (background)"); }
             else WildWasteland.Core.Log.Warn(OptimizationRuntime.Instance, "FS4: batch compile failed, reflection stays (" + _batchError + ")");
         }
         /// <summary>Draws this feature's current counters and state without performing optimization work.</summary>
