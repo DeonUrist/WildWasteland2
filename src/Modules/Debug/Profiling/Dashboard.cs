@@ -99,6 +99,9 @@ namespace WildWasteland.Modules.Debug
                 GUILayout.Label(row.System + "." + row.Name + " [" + row.Phase + "] " + (row.Enabled ? "" : "DISABLED ") + "  " + F(row.Milliseconds) + " ms/s   " + F(row.Calls) + " calls/s   avg " + F(row.Average) + "ms   max " + F(row.Maximum) + "ms   errors " + row.Errors, _mono);
                 Bar("", row.Milliseconds, Math.Max(1, Measurements.SchedulerMsPerSecond));
             }
+            GUILayout.Label("Core hook / event / named-scope handlers (trace enabled)", _heading);
+            foreach (var row in HandlerMeasurements.Rows)
+                if (Matches(row.Owner + " " + row.Name)) GUILayout.Label(row.Kind + " " + row.Owner + " " + row.Name + " | " + F(row.Calls) + " calls/s | " + F(row.Milliseconds) + " ms/s | errors " + row.Errors, _mono);
         }
         /// <summary>Shows inclusive, self, main-thread and worker method rates with their attribution limitations.</summary>
         private static void Methods()
@@ -120,6 +123,7 @@ namespace WildWasteland.Modules.Debug
         private static void Systems()
         {
             GUILayout.Label("Per-system timing and independent logging", _heading);
+            if (!Core.Log.L2) GUILayout.Label("Set Debug logging to Deep traces (level 2) to install optional method probes.");
             GUILayout.Label("Installing Harmony hooks can hitch. Install at the title/pause menu, wait for the queue to finish, then reset the sample window.");
             _deep = GUILayout.Toggle(_deep, "Deep mode: all eligible managed methods in selected system (higher overhead; use a focused system)");
             GUILayout.BeginHorizontal();

@@ -65,7 +65,7 @@ namespace WildWasteland.Modules.Debug
             Measurements.SetMeasuring(Visible || Capturing);
             long begin = Stopwatch.GetTimestamp();
             Instrumentation.Frame = Time.frameCount;
-            Measurements.Frame();
+            if (Recording) Measurements.Frame();
             var keyboard = Keyboard.current;
             if (keyboard != null)
             {
@@ -156,7 +156,13 @@ namespace WildWasteland.Modules.Debug
                 string detail = "PERF-CALL " + row.Name + " calls/s=" + row.Calls.ToString("0.0", c) + " self/main/worker ms/s=" + row.Self.ToString("0.###", c) + "/" + row.Main.ToString("0.###", c) + "/" + row.Worker.ToString("0.###", c);
                 Core.Log.Main(DebugModule.Instance, detail); AddTrace(detail);
             }
-            for (int i = 0; i < Math.Min(5, Measurements.Jobs.Count); i++) { var job = Measurements.Jobs[i]; string detail = "PERF-JOB " + job.System + "." + job.Name + " ms/s=" + job.Milliseconds.ToString("0.###", c); Core.Log.Main(DebugModule.Instance, detail); AddTrace(detail); }
+            for (int i = 0; i < Math.Min(10, Measurements.Jobs.Count); i++) { var job = Measurements.Jobs[i]; string detail = "PERF-JOB " + job.System + "." + job.Name + " ms/s=" + job.Milliseconds.ToString("0.###", c); Core.Log.Main(DebugModule.Instance, detail); AddTrace(detail); }
+            for (int i = 0; i < Math.Min(10, HandlerMeasurements.Rows.Count); i++)
+            {
+                var row = HandlerMeasurements.Rows[i];
+                string detail = "PERF-HANDLER " + row.Kind + " " + row.Owner + " " + row.Name + " ms/s=" + row.Milliseconds.ToString("0.###", c);
+                Core.Log.Main(DebugModule.Instance, detail); AddTrace(detail);
+            }
         }
         private bool _disposed;
         /// <summary>Releases the editor session, optional probes and engine counters on Debug shutdown.</summary>
