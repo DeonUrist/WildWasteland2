@@ -7,7 +7,7 @@ namespace WildWasteland.Modules.Saves
     /// Registered after the existing modules; Init is empty until its Wave B owner moves the features in. Its [Saves] Enabled entry is
     /// new and nothing reads it yet. Assets: plugins/WildWasteland/Saves/, data: config/WildWasteland/Saves/ (D13).
     /// </summary>
-    public sealed class SavesModule : ModuleBase
+    public sealed partial class SavesModule : ModuleBase
     {
         /// <summary>Module id = config section prefix, Harmony id suffix and asset folder name.</summary>
         public override string Id { get { return "Saves"; } }

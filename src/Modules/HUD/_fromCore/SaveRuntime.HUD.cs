@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using UnityEngine;
 
 namespace WildWasteland.Core
@@ -19,7 +20,7 @@ namespace WildWasteland.Core
             if (LoadingProgress.ScreenVisible || Event.current.type != EventType.Repaint) return;
             int depth = GUI.depth; GUI.depth = -10000; var color = GUI.color;
             GUI.color = Color.black; GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture); GUI.color = color;
-            Modules.CleanHUD.GlyphFont.DrawGame(new Rect(0, Screen.height * .42f, Screen.width, 90), SaveSystem.AutomaticSaving ? "AUTOSAVING" : "SAVING", 48 * Mathf.Min(Screen.width / 1920f, Screen.height / 1080f), new Color(.886f, .749f, .424f), TextAnchor.MiddleCenter);
+            UI.GlyphFont.DrawGame(new Rect(0, Screen.height * .42f, Screen.width, 90), SaveSystem.AutomaticSaving ? "AUTOSAVING" : "SAVING", 48 * Mathf.Min(Screen.width / 1920f, Screen.height / 1080f), new Color(.886f, .749f, .424f), TextAnchor.MiddleCenter);
             GUI.depth = depth;
         }
     }

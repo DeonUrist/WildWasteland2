@@ -4,7 +4,7 @@ using BepInEx.Configuration;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Core.UI
 {
     internal static class AccentTheme
     {

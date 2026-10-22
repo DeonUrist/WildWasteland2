@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -326,28 +327,12 @@ namespace WildWasteland.Modules.CleanHUD
             var s = g.gameObject.AddComponent<Shadow>(); s.effectColor = new Color(0, 0, 0, a); s.effectDistance = new Vector2(0, -2);
         }
         private static Sprite _plate;
-        private static Texture2D _menuBackground;
         internal static void DisposeAssets()
         {
             if (_plate != null) UnityEngine.Object.Destroy(_plate); _plate = null;
-            if (_menuBackground != null) UnityEngine.Object.Destroy(_menuBackground); _menuBackground = null;
         }
-        internal static Texture2D MenuBackground()
-        {
-            if (_menuBackground != null) return _menuBackground;
-            Texture2D texture = null;
-            try
-            {
-                string path = Path.Combine(Core.Assets.Root, "LoadingScreens", "BG_MAIN.png");
-                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false) { name = "CleanHUD.BG_MAIN", hideFlags = HideFlags.DontUnloadUnusedAsset, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
-                if (!texture.LoadImage(File.ReadAllBytes(path), true)) throw new FormatException("PNG could not be decoded");
-                _menuBackground = texture; texture = null;
-                CleanHudModule.Log("Menu background BG_MAIN.png loaded");
-            }
-            catch (Exception e) { CleanHudModule.Warn("Menu background BG_MAIN.png: " + e.Message); }
-            finally { if (texture != null) UnityEngine.Object.Destroy(texture); }
-            return _menuBackground;
-        }
+        /// <summary>Reuses Core's shared menu/settings background cache.</summary>
+        internal static Texture2D MenuBackground() { return ThemeAssets.MenuBackground(); }
         internal static Sprite PlateSprite()
         {
             if (_plate != null) return _plate;

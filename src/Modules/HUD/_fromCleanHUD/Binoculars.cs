@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using UnityEngine;
 using UnityEngine.UI;
 using WildWasteland.Core;

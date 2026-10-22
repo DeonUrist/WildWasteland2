@@ -24,7 +24,6 @@ namespace WildWasteland.Core
             ModuleHost.Add(new Modules.EngineSimCompat.EngineSimCompatModule());
             ModuleHost.Add(new Modules.Survival.SurvivalModule());
             ModuleHost.Add(new Modules.Towns.TownsModule());
-            ModuleHost.Add(new Modules.Performance.PerformanceModule());   // its PlayMaker hooks run after every gameplay module's
             // W0 skeletons (empty until Wave B)
             ModuleHost.Add(new Modules.Debug.DebugModule());
             ModuleHost.Add(new Modules.Compatibility.CompatibilityModule());

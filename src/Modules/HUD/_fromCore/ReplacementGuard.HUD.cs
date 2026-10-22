@@ -15,8 +15,8 @@ namespace WildWasteland.Core
         static GUIContent _message;
         static readonly GUIContent Heading = new GUIContent("RESTART REQUIRED");
         static Vector2 _scroll;
-        static readonly Action<Rect, string, float, Color, TextAnchor> NoticeText = CleanHud.GlyphFont.Draw, NoticeWrap = CleanHud.GlyphFont.DrawWrapped;
-        static readonly Func<string, float, float, float> NoticeHeight = CleanHud.GlyphFont.WrappedHeight;
+        static readonly Action<Rect, string, float, Color, TextAnchor> NoticeText = WildWasteland.Core.UI.GlyphFont.Draw, NoticeWrap = WildWasteland.Core.UI.GlyphFont.DrawWrapped;
+        static readonly Func<string, float, float, float> NoticeHeight = WildWasteland.Core.UI.GlyphFont.WrappedHeight;
 
         /// <summary>Registers the title-notice GUI job (Prepare, after the replaced mods were queued).</summary>
         static partial void InstallNotice() { Scheduler.Gui(null, "Core.Replacement notice", Draw, WantsNotice); }
@@ -50,9 +50,9 @@ namespace WildWasteland.Core
             float height = Mathf.Min(contentHeight, Screen.height / scale - 540f);
             var panel = new Rect(Screen.width / scale - width - inset - 40f, Mathf.Max(inset + 40f, (Screen.height / scale - height) * .5f), width, height);
             int depth = GUI.depth; Color color = GUI.color; var matrix = GUI.matrix;
-            var accent = CleanHud.CleanHudModule.Running ? CleanHud.AccentTheme.Resolve(CleanHud.DialogueWidgets.Gold) : CleanHud.DialogueWidgets.Gold;
+            var accent = CleanHud.CleanHudModule.Running ? WildWasteland.Core.UI.AccentTheme.Resolve(CleanHud.DialogueWidgets.Gold) : CleanHud.DialogueWidgets.Gold;
             var border = new Color(214 / 255f, 203 / 255f, 176 / 255f, .55f);
-            if (CleanHud.CleanHudModule.Running) border = CleanHud.AccentTheme.Resolve(border);
+            if (CleanHud.CleanHudModule.Running) border = WildWasteland.Core.UI.AccentTheme.Resolve(border);
             var skin = Ledger.BeginSettings(accent, border, CleanHud.Assets.Tex("panel_menu"), CleanHud.Assets.VGradient(.75f), NoticeText, NoticeWrap, NoticeHeight);
             GUI.depth = -800; GUI.color = Color.white;
             GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1));

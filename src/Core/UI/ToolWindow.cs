@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using CleanHud = WildWasteland.Modules.CleanHUD;
 
 namespace WildWasteland.Core.UI
 {
@@ -21,9 +20,9 @@ namespace WildWasteland.Core.UI
         static string _debugSearch = "", _developerSearch = "";
         static Rect _rect;
         const float Width = 1920, Height = 1080;
-        static readonly Action<Rect, string, float, Color, TextAnchor> SettingsText = CleanHud.GlyphFont.Draw;
-        static readonly Action<Rect, string, float, Color, TextAnchor> SettingsWrap = CleanHud.GlyphFont.DrawWrapped;
-        static readonly Func<string, float, float, float> SettingsHeight = CleanHud.GlyphFont.WrappedHeight;
+        static readonly Action<Rect, string, float, Color, TextAnchor> SettingsText = GlyphFont.Draw;
+        static readonly Action<Rect, string, float, Color, TextAnchor> SettingsWrap = GlyphFont.DrawWrapped;
+        static readonly Func<string, float, float, float> SettingsHeight = GlyphFont.WrappedHeight;
         static bool _open;
         static bool _fromMenu;
         static Action _deferred;
@@ -150,13 +149,13 @@ namespace WildWasteland.Core.UI
             if (Skin.GameFont == null) { var f = ApocasetterBridge.GameFont; if (f != null) Skin.SetGameFont(f); }
             int depth = GUI.depth; GUI.depth = -900;
             float s = Mathf.Min(Screen.width / Width, Screen.height / Height);
-            var accent = CleanHud.CleanHudModule.Running ? CleanHud.AccentTheme.Resolve(CleanHud.DialogueWidgets.Gold) : CleanHud.DialogueWidgets.Gold;
+            var accent = AccentTheme.Resolve(ThemePalette.Gold);
             var border = new Color(214 / 255f, 203 / 255f, 176 / 255f, .55f);
-            if (CleanHud.CleanHudModule.Running) border = CleanHud.AccentTheme.Resolve(border);
-            var old = Ledger.BeginSettings(accent, border, CleanHud.Assets.Tex("panel_menu"), CleanHud.Assets.VGradient(.75f), SettingsText, SettingsWrap, SettingsHeight); var m = GUI.matrix;
-            if (_fromMenu && CleanHud.CleanHudModule.Running && CleanHud.CleanHudModule.MenuEnabled.Value)
+            border = AccentTheme.Resolve(border);
+            var old = Ledger.BeginSettings(accent, border, ThemeAssets.Tex("panel_menu"), ThemeAssets.VGradient(.75f), SettingsText, SettingsWrap, SettingsHeight); var m = GUI.matrix;
+            if (_fromMenu)
             {
-                var background = CleanHud.Menu.MenuBackground();
+                var background = ThemeAssets.MenuBackground();
                 if (background != null) GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), background, ScaleMode.ScaleAndCrop);
             }
             Ledger.Fill(new Rect(0, 0, Screen.width, Screen.height), new Color(0, 0, 0, .6f));
@@ -178,15 +177,15 @@ namespace WildWasteland.Core.UI
             if (Ledger.Button(new Rect(128, 900, 290, 64), "BACK", true, false, true, null, true)) { Close(); return; }
             Ledger.Label(new Rect(126, 1012, 600, 44), "CHANGES APPLY IMMEDIATELY", Ledger.Small, Ledger.Muted);
             Ledger.Label(new Rect(1340, 1012, 460, 44), Plugin.ToolWindowKey.Value + " / ESC TO CLOSE", Ledger.Small, Ledger.Muted, TextAnchor.MiddleRight);
-            if (CleanHud.CleanHudModule.Running && CleanHud.AccentTheme.Setting != null)
-                for (int i = 0; i < CleanHud.AccentTheme.DisplayOrder.Length; i++)
+            if (AccentTheme.Setting != null)
+                for (int i = 0; i < AccentTheme.DisplayOrder.Length; i++)
                 {
-                    int choice = CleanHud.AccentTheme.DisplayOrder[i];
+                    int choice = AccentTheme.DisplayOrder[i];
                     var swatch = new Rect(_rect.width / 2 - 156 + i * 40, 1020, 30, 30);
-                    bool selected = choice == CleanHud.AccentTheme.Index || swatch.Contains(Event.current.mousePosition);
+                    bool selected = choice == AccentTheme.Index || swatch.Contains(Event.current.mousePosition);
                     Ledger.Panel(swatch, Ledger.Field, selected ? Ledger.Accent : Ledger.Line);
-                    Ledger.Fill(new Rect(swatch.x + 4, swatch.y + 4, 22, 22), CleanHud.AccentTheme.Colors[choice]);
-                    if (GUI.Button(swatch, GUIContent.none, GUIStyle.none)) CleanHud.AccentTheme.Setting.Value = CleanHud.AccentTheme.Names[choice];
+                    Ledger.Fill(new Rect(swatch.x + 4, swatch.y + 4, 22, 22), AccentTheme.Colors[choice]);
+                    if (GUI.Button(swatch, GUIContent.none, GUIStyle.none)) AccentTheme.Setting.Value = AccentTheme.Names[choice];
                 }
 
             var pages = Sorted();

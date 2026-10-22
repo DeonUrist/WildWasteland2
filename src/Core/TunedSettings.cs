@@ -17,7 +17,7 @@ namespace WildWasteland.Core
             if (!Files.TryGetValue(name, out values))
             {
                 values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); Files[name] = values;
-                using (var stream = WildWasteland.Core.DiskResources.Open("CleanHUD.DefaultSettings." + name + ".txt"))
+                using (var stream = WildWasteland.Core.DiskResources.Open("Core.DefaultSettings." + name + ".txt"))
                     if (stream != null) using (var reader = new StreamReader(stream))
                     {
                         string group = "", line;

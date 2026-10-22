@@ -1,3 +1,4 @@
+using WildWasteland.Core.UI;
 using UnityEngine;
 using CleanHud = WildWasteland.Modules.CleanHUD;
 
@@ -22,7 +23,7 @@ namespace WildWasteland.Core
             var rect = new Rect(anchor.x - 410 * scale, anchor.y + 8 * scale, 820 * scale, 58 * scale);
             int depth = GUI.depth; GUI.depth = -100;
             var color = _phase == 3 || _phase == 1 && _seconds <= 15 ? new Color(1f, .78f, .35f) : new Color(.96f, .91f, .79f);
-            CleanHud.GlyphFont.DrawGame(rect, _text, 24 * scale, color, TextAnchor.MiddleCenter);
+            WildWasteland.Core.UI.GlyphFont.DrawGame(rect, _text, 24 * scale, color, TextAnchor.MiddleCenter);
             GUI.depth = depth;
         }
     }

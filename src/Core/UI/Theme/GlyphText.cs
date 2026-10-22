@@ -5,10 +5,10 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Core.UI
 {
     // Native Helveticrap by default, optional forcedSquare. Both atlases work before scene fonts are loaded.
-    internal sealed class GlyphFont
+    internal sealed partial class GlyphFont
     {
         internal struct G { internal float X, Y, W, H, Ox, Top, Adv; }
         internal Texture2D Atlas;
@@ -19,15 +19,15 @@ namespace WildWasteland.Modules.CleanHUD
         internal static void Reset() { _game = _clean = null; }
         internal static GlyphFont Get(bool gameOnly = false)
         {
-            bool clean = !gameOnly && CleanHudModule.CleanFont != null && CleanHudModule.CleanFont.Value;
+            bool clean = !gameOnly && UiTheme.CleanFont != null && UiTheme.CleanFont.Value;
             var cached = clean ? _clean : _game;
             if (cached != null && cached.Atlas != null) return cached;
             string name = clean ? "font" : "game_font";
             var f = new GlyphFont();
-            f.Atlas = Assets.Tex(name + "_atlas");
+            f.Atlas = ThemeAssets.Tex(name + "_atlas");
             var asm = Assembly.GetExecutingAssembly();
             string json;
-            using (var s = WildWasteland.Core.DiskResources.Open("CleanHUD." + name + "_meta.json"))
+            using (var s = WildWasteland.Core.DiskResources.Open("Core.Theme." + name + "_meta.json"))
             using (var r = new StreamReader(s)) json = r.ReadToEnd();
             var d = (Dictionary<string, object>)Core.Json.Parse(json);
             f.Size = Core.Json.Num(d, "size", 96); f.Ascent = Core.Json.Num(d, "ascent", 58); f.Descent = Core.Json.Num(d, "descent", 17);

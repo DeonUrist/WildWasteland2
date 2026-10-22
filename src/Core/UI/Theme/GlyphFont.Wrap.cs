@@ -7,10 +7,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace WildWasteland.Modules.CleanHUD
+namespace WildWasteland.Core.UI
 {
     /// <summary>Word wrap with the glyph atlas font, used by the quest journal/dialogue and menu reference pages (Wave A split; B01 -> Core/UI GlyphFont.Wrap).</summary>
-    internal static partial class TalkDialogue
+    internal sealed partial class GlyphFont
     {
         internal static List<string> Wrap(string text, float width, float size = 26)
         {
