@@ -9,6 +9,8 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Validates authoring operations against the live patrol catalog without exposing runtime templates or groups.</summary>
     public sealed partial class PatrolsModule : IPatrolAuthoring
     {
+        /// <summary>Reads the actual patrol marker faction for a recorded vehicle, with the native default for unowned cars.</summary>
+        public string VehicleFaction(GameObject vehicle) { var marker = vehicle == null ? null : vehicle.GetComponent<PatrolMarker>(); return TrafficFactions.Normalize(marker == null ? "Scrapyard" : marker.Faction); }
         bool IPatrolAuthoring.InPlay { get { return Running && _patrol != null && _patrol.InGame(); } }
         /// <summary>Serializes the live authored group and cargo projection into a detached editor workspace.</summary>
         public string ReadData() { return EditorStore.Data.ToJson(); }

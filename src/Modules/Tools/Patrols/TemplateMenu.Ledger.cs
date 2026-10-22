@@ -70,7 +70,8 @@ namespace WildWasteland.Modules.Tools
             GUI.enabled = enabled && !modal && !_dropdown.IsOpen;
             if (Ledger.Button(new Rect(_rect.width - 96, 24, 70, 34), "CLOSE", gameFont: true, transparent: true)) Queue(Close, false);
             Ledger.Fill(new Rect(6, 80, _rect.width - 12, 43), Ledger.Surface);
-            string[] tabs = { "PATROLS", "CONVOYS", "MERCHANTS", "LOOT" };
+            bool templateTab = TemplateExporter.Seated || _modal == "editTemplate" || _tab == 4;
+            string[] tabs = templateTab ? new[] { "PATROLS", "CONVOYS", "MERCHANTS", "LOOT", "TEMPLATE" } : new[] { "PATROLS", "CONVOYS", "MERCHANTS", "LOOT" };
             for (int i = 0; i < tabs.Length; i++)
             {
                 int tab = i; var r = new Rect(26 + 150 * i, 80, 150, 43);
@@ -82,7 +83,7 @@ namespace WildWasteland.Modules.Tools
             }
             Ledger.Rule(6, 122, _rect.width - 12);
             _hoverMissing = "";
-            if (_tab == 3) DrawLootLedger(); else DrawGroupsLedger();
+            if (_tab == 4) DrawTemplateTab(); else if (_tab == 3) DrawLootLedger(); else DrawGroupsLedger();
             float footer = _rect.height - 70; Ledger.Rule(6, footer, _rect.width - 12);
             var detail = PatrolEditor.Find(_selectedTemplate);
             if (_hoverMissing.Length > 0) Ledger.Label(new Rect(26, footer + 12, _rect.width - 308, 40), "Unavailable: prefab not loaded: " + _hoverMissing + ". Load its source mod to use this template.", Ledger.Small, Color.gray);
@@ -92,6 +93,14 @@ namespace WildWasteland.Modules.Tools
             GUI.enabled = enabled;
             if (modal) DrawLedgerModal();
             _dropdown.Draw();
+        }
+        private void DrawTemplateTab()
+        {
+            Ledger.Panel(new Rect(26,143,_rect.width-52,_rect.height-230));
+            Ledger.Label(new Rect(48,164,_rect.width-96,44),"Record the supported vehicle you sit in, or edit any existing template's crew, cargo and turret options.",Ledger.Small);
+            if(Ledger.Button(new Rect(48,218,420,40),"Record seated vehicle",TemplateExporter.Seated))Queue(()=>Schedule(()=>GetComponent<TemplateExporter>().TryOpen()),false);
+            DrawTemplateLedger(false,new Rect(48,278,(_rect.width-120)*.5f,300),ref _carScroll);
+            DrawTemplateLedger(true,new Rect(_rect.width*.5f+12,278,(_rect.width-120)*.5f,300),ref _truckScroll);
         }
         private void DrawGroupsLedger()
         {
@@ -261,10 +270,10 @@ namespace WildWasteland.Modules.Tools
                 Ledger.Label(new Rect(x + width - 56, y, 14, 40), "%"); y += 48;
                 Ledger.Label(new Rect(x + 9, y, 185, 34), "Truck bed texture", Ledger.Small, Ledger.Muted);
                 var texture = new Rect(x + 204, y, width - 204, 34);
-                if (Ledger.Dropdown(texture, string.IsNullOrEmpty(profile.TextureKey) ? "None" : (profile.TextureKey.StartsWith("cargo_", StringComparison.OrdinalIgnoreCase) ? profile.TextureKey : ModApi.Get<ICargoArtwork>().File(profile.TextureKey)) + ".png"))
+                if (Ledger.Dropdown(texture, string.IsNullOrEmpty(profile.TextureKey) ? "None" : (profile.TextureKey.StartsWith("cargo_", StringComparison.OrdinalIgnoreCase) ? profile.TextureKey : (ModApi.Get<ICargoArtwork>()?.File(profile.TextureKey) ?? profile.TextureKey)) + ".png"))
                 {
                     var global = texture; global.position += new Vector2(26, 143 - _lootScroll.y);
-                    _dropdown.Open(global, new[] { new KeyValuePair<string, string>("", "None") }.Concat((ModApi.Get<ICargoArtwork>()?.Textures() ?? new string[0]).Select(name => new KeyValuePair<string, string>(name, name + ".png"))).ToList(), string.IsNullOrEmpty(profile.TextureKey) ? "" : ModApi.Get<ICargoArtwork>().File(profile.TextureKey), value => { profile.TextureKey = value; Dirty(); }, _rect.height - 84);
+                    _dropdown.Open(global, new[] { new KeyValuePair<string, string>("", "None") }.Concat((ModApi.Get<ICargoArtwork>()?.Textures() ?? new string[0]).Select(name => new KeyValuePair<string, string>(name, name + ".png"))).ToList(), string.IsNullOrEmpty(profile.TextureKey) ? "" : (ModApi.Get<ICargoArtwork>()?.File(profile.TextureKey) ?? profile.TextureKey), value => { profile.TextureKey = value; Dirty(); }, _rect.height - 84);
                 }
                 y += 48;
             }

@@ -23,6 +23,7 @@ namespace WildWasteland.Core
     public interface IPatrolAuthoring
     {
         bool InPlay { get; }
+        string VehicleFaction(UnityEngine.GameObject vehicle);
         string ReadData();
         void SaveData(string json);
         void Reset(bool recycleCustom);

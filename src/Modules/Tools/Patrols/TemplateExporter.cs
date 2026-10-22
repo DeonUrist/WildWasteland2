@@ -34,7 +34,7 @@ namespace WildWasteland.Modules.Tools
         private readonly EditorSession _session = new EditorSession();
         internal bool IsOpen { get { return _session.Open; } }
         // the F7 "Template recorder" page shows its button only while this is true
-        internal static bool Seated { get { string how; return FindCar(out how) != null; } }
+        internal static bool Seated { get { string how; return ModApi.Get<IVehicleAuthoring>() != null && FindCar(out how) != null; } }
         private Transform _draftCar;
         private string _templateName = "", _driverName = "Scraffa", _passengerName = "Sprokka", _lootId = "";
         private string _faction="Scrapyard";
@@ -61,20 +61,24 @@ namespace WildWasteland.Modules.Tools
         internal bool TryOpen()
         {
             if (_session.Open || EditorSession.Busy || !Application.isFocused) return false;
-            if (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay) return false;
+            if (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay || ModApi.Get<IVehicleAuthoring>() == null) return false;
             string how; var car = FindCar(out how); if (car == null) return false;
             if (!_session.Acquire()) return false;
+            try
+            {
             Skin.EnsureGameFont();
             PatrolEditor.Load();
             _draftCar = car; _truck = PrefabName(car.name).Equals("Rustcargo", StringComparison.OrdinalIgnoreCase) && FrameChildren(car, "PhysicsLock").Any();
             _templateName = ""; _driverName = "Scraffa"; _passengerName = "None"; _turrets[0] = _turrets[1] = _turrets[2] = "None"; _ledgerDropdown.Close();
-            _faction="Scrapyard";if(_faction=="Coyotes")_driverName="Bodyguard";
+            _faction=PatrolEditor.Source.VehicleFaction(car.gameObject);if(_faction=="Coyotes")_driverName="Bodyguard";
             _bike = ModApi.Get<IVehicleAuthoring>().IsMotorcycleBody(PrefabName(car.name));
             _draftTrailer = ModApi.Get<IVehicleAuthoring>().AttachedTrailer(car.gameObject); _trailerPage = false;
             for (int i = 0; i < 4; i++) _trailerTurrets[i] = "None";
             Array.Clear(_turretStanding,0,_turretStanding.Length);Array.Clear(_trailerTurretStanding,0,_trailerTurretStanding.Length);
             var profiles = _truck ? PatrolEditor.Data.TruckLoot : PatrolEditor.Data.CarLoot; _lootId = _bike ? "" : !_truck && profiles.Any(p => p.Id == "car-empty") ? "car-empty" : profiles.Count > 0 ? profiles[0].Id : "";
             return true;
+            }
+            catch { Close(); throw; }
         }
         internal void Close() { _session.Close(); _draftCar = null; _draftTrailer = null; _ledgerDropdown.Close(); }
         private void OnDestroy() { _session.Close(true); }

@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.Tools
     internal static class NavigationTools
     {
         internal static INavigationAuthoring Source { get { return ModApi.Get<INavigationAuthoring>(); } }
-        internal static ConfigEntry<bool> Setup, Display;
+        internal static ConfigEntry<bool> Setup, DisplayGraphs;
         internal static ConfigEntry<float> BakeBudgetMs, BakeCell;
         internal static ConfigEntry<UnityEngine.InputSystem.Key> EditorKey;
 
@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.Tools
         {
             Setup = cfg.Tools.Bind(cfg.Section("Navigation"), "Setup POI pathfinding", false,
                 "Developer: one copy of every native POI type is placed near the starting camp (not saved, removed when off) and new towns are not generated, so each POI can be baked and edited.");
-            Display = cfg.Tools.Bind(cfg.Section("Navigation"), "Display navigation data", false,
+            DisplayGraphs = cfg.Tools.Bind(cfg.Section("Navigation"), "Display navigation data", false,
                 "Developer: draws the POI navigation near you: surfaces (one colour each), ladders (cyan), climbs (orange), drops (red), editor links brighter, switched-off links grey.");
             EditorKey = cfg.Tools.Bind(cfg.Section("Editors"), "POI navigation editor", UnityEngine.InputSystem.Key.None,
                 "Opens the POI navigation editor for the nearest POI (Debug + Developer mode).");

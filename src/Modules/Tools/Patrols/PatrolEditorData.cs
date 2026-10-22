@@ -48,7 +48,7 @@ namespace WildWasteland.Modules.Tools
             if (root == null) throw new FormatException("Expected editor JSON object");
             var result = new PatrolEditorData();
             result.Patrols = Groups(root, "patrols"); result.Convoys = Groups(root, "convoys");
-            result.Merchants=root.ContainsKey("merchants")?Groups(root,"merchants"):EditorMerchants.DefaultGroups();
+            result.Merchants=Groups(root,"merchants");
             result.CarLoot = root.ContainsKey("carLoot")?Loot(root, "carLoot"):new List<LootProfile>(); result.TruckLoot = root.ContainsKey("truckLoot")?Loot(root, "truckLoot"):new List<LootProfile>();
             object order;
             if (root.TryGetValue("templateOrder", out order) && order is List<object>) result.TemplateOrder = ((List<object>)order).OfType<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -133,7 +133,7 @@ namespace WildWasteland.Modules.Tools
         {
             Func<AuthoringGroup, object> group = g => Json.Object("id", g.Id, "name", g.Name,"faction",g.Faction, "minKm", g.MinKm, "minBosses", g.MinBosses, "chance", g.Chance, "uniformCargo", g.UniformCargo, "templates", g.Templates, "allowedCargo", g.AllowedCargo,"merchantTypes",Merchants.Contains(g)?EditorMerchants.Selection(g.MerchantTypes).ToList():g.MerchantTypes);
             Func<LootProfile, object> loot = p => Json.Object("id", p.Id, "name", p.Name, "textureKey", p.TextureKey, "default", p.Default, "spawnChance", p.SpawnChance, "items", p.Items.Select(i => Json.Object("id", i.Id, "chance", i.Chance)).ToList());
-            return Json.Write(Json.Object("schema", 3, "patrols", Patrols.Select(group).ToList(), "convoys", Convoys.Select(group).ToList(),"merchants",Merchants.Select(group).ToList(), "carLoot", CarLoot.Select(loot).ToList(), "truckLoot", TruckLoot.Select(loot).ToList(), "templateOrder", TemplateOrder));
+            return Json.Write(Json.Object("schema", 3, "patrols", this.Patrols.Select(group).ToList(), "convoys", Convoys.Select(group).ToList(),"merchants",Merchants.Select(group).ToList(), "carLoot", CarLoot.Select(loot).ToList(), "truckLoot", TruckLoot.Select(loot).ToList(), "templateOrder", TemplateOrder));
         }
     }
 }

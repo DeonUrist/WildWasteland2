@@ -27,13 +27,13 @@ namespace WildWasteland.Modules.Tools
             // (A3) PoiNav.LearnLadderSide (dead after its return) deleted; PoiNav.WalkerTick runs in NPCAI's own "PoiNav.Walkers" job,
             // registered right before this one (same frame, same order).
             if (NavigationTools.Source == null) { Unhook(); return; }
-            bool want = NavigationTools.Display != null && NavigationTools.Display.Value && Plugin.EnableDebug.Value || EditData != null;
-            if (want && NavigationTools.Display.Value) NavigationTools.Source.Rescan();
+            bool want = NavigationTools.DisplayGraphs != null && NavigationTools.DisplayGraphs.Value && Plugin.EnableDebug.Value || EditData != null;
+            if (want && NavigationTools.DisplayGraphs.Value) NavigationTools.Source.Rescan();
             if (want == _hooked) return;
             if (want) Camera.onPostRender += Draw; else Camera.onPostRender -= Draw;
             _hooked = want;
         }
-        internal static void Unhook() { if (_hooked) Camera.onPostRender -= Draw; _hooked = false; EditData = null; EditRoot = null; }
+        internal static void Unhook() { if (_hooked) Camera.onPostRender -= Draw; _hooked = false; EditData = null; EditRoot = null; if (_mat != null) UnityEngine.Object.Destroy(_mat); _mat = null; }
 
         static bool Material()
         {
@@ -52,13 +52,13 @@ namespace WildWasteland.Modules.Tools
         {
             try
             {
-                if (cam == null || cam != GameRefs.MainCamera || !Material()) return;
+                if (NavigationTools.Source == null || cam == null || cam != GameRefs.MainCamera || !Material()) return;
                 Vector3 eye = cam.transform.position;
                 _mat.SetPass(0);
                 GL.PushMatrix(); GL.MultMatrix(Matrix4x4.identity);
                 GL.Begin(GL.LINES);
                 if (EditData != null && EditRoot != null) DrawData(EditRoot, EditData, null, Selected);
-                if (NavigationTools.Display != null && NavigationTools.Display.Value)
+                if (NavigationTools.DisplayGraphs != null && NavigationTools.DisplayGraphs.Value)
                     foreach (var i in Instances())
                     {
                         if (!i.Ready || i.Root == null || i.Root == EditRoot || (i.Box.center - eye).sqrMagnitude > 250f * 250f) continue;

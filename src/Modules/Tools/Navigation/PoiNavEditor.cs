@@ -49,12 +49,16 @@ namespace WildWasteland.Modules.Tools
             var nearest = NearestRoot(camera.transform.position);
             if (nearest == null) { _status = "No POI within 200 m."; Log.Warn("[NPC] POI navigation editor: " + _status); return; }
             if (!_session.Acquire()) return;
+            try
+            {
             _camera = camera; var t = camera.transform; _cameraParent = t.parent;
             _cameraLocal = t.localPosition; _cameraPosition = t.position; _cameraRotation = t.localRotation;
             _view = t.position; _yaw = t.eulerAngles.y; _pitch = t.eulerAngles.x; if (_pitch > 180) _pitch -= 360;
             _root = nearest; _poi = NavigationTools.Source.TypeOf(nearest.name);
             Load();
             _status = _draft.Nodes.Count == 0 ? "Not baked yet: press REBAKE (links can still be drawn)." : "Drag a handle to move a link end · click a handle to select · wheel turns the selection.";
+            }
+            catch { if (Opened) Close(true); else _session.Close(true); throw; }
         }
         static Transform NearestRoot(Vector3 from)
         {
@@ -456,7 +460,7 @@ namespace WildWasteland.Modules.Tools
             if (NavigationTools.Source == null) { l.Text("Enable NPC AI to bake and edit its navigation data."); return; }
             l.Toggle(NavigationTools.Source.Enabled);
             l.Toggle(NavigationTools.Setup);
-            l.Toggle(NavigationTools.Display);
+            l.Toggle(NavigationTools.DisplayGraphs);
             l.Value("Setup", PoiNavSetup.Active ? PoiNavSetup.Status : "off");
             if (PoiNavSetup.Active && l.Button("Bake all setup POIs", PoiNavSetup.Queued == 0)) PoiNavSetup.BakeAll();
             if (l.Button("Bake the nearest POI", GameRefs.InPlay && PoiNavSetup.Queued == 0)) BakeNearest();

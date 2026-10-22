@@ -43,11 +43,15 @@ namespace WildWasteland.Modules.Tools
             if (_session.Open || EditorSession.Busy || !Application.isFocused) return false;
             if (PatrolEditor.Source == null || !PatrolEditor.Source.InPlay) return false;
             if (!_session.Acquire()) return false;
+            try
+            {
             Skin.EnsureGameFont();
             PatrolEditor.Load(); _modal = ""; _dropdown.Close();
             _selectedGroup = _selectedTemplate = ""; _expanded.Clear();
             _leftScroll = _carScroll = _truckScroll = Vector2.zero;
             return true;
+            }
+            catch { Close(); throw; }
         }
         private void EnsureSelection()
         {
@@ -55,7 +59,7 @@ namespace WildWasteland.Modules.Tools
             _selectedGroup = EditorSelection.Select(_expanded, _selectedGroup, _selectedGroup.Length > 0);
             if (PatrolEditor.Find(_selectedTemplate) == null) _selectedTemplate = "";
         }
-        internal void Close() { _session.Close(); _modal = ""; _dropdown.Close(); }
+        internal void Close() { _mutation = null; _afterClose = null; _dirty = false; _session.Close(); _modal = ""; _dropdown.Close(); }
         private void OnDestroy() { _session.Close(true); }
         internal void LateTick() { _session.Maintain(); }
         private void Queue(Action action, bool save = true)
