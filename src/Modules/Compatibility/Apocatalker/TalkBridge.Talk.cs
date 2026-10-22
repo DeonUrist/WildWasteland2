@@ -33,18 +33,21 @@ namespace WildWasteland.Modules.Quests
         Action<object, string> addNpc, appendChat;
         readonly List<string> sigKeys = new List<string>(), sigTexts = new List<string>();
         string signature;
+        /// <summary>Generated getter of one of Talk's fields (Core Access).</summary>
         static Func<object, T> Reader<T>(FieldInfo field)
         {
-            return OptionalAccess.Read<T>(field);
+            return Access.Read<T>(field);
         }
+        /// <summary>Generated call of one of Talk's (object, string) methods (Core Access).</summary>
         static Action<object, string> Caller(MethodInfo method)
         {
-            return OptionalAccess.Call<Action<object, string>>(method, typeof(void), typeof(object), typeof(string));
+            return Access.Call<Action<object, string>>(method, typeof(void), typeof(object), typeof(string));
         }
 
         readonly List<GameObject> mine = new List<GameObject>();
         string mineSig = "";
 
+        /// <summary>Resolves Talk's NPC name/NPC/UI/Talking fields and AddNpc; false (logged) when a required member is missing.</summary>
         public bool Init(Type talkType)
         {
             TalkType = talkType;
@@ -69,6 +72,7 @@ namespace WildWasteland.Modules.Quests
             return true;
         }
 
+        /// <summary>True while a Talk conversation (or the native conversation) is open.</summary>
         public bool TalkingNow
         {
             get
@@ -79,13 +83,16 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Binds the Talk plugin instance (closes a native conversation first).</summary>
         public void Bind(object inst) { if (NativeOpen) Close(); Instance = inst; Generation++; }
 
+        /// <summary>Talk's DialogueUI object, or null.</summary>
         object Ui
         {
             get { return Instance == null ? null : readUi(Instance); }
         }
 
+        /// <summary>Talk's choice list container (resolved lazily with AppendChatLine).</summary>
         RectTransform PromptContent
         {
             get
@@ -103,16 +110,19 @@ namespace WildWasteland.Modules.Quests
             }
         }
 
+        /// <summary>Name of the NPC being talked to.</summary>
         public string NpcName
         {
             get { return NativeOpen ? _nativeName : Instance == null ? "" : (readName(Instance) ?? ""); }
         }
 
+        /// <summary>Transform of the NPC being talked to.</summary>
         public Transform Npc
         {
             get { return NativeOpen ? _nativeNpc : Instance == null ? null : readNpc(Instance); }
         }
 
+        /// <summary>Adds an NPC line to the open conversation.</summary>
         public void Say(string text)
         {
             if (NativeOpen) { AddLine(text); return; }
@@ -120,6 +130,7 @@ namespace WildWasteland.Modules.Quests
             addNpc(Instance, text);
         }
 
+        /// <summary>Adds a player line to the open conversation.</summary>
         public void You(string text)
         {
             if (NativeOpen) { AddLine("You: " + text); return; }
@@ -135,8 +146,8 @@ namespace WildWasteland.Modules.Quests
         RectOffset skinBorder;
         bool skinFromPanel, skinFileTried;
 
-        /// The image Talk draws its dialogue window with, and the size of its non-stretching edge. False when Talk uses
-        /// no image (its theme/window.png is missing): it then fills the window with a plain colour (see TalkFallbackColor).
+        /// <summary>The image Talk draws its dialogue window with, and the size of its non-stretching edge. False when Talk uses
+        /// no image (its theme/window.png is missing): it then fills the window with a plain colour (see TalkFallbackColor).</summary>
         public bool WindowSkin(out Texture2D tex, out RectOffset border)
         {
             if (!skinFromPanel) TrySkinFromPanel();
@@ -146,9 +157,11 @@ namespace WildWasteland.Modules.Quests
             return tex != null;
         }
 
+        /// <summary>Window colour Talk uses when it has no window image.</summary>
         public static readonly Color TalkFallbackColor = new Color(0.26f, 0.19f, 0.14f, 0.96f);
 
         // the sprite on Talk's own window, once it has been built (exactly what the dialogue box shows)
+        /// <summary>Takes the sprite of Talk's built window (exactly what its dialogue box shows).</summary>
         void TrySkinFromPanel()
         {
             try
@@ -167,6 +180,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // before Talk has built its window: load the same file it does
+        /// <summary>Before Talk has built its window: loads the same theme/window.png it does.</summary>
         void TrySkinFromFile()
         {
             try
@@ -187,6 +201,7 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { Plugin.Warn("Could not load Talk's window.png for the quest log: " + e.Message); }
         }
 
+        /// <summary>Value of one of Talk's string config entries, or null.</summary>
         string TalkConfigString(string field)
         {
             try
@@ -201,6 +216,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // "16" or "left,right,top,bottom", like Talk's WindowBorder setting
+        /// <summary>Parses "16" or "left,right,top,bottom" like Talk's WindowBorder setting.</summary>
         static RectOffset ParseBorder(string text, int def)
         {
             var r = new RectOffset(def, def, def, def);
@@ -216,7 +232,8 @@ namespace WildWasteland.Modules.Quests
 
         // ---- the extra choices ----------------------------------------------------------------
 
-        string Signature(List<TalkBtn> want)
+        /// <summary>Cached signature of the wanted quest choices (rebuilt only when keys/texts change).</summary>
+        string Signature(List<TalkBtn> want) // refs-ok: REFACTOR-REQUEST B17-12
         {
             bool changed = signature == null || sigKeys.Count != want.Count;
             if (!changed) for (int i = 0; i < want.Count; i++) if (sigKeys[i] != want[i].Key || sigTexts[i] != want[i].Text) { changed = true; break; }
@@ -228,7 +245,8 @@ namespace WildWasteland.Modules.Quests
 
         // True when the choices on screen are not the wanted ones: the list changed, or Talk rebuilt its own list (which
         // throws away everything in it, ours included) after the player picked one of its prompts.
-        public bool NeedsSync(List<TalkBtn> want)
+        /// <summary>True when the choices on screen are not the wanted ones (list changed, or Talk rebuilt its own list).</summary>
+        public bool NeedsSync(List<TalkBtn> want) // refs-ok: REFACTOR-REQUEST B17-12
         {
             if (NativeOpen) return Signature(want) != mineSig;
             RectTransform content = PromptContent;
@@ -242,7 +260,8 @@ namespace WildWasteland.Modules.Quests
             return false;
         }
 
-        public void SyncButtons(List<TalkBtn> want)
+        /// <summary>Replaces the quest choices: copies of Talk's own choice button placed above "Goodbye." (native conversation: its own buttons).</summary>
+        public void SyncButtons(List<TalkBtn> want) // refs-ok: REFACTOR-REQUEST B17-12
         {
             if (NativeOpen) { NativeButtons(want); mineSig = Signature(want); return; }
             RectTransform content = PromptContent;
@@ -268,7 +287,7 @@ namespace WildWasteland.Modules.Quests
             int at = goodbye;
             for (int i = 0; i < want.Count; i++)
             {
-                TalkBtn b = want[i];
+                TalkBtn b = want[i]; // refs-ok: REFACTOR-REQUEST B17-12
                 GameObject go = UnityEngine.Object.Instantiate(template, content, false);
                 go.name = Prefix + b.Key;
                 go.SetActive(true);
@@ -286,6 +305,7 @@ namespace WildWasteland.Modules.Quests
             Canvas.ForceUpdateCanvases();
         }
 
+        /// <summary>Removes every quest choice this bridge added.</summary>
         public void ClearButtons()
         {
             if (NativeOpen) { _choices.Clear(); _buttons.Clear(); _pending = false; Revision++; }
@@ -304,8 +324,10 @@ namespace WildWasteland.Modules.Quests
         static Type api;
         static EventInfo actionEvent; static Delegate actionHandler;
         static MethodInfo getFlag, setFlag;
+        /// <summary>True when Talk's TalkApi was found.</summary>
         public static bool Available { get { return api != null; } }
 
+        /// <summary>Links TalkApi (flags) and subscribes the listener method to its ActionTriggered event.</summary>
         public static void Init(Assembly talkAssembly, object listener, string method)
         {
             try
@@ -326,14 +348,17 @@ namespace WildWasteland.Modules.Quests
             catch (Exception e) { api = null; Plugin.Warn("Could not link to Talk's API: " + e.Message); }
         }
 
+        /// <summary>Unsubscribes from ActionTriggered and forgets TalkApi.</summary>
         internal static void Shutdown() { if (actionEvent != null && actionHandler != null) actionEvent.RemoveEventHandler(null, actionHandler); actionEvent = null; actionHandler = null; api = null; getFlag = setFlag = null; }
 
+        /// <summary>Sets a Talk dialogue flag (ignored when TalkApi is absent).</summary>
         public static void SetFlag(string name, bool value)
         {
             if (api == null || setFlag == null || string.IsNullOrEmpty(name)) return;
             try { setFlag.Invoke(null, new object[] { name, value }); } catch (Exception) { }
         }
 
+        /// <summary>Reads a Talk dialogue flag (false when TalkApi is absent).</summary>
         public static bool GetFlag(string name)
         {
             if (api == null || getFlag == null || string.IsNullOrEmpty(name)) return false;

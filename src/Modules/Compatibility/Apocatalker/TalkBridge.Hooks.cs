@@ -12,6 +12,7 @@ namespace WildWasteland.Modules.Quests
     /// <summary>Apocatalker install part of TalkBridge (Wave A, from Quests/NativeConversation.cs; B17): detects Talk, patches Talk Open/Close, links TalkApi and undoes it all.</summary>
     internal partial class TalkBridge : IQuestConversation
     {
+        /// <summary>Detects Talk, binds the adapter, postfixes Talk Open/Close under the Quests module and links TalkApi (called by Quests at start).</summary>
         internal void InstallOptional(QuestsModule owner)
         {
             Prompt = ""; ExternalAvailable = false;
@@ -26,10 +27,13 @@ namespace WildWasteland.Modules.Quests
             Core.Log.Always("[Quests] Optional Apocatalker content adapter ready.");
         }
 
+        /// <summary>Postfix of Talk.Open: tells Quests a Talk conversation opened.</summary>
         static void Opened(object __instance) { if (Plugin.I != null) Plugin.I.ExternalOpened(__instance); }
 
+        /// <summary>Postfix of Talk.Close: tells Quests the Talk conversation closed.</summary>
         static void Closed() { if (Plugin.I != null) Plugin.I.ExternalClosed(); }
 
+        /// <summary>Closes the conversation, removes quest choices, unlinks TalkApi and forgets the Talk instance.</summary>
         internal void Uninstall()
         {
             Close(); ClearButtons(); Session.Close(true); TalkApiLink.Shutdown(); ExternalAvailable = false;

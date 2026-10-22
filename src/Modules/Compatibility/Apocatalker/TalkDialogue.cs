@@ -1,8 +1,6 @@
 using WildWasteland.Core.UI;
 using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using BepInEx;
@@ -11,10 +9,17 @@ using HarmonyLib;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using WildWasteland.Core;
+using WildWasteland.Modules.Compatibility;
 
 namespace WildWasteland.Modules.CleanHUD
 {
-    // Mirror the source UI's choices and callbacks, including Quests' AQ buttons. The source remains the dialogue model.
+    /// <summary>
+    /// Apocatalker (com.example.apocalypter.talk) dialogue mirror serving the HUD: while a Talk conversation is open and the HUD
+    /// (CleanHUD) runs, the source DialogueUI panel is made invisible and its NPC name, chat lines and choice buttons (including Quests'
+    /// AQ buttons) are mirrored into a WW-styled window; clicks invoke the source buttons, so the source stays the dialogue model. With
+    /// the HUD off the native window shows. Owned by the Compatibility Apocatalker bridge; drawn with HUD widgets (REFACTOR-REQUEST B17-11).
+    /// </summary>
     internal static partial class TalkDialogue
     {
         /// <summary>Uses the shared Core atlas wrapping metrics.</summary>
@@ -33,37 +38,37 @@ namespace WildWasteland.Modules.CleanHUD
         private static GlyphText _title;
         private static RectTransform _chat, _choices;
         private static ScrollRect _chatScroll, _choiceScroll;
-        private static MenuButton _closeButton;
-        private static readonly DialoguePointer Pointer = new DialoguePointer();
+        private static MenuButton _closeButton; // refs-ok: REFACTOR-REQUEST B17-11
+        private static readonly DialoguePointer Pointer = new DialoguePointer(); // refs-ok: REFACTOR-REQUEST B17-11
         private static int _revision, _shownRevision = -1, _choiceHash;
         private static int _chatHash;
-        private static readonly List<MenuButton> Buttons = new List<MenuButton>();
+        private static readonly List<MenuButton> Buttons = new List<MenuButton>(); // refs-ok: REFACTOR-REQUEST B17-11
         private static readonly List<Button> Sources = new List<Button>();
         private static readonly Regex Tags = new Regex("<[^>]*>");
+        private static IModule _owner;
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        internal static void Install(CleanHudModule owner)
+        /// <summary>Resolves the Talk plugin's dialogue members and postfixes ShowDialogue/AppendChatLine/SetChoices under <paramref name="owner"/>.</summary>
+        internal static void Install(IModule owner)
         {
+            _owner = owner;
             PluginInfo info;
             if (!Chainloader.PluginInfos.TryGetValue("com.example.apocalypter.talk", out info) || ReferenceEquals(info.Instance, null)) return;
-            if (info.Metadata.Version != new Version(2, 0, 0)) CleanHudModule.Warn("Apocatalker " + info.Metadata.Version + " differs from the tested 2.0.0; attempting dialogue compatibility with this version");
+            if (info.Metadata.Version != new Version(2, 0, 0)) Log.Warn(owner, "Apocatalker " + info.Metadata.Version + " differs from the tested 2.0.0; attempting dialogue compatibility with this version");
             _plugin = info.Instance; var p = _plugin.GetType(); var u = p.Assembly.GetType("ApocalypterTalk.DialogueUI", true);
             _getUi = Get<object>(p, "dialogueUI"); _talking = Get<bool>(p, "Talking"); _npcName = Get<string>(p, "npcName");
             _panel = Get<RectTransform>(u, "panel"); _sourceChat = Get<RectTransform>(u, "chatContent"); _sourceChoices = Get<RectTransform>(u, "promptContent");
-            var o = Expression.Parameter(typeof(object), "o");
-            _close = Expression.Lambda<Action<object>>(Expression.Call(Expression.Convert(o, p), AccessTools.Method(p, "Close")), o).Compile();
+            _close = Access.Call<Action<object>>(AccessTools.Method(p, "Close"), typeof(void), typeof(object));
             foreach (var method in new[] { "ShowDialogue", "AppendChatLine", "SetChoices" })
                 if (!Core.Patches.Patch(owner, AccessTools.Method(u, method), postfix: AccessTools.Method(typeof(TalkDialogue), "Changed")))
                     throw new InvalidOperationException("Dialogue hook unavailable: " + method);
             _revision = 0; _shownRevision = -1; _choiceHash = 0;
-            CleanHudModule.Log("Apocatalker dialogue bridge ready; native window remains the CleanHUD-off fallback");
+            Log.Main(owner, "Apocatalker dialogue bridge ready; native window remains the HUD-off fallback");
         }
-        private static Func<object, T> Get<T>(Type type, string name)
-        {
-            var o = Expression.Parameter(typeof(object), "o"); var field = AccessTools.Field(type, name);
-            return Expression.Lambda<Func<object, T>>(Expression.Convert(Expression.Field(field.IsStatic ? null : Expression.Convert(o, type), field), typeof(T)), o).Compile();
-        }
+        /// <summary>Generated getter of a field (instance or static), converted to <typeparamref name="T"/>.</summary>
+        private static Func<object, T> Get<T>(Type type, string name) { return Access.Read<T>(AccessTools.Field(type, name)); }
+        /// <summary>Postfix of the source's ShowDialogue/AppendChatLine/SetChoices: the mirror rebuilds on its next tick.</summary>
         private static void Changed() { _revision++; }
+        /// <summary>Creates the mirror canvas, window, conversation and choice scroll views and the CLOSE button (once).</summary>
         private static void Build()
         {
             _root = new GameObject("CleanHUD.Dialogue", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -71,18 +76,19 @@ namespace WildWasteland.Modules.CleanHUD
             var canvas = _root.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 32001;
             var scale = _root.GetComponent<CanvasScaler>(); scale.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scale.referenceResolution = new Vector2(1920, 1080); scale.matchWidthOrHeight = 1;
-            var panel = DialogueWidgets.Rect(_root.transform, "window", 0, 0, 1200, 900);
+            var panel = DialogueWidgets.Rect(_root.transform, "window", 0, 0, 1200, 900); // refs-ok: REFACTOR-REQUEST B17-11
             panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(.5f, .5f);
-            var plate = panel.gameObject.AddComponent<Image>(); plate.sprite = Menu.PlateSprite(); plate.type = Image.Type.Sliced;
-            _title = DialogueWidgets.Text(panel, "name", 50, 35, 1100, 60, 42, DialogueWidgets.SpeakerGray, "");
-            _chatScroll = DialogueWidgets.Scroll(panel, "conversation", 50, 110, 1100, 420, out _chat);
-            RectTransform content; _choiceScroll = DialogueWidgets.Scroll(panel, "choices", 50, 555, 1100, 255, out content); _choices = content;
-            _closeButton = DialogueWidgets.Button(panel, 900, 820, 250, 60, "CLOSE", () => _close(_plugin));
+            var plate = panel.gameObject.AddComponent<Image>(); plate.sprite = Menu.PlateSprite(); plate.type = Image.Type.Sliced; // refs-ok: REFACTOR-REQUEST B17-11
+            _title = DialogueWidgets.Text(panel, "name", 50, 35, 1100, 60, 42, DialogueWidgets.SpeakerGray, ""); // refs-ok: REFACTOR-REQUEST B17-11
+            _chatScroll = DialogueWidgets.Scroll(panel, "conversation", 50, 110, 1100, 420, out _chat); // refs-ok: REFACTOR-REQUEST B17-11
+            RectTransform content; _choiceScroll = DialogueWidgets.Scroll(panel, "choices", 50, 555, 1100, 255, out content); _choices = content; // refs-ok: REFACTOR-REQUEST B17-11
+            _closeButton = DialogueWidgets.Button(panel, 900, 820, 250, 60, "CLOSE", () => _close(_plugin)); // refs-ok: REFACTOR-REQUEST B17-11
         }
+        /// <summary>Job "Compatibility.Apocatalker.Dialogue" (every frame, LateUpdateLast): mirrors the open conversation, hides it otherwise.</summary>
         internal static void Tick()
         {
             if (_plugin == null) return;
-            if (!CleanHudModule.Enabled.Value || !_talking(_plugin)) { Hide(); return; }
+            if (!CompatibilityHost.CleanHud.Running || !CleanHudModule.Enabled.Value || !_talking(_plugin)) { if (_root != null && _root.activeSelf || _hidden != null) Hide(); return; } // refs-ok: REFACTOR-REQUEST B17-11
             var ui = _getUi(_plugin); if (ui == null || _panel(ui) == null) { Hide(); return; }
             if (!ReferenceEquals(ui, _ui)) { RestoreSource(); _ui = ui; _shownRevision = -1; _choiceHash = 0; }
             if (_root == null) Build();
@@ -121,31 +127,36 @@ namespace WildWasteland.Modules.CleanHUD
                     var source = choices.GetChild(i).GetComponent<Button>(); if (source == null || !source.gameObject.activeSelf) continue;
                     var text = source.GetComponentInChildren<TMP_Text>(true); if (text == null) continue;
                     var lines = Wrap(Tags.Replace(text.text ?? "", ""), 1040, 20);
-                    var button = DialogueWidgets.Button(_choices, 0, y, 1080, Math.Max(36, lines.Count * 24 + 8), "", () => { if (source != null && source.interactable) source.onClick.Invoke(); });
+                    var button = DialogueWidgets.Button(_choices, 0, y, 1080, Math.Max(36, lines.Count * 24 + 8), "", () => { if (source != null && source.interactable) source.onClick.Invoke(); }); // refs-ok: REFACTOR-REQUEST B17-11
                     var labels = new List<GlyphText>(); float ly = 4;
-                    foreach (var line in lines) { labels.Add(DialogueWidgets.Text(button.transform, "text", 20, ly, 1040, 24, 20, DialogueWidgets.Gold, line)); ly += 24; }
-                    button.OnVisual = on => { foreach (var label in labels) label.color = !button.interactable ? Color.gray : on ? Color.white : DialogueWidgets.Gold; };
+                    foreach (var line in lines) { labels.Add(DialogueWidgets.Text(button.transform, "text", 20, ly, 1040, 24, 20, DialogueWidgets.Gold, line)); ly += 24; } // refs-ok: REFACTOR-REQUEST B17-11
+                    button.OnVisual = on => { foreach (var label in labels) label.color = !button.interactable ? Color.gray : on ? Color.white : DialogueWidgets.Gold; }; // refs-ok: REFACTOR-REQUEST B17-11
                     Buttons.Add(button); Sources.Add(source); y += button.GetComponent<RectTransform>().sizeDelta.y + 4;
                 }
                 _choices.sizeDelta = new Vector2(1100, y);
             }
-            Pointer.Tick(Buttons, _closeButton); DialoguePointer.Wheel(_chatScroll); DialoguePointer.Wheel(_choiceScroll);
+            Pointer.Tick(Buttons, _closeButton); DialoguePointer.Wheel(_chatScroll); DialoguePointer.Wheel(_choiceScroll); // refs-ok: REFACTOR-REQUEST B17-11
             for (int i = 0; i < Buttons.Count; i++) { Buttons[i].interactable = Sources[i] != null && Sources[i].interactable; Buttons[i].Refresh(); }
         }
+        /// <summary>Adds wrapped chat lines (speaker-colored) and returns the next y.</summary>
         private static float Lines(Transform parent, string text, float y, float width, Color color)
         {
-            foreach (var line in Wrap(text, width)) { var label = DialogueWidgets.Text(parent, "line", 10, y, width, 32, 26, color, line); DialogueWidgets.Speaker(label, _npcName(_plugin)); y += 32; }
+            foreach (var line in Wrap(text, width)) { var label = DialogueWidgets.Text(parent, "line", 10, y, width, 32, 26, color, line); DialogueWidgets.Speaker(label, _npcName(_plugin)); y += 32; } // refs-ok: REFACTOR-REQUEST B17-11
             return y;
         }
+        /// <summary>Destroys every child of a mirror container.</summary>
         private static void Clear(Transform parent)
         { for (int i = parent.childCount - 1; i >= 0; i--) { var go = parent.GetChild(i).gameObject; go.SetActive(false); UnityEngine.Object.Destroy(go); } }
+        /// <summary>Gives the source panel its own alpha/raycast state back.</summary>
         private static void RestoreSource()
         {
             if (_hidden != null) { _hidden.alpha = _oldAlpha; _hidden.blocksRaycasts = _oldRays; if (_ownsGroup) UnityEngine.Object.Destroy(_hidden); }
             _hidden = null;
         }
+        /// <summary>Hides the mirror and shows the source panel again (scene load, conversation end, HUD off).</summary>
         internal static void Hide() { Pointer.Clear(); if (_root != null) _root.SetActive(false); RestoreSource(); }
+        /// <summary>Destroys the mirror and forgets the plugin (bridge stop; the scope removes the patches and the job).</summary>
         internal static void Dispose()
-        { Hide(); if (_root != null) UnityEngine.Object.Destroy(_root); _root = null; _plugin = _ui = null; Buttons.Clear(); Sources.Clear(); }
+        { Hide(); if (_root != null) UnityEngine.Object.Destroy(_root); _root = null; _plugin = _ui = null; _owner = null; Buttons.Clear(); Sources.Clear(); }
     }
 }

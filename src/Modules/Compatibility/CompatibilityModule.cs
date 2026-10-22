@@ -36,6 +36,7 @@ namespace WildWasteland.Modules.Compatibility
             _bridges.Add(new OptionalBridge(this, "BloodFX", "BloodFX", "Recover the optional BloodFX updater after scene destruction and suppress its F8 debug hit.", BloodFxCompat.Start, BloodFxCompat.Shutdown));
             _bridges.Add(new OptionalBridge(this, "Apocaspawner", "Apocaspawner", "List the War Rig and the Stew Pot in Apocaspawner and scale its crossbow damage like Wild Wasteland crossbows.", ApocaspawnerBridge.Start, ApocaspawnerBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "Apocapocket", "Apocapocket", "Show Apocapocket's extra slots on the Wild Wasteland HUD and provide them to Wild Wasteland modules.", ApocapocketBridge.Start, ApocapocketBridge.Shutdown));
+            _bridges.Add(new OptionalBridge(this, "Apocatalker", "Apocatalker", "Show Apocatalker conversations in the Wild Wasteland dialogue window.", ApocatalkerBridge.Start, ApocatalkerBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "ChaseCamera", "ChaseCamera", "Drive ChaseCamera with the Wild Wasteland player body and show its speed, RPM and gear on the Wild Wasteland HUD.", ChaseCameraBridge.Start, ChaseCameraBridge.Shutdown));
             _bridges.Add(new OptionalBridge(this, "WeaponsPack", "Weapons Pack", "Connect optional Weapons Pack behavior (NPC fear, chainsaw kills, held-model shadows, HUD icons, slash sound) through Wild Wasteland services.", WeaponsPackBridge.Start, WeaponsPackBridge.Shutdown));
         }
@@ -86,6 +87,7 @@ namespace WildWasteland.Modules.Compatibility
             if (!_running) return;
             if (_engineEnabled.Value) _engineSim.OnSceneLoaded(scene, mode);
             WeaponsPackBridge.OnSceneLoaded();
+            ApocatalkerBridge.OnSceneLoaded();
         }
 
         /// <summary>Exposes the per-mod Engine Sim switch in the shared settings shell.</summary>
