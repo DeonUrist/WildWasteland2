@@ -95,10 +95,13 @@ namespace WildWasteland.Modules.Gunplay
             if (Log.L1) Log.Main(this, "Gunplay started; ammunition management integrated, NPC/HUD services optional.");
         }
 
-        /// <summary>Provides IGunsApi (old contract).</summary>
+        /// <summary>Provides IGunsApi (old contract), IWeaponCatalog, IWeaponStats and IWeaponState.</summary>
         public override void ProvideApis()
         {
             ModApi.Provide<IGunsApi>(this, new GunsApi());
+            ModApi.Provide<IWeaponCatalog>(this, WeaponCatalog.Instance);
+            ModApi.Provide<IWeaponStats>(this, WeaponStats.Instance);
+            ModApi.Provide<IWeaponState>(this, WeaponState.Instance);
         }
 
         /// <summary>Patches one PlayMaker action method with a Tracers handler (prefix or postfix).</summary>
@@ -133,6 +136,9 @@ namespace WildWasteland.Modules.Gunplay
             BackpackOverflow.Reset();
             ArmorOverflow.Reset();
             AmmoRunner.ResetAll();
+            WeaponCatalog.Instance.ClearRegistered();
+            WeaponStats.Instance.Clear();
+            WeaponState.Instance.Clear();
             try { VanillaEvents.Shutdown(); } catch (Exception e) { Log.Error(this, "shutdown: VanillaEvents", e); }
             var h = Services.Hud;
             if (h != null) { try { h.ExternalReporter = false; } catch (Exception e) { Log.Warn(this, "HUD ExternalReporter: " + e.Message); } }
@@ -148,6 +154,7 @@ namespace WildWasteland.Modules.Gunplay
             ArmorOverflow.Reset();
             PerGunAmmo.SceneChanged();
             ReloadTapHook.Reset();     // keyed by the old scene's actions
+            WeaponState.Instance.Clear();
             WeaponRanges.OnSceneLoaded();
             VanillaEvents.OnSceneLoaded();
         }

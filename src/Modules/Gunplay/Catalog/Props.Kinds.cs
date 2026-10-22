@@ -24,14 +24,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (_kinds.Count > 512) _kinds.Clear();
             return _kinds[weapon] = KindOfName(weapon);
         }
-        private static Kind KindOfName(string weapon)
-        {
-            string w = weapon.ToLowerInvariant();
-            if (w.Contains("blastlance") || w.Contains("grenade")) return Kind.Throw;
-            if (w.Contains("shiv") || w.Contains("knife") || w.Contains("machete") || w.Contains("wrench") || w.Contains("pipe_wrench")) return Kind.Melee;
-            // SMGs (borz_smg, 22_pipe_smg) are held and animated like pistols (Pistol* clips, PistolReload)
-            if (w.Contains("pistol") || w.Contains("revolver") || w.Contains("folk_17") || w.Contains("smg") || w.Contains("borz")) return Kind.Pistol;
-            return Kind.Rifle;
-        }
+        /// <summary>Hold style from the Gunplay weapon catalog rule (same order and text as before; the enum values map 1:1).</summary>
+        private static Kind KindOfName(string weapon) { return (Kind)(int)WildWasteland.Modules.Gunplay.WeaponCatalog.HoldOfName(weapon); }
     }
 }

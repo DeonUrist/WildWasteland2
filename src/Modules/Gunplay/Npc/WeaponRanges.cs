@@ -36,16 +36,8 @@ namespace WildWasteland.Modules.NPC
             }
         }
 
-        internal static Kind Classify(string weapon)
-        {
-            string n = weapon.ToLowerInvariant();
-            if (n.Contains("crossbow")) return Kind.Crossbow;
-            if (n.Contains("shotgun") || n.Contains("slamfire") || n.Contains("slamberg") || n.Contains("rochester")) return Kind.Shotgun;
-            if (n.Contains("scoped") || n.Contains("sniper") || n.Contains("redmark")) return Kind.Sniper;
-            if (n.Contains("smg") || n.Contains("borz")) return Kind.Smg;
-            if (n.Contains("pistol") || n.Contains("revolver") || n.Contains("folk_17")) return Kind.Pistol;
-            return Kind.Rifle;
-        }
+        /// <summary>Gun kind of a weapon name (Gunplay weapon catalog rule; the enum values match WeaponKind 0..5).</summary>
+        internal static Kind Classify(string weapon) { return (Kind)(int)WildWasteland.Modules.Gunplay.WeaponCatalog.GunKindOfName(weapon); }
 
         internal static bool GunKindOf(GameObject owner, out Kind kind)
         {

@@ -196,18 +196,8 @@ namespace WildWasteland.Modules.Guns
         }
 
 
-        internal static float RangeOf(Kind k)
-        {
-            switch (k)
-            {
-                case Kind.Pistol: return Mathf.Max(1f, GunplaySettings.PistolRange.Value);
-                case Kind.Smg: return Mathf.Max(1f, GunplaySettings.SmgRange.Value);
-                case Kind.Sniper: return Mathf.Max(1f, GunplaySettings.SniperRange.Value);
-                case Kind.Shotgun: return Mathf.Max(1f, GunplaySettings.ShotgunRange.Value);
-                case Kind.Crossbow: return Mathf.Max(1f, GunplaySettings.CrossbowRange.Value);
-                default: return Mathf.Max(1f, GunplaySettings.RifleRange.Value);
-            }
-        }
+        /// <summary>Falloff range of a gun kind ([Gunplay / Ranges] through the weapon stats service).</summary>
+        internal static float RangeOf(Kind k) { return WeaponStats.KindRange((WeaponKind)(int)k); }
 
 
         private const float SimHz = 60f;

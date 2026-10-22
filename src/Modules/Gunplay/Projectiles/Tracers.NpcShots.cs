@@ -47,6 +47,7 @@ namespace WildWasteland.Modules.Guns
                 Transform muzzle = MuzzleOf(info, owner);
                 Vector3 from = muzzle != null ? muzzle.TransformPoint(info.MuzzleLocal) : fsm.GetOwnerDefaultTarget(__instance.gameObject).transform.position;
                 float speed0 = info.Kind == Kind.Crossbow ? GunplaySettings.BoltSpeed.Value : GunplaySettings.BulletSpeed.Value;
+                if (WeaponStats.Instance.HasModifiers) speed0 = WeaponStats.Instance.Modify(info.Handle, null, WeaponStat.ProjectileSpeed, speed0);
                 // lead a moving target ([NpcAim] LeadTargets): where it will be when the bullet arrives, as well as this NPC can guess
                 if (GunplaySettings.Lead)
                 {
@@ -70,6 +71,13 @@ namespace WildWasteland.Modules.Guns
                 dir.Normalize();
 
                 float damage = info.DamageVar != null ? info.DamageVar.Value : info.DamageLiteral;
+                float range = RangeOf(info.Kind);
+                var stats = WeaponStats.Instance;
+                if (stats.HasModifiers)
+                {
+                    range = stats.Modify(info.Handle, null, WeaponStat.Range, range);
+                    damage *= stats.Modify(info.Handle, null, WeaponStat.DamageMultiplier, 1f);
+                }
                 int pellets = info.Kind == Kind.Shotgun ? Mathf.Clamp(GunplaySettings.ShotgunPellets.Value, 1, 8) : 1;
                 float spread = info.Kind == Kind.Shotgun ? GunplaySettings.ShotgunPelletSpread.Value : 0f;
                 for (int i = 0; i < pellets; i++)
@@ -84,7 +92,7 @@ namespace WildWasteland.Modules.Guns
                     {
                         Pos = from, Start = from, Dir = d,
                         Speed = speed0,
-                        Range = RangeOf(info.Kind),
+                        Range = range,
                         Damage = damage / pellets * (info.Kind == Kind.Shotgun ? Mathf.Max(0f, GunplaySettings.NpcShotgunDamage.Value) : 1f),
                         Target = target,
                         Head = head,
@@ -172,6 +180,7 @@ namespace WildWasteland.Modules.Guns
             if (info.Weapon == null) return info;    // a monster: vanilla
             info.IsGun = true;
             info.Kind = Classify(info.Weapon.name);
+            info.Handle = WeaponCatalog.Instance.Handle(info.Weapon.name);
             if (info.Kind == Kind.Crossbow)
             {
                 CacheBoltModel(info.Weapon);
@@ -226,15 +235,18 @@ namespace WildWasteland.Modules.Guns
             return info.Weapon;
         }
 
-        internal static Kind Classify(string weapon)
+        /// <summary>Gun kind of a weapon name (weapon catalog rule; the first six WeaponKind values are the Tracers kinds).</summary>
+        internal static Kind Classify(string weapon) { return (Kind)(int)WeaponCatalog.GunKindOfName(weapon); }
+
+        /// <summary>The gun an NPC/turret holds: its kind and model name (shooter cache; false for gunless shooters / non-shooters).</summary>
+        internal static bool HeldWeaponName(GameObject owner, out Kind kind, out string name)
         {
-            string n = weapon.ToLowerInvariant();
-            if (n.Contains("crossbow")) return Kind.Crossbow;
-            if (n.Contains("shotgun") || n.Contains("slamfire") || n.Contains("slamberg") || n.Contains("rochester")) return Kind.Shotgun;
-            if (n.Contains("scoped") || n.Contains("sniper") || n.Contains("redmark")) return Kind.Sniper;
-            if (n.Contains("smg") || n.Contains("borz")) return Kind.Smg;
-            if (n.Contains("pistol") || n.Contains("revolver") || n.Contains("folk_17")) return Kind.Pistol;
-            return Kind.Rifle;
+            name = null;
+            if (!GunKindOf(owner, out kind)) return false;
+            ShooterInfo info;
+            if (!_shooters.TryGetValue(owner.GetInstanceID(), out info) || info.Weapon == null) return false;
+            name = info.Weapon.name;
+            return true;
         }
 
         // The gun an NPC holds, for the Aim pacing (cached like Info; finds the Damage Ranged FSM itself).

@@ -36,7 +36,10 @@ namespace WildWasteland.Modules.Guns
         internal static void StartWorld()
         { _buttonValue = false; _buttonFrame = -1; _target = _zoom = 1f; _resetAim = true; }
         private static bool ThirdPerson { get { return Services.Animation != null && Services.Animation.PlayerThirdPerson; } }
-        private static bool Aiming
+        /// <summary>Current zoom factor of the wheel zoom (1 = none, up to 3).</summary>
+        internal static float ZoomFactor { get { return _zoom > 0.0001f ? 1f / _zoom : 1f; } }
+        /// <summary>Aiming down sights with a drawn first-person weapon whose AimDownSights FSM is "on".</summary>
+        internal static bool Aiming
         {
             get
             {

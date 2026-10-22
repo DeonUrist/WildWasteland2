@@ -27,6 +27,8 @@ namespace WildWasteland.Modules.Guns
     internal static partial class Tracers
     {
         internal enum Kind { Pistol, Smg, Rifle, Sniper, Shotgun, Crossbow }
+        /// <summary>Crossbow damage multiplier (read by the Apocaspawner tooltip bridge); the value lives in the weapon catalog now.</summary>
+        [Obsolete("refactor: use ModApi IWeaponStats.Get(handle, WeaponStat.DamageMultiplier)")]
         internal const float CrossbowDamageMultiplier = 2.5f;
 
         private struct Shot
@@ -61,6 +63,7 @@ namespace WildWasteland.Modules.Guns
             public Kind Kind;
             public Transform Muzzle;
             public int Pellets = 1;
+            public int Handle = -1;          // weapon catalog handle
             public float PelletSpread;
             public float RangeMultiplier = 1f, DamageMultiplier = 1f;
             public FsmFloat Damage;          // the hit state's Bodypart.Damage value (per bullet / pellet)
@@ -83,6 +86,7 @@ namespace WildWasteland.Modules.Guns
             public string EventName = "Damage";
             public string EventFsm;         // the vanilla SendEvent's named FSM (null = every FSM on the object, as PlayMaker broadcasts)
             public string BodypartFsm = "Bodypart", BodypartVar = "Damage";
+            public int Handle = -1;         // weapon catalog handle of the held gun
             public float Retry; public int Tries;   // no weapon found: look again after Retry (the gun model may be inactive for a frame), 10 tries at most
         }
 

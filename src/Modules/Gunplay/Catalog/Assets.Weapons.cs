@@ -20,21 +20,18 @@ namespace WildWasteland.Modules.CleanHUD
     {
         // Calibers as printed on the game's own item names, e.g. "M16A1 (5.56mm)".
         internal static readonly Dictionary<string, WeaponInfo> Weapons = Table();
+        /// <summary>The HUD caliber/kind table, built from the Gunplay weapon catalog's built-in rows (same keys, calibers and kinds).</summary>
         private static Dictionary<string, WeaponInfo> Table()
         {
             var t = new Dictionary<string, WeaponInfo>(StringComparer.OrdinalIgnoreCase);
-            Action<string, string, string> a = (k, c, kind) => t[k] = new WeaponInfo(k, c, kind);
-            a("folk_17", "9MM", "gun"); a("9mm_borz_smg", "9MM", "gun");
-            a("22_pipe_pistol", ".22LR", "gun"); a("22_pipe_revolver", ".22LR", "gun"); a("22_pipe_smg", ".22LR", "gun");
-            a("akms", "7.62MM", "gun"); a("akm_trash", "7.62MM", "gun"); a("akm_drum", "7.62MM", "gun");
-            a("m16a1", "5.56MM", "gun");
-            a("redmark_m11", ".30-06", "gun"); a("redmark_m11_scoped", ".30-06", "gun");
-            a("rochester_m24", "12GA", "gun"); a("rochester_m24_chopped", "12GA", "gun");
-            a("slamberg_500", "12GA", "gun"); a("slamberg_500_chopped", "12GA", "gun");
-            a("slamfire_shotgun", "20GA", "gun");
-            a("crossbow", "ARROW", "gun");
-            a("blastlance_1", "THROWN", "thrown"); a("blastlance_2", "THROWN", "thrown");
-            a("machete", "MELEE", "melee"); a("old_knife", "MELEE", "melee"); a("shiv", "MELEE", "melee"); a("pipe_wrench", "MELEE", "melee");
+            var cat = WildWasteland.Modules.Gunplay.WeaponCatalog.Instance;
+            foreach (var key in cat.BuiltInKeys)
+            {
+                var e = cat.EntryOf(cat.Resolve(key));
+                if (e == null) continue;
+                var k = e.Info.Kind;
+                t[key] = new WeaponInfo(key, e.Info.Caliber, k == WildWasteland.Core.WeaponKind.Melee ? "melee" : k == WildWasteland.Core.WeaponKind.Thrown ? "thrown" : "gun");
+            }
             return t;
         }
 

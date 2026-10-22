@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Guns
         private static readonly Dictionary<Fsm, PlayerGun> _guns = new Dictionary<Fsm, PlayerGun>();
         private static readonly Dictionary<Fsm, bool> _notGun = new Dictionary<Fsm, bool>();
         private static GameObject _player;
+        private static int _statsRevision;
 
         // Unit disk: 50% is uniform by area; 0% weights the rim, 100% weights the centre.
         internal static Vector2 SpreadOffset(float accuracy)
@@ -36,6 +37,7 @@ namespace WildWasteland.Modules.Guns
                 if (!GunplaySettings.TracersEnabled.Value || !GunplaySettings.PlayerTracers.Value) return true;
                 var fsm = __instance.Fsm;
                 if (fsm == null || fsm.Name != "Attack" || __instance.repeatInterval == null || __instance.repeatInterval.Value != 0) return true;
+                if (_statsRevision != WeaponStats.Instance.Revision) { _statsRevision = WeaponStats.Instance.Revision; _guns.Clear(); _notGun.Clear(); }
                 bool no;
                 if (_notGun.TryGetValue(fsm, out no)) return true;
                 PlayerGun gun;
@@ -52,6 +54,18 @@ namespace WildWasteland.Modules.Guns
                 Vector3 origin = ft.position + (__instance.fromPosition != null && !__instance.fromPosition.IsNone ? __instance.fromPosition.Value : Vector3.zero);
                 Vector3 local = __instance.direction != null && !__instance.direction.IsNone ? __instance.direction.Value : Vector3.forward;
                 float range = RangeOf(gun.Kind) * gun.RangeMultiplier;
+                float speed = gun.Kind == Kind.Crossbow ? GunplaySettings.BoltSpeed.Value : GunplaySettings.BulletSpeed.Value;
+                int pellets = gun.Pellets; float dmgMult = 1f;
+                var stats = WeaponStats.Instance;
+                if (stats.HasModifiers)
+                {
+                    // attachments / addon modifiers (none registered in the shipped game: these lines are skipped)
+                    string item = PerGunAmmo.ItemOfModel(fsm.GameObject);
+                    range = stats.Modify(gun.Handle, item, WeaponStat.Range, range);
+                    speed = stats.Modify(gun.Handle, item, WeaponStat.ProjectileSpeed, speed);
+                    pellets = Mathf.Clamp(Mathf.RoundToInt(stats.Modify(gun.Handle, item, WeaponStat.Pellets, pellets)), 1, 32);
+                    if (gun.DamageMultiplier > 0f) dmgMult = stats.Modify(gun.Handle, item, WeaponStat.DamageMultiplier, gun.DamageMultiplier) / gun.DamageMultiplier;
+                }
                 if (_player == null) _player = GameRefs.Player;
 
                 Vector3 muzzle = gun.Muzzle != null && gun.Muzzle.gameObject.activeInHierarchy ? gun.Muzzle.position
@@ -62,7 +76,7 @@ namespace WildWasteland.Modules.Guns
                     muzzle = bodyMuzzle;
                     if (Core.Log.Verbose && _playerMuzzleLogs++ < 3) GunplayLog.Main("Player shot origin: visible body muzzle " + muzzle);
                 }
-                for (int p = 0; p < gun.Pellets; p++)
+                for (int p = 0; p < pellets; p++)
                 {
                     Vector3 l = local;
                     if (gun.Kind == Kind.Shotgun)
@@ -80,8 +94,8 @@ namespace WildWasteland.Modules.Guns
                     var s = new Shot
                     {
                         Pos = muzzle, Start = muzzle, Dir = d.normalized,
-                        Speed = gun.Kind == Kind.Crossbow ? GunplaySettings.BoltSpeed.Value : GunplaySettings.BulletSpeed.Value,
-                        Range = range, Bolt = gun.Kind == Kind.Crossbow, Shotgun = gun.Kind == Kind.Shotgun, Alive = true, Kind = gun.Kind, DmgMult = 1f,
+                        Speed = speed,
+                        Range = range, Bolt = gun.Kind == Kind.Crossbow, Shotgun = gun.Kind == Kind.Shotgun, Alive = true, Kind = gun.Kind, DmgMult = dmgMult,
                         Layers = gun.Layers, Gun = gun, Player = _player,
                         ShooterRoot = ft.root.gameObject,
                     };
@@ -90,7 +104,7 @@ namespace WildWasteland.Modules.Guns
                     else _shots.Add(s);
                 }
                 if (gun.Kind == Kind.Shotgun && Core.Log.Verbose)
-                    GunplayLog.Main("Shotgun spread: circular, " + gun.Pellets + " pellets, player accuracy " + GunplaySettings.Accuracy(true).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%");
+                    GunplayLog.Main("Shotgun spread: circular, " + pellets + " pellets, player accuracy " + GunplaySettings.Accuracy(true).ToString("0", System.Globalization.CultureInfo.InvariantCulture) + "%");
                 Bridge.Shot(_player, muzzle, (int)gun.Kind, true);
                 __instance.Finish();         // vanilla: no hit -> FINISHED -> wait -> next shot, same rhythm
                 return false;
@@ -133,21 +147,25 @@ namespace WildWasteland.Modules.Guns
                 if (ic != null && ic.integer1 != null && ic.integer1.Name == "pellets" && ic.integer2 != null)
                 { shotgun = true; gun.Pellets = Mathf.Clamp(ic.integer2.Value + 1, 1, 32); }
             }
+            // per-name multipliers from the weapon catalog (chopped / full-length pump shotguns, crossbow, redmark: README 6.3)
+            gun.Handle = WeaponCatalog.Instance.Handle(go.name);
+            var entry = WeaponCatalog.Instance.EntryOf(gun.Handle);
             if (shotgun)
             {
                 var fire = fsm.GetState("fire");
                 gun.PelletSpread = 0.02f;
                 if (fire != null) foreach (var a in fire.Actions) { var rf = a as RandomFloat; if (rf != null && rf.max != null) { gun.PelletSpread = Mathf.Abs(rf.max.Value); break; } }
-                if (go.name.StartsWith("rochester_m24", StringComparison.OrdinalIgnoreCase) || go.name.StartsWith("slamberg_500", StringComparison.OrdinalIgnoreCase))
+                if (entry != null)
                 {
-                    if (go.name.IndexOf("_chopped", StringComparison.OrdinalIgnoreCase) >= 0)
-                    { gun.Pellets = 9; gun.PelletSpread = 0.03f; gun.DamageMultiplier = 1.5f; }
-                    else gun.RangeMultiplier = 2f;
+                    if (entry.ShotgunPellets > 0) gun.Pellets = entry.ShotgunPellets;
+                    if (entry.ShotgunSpread >= 0f) gun.PelletSpread = entry.ShotgunSpread;
+                    gun.DamageMultiplier = entry.ShotgunDamageMultiplier;
+                    gun.RangeMultiplier = entry.ShotgunRangeMultiplier;
                 }
             }
             gun.Kind = shotgun ? Kind.Shotgun : Classify(go.name);
-            if (gun.Kind == Kind.Crossbow) gun.DamageMultiplier = CrossbowDamageMultiplier;
-            else if (go.name.StartsWith("redmark_m11", StringComparison.OrdinalIgnoreCase)) gun.DamageMultiplier = 100f / 90f;
+            bool crossbowName = WeaponCatalog.GunKindOfName(go.name) == WeaponKind.Crossbow;
+            if (entry != null && (gun.Kind == Kind.Crossbow || (!crossbowName && entry.DamageMultiplier != 1f))) gun.DamageMultiplier = entry.DamageMultiplier;
             if (gun.Kind == Kind.Crossbow) CacheBoltModel(go.transform);
             if (gun.Kind == Kind.Shotgun && !shotgun) gun.Kind = Kind.Rifle;      // a "rochester" without pellets is not a shotgun
             if (Core.Log.Verbose) GunplayLog.Main("Tracers: player gun " + go.name + " = " + gun.Kind + (shotgun ? ", " + gun.Pellets + " pellets" : "") + (gun.Muzzle != null ? "" : ", no muzzle point"));

@@ -28,6 +28,21 @@ namespace WildWasteland.Modules.Guns
             Scheduler.EveryFrame(owner, "Gunplay.WeaponTransition", Tick, Phase.EarlyUpdate);
             Scheduler.EveryFrame(owner, "Gunplay.WeaponTransitionPose", Pose, Phase.LateUpdateLast);   // refs-ok: Pose is the Presentation-part method of this partial class (REFACTOR-REQUEST B09-5), not the Presentation type Pose
         }
+        /// <summary>The native WeaponInHand weaponType of the drawn weapon ("hands" or empty = none); null before the rig is found.</summary>
+        internal static string CurrentWeaponType
+        {
+            get
+            {
+                if (_handler == null) return null;
+                var w = _handler.FsmVariables.FindFsmString("weaponType");
+                return w != null ? w.Value : null;
+            }
+        }
+        /// <summary>A smooth weapon switch is lowering/raising (or an event waits for its replay).</summary>
+        internal static bool Switching { get { return _lowering || _pending != null || _weight > .001f; } }
+        /// <summary>Current lowering weight 0..1 of the switch.</summary>
+        internal static float Weight { get { return _weight; } }
+
         internal static void Reset()
         {
             Restore(); _handler = _switcher = null; _handlerFsm = _switcherFsm = null; _pending = null; _data = null;

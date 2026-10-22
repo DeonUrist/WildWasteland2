@@ -33,6 +33,13 @@ namespace WildWasteland.Modules.Guns
         internal static string Current { get { return _identity == null ? "-" : _identity + " (" + _type + ")"; } }
         internal static string State { get { return _faulted ? "FAULTED (suspended to protect save data)" : _loading ? "loading" : _saving ? "saving" : "active"; } }
 
+        /// <summary>Save-stable item name of the drawn gun (null when none is bound).</summary>
+        internal static string CurrentItem { get { return _identity; } }
+        /// <summary>Reload FSM of the drawn gun (null when none is bound).</summary>
+        internal static PlayMakerFSM CurrentReload { get { return _reload; } }
+        /// <summary>Item id of <paramref name="model"/> when it is the bound drawn gun, else null (stat modifiers per item).</summary>
+        internal static string ItemOfModel(GameObject model) { return _reload != null && model != null && ReferenceEquals(_reload.gameObject, model) ? _identity : null; }
+
         internal static void ResetAll()
         {
             _ledger = new MagazineLedger();
@@ -54,7 +61,7 @@ namespace WildWasteland.Modules.Guns
 
         // Vanilla's Folk 17 weaponType is "folk17", but its arm model is "folk_17".
         private static bool MatchesModel(string type, string model)
-        { return type == model || (type == "folk17" && model == "folk_17"); }
+        { return type == model || WeaponCatalog.Instance.ModelNameOf(type) == model; }
 
         internal static bool ArmModel(GameObject go)
         {
