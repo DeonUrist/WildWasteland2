@@ -382,7 +382,7 @@ namespace WildWasteland.Modules.Patrols
             using (var reader = new BinaryReader(File.OpenRead(path)))
             {
                 if(reader.ReadInt32()!=0x41505244)throw new InvalidDataException("Road cache header");
-                int version=reader.ReadInt32();if((version!=1&&version!=2&&version!=3)||reader.ReadString()!=world)throw new InvalidDataException("Road cache identity mismatch");
+                int version=reader.ReadInt32();if(version!=3||reader.ReadString()!=world)throw new InvalidDataException("Road cache identity mismatch");
                 var tile = new RoadTile { World = world, X = reader.ReadInt32(), Z = reader.ReadInt32(), Approximate = reader.ReadBoolean() };
                 int count = reader.ReadInt32(), total = 0;
                 if (count < 0 || count > 4096) throw new InvalidDataException("Road count");
@@ -398,14 +398,14 @@ namespace WildWasteland.Modules.Patrols
                         if (!Finite(v)) throw new InvalidDataException("Road coordinate"); tile.Lines[i][p] = v;
                     }
                 }
-                if(version>=2&&reader.ReadBoolean())
+                if(reader.ReadBoolean())
                 {
                     var rect=new Rect(reader.ReadSingle(),reader.ReadSingle(),reader.ReadSingle(),reader.ReadSingle());int size=reader.ReadInt32();
                     if(!Finite(new Vector3(rect.x,rect.y,rect.width))||!Finite(new Vector3(rect.height,0f,0f))||rect.width<=0f||rect.height<=0f||size<2||size>257)throw new InvalidDataException("Elevation grid dimensions");
                     var heights=new float[size*size];for(int i=0;i<heights.Length;i++){heights[i]=reader.ReadSingle();if(float.IsNaN(heights[i])||float.IsInfinity(heights[i]))throw new InvalidDataException("Elevation sample");}
                     tile.Elevation=new ElevationGrid{Area=rect,Size=size,Heights=heights};
                 }
-                if(version>=3)tile.FinalGround=reader.ReadBoolean();
+                tile.FinalGround=reader.ReadBoolean();
                 if (reader.BaseStream.Position != reader.BaseStream.Length) throw new InvalidDataException("Trailing road data");
                 var hints=tile.Hints;
                 return tile;

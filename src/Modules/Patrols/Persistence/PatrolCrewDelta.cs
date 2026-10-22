@@ -16,7 +16,7 @@ namespace WildWasteland.Modules.Patrols
     // Native ES3 owns vehicles, fitted/missing parts, condition, fluids and existing items. Only unsaved seated bodies need a delta.
     internal static class PatrolCrewDelta
     {
-        private const int Magic = 0x32524457, FirstMagic = 0x31524457; // WDR2: hitch identity; WDR1: seated riders
+        private const int Magic = 0x32524457; // WDR2 current seated rider and hitch record
         internal static PatrolRiderData[] Capture(PatrolMarker marker)
         {
             var result = new PatrolRiderData[PatrolMarker.TotalTurretSlots];
@@ -81,11 +81,10 @@ namespace WildWasteland.Modules.Patrols
         }
         internal static void Read(BinaryReader reader, PatrolCarData[] cars)
         {
-            int magic = reader.ReadInt32(); if (magic != Magic && magic != FirstMagic) return;
+            int magic = reader.ReadInt32(); if (magic != Magic) throw new InvalidDataException("Unsupported crew delta header");
             if (reader.ReadInt32() != cars.Length) throw new InvalidDataException("Invalid crew delta count");
             foreach (var car in cars)
             {
-                if (magic == Magic)
                 {
                     car.trailerName = reader.ReadString();
                     if (car.trailerName.Length > 4096) throw new InvalidDataException("Invalid trailer identity");

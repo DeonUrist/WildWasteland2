@@ -683,9 +683,8 @@ namespace WildWasteland.Modules.Patrols
         {
             if (_instance == null || string.IsNullOrEmpty(json)) return;
             var saved = TrafficCodec.Read(json);
-            if (saved == null || (saved.version != 1 && saved.version != 2) || saved.bases == null || saved.journeys == null
+            if (saved == null || saved.version != 2 || saved.bases == null || saved.journeys == null
                 || saved.bases.Length > 512 || saved.journeys.Length > 128) throw new System.IO.InvalidDataException("Invalid world traffic save");
-            if (saved.version == 1) MigrateSceneCoordinates(saved);
             foreach (var b in saved.bases) if (b != null && !string.IsNullOrEmpty(b.id)) TrafficLocations.Known[b.id] = b;
             foreach(var p in (saved.pois??new TrafficPoi[0]).Take(1024))if(p!=null&&!string.IsNullOrEmpty(p.id))TrafficLocations.Points[p.id]=p;
             _instance._journeys.Clear(); _instance._live.Clear(); _instance.ResetFoot();
@@ -709,31 +708,6 @@ namespace WildWasteland.Modules.Patrols
                 }
         }
 
-        private static void MigrateSceneCoordinates(TrafficSave saved)
-        {
-            // The original prototype saved scene positions. Convert from the game's restored MapMagic offset once.
-            var origin = TrafficSpace.Origin;
-            var ids = new Dictionary<string, string>();
-            foreach (var b in saved.bases)
-            {
-                if (b == null) continue;
-                var previous = b.id;
-                b.center -= origin; b.gate -= origin; b.apron -= origin;
-                var parts = (previous ?? "").Split(':');
-                if (parts.Length == 3 && int.TryParse(parts[1], out int x) && int.TryParse(parts[2], out int z))
-                    b.id = parts[0] + ":" + Mathf.RoundToInt(x - origin.x) + ":" + Mathf.RoundToInt(z - origin.z);
-                if (!string.IsNullOrEmpty(previous)) ids[previous] = b.id;
-            }
-            foreach (var j in saved.journeys)
-            {
-                if (j == null) continue;
-                j.position -= origin;
-                if (j.route != null) for (int i = 0; i < j.route.Length; i++) j.route[i] -= origin;
-                if (j.source != null && ids.TryGetValue(j.source, out var source)) j.source = source;
-                if (j.destination != null && ids.TryGetValue(j.destination, out var destination)) j.destination = destination;
-            }
-            saved.version = 2;
-            PatrolsModule.Verbose("Traffic: converted prototype scene-coordinate save to stable MapMagic world frame");
-        }
+
     }
 }

@@ -483,7 +483,7 @@ namespace WildWasteland.Modules.Patrols
                 foreach (var car in cars) WriteCar(writer, car, data.version);
                 writer.Write(data.convoyCooldown);
                 WriteString(writer, data.lastGroup ?? "");
-                if (data.version >= 10) WriteString(writer, data.trafficJson ?? "");
+                WriteString(writer, data.trafficJson ?? "");
                 PatrolCrewDelta.Write(writer, cars);
                 writer.Flush();
                 return stream.ToArray();
@@ -497,18 +497,19 @@ namespace WildWasteland.Modules.Patrols
             {
                 if (reader.ReadInt32() != Magic) throw new InvalidDataException("wrong file header");
                 int version = reader.ReadInt32();
+                if(version!=SchemaVersion)throw new InvalidDataException("Unsupported patrol save version "+version);
                 string slot = reader.ReadString();
                 int seed = reader.ReadInt32();
                 int count = reader.ReadInt32();
                 if (count < 0 || count > MaxCarsPerSave) throw new InvalidDataException("invalid car count " + count);
                 var cars = new PatrolCarData[count];
                 for (int i = 0; i < count; i++) cars[i] = ReadCar(reader, version);
-                float cooldown = version >= 3 ? reader.ReadSingle() : -1f;
-                string lastGroup = version >= 8 ? reader.ReadString() : "";
-                string traffic = version >= 10 ? reader.ReadString() : "";
+                float cooldown = reader.ReadSingle();
+                string lastGroup = reader.ReadString();
+                string traffic = reader.ReadString();
                 if (traffic.Length > 8000000) throw new InvalidDataException("World traffic save too large");
-                if (stream.Position < stream.Length) PatrolCrewDelta.Read(reader, cars);
-                if (stream.Position != stream.Length) PatrolsModule.Verbose("Persistence: raider data has trailing bytes");
+                PatrolCrewDelta.Read(reader, cars);
+                if (stream.Position != stream.Length) throw new InvalidDataException("Trailing patrol record data");
                 return new PatrolSaveData { version = version, saveFile = slot, worldSeed = seed, cars = cars, convoyCooldown = cooldown, lastGroup = lastGroup, trafficJson = traffic };
             }
         }
@@ -525,13 +526,13 @@ namespace WildWasteland.Modules.Patrols
             writer.Write(car.exploded);
             WriteString(writer, car.cargoKey);
             writer.Write(car.suspensionWidth); writer.Write(car.suspensionHeight);
-            if (version >= 9) WriteString(writer, car.templateName);
-            if (version >= 10) { WriteString(writer, car.trafficId); writer.Write(car.trafficSlot); }
-            if(version>=11){WriteString(writer,car.encounterId);writer.Write(car.convoyMember);}
-            if(version>=12){WriteString(writer,car.faction);writer.Write(car.explodeChance);writer.Write(car.driverDied);writer.Write(car.driverBailed);writer.Write(car.explodeRolled);writer.Write(car.explodeSelected);}
-            if(version>=12){WriteString(writer,car.battleId);writer.Write(car.battleSide);writer.Write(car.battleSlot);}
-            if(version>=13)WriteString(writer,car.merchantJson);
-            if(version>=14)writer.Write(car.setupOnly);
+            WriteString(writer, car.templateName);
+            { WriteString(writer, car.trafficId); writer.Write(car.trafficSlot); }
+            {WriteString(writer,car.encounterId);writer.Write(car.convoyMember);}
+            {WriteString(writer,car.faction);writer.Write(car.explodeChance);writer.Write(car.driverDied);writer.Write(car.driverBailed);writer.Write(car.explodeRolled);writer.Write(car.explodeSelected);}
+            {WriteString(writer,car.battleId);writer.Write(car.battleSide);writer.Write(car.battleSlot);}
+            WriteString(writer,car.merchantJson);
+            writer.Write(car.setupOnly);
         }
 
         private static PatrolCarData ReadCar(BinaryReader reader, int version)
@@ -544,20 +545,18 @@ namespace WildWasteland.Modules.Patrols
                 driverPresent = reader.ReadBoolean(), driverHealth = reader.ReadSingle(), seatedSeconds = reader.ReadSingle(),
                 passengerPrefab = ReadString(reader), passengerPresent = reader.ReadBoolean(), passengerHealth = reader.ReadSingle()
             };
-            car.ramTargets = version >= 2 ? ReadString(reader) : "Pedestrians";
-            if (version >= 4) { car.playerEntered = reader.ReadBoolean(); car.farSeconds = reader.ReadSingle(); }
-            else if (car.driverPhase == "Released") car.playerEntered = true;   // older save: an empty raider car may be one the player drove - keep it
-            if (version >= 5) car.exploded = reader.ReadBoolean();
-            if (version >= 6) car.cargoKey = ReadString(reader);
-            if (version >= 7) { car.suspensionWidth = reader.ReadSingle(); car.suspensionHeight = reader.ReadSingle(); }
-            if (version >= 9) car.templateName = ReadString(reader);
-            if (version >= 10) { car.trafficId = ReadString(reader); car.trafficSlot = reader.ReadInt32(); }
-            if(version>=11){car.encounterId=ReadString(reader);car.convoyMember=reader.ReadBoolean();}
-            if(version>=12){car.faction=ReadString(reader);car.explodeChance=reader.ReadSingle();car.driverDied=reader.ReadBoolean();car.driverBailed=reader.ReadBoolean();car.explodeRolled=reader.ReadBoolean();car.explodeSelected=reader.ReadBoolean();}
-            else {car.explodeChance=Explode.DefaultChance(car.templateName);car.driverDied=car.driverPhase=="DeadRolling"||car.driverPhase=="DeadStuck";}
-            if(version>=12){car.battleId=ReadString(reader);car.battleSide=reader.ReadInt32();car.battleSlot=reader.ReadInt32();}
-            if(version>=13)car.merchantJson=ReadString(reader);
-            if(version>=14)car.setupOnly=reader.ReadBoolean();
+            car.ramTargets = ReadString(reader);
+            { car.playerEntered = reader.ReadBoolean(); car.farSeconds = reader.ReadSingle(); }
+            car.exploded = reader.ReadBoolean();
+            car.cargoKey = ReadString(reader);
+            { car.suspensionWidth = reader.ReadSingle(); car.suspensionHeight = reader.ReadSingle(); }
+            car.templateName = ReadString(reader);
+            { car.trafficId = ReadString(reader); car.trafficSlot = reader.ReadInt32(); }
+            {car.encounterId=ReadString(reader);car.convoyMember=reader.ReadBoolean();}
+            {car.faction=ReadString(reader);car.explodeChance=reader.ReadSingle();car.driverDied=reader.ReadBoolean();car.driverBailed=reader.ReadBoolean();car.explodeRolled=reader.ReadBoolean();car.explodeSelected=reader.ReadBoolean();}
+            {car.battleId=ReadString(reader);car.battleSide=reader.ReadInt32();car.battleSlot=reader.ReadInt32();}
+            car.merchantJson=ReadString(reader);
+            car.setupOnly=reader.ReadBoolean();
             return car;
         }
 
