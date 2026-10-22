@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.Patrols
     // event "Damage" on that FSM (armor first, then health). The hurt sound, camera kick and red blood splash live in the
     // DamageEffectSound / DamageEffectSound_InCar FSMs (one of them enabled, toggled by InCar); Bodypart's own SendEvent to them
     // is disabled in the prefab - every attacker sends "Damage" to the effect FSM itself (FallDamage does), so we do too.
-    internal static class Ram
+    internal static partial class Ram
     {
         // sits on every AI car root (next to PatrolMarker); the Rigidbody is there, so every collision of the car arrives here
         internal sealed class Sensor : MonoBehaviour
@@ -49,7 +49,6 @@ namespace WildWasteland.Modules.Patrols
         private static float _resumeAt = -1f;
         private const float PushSeconds = 0.5f;
 
-        // Scale the native creature hit after its value is written, before CarAttack sends Damage. Never change the shared speed/bumper variable.
         // Seated drivers / passengers / turrets are all-trigger bodies (Rider.NoContacts) without per-pair collision ignores, so a
         // car's own CarAttack trigger (OnTriggerEnter, layer 10 = the NPC layer; Sources fsm/prefabs/Rustallion.md "CarAttack")
         // could now see its own crew when a collider of theirs (re)enters it, and ram-damage them above 5 m/s. The old ignore
@@ -73,23 +72,6 @@ namespace WildWasteland.Modules.Patrols
             if (!OwnCrew(fsm, fsm.GetOwnerDefaultTarget(action.eventTarget.gameObject))) return true;
             action.Finish();
             return false;
-        }
-
-        internal static void AfterSetFsmFloat(HutongGames.PlayMaker.Actions.SetFsmFloat action)
-        {
-            if (!PatrolsModule.Running) return;
-            var fsm = action.Fsm;
-            if (fsm == null || fsm.Name.Length != 9 || fsm.Name != "CarAttack" || fsm.GameObject == null) return;
-            if (action.fsmName == null || action.fsmName.Value != "Bodypart" || action.variableName == null || action.variableName.Value != "Damage") return;
-            var target = fsm.GetOwnerDefaultTarget(action.gameObject);
-            var player = Core.GameRefs.Player;
-            if (target == null || (player != null && target.transform.IsChildOf(player.transform))) return;
-            if (OwnCrew(fsm, target)) return;   // BeforeSetFsmFloat skipped the write: nothing to scale
-            var bodypart = Core.FsmUtil.Find(target, "Bodypart");
-            var damage = bodypart != null ? bodypart.FsmVariables.FindFsmFloat("Damage") : null;
-            if (damage == null || damage.Value >= 0f) return;
-            damage.Value *= PatrolsModule.NpcRamDamageMultiplier.Value;
-            if (Core.Log.Verbose) PatrolsModule.Verbose("Ram: car hit -> " + target.name + ", " + (-damage.Value) + " damage (x" + PatrolsModule.NpcRamDamageMultiplier.Value + ")");
         }
 
         // kind: 1 = the player on foot, 2 = the player's car. rel = the car's speed into the contact (m/s), carVel = its velocity (push direction).
