@@ -1,0 +1,452 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
+
+namespace WildWasteland.Modules.Patrols
+{
+    // One fixed seated limb pose for every live occupant. A ranged passenger may rotate that fixed pose through the
+    // spine, but combat never receives control of the arms or legs.
+    internal class Pose : MonoBehaviour
+    {
+        private Transform _root, _anchor;
+        private Transform _hips, _spine, _spine1, _spine2;
+        private Transform _lUpLeg, _lLeg, _lFoot, _rUpLeg, _rLeg, _rFoot, _lArm, _lForeArm, _lHand, _rArm, _rForeArm, _rHand;
+        private bool _busPassenger;
+        /// <summary>True for a bus passenger with a seat anchor (not a turret).</summary>
+        internal bool IsBusPassenger=>_busPassenger&&_anchor!=null&&!_turret;
+        /// <summary>Uses the shared bus passenger preset for this occupant (loads it now).</summary>
+        internal void ConfigureBusPassenger(){_busPassenger=true;var preset=BusPassengerPoseStore.Current;}
+        private ArmPoseProfile _armPose;
+        private readonly List<WeaponRoot> _weapons = new List<WeaponRoot>();
+        private bool _aimActive;
+        internal bool AnimatedFollower;
+        private Vector3 _aimPoint;
+        private float _aimYaw, _aimPitch;
+        private bool _lockSeatRotation;
+        private bool _useProfile = true;      // per-human arm/weapon profile (shooting pose) vs the generic driver arms
+        private bool _bike;                   // on a motorcycle: the driving arms reach out to the handlebar grips, not to a wheel
+        private Quaternion _seatRotation;
+        private bool _logged;
+        // Sitting/standing is independent of platform: roof turrets turn freely; motorcycle turrets retain BikeArc.
+        private bool _turret, _turretSeated;
+        private bool _turretBike,_turretWarboy;
+        private RiderGuard _turretRider;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+        private float _turretYaw;
+        // 2.6.1: a roof gunner animated by Apocaplayer's ModAPI (PlayerAnims): the player's crouch with the gun in the right hand, aiming; this
+        // class then only turns the whole body to the target and keeps its feet on the spot. null = the bone squat below (bike seats always)
+        private object _body;
+        private Transform _bodyGun; private float _nextGunCheck;
+
+        /// <summary>Adds (or reuses) the seat pose on an occupant: anchor, bike detection, per-human arm profile and bones.</summary>
+        internal static Pose Apply(GameObject occupant, Transform anchor, string humanType)
+        {
+            var p = occupant.GetComponent<Pose>() ?? occupant.AddComponent<Pose>();
+            p._root = occupant.transform;
+            p._anchor = anchor;
+            p._bike = IsBike(anchor);
+            SeatPoseSettings.HumanArmPoses.TryGetValue(humanType ?? "", out p._armPose);
+            p.FindBones();
+            return p;
+        }
+
+        /// <summary>Body prefab name of the true motorcycle (same value as the Vehicles module's MotorcycleIntegration.Body).</summary>
+        private const string MotorcycleBody = "Motorcycle";
+
+        // the vehicle the seat belongs to is a motorcycle body (Motorcycle = the true bike, Halfbreed)
+        /// <summary>True when the seat belongs to a motorcycle body (Motorcycle, Halfbreed).</summary>
+        private static bool IsBike(Transform anchor)
+        {
+            var root = anchor != null ? anchor.root : null;
+            if (root == null) return false;
+            string body = Core.Names.Prefab(root.name);
+            return string.Equals(body, MotorcycleBody, System.StringComparison.OrdinalIgnoreCase) || string.Equals(body, "Halfbreed", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Finds the hips, spine, leg and arm bones by their name tail and logs missing ones (level 2).</summary>
+        private void FindBones()
+        {
+            var all = _root.GetComponentsInChildren<Transform>(true);
+            _hips = Find(all, "Hips");
+            _spine = Find(all, "Spine"); _spine1 = Find(all, "Spine1"); _spine2 = Find(all, "Spine2");
+            _lUpLeg = Find(all, "LeftUpLeg"); _lLeg = Find(all, "LeftLeg");
+            _rUpLeg = Find(all, "RightUpLeg"); _rLeg = Find(all, "RightLeg");
+            _lFoot=Find(all,"LeftFoot");_rFoot=Find(all,"RightFoot");
+            _lArm = Find(all, "LeftArm"); _lForeArm = Find(all, "LeftForeArm"); _lHand = Find(all, "LeftHand");
+            _rArm = Find(all, "RightArm"); _rForeArm = Find(all, "RightForeArm"); _rHand = Find(all, "RightHand");
+            FindWeapons();
+            var missing = new List<string>();
+            if (_hips == null) missing.Add("Hips");
+            if (_spine == null || _spine1 == null || _spine2 == null) missing.Add("spine");
+            if (_lUpLeg == null || _lLeg == null || _rUpLeg == null || _rLeg == null) missing.Add("legs");
+            if (_lArm == null || _lForeArm == null || _lHand == null || _rArm == null || _rForeArm == null || _rHand == null) missing.Add("arms/hands");
+            if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: bones " + (missing.Count == 0 ? "all found" : "missing " + string.Join(", ", missing.ToArray())));
+        }
+
+        /// <summary>Records the rendered weapon roots under the left hand with their rest pose (ranged profiles only).</summary>
+        private void FindWeapons()
+        {
+            _weapons.Clear();
+            if (_lHand == null || _armPose == null || _armPose.Weapon == null) return;
+            foreach (Transform child in _lHand)
+            {
+                // Mixamo finger bones have no renderers. Each ranged weapon variant is a rendered direct child
+                // of LeftHand, so storing every rendered child also covers variants enabled later by WeaponType.
+                if (child.GetComponentInChildren<Renderer>(true) == null) continue;
+                _weapons.Add(new WeaponRoot(child, child.localPosition, child.localRotation));
+                if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: weapon root " + child.name + " found under LeftHand");
+            }
+        }
+
+        /// <summary>Sets the aim point and whether the occupant aims at it.</summary>
+        internal void SetAim(Vector3 point, bool active)
+        {
+            _aimPoint = point;
+            _aimActive = active;
+        }
+
+        // A shooting mob at the wheel: generic driver arms (hands on the wheel), the per-human shooting profile only while firing.
+        /// <summary>A shooting driver: the per-human shooting profile only while firing, the generic wheel arms otherwise.</summary>
+        internal void SetShooting(bool on) { _useProfile = on; }
+
+        /// <summary>A passenger who aims: the seat rotation is locked, only the spine turns.</summary>
+        internal void ConfigurePassengerAim()
+        {
+            _lockSeatRotation = true;
+            _seatRotation = _root.localRotation;
+        }
+
+        /// <summary>Turns the pose into a turret gunner (standing or crouched, bike seat, Warboy); a human roof gunner gets the animation service crouch when available.</summary>
+        internal void ConfigureTurret(bool standing,bool bike,bool warboy=false)
+        {
+            _turret = true; _turretSeated = !standing;_turretBike=bike;_turretWarboy=warboy;
+            if(warboy)_turretRider=GetComponent<RiderGuard>();   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+            _lockSeatRotation = false;
+            _turretYaw = 0f;
+            if (!warboy && (standing || !bike) && _body == null && PlayerAnims.Available)
+            {
+                var anim = _root != null ? _root.GetComponentInChildren<Animator>() : null;
+                if (anim != null && anim.isHuman) _body = PlayerAnims.Attach(anim);
+                if (_body != null) { PlayerAnims.Set(_body, !standing, false, false, 0f); if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + _root.name + " animated by Apocaplayer's ModAPI ("+(standing?"standing":"crouched")+")"); }
+            }
+        }
+
+        // the ModAPI body ends (death, jump-off): its gun back in its own hand, the Animator's own controller back
+        /// <summary>Ends the animation-service body (death, jump-off): its gun back in its hand, the Animator controller back.</summary>
+        internal void ReleaseBody()
+        {
+            if (_body == null) return;
+            try { PlayerAnims.Dispose(_body); } catch (System.Exception) { }
+            _body = null; _bodyGun = null;
+        }
+        /// <summary>Unity teardown: releases the animation-service body.</summary>
+        private void OnDestroy() { ReleaseBody(); }
+
+        // the gun the game shows (WeaponType picks one of the LeftHand models a frame after the spawn and may swap it) -> the body's right hand
+        /// <summary>Hands the gun the game shows to the animation-service body (checked twice a second).</summary>
+        private void BodyWeapon()
+        {
+            if (Time.time < _nextGunCheck) return;
+            _nextGunCheck = Time.time + 0.5f;
+            if (_bodyGun != null && _bodyGun.gameObject.activeSelf) return;
+            Transform gun = null; string key = null;
+            if (_lHand != null)
+                foreach (Transform child in _lHand)
+                {
+                    if (!child.gameObject.activeSelf || child.GetComponentInChildren<Renderer>(true) == null) continue;
+                    var k = PlayerAnims.WeaponKey(child.name);
+                    if (PlayerAnims.HasWeaponPoses(k)) { gun = child; key = k; break; }
+                }
+            if (gun == _bodyGun) return;
+            _bodyGun = gun;
+            PlayerAnims.SetWeapon(_body, gun, key);
+            if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + _root.name + " holds " + (gun != null ? key : "nothing the player's poses know"));
+        }
+
+        /// <summary>Seat anchor and seat kind of this pose (ISeatPoses); false once the anchor or the body is gone.</summary>
+        internal bool TryGetSeat(out Transform seat, out SeatKind kind)
+        {
+            seat = _anchor;
+            kind = _turret ? (_turretWarboy || _turretBike ? SeatKind.Rider : SeatKind.Turret) : _busPassenger ? SeatKind.BusPassenger : AnimatedFollower ? SeatKind.Follower
+                : _bike ? SeatKind.Bike : _lockSeatRotation ? SeatKind.Passenger : SeatKind.Driver;
+            return _anchor != null && _root != null;
+        }
+
+        // the occupant changed seats (passenger promoted to driver): follow the new anchor, no passenger aiming any more
+        /// <summary>The occupant changed seats (passenger promoted to driver): follows the new anchor, no passenger aiming any more.</summary>
+        internal void Reseat(Transform anchor)
+        {
+            _anchor = anchor;
+            _busPassenger = false;
+            _lockSeatRotation = false;
+            _aimActive = false;
+            _useProfile = false;   // now the driver: hands on the wheel (a shooting driver's guard switches to the gun pose while it fires)
+        }
+
+        /// <summary>The transform whose name tail (after : or _) equals the bone name.</summary>
+        private static Transform Find(Transform[] all, string bone)
+        {
+            foreach (var t in all)
+            {
+                var n = t.name;
+                int i = n.LastIndexOf(':'); if (i < 0) i = n.LastIndexOf('_');
+                var tail = i >= 0 ? n.Substring(i + 1) : n;
+                if (tail == bone) return t;
+            }
+            return null;
+        }
+
+        private int _lodFrame;
+        // the camera position, read once per frame for every occupant
+        private static int _camFrame = -1; private static bool _camOk; private static Vector3 _camPos;
+
+        /// <summary>Main camera position, read once per frame for all occupants.</summary>
+        private static bool CameraPos(out Vector3 pos)
+        {
+            if (_camFrame != Time.frameCount)
+            {
+                _camFrame = Time.frameCount;
+                var cam = Core.GameRefs.MainCamera;
+                _camOk = cam != null;
+                _camPos = _camOk ? cam.transform.position : Vector3.zero;
+            }
+            pos = _camPos;
+            return _camOk;
+        }
+
+        /// <summary>Applies the seated pose after animation (distance throttled: every 4th frame beyond 120 m, every 16th beyond 300 m): legs, arms (bus preset, profile or generic), spine aim and hips on the anchor.</summary>
+        private void LateUpdate()
+        { if (!PatrolsModule.Running) return;   // refs-ok: REFACTOR-REQUEST B06-4 (Patrols running state; no IPatrols query yet)
+            if (_root == null || _anchor == null) return;
+            // Far from the camera the pose is refreshed less often: every 4th frame beyond 120 m, every 16th beyond 300 m (a convoy
+            // spawning 350 m away is fourteen occupants; ~40 bone rotations each). The animator keeps the body in a sane idle in between.
+            Vector3 camPos;
+            if (CameraPos(out camPos))
+            {
+                float d2 = (camPos - _anchor.position).sqrMagnitude;
+                int mask = d2 > 300f * 300f ? 15 : d2 > 120f * 120f ? 3 : 0;
+                if (mask != 0 && (++_lodFrame & mask) != 0) return;
+            }
+            if (_turret) { TurretPose(); return; }
+            if (_lockSeatRotation) _root.localRotation = _seatRotation;
+            var right = _anchor.right;
+            var up = _anchor.up;
+
+            var bus=_busPassenger?BusPassengerPoseStore.Current:null;
+            bool editing=BusPassengerPoseEditor.Editing(this);   // refs-ok: REFACTOR-REQUEST B06-5 (Developer editor target; no authoring query)
+            if(bus!=null)
+            {
+                BusJoint(_lUpLeg,_lLeg,bus.left[0],right,up);BusJoint(_lLeg,_lFoot,bus.left[1],right,up);
+                BusJoint(_rUpLeg,_rLeg,bus.right[0],right,up);BusJoint(_rLeg,_rFoot,bus.right[1],right,up);
+            }
+            else
+            {
+                float thigh = SeatPoseSettings.PoseThigh.Value, knee = SeatPoseSettings.PoseKnee.Value;
+                Swing(_lUpLeg, -thigh, right); Swing(_lUpLeg, SeatPoseSettings.PoseLeftLegCloser.Value, up); Swing(_lLeg, knee, right);
+                Swing(_rUpLeg, -thigh, right); Swing(_rUpLeg, -SeatPoseSettings.PoseRightLegCloser.Value, up); Swing(_rLeg, knee, right);
+            }
+
+            if (AnimatedFollower) goto AimFollower;
+            if(bus!=null&&(!_aimActive||editing))
+            {
+                BusJoint(_lArm,_lForeArm,bus.left[2],right,up);BusJoint(_lForeArm,_lHand,bus.left[3],right,up);BusJoint(_lHand,_lForeArm,bus.left[4],right,up,true);
+                BusJoint(_rArm,_rForeArm,bus.right[2],right,up);BusJoint(_rForeArm,_rHand,bus.right[3],right,up);BusJoint(_rHand,_rForeArm,bus.right[4],right,up,true);
+            }
+            else if (_armPose != null && _useProfile)
+            {
+                ApplyBone(_lArm, _lForeArm, _armPose.LeftArm, right, up, false);
+                ApplyBone(_lForeArm, _lHand, _armPose.LeftElbow, right, up, false);
+                ApplyBone(_lHand, _lForeArm, _armPose.LeftHand, right, up, true);
+                ApplyBone(_rArm, _rForeArm, _armPose.RightArm, right, up, false);
+                ApplyBone(_rForeArm, _rHand, _armPose.RightElbow, right, up, false);
+                ApplyBone(_rHand, _rForeArm, _armPose.RightHand, right, up, true);
+                ApplyWeapons();
+            }
+            else
+            {
+                float arm = SeatPoseSettings.PoseArm.Value, elbow = SeatPoseSettings.PoseElbow.Value;
+                float lIn = SeatPoseSettings.PoseLeftArmCloser.Value, rIn = SeatPoseSettings.PoseRightArmCloser.Value;
+                if (_bike) { arm = SeatPoseSettings.PoseBikeArm.Value; lIn = rIn = -SeatPoseSettings.PoseBikeArmSpread.Value; }   // hands apart on the grips
+                Swing(_lArm, -arm, right); Swing(_lArm, lIn, up); Swing(_lForeArm, -elbow, right);
+                Swing(_rArm, -arm, right); Swing(_rArm, -rIn, up); Swing(_rForeArm, -elbow, right);
+            }
+
+            // Arms remain permanently in the driver pose. Rotate that fixed upper-body pose through the spine only.
+            AimFollower:
+            float wantedYaw = 0f, wantedPitch = 0f;
+            if (_aimActive && !editing && _spine2 != null)
+            {
+                var local = _anchor.InverseTransformDirection(_aimPoint - _spine2.position);
+                float flat = Mathf.Sqrt(local.x * local.x + local.z * local.z);
+                if (flat > 0.001f)
+                {
+                    wantedYaw = Mathf.Clamp(Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg,
+                        -PatrolsModule.FireArc.Value, PatrolsModule.FireArc.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                    wantedPitch = Mathf.Clamp(Mathf.Atan2(local.y, flat) * Mathf.Rad2Deg,
+                        -PatrolsModule.MaxAimPitch.Value, PatrolsModule.MaxAimPitch.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                }
+            }
+            float step = PatrolsModule.AimTurnSpeed.Value * Time.deltaTime;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+            _aimYaw = Mathf.MoveTowardsAngle(_aimYaw, wantedYaw, step);
+            _aimPitch = Mathf.MoveTowardsAngle(_aimPitch, wantedPitch, step);
+            AimSpine(_spine, 0.25f, up, right);
+            AimSpine(_spine1, 0.35f, up, right);
+            AimSpine(_spine2, 0.40f, up, right);
+
+            var target = _anchor.position + _anchor.right * SeatPoseSettings.DriverOffsetX.Value + _anchor.up * SeatPoseSettings.DriverOffsetY.Value
+                       + _anchor.forward * SeatPoseSettings.DriverOffsetZ.Value;
+            if(bus!=null)target+=_anchor.right*bus.seatOffset.x+_anchor.up*bus.seatOffset.y+_anchor.forward*bus.seatOffset.z;
+            var pivot = _hips != null ? _hips.position : _root.position;
+            _root.position += target - pivot;
+
+            if (!_logged) { _logged = true; if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: applied, hips at " + target + " root at " + _root.position); }
+        }
+
+        /// <summary>Turret gunner pose: body turned to the target (bike seats limited), animation-service crouch or the bone squat with the shooting arms.</summary>
+        private void TurretPose()
+        {
+            if(_turretWarboy)
+            {
+                // Preserve the lance throw's upper-body animation and the dismount/jump animation.
+                if(_turretRider!=null&&_turretRider.Mounted)
+                {
+                    // The Warboy's crouch/throw graph already poses his legs. Do not bend them a second time.
+                    if(_turretRider.AnimatedPose||_turretRider.StandingPose)_root.position=_anchor.position;
+                    else TurretLegs(false,true);
+                }
+                return;
+            }
+            // the whole body turns about the spot's up toward the target (no limit); back to the car's forward without one
+            float wantedYaw = 0f, wantedPitch = 0f;
+            if (_aimActive && _spine2 != null)
+            {
+                var local = _anchor.InverseTransformDirection(_aimPoint - _spine2.position);
+                float flat = Mathf.Sqrt(local.x * local.x + local.z * local.z);
+                if (flat > 0.001f)
+                {
+                    wantedYaw = Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg;
+                    if (_turretBike) wantedYaw = Mathf.Clamp(wantedYaw, -Rider.BikeArc, Rider.BikeArc);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                    wantedPitch = Mathf.Clamp(Mathf.Atan2(local.y, flat) * Mathf.Rad2Deg, -PatrolsModule.MaxAimPitch.Value, PatrolsModule.MaxAimPitch.Value);   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+                }
+            }
+            else wantedYaw = _turretBike ? 0f : _turretYaw * 0.995f;
+            float step = PatrolsModule.AimTurnSpeed.Value * Time.deltaTime;   // refs-ok: REFACTOR-REQUEST B06-6 (Patrols combat tuning / rider state read by the seat pose)
+            _turretYaw = Mathf.MoveTowardsAngle(_turretYaw, wantedYaw, step);
+            _aimPitch = Mathf.MoveTowardsAngle(_aimPitch, wantedPitch, step);
+            // roof: the whole body turns; motorcycle seat: the body sits straight, the upper body turns (spine, at most BikeArc)
+            _root.rotation = _turretBike ? _anchor.rotation : _anchor.rotation * Quaternion.Euler(0f, _turretYaw, 0f);
+            if (_body != null && !PlayerAnims.Alive(_body)) _body = null;   // taken down by something else: the bone squat again
+            if (_body != null)
+            {
+                // the player's crouch: aiming at the target (+ pitch = looking down for the ModAPI), feet on the spot
+                BodyWeapon();
+                PlayerAnims.Set(_body, _turretSeated, _aimActive, false, -_aimPitch);
+                _root.position = _anchor.position;
+                if (!_logged) { _logged = true; if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + (_turretSeated?"crouched":"standing") + " (Apocaplayer), feet at " + _anchor.position); }
+                return;
+            }
+            var right = _root.right; var up = _root.up;
+
+            TurretLegs(!_turretSeated);
+
+            // arms: the gun up (the human's shooting profile) - on a motorcycle only while it aims, the idle arms (down) otherwise
+            if (_armPose != null && (!_turretBike || _aimActive))
+            {
+                ApplyBone(_lArm, _lForeArm, _armPose.LeftArm, right, up, false);
+                ApplyBone(_lForeArm, _lHand, _armPose.LeftElbow, right, up, false);
+                ApplyBone(_lHand, _lForeArm, _armPose.LeftHand, right, up, true);
+                ApplyBone(_rArm, _rForeArm, _armPose.RightArm, right, up, false);
+                ApplyBone(_rForeArm, _rHand, _armPose.RightElbow, right, up, false);
+                ApplyBone(_rHand, _rForeArm, _armPose.RightHand, right, up, true);
+                ApplyWeapons();
+            }
+
+            _aimYaw = _turretBike ? _turretYaw : 0f;
+            AimSpine(_spine, 0.25f, up, right);
+            AimSpine(_spine1, 0.35f, up, right);
+            AimSpine(_spine2, 0.40f, up, right);
+
+            if (!_logged) { _logged = true; if (Log.L2) Log.Deep(PresentationModule.WorldOwner, "Pose: human turret " + (_turretSeated ? (_turretBike?"seated":"crouched") : "standing")); }
+        }
+
+        /// <summary>Turret legs: standing on the spot, or the crouch / bike seat bend with the hips at the configured height.</summary>
+        private void TurretLegs(bool standing,bool forceCrouch=false)
+        {
+            if(standing){_root.position=_anchor.position;return;}
+            var right=_root.right;var up=_root.up;bool seat=_turretBike&&!forceCrouch;
+            float thigh=seat?SeatPoseSettings.PoseThigh.Value:SeatPoseSettings.TurretThigh.Value,knee=seat?SeatPoseSettings.PoseKnee.Value:SeatPoseSettings.TurretKnee.Value,spread=seat?0f:10f;
+            Swing(_lUpLeg,-thigh,right);Swing(_lUpLeg,-spread,up);Swing(_lLeg,knee,right);
+            Swing(_rUpLeg,-thigh,right);Swing(_rUpLeg,spread,up);Swing(_rLeg,knee,right);
+            var target=_anchor.position+_anchor.up*(seat?.08f:SeatPoseSettings.TurretHipHeight.Value);
+            _root.position+=target-(_hips!=null?_hips.position:_root.position);
+        }
+
+        /// <summary>Rotates a bone by degrees about a world axis.</summary>
+        private static void Swing(Transform bone, float degrees, Vector3 axis)
+        {
+            if (bone == null || degrees == 0f) return;
+            bone.rotation = Quaternion.AngleAxis(degrees, axis) * bone.rotation;
+        }
+
+        /// <summary>Applies one bus preset joint (bend, swing, twist about the limb axis).</summary>
+        private static void BusJoint(Transform bone,Transform joint,Vector3 angles,Vector3 right,Vector3 up,bool hand=false)
+        {
+            if(bone==null)return;
+            Swing(bone,-angles.x,right);Swing(bone,angles.y,up);
+            if(angles.z==0f)return;
+            var axis=joint!=null?(hand?bone.position-joint.position:joint.position-bone.position):bone.forward;
+            if(axis.sqrMagnitude>.000001f)Swing(bone,angles.z,axis.normalized);
+        }
+
+        /// <summary>Turns one spine bone by its share of the aim yaw and pitch.</summary>
+        private void AimSpine(Transform bone, float weight, Vector3 up, Vector3 right)
+        {
+            Swing(bone, _aimYaw * weight, up);
+            var yawedRight = Quaternion.AngleAxis(_aimYaw, up) * right;
+            Swing(bone, -_aimPitch * weight, yawedRight);
+        }
+
+        /// <summary>Applies one profile bone (vertical, horizontal, twist about the limb axis).</summary>
+        private static void ApplyBone(Transform bone, Transform joint, BonePoseConfig config, Vector3 right, Vector3 up, bool hand)
+        {
+            if (bone == null || config == null) return;
+            Swing(bone, -config.Vertical.Value, right);
+            Swing(bone, config.Horizontal.Value, up);
+            Vector3 axis = joint != null ? joint.position - bone.position : bone.forward;
+            // Hands pass their forearm as the joint, so reverse that vector to keep the twist axis shoulder-to-fingertips.
+            if (hand && joint != null) axis = bone.position - joint.position;
+            if (axis.sqrMagnitude > 0.000001f) Swing(bone, config.Rotation.Value, axis.normalized);
+        }
+
+        /// <summary>Offsets the held weapons by the profile weapon pose.</summary>
+        private void ApplyWeapons()
+        {
+            if (_armPose == null || _armPose.Weapon == null) return;
+            var config = _armPose.Weapon;
+            var offset = new Vector3(config.PositionX.Value, config.PositionY.Value, config.PositionZ.Value);
+            var rotation = Quaternion.Euler(config.RotationX.Value, config.RotationY.Value, config.RotationZ.Value);
+            foreach (var weapon in _weapons)
+            {
+                if (weapon.Transform == null) continue;
+                weapon.Transform.localPosition = weapon.LocalPosition + offset;
+                weapon.Transform.localRotation = weapon.LocalRotation * rotation;
+            }
+        }
+
+        private sealed class WeaponRoot
+        {
+            internal readonly Transform Transform;
+            internal readonly Vector3 LocalPosition;
+            internal readonly Quaternion LocalRotation;
+
+            /// <summary>Remembers a weapon root and its rest pose.</summary>
+            internal WeaponRoot(Transform transform, Vector3 localPosition, Quaternion localRotation)
+            {
+                Transform = transform;
+                LocalPosition = localPosition;
+                LocalRotation = localRotation;
+            }
+        }
+    }
+}

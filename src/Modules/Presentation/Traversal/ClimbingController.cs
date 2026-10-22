@@ -1,0 +1,261 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+
+using BepInEx;
+using BepInEx.Configuration;
+using HutongGames.PlayMaker;
+using UnityEngine;
+using WildWasteland.Core;
+
+using WildWasteland.Modules.Presentation;
+
+namespace WildWasteland.Modules.PlayerBody
+{
+    internal sealed class ClimbingController
+    {
+        internal static ClimbingController Instance;
+        const float FinishFraction = .65f;
+        int jumpAttemptFrame = -1;
+        bool jumpConsumed;
+        float jumpProbeUntil, nextJumpProbe;
+        // (WW) the settings are PlayerBodyModule entries: [PlayerBody / Climbing] Climbing, JumpTriggersClimbing (F6), [Keys] Climb,
+        // and the tuning in F7 (tools.cfg [PlayerBody / Climbing]); migrated from Apocaplayer [climbing]/[Debug] and Apocaclimber's cfg
+        static ConfigEntry<bool> enabledMod { get { return TraversalSettings.ClimbingOn; } }
+        static ConfigEntry<bool> jumpTriggers { get { return TraversalSettings.JumpTriggersClimbing; } }
+        static ConfigEntry<float> minHeight { get { return TraversalSettings.ClimbMinHeight; } }
+        static ConfigEntry<float> maxHeight { get { return TraversalSettings.ClimbMaxHeight; } }
+        static ConfigEntry<float> reach { get { return TraversalSettings.ClimbReach; } }
+        static ConfigEntry<float> waistLimit { get { return TraversalSettings.ClimbWaistLimit; } }
+        static ConfigEntry<float> speed { get { return TraversalSettings.ClimbSpeed; } }
+        // the climbing bundle stays loaded for the whole game session (loading the same AssetBundle twice fails after a module restart)
+        static AssetBundle bundle;
+        static AnimationClip waist, high;
+        Rigidbody body;
+        ClimbGeometry geometry;
+        ClimbTarget target;
+        PlayerTraversal animation;
+        readonly List<PlayMakerFSM> suspended = new List<PlayMakerFSM>();
+        readonly List<RendererState> hidden = new List<RendererState>();
+        bool oldKinematic, oldGravity, climbing, highClimb;
+        RigidbodyInterpolation oldInterpolation;
+        float elapsed, duration, cooldown, playbackSpeed;
+        Vector3 lastSafe, surfaceLocal;
+        Quaternion surfaceRotation;
+
+        struct RendererState { public Renderer Renderer; public bool Enabled; }
+
+        // module Init (was the constructor at config time): one controller, the clips loaded once
+        /// <summary>World part Init: creates the controller and loads the climb clips from the climbing bundle once per session.</summary>
+        internal static void Init()
+        {
+            if (Instance == null) Instance = new ClimbingController();
+            if (waist != null && high != null) return;
+            try
+            {
+                if (bundle == null)
+                {
+                    string path = PlayerBodyModule.ModPath("Models/apocaplayer_climbing.bundle");
+                    bundle = AssetBundle.LoadFromFile(path);
+                }
+                if (bundle != null) foreach (var clip in bundle.LoadAllAssets<AnimationClip>())
+                {
+                    if (clip.name == "ClimbWaist") waist = clip;
+                    if (clip.name == "ClimbHigh") high = clip;
+                }
+                if (waist == null || high == null || !waist.humanMotion || !high.humanMotion)
+                    throw new InvalidDataException("Missing Humanoid ClimbWaist/ClimbHigh clips");
+                if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Integrated climbing ready; waist " + waist.length.ToString("0.00") + "s, high " + high.length.ToString("0.00") + "s.");
+            }
+            catch (Exception e) { Log.Error(PresentationModule.WorldOwner, "Climbing animation bundle: " + e.Message); waist = high = null; }
+        }
+        internal static bool ClipsLoaded { get { return waist != null && high != null; } }
+        /// <summary>The waist or high climb clip (NPC traversals reuse them).</summary>
+        internal static AnimationClip Clip(bool highClimb) { return highClimb ? high : waist; }
+        /// <summary>True while a climb runs.</summary>
+        internal bool Climbing { get { return climbing; } }
+
+        // the scheduler jobs (was ClimbRunner, [DefaultExecutionOrder(-1000)]: Update -> Phase.EarlyUpdate, FixedUpdate -> EarlyFixedUpdate)
+        /// <summary>Job Presentation.Climbing (EarlyUpdate).</summary>
+        internal static void TickInstance() { if (Instance != null) Instance.Tick(); }
+        /// <summary>Job Presentation.Climbing (physics) (EarlyFixedUpdate).</summary>
+        internal static void FixedTickInstance() { if (Instance != null) Instance.FixedTick(); }
+        /// <summary>Cancels a running climb (shutdown).</summary>
+        internal static void StopInstance() { if (Instance != null) Instance.Stop(); }
+        /// <summary>Cancels and forgets the player body (player reset).</summary>
+        internal static void ResetInstance() { if (Instance != null) Instance.Reset(); }
+        // (WW) floating origin: the climb path and the last safe spot are world positions kept for the climb's duration
+        /// <summary>Floating-origin jump: moves the climb path and the last safe spot with the world.</summary>
+        internal static void ShiftInstance(Vector3 delta)
+        {
+            var c = Instance;
+            if (c == null || !c.climbing) return;
+            c.target.Start += delta; c.target.Lift += delta; c.target.End += delta; c.lastSafe += delta;
+        }
+
+        /// <summary>Jump pressed: starts a climb onto a reachable ledge (also mid-jump); true when the jump is consumed.</summary>
+        internal bool TryJumpClimb()
+        {
+            if (!jumpTriggers.Value || !GameBindings.Down("Jump", KeyCode.Space) || !enabledMod.Value
+                || !ModAPI.PlayerCanTraverse || Cursor.visible) return false;
+            if (climbing) return true;
+            // A failed early Update probe must not block the Jump FSM's later
+            // probe: movement/grounding may have updated in between those calls.
+            if (jumpAttemptFrame != Time.frameCount)
+            { jumpProbeUntil = Time.time + 2f; nextJumpProbe = Time.time + .05f; }
+            jumpAttemptFrame = Time.frameCount;
+            jumpConsumed = TryStart(true);
+            return jumpConsumed;
+        }
+
+        // (WW ladders) the top of a ladder: mantle onto the platform the ladder faces
+        Vector3 mantleForward;
+        /// <summary>Ladder top: mantles onto the platform the ladder faces.</summary>
+        internal bool TryMantle(Vector3 forward)
+        {
+            mantleForward = forward;
+            try { return TryStart(true); }
+            finally { mantleForward = Vector3.zero; }
+        }
+
+        /// <summary>Starts a climb when allowed and a ledge is found.</summary>
+        bool TryStart(bool allowAirborne)
+        {
+            if (climbing || !PresentationModule.WorldRunning || !enabledMod.Value || waist == null || high == null
+                || Time.unscaledTime < cooldown || !ModAPI.PlayerCanTraverse || Cursor.visible) return false;
+            var player = ModAPI.PlayerRoot;
+            var rb = player != null ? player.GetComponent<Rigidbody>() : null;
+            if (rb == null) return false;
+            if (body != rb) { body = rb; geometry = new ClimbGeometry(rb); }
+            var camera = Game.PlayerCamera;
+            var forward = mantleForward.sqrMagnitude > 0f ? mantleForward : camera != null ? camera.forward : player.transform.forward;
+            if (!geometry.Find(forward, minHeight.Value, Mathf.Max(minHeight.Value, maxHeight.Value), reach.Value, allowAirborne, out target))
+            { if (LastReject != geometry.Rejection) Reject(geometry.Rejection); return false; }
+            Begin();
+            return climbing;
+        }
+
+        /// <summary>Per frame: checks a running climb (surface, player) and samples the clip, else watches the jump / climb key.</summary>
+        internal void Tick()
+        {
+            try
+            {
+                if (climbing)
+                {
+                    if (!PresentationModule.WorldRunning || !enabledMod.Value || animation == null || !animation.Active || !body || body.gameObject != ModAPI.PlayerRoot
+                        || target.Surface == null || !target.Surface.enabled || !target.Surface.gameObject.activeInHierarchy)
+                    { Finish(false, "Player or surface unavailable"); return; }
+                    if (Time.timeScale < .01f) return;
+                    if (!ModAPI.PlayerCanTraverse) { Finish(false, "Player cannot continue climbing"); return; }
+                    // Parked cars work. Cancel safely if somebody moves or rotates the
+                    // support instead of dragging the character through new geometry.
+                    if (!ClimbGeometry.Slow(target.Surface)
+                        || Vector3.Distance(target.Surface.transform.TransformPoint(surfaceLocal), target.End) > .08f
+                        || Quaternion.Angle(target.Surface.transform.rotation, surfaceRotation) > 3f)
+                    { Finish(false, "Surface moved"); return; }
+                    animation.Sample(Mathf.Min(elapsed, duration) * playbackSpeed, target.Facing);
+                    return;
+                }
+                if (jumpTriggers.Value && GameBindings.Down("Jump", KeyCode.Space)) TryJumpClimb();
+                if (!climbing && jumpTriggers.Value && Time.time < jumpProbeUntil && Time.time >= nextJumpProbe && body != null
+                    && (Game.JumpState == "Jump" || Game.JumpState == "Falling" || Mathf.Abs(body.velocity.y) > .6f))
+                { nextJumpProbe = Time.time + .05f; TryStart(true); }
+                if (!climbing && GameBindings.KeyDown(TraversalSettings.ClimbKeyCode)) TryStart(false);
+            }
+            catch (Exception e) { Finish(false, "Exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
+        }
+
+        /// <summary>Begins the climb: body animation lease, physics and game FSMs suspended, first-person weapons hidden; publishes TraversalStarted.</summary>
+        void Begin()
+        {
+            highClimb = target.Rise > waistLimit.Value && !target.LowCatch;
+            var clip = highClimb ? high : waist;
+            animation = ModAPI.BeginPlayerTraversal(clip, target.Facing);
+            if (animation == null) { Reject("Apocaplayer could not take control of the body animation"); return; }
+            animation.StowWeapon = true;
+            animation.FollowHeadInFirstPerson = true;
+            oldKinematic = body.isKinematic; oldGravity = body.useGravity; oldInterpolation = body.interpolation;
+            // Set climbing before any mutation so exceptions restore every saved state.
+            climbing = true; jumpProbeUntil = 0; elapsed = 0; playbackSpeed = speed.Value;
+            // Both source clips finish their ascent before the final standing tail.
+            // Give movement back at 65%; the pose blends out without holding physics.
+            duration = clip.length * FinishFraction / playbackSpeed; lastSafe = body.position;
+            surfaceLocal = target.Surface.transform.InverseTransformPoint(target.End);
+            surfaceRotation = target.Surface.transform.rotation;
+            foreach (var fsm in body.GetComponents<PlayMakerFSM>())
+                if (fsm.enabled && (fsm.FsmName == "Movement" || fsm.FsmName == "Jump" || fsm.FsmName == "InCar")) Suspend(fsm);
+            // Keep the camera active; suppress attacks and the game's separate first-person
+            // weapon meshes while both hands are needed for climbing.
+            var holder = animation.Camera;
+            if (holder != null)
+            {
+                foreach (var fsm in holder.GetComponentsInChildren<PlayMakerFSM>(true))
+                    if (fsm.enabled && (fsm.FsmName == "Attack" || fsm.FsmName == "Reload" || fsm.FsmName == "ReloadAnimation")) Suspend(fsm);
+                foreach (var renderer in holder.GetComponentsInChildren<Renderer>(true))
+                    if (renderer.transform.name != "" && (Under(renderer.transform, "WeaponsArm") || Under(renderer.transform, "QuickItems") || Under(renderer.transform, "ItemAnim")))
+                    { hidden.Add(new RendererState { Renderer = renderer, Enabled = renderer.enabled }); renderer.enabled = false; }
+            }
+            body.velocity = Vector3.zero; body.angularVelocity = Vector3.zero;
+            body.useGravity = false; body.isKinematic = true; body.interpolation = RigidbodyInterpolation.None;
+            animation.Sample(0, target.Facing);
+            TraversalApi.PublishStarted(highClimb ? TraversalKind.ClimbHigh : TraversalKind.ClimbWaist, target.Start, target.End);
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Climb " + clip.name + " onto " + target.Surface.name + ", height " + target.Rise.ToString("0.00") + "m");
+        }
+
+        /// <summary>True when a parent (or the transform) has the name.</summary>
+        static bool Under(Transform t, string name)
+        { for (; t != null; t = t.parent) if (t.name == name) return true; return false; }
+        /// <summary>Disables an FSM and remembers it.</summary>
+        void Suspend(PlayMakerFSM fsm) { suspended.Add(fsm); fsm.enabled = false; }
+        internal static string LastReject = "", LastResult = "";   // (WW) F7 "Climbing" page
+        /// <summary>Records the rejection reason.</summary>
+        void Reject(string why) { LastReject = why; }
+
+        /// <summary>Physics step: moves the body along the climb path while it stays clear.</summary>
+        internal void FixedTick()
+        {
+            if (!climbing || body == null || Time.timeScale < .01f) return;
+            try
+            {
+                float nextTime = Mathf.Min(duration, elapsed + Time.fixedDeltaTime);
+                var next = ClimbPath.At(target, nextTime / duration, highClimb);
+                if (!geometry.Clear(body.position, next)) { Finish(false, "Path became blocked"); return; }
+                body.position = next; lastSafe = next; elapsed = nextTime;
+                animation.Sample(elapsed * playbackSpeed, target.Facing);
+                if (elapsed >= duration) Finish(true, "Complete");
+            }
+            catch (Exception e) { Finish(false, "Physics exception"); Log.Error(PresentationModule.WorldOwner, "exception", e); }
+        }
+
+        /// <summary>Ends the climb and restores physics, FSMs and renderers; publishes TraversalEnded.</summary>
+        void Finish(bool completed, string why)
+        {
+            if (!climbing && animation == null) return;
+            bool wasClimbing = climbing;
+            climbing = false;
+            // Restore physics before restarting FSMs: their OnEnable can apply forces.
+            if (body != null)
+            {
+                body.position = lastSafe;
+                body.isKinematic = oldKinematic; body.useGravity = oldGravity; body.interpolation = oldInterpolation;
+                if (!body.isKinematic) { body.velocity = Vector3.zero; body.angularVelocity = Vector3.zero; }
+            }
+            if (animation != null) { animation.Dispose(); animation = null; }
+            foreach (var state in hidden) if (state.Renderer != null) state.Renderer.enabled = state.Enabled;
+            hidden.Clear();
+            foreach (var fsm in suspended) if (fsm != null) fsm.enabled = true;
+            suspended.Clear();
+            cooldown = Time.unscaledTime + .15f;
+            LastResult = completed ? "finished" : why;
+            if (wasClimbing) TraversalApi.PublishEnded(highClimb ? TraversalKind.ClimbHigh : TraversalKind.ClimbWaist, body != null ? body.position : Vector3.zero, completed);
+            if (Log.L1) Log.Main(PresentationModule.WorldOwner, "Climb " + (completed ? "finished" : "cancelled") + ": " + why);
+        }
+
+        /// <summary>Cancels a running climb.</summary>
+        internal void Stop() { Finish(false, "Runner disabled"); }
+        /// <summary>Cancels and clears every cached reference.</summary>
+        internal void Reset()
+        { Stop(); body = null; geometry = null; cooldown = jumpProbeUntil = nextJumpProbe = 0; jumpAttemptFrame = -1; jumpConsumed = false; }
+        
+    }
+}
