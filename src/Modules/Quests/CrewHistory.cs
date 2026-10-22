@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Quests
         internal static void Begin(bool fresh) { Clear(); _fresh = fresh; }
         internal static void Observe(GameObject npc)
         {
-            var vehicles = Services.FollowerVehicles;
+            var vehicles = ModApi.Get<IFollowerVehicles>();
             if (npc != null && npc.transform.parent == null && vehicles != null && vehicles.IsCrew(npc)) Remember(npc);
         }
         private static void Remember(GameObject npc)
@@ -28,7 +28,7 @@ namespace WildWasteland.Modules.Quests
         internal static bool Blocked(Transform npc)
         {
             if (npc == null) return false;
-            var vehicles = Services.FollowerVehicles;
+            var vehicles = ModApi.Get<IFollowerVehicles>();
             if (vehicles != null && vehicles.IsCrew(npc.gameObject)) { Observe(npc.gameObject); return true; }
             return Names.Contains(npc.name);
         }

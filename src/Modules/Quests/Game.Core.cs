@@ -54,9 +54,6 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Reads a named float through the shared native FSM index.</summary>
         [Obsolete("refactor: use Core.FsmIndex.Float")]
         public static FsmFloat FindFloat(PlayMakerFSM fsm, string name) { return FsmIndex.Float(fsm, name); }
-        /// <summary>Returns shared native game-clock hours.</summary>
-        [Obsolete("refactor: use Core.Clock.GameHours")]
-        public static double GameHours() { return Clock.GameHours; }
         /// <summary>Reads a named string through the shared native FSM index with an empty fallback.</summary>
         [Obsolete("refactor: use Core.FsmIndex.String")]
         public static string FindString(PlayMakerFSM fsm, string name) { var value = FsmIndex.String(fsm, name); return value != null ? value.Value ?? "" : ""; }

@@ -87,7 +87,7 @@ namespace WildWasteland.Modules.Quests
             foreach (var f in QuestWorld.People)
             {
                 if (f == null || f.FsmName != "Health" || f.ActiveStateName != "health" || !f.gameObject.activeInHierarchy) continue;
-                var go = f.gameObject; if (go == GameRefs.Player || Game.IsPlayerEnemy(go) || (Services.FollowerVehicles != null && Services.FollowerVehicles.IsSeated(go))) continue;
+                var go = f.gameObject; if (go == GameRefs.Player || Game.IsPlayerEnemy(go) || (ModApi.Get<IFollowerVehicles>() != null && ModApi.Get<IFollowerVehicles>().IsSeated(go))) continue;
                 string name = Game.BaseName(go.name);
                 if (!Person(name) || name.IndexOf("Dead", StringComparison.OrdinalIgnoreCase) >= 0) continue;
                 Vector3 aim = f.transform.position + Vector3.up * 1.2f, delta = aim - eye; float distance = delta.magnitude;
@@ -116,7 +116,7 @@ namespace WildWasteland.Modules.Quests
         void FilterCrewButtons()
         {
             var tr = bridge.Npc; bool crew = CrewHistory.Blocked(tr);
-            bool seated = tr != null && Services.FollowerVehicles != null && Services.FollowerVehicles.IsSeated(tr.gameObject);
+            bool seated = tr != null && ModApi.Get<IFollowerVehicles>() != null && ModApi.Get<IFollowerVehicles>().IsSeated(tr.gameObject);
             for (int i = wantButtons.Count - 1; i >= 0; i--)
             {
                 string key = wantButtons[i].Key;

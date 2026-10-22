@@ -142,7 +142,7 @@ namespace WildWasteland.Modules.Quests
         }
 
         // "NPCAI and Apocapatrol" etc.; empty when both are there
-        public static string MissingMods() { return Services.Npc == null ? "NPC AI" : Services.FollowerVehicles == null ? "Patrols" : ""; }
+        public static string MissingMods() { return ModApi.Get<INpcApi>() == null ? "NPC AI" : ModApi.Get<IFollowerVehicles>() == null ? "Patrols" : ""; }
 
         public static bool IsFollower(Transform t)
         {
@@ -153,7 +153,7 @@ namespace WildWasteland.Modules.Quests
         public static void Start(GameObject go, string factionKey, string shownName)
         {
             if (go == null) return;
-            double gh = Game.GameHours();
+            double gh = WildWasteland.Core.Clock.GameHours;
             book.HireName = go.name;
             book.HireUntil = gh >= 0.0 ? gh + Math.Max(0.1f, durationHours.Value) : -1.0;
             book.HireFaction = factionKey ?? "";
@@ -212,7 +212,7 @@ namespace WildWasteland.Modules.Quests
         public static void Reset()
         {
             if (mounted) { try { Dismount(false); } catch (Exception) { } }
-            ReleaseNpc(); QuestFollower.Release(); RestoreCollisions();
+            ReleaseNpc(); if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release(); RestoreCollisions();
             npc = null; attached = false; target = null; moveFsm = null; healthFsm = null; searching = false; mounted = false; displayName = "";
             carObj = null; inCarSince = -1f; endPending = false; playerHealth = null; playerHealthVar = null; lastPlayerHealth = -1f; inCarFsm = null;
             Ranged.Clear(); _nearestName = null;
@@ -258,7 +258,7 @@ namespace WildWasteland.Modules.Quests
             wasMountedAtLoss = mounted;
             if (healthFsm != null && healthFsm.ActiveStateName != "health" && healthFsm.Fsm != null && healthFsm.Fsm.Initialized) { Died(); return; }
 
-            double gh = Game.GameHours();
+            double gh = WildWasteland.Core.Clock.GameHours;
             if (book.HireUntil > 0.0 && gh >= 0.0 && gh >= book.HireUntil)
             {
                 // riding: they stay in the car until you get out
@@ -372,7 +372,7 @@ namespace WildWasteland.Modules.Quests
         }
         internal static void Shutdown()
         {
-            QuestFollower.Release();
+            if (ModApi.Get<IQuestFollowerBody>() != null) ModApi.Get<IQuestFollowerBody>().Release();
             if (mounted) Dismount(true);
             ReleaseNpc(); RestoreCollisions(); Reset();
             if (recoilHooked) Application.onBeforeRender -= Recoil;
