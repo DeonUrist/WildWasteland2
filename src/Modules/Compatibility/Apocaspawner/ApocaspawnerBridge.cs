@@ -5,7 +5,7 @@ using BepInEx.Bootstrap;
 using HarmonyLib;
 using WildWasteland.Core;
 using WildWasteland.Modules.Guns;
-using WildWasteland.Modules.Patrols.WarRig;
+using WildWasteland.Modules.Patrols.WarRig; // refs-ok: namespace of the Compatibility-owned War Rig part (Wave C renames namespaces)
 using WildWasteland.Modules.Survival;
 
 namespace WildWasteland.Modules.Compatibility

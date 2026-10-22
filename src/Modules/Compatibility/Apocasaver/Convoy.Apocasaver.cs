@@ -9,7 +9,9 @@ using WildWasteland.Core.UI;
 
 namespace WildWasteland.Modules.Patrols
 {
-    /// <summary>Apocasaver autosave probe by reflection (spawns wait for its autosaves); to be replaced by the WW Saves query (README 9, B11). Wave A split of Patrols Spawning/Convoy.cs.</summary>
+    /// <summary>Apocasaver part of the Patrols Convoy (partial, called by Convoy spawning): probe of the standalone's autosave timer by
+    /// reflection so spawns wait for its autosaves. README 9 / A4: Patrols (B11) replaces the call by the WW Saves query; since the session
+    /// takeover disables the standalone runner it answers false in practice (question Q1 in reports/B17.md).</summary>
     internal partial class Convoy
     {
         // Apocasaver (optional, by reflection): true while it autosaves, or when its next autosave is due within `within` s. An autosave
@@ -19,6 +21,7 @@ namespace WildWasteland.Modules.Patrols
         private static PropertyInfo _asSaving;
         private static BepInEx.Configuration.ConfigEntry<float> _asInterval;
         private static BepInEx.Configuration.ConfigEntry<bool> _asEnabled;
+        /// <summary>True while the standalone autosaves, or when its next autosave is due within <paramref name="within"/> seconds.</summary>
         internal static bool AutosaveSoon(float within)
         {
             try
