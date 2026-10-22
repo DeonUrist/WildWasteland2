@@ -3,7 +3,12 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Towns
 {
-    internal sealed class TownSettings
+    /// <summary>
+    /// All Towns config entries (raw ConfigFile.Bind into settings.cfg, literal [Towns / ...] sections) and the generation snapshot.
+    /// Wave A (A6): POI part of Towns/TownSettings.cs; editor/test entries in Tools/_fromTowns/TownSettings.Tools.cs. D12: the first-run
+    /// import from com.denis.apocalypter.wildwasteland.towns.cfg is gone.
+    /// </summary>
+    internal sealed partial class TownSettings
     {
         internal ConfigEntry<int> Min, Max, Chance, Inhabited;
         internal ConfigEntry<float> Width, Setback, Jitter, Relief, Earthwork, Grade, Feather;
@@ -15,19 +20,16 @@ namespace WildWasteland.Modules.Towns
         internal ConfigEntry<bool> PoiNearSpawn;
         internal ConfigEntry<bool> Walls;
         internal ConfigEntry<float> LoadingBudgetMs;
-        internal ConfigEntry<bool> TestGasStation, GasStationParking, TestCamp10;
         internal ConfigEntry<int> DesertGasStationChance;
-        internal ConfigEntry<float> GasStationScale;
-        internal ConfigEntry<UnityEngine.InputSystem.Key> PoiDresserKey;
+        internal ConfigEntry<bool> GasStationParking;
         internal ConfigFile File;
-        // This alternate binder makes the standalone DLL independent of internal ModuleConfig construction.
+        /// <summary>Binds the Tools-owned editor/test entries first (keeps the original bind order); implemented in Tools/_fromTowns.</summary>
+        partial void BindTools(ConfigFile file);
+        // Raw ConfigFile binder (settings.cfg via ModuleConfig.Main); the standalone-DLL entry BindStandalone is gone (README 7).
         internal void Bind(ConfigFile file)
         {
             File = file;
-            PoiDresserKey = file.Bind("Towns / Editors", "POI dresser", UnityEngine.InputSystem.Key.None, "Open the static prop dresser for the nearest custom POI within 200 metres. Requires Enable Debug and Developer mode. Layouts are saved with Towns assets and reused by every instance of that POI type.");
-            TestCamp10 = file.Bind("Towns / Debug", "Test Camp_10 spawn", false, "Place the merchant camp (Camp_10, stripped of its spawners and logic) on a level pad near the starting camp, so its NPC navigation can be baked on flat ground (towns need that bake to use it as their merchant lot). Test only, unsaved. Reload the world after enabling or disabling.");
-            TestGasStation = file.Bind("Towns / Debug", "Test gas station", false, "Place the supplied gas station as the closest available POI outside the starting camp, on a clear level pad, with three melee Scrapyard raiders after its ground-floor navigation is baked. Test only; excluded from normal town lots and saves. Reload the world after enabling or disabling.");
-            GasStationScale = file.Bind("Towns / Debug", "Gas station scale", 1f, new ConfigDescription("Uniform extra scale for the render model and separate gasstation_collider.glb. Use 1 with the supplied models (their authored 1.5 scale gives a 32.19 x 34.28 metre footprint). Reload after changing: the terrain pad and navigation cache must match the scale.", new AcceptableValueRange<float>(.1f, 5f)));
+            BindTools(file);
             DesertGasStationChance = file.Bind("Towns / World", "Desert gas station chance (%)", 8, new ConfigDescription("Chance per generated 5 km block of a roadside gas station POI (native loot inside, Scrapyard or animal spawners). Changes affect new/undecided blocks only after a world reload.", new AcceptableValueRange<int>(0, 100)));
             GasStationParking = file.Bind("Towns / World", "Gas station parking lots", true, "Place a gas station beside the open ground parking lot outside the town walls, with a two metre gap. Reload after changing.");
             Walls = file.Bind("Towns / Debug", "Town wall prototype", true, "Build native metal perimeter walls and four open cardinal gates around owned Coyote/Scrapyard towns. Parking remains just outside the east gate. Restart or reload after changing; buildings retain their saved positions.");
@@ -61,16 +63,7 @@ namespace WildWasteland.Modules.Towns
         { return file.Bind("Towns / Debug", key, value, new ConfigDescription(description, new AcceptableValueRange<int>(0, 500))); }
         internal void Bind(ModuleConfig cfg)
         {
-            Legacy.Get("WildWasteland/settings.cfg", "Towns / Generation", "Town chance (%)");
             Bind(cfg.Main);
-            // First merged bind only: preserve the add-on's customized values, including its 100% chance.
-            foreach (var key in File.Keys)
-            {
-                if (!key.Section.StartsWith("Towns /", System.StringComparison.Ordinal)) continue;
-                string current = Legacy.Get("WildWasteland/settings.cfg", key.Section, key.Key);
-                string old = Legacy.Get("com.denis.apocalypter.wildwasteland.towns.cfg", key.Section, key.Key);
-                if (current == null && old != null) File[key].SetSerializedValue(old);
-            }
         }
         private static ConfigEntry<int> Int(ConfigFile f, string k, int d, int min, int max, string desc)
         { return f.Bind("Towns / Generation", k, d, new ConfigDescription(desc, new AcceptableValueRange<int>(min, max))); }
