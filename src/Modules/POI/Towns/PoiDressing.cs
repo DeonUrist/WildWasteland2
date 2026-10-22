@@ -39,10 +39,12 @@ namespace WildWasteland.Modules.POI
         private readonly List<NavStructure> _structures = new List<NavStructure>();
         private int _frame = -1;
         internal PoiDresser Editor;
+        internal PoiAuthoringApi Authoring;
         internal void Install(TownRuntime owner)
         {
             _current = this;
             _owner = owner;
+            Authoring = new PoiAuthoringApi(this); ModApi.Provide<IPoiAuthoring>(owner.Owner,Authoring);
             var nav = typeof(Services).Assembly.GetType("WildWasteland.Modules.NPC.Nav", true);
             if (!Patches.Patch(owner.Owner, Patches.Method(nav, "Make"), prefix: typeof(PoiDressing).GetMethod("BeforeMap", BindingFlags.Static | BindingFlags.NonPublic)))
                 throw new InvalidOperationException("POI dressing navigation gate could not be installed");
@@ -97,6 +99,7 @@ namespace WildWasteland.Modules.POI
         private bool Step()
         {
             // Catalog enumeration is cheap and may use the rest of the scheduler slice. Object activation is capped separately.
+            if (Authoring != null && Authoring.BuildPreview()) return true;
             if (Editor != null && Editor.Opened && Editor.BuildPreview()) return true;
             if (_frame != Time.frameCount && !SaveBus.Saving)
             {
@@ -163,6 +166,7 @@ namespace WildWasteland.Modules.POI
         }
         internal void Clear()
         {
+            Authoring?.Close();
             if (Editor != null) Editor.Close(true);
             Markers.Clear(false);
             foreach (var site in Sites) if (site.Dressing != null)
