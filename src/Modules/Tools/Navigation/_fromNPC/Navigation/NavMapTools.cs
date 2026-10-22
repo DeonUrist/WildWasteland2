@@ -41,7 +41,6 @@ namespace WildWasteland.Modules.NPC
             Needed = _baking != null && _baking == _needed; _urgent = false;
             int deleted = 0, failed = 0;
             DeleteCustomMaps(CustomMapDir, ref deleted, ref failed);
-            DeleteCustomMaps(System.IO.Path.Combine(Core.Assets.ModuleDir("NPC"), "NavMaps"), ref deleted, ref failed);
             _highlightIndexReady = false;
             MapActionStatus = "Reset custom pathfinding: " + deleted + " cached file(s) deleted, " + removed.Count + " live map(s) queued for rediscovery. Vanilla maps retained."
                 + (failed == 0 ? "" : " " + failed + " file operation(s) failed; see the log.");
@@ -89,7 +88,7 @@ namespace WildWasteland.Modules.NPC
                     }
                     catch (Exception e) { failed++; NpcModule.Log.LogWarning("Nav: could not export " + resource + ": " + e.Message); }
                 }
-                foreach (string dir in new[] { VanillaMapDir, CustomMapDir, System.IO.Path.Combine(Core.Assets.ModuleDir("NPC"), "NavMaps") })
+                foreach (string dir in new[] { VanillaMapDir, CustomMapDir })
                 {
                     if (!Directory.Exists(dir)) continue;
                     foreach (string file in Directory.GetFiles(dir, "*.wwnav", SearchOption.TopDirectoryOnly))

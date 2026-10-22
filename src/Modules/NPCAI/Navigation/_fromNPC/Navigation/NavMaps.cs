@@ -169,7 +169,6 @@ namespace WildWasteland.Modules.NPC
             string file = name + "-" + hash.Value.ToString("X16") + ".wwnav";
             s.MapFile = System.IO.Path.Combine(CustomMapDir, file);
             s.VanillaMapFile = System.IO.Path.Combine(VanillaMapDir, file);
-            s.LegacyMapFile = System.IO.Path.Combine(Core.Assets.ModuleDir("NPC"), "NavMaps", file);
         }
 
         private static bool OpenMap(Structure s)
@@ -196,7 +195,6 @@ namespace WildWasteland.Modules.NPC
                 if (stream == null)
                 {
                     job.Vanilla = false; job.Source = s.MapFile;
-                    if (!File.Exists(job.Source)) job.Source = s.LegacyMapFile;
                     if (!File.Exists(job.Source))
                     {
                         CloseMap(s); NpcModule.Log.LogInfo("Nav: map missing " + s.Name + "; baking " + s.MapFile);
@@ -289,7 +287,7 @@ namespace WildWasteland.Modules.NPC
                 s.Next = job.Next;
                 if (job.Next < n) return false;
                 w.Write(job.Checksum); w.Dispose(); job.Writer = null;
-                if (File.Exists(s.MapFile)) File.Replace(job.Temp, s.MapFile, null); else File.Move(job.Temp, s.MapFile);
+                Core.AtomicFile.Replace(job.Temp, s.MapFile);   // (D17) same-directory replace (was File.Replace / File.Move)
                 job.Temp = null; CloseMap(s); s.Phase = 2; s.MapSaved = true;
                 RememberCapturedMap(s);
                 NpcModule.Log.LogInfo("Nav: saved map " + s.Name + ": " + s.W + " x " + s.H + ", " + s.Walkable + " walkable; " + s.MapFile);

@@ -193,8 +193,8 @@ namespace WildWasteland.Modules.NPC
             string text = d.Write();
             PoiNavData.Read(text);   // never publish a file this reader rejects
             File.WriteAllText(tmp, text);
-            if (File.Exists(path)) { File.Copy(path, path + ".bak", true); File.Delete(path); }
-            File.Move(tmp, path);
+            if (File.Exists(path)) File.Copy(path, path + ".bak", true);
+            AtomicFile.Replace(tmp, path);   // (D17) same-directory replace, no Delete + Move window
             d.Recompute();
             _cache[d.Poi] = d;
             Loading pending; if (_loading.TryGetValue(d.Poi, out pending)) { pending.Cancel.Cancel(); _loading.Remove(d.Poi); }

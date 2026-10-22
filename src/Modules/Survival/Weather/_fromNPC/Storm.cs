@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.NPC
     // sandstorm" option). The game decides "the player is in the storm" by distance to that object: its SandPlayer FSM switches the sand
     // around the player on within 2500 m (asset read 2026-10-02) - the same test here, flat distance, against the list (0-2 storms).
     // Refresh() runs once a second from Senses' maintenance; the list object is looked up once per scene.
-    internal static class Storm
+    internal static partial class Storm
     {
         private static readonly List<Transform> _storms = new List<Transform>();
         // The tornado funnels (SandStorm/Sand tornado */TornadoPhysics (n)): each fires an Explosion every 0.5 s (force 50, radius 150,
@@ -28,47 +28,7 @@ namespace WildWasteland.Modules.NPC
         internal static bool Dust { get { return _dust; } }
         internal static bool DustBridge { get { return _dustIntensity != null; } }
 
-        // (1.9.3) ApocaDustStorm (local.apocalypter.duststorm), only when that mod is loaded: its worldwide dust storms count as sandstorms
-        // (the same StormSight / StormHearing) wherever its dust is hazardous (intensity >= 0.35, where its player damage starts). It also
-        // switches the game's own storms off but leaves them in ArrayList_Sandstorms, parked and invisible: a storm whose SandPlayer FSM is
-        // disabled is skipped, funnels included (no "shoved by a tornado" from a storm that shoves nobody).
-        private const string DustGuid = "local.apocalypter.duststorm";
-        private const double DustHazard = 0.35;
-        private static bool _dustLooked, _dust;
-        private static Func<bool> _dustOn, _dustActive;
-        private static Func<double, double, double> _dustIntensity;
         private static readonly Dictionary<int, PlayMakerFSM> _sandPlayer = new Dictionary<int, PlayMakerFSM>();
-
-        private static void LookForDust()
-        {
-            _dustLooked = true;
-            try
-            {
-                BepInEx.PluginInfo info;
-                if (!BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue(DustGuid, out info) || ReferenceEquals(info.Instance, null)) return;
-                const BindingFlags any = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
-                Assembly asm = info.Instance.GetType().Assembly;
-                Type plugin = asm.GetType("ApocaDustStorm.Plugin"), runner = asm.GetType("ApocaDustStorm.StormRunner"), model = asm.GetType("ApocaDustStorm.StormModel");
-                PropertyInfo on = plugin != null ? plugin.GetProperty("Active", any) : null;
-                FieldInfo field = runner != null ? runner.GetField("Model", any) : null;
-                object m = field != null ? field.GetValue(null) : null;
-                PropertyInfo active = model != null ? model.GetProperty("Active", any) : null;
-                MethodInfo intensity = model != null ? model.GetMethod("Intensity", any, null, new[] { typeof(double), typeof(double) }, null) : null;
-                if (on == null || m == null || active == null || intensity == null || intensity.ReturnType != typeof(double))
-                { NpcModule.Log.LogWarning("Storm: ApocaDustStorm " + info.Metadata.Version + " found, but not the expected StormRunner.Model; its storms are not sandstorms for NPCs"); return; }
-                _dustOn = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), on.GetGetMethod(true));
-                _dustActive = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), m, active.GetGetMethod(true));
-                _dustIntensity = (Func<double, double, double>)Delegate.CreateDelegate(typeof(Func<double, double, double>), m, intensity);
-                NpcModule.Log.LogInfo("Storm: ApocaDustStorm " + info.Metadata.Version + " found: its dust storms dim NPC sight and hearing like the game's sandstorms");
-            }
-            catch (Exception e) { _dustOn = null; _dustActive = null; _dustIntensity = null; NpcModule.Log.LogWarning("Storm: ApocaDustStorm bridge off: " + e.Message); }
-        }
-
-        private static void DustOff(Exception e)
-        {
-            _dust = false; _dustOn = null; _dustActive = null; _dustIntensity = null;
-            NpcModule.Log.LogWarning("Storm: ApocaDustStorm bridge off: " + e.Message);
-        }
 
         private static bool Parked(GameObject go)
         {
@@ -82,8 +42,6 @@ namespace WildWasteland.Modules.NPC
             }
             return fsm != null && !fsm.enabled;
         }
-        internal static float SightFactor { get { return Mathf.Clamp01(NpcModule.StormSight.Value / 100f); } }
-        internal static float HearingFactor { get { return Mathf.Clamp01(NpcModule.StormHearing.Value / 100f); } }
 
         internal static void Reset() { _storms.Clear(); _funnels.Clear(); _funnelsOf.Clear(); _sandPlayer.Clear(); _list = null; _nextFind = 0f; _dust = false; }
 

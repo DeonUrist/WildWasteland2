@@ -43,16 +43,15 @@ namespace WildWasteland.Modules.NPC
         // BepInEx/config/NPCAI/nest-layouts.txt: a nest is rebuilt exactly the same after a load, a restart or a return - and at once,
         // without looking for spots again. Keyed by the map tile, the place's name and its position in the tile.
         private static Dictionary<string, string> _layouts;
-        // (WW) config/WildWasteland/NPC/nest-layouts.txt (copied from config/NPCAI on the first run; the old file is read while the new one is missing)
+        // (WW) config/WildWasteland/NPC/nest-layouts.txt
         private static string LayoutFile { get { return System.IO.Path.Combine(NpcModule.DataDir ?? Core.Assets.ModuleConfigDir("NPC"), "nest-layouts.txt"); } }
-        private static string LegacyLayoutFile { get { return System.IO.Path.Combine(NpcModule.LegacyDataDir, "nest-layouts.txt"); } }
         private static void LoadLayouts()
         {
             if (_layouts != null) return;
             _layouts = new Dictionary<string, string>();
             try
             {
-                string file = System.IO.File.Exists(LayoutFile) ? LayoutFile : LegacyLayoutFile;
+                string file = LayoutFile;
                 if (!System.IO.File.Exists(file)) return;
                 foreach (var line in System.IO.File.ReadAllLines(file)) { int t = line.IndexOf('\t'); if (t > 0) _layouts[line.Substring(0, t)] = line.Substring(t + 1); }
             }

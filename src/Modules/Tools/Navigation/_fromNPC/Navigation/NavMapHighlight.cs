@@ -64,7 +64,6 @@ namespace WildWasteland.Modules.NPC
             {
                 // Read only on scene/enable/reset, never in the marker draw loop. New successful saves/loads update the set directly.
                 foreach (string dir in new[] { CustomMapDir, VanillaMapDir,
-                    System.IO.Path.Combine(Core.Assets.ModuleDir("NPC"), "NavMaps"),
                     System.IO.Path.Combine(NpcModule.DataDir, "NavMaps", "VanillaExport") })
                     if (Directory.Exists(dir)) foreach (string file in Directory.GetFiles(dir, "*.wwnav", SearchOption.TopDirectoryOnly)) AddCapturedMap(file);
                 const string prefix = "NPC.NavMaps.Vanilla.";
