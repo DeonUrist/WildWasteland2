@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using WildWasteland.Modules.NPC;
 
 namespace WildWasteland.Modules.Patrols
 {
@@ -34,8 +35,7 @@ namespace WildWasteland.Modules.Patrols
                 int suffix = root.name.IndexOf('(');
                 root.name = requested + (suffix >= 0 ? root.name.Substring(suffix) : "");
             }
-            var api = Core.Services.NpcAppearance;
-            if (api != null) api.Dress(root, requested, randomize);
+            if (WomenFeature.Active) Gungirl.DressCrew(root, requested, randomize);   // (B05) same module: the Women of Wasteland body directly
         }
 
         internal static void Transfer(GameObject source, GameObject destination)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
+using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
@@ -76,9 +77,14 @@ namespace WildWasteland.Modules.PlayerBody
                     else { BuildGraph(); GrabWeapon(); _p.Snap(); }
                 }
             }
+            /// <summary>The weapon model this character holds (null = unarmed).</summary>
+            internal Transform HeldWeapon { get { return _w; } }
+            /// <summary>Animation update tier (0 = every frame; higher = cheaper, distance LOD).</summary>
+            internal int Tier { get { return 0; } }
             public void Dispose()
             {
                 if (_disposed) return;
+                PresentationEvents.Detached(_a, CharacterKind.Human);
                 ReleaseWeapon();
                 DestroyGraph();
                 try { if (_rg.IsValid()) _rg.Destroy(); } catch (Exception) { }

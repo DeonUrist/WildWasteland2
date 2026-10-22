@@ -119,6 +119,17 @@ namespace WildWasteland.Modules.PlayerBody
         }
         // (2.1.8) standing and crouched have their own values: the key is the clip + "@crouch" when crouched; a crouched aim without its own entry
         // starts from the standing one (so a tuned weapon doesn't jump back to the default)
+        /// <summary>Stores a user value set for (weapon, clip[@crouch]) and marks the table dirty (IPoseAuthoring.SetPose).</summary>
+        internal static void Put(string weapon, string clipKey, float[] v) { _v[weapon + "|" + clipKey] = v; Dirty = true; Revision++; }
+        /// <summary>Adds every weapon key with a file or built-in aim lift to <paramref name="into"/> (no duplicates, unsorted).</summary>
+        internal static void Weapons(List<string> into)
+        {
+            Builtin("");
+            foreach (var k in _v.Keys) AddWeapon(k, into);
+            foreach (var k in _builtin.Keys) AddWeapon(k, into);
+        }
+        /// <summary>Adds the weapon part of a "weapon|clip" key once.</summary>
+        static void AddWeapon(string key, List<string> into) { int bar = key.IndexOf('|'); if (bar > 0) { string w = key.Substring(0, bar); if (!into.Contains(w)) into.Add(w); } }
         public static string Key(string clip, bool crouched) { return crouched ? clip + "@crouch" : clip; }
         // (WW perf) resolved per (weapon, clip, crouched) until the next Set/Load (Revision): Get ran a few concats per call, every frame.
         // The returned arrays are never written by the callers (edits Clone first); Default(clip) is shared per clip from here on.

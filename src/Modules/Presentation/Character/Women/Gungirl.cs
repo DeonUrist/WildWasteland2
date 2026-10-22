@@ -152,6 +152,10 @@ namespace WildWasteland.Modules.NPC
         // a female raider of any kind (Gungirl, Shoota) or her corpse
         public static bool IsGungirl(GameObject root) { return root != null && FemaleOf(root.name) != null; }
         public static bool IsFemale(GameObject root) { return IsGungirl(root); }
+        /// <summary>Female identity ("Gungirl", "Shoota") of a root/corpse name, or null for every other name.</summary>
+        internal static string IdentityOf(string name) { var v = name != null ? FemaleOf(name) : null; return v != null ? v.Female : null; }
+        /// <summary>Female identity that replaces a native prefab name ("Flexa" -> "Gungirl", "Sprokka" -> "Shoota"), or null.</summary>
+        internal static string VariantOf(string prefabName) { foreach (var v in Variants) if (prefabName == v.Base) return v.Female; return null; }
 
         // ---------- hooks ----------
         // Harmony postfix on HutongGames.PlayMaker.Actions.CreateObject.OnEnter
@@ -307,7 +311,7 @@ namespace WildWasteland.Modules.NPC
                 swapped++;
             }
             int hidden = HideParts(root, v);
-            if (swapped > 0) { Voice.Apply(root); Label(root); _dressed.Add(root.GetInstanceID()); }
+            if (swapped > 0) { Voice.Apply(root); Label(root); _dressed.Add(root.GetInstanceID()); PresentationEvents.ModelChanged(root, v.Female, v.Female); }
             if (swapped > 0) { if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, v.Female + ": " + root.name + " (" + why + ") body swapped, " + hidden + " part(s) hidden"); }
             return swapped > 0;
         }

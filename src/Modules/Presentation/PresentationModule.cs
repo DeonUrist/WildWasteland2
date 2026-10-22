@@ -36,6 +36,10 @@ namespace WildWasteland.Modules.Presentation
 
         static readonly string[] _conflicts = { "com.denis.apocalypter.apocaplayer", "com.denis.apocalypter.apocaclimber" };
         static readonly AnimationService _animation = new AnimationService();
+        static readonly CharacterPresentation _characters = new CharacterPresentation();
+        static readonly CharacterAppearance _appearance = new CharacterAppearance();
+        static readonly WeaponPoseService _weaponPose = new WeaponPoseService();
+        static readonly PoseAuthoring _poseAuthoring = new PoseAuthoring();
         static bool _running;
 
         /// <summary>The module instance (log/hook owner); set at BindConfig so logging works before the first Init.</summary>
@@ -109,9 +113,16 @@ namespace WildWasteland.Modules.Presentation
         void InitCharacterJobs()
         {
             Crawling.Init(this);
+            WeaponPoseService.Reset();
+            ModEvents.Subscribe<Core.Events.WeaponSwitchPhase>(this, WeaponPoseService.OnSwitchPhase);
+            ModEvents.Subscribe<Core.Events.AdsChanged>(this, WeaponPoseService.OnAdsChanged);
+            ModEvents.Subscribe<Core.Events.CharacterAction>(this, _characters.OnCharacterAction);
+            Scheduler.EveryFrame(this, "Presentation.WeaponLoweringRestore", WeaponPoseService.Restore, Phase.EarlyUpdate);
             Scheduler.EveryFrame(this, "Presentation.BodyUpdate", BodyRunner.Tick, Phase.Update);
             Scheduler.EveryFrame(this, "Presentation.BodyLate", BodyRunner.LateTick, Phase.LateUpdate);
             Scheduler.EveryFrame(this, "Presentation.Characters", BodyRunner.ModApiTick, Phase.LateUpdate);
+            Scheduler.EveryFrame(this, "Presentation.VisualOffsets", _characters.LateTick, Phase.LateUpdate);
+            Scheduler.EveryFrame(this, "Presentation.WeaponLowering", WeaponPoseService.Pose, Phase.LateUpdateLast);
         }
 
         /// <summary>Init step: the dog animation bundle hooks, the NPC rig builder and the visual LateUpdate ticks of burrowing / pouncing / biting animals, the carcass and taunt hooks.</summary>
@@ -138,11 +149,14 @@ namespace WildWasteland.Modules.Presentation
         public override void Shutdown()
         {
             ModApi.Withdraw<IAnimationApi>(this);
+            ModApi.Withdraw<ICharacterPresentation>(this);
             ShutdownStep("saving poses", SavePoses);
             ShutdownStep("Women of Wasteland", WomenFeature.Shutdown);
             ShutdownWorld();
             ShutdownStep("body", BodyRunner.TearDown);
             ShutdownStep("aim transition", AimTransition.RestoreAll);
+            ShutdownStep("weapon lowering", WeaponPoseService.Reset);
+            _characters.Clear();
             ShutdownStep("ModAPI characters", ModAPI.OnSceneLoaded);
             _animation.Clear();
             ShutdownStep("dog animations", DogAnimations.Shutdown);
@@ -164,6 +178,8 @@ namespace WildWasteland.Modules.Presentation
             BodyRunner.OnSceneLoaded();
             ModAPI.OnSceneLoaded();
             _animation.Clear();
+            _characters.Clear();
+            WeaponPoseService.Reset();
             AimTransition.Sweep();
             Gungirl.OnSceneLoaded();
             SceneLoadedWorld(scene, mode);
@@ -184,10 +200,15 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Floating-origin shift (delta = old - new offset).</summary>
         public override void OnOriginShift(Vector3 delta) { OriginShiftWorld(delta); }
 
-        /// <summary>Registers the ModAPI providers of the character part, then World's.</summary>
+        /// <summary>Registers the ModAPI providers of the character part (IAnimationApi, ICharacterPresentation, ICharacterAppearance,
+        /// IWeaponPose, IPoseAuthoring, ICharacterAssets, INpcAppearance while Women of Wasteland runs), then World's.</summary>
         public override void ProvideApis()
         {
             ModApi.Provide<IAnimationApi>(this, _animation);
+            ModApi.Provide<ICharacterPresentation>(this, _characters);
+            ModApi.Provide<ICharacterAppearance>(this, _appearance);
+            ModApi.Provide<IWeaponPose>(this, _weaponPose);
+            ModApi.Provide<IPoseAuthoring>(this, _poseAuthoring);
             WomenFeature.ProvideApis(this);
             ProvideApisWorld();
         }

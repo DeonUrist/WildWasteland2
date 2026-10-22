@@ -141,6 +141,18 @@ namespace WildWasteland.Modules.PlayerBody
             Dirty();
         }
 
+        /// <summary>Adds every weapon key that has a file or built-in pose to <paramref name="into"/> (no duplicates, unsorted).</summary>
+        internal static void Weapons(List<string> into)
+        {
+            foreach (var k in _user.Keys) AddWeapon(k, into);
+            foreach (var k in _builtin.Keys) AddWeapon(k, into);
+        }
+        /// <summary>Adds the weapon part of a "weapon|clip" key once.</summary>
+        static void AddWeapon(string key, List<string> into) { int bar = key.IndexOf('|'); if (bar > 0) { string w = key.Substring(0, bar); if (!into.Contains(w)) into.Add(w); } }
+        /// <summary>Stores a pose (cm, degrees) as the user entry of (weapon, clip) without saving (IPoseAuthoring.SetPose).</summary>
+        internal static void PutUser(string weapon, string clip, float[] v) { Flush(); Put(weapon, clip, v); }
+        /// <summary>Writes the user file now (IPoseAuthoring.Save), after any live edit.</summary>
+        internal static void SaveUser() { Flush(); Save(); }
         public static bool HasPose(string weapon, string clip) { return !string.IsNullOrEmpty(weapon) && Own(weapon, clip) != null; }
 
         // what the clip shows: its own entry, else the kind's idle clip, else the weapon's old Idle entry, else the raider grip (def)

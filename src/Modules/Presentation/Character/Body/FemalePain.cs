@@ -3,6 +3,7 @@ using System.Collections;
 using HutongGames.PlayMaker;
 using HutongGames.PlayMaker.Actions;
 using UnityEngine;
+using WildWasteland.Core;
 using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
@@ -78,6 +79,7 @@ namespace WildWasteland.Modules.PlayerBody
             if (!player) return;
             __state.Clips = __instance.audioClips; __state.Weights = __instance.weights;
             __instance.audioClips = _pain; __instance.weights = _weights;
+            PresentationEvents.Voice(Entities.Player, "FEMPAIN", owner.transform.position);
         }
 
         internal static Exception Finally(PlayRandomSound __instance, SoundState __state, Exception __exception)
@@ -94,6 +96,7 @@ namespace WildWasteland.Modules.PlayerBody
             var owner = __instance.Owner;
             if (owner == null || (Game.Player != null ? owner != Game.Player : owner.name != "Player")) return;
             __state = __instance.audioClip; __instance.audioClip = _death;
+            PresentationEvents.Voice(Entities.Player, "FEMDEATH", owner.transform.position);
             Core.Log.Deep(PresentationModule.Instance, "Female death: FEMDEATH selected");
         }
 

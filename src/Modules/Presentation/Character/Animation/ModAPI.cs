@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using HutongGames.PlayMaker;
 using UnityEngine;
+using WildWasteland.Core;
+using WildWasteland.Modules.Presentation;
 using WildWasteland.Modules.Presentation;
 
 namespace WildWasteland.Modules.PlayerBody
@@ -164,6 +166,7 @@ namespace WildWasteland.Modules.PlayerBody
                 var c = new Character(animator);
                 if (!c.Valid) return null;
                 _chars.Add(c);
+                PresentationEvents.Attached(animator, CharacterKind.Human);
                 if (Core.Log.L2) Core.Log.Deep(PresentationModule.Instance, "ModAPI: animating " + animator.gameObject.name + " (" + _chars.Count + " characters)");
                 return c;
             }

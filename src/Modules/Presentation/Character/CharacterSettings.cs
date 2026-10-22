@@ -205,6 +205,7 @@ namespace WildWasteland.Modules.Presentation
             var choice = (CharacterChoice)CharacterPortraits.Canonical((int)Character.Value);
             if (choice != Character.Value) { Character.Value = choice; return; }
             if (PresentationModule.Running) BodyRunner.CharacterChanged();
+            PresentationEvents.ModelChanged(Entities.Player, Character.Value.ToString(), null);
         }
     }
 }
