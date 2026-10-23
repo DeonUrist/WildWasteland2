@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.NPCAI
     /// list Apocapatrol read by reflection) and <see cref="INpcControl"/> (seating, fright, perception, mode/target, hearing policy,
     /// hostility, enumeration, bosses). Provided by NPCAIModule.ProvideApis, withdrawn by ModuleHost when the module stops.
     /// </summary>
-    internal sealed class NpcApi : INpcApi, INpcControl
+    internal sealed class NpcApi : INpcApi, INpcControl, INpcEnemies
     {
         /// <summary>Contract version (1 = NPCAI.Api v1).</summary>
         public int ContractVersion { get { return 1; } }
@@ -64,6 +64,7 @@ namespace WildWasteland.Modules.NPCAI
         public void SetPlayerHostile(GameObject npc, bool hostile) { Senses.SetPlayerHostile(npc, hostile); }
         /// <summary>Live NPCs within a radius of a scene point.</summary>
         public void NpcsNear(Vector3 scene, float radius, List<GameObject> into) { Senses.NpcsNear(scene, radius, into); }
+        public void NearPlayer(Vector3 scene, float radius, List<GameObject> into) { Senses.EnemiesNear(scene, radius, into); }
         /// <summary>True when the object is an NPC known to NPCAI (senses agent or brain).</summary>
         public bool IsNpc(GameObject go) { return go != null && (Senses.Knows(go) || Brain.Knows(go)); }
         /// <summary>Faction tag of an NPC (the senses' tag, else the object's tag; null when unknown).</summary>

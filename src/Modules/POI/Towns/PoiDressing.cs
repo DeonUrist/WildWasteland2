@@ -61,6 +61,7 @@ namespace WildWasteland.Modules.POI
         private static bool Custom(Transform root)
         {
             if (root == null || !root.CompareTag("SpawnerStatic") || root.GetComponent<Rigidbody>() != null) return false;
+            if (root.name.EndsWith(" (WW POI nav setup)", StringComparison.Ordinal)) return false;
             string name = TypeName(root);
             return name != "Starter_Area" && !name.StartsWith("TownsTower", StringComparison.Ordinal)
                 && ((!NativeNumber(name, "Camp_") && !NativeNumber(name, "Building_") && !NativeNumber(name, "Cave_") && !NativeNumber(name, "Wreck_")) || System.IO.File.Exists(PoiDressStore.FilePath(name)) || _current != null && _current._worldLayouts.ContainsKey(name));

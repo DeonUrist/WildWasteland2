@@ -72,6 +72,7 @@ namespace WildWasteland.Modules.NPCAI
             public GameObject Owner; public Transform T; public Collider Col; public Transform Head;
             public PlayMakerFSM Detection, Attack; public FsmGameObject DetectedVar;
             public string Tag; public HashSet<string> Hostile; public bool Human;
+            public FsmFloat PerkHealth;
             public bool Travel;           // (1.4.0) a hunter travelling underground (Burrow): its senses pause, nobody can see it
             public bool Deaf, Interior;   // Towns' interior population policy; cleared when Towns stops
             public bool Spider, Lit, CaveWeb; public float CaveLight = 1f, NextCaveLight; public GameObject LightSource;
@@ -435,6 +436,8 @@ namespace WildWasteland.Modules.NPCAI
                 if (a.Lit || (isPlayer && FlashlightOn())) range = NpcaiSettings.SightRange.Value;
             }
             if (a.InStorm || targetInStorm) range *= Storm.SightFactor;     // sand in the air between them
+            float perkDetection = isPlayer && (a.Tag == "Mutant" || a.Tag == "MutantSanity") ? (Core.ModApi.Get<Core.IPlayerPerkEffects>()?.MutantDetectionMultiplier ?? 1f) : 1f;
+            range *= perkDetection;
             // (1.3.3) a burrowed creature (only its tail shows) is noticed by other NPCs only from close by
             // (1.4.0) looked up only while any NPC is burrowed or travelling (no cost otherwise); a travelling one is not seen at all
             if (!isPlayer && Burrow.Hidden > 0)
@@ -449,7 +452,7 @@ namespace WildWasteland.Modules.NPCAI
             if (a.CaveWeb) { if ((tp - a.T.position).sqrMagnitude > 9f) return false; range = Mathf.Max(range, 3f); }
             // (WW) footsteps: the player walking within [Detection] FootstepRadius is heard whatever way the NPC faces and whatever the light,
             // as long as the usual sight lines are clear (the same obstruction check: a wall still hides him)
-            bool steps = isPlayer && _playerMoving && d <= NpcaiSettings.FootstepRadius.Value * (Core.ModApi.Get<Core.IEquipmentNoise>()?.FootstepScale ?? 1f) && !a.CaveWeb;   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
+            bool steps = isPlayer && _playerMoving && d <= NpcaiSettings.FootstepRadius.Value * perkDetection * (Core.ModApi.Get<Core.IEquipmentNoise>()?.FootstepScale ?? 1f) && !a.CaveWeb;   // refs-ok: REFACTOR-REQUEST B07-11/B07-13 (Compatibility / Presentation status query without contract member)
             if (d > range && !steps) { if (tracked) a.SightMiss = "outside light/storm sight range"; return false; }
             if (!tracked && !steps && Vector3.Angle(a.T.forward, flat) > Mathf.Clamp(ConeOf(a), 10f, 360f) * 0.5f) return false;
             Transform troot = target.transform.root;

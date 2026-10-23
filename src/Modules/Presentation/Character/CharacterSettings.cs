@@ -35,6 +35,7 @@ namespace WildWasteland.Modules.Presentation
 
         // ------------------------------------------------------------------ NPC characters (ex [NPC] / [NPC / Brain|NpcAim|Behaviour])
         internal static ConfigEntry<bool> DogAnimationsEnabled, DogsLieDown, ApocaplayerClips, AimPose, AnimationLod;
+        internal static ConfigEntry<bool> ZombieAnimations;
         internal static ConfigEntry<float> ReloadVolume, ReloadSoundRange, DogLieFrontLift;
 
         // ------------------------------------------------------------------ Women of Wasteland (ex [NPC / Women of Wasteland|Gungirl|Shoota])
@@ -94,6 +95,7 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>[Presentation / Dogs] DogAnimations and DogsLieDown (ex [NPC] toggles; the behaviour switches stay with NPCAI).</summary>
         static void BindNpc(ModuleConfig cfg)
         {
+            ZombieAnimations = cfg.Player("Zombies", "ZombieAnimations", true, "Zombie Runner and Blast Zombie: side, belly or back rest with matched stand-up, agonizing idle and dodgeable punches over running legs with 2 m reach. A quarter of distant player sightings (12 m or more) begin with a scream. No crawling. Requires Models/zombie-anims-v3.bundle; native damage and ragdoll death remain.");
             DogAnimationsEnabled = cfg.Player("Dogs", "DogAnimations", true, "Retargeted animations on hounds, Grimhound and nightwalkers. Requires Presentation/Models/npcai_dogs.bundle; otherwise the existing procedural bite remains active.");
             DogsLieDown = cfg.Player("Dogs", "DogsLieDown", true, "Non-boss quadrupeds alternate standing and lying idle, spending a random 10-25 seconds in each pose. Threats interrupt rest through get-up.");
         }

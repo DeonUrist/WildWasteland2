@@ -6,27 +6,15 @@ using WildWasteland.Core;
 
 namespace WildWasteland.Modules.Quests
 {
-    // Camp takeover: choosing a target camp, switching its owner, and sending a group of the winning
-    // faction's people walking in from about a kilometre away.
-    /// <summary>
-    /// Camp takeover, Quests part: picking the target camp, counting defenders, the outcome when a camp is cleared and the quest-giver
-    /// respawn policy. Wave A split: walker spawning/steering/save restore -> NPCAI (Behaviour/_fromQuests/Takeover.Walkers.cs),
-    /// camp ownership (spawner suppression, garrisons, neutralize tick) -> POI (_fromQuests/Takeover.Camps.cs).
-    /// </summary>
+    /// <summary>Quest takeover objectives and giver recovery; POI owns camps and Patrols owns reinforcement journeys.</summary>
     internal static partial class Takeover
     {
-        /// <summary>Restores suppressed spawners and stops active takeover walks.</summary>
+        /// <summary>Clears quest-local compatibility and giver recovery caches.</summary>
         internal static void Shutdown()
         {
-            foreach (var w in walkers) if (w.Go != null && w.Move != null && w.Move.ActiveStateName == "Run") w.Move.Fsm.SetState("Idle");
-            foreach (var item in Suppressed) if (item.Key != null) item.Key.SetActive(item.Value);
-            Suppressed.Clear(); ClearWalks(); prefabs.Clear(); giverUnusable.Clear(); giverLogged.Clear();
+            ClearWalks(); prefabs.Clear(); giverUnusable.Clear(); giverLogged.Clear();
         }
-        public static float SpawnDistance = 250f;
-        public static int GroupSize = 5;
-        public static float WalkSeconds = 300f;
         public static Action<string> Log = delegate { };
-        public static bool PatrolAtCamp = true;     // [Takeover] PatrolAtCamp: walk around the camp after arriving
 
         // ---- choosing and describing the target -----------------------------------------------
 
@@ -94,40 +82,44 @@ namespace WildWasteland.Modules.Quests
         // ---- the takeover itself ---------------------------------------------------------------
 
         // Called when the quest's kills are done. Returns how many people were sent.
-        /// <summary>Commits camp ownership and starts the winning faction’s arrival group.</summary>
+        /// <summary>Publishes capture of the exact objective camp for POI and Patrols.</summary>
         public static int Begin(Quest q, System.Random rng)
         {
-            Faction winner = Factions.ByKey(q.Home);
-            if (winner == null || !q.HasPos) return 0;
-            Vector3 campWorld = Core.Origin.Scene(q.Pos);
-
-            Poi camp = null;
-            string campKey = null;
-            float bd = 80f;
-            foreach (Poi p in Game.FindPois(campWorld, 0f, 80f, "camp"))
+            var locations = ModApi.Get<IWorldLocations>(); WorldLocation target;
+            Poi selected = null; float closest = q.Radius;
+            if (q.HasPos) foreach (var camp in Game.FindPois(Core.Origin.Scene(q.Pos), 0f, q.Radius, "camp"))
             {
-                float d = Core.WorldGeometry.HorizontalDistance(p.Pos, campWorld);
-                if (d < bd) { bd = d; camp = p; }
+                float distance = Core.WorldGeometry.HorizontalDistance(Core.Origin.World(camp.Pos), q.Pos);
+                if (camp.Obj != null && camp.Kind == "Camp" && distance < closest) { closest = distance; selected = camp; }
             }
-            if (camp != null)
-            {
-                Factions.Overrides[Factions.KeyOf(camp)] = winner.Name;
-                campWorld = camp.Pos;
-                campKey = "camp:" + Factions.KeyOf(camp);
-                Log("Camp " + camp.Name + " now belongs to " + winner.Name + ".");
-            }
-            else Log("Takeover: camp object not found near the target; the owner could not be switched.");
-
-            return SpawnGroup(winner, campWorld, Core.Origin.World(campWorld), rng, campKey);
+            if (selected == null || locations == null || !locations.TryGet(CampId(selected), out target))
+            { Log("Takeover: target camp is not registered; ownership unchanged."); return -1; }
+            Factions.Overrides[Factions.KeyOf(selected)] = "Coyotes";
+            var change = new Core.Events.CampOwnershipChanged { CampId = target.Key, OldFaction = target.Faction, NewFaction = "Coyotes", WorldPos = target.WorldPos };
+            ModEvents.Publish(ref change);
+            Log("Camp " + target.Name + " now belongs to Coyotes; traveler settlement requested.");
+            return 0;
         }
 
-        // ---- a garrison for the new owner -----------------------------------------------------------
-        public static int GarrisonSize = 4;
-        public static float GarrisonTrigger = 500f;
-        public static float GarrisonCooldownHours = 12f;
-        public static Dictionary<string, long> Stamps;      // shared with the quest book (saved): "camp:<key>" -> game hours * 1000
-        static readonly System.Random prng = new System.Random();
-        static bool warnedNoNames;
+        static string CampId(Poi camp)
+        {
+            Vector3 world = Core.Origin.World(camp.Pos);
+            return Core.Names.Prefab(camp.Obj.name) + ":" + Mathf.RoundToInt(world.x) + ":" + Mathf.RoundToInt(world.z);
+        }
+
+        // Reconcile old quest ownership records into the shared registry without dispatching a second group.
+        public static void ReconcileCamps(Vector3 playerWorld)
+        {
+            ResolvePending();
+            var locations = ModApi.Get<IWorldLocations>(); if (locations == null || Factions.Overrides.Count == 0) return;
+            foreach (var camp in Game.FindPois(playerWorld, 0f, 3000f, "camp"))
+            {
+                string faction; WorldLocation target;
+                if (camp.Obj == null || !Factions.Overrides.TryGetValue(Factions.KeyOf(camp), out faction) || !locations.TryGet(CampId(camp), out target) || target.Faction == faction) continue;
+                var change = new Core.Events.CampOwnershipChanged { CampId = target.Key, OldFaction = faction, NewFaction = faction, WorldPos = target.WorldPos };
+                ModEvents.Publish(ref change);
+            }
+        }
 
         // ---- quest givers come back ------------------------------------------------------------------
 

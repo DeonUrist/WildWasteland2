@@ -169,6 +169,7 @@ namespace WildWasteland.Modules.Quests
         static bool Person(string name)
         {
             string n = Util.Norm(name);
+            if (n.Contains("merchant") && SkillPerks.Has("MerchantReroll")) return true;
             foreach (string word in Factions.PeopleWords) if (word.Length > 0 && n.Contains(word)) return true;
             return Hire.CostFor(name) >= 0 || n.Contains("gunnar") || n.Contains("mechanic");
         }

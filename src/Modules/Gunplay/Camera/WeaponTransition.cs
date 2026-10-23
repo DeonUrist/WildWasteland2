@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Gunplay
         private static Fsm _handlerFsm, _switcherFsm;
         private static FsmEvent _pending;
         private static FsmEventData _data;
+        private static GameObject _pickupSlot, _pickupItem;
         private static float _nextFind, _at, _weight;
         private static bool _replaying, _lowering, _holster;
         private const float Duration = .14f;
@@ -24,6 +25,7 @@ namespace WildWasteland.Modules.Gunplay
         {
             Hooks.ProcessEvent.Prefix(owner, BeforeEvent);
             Hooks.ActivateGameObjectEnter.Postfix(owner, AfterActivate);
+            Hooks.EnterState.Postfix(owner, AfterPickup);
             Scheduler.EveryFrame(owner, "Gunplay.WeaponTransition", Tick, Phase.EarlyUpdate);
         }
         /// <summary>The native WeaponInHand weaponType of the drawn weapon ("hands" or empty = none); null before the rig is found.</summary>
@@ -45,6 +47,7 @@ namespace WildWasteland.Modules.Gunplay
         internal static void Reset()
         {
             _handler = _switcher = null; _handlerFsm = _switcherFsm = null; _pending = null; _data = null;
+            _pickupSlot = _pickupItem = null;
             _weight = _nextFind = 0f; _lowering = _replaying = _holster = false;
         }
         /// <summary>World ready: weapons get holstered once the Weapons FSM runs.</summary>
@@ -89,6 +92,31 @@ namespace WildWasteland.Modules.Gunplay
         }
         private static Core.Events.WeaponSwitchStage _lastStage = Core.Events.WeaponSwitchStage.Done;
 
+        /// <summary>Queues a completed native pickup into the slot currently showing bare hands.</summary>
+        private static void AfterPickup(Fsm fsm, FsmState state)
+        {
+            if (fsm.Name != "UseWeapon" || state.Name != "takeWeapon" || _handler == null || _switcher == null || _handler.ActiveStateName != "hands") return;
+            var slot = _handler.FsmVariables.FindFsmGameObject("Slot");
+            if (slot == null || slot.Value == null || fsm.GameObject != slot.Value || slot.Value.transform.parent != _switcher.transform) return;
+            var item = fsm.Variables.FindFsmGameObject("Item");
+            if (item == null || item.Value == null || item.Value.transform.parent != slot.Value.transform) return;
+            // Native pickup fills the selected empty slot without rerunning WeaponInHand. Apocapocket owns its own draw transaction.
+            _pickupSlot = slot.Value; _pickupItem = item.Value;
+        }
+
+        /// <summary>Uses the normal slot draw after pickup actions have finished, including magazine binding and AmmoUI activation.</summary>
+        private static void DrawPickup()
+        {
+            var slot = _pickupSlot; var item = _pickupItem; _pickupSlot = _pickupItem = null;
+            if (slot == null || item == null || _handler == null || _switcher == null || !GameRefs.InPlay) return;
+            if (_handler.ActiveStateName != "hands" || _switcher.ActiveStateName != slot.name || item.transform.parent != slot.transform) return;
+            var full = FsmUtil.Find(slot, "SlotEmptyFull");
+            if (full == null || !full.Fsm.Initialized) return;
+            full.Fsm.SetState("full");
+            _switcher.Fsm.SetState(slot.name);
+            if (Log.L2) GunplayLog.Deep("Weapon pickup: drew " + item.name + " from " + slot.name + " after bare hands");
+        }
+
         /// <summary>Job "Gunplay.WeaponTransition" (EarlyUpdate): switch timing, then the WeaponSwitchPhase event while it moves.</summary>
         private static void Tick()
         {
@@ -118,6 +146,7 @@ namespace WildWasteland.Modules.Gunplay
             }
             _handlerFsm = _handler != null ? _handler.Fsm : null;
             _switcherFsm = _switcher != null ? _switcher.Fsm : null;
+            if (_pickupSlot != null) DrawPickup();
             if (_holster && _switcher != null && _switcher.Fsm.Initialized && GameRefs.InPlay)
             {
                 _holster = false; _pending = null; _data = null; _lowering = false; _weight = 0f;

@@ -25,6 +25,12 @@ namespace WildWasteland.Modules.Presentation
         private static AssetBundle bundle; private static bool _loadTried;
         /// <summary>True when the dog bundle loaded clips (F7 diagnostics).</summary>
         internal static bool BundleLoaded { get { return Clips.Count > 0; } }
+        internal static AnimationClip RecoveryClip(GameObject npc)
+        { Dog dog; AnimationClip clip; if (Dogs.TryGetValue(npc.GetInstanceID(),out dog) && dog.Clips.TryGetValue("GetUp",out clip)) return clip; Dictionary<string,AnimationClip> clips; return Clips.TryGetValue(Names.Base(npc.name).Replace(' ','_'),out clips) && clips.TryGetValue("GetUp",out clip) ? clip : null; }
+        internal static void BeginRecovery(GameObject npc) { Dog dog; if (Dogs.TryGetValue(npc.GetInstanceID(),out dog)) Switch(dog,CaninePose.GetUp,"GetUp"); }
+        internal static void EndRecovery(GameObject npc) { Dog dog; if (npc != null && Dogs.TryGetValue(npc.GetInstanceID(),out dog)) Switch(dog,CaninePose.Locomotion,"Idle"); }
+        internal static void SampleRecovery(GameObject npc,Animator animator,AnimationClip clip,float time)
+        { Dog dog; if (Dogs.TryGetValue(npc.GetInstanceID(),out dog)) { dog.Time = time; dog.Fade = time; SampleDog(dog,true); } else clip.SampleAnimation(animator.gameObject,time); }
         /// <summary>Number of dogs with a mapped rig.</summary>
         internal static int DogCount { get { return Dogs.Count; } }
         internal static int ClipCount { get { int n = 0; foreach (var c in Clips.Values) n += c.Count; return n; } }
@@ -418,9 +424,9 @@ namespace WildWasteland.Modules.Presentation
         internal static void LateCompanion(GameObject owner)
         { Dog d; if (owner != null && Dogs.TryGetValue(owner.GetInstanceID(), out d)) SampleDog(d); }
         /// <summary>Writes the playing clip's pose (cross-faded, front lifted when lying, paws on the ground) onto the dog's bones.</summary>
-        private static void SampleDog(Dog d)
+        private static void SampleDog(Dog d, bool recovery = false)
         {
-            if (!Eligible(d) || string.IsNullOrEmpty(d.Playing)) return;
+            if (!Eligible(d) || string.IsNullOrEmpty(d.Playing) || !recovery && (ModApi.Get<ISkillReactions>()?.IsHeld(d.Agent.Owner) ?? false)) return;
             if (d.Dashing) d.Agent.T.rotation = Quaternion.LookRotation(d.DashDirection);
             for (int i = 0; i < d.Bones.Length; i++) if (d.Bones[i] != null) { d.NativePosition[i] = d.Bones[i].localPosition; d.NativeRotation[i] = d.Bones[i].localRotation; }
             var clip = d.Clips[d.Playing]; bool loop = d.Pose == CaninePose.Locomotion || d.Pose == CaninePose.Rest || d.Pose == CaninePose.Sitting;

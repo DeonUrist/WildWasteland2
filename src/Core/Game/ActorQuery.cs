@@ -51,6 +51,7 @@ namespace WildWasteland.Core
         /// <summary>Recognizes a child hit object carrying its own native Bodypart FSM.</summary>
         public static bool IsHead(GameObject go)
         {
+            if (ModApi.Get<ISkillReactions>()?.IsBodyCollider(go) ?? false) return false;
             return go.transform.parent != null && HasBodypart(go);
         }
 

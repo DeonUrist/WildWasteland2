@@ -17,7 +17,7 @@ namespace WildWasteland.Modules.Tools
         internal static void Bind(ModuleConfig cfg)
         {
             Setup = cfg.Tools.Bind(cfg.Section("Navigation"), "Setup POI pathfinding", false,
-                "Developer: one copy of every native POI type is placed near the starting camp (not saved, removed when off) and new towns are not generated, so each POI can be baked and edited.");
+                "Developer: one native POI at a time near the starting camp (not saved, removed when off). Cycle types in the navigation editor; new towns are not generated while setup is on.");
             DisplayGraphs = cfg.Tools.Bind(cfg.Section("Navigation"), "Display navigation data", false,
                 "Developer: draws the POI navigation near you: surfaces (one colour each), ladders (cyan), climbs (orange), drops (red), editor links brighter, switched-off links grey.");
             EditorKey = cfg.Tools.Bind(cfg.Section("Editors"), "POI navigation editor", UnityEngine.InputSystem.Key.None,

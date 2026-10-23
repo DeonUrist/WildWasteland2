@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.Quests
             factionsPath = Path.Combine(DataDir, "factions.txt");
             Factions.Refresh(factionsPath, Warn); defs = QuestFile.Load(Path.Combine(DataDir, "quests.txt"), Warn);
             Hire.Init(hiring, book, AddToast, ChangeRep); Voice.Init(voices, DataDir);
-            Takeover.Stamps = book.GiverStamp; Takeover.Log = Info;
+            Takeover.Log = Info;
             Core.Hooks.CreateObjectEnter.Postfix(owner, Death);
             Core.Hooks.GetButtonDownUpdate.Prefix(owner, BlockButtonDown);
             Core.Hooks.GetButtonDo.Prefix(owner, BlockButton);
@@ -167,6 +167,8 @@ namespace WildWasteland.Modules.Quests
                 if (returning && go.name != q.GiverId) continue;
                 var hp = f.FsmVariables.GetFsmFloat("Health"); if (hp == null || hp.Value <= 0) continue;
                 if (Core.WorldGeometry.HorizontalDistance(f.transform.position, position) > radius || Game.IsPlayerEnemy(go) || !Person(Core.Names.Base(go.name))) continue;
+                var collider = go.GetComponent<Collider>(); if (collider == null || !collider.enabled) continue;
+                var vehicles = ModApi.Get<IFollowerVehicles>(); if (vehicles != null && vehicles.IsSeated(go)) continue;
                 if (!Factions.Friendly(Factions.ByKey(q.Home), Factions.OfObject(go.tag, Core.Names.Base(go.name), go.transform.position))) continue;
                 if (returning) q.GiverPos = Core.Origin.World(f.transform.position);
                 return true;

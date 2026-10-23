@@ -13,7 +13,8 @@ namespace WildWasteland.Modules.Survival
 {
     internal sealed class Stew
     {
-        internal readonly FsmFloat Raw, Cooked, Insanity, SpoiledNutrition, StaleSeconds;
+        private readonly GameObject _skillOwner;
+        internal readonly FsmFloat Raw, Cooked, Insanity, RawInsanity, SpoiledNutrition, StaleSeconds;
         // 0=fresh, 1=stale warning, 2=spoiled penalty already applied.
         internal readonly FsmInt Spoiled;
         internal bool Heating;
@@ -27,9 +28,11 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Binds the existing saved FSM variables for this pot.</summary>
         internal Stew(PlayMakerFSM save)
         {
+            _skillOwner = save.gameObject;
             var vars = save.FsmVariables;
             Raw = vars.GetFsmFloat("RawNutrition"); Cooked = vars.GetFsmFloat("CookedNutrition");
             Insanity = vars.GetFsmFloat("StewInsanity"); SpoiledNutrition = vars.GetFsmFloat("SpoiledNutrition");
+            RawInsanity = vars.GetFsmFloat("RawInsanity");
             StaleSeconds = vars.GetFsmFloat("StaleSeconds"); Spoiled = vars.GetFsmInt("StewSpoiled");
             lastCook = StewLogic.Clock;
             nextCook = lastCook + 1f + (save.GetInstanceID() & 255) / 255f;
@@ -58,8 +61,13 @@ namespace WildWasteland.Modules.Survival
                     if (heat)
                     {
                         float converted = Mathf.Min(Raw.Value, SurvivalModule.CookingRate.Value * elapsed);
-                        Raw.Value -= converted; Cooked.Value += converted * SurvivalModule.NutritionMultiplier.Value;
+                        RawInsanity.Value *= Raw.Value > .0001f ? 1 - converted / Raw.Value : 0;
+                        var skills = Core.ModApi.Get<Core.ICookingSkills>();
+                        Raw.Value -= converted; Cooked.Value += converted * SurvivalModule.NutritionMultiplier.Value * (skills?.NutritionMultiplier(pot.Root) ?? 1f);
+                        skills?.StewCooked(pot.Root, converted);
+                        float previousInsanity = Insanity.Value;
                         Insanity.Value = Mathf.Max(0, Insanity.Value - SurvivalModule.InsanityBoilRate.Value * elapsed);
+                        RawInsanity.Value *= previousInsanity > .0001f ? Insanity.Value / previousInsanity : 0;
                         coldSeconds = 0;
                     }
                     nextDetails = 0;
@@ -78,6 +86,7 @@ namespace WildWasteland.Modules.Survival
                             {
                                 float lost = Nutrition * .75f;
                                 Raw.Value *= .25f; Cooked.Value *= .25f; Insanity.Value += lost;
+                                RawInsanity.Value *= .25f;
                                 Spoiled.Value = 2; StewLogic.Trace(pot, "spoiled; nutrition quartered");
                             }
                         }
@@ -106,7 +115,7 @@ namespace WildWasteland.Modules.Survival
                 string status = Spoiled.Value == 2 ? "Spoiled" : Spoiled.Value == 1 ? "Stale" : Raw.Value > .0001f ? "Raw" : "Cooked";
                 Details = Nutrition > .0001f || Insanity.Value > .0001f
                     ? status + (Heating ? " - Boiling" : "") + "\nNutrition: " + Nutrition.ToString("0.0", CultureInfo.InvariantCulture)
-                        + " (raw: " + Raw.Value.ToString("0.0", CultureInfo.InvariantCulture) + ")\nInsanity: +" + Insanity.Value.ToString("0.0", CultureInfo.InvariantCulture)
+                        + " (raw: " + Raw.Value.ToString("0.0", CultureInfo.InvariantCulture) + ")\nInsanity: +" + (Insanity.Value * Survival.Insanity.FoodMultiplier * (Core.ModApi.Get<Core.ICookingSkills>()?.InsanityMultiplier(_skillOwner) ?? 1)).ToString("0.0", CultureInfo.InvariantCulture)
                     : Heating ? "Boiling water" : "";
             }
         }
@@ -117,12 +126,15 @@ namespace WildWasteland.Modules.Survival
         {
             fraction = Mathf.Clamp01(fraction);
             float raw = Raw.Value * fraction, cooked = Cooked.Value * fraction, insanity = Insanity.Value * fraction;
+            float rawInsanity = Mathf.Min(Insanity.Value, RawInsanity.Value) * fraction;
             float spoiled = SpoiledNutrition.Value * fraction;
             Raw.Value -= raw; Cooked.Value -= cooked; Insanity.Value -= insanity; SpoiledNutrition.Value -= spoiled;
+            RawInsanity.Value -= rawInsanity;
             if (destination != null)
             {
                 destination.Raw.Value += raw; destination.Cooked.Value += cooked;
                 destination.Insanity.Value += insanity; destination.SpoiledNutrition.Value += spoiled;
+                destination.RawInsanity.Value += rawInsanity;
                 if (raw + cooked > .0001f)
                 {
                     destination.Spoiled.Value = Mathf.Max(destination.Spoiled.Value, Spoiled.Value);
@@ -131,13 +143,13 @@ namespace WildWasteland.Modules.Survival
                 destination.nextDetails = 0;
             }
             if (hunger != null) hunger.Value = Mathf.Max(0, hunger.Value - raw - cooked);
-            if (sanity != null) sanity.Value = Mathf.Clamp(sanity.Value + insanity, 0, 100);
+            if (sanity != null && !(Core.ModApi.Get<Core.IMentalBreak>()?.LocksInsanity ?? false)) sanity.Value = Mathf.Clamp(sanity.Value + Mathf.Max(0, insanity * Survival.Insanity.FoodMultiplier * (Core.ModApi.Get<Core.ICookingSkills>()?.InsanityMultiplier(_skillOwner) ?? 1)), 0, 100);
         }
 
         /// <summary>Clears the saved contents after the last serving is consumed.</summary>
         internal void Empty()
         {
-            Raw.Value = Cooked.Value = Insanity.Value = SpoiledNutrition.Value = StaleSeconds.Value = 0;
+            Raw.Value = Cooked.Value = Insanity.Value = RawInsanity.Value = SpoiledNutrition.Value = StaleSeconds.Value = 0;
             Spoiled.Value = 0; Heating = false; coldSeconds = 0; nextDetails = 0;
         }
 
@@ -231,7 +243,9 @@ namespace WildWasteland.Modules.Survival
                 Trace(Target, "ingredient rejected: add more water"); return;
             }
             if (foodRaw) stew.Raw.Value += foodNutrition; else stew.Cooked.Value += foodNutrition;
+            Core.ModApi.Get<Core.ICookingSkills>()?.Touch(Target.Root, Core.Entities.Player);
             stew.Insanity.Value += foodInsanity;
+            if (foodRaw) stew.RawInsanity.Value += foodInsanity;
             Target.Content.Value = MergeContents(Target.Content.Value, (int)Contents.Meat);
             Trace(Target, "meat added: nutrition +" + foodNutrition.ToString("0.0", CultureInfo.InvariantCulture)
                 + ", insanity +" + foodInsanity.ToString("0.0", CultureInfo.InvariantCulture));

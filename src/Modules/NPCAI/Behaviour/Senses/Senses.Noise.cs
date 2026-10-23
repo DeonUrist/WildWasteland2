@@ -54,6 +54,7 @@ namespace WildWasteland.Modules.NPCAI
             // nothing to an NPC whose faction is at peace with the player (Coyotes towns): it only alerts NPCs hostile to the player. Hits
             // still count (being shot makes the game turn the faction hostile anyway) and so do fights between NPCs.
             bool aboutPlayer = src != Src.Hit && PlayerRelated(source, subject);
+            float perkHearing = aboutPlayer ? (Core.ModApi.Get<Core.IPlayerPerkEffects>()?.MutantDetectionMultiplier ?? 1f) : 1f;
             Ghost shared = at == null ? GetOrMake(src, pos, source, about, 0f, 1f, now) : null;
             if (shared != null) shared.Subject = subject;
             int told = 0;
@@ -68,8 +69,9 @@ namespace WildWasteland.Modules.NPCAI
                 var a = kv.Value;
                 if (a.Owner == null || (SimpleBandits.Has(a.Owner)&&!SimpleBandits.Fighting(a.Owner)) || a.T.parent != null || (sroot != null && a.T == sroot)) continue;
                 float d2 = (a.T.position - pos).sqrMagnitude;
-                if (d2 > r2) continue;
-                if (stormy && (srcStorm || a.InStorm) && d2 > rs2) continue;
+                float hearing = a.Tag == "Mutant" || a.Tag == "MutantSanity" ? perkHearing : 1f;
+                if (d2 > r2 * hearing * hearing) continue;
+                if (stormy && (srcStorm || a.InStorm) && d2 > rs2 * hearing * hearing) continue;
                 if (filter != null && !filter(a)) continue;
                 if (allowed != null && !a.Spider && !allowed.Contains(a)) continue;
                 if (aboutPlayer && !a.Hostile.Contains("Player")) continue;

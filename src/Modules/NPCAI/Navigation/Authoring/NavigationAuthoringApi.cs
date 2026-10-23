@@ -17,6 +17,14 @@ namespace WildWasteland.Modules.NPCAI
         private static IModule _setupOwner;
         private static Action<List<Transform>> _setupRoots;
         private static bool _highlight;
+        private static IModule _bakerOwner;
+        private static Func<Transform, PoiNavData, IPoiNavigationBake> _baker;
+        internal static IPoiNavigationBake CreateBake(Transform root, PoiNavData data)
+        { return _bakerOwner != null && ModuleHost.IsRunning(_bakerOwner) && _baker != null ? _baker(root, data.Copy()) : null; }
+        internal static bool BakerAvailable { get { return _bakerOwner != null && ModuleHost.IsRunning(_bakerOwner) && _baker != null; } }
+        public void RegisterBaker(IModule owner, Func<Transform, PoiNavData, IPoiNavigationBake> create)
+        { if (owner == null || create == null) throw new ArgumentNullException(); _bakerOwner = owner; _baker = create; }
+        public void RemoveBaker(IModule owner) { if (ReferenceEquals(owner, _bakerOwner)) { _bakerOwner = null; _baker = null; } }
 
         /// <summary>Existing optional missing-bake tint switch, independent of legacy NPC configuration.</summary>
         internal static bool HighlightUnbaked { get { return _highlight; } }
@@ -24,7 +32,7 @@ namespace WildWasteland.Modules.NPCAI
         internal static void AppendSetupRoots(List<Transform> into)
         { if (_setupOwner != null && ModuleHost.IsRunning(_setupOwner) && _setupRoots != null) _setupRoots(into); }
         /// <summary>Releases all callbacks and diagnostics when the native navigation owner stops.</summary>
-        internal static void Reset() { _setupOwner = null; _setupRoots = null; _highlight = false; }
+        internal static void Reset() { _setupOwner = null; _setupRoots = null; _highlight = false; _bakerOwner = null; _baker = null; }
         /// <summary>Copies native roots from the actual grid-navigation registry.</summary>
         public void Roots(List<Transform> into) { into.Clear(); Nav.Roots(into); }
         /// <summary>Returns a cached detached data snapshot, never the live runtime data instance.</summary>

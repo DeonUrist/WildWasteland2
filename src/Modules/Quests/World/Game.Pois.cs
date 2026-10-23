@@ -12,22 +12,15 @@ namespace WildWasteland.Modules.Quests
     {
         // ---- points of interest and enemies -------------------------------------------
 
-        // The game marks who a camp belongs to with child objects named after the faction: EnemySpawn_Coyotes_V1,
-        // CoyotesMerchantSpawn_V1, EnemySpawn_Scrapyard_V1 ... Only human factions (see Factions.HumanFactions) count;
-        // the wild / burrower spawners are animals and mutants.
-        /// <summary>Infers a native POI faction from its authored child spawner names.</summary>
+        /// <summary>Resolves camp or town ownership through the owning world services.</summary>
         internal static string SpawnFactionOf(Transform poi)
         {
-            for (int i = 0; i < poi.childCount; i++)
-            {
-                string n = Util.Norm(poi.GetChild(i).name);
-                for (int h = 0; h < Factions.HumanFactions.Length; h++)
-                {
-                    string hf = Factions.HumanFactions[h];
-                    if (hf.Length > 0 && n.Contains(hf)) return char.ToUpperInvariant(hf[0]) + hf.Substring(1);
-                }
-            }
-            return "";
+            Vector3 world = Core.Origin.World(poi.position);
+            var towns = ModApi.Get<ITownsApi>(); TownInfo town;
+            if (towns != null && towns.IsTownBuilding(poi) && towns.TryTownAt(world, out town)) return town.Faction ?? "";
+            var locations = ModApi.Get<IWorldLocations>(); WorldLocation location;
+            string key = Names.Prefab(poi.name) + ":" + Mathf.RoundToInt(world.x) + ":" + Mathf.RoundToInt(world.z);
+            return locations != null && locations.TryGet(key, out location) ? location.Faction ?? "" : "";
         }
 
         // Camps, caves, buildings and wrecks in the loaded MapMagic tiles whose horizontal distance
@@ -36,12 +29,24 @@ namespace WildWasteland.Modules.Quests
         public static List<Poi> FindPois(Vector3 center, float minD, float maxD, string kindFilter)
         {
             var list = new List<Poi>(); string filter = Util.Norm(kindFilter);
+            var towns = ModApi.Get<ITownsApi>();
             foreach (var p in QuestWorld.Pois)
             {
                 if (p.Obj == null || !p.Obj.gameObject.activeInHierarchy) continue;
+                if (towns != null && towns.IsTownBuilding(p.Obj)) continue;
                 p.Pos = p.Obj.position;
+                p.Faction = SpawnFactionOf(p.Obj);
                 if (filter.Length > 0 && !Util.Norm(p.Name).Contains(filter) && !Util.Norm(p.Kind).Contains(filter)) continue;
                 float d = Core.WorldGeometry.HorizontalDistance(p.Pos, center); if (d >= minD && d <= maxD) list.Add(p);
+            }
+            if (towns != null && (filter.Length == 0 || filter == "camp" || filter == "town"))
+            {
+                var known = new List<TownInfo>(); towns.Towns(known);
+                foreach (var town in known)
+                {
+                    Vector3 scene = Core.Origin.Scene(town.WorldCenter); float d = Core.WorldGeometry.HorizontalDistance(scene, center);
+                    if (d >= minD && d <= maxD) list.Add(new Poi { Name = town.Key, Kind = "Town", Pos = scene, Faction = town.Faction ?? "" });
+                }
             }
             return list;
         }

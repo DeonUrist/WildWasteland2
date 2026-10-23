@@ -102,6 +102,10 @@ namespace WildWasteland.Modules.NPCAI
             internal Transform Root; internal string Poi; internal PoiNavData Data; internal Graph G;
             internal Vector3[] World; internal Bounds Box; internal Vector3 RootPos; internal int Id;
             internal int BuildIndex; internal bool Ready, Queued;
+            internal PoiNavData Source;
+            internal IPoiNavigationBake Bake;
+            internal bool LocalBake, NeedsBake, BakeFailed;
+            internal int CheckEdge, CheckSample, CheckLink;
             /// <summary>Scene position of a POI-local point.</summary>
             internal Vector3 W(Vector3 local) { return Root.TransformPoint(local); }
         }
@@ -135,7 +139,9 @@ namespace WildWasteland.Modules.NPCAI
                 if (_inst.TryGetValue(id, out inst))
                 {
                     if (data == null) { _inst.Remove(id); continue; }
-                    if (inst.Data != data || (inst.RootPos - r.position).sqrMagnitude > .01f || !inst.Ready && !inst.Queued) Build(inst, data);
+                    if (inst.Source != data || (inst.RootPos - r.position).sqrMagnitude > .01f) Build(inst, data);
+                    else if (!inst.Ready && !inst.Queued && !inst.BakeFailed && (!inst.NeedsBake || NavigationAuthoringApi.BakerAvailable))
+                    { inst.Queued = true; _builds.Enqueue(inst); }
                     continue;
                 }
                 if (data == null) continue;
@@ -146,9 +152,12 @@ namespace WildWasteland.Modules.NPCAI
         }
 
         /// <summary>(Re)binds an instance to its data: world bounds now, node positions queued for the sliced build.</summary>
-        internal static void Build(Inst inst, PoiNavData data)
+        internal static void Build(Inst inst, PoiNavData data, bool local = false)
         {
             inst.Ready = false; inst.BuildIndex = 0;
+            if (!local) inst.Source = data;
+            inst.LocalBake = local; inst.NeedsBake = inst.BakeFailed = false; inst.Bake = null;
+            inst.CheckEdge = inst.CheckSample = inst.CheckLink = 0;
             inst.Data = data; inst.G = GraphOf(data); inst.RootPos = inst.Root.position;
             inst.World = new Vector3[data.Nodes.Count];
             var b = data.Box; bool first = true; Bounds wb = new Bounds();
@@ -174,18 +183,29 @@ namespace WildWasteland.Modules.NPCAI
             var inst = _builds.Peek(); Inst live;
             if (inst.Root == null || !inst.Root.gameObject.activeInHierarchy || !_inst.TryGetValue(inst.Id, out live) || live != inst)
             { _builds.Dequeue(); inst.Queued = false; return _builds.Count > 0; }
+            if (inst.NeedsBake) return RebuildTerrain(inst);
             if (!inst.G.Ready) { inst.G.Step(); _buildNodes++; return true; }
             if (inst.BuildIndex < inst.World.Length)
             {
                 int k = inst.BuildIndex++; _buildNodes++;
                 inst.World[k] = inst.Root.TransformPoint(inst.Data.Nodes[k].Pos);
+                if (!inst.LocalBake)
+                {
+                    _buildRays++;
+                    if (Nav.TerrainMismatch(inst.World[k], inst.Data.Nodes[k].Terrain)) { inst.NeedsBake = true; return true; }
+                }
                 if (inst.Data.Nodes[k].Terrain)
                 {
                     RaycastHit h; _buildRays++;
                     if (Physics.Raycast(inst.World[k] + Vector3.up * 3f, Vector3.down, out h, 7f, 1 << 14, QueryTriggerInteraction.Ignore)) inst.World[k].y = h.point.y;
                 }
             }
-            if (inst.BuildIndex >= inst.World.Length) { inst.Ready = true; inst.Queued = false; _builds.Dequeue(); }
+            if (inst.BuildIndex >= inst.World.Length)
+            {
+                if (!inst.LocalBake && !ValidateTerrainStep(inst)) return true;
+                inst.Ready = true; inst.Queued = false; _builds.Dequeue();
+                if (Log.L2) Log.Deep(NavRuntime.Owner, "POI navigation: " + inst.Poi + (inst.LocalBake ? " instance terrain bake ready" : " shared bake terrain validated") + " at " + inst.RootPos.ToString("F1"));
+            }
             return _builds.Count > 0;
         }
 
@@ -395,7 +415,7 @@ namespace WildWasteland.Modules.NPCAI
         private static readonly List<KeyValuePair<float, int>> _open = new List<KeyValuePair<float, int>>();
 
         /// <summary>Steps from start to goal: >= 0 node, &lt; 0 link -(i+1) (followed by its landing node). False when unreachable.</summary>
-        static bool Path(Inst inst, int start, int goal, List<int> into)
+        static bool Path(Inst inst, int start, int goal, List<int> into, bool ladders)
         {
             into.Clear();
             int n = inst.World.Length;
@@ -410,6 +430,7 @@ namespace WildWasteland.Modules.NPCAI
                 if (cur == goal) break;
                 foreach (var arc in inst.G.Out[cur])
                 {
+                    if (!ladders && arc.Link >= 0 && inst.Data.Links[arc.Link >> 1].Kind == PoiLinkKind.Ladder) continue;
                     float g = _g[cur] + arc.Cost;
                     if (_seen[arc.To] == _stamp && g >= _g[arc.To]) continue;
                     _seen[arc.To] = _stamp; _g[arc.To] = g; _came[arc.To] = cur; _cameLink[arc.To] = arc.Link;
@@ -474,8 +495,10 @@ namespace WildWasteland.Modules.NPCAI
         static bool Human(GameObject owner)
         {
             var a = Senses.AgentFor(owner);
-            return a != null && a.Human && a.Cone == 0;
+            return a != null && a.Cone == 0 && (a.Human || Zombie(owner));
         }
+        internal static bool Zombie(GameObject owner)
+        { return owner != null && (Core.Names.BaseEquals(owner.name, "Zombie_Runner") || Core.Names.BaseEquals(owner.name, "Blast Zombie")); }
 
         /// <summary>Nav.Next's first step. True = handled here (result in `result`); false = carry on with the grid maps.</summary>
         internal static bool TryNext(GameObject owner, Vector3 pos, Vector3 goal, out Vector3 next, out float pathLeft, out bool result)
@@ -501,7 +524,7 @@ namespace WildWasteland.Modules.NPCAI
                 end = goalInside ? NearestWorld(inst, goal, 4f, false) : -1;
                 if (end < 0) end = NearestWorld(inst, goal, 1000f, true);
                 // Preserve melee/ranged destinations while the player is on a ladder.
-                int lad = PlayerLadderLink(inst, goal);
+                int lad = Zombie(owner) ? -1 : PlayerLadderLink(inst, goal);
                 if (lad >= 0 && inst.G.LinkFrom[lad] >= 0 && inst.G.LinkTo[lad] >= 0)
                 {
                     int lf = inst.G.LinkFrom[lad], lt = inst.G.LinkTo[lad];
@@ -544,7 +567,7 @@ namespace WildWasteland.Modules.NPCAI
                 if (start < 0) { r.Steps.Clear(); return false; }
                 if (end < 0) { r.Steps.Clear(); return false; }
                 _plansNow++;
-                if (!Path(inst, start, end, r.Steps)) { r.Steps.Clear(); return false; }
+                if (!Path(inst, start, end, r.Steps, !Zombie(owner))) { r.Steps.Clear(); return false; }
                 // no traversal on the way and the goal in plain sight: the feelers do this best
                 bool links = false; foreach (int s in r.Steps) if (s < 0) { links = true; break; }
                 if (!links && inst.Data.Nodes[start].Surface == inst.Data.Nodes[end].Surface && Clear(pos, goal)) { r.DirectSurface = inst.Data.Nodes[start].Surface; r.Steps.Clear(); return false; }
@@ -659,6 +682,7 @@ namespace WildWasteland.Modules.NPCAI
             {
                 if (i.World != null) for (int k = 0; k < (i.Ready ? i.World.Length : i.BuildIndex); k++) i.World[k] += delta;
                 i.Box.center += delta; i.RootPos += delta;
+                if (i.Bake != null) i.Bake.Shift(delta);
             }
             foreach (var r in _routes.Values) { r.Goal += delta; r.Next += delta; }
             PoiNavTraverse.Shift(delta);

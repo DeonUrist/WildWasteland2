@@ -3,6 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 namespace WildWasteland.Core
 {
+    /// <summary>Inactive geometry-only copy, built one scenery prop per step and owned by its caller.</summary>
+    public interface IPoiNavigationGeometry
+    {
+        GameObject Root { get; }
+        bool Step();
+    }
     /// <summary>Detached metadata of a live POI dressing instance.</summary>
     public sealed class PoiAuthoringSite { public int Id; public Transform Root; public string Type, Error, LayoutJson; public bool Ready; public Bounds Bounds; }
     /// <summary>Detached catalog entry; identifiers resolve only while the provider is alive.</summary>
@@ -14,6 +20,7 @@ namespace WildWasteland.Core
         void Discover(); void Sites(List<PoiAuthoringSite> into);
         void Types(List<string> into);
         void CustomTypes(List<string> into);
+        IPoiNavigationGeometry CreateNavigationGeometry(string type, Transform parent);
         bool Create(string name, float width, float depth, bool existing, out int siteId, out string error);
         bool IsCustom(string type);
         void PrepareEdit(int siteId);

@@ -37,10 +37,10 @@ namespace WildWasteland.Modules.POI
 
         /// <summary>Drops per-world observations and invalidates cached query revisions.</summary>
         internal static void Reset()
-        { Known.Clear(); Points.Clear(); Stop(); }
+        { Known.Clear(); Points.Clear(); Captured.Clear(); Stop(); }
 
         /// <summary>Releases live observations while retaining committed world-location geometry and cleared state for a module restart.</summary>
-        internal static void Stop(){ExaminedPoints.Clear();Roots.Clear();Mapped.Clear();Scan.Clear();MapQueue.Clear();QueuedMaps.Clear();_nextBake=0;_structures.Clear();_discoveryReady=false;Revision++;}
+        internal static void Stop(){RestoreCapturedSpawners();ExaminedPoints.Clear();Roots.Clear();Mapped.Clear();Scan.Clear();MapQueue.Clear();QueuedMaps.Clear();_nextBake=0;_structures.Clear();_discoveryReady=false;Revision++;}
         private static WorldWatch _watch;
         private static readonly System.Diagnostics.Stopwatch Budget = new System.Diagnostics.Stopwatch();
         private static readonly long BudgetTicks = (long)(System.Diagnostics.Stopwatch.Frequency * .0003);
@@ -151,7 +151,7 @@ namespace WildWasteland.Modules.POI
                     if (first) { box = collider.bounds; first = false; } else box.Encapsulate(collider.bounds);
                 }
             }
-            location = new CampDiscovery { id = id, name = Names.Prefab(root.name),cleared=location!=null&&location.cleared,faction=CoyoteCamp(root.name)?"Coyotes":"Scrapyard" };
+            location = new CampDiscovery { id = id, name = Names.Prefab(root.name),cleared=location!=null&&location.cleared,faction=location!=null&&Captured.Contains(id)?location.faction:CoyoteCamp(root.name)?"Coyotes":"Scrapyard" };
             location.center = box.center; location.center.y = root.position.y;
             location.size = box.size;
             Vector3 interior = location.center;

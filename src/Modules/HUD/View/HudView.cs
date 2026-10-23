@@ -69,6 +69,7 @@ namespace WildWasteland.Modules.HUD
         private int _boltsValue = int.MinValue;
         private RawImage _sanIcon;
         private Text _sanNum;
+        private string _sanEvent;
         private RectTransform _vehicle;
         private readonly VehicleStatusIcon[] _vehicleIcons = new VehicleStatusIcon[3];
         private Text _vehicleVolumeText;
@@ -306,6 +307,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Insanity: top-right of the screen, no plate, shown only while insanity is above 0. Number right-aligned, icon to its left.</summary>
         private void BuildInsanity()
         {
+            _sanEvent = null;
             var g = _groups["insanity"];
             _sanIcon = Raw(g, "insanity icon", 0, 4, 52, 52, Glyph("sanity"), Gold); Drop(_sanIcon, .9f);
             _sanNum = Txt(g, "insanity", 60, 0, 120, 60, 40, TextAnchor.MiddleRight, HudWhite);
@@ -626,14 +628,24 @@ namespace WildWasteland.Modules.HUD
             }
             // insanity (top right of the screen) while above 0
             float sanV = HudModule.ShowInsanity.Value ? Bindings.Number(_src.Sanity) : 0f;
+            var mental = Core.ModApi.Get<Core.IMentalBreak>();
+            string eventName = mental != null && mental.Active ? mental.EventName : null;
+            bool eventChanged = _sanEvent != eventName;
+            if (eventChanged)
+            {
+                _sanEvent = eventName; _sanValue = int.MinValue; _sanIcon.enabled = eventName == null;
+                Place(_sanNum.rectTransform, eventName != null ? -580 : 60, 0, eventName != null ? 760 : 120, 60);
+                if (eventName != null) _sanNum.text = "INSANITY: " + eventName;
+            }
             var sg = _insanity.gameObject;
-            if (sg.activeSelf != sanV > 0f) sg.SetActive(sanV > 0f);
-            if (sanV > 0f)
+            bool showInsanity = eventName != null || sanV > 0f;
+            if (sg.activeSelf != showInsanity) sg.SetActive(showInsanity);
+            if (showInsanity)
             {
                 int s = Mathf.CeilToInt(sanV);
-                if (s != _sanValue)
+                if (eventChanged || eventName == null && s != _sanValue)
                 {
-                    _sanValue = s; _sanNum.text = s.ToString(CultureInfo.InvariantCulture);
+                    _sanValue = s; if (eventName == null) _sanNum.text = s.ToString(CultureInfo.InvariantCulture);
                     float w = Mathf.Ceil(_sanNum.preferredWidth);
                     Place(_sanIcon.rectTransform, 180f - w - 10f - 52f, 4f, 52f, 52f);
                 }

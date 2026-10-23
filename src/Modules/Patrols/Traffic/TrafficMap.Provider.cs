@@ -32,6 +32,7 @@ namespace WildWasteland.Modules.Patrols
             int index = 0;
             foreach (var journey in _journeys)
             {
+                if (!TakeoverIcon(journey)) continue;
                 if (index == target.Journeys.Count) target.Journeys.Add(new TrafficMapJourney());
                 var row = target.Journeys[index++];
                 row.Position = journey.position; row.Route = journey.route; row.Foot = journey.foot;

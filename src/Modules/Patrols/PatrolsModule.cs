@@ -60,6 +60,7 @@ namespace WildWasteland.Modules.Patrols
             try { InitInner(); }
             catch { Shutdown(); throw; }   // a failed start leaves nothing running (ModuleHost then removes hooks / jobs / patches)
             ModEvents.Subscribe<TownTrafficStopped>(this,OnTownTrafficStopped);
+            ModEvents.Subscribe<Core.Events.CampOwnershipChanged>(this,OnCampOwnershipChanged);
             Running = true;   // last: per-object loops only run once everything is in place
             Core.ModApi.Provide<IFollowerVehicles>(Core.ModuleHost.Current,new QuestFollowers());
             Core.ModApi.Provide<ICampStatus>(Core.ModuleHost.Current,new TrafficCamps.Status());
@@ -140,6 +141,7 @@ namespace WildWasteland.Modules.Patrols
         public override void Shutdown()
         {
             Core.ModApi.Changed-=EditorStore.CargoApiChanged;
+            ModEvents.Unsubscribe<Core.Events.CampOwnershipChanged>(this,OnCampOwnershipChanged);
             Core.ModApi.Changed-=Crew.HeatApiChanged;
             Core.ModEvents.Unsubscribe<Core.Events.AttackObserved>(this,OnAttackObserved);
             Core.ModEvents.Unsubscribe<Core.Events.PartAttackObserved>(this,OnPartAttackObserved);

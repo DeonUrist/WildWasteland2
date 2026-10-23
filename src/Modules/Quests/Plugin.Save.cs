@@ -19,8 +19,8 @@ namespace WildWasteland.Modules.Quests
             foreach (KeyValuePair<string, long> kv in book.GiverStamp)
             {
                 double age = now - kv.Value / 1000.0;
-                double keep = kv.Key.StartsWith("camp:", StringComparison.Ordinal) ? Takeover.GarrisonCooldownHours : CooldownHours;
-                if (age < 0.0 || age > keep + 1.0) { if (drop == null) drop = new List<string>(); drop.Add(kv.Key); }
+                double keep = CooldownHours;
+                if (kv.Key.StartsWith("camp:", StringComparison.Ordinal) || age < 0.0 || age > keep + 1.0) { if (drop == null) drop = new List<string>(); drop.Add(kv.Key); }
             }
             if (drop != null) foreach (string k in drop) book.GiverStamp.Remove(k);
         }

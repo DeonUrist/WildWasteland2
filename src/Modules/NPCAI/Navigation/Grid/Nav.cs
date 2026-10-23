@@ -39,6 +39,7 @@ namespace WildWasteland.Modules.NPCAI
             public float MapStep;
             public MapIo MapJob; public bool LoadedMap, LoadedVanilla, SkipVanilla, ReplaceMap;
             public bool LoadedTemplate, MapSaved;   // (WW perf) arrays cloned from the in-memory template of the same map; map written this session
+            public bool InstanceMap, IsolatedMap;
             public float[] FloorY;                  // NaN = blocked
             public bool Baked; public int Next;     // bake progress (cell index)
             public int Walkable, NoFloor, Tight, Solid, ScanLimit; public float BakeMs; public int BakeFrames;
@@ -408,6 +409,7 @@ namespace WildWasteland.Modules.NPCAI
             float budget = FrameBudget();
             int n = s.W * s.H;
             if (s.Phase == -1) { ReadMap(s, budget); return; }
+            if (s.Phase == 4) { ValidateTerrain(s, budget); return; }
             if (s.Phase == 3) { if (WriteMap(s, budget)) Finish(s); return; }
             if (s.Phase == 1) { BakeEdges(s, budget); return; }
             if (s.Phase == 2)
@@ -610,6 +612,11 @@ namespace WildWasteland.Modules.NPCAI
             float y0 = s.RefY + 6.5f, bottom = s.RefY - 8f;
             float best = float.NaN; col = null; why = 1; open = false;
             RaycastHit h;
+            if (s.InstanceMap && Physics.Raycast(c + Vector3.up * 2000f, Vector3.down, out h, 4000f, 1 << 14, QueryTriggerInteraction.Ignore))
+            {
+                if (h.point.y > s.RefY + 6f) { s.Solid++; why = 3; return best; }
+                bottom = Mathf.Max(bottom, h.point.y - .025f);
+            }
             int k = 0;
             for (; k < 32 && y0 > bottom; k++)
             {

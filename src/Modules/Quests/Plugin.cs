@@ -73,14 +73,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Applies the current takeover group, settlement and garrison policy.</summary>
         void ApplyTakeoverSettings()
         {
-            Takeover.SpawnDistance = takeoverSpawnDist.Value;
-            Takeover.GroupSize = takeoverGroup.Value;
-            Takeover.WalkSeconds = takeoverWalk.Value;
-            Takeover.GarrisonSize = garrisonSize.Value;
-            Takeover.GarrisonTrigger = garrisonRange.Value;
             Takeover.GiverRespawnRange = giverRespawn.Value;
-            Takeover.GarrisonCooldownHours = garrisonCooldown.Value;
-            Takeover.PatrolAtCamp = patrolAtCamp.Value;
         }
 
         /// <summary>Applies faction names, protected people and home-camp policy.</summary>
@@ -149,7 +142,6 @@ namespace WildWasteland.Modules.Quests
                 lastGameHours = gh;
                 for (int i = 0; i < book.Active.Count; i++)
                     if (book.Active[i].Type == QType.Deliver) book.Active[i].TimeLeft -= dt;
-                try { Takeover.Update(); } catch (Exception e) { LogOnce("TakeoverUpdate", e); }
                 try { Hire.Update(); } catch (Exception e) { LogOnce("HireUpdate", e); }
                 try { SyncTalkUi(); } catch (Exception e) { LogOnce("SyncTalkUi", e); }
 
@@ -190,8 +182,7 @@ namespace WildWasteland.Modules.Quests
             {
                 int sent = Takeover.Begin(tq, rng);
                 offers.Clear();             // offers waiting on NPCs may point at the camp that just changed hands
-                Faction win = Factions.ByKey(tq.Home);
-                AddToast(sent > 0 && win != null ? "The " + tq.Label + " is yours. " + sent + " of " + win.Name + "'s people are on their way." : "The " + tq.Label + " is yours.");
+                AddToast(sent >= 0 ? "The camp now belongs to Coyotes. A Coyote travelers group will move in from the nearest Coyote camp." : "The camp could not change faction; see the log.");
             });
             if (!q.ReturnToGiver) { if (Pay(q)) Complete(q); }
             else AddToast("Objective complete: " + q.Title + " (return to the " + q.GiverName + ")");
@@ -279,14 +270,14 @@ namespace WildWasteland.Modules.Quests
                 try
                 {
                     trackerLines.Add(q.Title + " - " + ShortStatus(q, have, pl) + (tl.Length > 0 && q.Type != QType.Deliver ? ", " + tl + " left" : ""));
-                    logLines.Add("<b>" + q.Title + "</b>   reward " + q.Reward + " nuts" + (q.Chain.Length > 0 ? "   [chain: " + q.Chain + "]" : "") + "\n    " + Objective(q, have, pl) + DirectionsLine(q, have, pl)
+                    logLines.Add("<b>" + q.Title + "</b>   reward " + SkillReward(q) + " nuts" + (q.Chain.Length > 0 ? "   [chain: " + q.Chain + "]" : "") + "\n    " + Objective(q, have, pl) + DirectionsLine(q, have, pl)
                                  + (tl.Length > 0 ? "\n    Time left: " + tl : "") + "\n    Given by: " + q.GiverName);
                 }
                 catch (Exception e)
                 {
                     LogOnce("RefreshLines:" + q.Id, e);
                     trackerLines.Add(q.Title);
-                    logLines.Add("<b>" + q.Title + "</b>   reward " + q.Reward + " nuts\n    Given by: " + q.GiverName);
+                    logLines.Add("<b>" + q.Title + "</b>   reward " + SkillReward(q) + " nuts\n    Given by: " + q.GiverName);
                 }
             }
             var sb = new StringBuilder();
@@ -564,10 +555,11 @@ namespace WildWasteland.Modules.Quests
         // ------------------------------------------------------------------
         // Rewards
         // ------------------------------------------------------------------
+        static int SkillReward(Quest q) { return Core.ModApi.Get<Core.IPlayerSkills>()?.QuestPayout(q.Reward) ?? q.Reward; }
         /// <summary>Pays an accepted reward through the canonical native currency variable.</summary>
         bool Pay(Quest q)
         {
-            if (!Core.Money.AddMoney(q.Reward, moneyVar.Value))
+            if (!Core.Money.AddMoney(SkillReward(q), moneyVar.Value))
             {
                 AddToast("Could not pay the reward: money variable not found (see the BepInEx log).");
                 return false;
@@ -581,9 +573,12 @@ namespace WildWasteland.Modules.Quests
             book.Active.Remove(q);
             if (q.Once && !q.Id.StartsWith("gen:", StringComparison.Ordinal)) book.DoneIds.Add(q.Id);
             book.TotalDone++;
-            AddToast("Quest complete: " + q.Title + "   +" + q.Reward + " nuts");
+            int payout = SkillReward(q);
+            AddToast("Quest complete: " + q.Title + "   +" + payout + " nuts");
             if (!string.IsNullOrEmpty(q.Home)) ChangeRep(q.Home, Math.Max(1, q.RepGain), null);
             SetQuestFlags(q, "done");
+            var completed = new Core.Events.QuestCompleted { QuestId = q.Id, Reward = payout, ReputationDelta = Math.Max(1, q.RepGain) }; Core.ModEvents.Publish(ref completed);
+            var skill = new Core.Events.PlayerSkillAction { Skill = Core.PlayerSkillId.Barter, Units = 1 }; Core.ModEvents.Publish(ref skill);
             nextRefresh = 0f;
         }
 
@@ -714,6 +709,8 @@ namespace WildWasteland.Modules.Quests
             var camps = ModApi.Get<ICampStatus>(); if (camps == null) return;
             Vector3 relative = returning ? q.GiverPos : q.Pos;
             var state = camps.At(relative, 120f);
+            var towns = Core.ModApi.Get<Core.ITownsApi>(); Core.TownInfo town;
+            if (towns != null && towns.TryTownAt(relative, out town)) state = town.Built ? CampState.Ready : CampState.Unloaded;
             if (state == CampState.Cleared) { FailQuest(q, returning ? "return camp is dead" : "destination camp is dead"); return; }
             Vector3 camp = Core.Origin.Scene(relative); float radius = returning ? 120f : q.Radius;
             float arrival = Mathf.Max(5f, Mathf.Min(30f, radius * .6f));
@@ -943,8 +940,7 @@ namespace WildWasteland.Modules.Quests
                         {
                             int sent = Takeover.Begin(tq, rng);
                             offers.Clear();     // offers waiting on NPCs may point at the camp that just changed hands
-                            Faction win = Factions.ByKey(tq.Home);
-                            AddToast(sent > 0 && win != null ? "The " + tq.Label + " is yours. " + sent + " of " + win.Name + "'s people are on their way." : "The " + tq.Label + " is yours.");
+                            AddToast(sent >= 0 ? "The camp now belongs to Coyotes. A Coyote travelers group will move in from the nearest Coyote camp." : "The camp could not change faction; see the log.");
                         });
                     }
                     if (!q.ReturnToGiver) { if (Pay(q)) Complete(q); }
@@ -987,7 +983,7 @@ namespace WildWasteland.Modules.Quests
                       .Replace("{item}", q.Label)
                       .Replace("{target}", q.Label)
                       .Replace("{poi}", q.Label)
-                      .Replace("{reward}", q.Reward.ToString())
+                      .Replace("{reward}", SkillReward(q).ToString())
                       .Replace("{have}", have.ToString())
                       .Replace("{progress}", q.Progress.ToString())
                       .Replace("{giver}", q.GiverName)
@@ -1063,6 +1059,8 @@ namespace WildWasteland.Modules.Quests
             if (!ready || !bridge.TalkingNow) return;
             bool rebuilt = uiDirty;
             if (uiDirty) { BuildButtons(); uiDirty = false; }
+            wantButtons.RemoveAll(b => b.Key.StartsWith("perk-",StringComparison.Ordinal));
+            if (pendingOffer == null && !repMenuOpen && bridge.Npc != null) Core.ModApi.Get<Core.ISkillMerchantChoices>()?.Append(bridge.Npc.gameObject,wantButtons);
             FilterCrewButtons();
             if ((rebuilt && bridge.NativeOpen) || bridge.NeedsSync(wantButtons)) bridge.SyncButtons(wantButtons);
         }
@@ -1075,7 +1073,7 @@ namespace WildWasteland.Modules.Quests
             Transform tr = bridge.Npc;
             if (pendingOffer != null)
             {
-                wantButtons.Add(Btn("accept", "Accept: " + pendingOffer.Title + "  (" + pendingOffer.Reward + " nuts)", AcceptOffer));
+                wantButtons.Add(Btn("accept", "Accept: " + pendingOffer.Title + "  (" + SkillReward(pendingOffer) + " nuts)", AcceptOffer));
                 wantButtons.Add(Btn("decline", "Not interested.", DeclineOffer));
                 return;
             }
@@ -1188,7 +1186,7 @@ namespace WildWasteland.Modules.Quests
         {
             int rep = RepOf(f.Key);
             int cap = Math.Max(1, repMaxDeal.Value);
-            int buyP = Math.Max(0, repBuyPrice.Value);
+            int buyP = Core.ModApi.Get<Core.IPlayerSkills>()?.PurchasePrice(Math.Max(0, repBuyPrice.Value)) ?? Math.Max(0, repBuyPrice.Value);
             int nuts = Core.Money.GetMoney(moneyVar.Value);
             int room = Math.Max(0, RepMax - rep);
             int afford = nuts < 0 ? 0 : (buyP > 0 ? nuts / buyP : room);
@@ -1203,7 +1201,7 @@ namespace WildWasteland.Modules.Quests
             if (f == null || Core.Money.GetMoney(moneyVar.Value) < 0) return;
             int canBuy, canSell;
             RepLimits(f, out canBuy, out canSell);
-            int buyP = Math.Max(0, repBuyPrice.Value), sellP = Math.Max(0, repSellPrice.Value);
+            int buyP = Core.ModApi.Get<Core.IPlayerSkills>()?.PurchasePrice(Math.Max(0, repBuyPrice.Value)) ?? Math.Max(0, repBuyPrice.Value), sellP = Core.ModApi.Get<Core.IPlayerSkills>()?.SalePrice(Math.Max(0, repSellPrice.Value)) ?? Math.Max(0, repSellPrice.Value);
             for (int i = 0; i < RepSteps.Length; i++)
             {
                 int n = RepSteps[i];
@@ -1234,7 +1232,7 @@ namespace WildWasteland.Modules.Quests
         {
             int canBuy, canSell;
             RepLimits(f, out canBuy, out canSell);            // the numbers may have changed since the buttons were made
-            int buyP = Math.Max(0, repBuyPrice.Value), sellP = Math.Max(0, repSellPrice.Value);
+            int buyP = Core.ModApi.Get<Core.IPlayerSkills>()?.PurchasePrice(Math.Max(0, repBuyPrice.Value)) ?? Math.Max(0, repBuyPrice.Value), sellP = Core.ModApi.Get<Core.IPlayerSkills>()?.SalePrice(Math.Max(0, repSellPrice.Value)) ?? Math.Max(0, repSellPrice.Value);
             if (buy)
             {
                 bridge.You("I'll buy " + n + " reputation with " + f.Name + ".");
@@ -1248,11 +1246,12 @@ namespace WildWasteland.Modules.Quests
             {
                 bridge.You("I'll sell " + n + " reputation with " + f.Name + ".");
                 if (n < 1 || n > canSell) { bridge.Say("You haven't got that much to sell."); return; }
+                if (!Core.Money.AddMoney(n * sellP, moneyVar.Value)) return;
                 ChangeRep(f.Key, -n, null);
-                Core.Money.AddMoney(n * sellP, moneyVar.Value);
                 bridge.Say("Done. " + n + " reputation off your name, " + (n * sellP) + " nuts for you.");
                 Info("Sold " + n + " " + f.Name + " reputation for " + (n * sellP) + " nuts (now " + RepOf(f.Key) + ").");
             }
+            var traded = new Core.Events.PlayerSkillAction { Skill = Core.PlayerSkillId.Barter, Units = 1 }; Core.ModEvents.Publish(ref traded);
         }
 
         /// <summary>Tests whether an authored quest ID is already active.</summary>
@@ -1444,7 +1443,7 @@ namespace WildWasteland.Modules.Quests
             var res = new List<Poi>();
             foreach (Poi p in Game.FindPois(giverWorld, Math.Max(150f, gotoMin.Value), gotoMax.Value, "camp"))
             {
-                if (!p.Name.StartsWith("Camp", StringComparison.OrdinalIgnoreCase)) continue;
+                if (p.Kind != "Camp" && p.Kind != "Town") continue;
                 Faction owner = Factions.OwnerOfPoi(p);
                 if (owner == null || owner.Key != gf.Key) continue;
                 Vector3 rel = Core.Origin.World(p.Pos);
@@ -1535,7 +1534,7 @@ namespace WildWasteland.Modules.Quests
                             for (int li = 0; li < list0.Count; li++)
                             {
                                 Faction ow = Factions.OwnerOfPoi(list0[li]);
-                                if (ow != null && ow.Key == gf.Key && list0[li].Name.StartsWith("Camp", StringComparison.OrdinalIgnoreCase)) list.Add(list0[li]);
+                                if (ow != null && ow.Key == gf.Key && (list0[li].Kind == "Camp" || list0[li].Kind == "Town")) list.Add(list0[li]);
                             }
                         }
                         else list = Unfound(gf, list0);                   // only places nobody has found yet, never the giver's own camps
@@ -1952,7 +1951,7 @@ namespace WildWasteland.Modules.Quests
                 List<GameObject> bodies = FindBodiesFor(q, bridge.Npc != null ? bridge.Npc.position : pp);
                 brought = Math.Min(bodies.Count, Math.Max(1, q.Count));
                 for (int i = 0; i < brought; i++) if (bodies[i] != null) UnityEngine.Object.Destroy(bodies[i]);
-                bonus = (int)Math.Round(q.Reward * bodyBonus.Value * brought);
+                bonus = (int)Math.Round(SkillReward(q) * bodyBonus.Value * brought);
             }
 
             if (hits != null) Game.TakeItems(hits, q.Count, bridge.Npc != null ? (Vector3?)bridge.Npc.position : null);
@@ -2009,7 +2008,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Executes a supported external give, complete or abandon action.</summary>
         void RunTalkAction(string verb, string id)
         {
-            if (verb == "give" && CrewHistory.Blocked(bridge.Npc)) return;
+            if (verb == "quest.give" && CrewHistory.Blocked(bridge.Npc)) return;
             if (!ready || id.Length == 0) return;
             switch (verb)
             {

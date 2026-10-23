@@ -92,7 +92,7 @@ namespace WildWasteland.Modules.HUD
             float scale = _canvasRect != null ? Mathf.Min(_canvasRect.rect.width / 1920f, _canvasRect.rect.height / 1080f) : 1f;
             var localScale = Vector3.one * Mathf.Max(.1f, scale); if (_view.localScale != localScale) _view.localScale = localScale;
             for (int i = 0; i < Native.Count; i++) if (Native[i] != null && Native[i].canvasRenderer.GetAlpha() != 0) Native[i].canvasRenderer.SetAlpha(0);
-            _hidden = true; Refresh(); RefreshExtra();
+            _hidden = true; Refresh(); RefreshExtra(); RefreshSkills();
             EquipmentPointer();
             if (_events != null && _events.currentSelectedGameObject != null && _events.currentSelectedGameObject.transform.IsChildOf(_view)) _events.SetSelectedGameObject(null);
         }
@@ -164,7 +164,7 @@ namespace WildWasteland.Modules.HUD
             _view.anchorMin = _view.anchorMax = _view.pivot = new Vector2(.5f, .5f);
             var intercept = _view.gameObject.AddAccent<Image>(); intercept.color = Color.clear; intercept.raycastTarget = true;
             Panel(_view, "inventory", 136, 132, 1648, 720, "");
-            _inventory = _view; Label(_view, "INVENTORY", 156, 139, 260, 40, 26, DialogueWidgets.Gold);
+            _inventory = Rect(_view, "items", 0, 0, 1920, 1080);
             Label(_view, "DAY", 1220, 145, 60, 32, 22, DialogueWidgets.Gold);
             MirrorText(Label(_view, "", 1286, 145, 70, 32, 22, White), "day/day number");
             Label(_view, "TIME", 1450, 145, 70, 32, 22, DialogueWidgets.Gold);
@@ -182,7 +182,7 @@ namespace WildWasteland.Modules.HUD
             Equipment("ARMOR", "armor", "Armor_Item", 544, 420);
             Equipment("FLASHLIGHT", "flashlight", "Flashlight_Item", 1088, 202);
             Equipment("BACKPACK", "backpack", "Backpack_Item", 1088, 420);
-            BuildAmmo(); BuildWarlords(); BuildDrop();
+            BuildAmmo(); BuildWarlords(); BuildSkills(); BuildDrop();
             _hint = Label(_view, "", 544, 822, 752, 24, 16, White, TextAnchor.MiddleCenter);
             _shownKey = KeyCode.None; _view.gameObject.SetActive(false);
         }
@@ -302,7 +302,7 @@ namespace WildWasteland.Modules.HUD
             if (_addedRaycaster && _raycaster != null) UnityEngine.Object.Destroy(_raycaster);
             _view = _canvasRect = null; _canvas = null; _native = null; _sheet = null; _events = null; _raycaster = null;
             _addedRaycaster = false; _key = null; _lookup = 0; Texts.Clear(); Images.Clear(); Slots.Clear(); Ammo.Clear(); Native.Clear(); Alphas.Clear();
-            ClearExtra();
+            ClearExtra(); ClearSkills();
         }
     }
 }

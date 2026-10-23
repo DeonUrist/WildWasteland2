@@ -5,6 +5,14 @@ using UnityEngine;
 
 namespace WildWasteland.Core
 {
+    /// <summary>One geometry-only graph bake; runtime results are never published as authored templates.</summary>
+    public interface IPoiNavigationBake
+    {
+        bool Done { get; }
+        PoiNavData Result { get; }
+        bool Step(float budgetMs);
+        void Shift(Vector3 delta);
+    }
     /// <summary>Detached view of one live native POI graph. Consumers treat the data and positions as read-only.</summary>
     public sealed class NavigationAuthoringInstance
     {
@@ -56,5 +64,8 @@ namespace WildWasteland.Core
         void RegisterSetupRoots(IModule owner, Action<List<Transform>> append);
         /// <summary>Releases the exact owner's setup-root callback.</summary>
         void RemoveSetupRoots(IModule owner);
+        /// <summary>Registers the existing Tools baker for instance-local runtime work.</summary>
+        void RegisterBaker(IModule owner, Func<Transform, PoiNavData, IPoiNavigationBake> create);
+        void RemoveBaker(IModule owner);
     }
 }

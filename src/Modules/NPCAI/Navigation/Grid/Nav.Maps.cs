@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Keeps a loaded/saved map in memory (root-relative heights, areas, floor colliders) so a second instance of the prefab clones it instead of reading the file again.</summary>
         private static void RememberTemplate(Structure s)
         {
-            if (s.Overlaid || !(s.LoadedMap || s.MapSaved) || s.MapKey == 0 || s.MapFile == null || s.Root == null || s.FloorY == null || s.Comp == null || s.CompSize == null || s.Near == null) return;
+            if (s.InstanceMap || s.Overlaid || !(s.LoadedMap || s.MapSaved) || s.MapKey == 0 || s.MapFile == null || s.Root == null || s.FloorY == null || s.Comp == null || s.CompSize == null || s.Near == null) return;
             if (_templates.ContainsKey(s.MapKey)) return;
             if (_templates.Count >= TemplateLimit) _templates.Clear();
             int n = s.W * s.H; float rootY = s.Root.position.y;
@@ -63,7 +63,7 @@ namespace WildWasteland.Modules.NPCAI
             s.Near = (bool[])t.Near.Clone(); s.Comp = (int[])t.Comp.Clone(); s.CompSize = (int[])t.CompSize.Clone();
             for (int i = 0; i < t.Floors.Length; i++) if (t.Floors[i] != 0 && s.MapColliders[i] != null) s.FloorHits[s.MapColliders[i].GetInstanceID()] = FloorColCells;
             s.RefY = rootY + t.RefOffset; s.Walkable = t.Walkable; s.Next = n;
-            s.LoadedMap = true; s.LoadedVanilla = t.Vanilla; s.MapSource = t.Source; s.LoadedTemplate = true; s.Phase = 2;
+            s.LoadedMap = true; s.LoadedVanilla = t.Vanilla; s.MapSource = t.Source; s.LoadedTemplate = true; s.Phase = 4; s.Next = 0;
             RememberCapturedMap(s);
             if (WildWasteland.Core.Log.L2) WildWasteland.Core.Log.Deep(NavRuntime.Owner, "Nav: cloned map " + s.Name + " from memory (" + (t.Vanilla ? "vanilla" : "custom cache") + "); " + t.Source);
             return true;
@@ -193,7 +193,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Starts loading s's map: memory template, embedded vanilla pack, plugin vanilla file or custom cache (header validated); false = bake it.</summary>
         private static bool OpenMap(Structure s)
         {
-            if (s.MapFile == null) return false;
+            if (s.InstanceMap || s.MapFile == null) return false;
             if (s.MapStep != NavSettings.Step) { s.MapFile = null; return false; }
             s.LoadedTemplate = false;
             if (CloneTemplate(s)) return true;
@@ -265,7 +265,7 @@ namespace WildWasteland.Modules.NPCAI
                 if (r.ReadUInt32() != job.Checksum) throw new InvalidDataException("map checksum mismatch");
                 s.LoadedVanilla = job.Vanilla; s.MapSource = job.Source;
                 RememberCapturedMap(s);
-                CloseMap(s); s.LoadedMap = true; s.Phase = 2; s.Next = 0;
+                CloseMap(s); s.LoadedMap = true; s.Phase = 4; s.Next = 0;
             }
             catch (Exception e) { bool vanilla = RejectMap(s, e); BeginBake(s, vanilla); }
         }
@@ -273,7 +273,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Opens a temp file and writes the header of s's map to the custom cache (not for overlaid / non-writable / already present maps); false = nothing to write.</summary>
         private static bool CreateMap(Structure s)
         {
-            if (s.MapFile == null || s.MapStep != NavSettings.Step || s.Overlaid) return false;
+            if (s.InstanceMap || s.MapFile == null || s.MapStep != NavSettings.Step || s.Overlaid) return false;
             if (MapWritable != null && !MapWritable(s)) return false;
             try
             {

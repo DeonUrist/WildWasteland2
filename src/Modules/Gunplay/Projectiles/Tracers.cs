@@ -41,6 +41,7 @@ namespace WildWasteland.Modules.Gunplay
             public Transform Visual;
             public string EventName, EventFsm;
             public bool Bolt, Shotgun, Alive;
+            public PerkCombat.Blast Blast;
             public int Layers, DetectLayers;
             public PlayerGun Gun;            // non-null: the player's shot (first collider it meets is hit, like the vanilla camera ray)
             public GameObject Player;
@@ -213,7 +214,7 @@ namespace WildWasteland.Modules.Gunplay
                     catch (Exception e) { s.Alive = false; GunplayLog.Error("Tracers: bullet dropped", e); }
                 }
                 if (s.Alive) { Vector3 rp; float rt; RenderOf(ref s, out rp, out rt); MoveBoltAt(ref s, rp); _shots[i] = s; }
-                else { if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); _shots.RemoveAt(i); }
+                else { PerkCombat.Instance?.Complete(s.Blast); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); _shots.RemoveAt(i); }
             }
             if (Time.unscaledTime >= _nextSweep) { _nextSweep = Time.unscaledTime + 30f; Sweep(); }
             if (_pushes.Count > 0)

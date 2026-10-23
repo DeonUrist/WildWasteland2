@@ -1,12 +1,13 @@
 # Wild Wasteland 2.0 modules
 
-The registry contains the following 15 modules in initialization order. Each owns its source folder and uses `WildWasteland.Modules.<Id>`; Core owns shared scheduling, lifecycle, ModAPI, events, settings infrastructure and persistence dispatch. Modules exchange typed Core contracts rather than private implementation types.
+The registry contains the following 16 modules in initialization order. Each owns its source folder and uses `WildWasteland.Modules.<Id>`; Core owns shared scheduling, lifecycle, ModAPI, events, settings infrastructure and persistence dispatch. Modules exchange typed Core contracts rather than private implementation types.
 
 | Id | Responsibility |
 |---|---|
 | Debug | Diagnostics and profiling |
 | Compatibility | Optional standalone plugin adapters |
 | Saves | Native ES3 transactions and save management |
+| Perks | Twelve player skills (0–100), saved linear XP/action effects, 36 automatic skill perks at 25/50/75/100, ten permanent insanity perks, typed ModAPI and post-episode three-perk/Persevere choices, rising unlock notices and saved merchant rerolls; Crafting has no effect and Medicine retains its existing healing bonus |
 | NPCAI | Perception, tactics, navigation and creatures |
 | Presentation | Player and NPC body, animation and traversal visuals |
 | Gunplay | Weapons, projectiles, damage and ammunition |
@@ -16,7 +17,7 @@ The registry contains the following 15 modules in initialization order. Each own
 | Patrols | Journeys, traffic, crews and convoy behavior |
 | POI | Locations, towns, authored layouts and population |
 | Quests | Quest state, objectives, followers and journal data |
-| Survival | Weather, storms and survival mechanics |
+| Survival | Weather, storms, food/butchering, sleep recovery and 30-second Vertigo/No More Death events; insanity freezes, random events grant no perk, reward choices reset to 0 (35 for Persevere) |
 | Tools | Player-facing authoring tools |
 | Developer | Developer-only authoring tools |
 

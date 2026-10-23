@@ -792,7 +792,7 @@ namespace WildWasteland.Modules.Quests
             var cands = new List<Poi>();
             foreach (Poi p in Game.FindPois(giverWorld, Math.Max(150f, minD), maxD, "camp"))
             {
-                if (!p.Name.StartsWith("Camp", StringComparison.OrdinalIgnoreCase)) continue;
+                if (p.Kind != "Camp" && p.Kind != "Town") continue;
                 Faction owner = Factions.OwnerOfPoi(p);
                 if (owner == null || !Factions.Friendly(giver, owner)) continue;
                 if (!HasFriendlyPeople(giver, p.Pos, 120f, true)) continue;          // people are loaded there and none is on the giver's side
@@ -830,7 +830,7 @@ namespace WildWasteland.Modules.Quests
             q.Type = QType.Deliver;
             q.HasPos = true;
             q.Pos = Core.Origin.World(camp.Pos);
-            q.Place = (owner != null ? owner.Name + " " : "") + "camp";
+            q.Place = (owner != null ? owner.Name + " " : "") + (camp.Kind == "Town" ? "town" : "camp");
             q.ReturnToGiver = false;
             ResetClock(q, giverWorld, minutesBase, minutesPerKm);
         }
@@ -1115,7 +1115,7 @@ namespace WildWasteland.Modules.Quests
                             q.Checkup = true;
                             q.Reward = CheckupReward(d);
                             q.Label = poi.Kind.ToLowerInvariant();
-                            q.Title = "Check up on the " + poi.Name.Replace('_', ' ');
+                            q.Title = "Check up on the " + (poi.Kind == "Town" ? "town" : poi.Name.Replace('_', ' '));
                         }
                         else
                         {

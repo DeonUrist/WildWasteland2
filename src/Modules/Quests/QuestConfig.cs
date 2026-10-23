@@ -35,13 +35,7 @@ namespace WildWasteland.Modules.Quests
         internal ConfigEntry<float> takeoverMin;
         internal ConfigEntry<float> takeoverMax;
         internal ConfigEntry<int> takeoverKills;
-        internal ConfigEntry<float> takeoverSpawnDist;
-        internal ConfigEntry<int> takeoverGroup;
-        internal ConfigEntry<float> takeoverWalk;
-        internal ConfigEntry<int> garrisonSize;
-        internal ConfigEntry<float> garrisonRange;
         internal ConfigEntry<float> giverRespawn;
-        internal ConfigEntry<float> garrisonCooldown;
         internal ConfigEntry<float> deliverMin;
         internal ConfigEntry<float> deliverMax;
         internal ConfigEntry<float> deliverMinutesBase;
@@ -60,7 +54,6 @@ namespace WildWasteland.Modules.Quests
         internal ConfigEntry<int> repMaxDeal;
         internal ConfigEntry<string> repShopNpcs;
         internal ConfigEntry<float> scoutRange;
-        internal ConfigEntry<bool> patrolAtCamp;
         internal ConfigEntry<float> homeRadius;
         internal ConfigEntry<string> humanFactions;
         internal ConfigEntry<string> peopleNames;
@@ -96,13 +89,7 @@ namespace WildWasteland.Modules.Quests
             takeoverMin = QuestBinding.Bind(cfg, "Takeover", "MinDistance", 200f, "Generated takeover quests pick camps at least this far from the giver.");
             takeoverMax = QuestBinding.Bind(cfg, "Takeover", "MaxDistance", 4000f, "Generated takeover quests pick camps at most this far from the giver.");
             takeoverKills = QuestBinding.Bind(cfg, "Takeover", "KillsNeeded", 4, "How many of the camp's people you must kill (generated takeover quests).");
-            takeoverSpawnDist = QuestBinding.Bind(cfg, "Takeover", "WalkerSpawnDistance", 250f, "After the camp is cleared, the winning faction's people appear about this far from it and walk in.");
-            takeoverGroup = QuestBinding.Bind(cfg, "Takeover", "GroupSize", 5, "How many people walk in.");
-            takeoverWalk = QuestBinding.Bind(cfg, "Takeover", "WalkSeconds", 300f, "If they have not arrived after this long, they are placed at the camp.");
-            garrisonSize = QuestBinding.Bind(cfg, "Takeover", "GarrisonSize", 4, "When you come near a camp you took and none of its new owner's people are there, this many of them are created. 0 = off.");
-            garrisonRange = QuestBinding.Bind(cfg, "Takeover", "GarrisonRange", 500f, "How close you must be (metres) for an empty camp you took to get its garrison.");
             giverRespawn = QuestBinding.Bind(cfg, "Quests", "GiverRespawnDistance", 500f, "How close you must be (metres) to where you last saw a quest giver for them to be brought back if they are gone.");
-            garrisonCooldown = QuestBinding.Bind(cfg, "Takeover", "GarrisonCooldownGameHours", 12f, "When one of a camp's garrison is killed while you are near, the camp is not refilled for this many in-game hours.");
             deliverMin = QuestBinding.Bind(cfg, "Deliver", "MinDistance", 400f, "Deliveries go to a friendly camp at least this far (m) from the giver.");
             deliverMax = QuestBinding.Bind(cfg, "Deliver", "MaxDistance", 3000f, "Deliveries go to a friendly camp at most this far (m) from the giver.");
             deliverMinutesBase = QuestBinding.Bind(cfg, "Deliver", "GameHoursBase", 24f, "Time limit of a delivery: this many IN-GAME hours (the game clock, not real time)...");
@@ -121,7 +108,6 @@ namespace WildWasteland.Modules.Quests
             repMaxDeal = QuestBinding.Bind(cfg, "RepVendor", "MaxPerDeal", 100, new ConfigDescription("The most reputation one 'all' button buys or sells at a time.", new AcceptableValueRange<int>(1, 200)));
             repShopNpcs = QuestBinding.Bind(cfg, "RepVendor", "Npcs", "merchant", "Names of the NPCs who trade reputation (part of the name is enough, comma separated). They trade the reputation of the faction they belong to; an NPC with no faction does not.");
             scoutRange = QuestBinding.Bind(cfg, "Takeover", "ScoutRange", 250f, "A camp's head count is only known once you are this close (metres); the quest log is updated then.");
-            patrolAtCamp = QuestBinding.Bind(cfg, "Takeover", "PatrolAtCamp", true, "People who moved into a camp you took walk around it a little. Off = they stand where they arrive.");
             homeRadius = QuestBinding.Bind(cfg, "Factions", "HomeRadius", 120f, "A person without a faction tag counts as living at the nearest camp / building / cave within this many metres, and takes that place's faction.");
             humanFactions = QuestBinding.Bind(cfg, "Factions", "HumanFactions", "Scrapyard,Coyotes", "Unity tags the game uses for human factions (taken from NPCAI). NPCs with one of these tags belong to that faction; camps with an EnemySpawn_<Faction> child belong to it too.");
             peopleNames = QuestBinding.Bind(cfg, "Factions", "PeopleNames", "bodyguard,pistoleer,pup,merchant,bolter,lugger,scout,scraper,chieftain,elder", "Names that count as people (not animals) when working out who lives where. Enemies with these names are protected from kill quests of their own faction.");

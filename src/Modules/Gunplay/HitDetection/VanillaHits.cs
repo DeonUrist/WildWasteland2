@@ -59,7 +59,7 @@ namespace WildWasteland.Modules.Gunplay
             if (value == null) return true;
             var point = fsm.Variables.FindFsmVector3("hitPoint");
             Vector3 at = point != null ? point.Value : target.transform.position;
-            bool head = !part && target.transform.parent != null && HasFsm(target, "Bodypart");
+            bool head = !part && ActorQuery.IsHead(target);
             float nominal = __instance.setValue != null ? Mathf.Abs(__instance.setValue.Value) : 0f;
             foreach (var pending in Pending)
                 if (pending.Target == valueOwner && pending.Value == value)

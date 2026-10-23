@@ -73,6 +73,7 @@ namespace WildWasteland.Modules.NPCAI
             var a = new Agent { Owner = owner, T = owner.transform, Col = owner.GetComponent<Collider>(), Detection = det, Attack = att, PrefabName = PrefabOf(owner), LastPos = owner.transform.position };
             a.DetectedVar = det.FsmVariables.FindFsmGameObject("detectedObj");
             a.Tag = owner.tag;
+            var perkHealth = Core.FsmUtil.Find(owner, "Health"); a.PerkHealth = perkHealth != null ? perkHealth.FsmVariables.FindFsmFloat("Health") : null;
             var behaviours = owner.GetComponentsInChildren<Behaviour>(true);
             a.BaseHostile = HostileTags(owner, behaviours);
             a.Hostile = new HashSet<string>(a.BaseHostile);

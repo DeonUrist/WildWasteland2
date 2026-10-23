@@ -45,6 +45,7 @@ namespace WildWasteland.Modules.Patrols
             if (PatrolsModule.ConvoyEnabled.Value && journeys != null)
                 foreach (var journey in journeys)
                 {
+                    if (journey.foot && journey.reinforcement && (journey.arrived || !journey.TerrainRoute || string.IsNullOrEmpty(journey.source))) continue;
                     bool alive = journey.foot;
                     foreach (var vehicle in journey.vehicles) if (!vehicle.retired) { alive = true; break; }
                     if (!alive) continue;

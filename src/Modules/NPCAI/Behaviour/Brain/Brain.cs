@@ -90,7 +90,7 @@ namespace WildWasteland.Modules.NPCAI
             // (1.1.0) cover: the spot, when the stay ends, arrived there, started by the game's own "hide" (a fast target) or by low health
             public Vector3 CoverPos; public float CoverUntil, CoverSince, NextCoverCheck, CoverCooldownUntil; public bool CoverArrived, CoverFromHide;
             public GameObject DogCoverThreat; public float NextDogCoverCheck, DogCoverRetry;
-            public float FrightUntil, NextFrightCover, SawFrightUntil; public bool BurningFear; public Vector3 FrightFrom;
+            public float FrightUntil, NextFrightCover, SawFrightUntil; public bool BurningFear, FrightCrouch; public Vector3 FrightFrom;
             public FsmGameObject HideVar;            // the Attack FSM's "Hide" variable (its FindClosest result)
             public GameObject VehicleHide; public float NextVehicleHideCheck;
             public FsmFloat HpVar; public float HpMax;   // the Health FSM's Health, and the most it was seen at
@@ -209,6 +209,7 @@ namespace WildWasteland.Modules.NPCAI
             {
                 var n = kv.Value;
                 if (n.Owner == null) continue;
+                if (SkillReactions.Busy(n.Owner)) { if (n.Body != null) ApBody.Suspend(n.Body,true); continue; }
                 if (n.FollowerDriven) continue;
                 // #63: a seated simple convoy bandit is skipped here, before Drive() could suspend its body; one registered in the moment it was
                 // spawned (before Patrols seated it) kept the player animation framework on, which then animated the car's motion as a run

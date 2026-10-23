@@ -16,9 +16,20 @@ Native Camp/Building/Cave/Wreck numbered roots and Starter_Area are discovered b
 conventions or the native `SpawnerStatic` tag on the root, without a Rigidbody. Map-layer icons do not count as roots. A custom mod with
 its own naming/tag/registration system needs a discovery adapter; arbitrary unrelated scene objects are not treated as POIs.
 
-The template captures the first instance's flattened ground and surrounding margin along with its structure. Test terrain joins on other
-placements as well as interior navigation. Runtime movement still checks actual obstacles. This stage retains one floor per X/Z cell and
+The template captures the first instance's flattened ground and surrounding margin along with its structure. Loaded grid cells now validate
+terrain burial and floor support before becoming usable. A mismatch rebakes only that instance in the normal sliced pipeline; the result is
+never written to the shared disk cache or memory template. The multi-floor POI graph separately checks its nodes, walk segments and traversal
+endpoints against terrain (20 cm tolerance), then requests the existing Tools baker for a detached instance graph when needed. A missing or failed
+Tools baker leaves that graph unavailable and grid navigation remains the fallback. Runtime graph bakes never save authored files. Flat matching
+placements retain the shared bake. Isolated authoring stages skip world-terrain validation. Test terrain joins as well as interior navigation.
+Runtime movement still checks actual obstacles. The grid retains one floor per X/Z cell and
 does not add upper floors or ladder traversal.
+
+Navigation setup now includes POI authoring catalog types, including TownsGasStation and saved custom POIs. POI supplies inactive geometry
+copies with the committed scenery layout, built one prop per frame; no gameplay markers/spawners run. Setup copies bypass live POI dressing
+to prevent duplicated scenery. Reopen setup after adding a new type. With Debug VerboseLevel 2, verify `shared bake terrain validated` on a
+matching placement, and `terrain mismatch` followed by `instance terrain bake ready` on a hillside. Cycle to TownsGasStation, REBAKE, place
+a test NPC and send it through the entrance. These behaviors remain Testing; Denis performs gameplay and frame-time verification.
 
 ## In-game verification (Denis)
 

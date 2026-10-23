@@ -191,12 +191,13 @@ namespace WildWasteland.Modules.Patrols
             MerchantSignals();
             if (!PatrolsModule.ConvoyEnabled.Value)
             {
+                var pendingTakeovers = _journeys.Where(j => j.foot && j.reinforcement && !_footLive.ContainsKey(j.id)).ToArray();
                 // Toggle off: detach existing physical cars into ordinary patrol cleanup; no hidden representations respawn.
                 foreach (var live in _live.Values) foreach (var car in live.Cars.Values)
                     if (car != null) Detach(car);
                 foreach(var battle in _battleLive.Values){foreach(var car in battle.Cars.Values)if(car!=null){Destroy(car.GetComponent<BattleCar>());Detach(car);}foreach(var corpse in battle.Corpses)if(corpse!=null)Destroy(corpse);}
                 ReleaseFoot("world traffic off");
-                StopAllCoroutines(); _live.Clear(); _journeys.Clear();_battleLive.Clear();_battles.Clear(); return;
+                StopAllCoroutines(); _live.Clear(); _journeys.Clear();foreach(var pending in pendingTakeovers)_journeys.Add(pending);_battleLive.Clear();_battles.Clear(); return;
             }
             _elapsed += Time.deltaTime;
             if (_elapsed < .25f) return;
@@ -214,7 +215,7 @@ namespace WildWasteland.Modules.Patrols
             int nearby=TrafficLocations.NearbyCount(TrafficSpace.World(player.position),PatrolsModule.CampTrafficRange.Value);
             bool vehiclesAvailable=VehiclePreparation.Available;
             if(vehiclesAvailable){BattleTick(seconds,player);ExcludeClearedBases();TrimPopulation(player);}
-            RefreshRoadRoutes();
+            PrepareTakeovers(); RefreshRoadRoutes();
             PumpTownRoutes();
             PumpPatrolCalls();
             float load = PatrolsModule.TrafficLoadRange.Value;
@@ -443,6 +444,7 @@ namespace WildWasteland.Modules.Patrols
             foreach (var journey in _journeys)
             {
                 if (journey.TerrainRoute || _routeJobs.ContainsKey(journey.id)
+                    || (journey.foot && journey.reinforcement && string.IsNullOrEmpty(journey.source))
                     || (_routeAttempts.TryGetValue(journey.id,out int attempted)&&attempted==TrafficRoads.Revision)) continue;
                 if(_live.TryGetValue(journey.id,out var live)&&!journey.convoy&&live.Cars.Values.Any(c=>c!=null&&c.GetComponent<TrafficAgent>()?.SeenUntil>Time.time))continue;
                 if(live!=null&&live.Building)continue;
@@ -733,7 +735,7 @@ namespace WildWasteland.Modules.Patrols
                     // approach/parking legs must survive reload (TerrainRoute itself is runtime-only).
                     if (j.townBound) j.TerrainRoute = true;
                     if (j.walkers == null || !j.foot) j.walkers = new TrafficWalker[0];
-                    if (j.foot) { j.TerrainRoute=true; j.battle=""; _instance._journeys.Add(j); continue; }   // walkers: no vehicle templates to thaw
+                    if (j.foot) { j.TerrainRoute=!j.reinforcement||j.arrived; j.battle=""; _instance._journeys.Add(j); continue; }   // walkers: no vehicle templates to thaw
                     foreach(var record in j.vehicles){record.faction=j.faction;var template=Thaw(record);if(template!=null)record.strength=TrafficBattles.Strength(template);}
                     _instance._journeys.Add(j);
                 }

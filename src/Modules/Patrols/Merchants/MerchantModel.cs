@@ -36,7 +36,7 @@ namespace WildWasteland.Modules.Patrols
     [Serializable] public sealed class MerchantTurret
     {public int slot;public string prefab;public float health,maxHealth;public Vector3 position;public bool standing;}
     [Serializable] public sealed class MerchantSave
-    {public int version=1;public string template,group;public string[] types=new string[0];public MerchantStock[] stock=new MerchantStock[0];public MerchantDemand[] demands=new MerchantDemand[0];public MerchantTurret[] turrets;public bool travelling;}
+    {public int version=1;public string template,group,perkIdentity;public string[] types=new string[0];public MerchantStock[] stock=new MerchantStock[0];public MerchantDemand[] demands=new MerchantDemand[0];public MerchantTurret[] turrets;public bool travelling;}
     public sealed class MerchantObject
     {public string Id,Label,Kind;public Transform Transform;}
     internal static class MerchantLayouts

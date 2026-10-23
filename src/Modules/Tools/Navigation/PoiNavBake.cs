@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.Tools
     // type). Every column of the POI's footprint is cast top-down until the ground, so EVERY standable surface is found (floors, roofs,
     // container tops, walkways), not only the lowest one as the grid maps do. Then: walks between neighbouring samples, connected
     // surfaces, ledge climbs/drops between surfaces, native ladders (tag "Ladder" triggers), and a coarse node graph (~2 m).
-    internal sealed class PoiNavBake
+    internal sealed class PoiNavBake : IPoiNavigationBake
     {
         internal static readonly int Mask = Layers.NavSolid;
         internal const float MaxStep = .45f, ClimbMin = .45f, ClimbMax = 2.3f, DropMax = 4.5f, Radius = .25f, Height = 1.7f;
@@ -25,6 +25,11 @@ namespace WildWasteland.Modules.Tools
         internal string Status = "", Error;
         internal bool Done;
         internal PoiNavData Result;
+        bool IPoiNavigationBake.Done { get { return Done; } }
+        PoiNavData IPoiNavigationBake.Result { get { return Result; } }
+        bool IPoiNavigationBake.Step(float budgetMs) { return Step(budgetMs); }
+        void IPoiNavigationBake.Shift(Vector3 delta)
+        { for (int i = 0; i < _s.Count; i++) { var sample = _s[i]; sample.World += delta; _s[i] = sample; } }
         private readonly PoiNavData _keep;          // the previous data: manual and switched-off links survive
         private int _phase, _i;
         private int _w, _h;
@@ -120,6 +125,9 @@ namespace WildWasteland.Modules.Tools
             int x = _i % _w, z = _i / _w; int cell = _i++;
             Vector3 from = Root.TransformPoint(Local(x, z, _min.y));
             float bottom = Root.TransformPoint(Local(x, z, _bottomY)).y;
+            RaycastHit ground;
+            if (Physics.Raycast(from + Vector3.up * 2000f, Vector3.down, out ground, 4000f, 1 << 14, QueryTriggerInteraction.Ignore))
+            { from.y = Mathf.Max(from.y, ground.point.y + .1f); bottom = Mathf.Min(bottom, ground.point.y - .1f); }
             for (int guard = 0; guard < 48 && from.y > bottom; guard++)
             {
                 RaycastHit hit;

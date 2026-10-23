@@ -27,6 +27,8 @@ namespace WildWasteland.Modules.Tools
         private static PoiLinkKind _newKind;
         private static Vector3 _newStart;
         private static bool _dirty;
+        private static bool _cyclePending;
+        private static Vector3 _cyclePosition;
         private static Camera _camera;
         private static Transform _cameraParent;
         private static Vector3 _cameraLocal, _cameraPosition, _view;
@@ -37,7 +39,7 @@ namespace WildWasteland.Modules.Tools
         private static readonly Action _beforeNumber = RecordUndo;
         const float W = 1600f, H = 900f, Left = 300f, Right = 300f, Top = 52f, Bottom = 48f, HandleR = 15f;
 
-        internal static bool Opened { get { return _root != null; } }
+        internal static bool Opened { get { return _root != null || _cyclePending; } }
         /// <summary>Allows closing the editor or opening during developer gameplay.</summary>
         internal static bool CanToggle() { return Opened || GameRefs.InPlay && Plugin.EnableDebug.Value && Plugin.DeveloperMode.Value; }
         /// <summary>Requests navigation editor GUI only while a root is open.</summary>
@@ -59,6 +61,7 @@ namespace WildWasteland.Modules.Tools
             _cameraLocal = t.localPosition; _cameraPosition = t.position; _cameraRotation = t.localRotation;
             _view = t.position; _yaw = t.eulerAngles.y; _pitch = t.eulerAngles.x; if (_pitch > 180) _pitch -= 360;
             _root = nearest; _poi = NavigationTools.Source.TypeOf(nearest.name);
+            if (nearest == PoiNavSetup.Current) { _view = nearest.position - nearest.forward * 25f + Vector3.up * 12f; _yaw = nearest.eulerAngles.y; _pitch = 20f; }
             Load();
             _status = _draft.Nodes.Count == 0 ? "Not baked yet: press REBAKE (links can still be drawn)." : "Drag a handle to move a link end · click a handle to select · wheel turns the selection.";
             }
@@ -67,6 +70,7 @@ namespace WildWasteland.Modules.Tools
         /// <summary>Chooses the nearest eligible live or setup POI root.</summary>
         static Transform NearestRoot(Vector3 from)
         {
+            if (PoiNavSetup.Current != null) return PoiNavSetup.Current;
             NavigationTools.Source.Roots(_roots); PoiNavSetup.Roots(_roots);
             Transform nearest = null; float best = 200f * 200f;
             foreach (var r in _roots)
@@ -91,9 +95,15 @@ namespace WildWasteland.Modules.Tools
         internal static void Tick()
         {
             if (!Opened) return;
-            if (NavigationTools.Source == null || _root == null || _camera == null || !_session.Open || SaveBus.Busy || !Application.isFocused || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value)
+            if (NavigationTools.Source == null || !_cyclePending && _root == null || _camera == null || !_session.Open || SaveBus.Busy || !Application.isFocused || !Plugin.EnableDebug.Value || !Plugin.DeveloperMode.Value)
             { Close(true); return; }
             _session.Maintain();
+            if (_cyclePending)
+            {
+                if (Hotkeys.Pressed(Key.Escape) || !PoiNavSetup.Active) { Close(); return; }
+                if (PoiNavSetup.Current != null) FinishCycle(PoiNavSetup.Current);
+                else { if (!PoiNavSetup.Preparing) Close(); return; }
+            }
             if (!_dirty && NavigationTools.Source.Get(_poi) != _base && PoiNavSetup.Baking == null) { Load(); _status = "Rebaked: " + _draft.Nodes.Count + " nodes, " + _draft.Links.Count + " links."; }
             var mouse = Mouse.current; if (mouse == null) return;
             Vector2 screen = mouse.position.ReadValue();
@@ -136,7 +146,7 @@ namespace WildWasteland.Modules.Tools
         /// <summary>Converts screen pixels into the scaled editor GUI coordinate space.</summary>
         static Vector2 Gui(Vector2 screen) { return new Vector2(screen.x / Screen.width * W, (Screen.height - screen.y) / Screen.height * H); }
         /// <summary>Moves free-camera and restoration positions with a floating-origin shift.</summary>
-        internal static void Shift(Vector3 delta) { if (!Opened) return; _view += delta; _cameraPosition += delta; if (_cameraParent == null) _cameraLocal += delta; }
+        internal static void Shift(Vector3 delta) { if (!Opened) return; _view += delta; _cameraPosition += delta; _cyclePosition += delta; if (_cameraParent == null) _cameraLocal += delta; }
         /// <summary>Toggles the editor session pause state and updates its status text.</summary>
         static void TogglePause() { _session.SetPause(!_session.Paused); _status = _session.Paused ? "World paused." : "World running: test NPCs move while you edit."; }
 
@@ -254,6 +264,7 @@ namespace WildWasteland.Modules.Tools
                 if (t.parent == _cameraParent) { t.localPosition = _cameraLocal; t.localRotation = _cameraRotation; } else t.position = _cameraPosition;
             }
             _root = null; _draft = null; _base = null; _camera = null; _undo.Clear(); _mode = Mode.Select; _selected = -1; _dragLink = -1;
+            _cyclePending = false;
             PoiNavView.EditData = null; PoiNavView.EditRoot = null; PoiNavView.Selected = -1;
             _session.Close(immediate); Ledger.ClearNumbers();
         }
@@ -272,6 +283,7 @@ namespace WildWasteland.Modules.Tools
         internal static void Draw()
         {
             if (!Opened) return;
+            if (_cyclePending) { GUI.Label(new Rect(20, 20, 600, 40), PoiNavSetup.Status + " (Escape to close)"); return; }
             var skin = Ledger.Begin(); var matrix = GUI.matrix; int depth = GUI.depth;
             try
             {
@@ -285,6 +297,7 @@ namespace WildWasteland.Modules.Tools
                 DrawTop();
                 if (!Opened) return;
                 DrawLeft();
+                if (!Opened) return;
                 DrawRight();
                 Ledger.Panel(new Rect(0, H - Bottom, W, Bottom));
                 Ledger.Label(new Rect(14, H - Bottom + 2, W - 28, 22), "WASD / Q E: fly (Shift fast) · RMB: look · drag a handle: move · click: select · wheel: turn · Del: delete / switch off · Ctrl+Z: undo · P: pause / run world · Esc: cancel / close", Ledger.Small);
@@ -376,6 +389,20 @@ namespace WildWasteland.Modules.Tools
             if (Ledger.Button(new Rect(x + 600, 9, 190, 34), _dirty ? "CLOSE / DISCARD" : "CLOSE")) Close();
         }
 
+        /// <summary>Switches the setup geometry and draft while retaining the editor camera session.</summary>
+        static void CycleSetup(int direction)
+        {
+            _cyclePosition = _root.position; _cyclePending = true;
+            PoiNavView.EditData = null; PoiNavView.EditRoot = null;
+            var root = PoiNavSetup.Cycle(direction); if (root != null) FinishCycle(root);
+        }
+        static void FinishCycle(Transform root)
+        {
+            Vector3 delta = root.position - _cyclePosition; _cyclePending = false;
+            _root = root; _poi = NavigationTools.Source.TypeOf(root.name); _view += delta; Load();
+            _status = PoiNavSetup.Status + ". REBAKE to generate navigation; SAVE edits before switching.";
+        }
+
         /// <summary>Draws a display-filter toggle with an optional colour swatch.</summary>
         static bool Check(float y, string label, bool value, Color? swatch = null)
         {
@@ -388,6 +415,14 @@ namespace WildWasteland.Modules.Tools
         {
             Ledger.Panel(new Rect(0, Top + 2, Left, H - Top - Bottom - 4));
             float y = Top + 10;
+            if (PoiNavSetup.Active)
+            {
+                bool ready = !_dirty && PoiNavSetup.Queued == 0;
+                if (Ledger.Button(new Rect(12, y, 132, 32), "PREVIOUS POI", ready)) CycleSetup(-1);
+                if (Ledger.Button(new Rect(150, y, 138, 32), "NEXT POI", ready)) CycleSetup(1);
+                if (!Opened) return;
+                y += 36;
+            }
             Ledger.Label(new Rect(12, y, Left - 24, 22), _draft.Nodes.Count + " nodes · " + _draft.Surfaces + " surfaces · " + _draft.Links.Count + " links", Ledger.Small); y += 28;
             Ledger.Label(new Rect(12, y, Left - 24, 22), "SHOW", Ledger.Small, Ledger.Muted); y += 22;
             PoiNavView.ShowSurfaces = Check(y, "Surfaces (one colour each)", PoiNavView.ShowSurfaces); y += 32;
@@ -498,7 +533,7 @@ namespace WildWasteland.Modules.Tools
             l.Toggle(NavigationTools.Setup);
             l.Toggle(NavigationTools.DisplayGraphs);
             l.Value("Setup", PoiNavSetup.Active ? PoiNavSetup.Status : "off");
-            if (PoiNavSetup.Active && l.Button("Bake all setup POIs", PoiNavSetup.Queued == 0)) PoiNavSetup.BakeAll();
+            if (PoiNavSetup.Active && l.Button("Bake current setup POI", PoiNavSetup.Queued == 0)) PoiNavSetup.BakeAll();
             if (l.Button("Bake the nearest POI", GameRefs.InPlay && PoiNavSetup.Queued == 0)) BakeNearest();
             l.Value("Baking", PoiNavSetup.Baking != null ? PoiNavSetup.Baking.Poi + ": " + PoiNavSetup.Baking.Status + " (" + PoiNavSetup.Queued + " queued)" : "idle (" + PoiNavSetup.Baked + " baked, " + PoiNavSetup.Failed + " failed)");
             l.Value("NPCs on links now", NavigationTools.Source.Traversals.ToString());

@@ -71,7 +71,7 @@ namespace WildWasteland.Modules.Presentation
         }
 
         /// <summary>Climbing speed up, m/s.</summary>
-        static float Speed { get { return TraversalSettings.LadderSpeed.Value; } }
+        static float Speed { get { return TraversalSettings.LadderSpeed.Value * (SkillPerks.Has("Parkour") ? 1.5f : 1); } }
         bool sliding; float slideV;
         /// <summary>Body distance from the rung line (animation toe depth + LadderOffset).</summary>
         static float Distance { get { return (clip != null ? clip.ToeDepth : .4f) + TraversalSettings.LadderOffset.Value; } }

@@ -61,6 +61,7 @@ namespace WildWasteland.Modules.Quests
             string taken;
             if (Overrides.Count > 0 && Overrides.TryGetValue(KeyOf(p), out taken)) return Get(taken);
             for (int i = 0; i < file.Count; i++) if (file[i].HasPoi(p.Name)) return file[i];
+            if (p.Obj != null) p.Faction = Game.SpawnFactionOf(p.Obj);
             if (p.Faction.Length > 0 && IsHuman(p.Faction)) return Get(p.Faction);
             return null;
         }

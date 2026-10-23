@@ -176,7 +176,7 @@ namespace WildWasteland.Modules.Presentation
             animation.FollowHeadInFirstPerson = true;
             oldKinematic = body.isKinematic; oldGravity = body.useGravity; oldInterpolation = body.interpolation;
             // Set climbing before any mutation so exceptions restore every saved state.
-            climbing = true; jumpProbeUntil = 0; elapsed = 0; playbackSpeed = speed.Value;
+            climbing = true; jumpProbeUntil = 0; elapsed = 0; playbackSpeed = speed.Value * (SkillPerks.Has("Parkour") ? 1.5f : 1);
             // Both source clips finish their ascent before the final standing tail.
             // Give movement back at 65%; the pose blends out without holding physics.
             duration = clip.length * FinishFraction / playbackSpeed; lastSafe = body.position;

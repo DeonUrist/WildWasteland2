@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.Patrols
         private static readonly Vector3[][] NoHints = new Vector3[0][];
 
         /// <summary>Resets foot for the current traffic foot.</summary>
-        private void ResetFoot() { _footLive.Clear(); _footDeparture = null; _nextFootRoll = 0f; _nextFootSecond = 0f; _wrap.Clear(); _settling.Clear(); _settlingUntil.Clear(); }
+        private void ResetFoot() { _footLive.Clear(); _takeoverWaiting.Clear(); _footDeparture = null; _nextFootRoll = 0f; _nextFootSecond = 0f; _wrap.Clear(); _settling.Clear(); _settlingUntil.Clear(); }
         // settled residents' last travel order (into the camp): cancelled once it ends, so the NPC Idle camp logic takes them over
         private readonly List<GameObject> _settling = new List<GameObject>();
         private readonly List<float> _settlingUntil = new List<float>();
@@ -104,7 +104,8 @@ namespace WildWasteland.Modules.Patrols
             if (!journey.arrived && !string.IsNullOrEmpty(journey.destination) && Cleared(journey.destination) && !FootRetarget(journey, fl != null)) return;
             if (fl == null)
             {
-                if (journey.arrived) { if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived while simulated; removed"); Remove(journey); return; }
+                if (journey.arrived && !journey.reinforcement) { if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived while simulated; removed"); Remove(journey); return; }
+                if (journey.arrived && (!TrafficLocations.Known.TryGetValue(journey.destination, out var destination) || !TrafficCamps.Loaded(destination.id))) return;
                 journey.Advance(seconds);
                 if (Core.ModApi.Get<Core.INpcApi>() != null && TrafficLocations.FlatDistance(journey.position, playerWorld) <= PatrolsModule.FootLoadRange.Value && !Convoy.AutosaveSoon(30f)
                     && (!TrafficFactions.PlayerHostile(journey.faction) || TrafficLocations.PatrolSpawnAllowed(journey.position)))
@@ -129,7 +130,7 @@ namespace WildWasteland.Modules.Patrols
                 float unload = Mathf.Max(PatrolsModule.FootUnloadRange.Value, PatrolsModule.FootLoadRange.Value + 80f);
                 bool anyBody = false; for (int i = 0; i < MaxWalkers; i++) if (fl.Bodies[i] != null) { anyBody = true; break; }
                 if ((!anyBody || fl.MinDistance > unload) && TrafficLocations.FlatDistance(journey.position, playerWorld) > unload) { FootVirtualize(journey, fl, "far from the player"); return; }
-                if (journey.arrived && anyBody && TrafficLocations.Known.TryGetValue(journey.destination ?? "", out var camp) && !camp.cleared && TrafficCamps.Loaded(camp.id))
+                if (journey.arrived && anyBody && TakeoverSpawned(journey, fl) && TrafficLocations.Known.TryGetValue(journey.destination ?? "", out var camp) && !camp.cleared && TrafficCamps.Loaded(camp.id))
                     FootBeginSettle(journey, fl);
             }
         }
@@ -271,7 +272,7 @@ namespace WildWasteland.Modules.Patrols
             }
             _footLive.Remove(journey.id);
             if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " simulated again (" + why + ")");
-            if (journey.arrived) Remove(journey);
+            if (journey.arrived && !journey.reinforcement) Remove(journey);
         }
 
         // arrival at a loaded camp: step 1 drops the simple-bandit / faction-actor components (ordinary NPC AI again)...
@@ -310,6 +311,7 @@ namespace WildWasteland.Modules.Patrols
                 }
             }
             _footLive.Remove(journey.id); _journeys.Remove(journey);
+            if (journey.reinforcement) Core.Log.Always(null,"[Patrols] Takeover travelers settled at " + journey.destination + ": " + n + " permanent resident(s).");
             if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived at " + (camp != null ? camp.name + " " + camp.id : "its camp") + ": " + n + " new resident(s)");
         }
 

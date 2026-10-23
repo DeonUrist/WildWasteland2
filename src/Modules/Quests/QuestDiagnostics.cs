@@ -53,11 +53,10 @@ namespace WildWasteland.Modules.Quests
         public string DescribeFactionContext(Vector3 sceneCenter)
         {
             var text = new StringBuilder();
-            text.AppendLine("== Takeover walkers ==");
-            foreach (string line in Takeover.DescribeWalkers(sceneCenter)) text.AppendLine(line);
+            text.AppendLine("== Takeover reinforcements use Patrols traveler journeys ==");
             text.AppendLine("== Camps taken over by quests ==");
             foreach (var pair in Factions.Overrides) text.AppendLine(pair.Key + " -> " + pair.Value);
-            text.AppendLine().AppendLine("== Points of interest within 300 m (name, owner from its EnemySpawn_ child) ==");
+            text.AppendLine().AppendLine("== Points of interest within 300 m (name, camp/town owner) ==");
             foreach (Poi poi in Game.FindPois(sceneCenter, 0f, 300f, ""))
                 text.AppendLine(poi.Name + "   owner=" + (poi.Faction.Length > 0 ? poi.Faction : "(none)") + "   dist " + (int)Core.WorldGeometry.HorizontalDistance(poi.Pos, sceneCenter) + " m");
             return text.ToString();

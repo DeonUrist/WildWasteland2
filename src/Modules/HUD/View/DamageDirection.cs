@@ -17,10 +17,15 @@ namespace WildWasteland.Modules.HUD
             internal RectTransform Root;
             internal CanvasGroup Group;
             internal bool Active;
+            internal bool Pale;
         }
         private readonly List<Arrow> _arrows = new List<Arrow>();
         private readonly Transform _parent;
         private int _active;
+        private readonly Arrow[] _paranoia = new Arrow[128];
+        private readonly List<GameObject> _enemies = new List<GameObject>(32);
+        private float _nextParanoia, _urbanUntil;
+        private int _paranoiaBuilt;
         /// <summary>Constructs the attacker direction arrows and captures its owning resources.</summary>
         internal DamageDirection(Transform parent)
         {
@@ -31,6 +36,7 @@ namespace WildWasteland.Modules.HUD
             var canvas = go.GetComponent<Canvas>(); canvas.overrideSorting = false;
             var source = parent.GetComponentInParent<Canvas>(); if (source != null) canvas.additionalShaderChannels = source.additionalShaderChannels;
             for (int i = 0; i < 4; i++) _arrows.Add(Create());
+            ModEvents.Subscribe<Core.Events.PlayerWeaponKill>(HudModule.Instance, OnSkillKill);
             ModEvents.Subscribe<Core.Events.AttackObserved>(HudModule.Instance,OnAttackObserved);
         }
 
@@ -47,8 +53,8 @@ namespace WildWasteland.Modules.HUD
             for (var t = target; t != null; t = t.parent)
                 if (FsmUtil.Find(t.gameObject, "Health") != null) { target = t; break; }
             Arrow arrow = null;
-            foreach (var a in _arrows) if (a.Active && a.Attacker == target) { arrow = a; break; }
-            if (arrow == null) foreach (var a in _arrows) if (!a.Active) { arrow = a; break; }
+            foreach (var a in _arrows) if (!a.Pale && a.Active && a.Attacker == target) { arrow = a; break; }
+            if (arrow == null) foreach (var a in _arrows) if (!a.Pale && !a.Active) { arrow = a; break; }
             if (arrow == null) { arrow = Create(); _arrows.Add(arrow); }
             arrow.Attacker = target; arrow.Offset = target.position - player.transform.position;
             arrow.HitTime = Time.unscaledTime; arrow.Group.alpha = 1f;
@@ -56,7 +62,7 @@ namespace WildWasteland.Modules.HUD
         }
 
         /// <summary>Creates the attacker direction arrows.</summary>
-        private Arrow Create()
+        private Arrow Create(bool pale = false)
         {
             var go = new GameObject("Damage direction", typeof(RectTransform), typeof(CanvasGroup));
             go.transform.SetParent(_parent, false);
@@ -69,14 +75,37 @@ namespace WildWasteland.Modules.HUD
                 var b = (RectTransform)bar.transform;
                 b.sizeDelta = new Vector2(12, 3); b.anchoredPosition = new Vector2(i == 0 ? -4 : 4, 0);
                 b.localRotation = Quaternion.Euler(0, 0, i == 0 ? 45 : -45);
-                var image = bar.GetComponent<Image>(); image.raycastTarget = false; image.color = new Color(.85f, .16f, .12f, 1);
+                var image = bar.GetComponent<Image>(); image.raycastTarget = false; image.color = pale ? new Color(.9f, .92f, .88f, .65f) : new Color(.85f, .16f, .12f, 1);
             }
-            go.SetActive(false); return new Arrow { Root = rt, Group = group };
+            go.SetActive(false); return new Arrow { Root = rt, Group = group, Pale = pale };
+        }
+
+        private void OnSkillKill(ref Core.Events.PlayerWeaponKill kill) { if (SkillPerks.Rifle(kill.Kind) && SkillPerks.Has("UrbanWarrior")) _urbanUntil = Time.time + 5; }
+        private void Paranoia(bool visible)
+        {
+            bool enabled = visible && HudModule.DamageDirection.Value && GameRefs.InGame && ((ModApi.Get<IPlayerPerkEffects>()?.Paranoia ?? false) || Time.time < _urbanUntil);
+            if (!enabled)
+            { for (int i = 0; i < _paranoiaBuilt; i++) if (_paranoia[i].Active) Hide(_paranoia[i]); return; }
+            if (_paranoiaBuilt < _paranoia.Length)
+            { var arrow = Create(true); _paranoia[_paranoiaBuilt++] = arrow; _arrows.Add(arrow); }
+            if (Time.unscaledTime < _nextParanoia) return;
+            _nextParanoia = Time.unscaledTime + .25f;
+            _enemies.Clear(); var player = GameRefs.Player;
+            if (player != null) ModApi.Get<INpcEnemies>()?.NearPlayer(player.transform.position, Time.time < _urbanUntil ? 200 : 30, _enemies);
+            for (int i = 0; i < _paranoiaBuilt; i++)
+            {
+                var arrow = _paranoia[i];
+                if (i >= _enemies.Count || _enemies[i] == null) { if (arrow.Active) Hide(arrow); continue; }
+                arrow.Attacker = _enemies[i].transform; arrow.Group.alpha = 1f;
+                foreach (var image in arrow.Root.GetComponentsInChildren<Image>()) image.color = Time.time < _urbanUntil ? new Color(1,.85f,.1f,1) : new Color(.9f,.92f,.88f,.65f);
+                if (!arrow.Active) { arrow.Active = true; _active++; arrow.Root.gameObject.SetActive(true); }
+            }
         }
 
         /// <summary>Updates the attacker direction arrows.</summary>
         internal void Tick(bool visible)
         {
+            Paranoia(visible);
             if (_active == 0) return;
             var camera = GameRefs.MainCamera; var player = GameRefs.Player;
             bool show = visible && HudModule.DamageDirection.Value && GameRefs.InGame && camera != null && player != null;
@@ -87,7 +116,7 @@ namespace WildWasteland.Modules.HUD
             {
                 if (!a.Active) continue;
                 float age = now - a.HitTime;
-                if (!show || age >= 2f) { Hide(a); continue; }
+                if (!show || !a.Pale && age >= 2f || a.Pale && a.Attacker == null) { Hide(a); continue; }
                 if (a.Attacker != null) a.Offset = a.Attacker.position - playerPosition;
                 var direction = new Vector3(a.Offset.x, 0, a.Offset.z);
                 if (direction.sqrMagnitude < .0001f) { Hide(a); continue; }

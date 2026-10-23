@@ -139,7 +139,7 @@ namespace WildWasteland.Modules.Quests
                 string key = Util.Norm(part.Substring(0, eq));
                 int cost;
                 if (key.Length == 0 || !int.TryParse(part.Substring(eq + 1).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out cost)) continue;
-                if (cost > 0 && Util.Norm(Core.Names.Base(npcName)).StartsWith(key, StringComparison.Ordinal)) return cost;
+                if (cost > 0 && Util.Norm(Core.Names.Base(npcName)).StartsWith(key, StringComparison.Ordinal)) return Core.SkillPerks.Has("Charismatic") ? Math.Max(1,(int)Math.Ceiling(cost * .5)) : cost;
             }
             return -1;
         }

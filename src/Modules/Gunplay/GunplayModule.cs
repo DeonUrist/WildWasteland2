@@ -26,6 +26,7 @@ namespace WildWasteland.Modules.Gunplay
         /// <summary>BepInEx\plugins\WildWasteland\Gunplay\ (Sounds/knifestab.wav).</summary>
         internal static string AssetDir;
         static bool _running;
+        private readonly PerkCombat _perkCombat = new PerkCombat();
 
         /// <summary>True between Init and Shutdown.</summary>
         internal static bool Running { get { return _running; } }
@@ -88,6 +89,7 @@ namespace WildWasteland.Modules.Gunplay
             // the two old runner components (Gunplay.Runner, Gunplay.Ammo.AmmoRunner), same order; then the ex NPC sweep
             Scheduler.EveryFrame(this, "Gunplay.Tracers", TracersTick);
             Scheduler.EveryFrame(this, "Gunplay.Ammo", AmmoRunner.Tick);
+            _perkCombat.Init(this);
 
             _running = true;
             SyncHud();
@@ -97,6 +99,7 @@ namespace WildWasteland.Modules.Gunplay
         /// <summary>Provides IGunsApi (old contract), IWeaponCatalog, IWeaponStats and IWeaponState.</summary>
         public override void ProvideApis()
         {
+            ModApi.Provide<ICombatSources>(this, _perkCombat);
             ModApi.Provide<IWeaponEffects>(this,new WeaponEffects());
             ModApi.Provide<IRiderWeapons>(this,new RiderWeapons());
             ModApi.Provide<IGunsApi>(this, new GunsApi());
@@ -129,6 +132,7 @@ namespace WildWasteland.Modules.Gunplay
         /// <summary>Stops every part: camera/input parts, an unload in progress completes, bullets vanish, HUD observer resumes.</summary>
         public override void Shutdown()
         {
+            _perkCombat.Clear();
             _running = false;
             VanillaHits.Clear();
             Ironsights.Shutdown();
@@ -148,10 +152,12 @@ namespace WildWasteland.Modules.Gunplay
 
         /// <summary>Snapshots the actual magazine ledger into the verified active world-save transaction.</summary>
         public override void OnSaveBegin(string slot){try{PerGunAmmo.SaveWorld(slot);}catch(Exception e){SaveBus.ReportFailure(this,"Magazine ledger save failed: "+e.Message);throw;}}
+        public override void OnLoadBegin(string slot) { _perkCombat.Clear(); }
 
         /// <summary>Scene change: per-scene caches of every part are dropped.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            _perkCombat.Clear();
             Ironsights.Reset();
             WeaponTransition.Reset();
             Tracers.OnSceneLoaded();

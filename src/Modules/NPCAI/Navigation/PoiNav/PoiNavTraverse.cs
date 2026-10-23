@@ -138,8 +138,8 @@ namespace WildWasteland.Modules.NPCAI
             rb.useGravity = false; rb.isKinematic = true; rb.interpolation = RigidbodyInterpolation.Interpolate;
             owner.transform.rotation = run.Facing;
             var anim = owner.GetComponentInChildren<Animator>();
-            if (ModApi.Get<IAnimationApi>() != null && anim != null && l.Kind != PoiLinkKind.Drop)
-                run.Anim = ModApi.Get<IAnimationApi>().BeginNpcTraversal(anim, l.Kind == PoiLinkKind.Ladder ? "Ladder" : (run.To.y - run.From.y) > 1.25f ? "ClimbHigh" : "ClimbWaist");
+            if (ModApi.Get<IAnimationApi>() != null && anim != null && (l.Kind != PoiLinkKind.Drop || PoiNav.Zombie(owner)))
+                run.Anim = ModApi.Get<IAnimationApi>().BeginNpcTraversal(anim, l.Kind == PoiLinkKind.Drop ? "Drop" : l.Kind == PoiLinkKind.Ladder ? "Ladder" : (run.To.y - run.From.y) > 1.25f ? "ClimbHigh" : "ClimbWaist");
             NoShove(run, true); NoAttack(run, true);
             _runs[owner.GetInstanceID()] = run;
             if (WildWasteland.Core.Log.L2) Log.Deep(NavRuntime.Owner, "" + owner.name + " takes the " + l.Kind + " of " + inst.Poi + " (" + (run.To.y - run.From.y).ToString("0.0") + " m)");
@@ -306,6 +306,7 @@ namespace WildWasteland.Modules.NPCAI
                     Vector3 p = Vector3.Lerp(r.From, r.To, u);
                     p.y = Mathf.Lerp(r.From.y, r.To.y, u * u) + Mathf.Sin(u * Mathf.PI) * .25f;
                     Move(r, p);
+                    Phase(r, u);
                     return u >= 1f;
                 }
             }

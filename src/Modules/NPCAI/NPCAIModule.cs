@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.NPCAI
     /// </summary>
     public sealed partial class NPCAIModule : ModuleBase
     {
+        private static readonly SkillReactions _skillReactions = new SkillReactions();
         /// <summary>GUID of the standalone NPCAI plugin this module replaces (both stay off while it is installed).</summary>
         public const string StandaloneGuid = "com.denis.apocalypter.npcai";
         static readonly string[] _conflicts = { StandaloneGuid };
@@ -47,6 +48,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Starts the module; a failed start is undone by Shutdown before the exception reaches ModuleHost.</summary>
         public override void Init()
         {
+            _skillReactions.Init(this);
             try { Start(); }
             catch (Exception)
             {
@@ -145,6 +147,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Clears every behaviour registry / cache (the old Plugin.SceneLoaded chain). Init and Shutdown call it too.</summary>
         static void ResetAll()
         {
+            _skillReactions.Clear();
             WeaponRanges.OnSceneLoaded();
             Aim.OnSceneLoaded(); Brain.OnSceneLoaded(); Senses.OnSceneLoaded(); Idle.OnSceneLoaded();
             Burrow.OnSceneLoaded(); Pounce.OnSceneLoaded(); Webs.OnSceneLoaded(); Nests.OnSceneLoaded(); Ambush.OnSceneLoaded(); DogBite.OnSceneLoaded();
@@ -160,6 +163,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Native save started.</summary>
         public override void OnSaveBegin(string slot)
         {
+            _skillReactions.Clear();
             try { Senses.Persist.Save(slot); Nests.SaveWorld(slot); SaveBeginNavigation(slot); }
             catch (Exception e) { SaveBus.ReportFailure(this, "NPC AI world state save failed: " + e.Message); throw; }
         }
@@ -263,12 +267,14 @@ namespace WildWasteland.Modules.NPCAI
         public override void ProvideApis()
         {
             ModApi.Provide<INpcFear>(this,new NpcFear());
+            ModApi.Provide<ISkillReactions>(this,_skillReactions);
             ModApi.Provide<INpcShotPolicy>(this,new NpcShotPolicy());
             ModApi.Provide<ICanineBehaviour>(this,CanineBehaviour.Instance);
             ModApi.Provide<INativePopulation>(this,new NativePopulationApi());
             var api = new NpcApi();
             ModApi.Provide<INpcApi>(this, api);
             ModApi.Provide<INpcControl>(this, api);
+            ModApi.Provide<INpcEnemies>(this, api);
             ModApi.Provide<ISeatedCombat>(this, new SeatedCombatApi());
             ModApi.Provide<IOccupantCombat>(this, new OccupantCombatApi());
             ModApi.Provide<IQuestFollowerBody>(this, new QuestFollower.BodyApi());

@@ -21,6 +21,9 @@ namespace WildWasteland.Modules.Survival
         private readonly WeatherRuntime _weather = new WeatherRuntime();
         private ConfigEntry<bool> _weatherEnabled;
         private bool _active, _weatherActive;
+        private Insanity _insanity;
+        private SleepRecovery _sleepRecovery;
+        private CookingSkills _cookingSkills;
 
         /// <summary>Canonical settings and resource owner.</summary>
         public override string Id { get { return "Survival"; } }
@@ -54,6 +57,9 @@ namespace WildWasteland.Modules.Survival
         public override void Init()
         {
             _active = true;
+            _insanity = new Insanity(this); _insanity.Init();
+            _sleepRecovery = new SleepRecovery(this); _sleepRecovery.Init();
+            _cookingSkills = new CookingSkills(this); _cookingSkills.Init();
             _stormQueries = new StormQueries(this, _weather);
             WorldIndex.WatchComponent<UnityEngine.AzureSky.AzureTimeController>(this, DaylightState.Observe);
             Assets = Path.Combine(Dir, "Models");
@@ -78,7 +84,7 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Resolves only the custom pot prefab through the native catalog chain.</summary>
         private static ES3Prefab ResolvePrefab(long id)
         {
-            return id == Factory.PrefabId ? Factory.Template().GetComponent<ES3Prefab>() : null;
+            return id == Factory.PrefabId ? Factory.Template().GetComponent<ES3Prefab>() : HumanFood.Resolve(id);
         }
 
         /// <summary>Registers a newly awakened saved pot without adding saved components.</summary>
@@ -88,19 +94,21 @@ namespace WildWasteland.Modules.Survival
         }
 
         /// <summary>Clears scene references only when the main scene changes.</summary>
-        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; Runtime.Clear(); DaylightState.Reset(); if (_stormQueries != null) _stormQueries.Clear(); NativeStormProtection.Restore(); NativeStormProtection.ResetForScene(); if (_weatherActive) _weather.OnSceneLoaded(scene, mode); }
+        public override void OnSceneLoaded(Scene scene, LoadSceneMode mode) { if (mode == LoadSceneMode.Additive) return; if (_insanity != null) _insanity.Clear(); if (_sleepRecovery != null) _sleepRecovery.Clear(); if (_cookingSkills != null) _cookingSkills.Clear(); Runtime.Clear(); DaylightState.Reset(); if (_stormQueries != null) _stormQueries.Clear(); NativeStormProtection.Restore(); NativeStormProtection.ResetForScene(); if (_weatherActive) _weather.OnSceneLoaded(scene, mode); }
         /// <summary>Queues existing pot discovery and prepares weather after world readiness.</summary>
-        public override void OnWorldReady() { Runtime.BeginDiscovery(); if (_weatherActive) _weather.OnWorldReady(); }
+        public override void OnWorldReady() { if (_insanity != null) { _insanity.WorldReady(); _insanity.Resolve(); } if (_cookingSkills != null) _cookingSkills.Load(); Runtime.BeginDiscovery(); if (_weatherActive) _weather.OnWorldReady(); }
         /// <summary>Retains native storm anchors during world serialization.</summary>
-        public override void OnSaveBegin(string slot) { if (_weatherActive) _weather.OnSaveBegin(slot); }
+        public override void OnSaveBegin(string slot) { if (_insanity != null) _insanity.Save(slot); if (_cookingSkills != null) _cookingSkills.Save(slot); if (_weatherActive) _weather.OnSaveBegin(slot); }
         /// <summary>Restores weather presentation after world serialization.</summary>
         public override void OnSaveEnd(string slot) { if (_weatherActive) _weather.OnSaveEnd(slot); }
         /// <summary>Clears weather state and prepares retained resources before loading another world.</summary>
-        public override void OnLoadBegin(string slot) { if (_weatherActive) _weather.OnLoadBegin(slot); }
+        public override void OnLoadBegin(string slot) { if (_insanity != null) _insanity.LoadBegin(); if (_sleepRecovery != null) _sleepRecovery.Clear(); if (_cookingSkills != null) _cookingSkills.LoadBegin(); if (_weatherActive) _weather.OnLoadBegin(slot); }
         /// <summary>Publishes gameplay environment queries independently of the weather rendering switch.</summary>
         public override void ProvideApis()
         {
             ModApi.Provide<ISurvivalCatalog>(this, this);
+            ModApi.Provide<IMentalBreak>(this, _insanity);
+            ModApi.Provide<ICookingSkills>(this, _cookingSkills);
             ModApi.Provide<IShelterRegistry>(this, _shelters);
             ModApi.Provide<IStormQueries>(this, _stormQueries);
             ModApi.Provide<IDayLight>(this, _daylight);
@@ -129,6 +137,9 @@ namespace WildWasteland.Modules.Survival
         public override void Shutdown()
         {
             _active = false; StopWeather(); NativeStormProtection.Restore(); NativeStormProtection.ResetForScene();
+            if (_insanity != null) _insanity.Shutdown();
+            if (_sleepRecovery != null) _sleepRecovery.Clear();
+            if (_cookingSkills != null) _cookingSkills.Shutdown();
             StewLogic.StopSoundLoad();
             Runtime.Shutdown(); _shelters.Clear(); if (_stormQueries != null) _stormQueries.Clear();
             if (_effects != null) UnityEngine.Object.Destroy(_effects);

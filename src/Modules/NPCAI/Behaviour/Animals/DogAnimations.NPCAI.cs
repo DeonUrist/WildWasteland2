@@ -215,6 +215,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>One dog's frame: pose choice (rest, bite, jump, dash, locomotion) and clip time.</summary>
         public void Tick(Dog d, float dt)
         {
+            if (SkillReactions.Busy(d.Agent.Owner)) return;
             // Transition blends start from the prior displayed pose before restoring the native baseline.
             if (!Eligible(d)) { Release(d); return; }
             Prepare(d);

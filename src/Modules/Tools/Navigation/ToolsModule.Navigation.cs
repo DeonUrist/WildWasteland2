@@ -27,14 +27,14 @@ namespace WildWasteland.Modules.Tools
         private void BindNavigation()
         {
             var next = ModApi.Get<INavigationAuthoring>(); if (ReferenceEquals(next, _navigation)) return;
-            ResetNavigation(); if (_navigation != null) _navigation.RemoveSetupRoots(this);
-            _navigation = next; if (_navigation != null) _navigation.RegisterSetupRoots(this, PoiNavSetup.Roots);
+            ResetNavigation(); if (_navigation != null) { _navigation.RemoveSetupRoots(this); _navigation.RemoveBaker(this); }
+            _navigation = next; if (_navigation != null) { _navigation.RegisterSetupRoots(this, PoiNavSetup.Roots); _navigation.RegisterBaker(this, (root, data) => new PoiNavBake(root, data)); }
         }
         /// <summary>Unsubscribes provider changes and restores all authoring state when Tools stops.</summary>
         private void ShutdownNavigation()
         {
             ModApi.Changed -= NavigationChanged; ResetNavigation();
-            if (_navigation != null) _navigation.RemoveSetupRoots(this); _navigation = null;
+            if (_navigation != null) { _navigation.RemoveSetupRoots(this); _navigation.RemoveBaker(this); } _navigation = null;
         }
         /// <summary>Preserves native map reset/export and missing-bake display actions through the typed owner.</summary>
         private void DrawNavigationData(ToolLayout layout)

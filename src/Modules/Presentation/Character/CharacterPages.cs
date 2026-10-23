@@ -89,6 +89,10 @@ namespace WildWasteland.Modules.Presentation
                     + (c.HandsClip != "" ? ", hands " + c.HandsClip : "") + (c.ActionClip != "" ? ", " + c.ActionClip : ""));
             }
             if (ModAPI.Count > shown) l.Text("(" + (ModAPI.Count - shown) + " more)");
+            l.Heading("Zombie animations");
+            l.Toggle(CharacterSettings.ZombieAnimations);
+            l.Value("Zombie bundle loaded", YesNo(ZombieRig.Ready));
+            l.Value("Animated zombies", ZombieAnimations.Count.ToString(CultureInfo.InvariantCulture));
         }
 
         // ------------------------------------------------------------------ Body & model

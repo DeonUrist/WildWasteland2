@@ -520,6 +520,9 @@ namespace WildWasteland.Core
         public static readonly Hook<SendEvent> SendEventUpdate = new Hook<SendEvent>("SendEvent.OnUpdate", typeof(P_SendEventUpdate), Kinds.Prefix);
         public static readonly Hook<SetFsmFloat> SetFsmFloatEnter = new Hook<SetFsmFloat>("SetFsmFloat.OnEnter", typeof(P_SetFsmFloatEnter), Kinds.Prefix | Kinds.Postfix);
         public static readonly Hook<SetFsmFloat> SetFsmFloatDo = new Hook<SetFsmFloat>("SetFsmFloat.DoSetFsmFloat", typeof(P_SetFsmFloatDo), Kinds.Prefix);
+        public static readonly Hook<GetFsmInt> GetFsmIntEnter = new Hook<GetFsmInt>("GetFsmInt.OnEnter", typeof(P_GetFsmIntEnter), Kinds.Postfix);
+        public static readonly Hook<IntAdd> IntAddEnter = new Hook<IntAdd>("IntAdd.OnEnter", typeof(P_IntAddEnter), Kinds.Prefix | Kinds.Postfix);
+        public static readonly Hook<FsmFloatAdd> FsmFloatAddEnter = new Hook<FsmFloatAdd>("FsmFloatAdd.OnEnter", typeof(P_FsmFloatAddEnter), Kinds.Prefix | Kinds.Postfix);
         public static readonly Hook<SetVelocity> SetVelocityDo = new Hook<SetVelocity>("SetVelocity.DoSetVelocity", typeof(P_SetVelocityDo), Kinds.Prefix);
         public static readonly Hook<MouseLook> MouseLookDo = new Hook<MouseLook>("MouseLook.DoMouseLook", typeof(P_MouseLookDo), Kinds.Prefix);
         public static readonly Hook<Wait> WaitUpdate = new Hook<Wait>("Wait.OnUpdate", typeof(P_WaitUpdate), Kinds.Prefix);
@@ -629,6 +632,9 @@ namespace WildWasteland.Core
         [HarmonyPatch(typeof(SendEvent), "OnUpdate")] static class P_SendEventUpdate { static bool Prefix(SendEvent __instance) { return SendEventUpdate.RunPrefix(__instance); } }
         [HarmonyPatch(typeof(SetFsmFloat), "OnEnter")] static class P_SetFsmFloatEnter { static bool Prefix(SetFsmFloat __instance) { return SetFsmFloatEnter.RunPrefix(__instance); } static void Postfix(SetFsmFloat __instance) { SetFsmFloatEnter.RunPostfix(__instance); } }
         [HarmonyPatch(typeof(SetFsmFloat), "DoSetFsmFloat")] static class P_SetFsmFloatDo { static bool Prefix(SetFsmFloat __instance) { return SetFsmFloatDo.RunPrefix(__instance); } }
+        [HarmonyPatch(typeof(GetFsmInt), "OnEnter")] static class P_GetFsmIntEnter { static void Postfix(GetFsmInt __instance) { GetFsmIntEnter.RunPostfix(__instance); } }
+        [HarmonyPatch(typeof(IntAdd), "OnEnter")] static class P_IntAddEnter { static bool Prefix(IntAdd __instance) { return IntAddEnter.RunPrefix(__instance); } static void Postfix(IntAdd __instance) { IntAddEnter.RunPostfix(__instance); } }
+        [HarmonyPatch(typeof(FsmFloatAdd), "OnEnter")] static class P_FsmFloatAddEnter { static bool Prefix(FsmFloatAdd __instance) { return FsmFloatAddEnter.RunPrefix(__instance); } static void Postfix(FsmFloatAdd __instance) { FsmFloatAddEnter.RunPostfix(__instance); } }
         [HarmonyPatch(typeof(SetVelocity), "DoSetVelocity")] static class P_SetVelocityDo { static bool Prefix(SetVelocity __instance) { return SetVelocityDo.RunPrefix(__instance); } }
         [HarmonyPatch(typeof(MouseLook), "DoMouseLook")] static class P_MouseLookDo { static bool Prefix(MouseLook __instance) { return MouseLookDo.RunPrefix(__instance); } }
         [HarmonyPatch(typeof(Wait), "OnUpdate")] static class P_WaitUpdate { static bool Prefix(Wait __instance) { return WaitUpdate.RunPrefix(__instance); } }

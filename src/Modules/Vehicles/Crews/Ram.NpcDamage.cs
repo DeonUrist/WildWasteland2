@@ -26,8 +26,11 @@ namespace WildWasteland.Modules.Vehicles
             var bodypart = FsmUtil.Find(target, "Bodypart");
             var damage = bodypart != null ? bodypart.FsmVariables.FindFsmFloat("Damage") : null;
             if (damage == null || damage.Value >= 0f) return;
-            damage.Value *= VehiclesSettings.NpcRamDamageMultiplier.Value;
-            if (Log.L2) Log.Deep(VehiclesModule.Instance, "Ram: car hit -> " + target.name + ", " + (-damage.Value) + " damage (x" + VehiclesSettings.NpcRamDamageMultiplier.Value + ")");
+            var car = PlayerState.CarRoot;
+            var skills = ModApi.Get<IPlayerSkills>();
+            float multiplier = skills != null && car != null && fsm.GameObject.transform.IsChildOf(car) ? skills.ImpactMultiplier : VehiclesSettings.NpcRamDamageMultiplier.Value;
+            damage.Value *= multiplier;
+            if (Log.L2) Log.Deep(VehiclesModule.Instance, "Ram: car hit -> " + target.name + ", " + (-damage.Value) + " damage (x" + multiplier + ")");
         }
 
         /// <summary>True when the hit target sits under the same root as the attacking car (its own crew or riders).</summary>

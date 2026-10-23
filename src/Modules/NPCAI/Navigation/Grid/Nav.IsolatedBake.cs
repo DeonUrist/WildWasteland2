@@ -53,6 +53,7 @@ namespace WildWasteland.Modules.NPCAI
                     Physics.SyncTransforms();
                     _bake = Make(copy.transform);
                     if (_bake == null) throw new InvalidOperationException(_prefab.name + " has no navigation geometry");
+                    _bake.IsolatedMap = true;
                     BeginBake(_bake, true);
                     return true;
                 }

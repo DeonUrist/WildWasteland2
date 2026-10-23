@@ -65,6 +65,7 @@ namespace WildWasteland.Modules.POI
         public override void Init()
         {
             _running = true;
+            ModEvents.Subscribe<Core.Events.CampOwnershipChanged>(this, TrafficLocations.Capture);
             Core.ModApi.Provide<IPoiApi>(Core.ModuleHost.Current,this);
             _towns.Init();
             PoiEncounter.Register(this);
@@ -298,6 +299,7 @@ namespace WildWasteland.Modules.POI
         public override void Shutdown()
         {
             _running = false;
+            ModEvents.Unsubscribe<Core.Events.CampOwnershipChanged>(this, TrafficLocations.Capture);
             _towns.Shutdown();
             PoiEncounter.Reset(); EncounterNotices.Clear(); TownPrefabCatalog.Clear();
             _locations.Stop();

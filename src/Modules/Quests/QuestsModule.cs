@@ -72,7 +72,7 @@ namespace WildWasteland.Modules.Quests
         /// <summary>Advances objective completion on the quest cadence.</summary>
         void Progress() { if (Live) _engine.Tick(); }
         /// <summary>Advances current camp takeover outcomes near the player.</summary>
-        void Camps() { if (Live && GameRefs.Player != null) Takeover.NeutralizeTick(GameRefs.Player.transform.position); }
+        void Camps() { if (Live && GameRefs.Player != null) Takeover.ReconcileCamps(GameRefs.Player.transform.position); }
         /// <summary>Restores eligible quest givers near the player.</summary>
         void Givers() { if (Live && GameRefs.Player != null) Takeover.GiverTick(_engine.book, GameRefs.Player.transform.position); }
         /// <summary>Synchronizes quest map and compass presentation.</summary>

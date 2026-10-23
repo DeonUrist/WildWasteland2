@@ -9,18 +9,19 @@ using Object = UnityEngine.Object;
 
 namespace WildWasteland.Modules.Tools
 {
-    // (WW) Developer: "Setup POI pathfinding". One copy of every native POI type (MapMagic's object outputs: Building_/Camp_/Cave_/Wreck_)
-    // is placed in rows starting 200 m from the starting camp, stripped to its geometry (no FSMs or scripts: no spawners, loot or save
+    // (WW) Developer: "Setup POI pathfinding". One native POI type at a time (MapMagic's object outputs: Building_/Camp_/Cave_/Wreck_)
+    // is placed 200 m from the starting camp, stripped to its geometry (no FSMs or scripts: no spawners, loot or save
     // entries), never saved, removed when the option goes off. Core.Services.PoiNavSetup stops Towns generating new towns meanwhile.
     // Also runs the bake queue (setup copies or any POI the developer asks for).
     internal static class PoiNavSetup
     {
         private static GameObject _holder, _staging;
         private static readonly List<GameObject> _prefabs = new List<GameObject>();
+        private static readonly List<string> _types = new List<string>();
+        private static IPoiNavigationGeometry _geometry;
         private static readonly List<Transform> _placed = new List<Transform>();
         private static int _next;
         private static Vector3 _cursor, _rowDir, _colDir;
-        private static float _rowWidth, _rowDepth;
         internal static string Status = "";
         private static readonly Queue<Transform> _queue = new Queue<Transform>();
         internal static PoiNavBake Baking;
@@ -33,8 +34,20 @@ namespace WildWasteland.Modules.Tools
         /// <summary>Reports the number of retained setup copies.</summary>
         internal static int Placed { get { return _placed.Count; } }
         internal static bool Active { get { return _holder != null; } }
+        internal static bool Preparing { get { return Active && _placed.Count == 0 && _next < _types.Count; } }
+        internal static Transform Current { get { return _placed.Count == 0 ? null : _placed[0]; } }
 
-        // every frame: follows the setting, places one POI per frame, runs the bake queue
+        /// <summary>Replaces the setup copy with the previous or next native POI type.</summary>
+        internal static Transform Cycle(int direction)
+        {
+            if (!Active || _types.Count == 0 || Queued != 0 || _geometry != null) return Current;
+            _next = (_next - 1 + direction + _types.Count) % _types.Count;
+            ClearTests();
+            foreach (var t in _placed) if (t != null) { t.gameObject.SetActive(false); Object.Destroy(t.gameObject); }
+            _placed.Clear(); PlaceOne(); return Current;
+        }
+
+        // every frame: follows the setting, retains one setup POI, runs the bake queue
         /// <summary>Reconciles setup activation and advances placement and sliced baking.</summary>
         internal static void Tick()
         {
@@ -43,14 +56,14 @@ namespace WildWasteland.Modules.Tools
             SetSuspended(NavigationTools.Setup != null && NavigationTools.Setup.Value);
             if (want && _holder == null && !SaveBus.Busy) Start();
             else if (!want && _holder != null && !(NavigationTools.Setup != null && NavigationTools.Setup.Value && !GameRefs.InPlay)) Clear();
-            if (_holder != null && _next < _prefabs.Count && GameRefs.InGame) PlaceOne();
+            if (_holder != null && _placed.Count == 0 && _next < _types.Count && GameRefs.InGame) PlaceOne();
             BakeTick();
         }
 
         /// <summary>Collects native structure prefabs and prepares the unsaved setup area.</summary>
         static void Start()
         {
-            _prefabs.Clear(); _placed.Clear(); _next = 0;
+            _prefabs.Clear(); _types.Clear(); _placed.Clear(); _next = 0;
             var mm = Object.FindObjectOfType<MapMagicObject>();
             if (mm == null || mm.graph == null) { Status = "MapMagic not found"; return; }
             var names = new HashSet<string>(StringComparer.Ordinal);
@@ -66,7 +79,9 @@ namespace WildWasteland.Modules.Tools
                     if (names.Add(n)) _prefabs.Add(prefab);
                 }
             }
-            _prefabs.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+            var authoring = ModApi.Get<IPoiAuthoring>();
+            if (authoring != null) { var extra = new List<string>(); authoring.Types(extra); foreach (string name in extra) names.Add(name); }
+            _types.AddRange(names); _types.Sort(StringComparer.Ordinal);
             // the starting camp (or the player) is the anchor; rows run away from it
             Vector3 camp = GameRefs.Player != null ? GameRefs.Player.transform.position : Vector3.zero;
             var roots = new List<Transform>(); NavigationTools.Source.Roots(roots);
@@ -74,24 +89,39 @@ namespace WildWasteland.Modules.Tools
             Vector3 away = GameRefs.Player != null ? GameRefs.Player.transform.position - camp : Vector3.forward; away.y = 0f;
             if (away.sqrMagnitude < 1f) away = Vector3.forward;
             _rowDir = Vector3.Cross(Vector3.up, away.normalized); _colDir = away.normalized;
-            _cursor = camp + _colDir * 200f; _rowWidth = 0f; _rowDepth = 0f;
+            _cursor = camp + _colDir * 200f;
             _holder = new GameObject("WW.PoiNavSetup");
             _staging = new GameObject("staging (inactive)"); _staging.SetActive(false); _staging.transform.SetParent(_holder.transform, false);
-            Status = "placing " + _prefabs.Count + " POI types";
-            Log.Always(null,"[NPC] POI pathfinding setup: placing " + _prefabs.Count + " native POI types from " + _cursor.ToString("F0") + "; new towns paused.");
+            Status = "selecting one of " + _types.Count + " POI types";
+            Log.Always(null,"[NPC] POI pathfinding setup: one native POI at a time from " + _cursor.ToString("F0") + "; new towns paused.");
         }
 
         /// <summary>Places and strips one native structure copy for explicit authoring.</summary>
         static void PlaceOne()
         {
-            var prefab = _prefabs[_next++];
+            string type = _types[_next];
+            GameObject go = null;
             try
             {
-                var go = Object.Instantiate(prefab, _staging.transform, false);   // under an inactive parent: no Awake before stripping
+                var authoring = ModApi.Get<IPoiAuthoring>();
+                if (_geometry == null && authoring != null) _geometry = authoring.CreateNavigationGeometry(type, _staging.transform);
+                if (_geometry != null)
+                {
+                    Status = "Preparing " + type;
+                    if (!_geometry.Step()) return;
+                    go = _geometry.Root; _geometry = null;
+                }
+                else
+                {
+                    var prefab = _prefabs.Find(p => p != null && p.name == type);
+                    if (prefab == null) throw new InvalidOperationException("POI provider unavailable");
+                    go = Object.Instantiate(prefab, _staging.transform, false);
+                }
+                _next++;
                 go.SetActive(false);
-                go.name = prefab.name + " (WW POI nav setup)";
+                go.name = type + " (WW POI nav setup)";
                 Strip(go);
-                // footprint from the colliders, rows of up to 600 m
+                // footprint from the colliders, centred on the shared setup position
                 Bounds b = new Bounds(); bool any = false;
                 go.transform.position = Vector3.zero; go.transform.rotation = Quaternion.identity;
                 foreach (var c in go.GetComponentsInChildren<Collider>(true))
@@ -101,20 +131,24 @@ namespace WildWasteland.Modules.Tools
                     if (!any) { b = cb; any = true; } else b.Encapsulate(cb);
                 }
                 if (!any) b = new Bounds(Vector3.zero, Vector3.one * 10f);
-                float w = b.size.x + 20f, d = b.size.z + 20f;
-                if (_rowWidth + w > 600f) { _cursor += _colDir * (_rowDepth + 20f) - _rowDir * _rowWidth; _rowWidth = 0f; _rowDepth = 0f; }
-                Vector3 at = _cursor + _rowDir * (w * .5f) - _rowDir * b.center.x - _colDir * b.center.z;
-                _cursor += _rowDir * w; _rowWidth += w; _rowDepth = Mathf.Max(_rowDepth, d);
+                Vector3 at = _cursor - _rowDir * b.center.x - _colDir * b.center.z;
                 RaycastHit h;
                 at.y = Physics.Raycast(at + Vector3.up * 2000f, Vector3.down, out h, 4000f, 1 << 14, QueryTriggerInteraction.Ignore) ? h.point.y : at.y;
                 go.transform.SetParent(_holder.transform, false);
                 go.transform.SetPositionAndRotation(at, Quaternion.LookRotation(_colDir));
                 go.SetActive(true);
                 _placed.Add(go.transform);
-                Status = "placed " + _placed.Count + " / " + _prefabs.Count;
+                Status = type + " (" + _next + " / " + _types.Count + ")";
+                Log.Always(null,"[NPC] POI pathfinding setup: showing " + Status + "; one setup copy.");
             }
-            catch (Exception e) { Log.Warn(null,"[NPC] POI pathfinding setup: " + prefab.name + ": " + e.Message); }
-            if (_next >= _prefabs.Count) Log.Always(null,"[NPC] POI pathfinding setup: " + _placed.Count + " POI types placed.");
+            catch (Exception e)
+            {
+                if (_geometry != null) { go = _geometry.Root; _geometry = null; }
+                if (go != null) Object.Destroy(go);
+                _next = _types.IndexOf(type) + 1;
+                Status = type + ": " + e.Message;
+                Log.Warn(null,"[NPC] POI pathfinding setup: " + Status);
+            }
         }
 
         /// <summary>Converts collider bounds into setup-root local coordinates.</summary>
@@ -149,7 +183,7 @@ namespace WildWasteland.Modules.Tools
         static void Clear()
         {
             if (_holder != null) Object.Destroy(_holder);
-            _holder = null; _placed.Clear(); _prefabs.Clear(); _next = 0; _queue.Clear(); Baking = null;
+            _holder = null; _placed.Clear(); _prefabs.Clear(); _types.Clear(); _geometry = null; _next = 0; _queue.Clear(); Baking = null;
             Status = "off"; SetSuspended(false);
             Log.Always(null,"[NPC] POI pathfinding setup removed.");
         }
@@ -215,6 +249,6 @@ namespace WildWasteland.Modules.Tools
         /// <summary>Adjusts the setup placement cursor after an origin jump.</summary>
         internal static void Shift(Vector3 d) { _cursor += d; }
         /// <summary>Destroys every unsaved test actor and clears the registry.</summary>
-        internal static void Reset() { ClearTests(); if (_holder != null) Object.Destroy(_holder); _holder = null; _placed.Clear(); _prefabs.Clear(); _queue.Clear(); Baking = null; SetSuspended(false); }
+        internal static void Reset() { ClearTests(); if (_holder != null) Object.Destroy(_holder); _holder = null; _placed.Clear(); _prefabs.Clear(); _types.Clear(); _geometry = null; _queue.Clear(); Baking = null; SetSuspended(false); }
     }
 }

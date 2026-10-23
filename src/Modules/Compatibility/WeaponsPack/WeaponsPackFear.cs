@@ -111,7 +111,7 @@ namespace WildWasteland.Modules.Compatibility
         }
 
         /// <summary>Prefix of the pack's ProcessHit (per chainsaw contact): captures the target's corpse actions and death compares.</summary>
-        private static void BeforeSaw(RaycastHit __0, float __1, out SawHit __state)
+        private static void BeforeSaw(RaycastHit __0, ref float __1, out SawHit __state)
         {
             __state = null;
             if (!installed || !CompatibilityHost.Npc.Running || !GameRefs.InGame || __0.collider == null || !(__1 > 0f)) return;
@@ -122,6 +122,7 @@ namespace WildWasteland.Modules.Compatibility
                 if (fsm == null || fsm.Fsm == null || !fsm.Fsm.Initialized) return;
                 var hp = fsm.FsmVariables.FindFsmFloat("Health");
                 if (hp == null || hp.Value < 1f) return;
+                __1 = ModApi.Get<ICombatSources>()?.PrepareMelee(fsm.gameObject,__1,true) ?? __1;
                 var hit = new SawHit { Owner = fsm.gameObject, Health = hp, Before = hp.Value, Point = __0.point, Until = Time.time + 2f };
                 foreach (var state in fsm.Fsm.States)
                     foreach (var action in state.Actions)
@@ -146,7 +147,7 @@ namespace WildWasteland.Modules.Compatibility
                                     if (target.Name == transition.ToState)
                                         foreach (var candidate in target.Actions) if (hit.Actions.Contains(candidate as CreateObject)) hit.Death.Add(compare);
                     }
-                if (hit.Actions.Count == 0) return;
+                if (hit.Actions.Count == 0) { __state = hit; return; }
                 foreach (var action in hit.Actions) cuts[action] = hit;
                 __state = hit;
             }
@@ -169,6 +170,7 @@ namespace WildWasteland.Modules.Compatibility
             if (__state == null) return;
             try
             {
+                if (__state.Health.Value < __state.Before) ModApi.Get<ICombatSources>()?.FinishMelee(__state.Owner,__state.Before - __state.Health.Value);
                 __state.Lethal = Killed(__state);
                 if (!__state.Lethal) { foreach (var action in __state.Actions) cuts.Remove(action); return; }
                 if (__state.Corpse != null) FinishKill(__state);

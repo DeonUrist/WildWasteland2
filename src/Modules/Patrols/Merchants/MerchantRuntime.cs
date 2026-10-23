@@ -37,7 +37,7 @@ namespace WildWasteland.Modules.Patrols
             var host=car.GetComponent<MerchantHost>()??car.AddComponent<MerchantHost>();host.Data=data;host.Park();
         }
     }
-    internal sealed class MerchantHost : MonoBehaviour
+    internal sealed partial class MerchantHost : MonoBehaviour
     {
         internal static readonly List<MerchantHost> All=new List<MerchantHost>();
         internal MerchantSave Data;
@@ -220,7 +220,7 @@ namespace WildWasteland.Modules.Patrols
         {
             MerchantGuards.Capture(this);
             ObserveStock(Ready&&!TrafficFactions.PlayerHostile(GetComponent<PatrolMarker>()?.Faction));
-            Data.demands=_lists.Select(f=>new MerchantDemand{type=f.gameObject.name,names=(f.FsmVariables.FindFsmArray("ItemNameArray")?.Values??new object[0]).Select(Convert.ToString).ToArray(),prices=(f.FsmVariables.FindFsmArray("ItemPriceArray")?.Values??new object[0]).Select(Convert.ToInt32).ToArray()}).Where(d=>d.names.Length>0&&d.names.Length==d.prices.Length).ToArray();
+            Data.demands=_lists.Where(f=>f!=null&&f.ActiveStateName=="done").Select(f=>new MerchantDemand{type=f.gameObject.name,names=(f.FsmVariables.FindFsmArray("ItemNameArray")?.Values??new object[0]).Select(Convert.ToString).ToArray(),prices=(f.FsmVariables.FindFsmArray("ItemPriceArray")?.Values??new object[0]).Select(Convert.ToInt32).ToArray()}).Where(d=>d.names.Length>0&&d.names.Length==d.prices.Length).ToArray();
             return Core.RecordJson.WriteRecord(Data);
         }
     }

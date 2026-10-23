@@ -100,7 +100,7 @@ namespace WildWasteland.Modules.Gunplay
         private static string[] _blades = new string[0];
 
         /// <summary>The weapon name contains one of the StabWeapons entries (case-insensitive).</summary>
-        private static bool IsBlade(string weapon)
+        internal static bool IsBlade(string weapon)
         {
             string list = GunplaySettings.StabWeapons.Value ?? "";
             if (!ReferenceEquals(list, _bladeSource))
@@ -274,6 +274,7 @@ namespace WildWasteland.Modules.Gunplay
             { var observed=new Core.Events.PartAttackObserved { Part=Core.Entities.Of(wheel.gameObject),Attacker=Core.Entities.Of(Core.GameRefs.Player) };Core.ModEvents.Publish(ref observed); }
             float mult = Mathf.Max(0f, GunplaySettings.WheelDamageMultiplier.Value);
             float before = PartCondition(wheel);
+            dmg *= (ModApi.Get<IPlayerPerkEffects>()?.DamageMultiplier(WeaponKind.Melee, PlayerState.Health * .01f) ?? 1f) * (ModApi.Get<IPlayerSkills>()?.DamageMultiplier(WeaponKind.Melee, false) ?? 1f);
             foreach (var f in wheel.GetComponents<PlayMakerFSM>())
             {
                 if (f == null || f.FsmName != "Bodypart") continue;

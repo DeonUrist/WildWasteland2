@@ -54,10 +54,12 @@ namespace WildWasteland.Modules.Presentation
                     if (pose == null || !pose.Ready) return null;
                     var t = new NpcTraversal(animator) { _pose = pose, _length = pose.Seconds };
                     t._handler = new HumanPoseHandler(animator.avatar, animator.transform);
+                    ZombieAnimations.Traversal(animator, true);
                     _live.Add(t);
                     return t;
                 }
-                var clip = ClimbingController.Clip(kind == "ClimbHigh");
+                var clip = kind == "Drop" ? Anims.First("RifleJumpLoop", "JumpLoop") : ClimbingController.Clip(kind == "ClimbHigh");
+                if (clip == null && kind == "Drop") { var drop = new NpcTraversal(animator); ZombieAnimations.Traversal(animator, true); _live.Add(drop); return drop; }
                 if (clip == null) return null;
                 var c = new NpcTraversal(animator) { _length = clip.length };
                 c._graph = PlayableGraph.Create("WW.NpcClimb");
@@ -68,6 +70,7 @@ namespace WildWasteland.Modules.Presentation
                 output.SetSourcePlayable(c._clip);
                 animator.applyRootMotion = false;
                 c._graph.Play();
+                ZombieAnimations.Traversal(animator, true);
                 _live.Add(c);
                 return c;
             }
@@ -111,6 +114,7 @@ namespace WildWasteland.Modules.Presentation
             if (_graph.IsValid()) _graph.Destroy();
             if (_animator != null) _animator.applyRootMotion = _rootMotion;
             if (_character != null && _character.Valid && !_wasSuspended) _character.Suspended = false;
+            ZombieAnimations.Traversal(_animator, false);
         }
 
         /// <summary>Ends every lease.</summary>

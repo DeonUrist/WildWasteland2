@@ -7,8 +7,7 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.Compatibility
 {
     /// <summary>
-    /// Damage part of the Apocaspawner bridge: Apocaspawner's crossbow WeaponDamage result is scaled by the Gunplay crossbow multiplier
-    /// while player shots use Gunplay projectiles (IGunsApi.PlayerProjectilesEnabled).
+    /// Damage part of the Apocaspawner bridge: weapon stats include current player skill/perk effects and enabled projectile multipliers.
     /// </summary>
     internal static class ApocaspawnerDamage
     {
@@ -23,17 +22,21 @@ namespace WildWasteland.Modules.Compatibility
             _value = method != null ? AccessTools.Field(method.ReturnType, "Value") : null;
             if (_value == null || _value.FieldType != typeof(float)) { _value = null; Log.Warn(scope, "Apocaspawner damage API unavailable."); return; }
             if (Core.Patches.Patch(scope, method, postfix: AccessTools.Method(typeof(ApocaspawnerDamage), nameof(AfterDamage))))
-                Log.Main(scope, "Apocaspawner crossbow damage bridge installed.");
+                Log.Main(scope, "Apocaspawner weapon damage bridge installed.");
         }
 
-        /// <summary>Postfix of Parameters.WeaponDamage (per damage query; early-out unless Gunplay player projectiles and a crossbow).</summary>
-        static void AfterDamage(GameObject go, object __result)
+        /// <summary>Scales only the outer weapon query so recursive explosion/prefab reads cannot compound bonuses.</summary>
+        static void AfterDamage(GameObject go, int depth, object __result)
         {
-            if (_value == null || __result == null || go == null) return;
-            var guns = ModApi.Get<IGunsApi>();
-            if (guns == null || !guns.PlayerProjectilesEnabled) return;
-            if (!go.name.StartsWith("crossbow", StringComparison.OrdinalIgnoreCase)) return;
-            _value.SetValue(__result, (float)_value.GetValue(__result) * (ModApi.Get<IWeaponStats>()?.Get(ModApi.Get<IWeaponCatalog>()?.Resolve("crossbow") ?? -1,WeaponStat.DamageMultiplier) ?? 1f)); // refs-ok: REFACTOR-REQUEST B17-6
+            if (_value == null || __result == null || go == null || depth != 0) return;
+            var catalog = ModApi.Get<IWeaponCatalog>(); int key;
+            if (catalog == null || !catalog.TryResolve(go, out key)) return;
+            var kind = catalog.KindOf(key);
+            float factor = (ModApi.Get<IPlayerSkills>()?.DamageMultiplier(kind, false) ?? 1f)
+                * (ModApi.Get<IPlayerPerkEffects>()?.DamageMultiplier(kind, PlayerState.Health * .01f) ?? 1f);
+            if ((ModApi.Get<IGunsApi>()?.PlayerProjectilesEnabled ?? false) && kind != WeaponKind.Melee && kind != WeaponKind.Thrown && kind != WeaponKind.Other)
+                factor *= ModApi.Get<IWeaponStats>()?.Get(key, go.name, WeaponStat.DamageMultiplier) ?? 1f;
+            if (factor != 1f) _value.SetValue(__result, (float)_value.GetValue(__result) * factor); // refs-ok: REFACTOR-REQUEST B17-6
         }
 
         /// <summary>Forgets the reflected field (the scope removes the patch).</summary>

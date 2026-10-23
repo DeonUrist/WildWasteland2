@@ -86,6 +86,17 @@ namespace WildWasteland.Modules.NPCAI
             }
         }
 
+        internal static void EnemiesNear(Vector3 scene, float radius, List<GameObject> into)
+        {
+            into.Clear(); float squared = radius * radius;
+            foreach (var pair in _agents)
+            {
+                var actor = pair.Value;
+                if (actor.Owner != null && actor.Owner.activeInHierarchy && actor.Hostile.Contains("Player") && !Brain.IsFollowerDriven(actor.Owner)
+                    && (actor.T.position - scene).sqrMagnitude <= squared && (actor.PerkHealth == null || actor.PerkHealth.Value > 0)) into.Add(actor.Owner);
+            }
+        }
+
         /// <summary>Number of registered live NPCs of a faction tag (null = any) within a radius of a scene point.</summary>
         internal static int CountNear(Vector3 scene, float radius, string faction)
         {

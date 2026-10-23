@@ -78,8 +78,12 @@ namespace WildWasteland.Modules.Gunplay
             bool isPart = OwningPart(go.transform) != null || go.CompareTag("vehPartRemoved") || IsVehiclePart(go);   // the same test HitWorld uses (a vehPart-tagged ancestor)
             bool corpse = !isPart && IsCorpse(go);                // (1.5.2) a dead NPC's ragdoll: blood, but no number / marker / hurt
             bool creature = !isPart && !corpse && (HasBodypart(go) || HasBodypart(RootOf(go.transform).gameObject));
-            if (creature) Bridge.Hurt(go, s.Player);
-            bool feedback = creature;
+            if (!creature && !corpse) ModApi.Get<ICombatSources>()?.Assign(go, Entities.Player);
+            PerkCombat.CurrentBlast = s.Blast;
+            PerkCombat.Instance?.Stage(go, fsm.GameObject, WeaponCatalog.Instance.KindOf(gun.Handle), false);
+            PerkCombat.CurrentBlast = null;
+            if (creature) { ModApi.Get<ICombatSources>()?.RecordHit(go, Entities.Player, WeaponCatalog.Instance.KindOf(gun.Handle), false); Bridge.Hurt(go, s.Player); }
+            bool feedback = creature && s.Blast == null;
             float before = Log.L2 || feedback ? HealthOf(go) : 0f;
             Replay(fsm, (go.layer == 10 || corpse) && gun.ActorHit != null ? gun.ActorHit : gun.GetLayer, falloff);   // a corpse bleeds like the living NPC did
             float headF = creature && col_isHead(go) && !IsPlayerObj(go) ? HeadFactor(go) : 1f;     // [Gunplay] HeadshotMultiplier instead of the head's own x2
@@ -265,6 +269,7 @@ namespace WildWasteland.Modules.Gunplay
                     if (Ignored(tr, s.ShooterRoot != null ? s.ShooterRoot.transform : null, s.Player)) continue;
                     float pd = s.Travelled + h.distance;
                     float pf = Falloff(ref s, pd) * s.DmgMult * s.Gun.DamageMultiplier;
+                    pf *= ModApi.Get<IPlayerPerkEffects>()?.DamageMultiplier(WeaponCatalog.Instance.KindOf(s.Gun.Handle), PlayerState.Health * .01f) ?? 1f;
                     if (Penetrates(ref s, col, h, (s.Gun.Damage != null ? s.Gun.Damage.Value : 0f) * pf)) continue;
                     if (s.Bolt) LandBolt(ref s, h.point, h.normal, tr, col is TerrainCollider || Creature(tr) != null || IsCorpse(col.gameObject));
                     PlayerHit(ref s, h, pf);
@@ -435,6 +440,8 @@ namespace WildWasteland.Modules.Gunplay
         {
             if (s.Impact != null) UnityEngine.Object.Instantiate(s.Impact, point, Quaternion.identity);
             if (target == null || Mathf.Abs(damage) < 0.01f) return;
+            PerkCombat.Instance?.Stage(target,s.ShooterRoot,(WeaponKind)(int)s.Kind,false);
+            ModApi.Get<ICombatSources>()?.RecordHit(target, Entities.Of(s.ShooterRoot), (WeaponKind)(int)s.Kind, false);
             if (col_isHead(target) && !IsPlayerObj(target)) damage *= HeadFactor(target);
             var fsms = FsmBuffers.Rent();
             target.GetComponents(fsms);

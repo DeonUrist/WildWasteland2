@@ -26,9 +26,9 @@ namespace WildWasteland.Modules.NPCAI
         }
 
         /// <summary>A chainsaw kill was witnessed: hostile humans within 25 m with a line of sight to the corpse flee for 6 s.</summary>
-        internal static void ChainsawWitnesses(GameObject corpse)
+        internal static void ChainsawWitnesses(GameObject corpse, bool chainsaw = true)
         {
-            if (!On) return;
+            if (!On || corpse == null) return;
             Vector3 victim = corpse.transform.position;
             foreach (var pair in _npcs)
             {
@@ -40,8 +40,8 @@ namespace WildWasteland.Modules.NPCAI
                 RaycastHit obstruction;
                 if (Physics.Linecast(eye, victim + Vector3.up, out obstruction, LosMask, QueryTriggerInteraction.Ignore)
                     && !obstruction.transform.IsChildOf(corpse.transform)) continue;
-                Frighten(n, victim, "witnessed chainsaw kill");
-                n.SawFrightUntil = Time.time + 6f;
+                Frighten(n, victim, chainsaw ? "witnessed chainsaw kill" : "witnessed melee kill");
+                n.SawFrightUntil = Time.time + 6f; n.FrightUntil = n.BurningFear ? float.PositiveInfinity : n.SawFrightUntil; n.FrightCrouch = chainsaw && Core.SkillPerks.Has("Undertaker");
             }
         }
 
@@ -60,7 +60,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Fright think: finds cover away from the threat (camp cover objects, else a map spot) and runs there until the fright ends.</summary>
         private static bool FrightThink(Npc n, float now)
         {
-            if (now >= n.FrightUntil) return false;
+            if (now >= n.FrightUntil) { if (n.FrightCrouch) { Crouch(n,false); n.FrightCrouch = false; } return false; }
             if (n.HpVar == null || n.HpVar.Value < 1f) { n.FrightUntil = 0f; return false; }
             if (n.Mode != Mode.Cover && now >= n.NextFrightCover)
             {
@@ -89,8 +89,8 @@ namespace WildWasteland.Modules.NPCAI
             Vector3 delta = n.CoverPos - n.T.position; delta.y = 0f;
             if (delta.sqrMagnitude <= 2.25f)
             {
-                if (!n.CoverArrived) Move(n, false);
-                n.CoverArrived = true; n.HasHeading = false;
+                if (!n.CoverArrived) { Move(n, false); if (n.FrightCrouch) { n.SawFrightUntil = now + 12; n.FrightUntil = n.BurningFear ? float.PositiveInfinity : n.SawFrightUntil; } }
+                n.CoverArrived = true; n.HasHeading = false; if (n.FrightCrouch) Crouch(n,true);
             }
             else
             {

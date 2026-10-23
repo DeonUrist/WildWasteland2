@@ -45,6 +45,8 @@ namespace WildWasteland.Modules.Presentation
                 _driver.SetWeapon(null,weapon);GunPose.Flush();
             }
             var kind=Props.KindOf(weapon);bool gun=kind==Props.Kind.Rifle || kind==Props.Kind.Pistol;
+            var weaponState = ModApi.Get<IWeaponState>();
+            if (weaponState != null && (ModApi.Get<IWeaponCatalog>()?.KindOf(weaponState.WeaponKey) ?? WeaponKind.Other) == WeaponKind.Shotgun && SkillPerks.Has("FastPump")) plan.PumpSpeed *= 1.5f;
             bool live=!PlayerState.Paused,click=live && Input.GetMouseButtonDown(0);
             bool aiming=live && gun && Game.AimDownSights,fire=live && Input.GetMouseButton(0);
             plan.FollowNativeReload=true;plan.NativeReload=gun && ReloadNow(weapon);plan.NativeReloadFraction=-1f;
@@ -62,6 +64,7 @@ namespace WildWasteland.Modules.Presentation
                     if(c!=null && LocoPlan.RoundSegment(clip,out a,out b)) { float len=Mathf.Max(.1f,c.length*(b-a));plan.NativeReloadFraction=a+Mathf.Repeat(Time.time-_reloadStart,len)/len*(b-a); }
                 }
             }
+            if (plan.NativeReload && !Game.ReloadsPerRound(weapon)) { int phase; float fraction; if (Game.ArmsReloadPhase(weapon,out phase,out fraction)) plan.NativeReloadFraction = fraction; }
             string attack;float attackTime;
             bool cock=kind==Props.Kind.Rifle && Game.Attack(weapon,out attack,out attackTime) && LocoPlan.IsCocking(attack);
             if(cock && !_cocking) _driver.Pump();_cocking=cock;

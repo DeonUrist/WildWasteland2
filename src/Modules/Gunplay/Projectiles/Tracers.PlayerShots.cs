@@ -57,6 +57,7 @@ namespace WildWasteland.Modules.Gunplay
                 Vector3 origin = ft.position + (__instance.fromPosition != null && !__instance.fromPosition.IsNone ? __instance.fromPosition.Value : Vector3.zero);
                 Vector3 local = __instance.direction != null && !__instance.direction.IsNone ? __instance.direction.Value : Vector3.forward;
                 float range = RangeOf(gun.Kind) * gun.RangeMultiplier;
+                if (SkillPerks.Rifle((WeaponKind)(int)gun.Kind) && SkillPerks.Has("LongShot")) range *= 1.25f;
                 float speed = gun.Kind == Kind.Crossbow ? GunplaySettings.BoltSpeed.Value : GunplaySettings.BulletSpeed.Value;
                 int pellets = gun.Pellets; float dmgMult = 1f;
                 var stats = WeaponStats.Instance;
@@ -70,6 +71,8 @@ namespace WildWasteland.Modules.Gunplay
                     if (gun.DamageMultiplier > 0f) dmgMult = stats.Modify(gun.Handle, item, WeaponStat.DamageMultiplier, gun.DamageMultiplier) / gun.DamageMultiplier;
                 }
                 if (_player == null) _player = GameRefs.Player;
+                float skillSpread = ModApi.Get<IPlayerSkills>()?.SpreadMultiplier(WeaponCatalog.Instance.KindOf(gun.Handle)) ?? 1f;
+                local = new Vector3(local.x * skillSpread, local.y * skillSpread, local.z);
 
                 Vector3 muzzle = gun.Muzzle != null && gun.Muzzle.gameObject.activeInHierarchy ? gun.Muzzle.position
                                : origin + ft.forward * 0.4f - ft.up * 0.15f;
@@ -79,12 +82,13 @@ namespace WildWasteland.Modules.Gunplay
                     muzzle = bodyMuzzle;
                     if (Log.L2 && _playerMuzzleLogs++ < 3) GunplayLog.Deep("Player shot origin: visible body muzzle " + muzzle);
                 }
+                var blast = gun.Kind == Kind.Shotgun && SkillPerks.Has("BigBlast") ? new PerkCombat.Blast { Pending = pellets } : null;
                 for (int p = 0; p < pellets; p++)
                 {
                     Vector3 l = local;
                     if (gun.Kind == Kind.Shotgun)
                     {
-                        Vector2 offset = SpreadOffset(GunplaySettings.Accuracy(true)) * gun.PelletSpread;
+                        Vector2 offset = SpreadOffset(GunplaySettings.Accuracy(true)) * gun.PelletSpread * skillSpread;
                         l = new Vector3(offset.x, offset.y, 1f);
                     }
                     Vector3 dir = __instance.space == Space.Self ? ft.TransformDirection(l) : l;
@@ -98,14 +102,14 @@ namespace WildWasteland.Modules.Gunplay
                     {
                         Pos = muzzle, Start = muzzle, Dir = d.normalized,
                         Speed = speed,
-                        Range = range, Bolt = gun.Kind == Kind.Crossbow, Shotgun = gun.Kind == Kind.Shotgun, Alive = true, Kind = gun.Kind, DmgMult = dmgMult,
+                        Range = range, Bolt = gun.Kind == Kind.Crossbow, Shotgun = gun.Kind == Kind.Shotgun, Alive = true, Kind = gun.Kind, DmgMult = dmgMult, Blast = blast,
                         Layers = gun.Layers, Gun = gun, Player = _player,
                         ShooterRoot = ft.root.gameObject,
                     };
                     s.Id = CombatEvents.NextProjectileId();
                     CombatEvents.Spawned(s.Id, s.ShooterRoot, s.Bolt ? ProjectileKind.Bolt : s.Shotgun ? ProjectileKind.Pellet : ProjectileKind.Bullet, s.Pos, s.Dir * s.Speed, s.Range);
                     LaunchBolt(ref s);
-                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); }
+                    if (_shots.Count >= GunplaySettings.MaxTracers.Value) { Snapshot(); s.Speed = s.Range * 2f; Step(ref s, 1f); PerkCombat.Instance?.Complete(s.Blast); if (s.Visual != null) UnityEngine.Object.Destroy(s.Visual.gameObject); CombatEvents.Ended(s.Id, s.Pos, s.Hit); }
                     else _shots.Add(s);
                 }
                 if (gun.Kind == Kind.Shotgun && Log.L2)

@@ -64,7 +64,10 @@ namespace WildWasteland.Modules.POI
             foreach(var f in root.GetComponentsInChildren<PlayMakerFSM>(true))
                 if(f.FsmName=="ItemSpawner"&&f.gameObject.name.StartsWith("EnemySpawn_",StringComparison.Ordinal))spawners.Add(f);
             Sites[id]=new Site{Root=root,Spawners=spawners.ToArray()};
+            TrafficLocations.SuppressCaptured(id,root);
         }
+        internal static void Captured(string id)
+        { Site site; if(Sites.TryGetValue(id,out site)){site.Residents.Clear();TrafficLocations.SuppressCaptured(id,site.Root);} }
         /// <summary>Tests whether a remembered camp root is loaded and active.</summary>
         internal static bool Loaded(string id)
         {return Sites.TryGetValue(id,out var site)&&site.Root!=null&&site.Root.gameObject.activeInHierarchy;}
@@ -75,6 +78,7 @@ namespace WildWasteland.Modules.POI
             foreach(var spawner in site.Spawners)
             {
                 if(spawner==null)continue;
+                if(TrafficLocations.Captured.Contains(id)&&!spawner.enabled)continue;
                 if(!spawner.Fsm.Initialized)return false;
                 if(spawner.ActiveStateName=="spawned")continue;
                 var consumed=spawner.FsmVariables.GetFsmInt("OnOff");

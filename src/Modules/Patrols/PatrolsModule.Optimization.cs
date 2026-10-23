@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Patrols
         public override void ProvideApis()
         {
             RegisterDiagnostics();
+            ModApi.Provide<ISkillMerchantRuntime>(this,new SkillMerchantRuntime());
             ModApi.Provide<ITurretPlacement>(this,new TurretPlacementApi());
             ModApi.Provide<IMerchantPlacement>(this,new MerchantPlacementApi());
             ModApi.Provide<IAuthoredVehicleRequests>(this, new AuthoredVehicleRequests());

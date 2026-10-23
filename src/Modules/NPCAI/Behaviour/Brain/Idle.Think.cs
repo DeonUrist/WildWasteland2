@@ -21,7 +21,7 @@ namespace WildWasteland.Modules.NPCAI
             _thinkCap = Mathf.CeilToInt(_thinkers * dt / ThinkEvery) + 1; _thinkers = 0; _thinksNow = 0;
             foreach (var a in Senses.AllAgents)
             {
-                if (a.Owner == null) continue;
+                if (a.Owner == null || SkillReactions.Busy(a.Owner)) continue;
                 if (Brain.Retreating(a.Owner)) continue;
                 int id = a.Owner.GetInstanceID();
                 Order ord = null;

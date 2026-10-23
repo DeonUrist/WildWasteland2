@@ -109,7 +109,7 @@ namespace WildWasteland.Modules.Survival
                 ints.Add(new FsmInt("StewSpoiled"));
                 save.FsmVariables.IntVariables = ints.ToArray();
                 var floats = new List<FsmFloat>(save.FsmVariables.FloatVariables);
-                foreach (string name in new[] { "RawNutrition", "CookedNutrition", "StewInsanity", "SpoiledNutrition", "StaleSeconds" }) floats.Add(new FsmFloat(name));
+                foreach (string name in new[] { "RawNutrition", "CookedNutrition", "StewInsanity", "RawInsanity", "SpoiledNutrition", "StaleSeconds" }) floats.Add(new FsmFloat(name));
                 save.FsmVariables.FloatVariables = floats.ToArray(); save.FsmVariables.Init();
                 var es3 = copy.GetComponent<ES3Prefab>();
                 es3.prefabId = PrefabId;

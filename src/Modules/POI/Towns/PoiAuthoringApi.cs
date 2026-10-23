@@ -5,7 +5,7 @@ using WildWasteland.Core;
 namespace WildWasteland.Modules.POI
 {
     /// <summary>Publishes validated authoring snapshots and static previews without exposing runtime site/catalog types.</summary>
-    internal sealed class PoiAuthoringApi : IPoiAuthoring
+    internal sealed partial class PoiAuthoringApi : IPoiAuthoring
     {
         private readonly PoiDressing _runtime;
         private IModule _sessionOwner; private Func<bool> _build; private Action _close;

@@ -129,7 +129,7 @@ namespace WildWasteland.Modules.NPCAI
                     // Load the matching native template in its existing sliced pipeline, even when
                     // a distant town lies outside the player-driven bake discovery radius.
                     if (native.FloorY == null) Nav.BeginBake(native, true);
-                    if (native.Phase == 0)
+                    if (native.Phase == 0 && !native.InstanceMap)
                         throw new InvalidOperationException("Matching saved bake unavailable for " + building.name + "; refusing an in-town physics bake during loading");
                     Nav.BakeStep(native); _warming = true; return false;
                 }

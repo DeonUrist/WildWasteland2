@@ -135,6 +135,8 @@ namespace WildWasteland.Modules.Presentation
         void InitNpcVisuals()
         {
             CanineVisuals.Initialize(this);
+            ZombieAnimations.Initialize(this);
+            _perkRecovery.Init(this);
             Scheduler.EveryFrame(this,"Presentation.CanineBehavior",CanineVisuals.Tick,Phase.Update);
             Scheduler.EveryFrame(this,"Presentation.CanineVisuals",CanineVisuals.LateTick,Phase.LateUpdate);
             Scheduler.EveryFrame(this,"Presentation.AnimalEffects",AnimalVisuals.Tick,Phase.Update);
@@ -170,6 +172,8 @@ namespace WildWasteland.Modules.Presentation
             ShutdownStep("ModAPI characters", ModAPI.OnSceneLoaded);
             _animation.Clear();
             ShutdownStep("dog animations", CanineVisuals.Shutdown);
+            ShutdownStep("zombie animations", ZombieAnimations.Clear);
+            ShutdownStep("perk recovery", _perkRecovery.Clear);
             _running = false;
         }
 
@@ -185,6 +189,8 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Scene load: body state, ModAPI characters, service handles, ADS tweens and Gungirl caches dropped, then World.</summary>
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
+            _perkRecovery.Clear();
+            ZombieAnimations.Clear();
             RiderVisuals.Clear(); AnimalVisuals.Clear(); NpcVoice.Clear(); CanineVisuals.OnSceneLoaded();
             BodyRunner.OnSceneLoaded();
             ModAPI.OnSceneLoaded();
@@ -213,8 +219,10 @@ namespace WildWasteland.Modules.Presentation
 
         /// <summary>Registers the ModAPI providers of the character part (IAnimationApi, ICharacterPresentation, ICharacterAppearance,
         /// IWeaponPose, IPoseAuthoring, ICharacterAssets, INpcAppearance while Women of Wasteland runs), then World's.</summary>
+        private readonly NpcRecovery _perkRecovery = new NpcRecovery();
         public override void ProvideApis()
         {
+            ModApi.Provide<INpcRecovery>(this,_perkRecovery);
             ModApi.Provide<IAnimalVisuals>(this,new AnimalVisuals());
             ModApi.Provide<INpcReloadAudio>(this,new ReloadSounds());
             ModApi.Provide<INpcVoice>(this,new NpcVoice());
