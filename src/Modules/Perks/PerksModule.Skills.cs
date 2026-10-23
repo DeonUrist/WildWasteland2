@@ -35,7 +35,6 @@ namespace WildWasteland.Modules.Perks
         }
         private void AnnounceSkillPerks(int skill, int before)
         {
-            _notice.SkillUp();
             foreach (var perk in SkillPerkRoster.All) if ((int)perk.Skill == skill && before < perk.Level && _skills[skill] >= perk.Level)
             { var unlocked = new PlayerSkillPerkUnlocked { Id = perk.Id }; ModEvents.Publish(ref unlocked); Log.Always(this, "Skill perk unlocked: " + perk.Name + " (" + Names[skill] + " " + perk.Level + ")."); }
         }
