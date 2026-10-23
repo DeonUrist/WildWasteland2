@@ -11,6 +11,7 @@ namespace WildWasteland.Modules.Survival
     {
         private readonly IModule _owner;
         private readonly Dictionary<FsmFloatAdd, FsmFloat> _nativeHealing = new Dictionary<FsmFloatAdd, FsmFloat>();
+        private readonly Dictionary<FloatAdd, FsmFloat> _nativeInsanity = new Dictionary<FloatAdd, FsmFloat>();
         private WorldWatch _corpses;
         private bool _sleeping;
         private float _nextNotice;
@@ -29,6 +30,9 @@ namespace WildWasteland.Modules.Survival
             _sleeping = true;
             foreach (var action in state.Actions)
             {
+                var insanity = action as FloatAdd;
+                if (insanity != null && insanity.floatVariable.Name == "Sanity" && !_nativeInsanity.ContainsKey(insanity))
+                { _nativeInsanity.Add(insanity, insanity.add); insanity.add = -5f; }
                 var heal = action as FsmFloatAdd;
                 if (heal == null || heal.variableName.Value != "Health") continue;
                 if (!_nativeHealing.ContainsKey(heal)) { _nativeHealing.Add(heal, heal.add); heal.add = 0f; }
@@ -58,6 +62,6 @@ namespace WildWasteland.Modules.Survival
             return true;
         }
         internal void Clear()
-        { foreach (var pair in _nativeHealing) pair.Key.add = pair.Value; _nativeHealing.Clear(); _sleeping = false; }
+        { foreach (var pair in _nativeHealing) pair.Key.add = pair.Value; _nativeHealing.Clear(); foreach (var pair in _nativeInsanity) pair.Key.add = pair.Value; _nativeInsanity.Clear(); _sleeping = false; }
     }
 }
