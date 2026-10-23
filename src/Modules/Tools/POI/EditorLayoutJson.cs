@@ -23,12 +23,14 @@ namespace WildWasteland.Modules.Tools
     }
     internal sealed class EditorLayout
     {
-        internal const int Limit = 512;
+        internal const int Limit = 8192;
         internal string Type;
+        internal readonly List<string> Native = new List<string>();
+        internal readonly Dictionary<string, object> Metadata = new Dictionary<string, object>();
         internal readonly List<EditorProp> Props = new List<EditorProp>();
         /// <summary>Copies editable layout values without sharing the mutable props collection.</summary>
         internal EditorLayout Copy()
-        { var copy = new EditorLayout { Type = Type }; foreach (var prop in Props) copy.Props.Add(prop.Copy()); return copy; }
+        { var copy = new EditorLayout { Type = Type }; copy.Native.AddRange(Native); foreach (var row in Metadata) copy.Metadata[row.Key] = row.Value; foreach (var prop in Props) copy.Props.Add(prop.Copy()); return copy; }
     }
     // These are portable POI authoring assets, shared by every instance; never world/save-slot sidecars.
     internal static class EditorLayoutJson
@@ -39,8 +41,11 @@ namespace WildWasteland.Modules.Tools
             var root = Json.Parse(text) as Dictionary<string, object>;
             if (root == null || Number(root, "version") != 2 || String(root, "poi") != type) throw new InvalidDataException("Invalid POI layout version/type");
             object value; var rows = root.TryGetValue("props", out value) ? value as List<object> : null;
-            if (rows == null || rows.Count > EditorLayout.Limit) throw new InvalidDataException("Invalid prop list (maximum 512)");
+            if (rows == null || rows.Count > EditorLayout.Limit) throw new InvalidDataException("Invalid prop list (maximum 8192)");
             var layout = new EditorLayout { Type = type };
+            foreach (var row in root) if (row.Key != "version" && row.Key != "poi" && row.Key != "props" && row.Key != "native") layout.Metadata[row.Key] = row.Value;
+            var native = root.TryGetValue("native", out value) ? value as List<object> : null;
+            if (native != null) foreach (var path in native) { string name = path as string; if (name == null || name.Length > 1024) throw new InvalidDataException("Invalid native scenery path"); layout.Native.Add(name); }
             var ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (var row in rows)
             {
@@ -105,7 +110,7 @@ namespace WildWasteland.Modules.Tools
         /// <summary>Serializes the current detached draft in the supported layout format.</summary>
         internal static string Serialize(EditorLayout layout)
         {
-            var text = new StringBuilder("{\n  \"version\":2,\n  \"poi\":"); Quote(text, layout.Type); text.Append(",\n  \"props\":[\n");
+            var text = new StringBuilder("{\n  \"version\":2,\n  \"poi\":"); Quote(text, layout.Type); foreach (var row in layout.Metadata) { text.Append(','); Quote(text, row.Key); text.Append(':').Append(Json.Write(row.Value)); } text.Append(",\n  \"native\":["); for (int i = 0; i < layout.Native.Count; i++) { if (i > 0) text.Append(','); Quote(text, layout.Native[i]); } text.Append("],\n  \"props\":[\n");
             for (int i = 0; i < layout.Props.Count; i++)
             {
                 var p = layout.Props[i]; if (i > 0) text.Append(",\n");

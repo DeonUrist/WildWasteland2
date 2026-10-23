@@ -41,7 +41,7 @@ namespace WildWasteland.Core.Optimization
         bool _running, _initialized, _sceneSafe;
         Job _startup;
         /// <summary>Whether the Core optimization master is active, including deferred scene startup.</summary>
-        public bool Running { get { return _running; } }
+        public bool Running { get { return _running && _enabled.Value; } }
         public WeatherVisualDetail WeatherDetail { get { return Preset == PerfPreset.Low ? WeatherVisualDetail.Low : Preset == PerfPreset.Max ? WeatherVisualDetail.Max : WeatherVisualDetail.Balanced; } }
 
         /// <summary>Creates the one Core lifetime owner without accessing scene objects.</summary>
@@ -58,11 +58,11 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Binds the optimization master, quality preset and explicit feature entries without legacy migration.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
-            _enabled = cfg.Player("Preset", "Enabled", true, "Enable Core's base-game optimizations. Changes apply immediately.");
+            _enabled = cfg.Player("Preset", "Enabled", true, "Enable Core's base-game optimizations. Generated mesh LODs remain active at 2x distance when off. Changes apply immediately.");
             cfg.Enabled = _enabled;
             _enabled.SettingChanged += EnabledChanged;
             _preset = cfg.Tool("Preset", "Preset", PerfPreset.Vanilla,
-                "PERFORMANCE (Low), BALANCED, VISUALS (Max), VANILLA (default). Vanilla preserves original visuals, simulation settings and item cleanup; exact optimizations (no visible change) are not affected. Saved Low/Max values remain compatible.");
+                "PERFORMANCE (Low), BALANCED, VISUALS (Max), VANILLA (default). Vanilla keeps generated mesh LODs at 2x distance and preserves other original visuals, simulation settings and item cleanup; exact optimizations (no visible change) are not affected. Saved Low/Max values remain compatible.");
             _preset.SettingChanged += (s, a) => { if (_running) ApplyAll(true); };
             DiscoverFeatures();
             foreach (var f in _features)
@@ -80,7 +80,8 @@ namespace WildWasteland.Core.Optimization
         void EnabledChanged(object sender, EventArgs args)
         {
             if (!_initialized) return;
-            if (_enabled.Value) StartRuntime(); else StopRuntime();
+            StopRuntime();
+            StartRuntime();
         }
 
         /// <summary>Instantiates the 43 approved features explicitly and retains their category/order/plan-id sorting.</summary>
@@ -110,23 +111,23 @@ namespace WildWasteland.Core.Optimization
             });
         }
 
-        /// <summary>Marks Core optimization initialized and starts it only when its master entry is enabled.</summary>
+        /// <summary>Starts the shared runtime even with the master off so generated mesh LODs remain available.</summary>
         public override void Init()
         {
             if (_initialized) return;
             _initialized = true;
-            if (_enabled != null && _enabled.Value) StartRuntime();
+            StartRuntime();
         }
 
         /// <summary>Publishes Core's active visual policy to Survival without a module dependency.</summary>
-        public override void ProvideApis() { if (_running) ModApi.Provide<IWeatherVisualPolicy>(this, this); }
+        public override void ProvideApis() { if (Running) ModApi.Provide<IWeatherVisualPolicy>(this, this); }
 
         /// <summary>Subscribes the shared dispatchers and defers scene-dependent features until a scene is loaded.</summary>
         void StartRuntime()
         {
             if (_running) return;
             _running = true; Active = true;
-            FsmPause.Own(this, FsmPause.CarLod | FsmPause.PollSleep | FsmPause.Stepped | FsmPause.FsmSleep);
+            if (_enabled.Value) FsmPause.Own(this, FsmPause.CarLod | FsmPause.PollSleep | FsmPause.Stepped | FsmPause.FsmSleep);
             ProvideApis();
             WorldTiles.OnApplied(this, TileApplied);
             Hooks.CreateObjectEnter.Postfix(this, RenderScan.AfterCreateObject);
@@ -157,6 +158,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Contains one feature's optional hook registration failure so unrelated features still initialize.</summary>
         void SubscribeFeature(Feature feature)
         {
+            if (!_enabled.Value && !(feature is GeneratedLods)) return;
             try { feature.SubscribeHooks(); }
             catch (Exception ex) { feature.LastError = ex.Message; Log.Error(this, feature.PlanId + " hooks", ex); }
         }
@@ -202,6 +204,8 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Computes the effective feature mode, forcing preset-dependent features off under Vanilla.</summary>
         static FeatureMode Wanted(Feature f)
         {
+            if (f is GeneratedLods) return FeatureMode.On;
+            if (!_enabled.Value) return FeatureMode.Off;
             if (f.ModeEntry == null) return FeatureMode.Off;
             if (f.UsesPreset && Preset == PerfPreset.Vanilla) return FeatureMode.Off;
             return f.ModeEntry.Value;

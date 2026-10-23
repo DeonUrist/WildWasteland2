@@ -23,9 +23,12 @@ namespace WildWasteland.Modules.POI
             internal List<GameObject> Population;
             internal string Type, Error;
             internal PoiDressLayout Layout;
+            internal PoiDressLayout EditLayout;
+            internal readonly Dictionary<Renderer, bool> NativeRenderers = new Dictionary<Renderer, bool>();
+            internal readonly Dictionary<Collider, bool> NativeColliders = new Dictionary<Collider, bool>();
             internal GameObject Dressing;
             internal int Next;
-            internal bool Ready;
+            internal bool Ready, Hidden;
             internal Bounds Bounds;
             internal PoiDressProp[] Exits = new PoiDressProp[0];
         }
@@ -40,11 +43,13 @@ namespace WildWasteland.Modules.POI
         private readonly List<NavStructure> _structures = new List<NavStructure>();
         private int _frame = -1;
         internal PoiAuthoringApi Authoring;
+        internal CustomPoiAssets Authored;
         /// <summary>Registers owner-scoped hooks, services and scheduled work.</summary>
         internal void Install(TownRuntime owner)
         {
             _current = this;
             _owner = owner;
+            Authored = new CustomPoiAssets(this, owner);
             Authoring = new PoiAuthoringApi(this); ModApi.Provide<IPoiAuthoring>(owner.Owner,Authoring);
             Scheduler.Sliced(owner.Owner, "POI static dressing", 500, Step);
             Scheduler.Interval(owner.Owner, "POI dressing cleanup", 5f, Sweep, Phase.Update, false);
@@ -57,8 +62,8 @@ namespace WildWasteland.Modules.POI
         {
             if (root == null || !root.CompareTag("SpawnerStatic") || root.GetComponent<Rigidbody>() != null) return false;
             string name = TypeName(root);
-            return name != "Starter_Area" && !NativeNumber(name, "Camp_") && !NativeNumber(name, "Building_")
-                && !NativeNumber(name, "Cave_") && !NativeNumber(name, "Wreck_") && !name.StartsWith("TownsTower", StringComparison.Ordinal);
+            return name != "Starter_Area" && !name.StartsWith("TownsTower", StringComparison.Ordinal)
+                && ((!NativeNumber(name, "Camp_") && !NativeNumber(name, "Building_") && !NativeNumber(name, "Cave_") && !NativeNumber(name, "Wreck_")) || System.IO.File.Exists(PoiDressStore.FilePath(name)) || _current != null && _current._worldLayouts.ContainsKey(name));
         }
         /// <summary>Recognizes a numbered native prefab family.</summary>
         private static bool NativeNumber(string name, string prefix)
@@ -68,7 +73,7 @@ namespace WildWasteland.Modules.POI
             return true;
         }
         /// <summary>Extracts the stable reusable POI type from an instance name.</summary>
-        private static string TypeName(Transform root)
+        internal static string TypeName(Transform root)
         { string name = root.name; int end = name.IndexOf(' '), clone = name.IndexOf('('); if (end < 0 || clone >= 0 && clone < end) end = clone; return end < 0 ? name : name.Substring(0, end); }
         /// <summary>Offers already loaded roots to the owning discovery provider.</summary>
         internal void DiscoverExisting()
@@ -93,8 +98,10 @@ namespace WildWasteland.Modules.POI
             {
                 if (site.Type == "TownsGasStation") site.Town = _owner.MarkerTown(root, out site.Population);
                 PoiDressLayout layout;
-                if (!_layouts.TryGetValue(site.Type, out layout)) { layout = PoiDressStore.Load(site.Type); _layouts.Add(site.Type, layout); }
+                if (!_layouts.TryGetValue(site.Type, out layout)) { layout = StoredLayout(site.Type); _layouts.Add(site.Type, layout); }
+                var authored = Authored.Get(site.Type); if (authored != null) site.Bounds = new Bounds(Vector3.up * 10, new Vector3(authored.Width, 40, authored.Depth));
                 site.Layout = layout; site.Ready = layout.Props.Count == 0;
+                SuppressNative(site, layout.Native);
                 site.Exits = layout.Props.FindAll(p => p.Kind == "Exit").ToArray();
                 foreach (var prop in layout.Props) if (prop.Marker) { Markers.Catalog.Start(); break; }
             }
@@ -104,6 +111,7 @@ namespace WildWasteland.Modules.POI
         /// <summary>Advances one bounded construction or preparation step.</summary>
         private bool Step()
         {
+            if (Authored.Step()) return true;
             // Catalog enumeration is cheap and may use the rest of the scheduler slice. Object activation is capped separately.
             if (Authoring != null && Authoring.BuildPreview()) return true;
             if (_frame != Time.frameCount && !SaveBus.Saving)
@@ -113,6 +121,7 @@ namespace WildWasteland.Modules.POI
                 {
                     var site = _pending.Dequeue();
                     if (site.Root == null || site.Ready) continue;
+                    if (site.Hidden) { _pending.Enqueue(site); continue; }
                     if (!site.Root.gameObject.activeInHierarchy) { _pending.Enqueue(site); continue; }
                     _frame = Time.frameCount; Build(site); if (!site.Ready) _pending.Enqueue(site); return true;
                 }
@@ -152,15 +161,19 @@ namespace WildWasteland.Modules.POI
             // Resolve every reference before publication: never silently replace an existing layout with missing props.
             foreach (var prop in layout.Props) if (Catalog.Resolve(prop) == null) throw new InvalidOperationException("Missing native mesh: " + prop.Mesh);
             foreach (var prop in layout.Props) if (prop.Marker && prop.Kind != "Hide" && prop.Kind != "Exit" && Markers.Catalog.Find(prop.Kind, prop.Profile) == null) throw new InvalidOperationException("Choose an available spawn list for " + prop.Mesh);
-            Markers.Capture();
-            PoiDressStore.Save(layout); _layouts[site.Type] = layout.Copy();
+            if (Authored.Contains(site.Type)) Authored.QueueSave(site, layout); else Authored.QueueNativeSave(site, layout);
+        }
+        internal void ApplyLayout(PoiDressLayout layout)
+        {
+            Markers.Capture(); _layouts[layout.Type] = layout.Copy();
             foreach (var row in Sites)
             {
-                if (row.Root == null || row.Type != site.Type) continue;
+                if (row.Root == null || row.Type != layout.Type) continue;
                 Core.ModApi.Get<Core.INavApi>()?.ForgetStructure(row.Root);
                 if (row.Dressing != null) { row.Dressing.SetActive(false); Object.Destroy(row.Dressing); row.Dressing = null; }
                 bool queued = !row.Ready;
-                row.Layout = _layouts[site.Type]; row.Next = 0; row.Error = null; row.Ready = false;
+                row.Layout = _layouts[layout.Type]; row.Next = 0; row.Error = null; row.Ready = false;
+                row.EditLayout = null; RestoreNative(row); SuppressNative(row, row.Layout.Native);
                 row.Exits = row.Layout.Props.FindAll(p => p.Kind == "Exit").ToArray();
                 if (!queued) _pending.Enqueue(row);
             }
@@ -176,6 +189,9 @@ namespace WildWasteland.Modules.POI
         internal void Clear()
         {
             Authoring?.Close();
+            foreach (var site in Sites) RestoreNative(site);
+            Authored?.ClearLive();
+            ClearWorkspaces();
             Markers.Clear(false);
             foreach (var site in Sites) if (site.Dressing != null)
             { if (site.Root != null) Core.ModApi.Get<Core.INavApi>()?.ForgetStructure(site.Root); site.Dressing.SetActive(false); Object.Destroy(site.Dressing); }
@@ -183,6 +199,6 @@ namespace WildWasteland.Modules.POI
             Sites.Clear(); _roots.Clear(); _layouts.Clear(); _pending.Clear(); _structures.Clear(); Catalog.Dispose();
         }
         /// <summary>Releases owned resources and restores original native state.</summary>
-        public void Dispose() { Clear(); if (ReferenceEquals(_current, this)) _current = null; }
+        public void Dispose() { Clear(); Authored?.Dispose(); if (ReferenceEquals(_current, this)) _current = null; }
     }
 }

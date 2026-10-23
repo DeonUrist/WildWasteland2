@@ -24,6 +24,7 @@ namespace WildWasteland.Modules.POI
         internal TownFrontage[] Frontages;
         internal TownFrontage[] TiltedFrontages;
         internal bool Crane, Wreck, Merchant, Camp;
+        internal bool DefaultAllowed = true;
         /// <summary>Tests whether the measured footprint exceeds the large-building limit.</summary>
         internal bool Big { get { return HalfX > 25 || HalfZ > 25; } }
     }

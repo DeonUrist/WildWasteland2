@@ -369,6 +369,7 @@ namespace WildWasteland.Modules.Patrols
                 pending.Source=pending.Job.Source;pending.Destination=pending.Job.Destination;
                 var route=pending.Job.Route;
                 PatrolsModule.Verbose(route!=null?"Vehicle route certified: "+pending.Source.id+" -> "+pending.Destination.id+", "+route.Length+" waypoints":"Vehicle route deferred: no continuous known, even ground between candidate bases.");
+                if(route==null&&Core.Log.L2)Core.Log.Deep(null,"[Patrols] Vehicle route rejection: "+pending.Source.id+" -> "+pending.Destination.id+"; "+(pending.Job.Rejections??"no worker rejection counts (check planner error or route invalidation)"));
                 if(route!=null&&!Cleared(pending.Source.id)&&!Cleared(pending.Destination.id)&&(string.IsNullOrEmpty(pending.Source.id)||TrafficLocations.BaseLoaded(pending.Source.id))
                     &&(convoy||string.IsNullOrEmpty(pending.Source.id)||!TrafficLocations.PlayerAt(pending.Source)))
                 {

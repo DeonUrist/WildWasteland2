@@ -12,9 +12,17 @@ namespace WildWasteland.Core
     public interface IPoiAuthoring
     {
         void Discover(); void Sites(List<PoiAuthoringSite> into);
+        void Types(List<string> into);
+        void CustomTypes(List<string> into);
+        bool Create(string name, float width, float depth, bool existing, out int siteId, out string error);
+        bool IsCustom(string type);
+        void PrepareEdit(int siteId);
+        string AuthoringStatus { get; }
+        bool Spawns(string type);
+        bool SetSpawns(string type,bool enabled,out string error);
         bool CatalogComplete { get; }
         void StartCatalog(); void Catalog(List<PoiAuthoringAsset> into);
-        GameObject CreatePreview(long assetId,string markerKind,string propJson,Transform parent);
+        GameObject CreatePreview(long assetId,string markerKind,string propJson,Transform parent,bool solid);
         void SetDressingVisible(int siteId,bool visible);
         bool Save(int siteId,string layoutJson,out string error);
         void Profiles(string kind,List<string> into);

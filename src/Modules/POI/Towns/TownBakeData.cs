@@ -40,6 +40,9 @@ namespace WildWasteland.Modules.POI
             cell = Mathf.Max(cell, Mathf.Max(spec.HalfX * 2 + margin * 2, spec.HalfZ * 2 + margin * 2) / 600f);
             int w = Mathf.Max(2, Mathf.CeilToInt((spec.HalfX * 2 + margin * 2) / cell));
             int h = Mathf.Max(2, Mathf.CeilToInt((spec.HalfZ * 2 + margin * 2) / cell));
+            string authored = PoiDressing.PlanningMap(spec.Name);
+            if (authored != null && File.Exists(authored))
+            { using (var stream = File.OpenRead(authored)) { var map = Read(stream, authored, spec, w, h, cell, margin, strict); if (map != null) return map; } }
             string prefix = "NPCAI.NavMaps.Vanilla." + spec.Name + "-";
             foreach (string resource in WildWasteland.Core.DiskResources.Names)
                 if (resource.StartsWith(prefix, StringComparison.Ordinal) && resource.EndsWith(".wwnav", StringComparison.Ordinal))

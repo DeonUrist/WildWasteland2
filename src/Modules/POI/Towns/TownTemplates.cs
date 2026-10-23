@@ -70,6 +70,10 @@ namespace WildWasteland.Modules.POI
                     { "AllowedPois", new object[0] }, { "ExternalParkingPois", new object[] { "TownsGasStation" } }, { "PopulationMinPercent", 10 }, { "PopulationMaxPercent", 20 }, { "LootMinPercent", 5 }, { "LootMaxPercent", 10 } };
                 _templates[id] = TownTemplate.Parse(id, Json.Write(data));
             }
+            foreach (string resource in DiskResources.Names)
+                if (resource.StartsWith("POI.Templates.", StringComparison.Ordinal) && resource.EndsWith(".json", StringComparison.Ordinal))
+                    try { string id = resource.Substring(14, resource.Length - 19); using (var stream = DiskResources.Open(resource)) using (var reader = new StreamReader(stream)) _templates[id] = TownTemplate.Parse(id, reader.ReadToEnd()); }
+                    catch (Exception error) { Log.Warn(null, "[POI] Bundled template rejected: " + error.Message); }
             foreach (string file in Directory.GetFiles(DirectoryPath, "*.json"))
                 try { string id = Path.GetFileNameWithoutExtension(file); _templates[id] = TownTemplate.Parse(id, File.ReadAllText(file)); }
                 catch (Exception error) { Log.Warn(null,"[POI] Template rejected " + Path.GetFileName(file) + ": " + error.Message); }

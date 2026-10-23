@@ -36,17 +36,18 @@ namespace WildWasteland.Modules.Patrols
             }
         }
         /// <summary>Builds or plans the accepted detached definition through its staged pipeline.</summary>
-        internal static Vector3[] Build(Vector3 a, Vector3 b, Vector3[][] lines, ElevationGrid[] grids, Bounds[] blocks, bool convoy, out bool[] roads, out float total)
+        internal static Vector3[] Build(Vector3 a, Vector3 b, Vector3[][] lines, ElevationGrid[] grids, Bounds[] blocks, bool convoy, out bool[] roads, out float total, Dictionary<string,int> rejections=null)
         {
             roads = null; total = float.PositiveInfinity;
-            if (grids.Length == 0) return null;
-            if (!ElevationGrid.Sample(grids, a, out a.y, out _) || !ElevationGrid.Sample(grids, b, out b.y, out _)) return null;
+            if (grids.Length == 0) return Reject(rejections,"no final terrain grids");
+            if (!ElevationGrid.Sample(grids, a, out a.y, out _)) return Reject(rejections,"source terrain unknown");
+            if (!ElevationGrid.Sample(grids, b, out b.y, out _)) return Reject(rejections,"destination terrain unknown");
             float limit = convoy ? .22f : .30f;
             float x0 = Mathf.Floor((Mathf.Min(a.x, b.x) - 1400f) / Cell) * Cell;
             float z0 = Mathf.Floor((Mathf.Min(a.z, b.z) - 1400f) / Cell) * Cell;
             int width = Mathf.CeilToInt((Mathf.Max(a.x, b.x) + 1400f - x0) / Cell) + 1;
             int depth = Mathf.CeilToInt((Mathf.Max(a.z, b.z) + 1400f - z0) / Cell) + 1;
-            if ((long)width * depth > 120000) return null;
+            if ((long)width * depth > 120000) return Reject(rejections,"search area exceeds 120000 cells");
             int count = width * depth;
             var heights = new float[count]; var valid = new bool[count]; var road = new bool[count];
             var positions = new Vector3[count];
@@ -54,7 +55,9 @@ namespace WildWasteland.Modules.Patrols
             for (int i = 0; i < count; i++)
             {
                 var p = Point(i, width, x0, z0); positions[i] = p; float slope;
-                valid[i] = ElevationGrid.Sample(grids, p, out heights[i], out slope) && slope <= limit && !Inside(blocks, p);
+                bool known = ElevationGrid.Sample(grids, p, out heights[i], out slope);
+                valid[i] = known && slope <= limit && !Inside(blocks, p);
+                if(rejections!=null&&!valid[i])Reject(rejections,!known?"cell: unknown terrain":slope>limit?"cell: slope limit":"cell: exclusion bounds");
                 cost[i] = float.PositiveInfinity; parent[i] = -1;
             }
             // Rasterise actual centreline segments; an unordered hint cloud must never create invented roads.
@@ -84,7 +87,9 @@ namespace WildWasteland.Modules.Patrols
             positions[end] = b; heights[end] = b.y; valid[end] = !Inside(blocks, b);
             var first = positions[start]; first.y = heights[start];
             var last = positions[end]; last.y = heights[end];
-            if (!valid[start] || !valid[end] || !Safe(a, first, grids, blocks, limit, out _) || !Safe(last, b, grids, blocks, limit, out _)) return null;
+            if (!valid[start]) return Reject(rejections,"source inside exclusion bounds");
+            if (!valid[end]) return Reject(rejections,"destination inside exclusion bounds");
+            if (!Safe(a, first, grids, blocks, limit, out _,rejections) || !Safe(last, b, grids, blocks, limit, out _,rejections)) return Reject(rejections,"endpoint ground unsafe");
             var open = new Heap(); cost[start] = 0; open.Push(new Open { Id = start, Score = 0, Cost = 0 });
             int visits = 0;
             while (open.Count > 0 && visits++ < 240000)
@@ -100,7 +105,7 @@ namespace WildWasteland.Modules.Patrols
                     if (dx == 0 && dz == 0 || nx < 0 || nz < 0 || nx >= width || nz >= depth) continue;
                     int next = nz * width + nx; if (!valid[next]) continue;
                     var to = positions[next]; to.y = heights[next];
-                    if (!Safe(from, to, grids, blocks, limit, out float slope)) continue;
+                    if (!Safe(from, to, grids, blocks, limit, out float slope,rejections)) continue;
                     float length = Mathf.Max(.01f,TrafficLocations.FlatDistance(from,to));
                     float value = cost[id] + length * (1f + 40f * slope * slope) * (road[id] && road[next] ? .45f : 1f);
                     if (value >= cost[next]) continue;
@@ -108,7 +113,7 @@ namespace WildWasteland.Modules.Patrols
                     open.Push(new Open { Id = next, Cost = value, Score = value + TrafficLocations.FlatDistance(to, b) * .45f });
                 }
             }
-            if (start != end && parent[end] < 0) return null;
+            if (start != end && parent[end] < 0) return Reject(rejections,visits>=240000?"search visit limit":"no connected safe path");
             var path = new List<int>(); for (int id = end; id >= 0; id = parent[id]) { path.Add(id); if (id == start) break; }
             path.Reverse();
             var points = new List<Vector3> { a }; var kinds = new List<bool> { false };
@@ -144,24 +149,29 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Checks the current inside condition for vehicle route.</summary>
         private static bool Inside(Bounds[] blocks, Vector3 p)
         { p.y = 0; foreach (var box in blocks) if (box.Contains(p)) return true; return false; }
+        private static Vector3[] Reject(Dictionary<string,int> reasons,string reason)
+        { if(reasons!=null){reasons.TryGetValue(reason,out int count);reasons[reason]=count+1;}return null; }
+        private static bool Unsafe(Dictionary<string,int> reasons,string reason)
+        { Reject(reasons,reason);return false; }
         /// <summary>Checks the current safe condition for vehicle route.</summary>
-        private static bool Safe(Vector3 a, Vector3 b, ElevationGrid[] grids, Bounds[] blocks, float limit, out float roughness)
+        private static bool Safe(Vector3 a, Vector3 b, ElevationGrid[] grids, Bounds[] blocks, float limit, out float roughness, Dictionary<string,int> rejections=null)
         {
             roughness = 0; var delta = b - a; delta.y = 0; float length = delta.magnitude;
             foreach (var box in blocks)
             {
                 var flat = a; flat.y = 0;
-                if (box.Contains(flat) || length > .001f && box.IntersectRay(new Ray(flat, delta / length), out float hit) && hit < length) return false;
+                if (box.Contains(flat) || length > .001f && box.IntersectRay(new Ray(flat, delta / length), out float hit) && hit < length) return Unsafe(rejections,"edge: exclusion bounds");
             }
             int steps = Mathf.Max(1, Mathf.CeilToInt(length / 10f));
             float previous = 0; var side = length > .001f ? Vector3.Cross(Vector3.up, delta / length) * 3f : Vector3.right * 3f;
             for (int i = 0; i <= steps; i++)
             {
                 var p = Vector3.Lerp(a, b, (float)i / steps);
-                if (!ElevationGrid.Sample(grids, p, out float height, out float slope) || slope > limit) return false;
-                if (i > 0 && Mathf.Abs(height - previous) > Mathf.Max(.1f, length / steps) * limit) return false;
-                if (!ElevationGrid.Sample(grids, p - side, out float left, out _) || !ElevationGrid.Sample(grids, p + side, out float right, out _)
-                    || Mathf.Abs(left - right) > 6f * limit) return false;
+                if (!ElevationGrid.Sample(grids, p, out float height, out float slope)) return Unsafe(rejections,"edge: unknown terrain");
+                if (slope > limit) return Unsafe(rejections,"edge: slope limit");
+                if (i > 0 && Mathf.Abs(height - previous) > Mathf.Max(.1f, length / steps) * limit) return Unsafe(rejections,"edge: height step limit");
+                if (!ElevationGrid.Sample(grids, p - side, out float left, out _) || !ElevationGrid.Sample(grids, p + side, out float right, out _)) return Unsafe(rejections,"edge: unknown side terrain");
+                if (Mathf.Abs(left - right) > 6f * limit) return Unsafe(rejections,"edge: cross slope limit");
                 roughness = Mathf.Max(roughness, slope); previous = height;
             }
             return true;

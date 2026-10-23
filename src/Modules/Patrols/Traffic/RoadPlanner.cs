@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Patrols
         internal Vector3[] Route;
         internal bool[] Roads;
         internal string Error;
+        internal string Rejections;
         internal int Revision, Epoch;
         internal bool Elevation;
         internal TrafficBase Source, Destination;
@@ -41,7 +42,7 @@ namespace WildWasteland.Modules.Patrols
         }
         private static readonly ConcurrentQueue<RoadJob> Completed=new ConcurrentQueue<RoadJob>();
         /// <summary>Publishes completed worker geometry after main-thread owner hints, never calling Unity/module providers on a worker.</summary>
-        internal static void PublishCompleted() { while(Completed.TryDequeue(out var job)){if(job.Epoch!=Volatile.Read(ref _epoch)){job.Route=null;job.Roads=null;}else VehicleRoutingApi.ApplyHints(job);job.Complete=true;} }
+        internal static void PublishCompleted() { while(Completed.TryDequeue(out var job)){if(job.Epoch!=Volatile.Read(ref _epoch)){job.Route=null;job.Roads=null;job.Rejections="world changed before completion";}else{bool planned=job.Route!=null;VehicleRoutingApi.ApplyHints(job);if(planned&&job.Route==null)job.Rejections+="; route hint veto or exception";}job.Complete=true;} }
         private static readonly ConcurrentQueue<Request> Queue=new ConcurrentQueue<Request>();
         private static int _running,_epoch;
         private static int _snapshotRoad=-1,_snapshotCamps=-1,_snapshotCount=-1;
@@ -126,16 +127,18 @@ namespace WildWasteland.Modules.Patrols
                                 pairs.Add(Tuple.Create(score,source,destination));
                             }
                             pairs.Sort((x,y)=>x.Item1.CompareTo(y.Item1));float best=float.PositiveInfinity;
+                            var rejections=Core.Log.L2?new Dictionary<string,int>():null;
                             for(int i=0;i<Math.Min(6,pairs.Count);i++)
                             {
                                 if(request.Job.Epoch!=Volatile.Read(ref _epoch))break;
                                 var pair=pairs[i];
-                                var route=VehicleRoute.Build(pair.Item2.apron,pair.Item3.apron,request.Lines,request.Elevation,request.Blocks,request.Convoy,out var roads,out float score);
+                                var route=VehicleRoute.Build(pair.Item2.apron,pair.Item3.apron,request.Lines,request.Elevation,request.Blocks,request.Convoy,out var roads,out float score,rejections);
                                 if(route==null||score>=best)continue;
                                 best=score;request.Job.Route=route;request.Job.Roads=roads;request.Job.Source=pair.Item2;request.Job.Destination=pair.Item3;
                             }
+                            if(rejections!=null)request.Job.Rejections="pairs="+Math.Min(6,pairs.Count)+", final grids="+request.Elevation.Length+"; "+string.Join("; ",rejections.Select(r=>r.Key+"="+r.Value).ToArray());
                         }
-                        if(request.Job.Route!=null && !Clear(request.Job.Route,request.Quiet))request.Job.Route=null;
+                        if(request.Job.Route!=null && !Clear(request.Job.Route,request.Quiet)){request.Job.Route=null;request.Job.Rejections+="; starting-area bounds veto";}
                         if(request.Job.Route!=null)RoadPath.Prepare(request.Job.Route);Interlocked.Increment(ref Searches);
                     }
                     catch(Exception e){request.Job.Error=e.ToString();}

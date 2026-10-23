@@ -109,12 +109,23 @@ namespace WildWasteland.Modules.Debug
 
         private void DrawTools(ToolLayout layout)
         {
+            string[] editors = { "POI editor", "POI pathfinding", "Patrol editor" };
+            string[] labels = { "POI Editor", "Navigation Editor", "Patrol Editor" };
+            for (int i = 0; i < editors.Length; i++)
+                foreach (var page in ToolWindow.DeveloperPages) if (page.Title == editors[i])
+                {
+                    bool available = page.Owner == null || ModuleHost.IsRunning(page.Owner);
+                    if (layout.Button(labels[i], available)) { ToolWindow.Open(page); return; }
+                    break;
+                }
+            layout.Heading("Other tools");
             for (int pass = 0; pass < 2; pass++)
             {
                 if (pass == 1) layout.Heading("Advanced settings");
                 foreach (var page in ToolWindow.DeveloperPages)
                 {
                     if (page.IsTool != (pass == 0) || page.DebugOnly && !Plugin.EnableDebug.Value) continue;
+                    if (Array.IndexOf(editors, page.Title) >= 0) continue;
                     bool available = page.Owner == null || ModuleHost.IsRunning(page.Owner) || page.ShowWhenModuleOff;
                     if (layout.Button(page.Title + " / " + page.Group, available)) { ToolWindow.Open(page); return; }
                 }

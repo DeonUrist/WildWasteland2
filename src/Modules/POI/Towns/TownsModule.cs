@@ -38,6 +38,7 @@ namespace WildWasteland.Modules.POI
             internal GenerationInput Input;
             internal int Epoch;
             internal List<TownGasStation.Request> GasStation;
+            internal List<CustomPoiAssets.SpawnRequest> Authored;
 
         }
         private sealed class Live
@@ -48,6 +49,7 @@ namespace WildWasteland.Modules.POI
             internal bool Finished;
             internal bool WallFailed;
             internal int LotFailures, MapFailures;
+            internal int NextExterior;
             internal float PreparedAt;
         }
         private readonly TownSettings _settings = new TownSettings();
@@ -204,7 +206,7 @@ namespace WildWasteland.Modules.POI
                     foreach (var lot in input.Saved.Lots) if (!lot.IsParking && !lot.Skipped && !registration.Assets.Buildings.ContainsKey(lot.Prefab))
                         throw new InvalidOperationException("Saved town requires unavailable prefab " + lot.Prefab + "; restore its catalog before loading.");
                 bool startingChunk = tile.coord.x == 0 && tile.coord.z == 0 && !_settings.PoiNearSpawn.Value;
-                _captures[data] = new Capture { Registration = registration, Input = input, Epoch = _epoch, GasStation = _gasStation.Capture(tile, data, key, startingChunk, registration.Assets) };
+                _captures[data] = new Capture { Registration = registration, Input = input, Epoch = _epoch, GasStation = _gasStation.Capture(tile, data, key, startingChunk, registration.Assets), Authored = _dressing.Authored.CaptureSpawns(tile, data, key, startingChunk) };
             }
             catch (Exception e) { Log.Warn(null,"[POI] skipped terrain preparation: " + e.Message); }
         }
@@ -230,6 +232,7 @@ namespace WildWasteland.Modules.POI
                 var assets = capture.Registration.Assets;
                 var roads = new TownWorldRoads(assets.Roads == null ? null : data.ReadOutletProduct(assets.Roads), data);
                 TownGasStation.Plan(capture.GasStation, data, avoid, assets, capture.Input.Saved, roads, stop);
+                CustomPoiAssets.PlanSpawns(capture.Authored, data, avoid, assets, capture.Input.Saved, roads, stop);
                 capture.Plan = TownPlanner.Make(capture.Input, data, data.heights, avoid, roads, stop);
                 if (capture.Plan == null || !capture.Plan.HasTown || (stop != null && stop.stop))
                 { if (capture.Input.Progress != null) capture.Input.Progress.Finish(capture.Plan == null ? "Cancelled" : capture.Plan.Decision == "chance" ? "No town selected for this block" : capture.Plan.Decision); return; }
@@ -250,12 +253,15 @@ namespace WildWasteland.Modules.POI
         private void Applied(TerrainTile tile, TileData data, StopToken stop)
         {
             TraceStartingTerrain(tile, "applied");
+            _dressing?.Authored.ForgetCapture(data);
             Capture capture;
             if (data != null) TownPoiSettings.Forget(data);
             if (data == null || !_captures.TryRemove(data, out capture)) return;
             if (!_running || _blocked || data.isDraft || tile == null || capture.Epoch != _epoch || (stop != null && stop.stop)) return;
             try { _gasStation.Applied(capture.GasStation, tile, capture.Registration.Assets, _dressing); }
             catch (Exception e) { Log.Warn(null,"[POI] gas station placement stopped: " + e.Message); }
+            try { _dressing.Authored.ApplySpawns(capture.Authored, tile); }
+            catch (Exception e) { Log.Warn(null, "[POI] authored POI placement stopped: " + e.Message); }
             if (capture.Input.Error != null) { Log.Warn(null,"[POI] skipped generation: " + capture.Input.Error); return; }
             if (capture.Plan == null) return;
             try
@@ -358,32 +364,40 @@ namespace WildWasteland.Modules.POI
                 var live = _sites[_next++ % _sites.Count]; var site = live.Site;
                 if (live.Finished && !NeedsWalls(live) || live.Tile == null || site.Anchor == null) continue;
                 if (!WorldWork.Try(WorldWork.Towns)) return false;
-                if (site.NextLot < site.Plan.LotCount)
+                while (site.NextLot < site.Plan.LotCount && (site.Plan.Lots[site.NextLot].IsParking || site.Plan.Lots[site.NextLot].External)) site.NextLot++;
+                bool exterior = site.NextLot >= site.Plan.LotCount && !NeedsWalls(live);
+                if (exterior)
+                    while (live.NextExterior < site.Plan.LotCount && !site.Plan.Lots[live.NextExterior].IsParking && !site.Plan.Lots[live.NextExterior].External) live.NextExterior++;
+                int buildLot = exterior ? live.NextExterior : site.NextLot;
+                if (buildLot < site.Plan.LotCount)
                 {
                     _builtFrame = Time.frameCount; _buildAfter = Time.unscaledTime + spacing;
                     try
                     {
                         if (_staging == null) { _staging = new GameObject("Towns inactive staging"); _staging.SetActive(false); }
-                        if (site.Staged == null && TownFactory.NeedsStage(site, site.NextLot))
+                        if (site.Staged == null && TownFactory.NeedsStage(site, buildLot))
                         {
                             // Half one: deserialize the clone under the inactive root. Half two (next slot) activates it.
-                            site.Staged = TownFactory.Stage(site, site.NextLot, live.Registration.Assets, _staging.transform);
+                            site.Staged = TownFactory.Stage(site, buildLot, live.Registration.Assets, _staging.transform);
                             _buildAfter = Time.unscaledTime + spacing * .5f;
                             return true;
                         }
                         var staged = site.Staged; site.Staged = null;
-                        TownFactory.Building(site, site.NextLot, live.Registration.Assets, _settings, _records[site.Plan.Key], _staging.transform, live.Tile.objectsPool.transform, staged);
-                        site.NextLot++; live.LotFailures = 0;
+                        TownFactory.Building(site, buildLot, live.Registration.Assets, _settings, _records[site.Plan.Key], _staging.transform, live.Tile.objectsPool.transform, staged);
+                        if (exterior) { live.NextExterior++; if (Log.L1) Log.Main(null, "[POI] exterior lot after perimeter " + site.Plan.Key + "/" + buildLot + ": " + site.Plan.Lots[buildLot].Prefab); }
+                        else site.NextLot++;
+                        live.LotFailures = 0;
                     }
                     catch (Exception e)
                     {
                         if (site.Staged != null) { UnityEngine.Object.Destroy(site.Staged); site.Staged = null; }
-                        Log.Warn(null,"[POI] lot " + site.Plan.Key + "/" + site.NextLot + " attempt " + (++live.LotFailures) + ": " + e.Message);
+                        Log.Warn(null,"[POI] lot " + site.Plan.Key + "/" + buildLot + " attempt " + (++live.LotFailures) + ": " + e.Message);
                         if (live.LotFailures >= 2)
                         {
-                            try { TownFactory.KeepGeometry(site, site.NextLot, live.Tile.objectsPool.transform); }
+                            try { TownFactory.KeepGeometry(site, buildLot, live.Tile.objectsPool.transform); }
                             catch (Exception keepError) { Log.Warn(null,"[POI] retained partial lot: " + keepError.Message); }
-                            site.NextLot++; live.LotFailures = 0; site.PopulationCounts = site.LootCounts = null;
+                            if (exterior) live.NextExterior++; else site.NextLot++;
+                            live.LotFailures = 0; site.PopulationCounts = site.LootCounts = null;
                         }
                     }
                     return true;
@@ -512,6 +526,7 @@ namespace WildWasteland.Modules.POI
                 if (finished && population) { ready++; continue; }
                 string current = site.NextLot < lots ? "Placing buildings " + site.NextLot + "/" + lots
                     : walls ? site.Walls != null ? site.Walls.Stage : "Building town walls"
+                    : live.NextExterior < lots ? "Placing parking and exterior POIs"
                     : !finished ? "Connecting town paths" : "Preparing town residents";
                 if (stage == null || stage == "Preparing town residents") stage = current;
             }
@@ -554,6 +569,7 @@ namespace WildWasteland.Modules.POI
                 _gasStation.Save(slot);
                 TownSaveRecord.Save(slot, _records);
                 if (_dressing != null) _dressing.Markers.Save(slot);
+                if (_dressing != null) _dressing.Authored.SaveWorld(slot);
             }
             catch (Exception e) { SaveBus.ReportFailure(null,"Towns save failed: " + e.Message); Block("saving", e); }
         }
@@ -561,12 +577,12 @@ namespace WildWasteland.Modules.POI
         internal void OnLoadBegin(string slot)
         {
             ClearSites(); _resume.Clear(); _epoch++; _blocked = false;
-            try { if (_gasStation != null) _gasStation.Load(slot); if (_dressing != null) _dressing.Markers.Load(slot); _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
+            try { if (_gasStation != null) _gasStation.Load(slot); if (_dressing != null) { _dressing.Markers.Load(slot); _dressing.Authored.LoadWorld(slot); } _records = string.IsNullOrEmpty(slot) ? new Dictionary<string, TownRecord>(StringComparer.Ordinal) : TownSaveRecord.Load(slot); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
             catch (Exception e) { _records.Clear(); Block("loading (saved data retained on disk)", e); }
         }
         /// <summary>Releases prior world records before starting a fresh world.</summary>
         public void NewWorld()
-        { ClearSites(); if (_dressing != null) _dressing.Markers.Load(null); if (_gasStation != null) _gasStation.NewWorld(); _resume.Clear(); _epoch++; _blocked = false;  _records.Clear(); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
+        { ClearSites(); if (_dressing != null) { _dressing.Markers.Load(null); _dressing.Authored.LoadWorld(null); } if (_gasStation != null) _gasStation.NewWorld(); _resume.Clear(); _epoch++; _blocked = false;  _records.Clear(); _names.Begin(_records); InteriorPopulation.DiscoverExisting(); }
         /// <summary>Tracks native load-state transitions without another polling loop.</summary>
         private void StateChanged(string previous, string current)
         { if (current == "setSeed" || current == "Start") NewWorld(); }

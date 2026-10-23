@@ -555,6 +555,7 @@ namespace WildWasteland.Modules.Presentation
                 Turn(HumanBodyBones.Head, Vector3.right, ManualDriven ? headPitch : Mathf.Clamp(headPitch, -65f, 65f));
                 AimLiftApply();
                 ArmPoseApply();
+                TracePlayerPose();
                 if (ManualDriven && !_p.Seated)
                 {
                     float legsIn = CharacterSettings.RunLegsIn.Value * _p.M * _p.RunW * (1f - _p.CrouchW) * (1f - _p.ActionW);
@@ -608,6 +609,24 @@ namespace WildWasteland.Modules.Presentation
                     var pr = _pairs[i];
                     pr.Key.localRotation = Quaternion.Slerp(pr.Key.localRotation, pr.Value.localRotation, eff);
                 }
+            }
+
+            private float _poseTraceAt;
+            /// <summary>Captures the player's resolved offsets for comparison with WW1.</summary>
+            private void TracePlayerPose()
+            {
+                if (!ManualDriven || !Core.Log.L1 || Time.unscaledTime < _poseTraceAt) return;
+                _poseTraceAt = Time.unscaledTime + 5f;
+                string clip = null; float weight = -1f;
+                foreach (var pose in _p.PoseW) if (pose.Value > weight) { clip = pose.Key; weight = pose.Value; }
+                var aim = AimLift.Get(_wKey, _p.AimLiftClip, _p.AimCrouched);
+                var arms = AimLift.Get(_wKey, clip, _p.CrouchW > .5f);
+                var weapon = GunPose.EffectiveFor(_wKey, clip, IdleOf(_kind), null);
+                Core.Log.Main(PresentationModule.Instance, "Player pose: weapon=" + _wKey + "; clip=" + clip + "; crouch=" + _p.CrouchW
+                    + "; rig=" + _p.RigClip + "/" + _p.RigEff + "; lift=" + _p.AimLiftClip + "/" + _p.AimLiftW
+                    + "; aim=" + string.Join(",", aim) + "; arms=" + string.Join(",", arms)
+                    + "; weapon pose=" + (weapon == null ? "native grip" : string.Join(",", weapon))
+                    + "; pitch=" + AimPitch + "/" + HeadPitch);
             }
 
             /// <summary>Lifts both hands (and tilts the head) by the weapon's aim-lift entry while aiming.</summary>

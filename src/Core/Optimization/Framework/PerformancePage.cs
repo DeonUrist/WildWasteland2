@@ -30,14 +30,14 @@ namespace WildWasteland.Core.Optimization
             bool running = m.Running;
             l.Text(running
                 ? "Experimental base-game optimizations. Choose a preset and compare measurements in the same scene. Changes apply immediately."
-                : "Core optimizations are off; their original game settings are restored.", running ? (Color?)null : Ledger.Danger);
+                : "Performance optimizations are off; generated mesh LODs remain active at 2x distance.", running ? (Color?)null : Ledger.Danger);
 
             var p = OptimizationRuntime.PresetEntry;
             if (p != null)
             {
                 int sel = l.Choices("Preset", Array.IndexOf(_presetValues, p.Value), _presets);
                 if (_presetValues[sel] != p.Value) p.Value = _presetValues[sel];
-                l.Text("PERFORMANCE favors speed; BALANCED is the compromise; VISUALS favors detail. VANILLA (default) disables changes to visuals, simulation and item cleanup, including extra culling (marked *). Exact optimizations remain active.");
+                l.Text("PERFORMANCE favors speed; BALANCED is the compromise; VISUALS favors detail. VANILLA (default) keeps generated mesh LODs at 2x distance and disables other changes to visuals, simulation and item cleanup, including extra culling (marked *). Exact optimizations remain active.");
             }
         }
     }

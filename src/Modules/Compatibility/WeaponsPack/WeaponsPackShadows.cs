@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Linq.Expressions;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -18,6 +19,7 @@ namespace WildWasteland.Modules.Compatibility
     {
         private delegate bool HeldSource(out Transform model, out Transform rig, out Transform view);
         private static HeldSource source; private static Func<bool> third;
+        private static Func<bool> flame; private static Func<GameObject> flameVisual;
         private static GameObject shadow, carrier; private static Transform model; private static Renderer[] native;
         private static bool[] enabled; private static object owner; private static bool suppressed; // refs-ok: REFACTOR-REQUEST B17-1
 
@@ -27,20 +29,48 @@ namespace WildWasteland.Modules.Compatibility
             try
             {
                 var type = info.Instance.GetType(); const BindingFlags flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                if (!Core.Patches.Patch(scope, AccessTools.Method(type, "BodyType"), prefix: AccessTools.Method(typeof(WeaponsPackShadows), nameof(BeforeBodyType))))
+                    throw new InvalidOperationException("Body type adapter hook unavailable");
                 source = (HeldSource)Delegate.CreateDelegate(typeof(HeldSource), info.Instance, type.GetMethod("ThirdPersonSource", flags));
                 third = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), info.Instance, type.GetMethod("ActualThirdPersonActive", flags));
+                flame = (Func<bool>)Delegate.CreateDelegate(typeof(Func<bool>), info.Instance, type.GetMethod("OwnsThirdPersonFlame", flags));
+                flameVisual = Expression.Lambda<Func<GameObject>>(Expression.Field(Expression.Constant(info.Instance, type), type.GetField("thirdModel", flags))).Compile();
+                if (!Core.Patches.Patch(scope, AccessTools.Method(type, "AfterThirdPersonDrawnWeapon"), postfix: AccessTools.Method(typeof(WeaponsPackShadows), nameof(AfterWeaponKey))))
+                    throw new InvalidOperationException("Flamethrower pose key hook unavailable");
+                Log.Main(scope, "Weapons Pack: flamethrower uses Presentation weapon poses with its own key.");
                 if (Core.Patches.Patch(scope, type.GetMethod("UpdateThirdPerson", flags), prefix: AccessTools.Method(typeof(WeaponsPackShadows), nameof(BeforePose)), postfix: AccessTools.Method(typeof(WeaponsPackShadows), nameof(AfterPose))))
                     Log.Main(scope, "Weapons Pack: first-person weapon shadows use pack models.");
             }
             catch (Exception e) { source = null; Log.Warn(scope, "Weapons Pack shadow integration unavailable: " + e.GetBaseException().Message); }
         }
 
+        /// <summary>Resolves the pack's original player-body contract through Presentation's exported types.</summary>
+        private static bool BeforeBodyType(string __0, ref Type __result)
+        {
+            if (!CompatibilityHost.PlayerBody.Running) return true;
+            __result = ModApi.Get<ICameraModInterop>()?.ResolveType("Apocaplayer." + __0);
+            return __result == null;
+        }
+
         /// <summary>Prefix of the pack's UpdateThirdPerson (every frame while it poses): restores native renderers and hides the copy.</summary>
         private static void BeforePose() { Restore(); if (shadow != null) shadow.SetActive(false); }
+
+        /// <summary>Keeps flamethrower authoring separate from the pack's native M16 carrier.</summary>
+        private static void AfterWeaponKey(ref string __0)
+        {
+            if (CompatibilityHost.PlayerBody.Running && flame != null && flame()) __0 = "flamethrower";
+        }
 
         /// <summary>Postfix of UpdateThirdPerson: in first person, mirrors the held model into a shadow-only copy and hides the body's prop.</summary>
         private static void AfterPose(object __0)
         {
+            if (CompatibilityHost.PlayerBody.Running && flame != null && flame() && third())
+            {
+                Transform posed; var characters = ModApi.Get<ICharacterPresentation>(); var visible = flameVisual();
+                if (characters != null && visible != null && characters.TryGetHeldProp(Entities.Player, out posed))
+                    visible.transform.SetPositionAndRotation(posed.position, posed.rotation);
+                return;
+            }
             var api=ModApi.Get<IPlayerWeaponVisual>();GameObject root,currentCarrier;Transform held,rig,view;var body=__0;
             if(source==null||api==null||!GameRefs.InGame||third()||!api.TryGet(body,out root,out currentCarrier)||!source(out held,out rig,out view))return;
             if (shadow == null || model != held || shadow.transform.parent != root.transform) {
@@ -59,6 +89,6 @@ namespace WildWasteland.Modules.Compatibility
         private static void Restore() { if (!suppressed) return; suppressed = false; if (native != null) for (int i = 0; i < native.Length; i++) if (native[i] != null && !native[i].enabled) native[i].enabled = enabled[i] && owner != null && ModApi.Get<IPlayerWeaponVisual>()?.Visible(owner)==true; }
 
         /// <summary>Restores the native renderers, destroys the shadow copy and drops every reference.</summary>
-        internal static void Shutdown() { Restore(); if (shadow != null) UnityEngine.Object.Destroy(shadow); shadow = null; model = null; source = null; third = null; native = null; carrier = null; enabled = null; owner = null; }
+        internal static void Shutdown() { Restore(); if (shadow != null) UnityEngine.Object.Destroy(shadow); shadow = null; model = null; source = null; third = null; flame = null; flameVisual = null; native = null; carrier = null; enabled = null; owner = null; }
     }
 }

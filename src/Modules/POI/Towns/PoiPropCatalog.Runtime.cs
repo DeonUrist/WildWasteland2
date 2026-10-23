@@ -76,6 +76,15 @@ namespace WildWasteland.Modules.POI
             }
             _assets.Add(id, asset); return asset;
         }
+        internal PoiDressProp NativeProp(MeshFilter filter, Transform root)
+        {
+            var asset = Capture(SourceId(Source(filter)), filter); if (asset == null) return null;
+            if (!All.Contains(asset)) All.Add(asset);
+            var rotation = Quaternion.Inverse(root.rotation) * filter.transform.rotation;
+            var scale = new Vector3(1 / root.lossyScale.x, 1 / root.lossyScale.y, 1 / root.lossyScale.z);
+            return new PoiDressProp { Asset = asset.Id, Source = asset.Source, Mesh = asset.MeshName,
+                Position = root.InverseTransformPoint(filter.transform.position) - rotation * Vector3.Scale(scale, asset.Offset), Rotation = rotation.eulerAngles, Scale = scale, Collision = asset.Shapes.Count > 0 };
+        }
         /// <summary>Creates static geometry from the resolved mesh, materials and collider shapes.</summary>
         internal GameObject Create(Asset asset, Transform parent, PoiDressProp prop, bool solid)
         {

@@ -33,6 +33,12 @@ namespace WildWasteland.Modules.Tools
         private Quaternion _cameraRotation;
         private float _yaw, _pitch, _grid = .1f, _height;
         private string _search = "", _status = "", _filterText;
+        private string _newPoiName = "", _poiSearch = "", _loadType;
+        private float _poiWidth = 40, _poiDepth = 40;
+        private readonly List<string> _types = new List<string>();
+        private Vector2 _typeScroll;
+        private int _requestedSite;
+        private bool _typesOpen;
         private int _selected = -1, _built, _previewFrame = -1, _filterCount = -1;
         private Vector2 _catalogScroll, _placedScroll;
         private bool _moving, _dirty, _validHit;
@@ -72,18 +78,21 @@ namespace WildWasteland.Modules.Tools
             PoiAuthoringSite nearest = null; float distance = 200 * 200;
             foreach (var row in _sites)
             {
-                if (row.Root == null || !row.Root.gameObject.activeInHierarchy || !row.Ready) continue;
+                if (row.Root == null || !row.Root.gameObject.activeInHierarchy || !row.Ready && row.Id != _requestedSite) continue;
+                if (row.Id == _requestedSite) { nearest = row; break; }
                 float d = (row.Root.position - camera.transform.position).sqrMagnitude;
                 if (d < distance) { nearest = row; distance = d; }
             }
-            if (nearest == null) { _status = "No ready custom POI within 200 m. Approach the gas station, or wait for dressing to finish."; Log.Warn(null,"[Towns] POI dresser: " + _status); return; }
+            if (nearest == null) { _status = "No ready POI within 200 m. Use Create POI or Open existing POI in the POI editor page."; Log.Warn(null,"[Towns] POI dresser: " + _status); return; }
             if (nearest.Error != null) { _status = "Layout error: " + nearest.Error + ". Existing file retained."; Log.Warn(null,"[Towns] POI dresser: " + _status); return; }
+            _runtime.PrepareEdit(nearest.Id); _runtime.Sites(_sites); foreach (var row in _sites) if (row.Id == nearest.Id) { nearest = row; break; }
             if (!_session.Acquire()) return;
             try
             {
             _camera = camera; var t = camera.transform; _cameraParent = t.parent;
             _cameraLocal = t.localPosition; _cameraPosition = t.position; _cameraRotation = t.localRotation;
             _view = t.position; _yaw = t.eulerAngles.y; _pitch = t.eulerAngles.x; if (_pitch > 180) _pitch -= 360;
+            if (_requestedSite != 0) { _view = nearest.Root.TransformPoint(nearest.Bounds.center + new Vector3(0, Mathf.Max(12, nearest.Bounds.extents.z), -nearest.Bounds.extents.z - 12)); _yaw = nearest.Root.eulerAngles.y; _pitch = 35; _requestedSite = 0; }
             _site = nearest; _draft = nearest.LayoutJson == null ? new EditorLayout { Type = nearest.Type } : EditorLayoutJson.Parse(nearest.LayoutJson, nearest.Type); _selected = -1; _dirty = false; _undo.Clear();
             _expanded.Clear(); _catalogScroll = Vector2.zero; _profilesOpen = false; _catalog.Start();
             _runtime.SetDressingVisible(nearest.Id, false);
@@ -106,6 +115,7 @@ namespace WildWasteland.Modules.Tools
             if (!Opened || _site.Root == null || _built >= _draft.Props.Count || _previewFrame == Time.frameCount) return false;
             _previewFrame = Time.frameCount;
             var prop = _draft.Props[_built]; var asset = _catalog.Resolve(prop);
+            if (asset == null && !_catalog.Complete) { _catalog.Refresh(); return false; }
             if (asset == null) { _status = "Missing native mesh: " + prop.Mesh; Close(); return false; }
             _visuals.Add(_catalog.Create(asset, _preview.transform, prop)); _built++; return true;
         }
@@ -185,14 +195,14 @@ namespace WildWasteland.Modules.Tools
                 if (_placing.Kind == "CarParts") _placing.Profile = "Car parts";
                 if (_placing.Kind == "Monsters") { _placing.Profile = "EnemySpawn_Wild_V1"; _placing.Chance = 85; }
             }
-            _ghost = _catalog.Create(asset, _preview.transform, _placing); _ghost.SetActive(false);
+            _ghost = _catalog.Create(asset, _preview.transform, _placing, false); _ghost.SetActive(false);
             _selected = -1; Ledger.ClearNumbers();
         }
         /// <summary>Commits the current preview prop to the detached draft.</summary>
         private void Place()
         {
             if (!_validHit || _draft.Props.Count >= EditorLayout.Limit) return;
-            if (_moving) { _moving = false; Ledger.ClearNumbers(); return; }
+            if (_moving) { _moving = false; foreach (var collider in _visuals[_selected].GetComponentsInChildren<Collider>()) collider.enabled = _draft.Props[_selected].Collision; Ledger.ClearNumbers(); return; }
             RecordUndo(); _draft.Props.Add(_placing.Copy());
             if (_placing.Marker) _draft.Props[_draft.Props.Count - 1].Id = Guid.NewGuid().ToString("N");
             _visuals.Add(_catalog.Create(_asset, _preview.transform, _placing)); _built++;
@@ -260,7 +270,7 @@ namespace WildWasteland.Modules.Tools
             if (!Ready) return;
             try
             {
-                CancelPlacement(); string error; if (!_runtime.Save(_site.Id, EditorLayoutJson.Serialize(_draft), out error)) throw new InvalidOperationException(error); _status = "Saved " + _draft.Props.Count + " props to " + _runtime.LayoutPath(_site.Type);
+                CancelPlacement(); string error; if (!_runtime.Save(_site.Id, EditorLayoutJson.Serialize(_draft), out error)) throw new InvalidOperationException(error); _status = "POI save queued. Watch this page for navigation progress and the final saved result.";
                 Close();
             }
             catch (Exception e) { _status = "Save failed: " + e.Message; Log.Warn(null,"[Towns] POI dresser: " + _status); }
@@ -287,14 +297,51 @@ namespace WildWasteland.Modules.Tools
         /// <summary>Draws the menu entry and availability of the dedicated POI editor.</summary>
         internal void DrawPage(ToolLayout l)
         {
+            _runtime = ModApi.Get<IPoiAuthoring>();
             l.Entry(_key);
-            l.Text("Dress a nearby custom POI with categorized vanilla scenery and hiding, exit or spawn markers. Layouts are shared by POI type; spawn progress belongs to each world instance. World is paused while editing.");
+            l.Text("Create a flat POI in open desert or choose any loaded vanilla/custom POI type to edit. Saved layouts are shared by type; spawn progress belongs to each world instance. The world pauses while editing.");
+            l.Heading("Create POI");
+            l.Text("POI name (letters, numbers, _ or -):");
+            _newPoiName = Ledger.TextField(l.Next(), "CreatePoiName", _newPoiName);
+            _poiWidth = Ledger.Number(l.Next(), "CreatePoiWidth", _poiWidth, 8, 1000, NoChange);
+            l.Text("Flat area width (metres)");
+            _poiDepth = Ledger.Number(l.Next(), "CreatePoiDepth", _poiDepth, 8, 1000, NoChange);
+            l.Text("Flat area depth (metres). The footprint expands to fit solid props when saved.");
+            if (l.Button("Create POI", GameRefs.InPlay && _runtime != null && _newPoiName.Trim().Length > 0)) OpenType(_newPoiName.Trim(), false);
+            l.Heading("Open existing POI");
+            if (l.Button(_typesOpen ? "Hide POI list" : "Show all vanilla and custom POIs", _runtime != null)) { _typesOpen = !_typesOpen; if (_typesOpen) _runtime.Types(_types); }
+            if (_typesOpen)
+            {
+                _poiSearch = Ledger.TextField(l.Next(), "OpenPoiSearch", _poiSearch);
+                var rows = _types.FindAll(type => _poiSearch.Length == 0 || type.IndexOf(_poiSearch, StringComparison.OrdinalIgnoreCase) >= 0);
+                Rect area = l.Next(260); _typeScroll = GUI.BeginScrollView(area, _typeScroll, new Rect(0, 0, area.width - 24, rows.Count * 38));
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    if (Ledger.Button(new Rect(4, i * 38, area.width - 155, 36), (_loadType == rows[i] ? "> " : "") + rows[i])) _loadType = rows[i];
+                    bool old = _runtime.Spawns(rows[i]); bool next = GUI.Toggle(new Rect(area.width - 145, i * 38, 110, 36), old, "Spawns");
+                    if (old != next) { string error; if (!_runtime.SetSpawns(rows[i], next, out error)) _status = error; }
+                }
+                GUI.EndScrollView();
+                l.Text("Spawns: random desert placement in newly generated areas. Unchecked POIs remain available to town templates. Existing saved POIs remain in place.");
+                if (l.Button("Open existing POI: " + (_loadType ?? "select a type"), GameRefs.InPlay && _loadType != null)) OpenType(_loadType, true);
+            }
             if (l.Button("Open POI dresser", GameRefs.InPlay)) OpenFromPage();
             if (!string.IsNullOrEmpty(_status)) l.Text(_status);
+            if (_runtime != null && !string.IsNullOrEmpty(_runtime.AuthoringStatus)) l.Text(_runtime.AuthoringStatus);
             l.Value("Layout folder", _runtime != null ? _runtime.LayoutDirectory : "POI provider unavailable");
         }
         /// <summary>Releases the tool window before opening the exclusive layout editor.</summary>
         private void OpenFromPage() { ToolWindow.CloseThen(Open); }
+        private void OpenType(string type, bool existing)
+        {
+            ToolWindow.CloseThen(() =>
+            {
+                _runtime = ModApi.Get<IPoiAuthoring>(); string error;
+                if (_runtime == null) { _status = "Enable POI first."; return; }
+                if (!_runtime.Create(type, _poiWidth, _poiDepth, existing, out _requestedSite, out error)) { _status = error; Log.Warn(null, "[Tools] POI editor: " + error); ToolWindow.Toggle(); return; }
+                Open();
+            });
+        }
         /// <summary>Rebuilds the visible catalog selection from category and search filters.</summary>
         private void Filter()
         {
@@ -313,7 +360,7 @@ namespace WildWasteland.Modules.Tools
             {
                 GUI.depth = -1000; GUI.matrix = Matrix4x4.Scale(new Vector3(Screen.width / 1600f, Screen.height / 900f, 1));
                 Ledger.Panel(new Rect(0, 0, 1600, 60)); Ledger.Label(new Rect(18, 8, 900, 42), "POI DRESSER  /  " + _site.Type + (_dirty ? "  * unsaved" : ""), Ledger.DialogTitle);
-                if (Ledger.Button(new Rect(1230, 12, 160, 36), "SAVE LAYOUT", Ready, true)) Save();
+                if (Ledger.Button(new Rect(1230, 12, 160, 36), "SAVE POI", Ready, true)) Save();
                 if (!Opened) return;
                 if (Ledger.Button(new Rect(1400, 12, 180, 36), "CLOSE / DISCARD")) { Close(); return; }
                 Ledger.Panel(new Rect(0, 62, 318, 780)); Ledger.Panel(new Rect(1282, 62, 318, 780));
@@ -366,7 +413,7 @@ namespace WildWasteland.Modules.Tools
                 if (oldPosition != prop.Position || oldRotation != prop.Rotation || oldScale != prop.Scale) { _dirty = true; PoseSelected(); if (_ghost != null) PoiEditorCatalog.Pose(_ghost.transform, prop); }
                 if (_selected >= 0)
                 {
-                    if (Ledger.Button(new Rect(x, 432, 92, 32), "MOVE")) { if (!_moving) RecordUndo(); _moving = true; Ledger.ClearNumbers(); }
+                    if (Ledger.Button(new Rect(x, 432, 92, 32), "MOVE")) { if (!_moving) RecordUndo(); _moving = true; foreach (var collider in _visuals[_selected].GetComponentsInChildren<Collider>()) collider.enabled = false; Ledger.ClearNumbers(); }
                     if (Ledger.Button(new Rect(x + 100, 432, 92, 32), "COPY")) Duplicate();
                     if (Ledger.Button(new Rect(x + 200, 432, 92, 32), "DELETE")) Delete();
                 }

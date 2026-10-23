@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Presentation
     // clips)] entries) is gone: without a complete bundle no body is built and the game's own first-person view stays.
     internal sealed partial class Body
     {
+        private const string LH = "mixamorig:LeftHand", RH = "mixamorig:RightHand";
         public GameObject Root;          // player view/model transform; the driver owns animation
         private Transform _anim;         // clone of Flexa/Anim
         private Ragdoll _ragdoll;

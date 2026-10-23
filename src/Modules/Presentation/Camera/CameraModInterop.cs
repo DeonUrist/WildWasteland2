@@ -7,6 +7,6 @@ namespace WildWasteland.Modules.Presentation {
         public ConfigEntry<float> CarHeight=>CameraSettings.ThirdCarHeight;
         public ConfigEntry<bool> Occlusion=>CameraSettings.OcclusionPrototype;
         public ConfigEntry<bool> VehicleOcclusion=>CameraSettings.OcclusionInVehicle;
-        public Type ResolveType(string name) { switch(name) {case "Apocaplayer.ThirdPerson":return typeof(ThirdPerson);case "Apocaplayer.OcclusionCutaway":return typeof(OcclusionCutaway);case "Apocaplayer.Cave":return typeof(Cave);default:return null;} }
+        public Type ResolveType(string name) { switch(name) {case "Apocaplayer.Body":return typeof(Body);case "Apocaplayer.BodyRunner":return typeof(BodyRunner);case "Apocaplayer.Game":return typeof(Game);case "Apocaplayer.ThirdPerson":return typeof(ThirdPerson);case "Apocaplayer.OcclusionCutaway":return typeof(OcclusionCutaway);case "Apocaplayer.Cave":return typeof(Cave);default:return null;} }
     }
 }

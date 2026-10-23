@@ -62,7 +62,7 @@ namespace WildWasteland.Modules.NPCAI
                 finally { _baking = current; }
                 if (_bake.Baked)
                 {
-                    var file = _bake.MapFile;
+                    var file = _bake.LoadedMap && _bake.LoadedVanilla ? _bake.VanillaMapFile : _bake.MapFile;
                     if (file == null || !System.IO.File.Exists(file)) throw new InvalidOperationException("Reusable navigation cache of " + _prefab.name + " was not published");
                     MapFile = file; Ready = true; Release();
                 }

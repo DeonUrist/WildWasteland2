@@ -25,7 +25,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
         /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
-        public override string Help { get { return "Uses the optional Performance/LOD pack made by tools/lod-generator/Generate.cmd. Zoom restores original meshes. Missing/unsupported meshes stay original. Restores originals for saves and when disabled."; } }
+        public override string Help { get { return "Uses the optional Performance/LOD pack made by tools/lod-generator/Generate.cmd. Always active; Vanilla and Performance off use 2x distance. Zoom and saves restore original meshes. Missing/unsupported meshes stay original."; } }
         /// <summary>Requests static and skinned renderers from the shared scan for generated mesh bindings.</summary>
         public ScanTypes Types { get { return ScanTypes.Renderers | ScanTypes.Skinned; } }
 
@@ -75,10 +75,13 @@ namespace WildWasteland.Core.Optimization
         {
             _near = NewKnob(cfg, "Full detail screen height", "Projected size above which the original mesh is used.", .08f, .12f, .18f, .18f);
             _far = NewKnob(cfg, "Far detail screen height", "Projected size below which the second generated mesh is used.", .02f, .035f, .05f, .05f);
-            _distance = NewKnob(cfg, "Distance multiplier", "Multiplier of mesh detail transition distances. 1.5 retains each detail level 50% farther from the camera.", 1.5f, 1.5f, 1.5f, 1.5f);
+            _distance = NewKnob(cfg, "Distance multiplier", "Multiplier of mesh detail transition distances. 1.5 retains each detail level 50% farther from the camera.", 1.5f, 1.5f, 1.5f, 2f);
             _zoomFov = NewKnob(cfg, "Full detail zoom FOV", "Actual rendered zoom relative to normal FOV, or FOV at/below this value, restores originals (RMB/scroll/binoculars/scopes). 0 disables this override.", 30, 30, 30, 30);
             _memory = NewKnob(cfg, "Cache MB", "Maximum generated payload bytes reserved for the current scene; two worker reads at most. GPU overhead is additional.", 128, 256, 384, 256);
         }
+
+        /// <summary>Uses Vanilla tuning while Performance is off, retaining the selected preset for re-enabling.</summary>
+        float Value(Knob knob) { return OptimizationRuntime.EnabledEntry.Value ? knob.Value : knob.Vanilla; }
 
         /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
@@ -238,7 +241,7 @@ namespace WildWasteland.Core.Optimization
             long size;
             try { size = new FileInfo(Path.Combine(_pack.Root, entry.Payload + ".wwlod")).Length; }
             catch (Exception e) { Fail(entry, e.Message); return; }
-            if (size > 128 * 1024 * 1024 || size > Math.Max(1, _memory.Value) * 1024 * 1024 - _reserved) { entry.State = 4; return; }
+            if (size > 128 * 1024 * 1024 || size > Math.Max(1, Value(_memory)) * 1024 * 1024 - _reserved) { entry.State = 4; return; }
             _reserved += size; _pending++; entry.State = 1;
             var pack = _pack;
             int epoch = _epoch;
@@ -303,10 +306,10 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Detects real magnification relative to native normal FOV plus the configured full-detail threshold.</summary>
         bool Zoom(Camera camera, float tan)
         {
-            if (_zoomFov.Value <= 0 || camera.orthographic) return false;
+            if (Value(_zoomFov) <= 0 || camera.orthographic) return false;
             if (_normalFov == null) _normalFov = HutongGames.PlayMaker.FsmVariables.GlobalVariables.FindFsmFloat("FOV");
             float normal = _normalFov != null && _normalFov.Value > 0 ? _normalFov.Value : camera.fieldOfView;
-            return tan <= Mathf.Tan(_zoomFov.Value * Mathf.Deg2Rad * .5f) || tan < Mathf.Tan(normal * Mathf.Deg2Rad * .5f) * .98f;
+            return tan <= Mathf.Tan(Value(_zoomFov) * Mathf.Deg2Rad * .5f) || tan < Mathf.Tan(normal * Mathf.Deg2Rad * .5f) * .98f;
         }
         /// <summary>Camera pre-render callback: restores originals immediately on zoom, independent of the sliced work budget.</summary>
         void RenderView(Camera camera)
@@ -358,12 +361,12 @@ namespace WildWasteland.Core.Optimization
                 foreach (var camera in _cameras)
                 {
                     if ((camera.cullingMask & (1 << b.Renderer.gameObject.layer)) == 0) continue;
-                    float distance = Mathf.Max(.01f, Vector3.Distance(camera.transform.position, bounds.center) / Mathf.Max(.01f, _distance.Value) - radius);
+                    float distance = Mathf.Max(.01f, Vector3.Distance(camera.transform.position, bounds.center) / Mathf.Max(.01f, Value(_distance)) - radius);
                     float value = camera.orthographic ? radius / Mathf.Max(.01f, camera.orthographicSize)
                         : radius / (distance * ViewTan(camera));
                     height = Mathf.Max(height, value * QualitySettings.lodBias);
                 }
-                float near = Mathf.Max(.001f, _near.Value), far = Mathf.Clamp(_far.Value, .0001f, near * .9f);
+                float near = Mathf.Max(.001f, Value(_near)), far = Mathf.Clamp(Value(_far), .0001f, near * .9f);
                 // Hysteresis prevents repeated mesh swaps at a transition boundary.
                 float nearLimit = near * (b.Level == 0 ? .85f : 1.15f);
                 float farLimit = far * (b.Level == 2 ? 1.15f : .85f);
@@ -400,6 +403,7 @@ namespace WildWasteland.Core.Optimization
             l.Value("LOD renderers", _objects.Count + "; unique cache " + _cache.Count + "; unmatched meshes " + _missing);
             l.Value("LOD cache", (_reserved / 1048576) + " MB reserved; reads " + _pending + "; errors " + _errors);
             l.Value("LOD view", _zoom ? "zoom: original meshes" : _saving || _guard ? "saving: original meshes" : "automatic screen-size LOD");
+            l.Value("LOD distance multiplier", Value(_distance).ToString("0.##") + "x");
         }
     }
 }

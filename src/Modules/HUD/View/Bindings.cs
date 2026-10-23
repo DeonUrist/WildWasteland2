@@ -85,7 +85,7 @@ namespace WildWasteland.Modules.HUD
         internal void Refresh()
         {
             if (Canvas == null) return;
-            if (Weapons == null) Weapons = SceneCache.Fsm("Weapons", "Weapons");
+            if (Weapons == null) Weapons = SceneCache.Fsm("PlayerCameraHolder/PlayerCamera/Weapons", "Weapons");
             if (Bandage == null) Bandage = SceneCache.Fsm("PlayerCameraHolder/PlayerCamera/QuickItems/Bandage_Item", "SlotEmptyFull");
             if (FirstAid == null) FirstAid = SceneCache.Fsm("PlayerCameraHolder/PlayerCamera/QuickItems/FirstAid_Item", "SlotEmptyFull");
             if (PlayerCamera == null) { var f = SceneCache.Fsm("PlayerCamera", "GrabItem"); if (f != null) PlayerCamera = f.transform; }

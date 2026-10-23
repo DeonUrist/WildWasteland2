@@ -76,7 +76,7 @@ namespace WildWasteland.Modules.Gunplay
                 var r = PerGunAmmo.CurrentReload;
                 if (r == null) return false;
                 var attack = FsmUtil.Find(r.gameObject, "Attack");
-                var hammer = attack != null ? attack.FsmVariables.GetFsmBool("hammer") : null;
+                var hammer = attack != null ? attack.FsmVariables.FindFsmBool("hammer") : null;
                 return hammer != null && !hammer.Value && AmmoInGun > 0;
             }
         }

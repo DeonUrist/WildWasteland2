@@ -43,6 +43,7 @@ namespace WildWasteland.Modules.POI
         private readonly WorldLocations _locations;
         /// <summary>Creates the town runtime under the same POI lifecycle owner.</summary>
         public PoiModule() { _towns = new TownRuntime(this); _locations = new WorldLocations(_towns); }
+        internal int AuthoringSpawnChance { get { return _chance == null ? 2 : _chance.Value; } }
         private ConfigEntry<int> _chance;
         private bool _running, _loaded, _loadFailed;
         private string _slot;

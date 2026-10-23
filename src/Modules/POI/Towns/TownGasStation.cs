@@ -76,7 +76,7 @@ namespace WildWasteland.Modules.POI
             List<Request> list = null;
             try
             {
-                int chance = _settings.DesertGasStationChance.Value;
+                int chance = CustomPoiAssets.Current?.Spawns("TownsGasStation") == false ? 0 : _settings.DesertGasStationChance.Value;
                 if (chance > 0 && !(Core.ModApi.Get<Core.INavApi>()?.WorldGenerationSuspended==true) && !startingChunk && TownPlanner.Hash(key + "/gasstation") % 100 < chance && Available)
                     (list = new List<Request>()).Add(new Request { Key = key, Desert = true, Scale = 1f, Radius = Radius(1f) });
                 CaptureTests(tile, data, assets, ref list);
@@ -112,7 +112,7 @@ namespace WildWasteland.Modules.POI
             }
         }
         /// <summary>Chooses an eligible roadside station site from numeric height and road inputs.</summary>
-        private static void PlanDesert(Request request, TileData data, List<Vector3> avoid, TownPlan saved, TownWorldRoads roads, StopToken stop)
+        internal static void PlanDesert(Request request, TileData data, List<Vector3> avoid, TownPlan saved, TownWorldRoads roads, StopToken stop)
         {
             var area = data.area.active; float outer = request.Radius + 8, border = outer + 24;
             var random = new System.Random(TownPlanner.Hash(request.Key + "/gasstation/site"));

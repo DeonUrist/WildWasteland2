@@ -25,10 +25,10 @@ namespace WildWasteland.Modules.Tools
             return null;
         }
         /// <summary>Requests an unsaved owner-created preview with the complete prop settings.</summary>
-        internal GameObject Create(PoiAuthoringAsset asset, Transform parent, EditorProp prop)
+        internal GameObject Create(PoiAuthoringAsset asset, Transform parent, EditorProp prop, bool solid = true)
         {
             var layout = new EditorLayout { Type = "preview" }; layout.Props.Add(prop.Copy());
-            var result = _source.CreatePreview(prop.Asset, prop.Kind, EditorLayoutJson.Serialize(layout), parent);
+            var result = _source.CreatePreview(prop.Asset, prop.Kind, EditorLayoutJson.Serialize(layout), parent, solid);
             if (result == null) throw new InvalidOperationException("Native preview asset is unavailable: " + prop.Mesh);
             return result;
         }

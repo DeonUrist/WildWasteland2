@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.POI
         }
         /// <summary>Snapshots native and explicitly registered custom prefab inputs for town generation.</summary>
         private static List<GameObject> CatalogPrefabs(Graph graph)
-        {TownPrefabCatalog.Captured=true;var result=new List<GameObject>();foreach(var generator in graph.generators){var output=generator as ObjectsOutput;if(output!=null)foreach(var prefab in output.prefabs)if(prefab!=null&&!result.Contains(prefab))result.Add(prefab);}foreach(var prefab in TownPrefabCatalog.Prefabs.Values)if(prefab!=null&&!result.Contains(prefab))result.Add(prefab);var station=TownGasStation.Current?.CatalogPrefab;if(station!=null)result.Add(station);return result;}
+        {TownPrefabCatalog.Captured=true;var result=new List<GameObject>();foreach(var generator in graph.generators){var output=generator as ObjectsOutput;if(output!=null)foreach(var prefab in output.prefabs)if(prefab!=null&&!result.Contains(prefab))result.Add(prefab);}foreach(var prefab in TownPrefabCatalog.Prefabs.Values)if(prefab!=null&&!result.Contains(prefab))result.Add(prefab);CustomPoiAssets.Current?.Prefabs(result);var station=TownGasStation.Current?.CatalogPrefab;if(station!=null)result.Add(station);return result;}
         /// <summary>Restores the current data format and rejects incompatible or corrupt input.</summary>
         internal void Load(Graph graph, TownSettings settings)
         {
@@ -97,12 +97,12 @@ namespace WildWasteland.Modules.POI
                     // (WW) every native camp may stand in a town too (its perimeter walls stripped); camps with a merchant are merchant lots
                     bool camp = prefab != null && prefab.name.StartsWith("Camp_", StringComparison.Ordinal);
                     bool merchant = prefab != null && (prefab.name == "Camp_10" || camp && HasMerchant(prefab));
-                    bool custom = prefab != null && (TownPrefabCatalog.Prefabs.ContainsKey(prefab.name) || prefab.name == "TownsGasStation");
-                    if (prefab == null || (!custom && !merchant && !camp && !prefab.name.StartsWith("Building_", StringComparison.Ordinal) && !(wreck && (prefab.name == "Wreck_8" || prefab.name == "Wreck_7"))) || Buildings.ContainsKey(prefab.name)) continue;
-                    if (!custom && !merchant && !wreck && !camp && allowed.Count > 0 && !allowed.Contains(prefab.name)) continue;
+                    bool custom = prefab != null && (TownPrefabCatalog.Prefabs.ContainsKey(prefab.name) || prefab.name == "TownsGasStation" || CustomPoiAssets.Current?.Contains(prefab.name) == true);
+                    if (prefab == null || (!custom && !merchant && !camp && !prefab.name.StartsWith("Building_", StringComparison.Ordinal) && !wreck && !prefab.name.StartsWith("Cave_", StringComparison.Ordinal)) || Buildings.ContainsKey(prefab.name)) continue;
                     if (camp && BossCamp(prefab)) { Log.Main(null, "[POI] camp " + prefab.name + " left out of towns: boss camp"); continue; }
-                    var spec = Measure(prefab); if (spec == null) continue;
+                    var spec = PoiDressing.PlanningSpec(prefab) ?? Measure(prefab); if (spec == null) continue;
                     spec.Wreck = wreck; spec.Crane = prefab.name == "Building_4"; spec.Merchant = merchant; spec.Camp = camp;
+                    spec.DefaultAllowed = custom || merchant || camp || wreck && (prefab.name == "Wreck_8" || prefab.name == "Wreck_7") || prefab.name.StartsWith("Building_", StringComparison.Ordinal) && (allowed.Count == 0 || allowed.Contains(prefab.name));
                     if (merchant) TownLot.Merchants.Add(prefab.name);
                     foreach (var child in prefab.GetComponentsInChildren<Transform>(true)) if (child.name.IndexOf("crane_big", StringComparison.OrdinalIgnoreCase) >= 0) spec.Crane = true;
                     spec.Bake = TownBakeData.Load(spec, margin, cell);
@@ -281,7 +281,7 @@ namespace WildWasteland.Modules.POI
             return null;
         }
         /// <summary>Measures numeric geometry without passing Unity objects to terrain workers.</summary>
-        private static BuildingSpec Measure(GameObject prefab)
+        internal static BuildingSpec Measure(GameObject prefab)
         {
             Bounds bounds = new Bounds(); bool any = false; int count = 0;
             foreach (var c in prefab.GetComponentsInChildren<Collider>(true))
