@@ -175,6 +175,8 @@ namespace WildWasteland.Modules.Survival
             }
             _visuals.End(camera, detail);
         }
+        /// <summary>Ends existing weather after the native sleep time skip.</summary>
+        internal void SleepFinished() { Clear(); }
         /// <summary>Removes every region and anchor, resets hazards/audio/visuals and disables the draw job.</summary>
         private void Clear()
         {

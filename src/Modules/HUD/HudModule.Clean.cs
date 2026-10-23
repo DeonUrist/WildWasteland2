@@ -20,6 +20,7 @@ namespace WildWasteland.Modules.HUD
         internal static ConfigEntry<bool> ShowConvoys, ShowLocations;
         internal static ConfigEntry<bool> SimpleMapIcons;
         internal static ConfigEntry<bool> DamageDirection;
+        internal static ConfigEntry<bool> ShowAmmo;
         internal static ConfigEntry<bool> VehicleStatusHint, VehicleHotkeyHint;
         internal static ConfigEntry<bool> AmbiguousPatrols, AmbiguousLocations;
         internal static ConfigEntry<bool> ShowCompass, MapEnabled, DrivingHudOnlyThirdPerson;
@@ -46,6 +47,7 @@ namespace WildWasteland.Modules.HUD
             CleanHudEnabled = cfg.Player("", "Clean HUD", true, "Replace the native HUD. Off restores it immediately.");
             ShowNeeds = cfg.Player("HUD", "ShowNeeds", true, "Show water, food and sleep beneath HP and armor.");
             ShowHealthNumbers = cfg.Player("HUD", "ShowHealthNumbers", true, "Show HP and armor values inside their bars.");
+            ShowAmmo = cfg.Player("HUD", "ShowAmmo", true, "Show loaded ammunition, reserve ammunition and grenade counts.");
             ShowInsanity = cfg.Player("HUD", "ShowInsanity", true, "Show insanity in the top right while above zero.");
             DamageDirection = cfg.Player("HUD", "DamageDirection", true, "Show an opaque red arrow toward each attacker for two seconds after a hit. Repeated hits refresh one arrow. Requires NPC AI and Clean HUD.");
             ShowConvoys = cfg.Player("HUD", "ShowConvoys", true, "Compass icons and distances for vehicle groups: merchants yellow, Coyotes green, patrols red and convoys orange.");

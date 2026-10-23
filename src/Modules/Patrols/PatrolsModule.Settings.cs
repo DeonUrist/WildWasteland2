@@ -29,8 +29,8 @@ namespace WildWasteland.Modules.Patrols
                 PatrolSettings.ConvoyEnabled.Value = next != 0;
                 PatrolSettings.FuryRoad.Value = next == 2;
             }
-            l.Text("Loner: no automatic patrols. New arrival: groups unlock with distance and boss kills. Fury road: all patrol types are available from the start.");
-            SettingsShell.Switch(l, "Foot patrols", PatrolSettings.FootPatrols);
+            l.Hint(next == 0 ? "No NPC vehicles on map" : next == 1 ? "NPC vehicle groups become harder and unlock with distance and boss kills" : "The world is full of dangers. All vehicle patrol types can be met on the map from the start");
+            SettingsShell.Switch(l, "Foot patrols", PatrolSettings.FootPatrols, "Enables groups of NPCs walking between points of interest");
         }
 
         /// <summary>Debug page, Patrols category: editor hotkeys and the open-editor button.</summary>

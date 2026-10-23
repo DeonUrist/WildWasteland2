@@ -80,6 +80,7 @@ namespace WildWasteland.Modules.Loot
                 if (items == null || items.preFillGameObjectList == null) return true;
                 var list = items.preFillGameObjectList;
                 Add(f, selector, "Items", "All loot", i => list[i] != null, list.Count);
+                GasStation(list);
                 Add(f, selector, "Items", "Supplies", i => ItemCategory(list[i]) == "Items & supplies", list.Count);
                 Add(f, selector, "Items", "Weapons & ammo", i => ItemCategory(list[i]) == "Weapons & equipment", list.Count);
                 Add(f, selector, "CarParts", "Car parts", i => ItemCategory(list[i]) == "Car parts", list.Count);
@@ -109,6 +110,25 @@ namespace WildWasteland.Modules.Loot
             if (indices.Count == 0) return;
             _names.Add(kind + ":" + name);
             Profiles.Add(new NativeSpawnProfile { Template = f, Kind = kind, Name = name, Indices = indices.ToArray(), Weights = weights.ToArray(), Count = indices.Count });
+        }
+        private void GasStation(List<GameObject> items)
+        {
+            if (_names.Contains("Items:Gas station supplies")) return;
+            var source = Find("Items", "All loot"); if (source == null) return;
+            var names = new[] { "Gasoline_Can", "Diesel_Can", "Gasoline_Barrel", "Diesel_Barrel" };
+            var shares = new[] { 25f, 25f, 20f, 20f, 10f }; var totals = new float[5];
+            var groups = new int[source.Count]; var weights = new float[source.Count];
+            for (int i = 0; i < source.Count; i++)
+            {
+                int group = Array.IndexOf(names, items[source.Indices[i]].name); if (group < 0) group = 4;
+                groups[i] = group; totals[group] += source.Weights[i];
+            }
+            for (int i = 0; i < totals.Length; i++)
+                if (totals[i] <= 0) throw new InvalidOperationException("Gas station supplies missing native loot category " + i);
+            for (int i = 0; i < weights.Length; i++) weights[i] = source.Weights[i] * shares[groups[i]] / totals[groups[i]];
+            _names.Add("Items:Gas station supplies");
+            Profiles.Add(new NativeSpawnProfile { Template = source.Template, Kind = "Items", Name = "Gas station supplies",
+                Indices = (int[])source.Indices.Clone(), Weights = weights, Count = source.Count });
         }
         /// <summary>Coarse category of an item prefab (tags, layer and name words): Car parts, Weapons &amp; equipment, Items &amp; supplies.</summary>
         internal static string ItemCategory(GameObject root)

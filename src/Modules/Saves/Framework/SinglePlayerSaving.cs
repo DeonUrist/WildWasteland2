@@ -25,6 +25,7 @@ namespace WildWasteland.Modules.Saves
         internal static void Install(IModule owner)
         {
             SaveBus.StateChanged += StateChanged;
+            SaveHeldItem.Install(owner);
             Hooks.MouseLookDo.Prefix(owner, Look);
             Hooks.GetButtonDownUpdate.Prefix(owner, ButtonDown);
             Hooks.GetButtonDo.Prefix(owner, Button);
@@ -32,7 +33,7 @@ namespace WildWasteland.Modules.Saves
             Hooks.GetMouseButtonDownUpdate.Prefix(owner, MouseDown);
         }
         /// <summary>Detaches new-world identity selection after running routines have been disposed.</summary>
-        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; _requested = false; }
+        internal static void Shutdown() { SaveBus.StateChanged -= StateChanged; SaveHeldItem.Clear(); LightPersistence.Clear(); _requested = false; }
         /// <summary>Suppresses native look input only while offline serialization freezes the world.</summary>
         static bool Look(MouseLook action) { return !Serializing; }
         /// <summary>Clears native button results while offline serialization owns input.</summary>
@@ -48,6 +49,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Assigns a fresh live identity when a new native singleplayer world starts.</summary>
         static void StateChanged(string previous, string current)
         {
+            if (current == "Start" || current == "LoadGame" || current == "setSeed") { SaveHeldItem.Clear(); LightPersistence.Clear(); }
             if (current != "setSeed" || SaveRuntime.SelectedFile != null) return;
             // A new offline world must never inherit the previous world's cache/lineage or overwrite its slot.
             string file = "WW_live-" + Guid.NewGuid().ToString("N") + ".es3";
@@ -71,6 +73,16 @@ namespace WildWasteland.Modules.Saves
                 yield return null;
                 if (generation != SaveBus.Generation || !SaveSystem.LocalReady) yield break;
                 if (SaveSystem.DeferScheduledSave()) yield break;
+                var release = SaveHeldItem.Prepare(generation, () =>
+                {
+                    Serializing = true;
+                    blocked = !ApocasetterBridge.InputBlocked && ApocasetterBridge.SetInputBlock(true);
+                    Presentation(Core.Events.SavePresentationPhase.Begin, .05f, "Releasing held item");
+                    Time.timeScale = 1;
+                });
+                while (release.MoveNext()) yield return release.Current;
+                if (generation != SaveBus.Generation || !SaveSystem.LocalReady) yield break;
+                if (SaveSystem.DeferScheduledSave()) yield break;
                 string file = SaveSystem.ActiveFile;
                 var registry = GameRefs.NewGOArrayList != null ? FsmUtil.Find(GameRefs.NewGOArrayList, "Save_NewGO_ArrayList") : null;
                 if (registry == null) throw new IOException("Native object registry is unavailable");
@@ -78,7 +90,7 @@ namespace WildWasteland.Modules.Saves
                 registry.FsmVariables.FindFsmString("SaveFile").Value = file;
                 ES3Settings.defaultSettings.path = file;
                 Serializing = true; Time.timeScale = 0;
-                blocked = !ApocasetterBridge.InputBlocked && ApocasetterBridge.SetInputBlock(true);
+                if (!ApocasetterBridge.InputBlocked) blocked = ApocasetterBridge.SetInputBlock(true);
                 Presentation(Core.Events.SavePresentationPhase.Begin, .1f, "Waiting for terrain to settle");
                 var terrain = SaveTerrain.Prepare(); while (terrain.MoveNext()) yield return terrain.Current;
                 if (generation != SaveBus.Generation || !SaveSystem.LocalReady) yield break;

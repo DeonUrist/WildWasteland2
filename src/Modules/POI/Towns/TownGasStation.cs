@@ -275,7 +275,7 @@ namespace WildWasteland.Modules.POI
             {
                 if (s.Root == null) continue;
                 Station captured = s;
-                if (_map != null && _map.Markers != MapDetail.Off && !_map.Exists(s.MapId)) s.MapId = _map.Add(MarkerOwner, captured.Position, "building", Color.white, s.Label ?? (s.Desert ? "Gas station" : "Gas station test"));
+                if (_map != null && _map.Markers != MapDetail.Off && !_map.Exists(s.MapId)) s.MapId = _map.Add(MarkerOwner, captured.Position, "gas_station", Color.white, s.Label ?? (s.Desert ? "Gas station" : "Gas station test"));
                 bool near = player != null && (player.transform.position - s.Position()).sqrMagnitude < 400f * 400f;
                 if (_compass != null && near && !_compass.Exists(s.CompassId)) s.CompassId = _compass.Add(MarkerOwner, captured.Position, "building", Color.white);
                 else if (_compass != null && !near && _compass.Exists(s.CompassId)) { _compass.Remove(s.CompassId); s.CompassId = 0; }

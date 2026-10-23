@@ -278,6 +278,7 @@ namespace WildWasteland.Core.UI
                 }
                 _contentHeight = _layout.Y + 12;
             });
+            _layout.DrawHint(inner);
         }
     }
 }

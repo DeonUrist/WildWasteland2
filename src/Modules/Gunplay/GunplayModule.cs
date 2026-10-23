@@ -174,10 +174,10 @@ namespace WildWasteland.Modules.Gunplay
         public override IEnumerable<ToolPage> ToolPages() { return GunplayPages.Create(this); }
 
         /// <summary>Settings shell row: "Toggle Ironsights" on the HUD page at its original position.</summary>
-        public override void Settings(SettingsShell shell) { shell.Custom(this, SettingsShell.Page.Hud, "", DrawSettingsRow, 160); }
+        public override void Settings(SettingsShell shell) { shell.Custom(this, SettingsShell.Page.Hud, "", DrawSettingsRow, 110, 1); }
 
         /// <summary>Draws the "Toggle Ironsights" switch.</summary>
-        void DrawSettingsRow(ToolLayout l) { SettingsShell.Switch(l, "Toggle Ironsights", GunplaySettings.ToggleIronsights); }
+        void DrawSettingsRow(ToolLayout l) { SettingsShell.Switch(l, "Toggle Ironsights", GunplaySettings.ToggleIronsights, "Press aim to raise or lower ironsights instead of holding it"); }
 
         // ---------------------------------------------------------------- jobs
 

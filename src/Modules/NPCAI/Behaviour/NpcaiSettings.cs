@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.NPCAI
     {
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
         internal static ConfigEntry<bool> AimEnabled;
+        internal static ConfigEntry<bool> EnemySpawnRandomizer;
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
         internal static ConfigEntry<float> AimTimeScale, FacingTolerance, EngagePercent, ReloadSeconds, SingleShotReload, RoundSeconds;
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
@@ -111,6 +112,8 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Binds every NPCAI entry (F6 toggles and settings, [Keys] Shout, tools.cfg tuning) in the old NPC entry order.</summary>
         internal static void Bind(ModuleConfig cfg)
         {
+            EnemySpawnRandomizer = cfg.Player("World", "Enemy Spawn Randomizer", false,
+                "Randomizes enemies within their faction category at existing POIs and leaves 15% of eligible sites empty. Off preserves native enemy selections. Applies to future spawns only.");
             _cfg = cfg;
             SensesEnabled = V(null, "EnableNpcDetection", true,
                 "NPCs see (field of view, light, flashlight), hear gunshots, shouts, engines and explosions, remember where you were and search. Off = the game's own sensors.");

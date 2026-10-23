@@ -44,7 +44,7 @@ namespace WildWasteland.Modules.Vehicles
         internal static void Bind(ModuleConfig cfg)
         {
             WarRigSpawns = cfg.Player("War Rig", "Spawns", true,
-                "Allow the abandoned War Rig POI and manual War Rig spawns. World discovery chance is in POI / World. Existing rigs are unaffected");
+                "Allow manual War Rig spawns. Natural abandoned War Rig encounters follow New POI in World. Existing rigs are unaffected");
             WarRigGroundRecovery = cfg.Player("War Rig", "Ground recovery", false,
                 "Rescue a War Rig (with its truck and passengers) after a confirmed fall below the terrain. Off by default");
             NpcRamDamageMultiplier = cfg.Player("Combat", "NPC ram damage multiplier", 4f,
@@ -68,13 +68,17 @@ namespace WildWasteland.Modules.Vehicles
         {
             shell.Row(owner, SettingsShell.Page.Player, "Vehicles", IgnitionKey, "Ignition key on the Controls screen");
             shell.Row(owner, SettingsShell.Page.Player, "Vehicles", ExitSpeedKmh, "Exit speed (km/h)");
-            shell.Row(owner, SettingsShell.Page.World, "Vehicles", WarRigSpawns, "War Rig spawns");
-            shell.Row(owner, SettingsShell.Page.World, "Vehicles", NpcRamDamageMultiplier, "NPC ram damage multiplier");
-            shell.Row(owner, SettingsShell.Page.Debug, "Vehicles", WarRigGroundRecovery, "War Rig ground recovery");
-            shell.Row(owner, SettingsShell.Page.Debug, "Vehicles", LiftKitCenterOfMass, "Lift-kit centre of mass");
+            shell.Custom(owner, SettingsShell.Page.Debug, "Tuning", DrawTuning, 420);
             shell.Resettable(owner, SettingsShell.Page.Player, IgnitionKey);
-            shell.Resettable(owner, SettingsShell.Page.World, WarRigSpawns);
-            shell.Resettable(owner, SettingsShell.Page.World, NpcRamDamageMultiplier);
+            shell.Resettable(owner, SettingsShell.Page.Debug, NpcRamDamageMultiplier);
+        }
+        /// <summary>Vehicle mechanics tuning at the end of Debug, outside player-facing World options.</summary>
+        private static void DrawTuning(ToolLayout l)
+        {
+            l.Heading("Vehicles");
+            l.Toggle(WarRigGroundRecovery, "War Rig ground recovery"); l.Hint(WarRigGroundRecovery.Description.Description);
+            l.Toggle(LiftKitCenterOfMass, "Lift-kit centre of mass"); l.Hint(LiftKitCenterOfMass.Description.Description);
+            l.Entry(NpcRamDamageMultiplier);
         }
     }
 }

@@ -127,6 +127,18 @@ namespace WildWasteland.Modules.Survival
         private bool EventBefore(Fsm fsm,FsmEvent ev,FsmEventData data)
         {
             if (ev!=null && ev.Name=="SaveGame" && !_saving) Save(true);
+            if (ev!=null && ev.Name=="back" && fsm.Name=="Sleep" && fsm.GameObject==GameRefs.Player &&
+                (fsm.ActiveStateName=="SleepOnFoot" || fsm.ActiveStateName=="SleepInCar"))
+            {
+                for (int i=0;i<Storms.Length;i++)
+                {
+                    var storm=Storms[i]; if (storm.Root==null) continue;
+                    storm.Root.SetActive(false); UnityEngine.Object.Destroy(storm.Root);
+                    storm.Root=null; storm.Pending.Clear(); storm.Contacts();
+                }
+                _owner.SleepFinished();
+                Log.Always(null,"[Weather] Sleep completed: existing sandstorms passed.");
+            }
             return true;
         }
         /// <summary>Suppresses original explosion execution only for replaced storm actions.</summary>

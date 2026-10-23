@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Vehicles
         internal static void DrawWarRig(ToolLayout l)
         {
             l.Text("The War Rig: a six-wheel tanker semi-trailer for the Rustchief. The POI module places abandoned trucks with tankers, worn wheels, no engine and nearby zombies. World chance is in Points of interest. Temporary map markers are yellow Xs. The tanker shelters the player from sandstorms and remains available in truck templates and manual spawns.");
-            l.Toggle(VehiclesSettings.WarRigSpawns, "War Rig spawns");
+            l.Toggle(VehiclesSettings.WarRigSpawns, "Manual War Rig spawns");
             l.Toggle(VehiclesSettings.WarRigGroundRecovery, "Ground recovery");
             l.Heading("Status");
             string model = Path.Combine(WarRig.WarRigFeature.Dir, WarRig.S.ModelFile);

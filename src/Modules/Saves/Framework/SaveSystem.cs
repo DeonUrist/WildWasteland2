@@ -106,7 +106,7 @@ namespace WildWasteland.Modules.Saves
             SaveCleanup.Install(owner);
             SaveCombat.Install(owner);
             SinglePlayerSaving.Install(owner);
-            WorldHistory.Install(owner); HingePersistence.Install(owner);
+            WorldHistory.Install(owner); HingePersistence.Install(owner); LightPersistence.Install(owner);
             SaveBus.StateChanged += StateChanged;
             Scheduler.Interval(owner, "Singleplayer autosave warning", .25f, Tick);
             Log.Main(owner, "Autosave warnings: game-font compass countdown, 30/15-second notices, combat deferral and 3-second final warning");

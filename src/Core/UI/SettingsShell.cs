@@ -32,6 +32,8 @@ namespace WildWasteland.Core.UI
             public Action<ToolLayout> Draw;
             /// <summary>Sort order within the group (lower first; ties keep registration order).</summary>
             public int Order;
+            /// <summary>Optional left/right half of a row sharing its order with another contribution.</summary>
+            public int Column = -1;
             /// <summary>Registration sequence (stable sort tie-breaker).</summary>
             internal int Sequence;
         }
@@ -76,11 +78,14 @@ namespace WildWasteland.Core.UI
         }
 
         /// <summary>Draws the shared Off/On choices row while leaving the value owned by its contributing module.</summary>
-        public static void Switch(ToolLayout layout, string label, ConfigEntry<bool> entry)
+        public static void Switch(ToolLayout layout, string label, ConfigEntry<bool> entry) { Switch(layout, label, entry, null); }
+        /// <summary>Draws an Off/On row with a brief hover hint.</summary>
+        public static void Switch(ToolLayout layout, string label, ConfigEntry<bool> entry, string hint)
         {
             if (entry == null) return;
             bool value = layout.Choices(label, entry.Value ? 1 : 0, "Off", "On") == 1;
             if (value != entry.Value) entry.Value = value;
+            layout.Hint(hint ?? entry.Description.Description);
         }
 
         /// <summary>Increments on every change (pages rebuild cached layouts).</summary>
@@ -95,10 +100,12 @@ namespace WildWasteland.Core.UI
         }
 
         /// <summary>Adds a custom-drawn row (previews like crosshair/body selection).</summary>
-        public void Custom(IModule owner, Page page, string group, Action<ToolLayout> draw, int order = 0)
+        public void Custom(IModule owner, Page page, string group, Action<ToolLayout> draw, int order = 0) { Custom(owner, page, group, draw, order, -1); }
+        /// <summary>Adds a custom control in one half of a row shared with the same group and order.</summary>
+        public void Custom(IModule owner, Page page, string group, Action<ToolLayout> draw, int order, int column)
         {
             if (draw == null) return;
-            _rows.Add(new Contribution { Owner = owner, Page = page, Group = group ?? "", Draw = draw, Order = order, Sequence = _sequence++ });
+            _rows.Add(new Contribution { Owner = owner, Page = page, Group = group ?? "", Draw = draw, Order = order, Column = column, Sequence = _sequence++ });
             _revision++;
         }
 
@@ -122,6 +129,7 @@ namespace WildWasteland.Core.UI
             for (int i = 0; i < _rows.Count; i++) if (_rows[i].Page == page) into.Add(_rows[i]);
             var groups = new List<string>();
             for (int i = 0; i < into.Count; i++) if (!groups.Contains(into[i].Group)) groups.Add(into[i].Group);
+            if (page == Page.Debug && groups.Remove("Tuning")) groups.Add("Tuning");
             into.Sort((a, b) =>
             {
                 int g = groups.IndexOf(a.Group).CompareTo(groups.IndexOf(b.Group));
@@ -151,17 +159,29 @@ namespace WildWasteland.Core.UI
             {
                 var c = _drawBuffer[i];
                 if (c.Group != group) { group = c.Group; if (group.Length > 0) l.Heading(group); }
-                try
+                float x = l.X, width = l.Width, start = l.Y, end = start;
+                int last = i;
+                if (c.Column >= 0)
+                    while (last + 1 < _drawBuffer.Count && _drawBuffer[last + 1].Group == group && _drawBuffer[last + 1].Order == c.Order && _drawBuffer[last + 1].Column >= 0) last++;
+                for (; i <= last; i++)
                 {
-                    if (c.Draw != null) c.Draw(l);
-                    else
+                    c = _drawBuffer[i];
+                    if (c.Column >= 0) { l.Width = (width - 24) / 2; l.X = x + c.Column * (l.Width + 24); l.Y = start; }
+                    try
                     {
-                        var b = c.Entry as ConfigEntry<bool>;
-                        if (b != null) l.Toggle(b, c.Label);
-                        else l.Entry(c.Entry);
+                        if (c.Draw != null) c.Draw(l);
+                        else
+                        {
+                            var b = c.Entry as ConfigEntry<bool>;
+                            if (b != null) l.Toggle(b, c.Label);
+                            else l.Entry(c.Entry);
+                            if (b != null) l.Hint(b.Description.Description);
+                        }
                     }
+                    catch (Exception e) { ModuleHost.ReportHookException(c.Owner, "settings row " + (c.Label ?? group), e); }
+                    finally { end = System.Math.Max(end, l.Y); l.X = x; l.Width = width; l.Y = end; }
                 }
-                catch (Exception e) { ModuleHost.ReportHookException(c.Owner, "settings row " + (c.Label ?? group), e); }
+                i = last;
             }
         }
 

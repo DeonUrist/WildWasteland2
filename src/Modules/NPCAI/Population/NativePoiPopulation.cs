@@ -134,6 +134,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>EnterState prefix: an empty site's spawner trigger completes at once (native progress saved as usual).</summary>
         private static bool Enter(Fsm fsm, FsmState state)
         {
+            if (!NpcaiSettings.EnemySpawnRandomizer.Value) return true;
             if (fsm.Name != "ItemSpawner" || state.Name != "trigger") return true;
             var f = fsm.Owner as PlayMakerFSM; var site = Find(f);
             if (site == null || site.Excluded) return true;
@@ -146,6 +147,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>CreateObject prefix: the spawned creature becomes a random same-category creature of the site, placed on safe free floor near the spot.</summary>
         private static bool Creating(CreateObject action)
         {
+            if (!NpcaiSettings.EnemySpawnRandomizer.Value) return true;
             Spawn spawn;
             if (!Actions.TryGetValue(action, out spawn))
             { Find(action.Fsm == null ? null : action.Fsm.Owner as PlayMakerFSM); if (!Actions.TryGetValue(action, out spawn)) return true; }

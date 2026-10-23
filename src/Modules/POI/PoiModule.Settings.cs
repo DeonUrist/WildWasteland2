@@ -8,6 +8,6 @@ namespace WildWasteland.Modules.POI
         /// <summary>Registers the existing feature row at its original page position.</summary>
         public override void Settings(SettingsShell shell) { shell.Custom(this, SettingsShell.Page.World, "", DrawSettingsRow, 20); }
         /// <summary>Draws the existing feature setting.</summary>
-        private void DrawSettingsRow(ToolLayout l) { SettingsShell.Switch(l, "New POI", Config.Enabled); }
+        private void DrawSettingsRow(ToolLayout l) { SettingsShell.Switch(l, "New POI", Config.Enabled, "Enables new custom POIs added by the mod"); }
     }
 }

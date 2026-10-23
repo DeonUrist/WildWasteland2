@@ -19,7 +19,7 @@ namespace WildWasteland.Modules.POI
             api.Register(new Core.PoiDefinition { Id = "WarRig", Radius = 65f, Enabled = Enabled, Spawn = Spawn, Mark = Mark });
         }
         /// <summary>Reports whether the required live providers and feature switches allow this operation.</summary>
-        private static bool Enabled() { return ModApi.Get<IWarRigWorld>()?.SpawnEnabled==true && ModApi.Get<IAuthoredVehicleRequests>()!=null; }
+        private static bool Enabled() { return ModApi.Get<IWarRigWorld>()?.Running==true && ModApi.Get<IAuthoredVehicleRequests>()!=null; }
         /// <summary>Remembers the live encounter location for map presentation.</summary>
         private static void Mark(GameObject marker) { EncounterNotices.Rigs.Add(marker); }
         /// <summary>Drops per-world observations and invalidates cached query revisions.</summary>

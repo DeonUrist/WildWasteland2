@@ -769,7 +769,8 @@ namespace WildWasteland.Modules.HUD
             if (cal != _lastCal) { _lastCal = cal; _cal.text = cal; }
             bool gun = info != null && info.Kind == "gun", thrown = info != null && info.Kind == "thrown", melee = info != null && info.Kind == "melee";
             _dash.enabled = melee;
-            _sep.enabled = gun; _res.enabled = gun; _mag.enabled = gun || thrown;
+            bool ammo = HudModule.ShowAmmo.Value;
+            _sep.enabled = ammo && gun; _res.enabled = ammo && gun; _mag.enabled = ammo && (gun || thrown); _grenNum.enabled = ammo;
             if (!gun && !thrown) return;
             string mag = thrown ? "1" : Bindings.Digits(_src.AmmoInWeapon);
             string res = thrown ? "" : Bindings.Digits(_src.AmmoReserve);

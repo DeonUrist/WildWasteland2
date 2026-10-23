@@ -125,9 +125,12 @@ namespace WildWasteland.Core.UI
         readonly HashSet<ConfigEntryBase> _drawn = new HashSet<ConfigEntryBase>();
         static ConfigEntryBase _rebinding;
         static GUIStyle _wrap, _wrapSource;
+        Rect _lastRow;
+        string _hint;
+        Vector2 _hintPosition;
 
         /// <summary>Resets row position, search context and drawn-entry deduplication for a layout pass.</summary>
-        internal void Begin(float width, string prefix, string search = null) { X = 0; Y = 4; Width = width; Prefix = prefix; EntryFilter = null; DeduplicateEntries = false; _drawn.Clear(); _search = (search ?? "").Trim(); SearchContext = _category = _categoryHeading = _heading = _pendingHeading = null; _insideEntry = SearchResults = false; }
+        internal void Begin(float width, string prefix, string search = null) { X = 0; Y = 4; Width = width; Prefix = prefix; EntryFilter = null; DeduplicateEntries = false; _drawn.Clear(); _search = (search ?? "").Trim(); SearchContext = _category = _categoryHeading = _heading = _pendingHeading = null; _insideEntry = SearchResults = false; _hint = null; _lastRow = default(Rect); }
         /// <summary>Checks active search text against row and enclosing section captions.</summary>
         internal bool Matches(string text) { return !Searching || _insideEntry || Contains(text) || Contains(_category) || Contains(SearchContext) || Contains(_heading); }
         /// <summary>Matches text against the search query without case sensitivity.</summary>
@@ -146,7 +149,7 @@ namespace WildWasteland.Core.UI
         /// <summary>Admits a matching row and emits its deferred category and section headings.</summary>
         bool ShowRow(string text)
         {
-            if (!Matches(text)) return false;
+            if (!Matches(text)) { _lastRow = default(Rect); return false; }
             SearchResults = true;
             if (_categoryHeading != null) { DrawHeading(_categoryHeading); _categoryHeading = null; }
             if (_pendingHeading != null) { DrawHeading(_pendingHeading); _pendingHeading = null; }
@@ -161,7 +164,26 @@ namespace WildWasteland.Core.UI
         public Rect Next(float h = Row)
         {
             if (Ledger.SettingsActive && h <= 40) h = h <= 22 ? 46 : 54;
-            var r = new Rect(X + (Ledger.SettingsActive ? 0 : 8), Y, Width - (Ledger.SettingsActive ? 0 : 16), h); Y += h + 4; return r;
+            var r = new Rect(X + (Ledger.SettingsActive ? 0 : 8), Y, Width - (Ledger.SettingsActive ? 0 : 16), h); Y += h + 4; _lastRow = r; return r;
+        }
+        /// <summary>Attaches hover-only help to the preceding control without adding a text row.</summary>
+        public void Hint(string text)
+        {
+            if (string.IsNullOrEmpty(text) || !_lastRow.Contains(Event.current.mousePosition)) return;
+            _hint = text; _hintPosition = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
+        }
+        /// <summary>Paints hover help after the scroll view so it is not clipped by the content viewport.</summary>
+        internal void DrawHint(Rect viewport)
+        {
+            if (_hint == null || !viewport.Contains(Event.current.mousePosition) || Event.current.type != EventType.Repaint) return;
+            if (_wrap == null || _wrapSource != Ledger.Small) { _wrap = new GUIStyle(Ledger.Small) { wordWrap = true }; _wrapSource = Ledger.Small; }
+            var p = GUIUtility.ScreenToGUIPoint(_hintPosition);
+            float w = Mathf.Min(560, viewport.width - 24), h = Ledger.TextHeight(_hint, _wrap, w - 32) + 24;
+            float x = Mathf.Clamp(p.x + 18, viewport.x + 8, viewport.xMax - w - 8), y = p.y + 24;
+            if (y + h > viewport.yMax) y = p.y - h - 12;
+            var box = new Rect(x, Mathf.Max(viewport.y + 8, y), w, h);
+            Ledger.Panel(box, Ledger.Raised, Ledger.Accent);
+            Ledger.Label(new Rect(box.x + 16, box.y + 12, w - 32, h - 24), _hint, _wrap, Ledger.Text, TextAnchor.UpperLeft);
         }
         /// <summary>Adds vertical spacing outside search-result presentation.</summary>
         public void Space(float h = 8) { if (!Searching) Y += h; }
@@ -376,7 +398,11 @@ namespace WildWasteland.Core.UI
                 }
             }
             var desc = e.Description != null ? e.Description.Description : null;
-            if (!string.IsNullOrEmpty(desc) && desc.Length < 400) { Y -= 2; Text(desc, new Color(Ledger.Muted.r, Ledger.Muted.g, Ledger.Muted.b, 0.75f)); }
+            if (!string.IsNullOrEmpty(desc) && desc.Length < 400)
+            {
+                if (Ledger.SettingsActive) Hint(desc);
+                else { Y -= 2; Text(desc, new Color(Ledger.Muted.r, Ledger.Muted.g, Ledger.Muted.b, 0.75f)); }
+            }
             _insideEntry = false;
         }
 

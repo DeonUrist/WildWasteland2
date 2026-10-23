@@ -60,7 +60,28 @@ namespace WildWasteland.Modules.Compatibility
             var list = __result as IList;
             if (list == null || _entry == null) return;
             SpawnerIntegration.AddTo(list);
+            AddMotorcycle(list);
             StewPotSpawnerEntry.AddTo(list);
+        }
+
+        /// <summary>Offers the Vehicles-owned motorcycle chassis through the normal spawner placement and save registration.</summary>
+        private static void AddMotorcycle(IList list)
+        {
+            var vehicles = ModApi.Get<IVehicleAuthoring>();
+            if (vehicles == null) return;
+            foreach (var entry in list) if (string.Equals(KeyOf(entry), "Motorcycle", StringComparison.OrdinalIgnoreCase)) return;
+            try
+            {
+                var template = vehicles.Template("Motorcycle");
+                if (template == null) return;
+                var item = NewEntry();
+                Set(item, "Key", "Motorcycle"); Set(item, "Display", "Motorcycle");
+                Set(item, "Category", "vehicle"); Set(item, "Group", "Vehicles");
+                Set(item, "IsVehicle", true); Set(item, "IsAsset", true); Set(item, "Prefab", template);
+                Set(item, "Mod", "Wild Wasteland / Vehicles");
+                list.Add(item);
+            }
+            catch (Exception error) { Log.Error(Scope, "Cannot add Motorcycle to Apocaspawner", error); }
         }
 
         /// <summary>Prefix of Apocaspawner.Spawner.Spawn(Entry e, int count): the War Rig entry spawns through the War Rig feature.</summary>
