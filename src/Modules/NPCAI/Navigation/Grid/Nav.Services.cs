@@ -239,6 +239,9 @@ namespace WildWasteland.Modules.NPCAI
             if (_structures.Count != before) Revision++;
         }
 
+        internal static Structure StructureFor(Transform root)
+        { foreach (var s in _structures) if (s.Root == root) return s; return null; }
+
         /// <summary>Forgets every structure of root (rebuilt / streamed out / re-dressed): its map job is closed, its floor colliders and
         /// queued masks dropped, the scheduler and route caches reset; a later sweep or Discover finds it again (ex PoiDressNavigation reflection).</summary>
         internal static void Forget(Transform root)

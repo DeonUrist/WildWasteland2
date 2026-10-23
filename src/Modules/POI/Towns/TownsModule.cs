@@ -71,7 +71,6 @@ namespace WildWasteland.Modules.POI
         private float _buildAfter;
         private GameObject _staging;
         private readonly System.Diagnostics.Stopwatch _burst = new System.Diagnostics.Stopwatch();
-        private const int PrepStepLimit = 60000;   // overlay/connection steps per town before preparation is cut short (work, not wall clock)
         internal readonly IModule Owner;
         /// <summary>Routes every town hook and scheduled job through its sole POI module owner.</summary>
         internal TownRuntime(IModule owner) { Owner = owner; }
@@ -426,12 +425,6 @@ namespace WildWasteland.Modules.POI
                         return true;
                     }
                     if (!TownBakeBridge.Enabled) { Finish(live, "NPC navigation off; placed objects and individual maps retained"); return true; }
-                    if (site.PrepSteps > PrepStepLimit || Time.unscaledTime - live.PreparedAt >= 60)
-                    {
-                        Log.Warn(null,"[POI] preparation budget reached " + site.Plan.Key + " after " + site.PrepSteps + " steps / " + (Time.unscaledTime - live.PreparedAt).ToString("0", CultureInfo.InvariantCulture)
-                            + " s; overlay " + (site.Overlap != null && site.Overlap.Ready ? "ready" : "partial") + ", street routing " + (site.Navigation != null && site.Navigation.Ready ? "ready" : "incomplete") + ".");
-                        Finish(live, "preparation budget reached; placed objects and individual maps retained"); return true;
-                    }
                     // Overlay first: entrance portals and routes must read the projected maps, with or without walls.
                     if (site.Overlap != null && !site.Overlap.Ready)
                     { if (site.Overlap.Step()) { site.PrepSteps++; return true; } continue; }

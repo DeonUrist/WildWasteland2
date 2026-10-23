@@ -108,6 +108,7 @@ namespace WildWasteland.Modules.Survival
         {
             ModApi.Provide<ISurvivalCatalog>(this, this);
             ModApi.Provide<IMentalBreak>(this, _insanity);
+            ModApi.Provide<IPlayerMentalEffects>(this, _insanity);
             ModApi.Provide<ICookingSkills>(this, _cookingSkills);
             ModApi.Provide<IShelterRegistry>(this, _shelters);
             ModApi.Provide<IStormQueries>(this, _stormQueries);

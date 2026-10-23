@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Returns create isolated for the current owner state.</summary>
         public IIsolatedNavWork CreateIsolated(GameObject prefab)=>new Isolated(prefab);
         private sealed class Routing:ITownNavWork
-        {internal TownNavigation Route;public bool Ready=>Route.Ready;public bool Failed=>Route.Failed;public float Progress=>Route.Progress;public bool Step()=>Route.Step();public void Dispose(){} }
+        {internal TownNavigation Route;public bool Ready=>Route.Ready;public bool Failed=>Route.Failed;public float Progress=>Route.Progress;public bool Step()=>Route.Step();public void Dispose()=>Route.Dispose(); }
         private sealed class Overlay:ITownOverlayWork
         {internal TownOverlap Work;public bool Ready=>Work.Ready;public bool Failed=>false;public float Progress=>Work.Progress;public bool Step()=>Work.Step();public void Reapply(bool d)=>Work.Reapply(d);public void FinishPartial()=>Work.FinishPartial();public void Dispose()=>Work.Dispose();}
         /// <summary>Describes the entry data used by this owner.</summary>
@@ -22,15 +22,16 @@ namespace WildWasteland.Modules.NPCAI
         private readonly Dictionary<IModule,Gate> _gates=new Dictionary<IModule,Gate>();
         private IModule _owner;private int _waypoints;
         /// <summary>Starts the sliced catalog generation once.</summary>
-        internal void Start(IModule owner){_owner=owner;TownOverlap.Install();_waypoints=Nav.AddWaypointProvider(owner,this,0);}
+        internal void Start(IModule owner){_owner=owner;TownOverlap.Install();_waypoints=Nav.AddWaypointProvider(owner,this,0);Scheduler.Sliced(owner,"Town ground route fields",500,FieldsStep);}
+        private bool FieldsStep(){foreach(var e in Sites.Values)if(e.Site.Anchor!=null&&e.Routing!=null&&e.Routing.Route.FieldsStep())return true;return false;}
         /// <summary>Returns stop for the current owner state.</summary>
-        internal void Stop(){Nav.RemoveWaypointProvider(_waypoints);foreach(var gate in _gates.Values){Nav.RemoveMakeGate(gate.Ready);Nav.RemoveWaypointProvider(gate.Waypoint);}_gates.Clear();foreach(var e in Sites.Values)e.Overlay?.Dispose();Sites.Clear();TownOverlap.Uninstall();_owner=null;}
+        internal void Stop(){Nav.RemoveWaypointProvider(_waypoints);foreach(var gate in _gates.Values){Nav.RemoveMakeGate(gate.Ready);Nav.RemoveWaypointProvider(gate.Waypoint);}_gates.Clear();foreach(var e in Sites.Values){e.Overlay?.Dispose();e.Routing?.Dispose();}Sites.Clear();TownOverlap.Uninstall();_owner=null;}
         /// <summary>Builds or refreshes the detached live navigation context for the town.</summary>
         private static Entry Of(TownNavContext site){Entry e;if(!Sites.TryGetValue(site,out e))Sites[site]=e=new Entry{Site=site,Approach=new TownApproach(site.Plan)};return e;}
         /// <summary>Returns create routing for the current owner state.</summary>
-        public ITownNavWork CreateRouting(TownNavContext site){var e=Of(site);if(e.Routing==null)e.Routing=new Routing();e.Routing.Route=new TownNavigation(site);return e.Routing;}
+        public ITownNavWork CreateRouting(TownNavContext site){var e=Of(site);if(e.Routing==null)e.Routing=new Routing();else e.Routing.Dispose();e.Routing.Route=new TownNavigation(site);return e.Routing;}
         /// <summary>Returns reset routing for the current owner state.</summary>
-        internal static void ResetRouting(TownNavContext site){Entry e;if(Sites.TryGetValue(site,out e)&&e.Routing!=null)e.Routing.Route=new TownNavigation(site);}
+        internal static void ResetRouting(TownNavContext site){Entry e;if(Sites.TryGetValue(site,out e)&&e.Routing!=null){e.Routing.Dispose();e.Routing.Route=new TownNavigation(site);}}
         /// <summary>Returns create overlay for the current owner state.</summary>
         public ITownOverlayWork CreateOverlay(TownNavContext site,bool dressing){var e=Of(site);e.Overlay?.Dispose();e.Overlay=new Overlay{Work=new TownOverlap(site,dressing)};return e.Overlay;}
         /// <summary>Returns try next for the current owner state.</summary>
@@ -43,7 +44,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Projects a point onto the supplied town terrain when present.</summary>
         private static Vector3 Ground(TownNavContext s,Vector3 p){if(s.GroundTerrain!=null)p.y=s.GroundTerrain.SampleHeight(p)+s.GroundTerrain.transform.position.y;return p;}
         /// <summary>Returns release for the current owner state.</summary>
-        public void Release(TownNavContext site){Entry e;if(site!=null&&Sites.TryGetValue(site,out e)){e.Overlay?.Dispose();Sites.Remove(site);}}
+        public void Release(TownNavContext site){Entry e;if(site!=null&&Sites.TryGetValue(site,out e)){e.Overlay?.Dispose();e.Routing?.Dispose();Sites.Remove(site);}}
         /// <summary>Returns forget for the current owner state.</summary>
         public void Forget(Transform root){TownOverlap.Forget(root);foreach(var e in Sites.Values)if(e.Site.Anchor==null){e.Overlay?.Dispose();} }
         /// <summary>Queries actual NPC navigation tuning with an explicit provider-off fallback.</summary>

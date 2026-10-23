@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using UnityEngine;
@@ -35,6 +36,12 @@ namespace WildWasteland.Modules.Perks
         private string _slot, _readError;
         private int _generation = -1;
         private readonly MentalBreakView _mental = new MentalBreakView();
+        private readonly LedgerDropdown _mentalDropdown = new LedgerDropdown();
+        private static readonly string[] MentalNames = { "Random", "Vertigo", "No More Death", "Berserk", "Delirium", "Doppelganger" };
+        private readonly List<KeyValuePair<string, string>> _mentalOptions = new List<KeyValuePair<string, string>> {
+            new KeyValuePair<string, string>("", "Random"), new KeyValuePair<string, string>("0", "Vertigo"),
+            new KeyValuePair<string, string>("1", "No More Death"), new KeyValuePair<string, string>("2", "Berserk"), new KeyValuePair<string, string>("3", "Delirium"), new KeyValuePair<string, string>("4", "Doppelganger") };
+        private int _mentalChoice = -1;
         private readonly SkillPerkNotice _notice = new SkillPerkNotice();
         private readonly MerchantPerks _merchants = new MerchantPerks();
         private ConfigEntry<float> _chancePerPerk;
@@ -49,9 +56,18 @@ namespace WildWasteland.Modules.Perks
         }
         private void DrawDebug(ToolLayout layout)
         {
+            _mentalDropdown.Before();
             var mental = ModApi.Get<IMentalBreak>();
-            if (layout.Button("Mental break", mental != null && GameRefs.InPlay && !mental.Active && !mental.Pending)) mental.Trigger();
-            layout.Hint("Starts a random 30-second insanity event with a perk choice afterward. Sleep is blocked during the event.");
+            if (layout.Button("Mental break", mental != null && GameRefs.InPlay && !mental.Active && !mental.Pending))
+            { if (_mentalChoice < 0) mental.Trigger(); else mental.Trigger((InsanityEventType)_mentalChoice); }
+            layout.Hint("Starts the selected 30-second insanity event with a perk choice afterward. Sleep is blocked during the event.");
+            var row = layout.Next();
+            Ledger.Label(new Rect(row.x, row.y, row.width * ToolLayout.LabelWidth, row.height), "Mental break event", Ledger.Small, Ledger.Muted);
+            var anchor = new Rect(row.x + row.width * ToolLayout.LabelWidth, row.y, row.width * (1 - ToolLayout.LabelWidth), row.height);
+            if (Ledger.Dropdown(anchor, MentalNames[_mentalChoice + 1]))
+                _mentalDropdown.Open(anchor, _mentalOptions, _mentalChoice < 0 ? "" : _mentalChoice.ToString(CultureInfo.InvariantCulture), value => _mentalChoice = value.Length == 0 ? -1 : int.Parse(value, CultureInfo.InvariantCulture), anchor.yMax + 220);
+            if (_mentalDropdown.IsOpen) layout.Space(200);
+            _mentalDropdown.Draw(); _mentalDropdown.Flush();
         }
         private void DrawDeveloper(ToolLayout layout) { DrawSkillBoosts(layout); layout.Entry(_chancePerPerk); layout.Hint("100 XP per skill point. Athletics and Driving use XP per kilometre; other entries use XP per action."); for (int i = 0; i < SkillOrder.Length; i++) if (_xpRates[SkillOrder[i]] != null) layout.Entry(_xpRates[SkillOrder[i]]); }
         public override void Init()
@@ -117,7 +133,8 @@ namespace WildWasteland.Modules.Perks
         {
             PrepareInsanityChoices();
             if (index == 3) return new PlayerPerk { Id = "Persevere", Name = "Persevere", Hint = Has("StrongMind") ? "No perk. Hunger, thirst and fatigue +50 (capped). Insanity 35." : "No perk. Hunger 100, thirst 100, fatigue 80. Insanity 35.", Icon = _persevereIcon };
-            return Perk(SkillPerkRoster.All.Length + _choices[index]);
+            var choice = Perk(SkillPerkRoster.All.Length + _choices[index]);
+            choice.Hint = PerkRoster.Hints[_choices[index]]; return choice;
         }
         public bool ChooseInsanityPerk(string id)
         {
@@ -174,9 +191,9 @@ namespace WildWasteland.Modules.Perks
         { Array.Clear(_skills, 0, _skills.Length); ResetSkills(); _notice.Clear(); _merchants.Clear(); _unlocked = 0; _roulette = WeaponKind.Other; UpdateRouletteHint(); _lastKill = float.NegativeInfinity; _choicesReady = false; _loaded = false; _slot = null; _readError = null; _healthOwner = null; _health = null; }
         private void StateChanged(string previous, string now)
         { if (now == "setSeed" || now == "Start") { _nativeSkills.Clear(); Reset(); _fresh = true; } }
-        public override void OnLoadBegin(string slot) { _nativeSkills.Clear(); _mental.Clear(); Reset(); _fresh = false; }
+        public override void OnLoadBegin(string slot) { _nativeSkills.Clear(); _mental.Clear(); _mentalDropdown.Close(); Reset(); _fresh = false; }
         public override void OnSceneLoaded(Scene scene, LoadSceneMode mode)
-        { if (mode != LoadSceneMode.Additive) { _nativeSkills.Clear(); _mental.Clear(); Reset(); _fresh = false; } }
+        { if (mode != LoadSceneMode.Additive) { _nativeSkills.Clear(); _mental.Clear(); _mentalDropdown.Close(); Reset(); _fresh = false; } }
         public override void OnWorldReady()
         {
             if (_loaded && _generation == SaveBus.Generation && _slot == SaveBus.Slot) return;
@@ -229,6 +246,6 @@ namespace WildWasteland.Modules.Perks
             for (int i = 0; i < _xp.Length; i++) record.Append('\n').Append(_xp[i].ToString("R", CultureInfo.InvariantCulture));
             State.Write(this, slot, record.ToString());
         }
-        public override void Shutdown() { SaveBus.StateChanged -= StateChanged; _nativeSkills.Clear(); _mental.Clear(); _notice.Clear(); _merchants.Clear(); Array.Clear(_icons, 0, _icons.Length); Array.Clear(_skillIcons, 0, _skillIcons.Length); _persevereIcon = null; }
+        public override void Shutdown() { SaveBus.StateChanged -= StateChanged; _nativeSkills.Clear(); _mental.Clear(); _mentalDropdown.Close(); _notice.Clear(); _merchants.Clear(); Array.Clear(_icons, 0, _icons.Length); Array.Clear(_skillIcons, 0, _skillIcons.Length); _persevereIcon = null; }
     }
 }

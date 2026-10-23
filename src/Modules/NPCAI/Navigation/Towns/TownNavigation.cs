@@ -14,6 +14,7 @@ namespace WildWasteland.Modules.NPCAI
         internal const int Mask = NavMasks.Solid;
         private readonly TownNavContext _site;
         private readonly TownOutline _outline;
+        private readonly Nav.TownGround _ground;
         private readonly List<Vector3> _cells = new List<Vector3>(256);
         private readonly Vector3[] _nodes; // map-anchor-relative positions, so origin jumps need no cached correction
         private readonly float[,] _distance;
@@ -35,12 +36,12 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Always false: street routing never gives up (POI still tests it).</summary>
         internal bool Failed { get { return false; } }
         /// <summary>Preparation progress: street checks 30 %, building portals 30 %, all-pairs routes 40 %.</summary>
-        internal float Progress { get { return Ready ? 1 : !_streetsChecked ? _edgeCheck / (float)Mathf.Max(1, _site.Plan.StreetEdges.Length) * .3f
-            : _floyd < 0 ? .3f + .3f * _lot / _site.Plan.LotCount : .6f + .4f * _floyd / _nodes.Length; } }
+        internal float Progress { get { return Ready ? 1 : !_ground.Ready ? _ground.Progress * .6f : .6f + .4f * (!_streetsChecked ? _edgeCheck / (float)Mathf.Max(1, _site.Plan.StreetEdges.Length) * .3f
+            : _floyd < 0 ? .3f + .3f * _lot / Mathf.Max(1, _site.Plan.LotCount) : .6f + .4f * _floyd / Mathf.Max(1, _nodes.Length)); } }
         /// <summary>Street nodes of the plan plus one portal node per lot, with empty distance / next-hop tables.</summary>
         internal TownNavigation(TownNavContext site)
         {
-            _site = site; _outline = TownPerimeter.Outline(site.Plan); int n = site.Plan.StreetNodes.Length + site.Plan.LotCount;
+            _site = site; _outline = TownPerimeter.Outline(site.Plan); _ground = new Nav.TownGround(site); int n = site.Plan.StreetNodes.Length + site.Plan.LotCount;
             _nodes = new Vector3[n]; _distance = new float[n, n]; _hop = new int[n, n];
             _links = new List<Arc>[n]; for (int i = 0; i < n; i++) _links[i] = new List<Arc>();
             for (int a = 0; a < n; a++) for (int b = 0; b < n; b++)
@@ -53,6 +54,7 @@ namespace WildWasteland.Modules.NPCAI
         internal bool Step()
         {
             if (Ready || ModApi.Get<INpcApi>() == null || Time.unscaledTime < _retry) return false;
+            if (!_ground.Ready) return _ground.Step();
             int streets = _site.Plan.StreetNodes.Length;
             if (!_streetsChecked)
             {
@@ -92,7 +94,7 @@ namespace WildWasteland.Modules.NPCAI
                 {
                     var point = _cells[_cellIndex++] + _site.Anchor.position - _probeAnchor;
                     float cost = (point - road).sqrMagnitude;
-                    if (cost < _portalCost && Clear(point, road))
+                    if (cost < _portalCost && (Clear(point, road) || _ground.Reachable(point, road)))
                     { _portal = _site.Anchor.InverseTransformPoint(point); _portalCost = cost; _cellIndex = _cells.Count; } // Candidates are ordered nearest the entrance.
                     return true;
                 }
@@ -111,7 +113,7 @@ namespace WildWasteland.Modules.NPCAI
                 return true;
             }
             Ready = true;
-            if (Log.L1) Log.Main(NavRuntime.Owner, "Towns: connected " + _site.Plan.Key + ": " + _site.Plan.LotCount + " separate baked buildings, " + _nodes.Length + " validated street/entrance nodes.");
+            Log.Always(NavRuntime.Owner, "Towns: connected " + _site.Plan.Key + ": " + _site.Plan.LotCount + " separate baked buildings, " + _nodes.Length + " validated street/entrance nodes; exterior ground and entrance stitching ready.");
             return false;
         }
         /// <summary>True when a planned street edge must be rechecked with physics (terrain ground, near the wall outline or dressing props).</summary>
@@ -188,6 +190,7 @@ namespace WildWasteland.Modules.NPCAI
                 { waypoint = a; return true; }
             }
             if (Horizontal(position, Scene(end)) < 2.25f) return false;
+            if (_ground.Waypoint(position, endLot >= 0 ? Scene(end) : goal, out waypoint)) return true;
             // Project onto a graph EDGE, not the nearest vertex. Nearest-vertex steering reverses
             // direction as soon as an actor moves away from the first waypoint.
             int next = -1; float bestOffset = float.PositiveInfinity, bestRoute = float.PositiveInfinity;
@@ -229,5 +232,7 @@ namespace WildWasteland.Modules.NPCAI
         private static float Horizontal(Vector3 a, Vector3 b) { float x = a.x - b.x, z = a.z - b.z; return x * x + z * z; }
         /// <summary>A body-sized capsule passes straight from a to b (shared rule: <see cref="Nav.WaypointClear"/>).</summary>
         internal static bool Clear(Vector3 a, Vector3 b) { return Nav.WaypointClear(a, b); }
+        internal bool FieldsStep() { return _ground.FieldsStep(); }
+        internal void Dispose() { _ground.Dispose(); }
     }
 }

@@ -11,7 +11,16 @@ namespace WildWasteland.Modules.Survival
     {
         private readonly Insanity _state;
         private readonly IModule _owner;
+        internal readonly BerserkEpisode Berserk;
+        private readonly DeliriumEpisode _delirium;
+        private readonly MentalCameraVolumes _cameraVolumes;
+        private readonly DoppelgangerEpisode _doppelganger;
         private PlayMakerFSM _alcohol, _add, _remove, _switcher, _handler;
+        private PlayMakerFSM _sanityEffect;
+        private FloatRemap _visualRemap;
+        private SetProperty _visualWrite;
+        private FsmFloat _visualInput;
+        private bool _visualEnabled;
         private Transform _weaponsParent;
         private bool _frozen, _addEnabled, _removeEnabled, _vertigo, _alcoholEnabled, _holstering, _paused;
         private string _alcoholState;
@@ -24,10 +33,13 @@ namespace WildWasteland.Modules.Survival
         private readonly AudioSource[] _voices = new AudioSource[3];
         private readonly Vector3[] _soundWorld = new Vector3[3];
         private int _catalog = -1, _soundIndex, _voiceIndex, _lastSound = -1;
-        internal InsanityEpisode(Insanity state, IModule owner) { _state = state; _owner = owner; }
+        internal InsanityEpisode(Insanity state, IModule owner) { _state = state; _owner = owner; Berserk = new BerserkEpisode(state, owner); _delirium = new DeliriumEpisode(state, owner); _cameraVolumes = new MentalCameraVolumes(state, owner); _doppelganger = new DoppelgangerEpisode(state, owner); }
         internal void Init()
         {
+            Berserk.Init();
+            _doppelganger.Init();
             WorldIndex.WatchName(_owner, "Alcohol_Effect", (t, n, c) => _alcohol = FsmUtil.Find(t.gameObject, "AlcoholEffect"));
+            WorldIndex.WatchName(_owner, "Sanity_Effect", (t, n, c) => _sanityEffect = FsmUtil.Find(t.gameObject, "SanityEffect"));
             Hooks.ProcessEvent.Prefix(_owner, BeforeEvent);
             Hooks.GetButtonDownUpdate.Prefix(_owner, BeforeButton);
             Hooks.ActivateGameObjectEnter.Prefix(_owner, BeforeActivate);
@@ -61,9 +73,13 @@ namespace WildWasteland.Modules.Survival
             }
             if (_state.Active && !PlayerState.Dead)
             {
+                Visuals();
                 if (_state.EventType == InsanityEventType.Vertigo) Vertigo();
-                else NoMoreDeath();
+                else if (_state.EventType == InsanityEventType.Berserk) Berserk.Maintain(_switcher, _handler, _weaponsParent);
+                else if (_state.EventType == InsanityEventType.NoMoreDeath) NoMoreDeath();
             }
+            _delirium.Maintain();
+            Berserk.PauseSound();
             bool paused = !GameRefs.InGame;
             for (int i = 0; i < _voices.Length; i++) if (_voices[i] != null)
             {
@@ -71,6 +87,23 @@ namespace WildWasteland.Modules.Survival
                 if (paused != _paused) { if (paused) _voices[i].Pause(); else _voices[i].UnPause(); }
             }
             _paused = paused;
+        }
+        private void Visuals()
+        {
+            if (_sanityEffect == null) return;
+            if (_visualRemap == null) foreach (var state in _sanityEffect.FsmStates) foreach (var action in state.Actions)
+            {
+                var write = action as SetProperty; if (write != null) _visualWrite = write;
+                var remap = action as FloatRemap; if (remap == null || remap.theFloat.Name != "Sanity") continue;
+                _visualRemap = remap; _visualInput = remap.theFloat; _visualEnabled = _sanityEffect.enabled; remap.theFloat = _state.EventType == InsanityEventType.Delirium ? 80f : 100f;
+                Log.Always(_owner, _state.EventType == InsanityEventType.Delirium ? "Delirium: native insanity visual effect suppressed." : "Mental break visuals: native insanity effect at 100; alcohol effect remains independent.");
+            }
+            if (_visualRemap == null) return;
+            _sanityEffect.enabled = true;
+            if (!_sanityEffect.gameObject.activeSelf) _sanityEffect.gameObject.SetActive(true);
+            _visualRemap.OnUpdate();
+            _cameraVolumes.Bind(_visualWrite?.targetProperty.TargetObject.Value as Component, false);
+            if (_state.EventType == InsanityEventType.Delirium) _visualWrite?.OnUpdate();
         }
         private void Vertigo()
         {
@@ -80,6 +113,8 @@ namespace WildWasteland.Modules.Survival
                 _weight = _alcohol.FsmVariables.FindFsmFloat("Weight"); if (_weight == null) return;
                 _alcoholEnabled = _alcohol.enabled; _alcoholState = _alcohol.ActiveStateName; _oldWeight = _weight.Value; _vertigo = true;
                 _alcohol.enabled = true; _weight.Value = 1; _alcohol.SendEvent("Activate");
+                foreach (var state in _alcohol.FsmStates) foreach (var action in state.Actions)
+                { var write = action as SetProperty; if (write != null) _cameraVolumes.Bind(write.targetProperty.TargetObject.Value as Component, true); }
             }
             _weight.Value = 1;
         }
@@ -164,6 +199,7 @@ namespace WildWasteland.Modules.Survival
         { var clip = value as AudioClip; if (clip != null && _knownSounds.Add(clip)) _sounds.Add(clip); }
         internal void Tick()
         {
+            Berserk.Tick();
             var player = GameRefs.Player;
             if (player == null || _sounds.Count == 0 || Time.time < _nextSound) return;
             _nextSound = Time.time + Random.Range(3f, 6f);
@@ -182,7 +218,23 @@ namespace WildWasteland.Modules.Survival
         }
         internal void End()
         {
+            _cameraVolumes.End();
+            _doppelganger.End();
+            _delirium.End();
+            Berserk.End();
             foreach (var source in _voices) if (source != null) source.Stop();
+            if (_visualRemap != null)
+            {
+                _visualRemap.theFloat = _visualInput;
+                if (_sanityEffect != null)
+                {
+                    _visualRemap.OnUpdate();
+                    foreach (var state in _sanityEffect.FsmStates) foreach (var action in state.Actions)
+                        if (action is SetProperty || action is SetAudioVolume) action.OnUpdate();
+                    _sanityEffect.gameObject.SetActive(_visualInput.Value > 80); _sanityEffect.enabled = _visualEnabled;
+                }
+                _visualRemap = null; _visualInput = null; _visualWrite = null;
+            }
             if (_vertigo)
             {
                 _vertigo = false;
@@ -205,9 +257,11 @@ namespace WildWasteland.Modules.Survival
         internal void Clear()
         {
             End(); ReleaseFreeze(false);
+            Berserk.Clear();
+            _delirium.Clear();
             foreach (var source in _voices) if (source != null) Object.Destroy(source.gameObject);
             System.Array.Clear(_voices, 0, _voices.Length);
-            _alcohol = _add = _remove = _switcher = _handler = null; _weaponsParent = null;
+            _alcohol = _add = _remove = _switcher = _handler = _sanityEffect = null; _weaponsParent = null;
             _sounds.Clear(); _knownSounds.Clear(); _catalog = -1; _voiceIndex = 0; _paused = false;
         }
     }

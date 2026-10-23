@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Reads the shared native player relation after patrol faction normalization.</summary>
         internal static bool PlayerHostile(string faction)
         {
+            if (Core.ModApi.Get<Core.IPlayerMentalEffects>()?.ProvokesFaction(Core.Entities.Player,faction)==true) return true;
             return Core.NativeFactionRelations.PlayerHostile(Normalize(faction));
         }
     }

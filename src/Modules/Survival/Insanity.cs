@@ -9,7 +9,7 @@ using WildWasteland.Core.Events;
 namespace WildWasteland.Modules.Survival
 {
     /// <summary>Native insanity policy, food effects and human butchering.</summary>
-    internal sealed class Insanity : IMentalBreak
+    internal sealed class Insanity : IMentalBreak, IPlayerMentalEffects
     {
         private readonly SurvivalModule _owner;
         private readonly Dictionary<FsmStateAction, bool> _enabled = new Dictionary<FsmStateAction, bool>();
@@ -54,7 +54,10 @@ namespace WildWasteland.Modules.Survival
             Scheduler.EveryFrame(_owner, "Survival.Mental break", Tick);
         }
         private void StateChanged(string previous, string now)
-        { if (now == "setSeed" || now == "Start") { Clear(); _restoreMental = false; } }
+        {
+            if (now == "setSeed" || now == "Start") { Clear(); _restoreMental = false; }
+            else if (now == "wait" || now == "SaveGame") _episode.Berserk.SuspendHallucination();
+        }
         internal void LoadBegin() { Clear(); _restoreMental = true; }
         internal void WorldReady()
         {
@@ -65,7 +68,8 @@ namespace WildWasteland.Modules.Survival
                 var record = MentalState.Read(); if (record == null) return;
                 var values = record.Split('\n');
                 bool legacy = values.Length == 5 && values[0] == "1";
-                if (!legacy && (values.Length != 7 || values[0] != "2")) throw new FormatException("Invalid mental break record");
+                bool berserk = values.Length == 11 && values[0] == "3";
+                if (!legacy && !berserk && (values.Length != 7 || values[0] != "2")) throw new FormatException("Invalid mental break record");
                 _breakRemaining = float.Parse(values[1], System.Globalization.CultureInfo.InvariantCulture);
                 _pending = values[2] == "1"; _rewardBreak = values[3] == "1";
                 _checkRemaining = float.Parse(values[4], System.Globalization.CultureInfo.InvariantCulture);
@@ -73,10 +77,11 @@ namespace WildWasteland.Modules.Survival
                     || values[2] != "0" && values[2] != "1" || values[3] != "0" && values[3] != "1" || _pending && (!_rewardBreak || _breakRemaining > 0)) throw new FormatException("Invalid mental break state");
                 _breakRemaining = Mathf.Min(30, _breakRemaining);
                 int type = legacy ? UnityEngine.Random.Range(0, 2) : int.Parse(values[5], System.Globalization.CultureInfo.InvariantCulture);
-                if (type < 0 || type > 1) throw new FormatException("Invalid insanity event type");
+                if (type < 0 || type > (berserk ? (int)InsanityEventType.Doppelganger : 1)) throw new FormatException("Invalid insanity event type");
                 _eventType = (InsanityEventType)type;
                 _heldInsanity = legacy ? (_rewardBreak ? 100 : FsmVariables.GlobalVariables.FindFsmFloat("Sanity")?.Value ?? 0) : float.Parse(values[6], System.Globalization.CultureInfo.InvariantCulture);
                 if (float.IsNaN(_heldInsanity) || _heldInsanity < 0 || _heldInsanity > 100) throw new FormatException("Invalid frozen insanity");
+                if (berserk) _episode.Berserk.Restore(values);
                 _episode.Resolve();
                 if (Active) _episode.Start();
                 HoldInsanity();
@@ -88,7 +93,7 @@ namespace WildWasteland.Modules.Survival
             if (_stateError != null) { SaveBus.ReportFailure(_owner, _stateError); return; }
             var culture = System.Globalization.CultureInfo.InvariantCulture;
             HoldInsanity();
-            MentalState.Write(_owner, slot, "2\n" + _breakRemaining.ToString("R", culture) + "\n" + (_pending ? "1" : "0") + "\n" + (_rewardBreak ? "1" : "0") + "\n" + _checkRemaining.ToString("R", culture) + "\n" + ((int)_eventType).ToString(culture) + "\n" + _heldInsanity.ToString("R", culture));
+            MentalState.Write(_owner, slot, "3\n" + _breakRemaining.ToString("R", culture) + "\n" + (_pending ? "1" : "0") + "\n" + (_rewardBreak ? "1" : "0") + "\n" + _checkRemaining.ToString("R", culture) + "\n" + ((int)_eventType).ToString(culture) + "\n" + _heldInsanity.ToString("R", culture) + "\n" + _episode.Berserk.Record());
         }
         internal void Resolve()
         {
@@ -235,7 +240,7 @@ namespace WildWasteland.Modules.Survival
             var root = victim != null ? ActorQuery.RootOf(victim.transform) : null;
             if (root == null || root.gameObject == GameRefs.Player || FsmUtil.Find(root.gameObject, "Health") == null) return;
             _attackers[root.gameObject] = player;
-            if (player && root.CompareTag("Coyotes"))
+            if (player && root.CompareTag("Coyotes") && !(Active && _eventType == InsanityEventType.Berserk))
             {
                 int frame;
                 if (!_aggressions.TryGetValue(root.gameObject, out frame) || frame != Time.frameCount)
@@ -262,7 +267,7 @@ namespace WildWasteland.Modules.Survival
             bool player;
             if (_attackers.TryGetValue(action.Owner, out player) && player)
             {
-                if (Human(action.Owner)) Add((action.Owner.CompareTag("Coyotes") ? 20 : 2) * (ModApi.Get<IPlayerPerkEffects>()?.HumanKillInsanityMultiplier ?? 1f), "killed " + action.Owner.tag);
+                if (Human(action.Owner) && !(Active && _eventType == InsanityEventType.Berserk && action.Owner.CompareTag("Coyotes"))) Add((action.Owner.CompareTag("Coyotes") ? 20 : 2) * (ModApi.Get<IPlayerPerkEffects>()?.HumanKillInsanityMultiplier ?? 1f), "killed " + action.Owner.tag);
                 var killed = new NpcKilled { Npc = Entities.Of(action.Owner), Killer = Entities.Player, Tag = action.Owner.tag, CorpseName = dead.name, WorldPos = Origin.World(dead.transform.position) };
                 ModEvents.Publish(ref killed);
             }
@@ -299,10 +304,28 @@ namespace WildWasteland.Modules.Survival
             if (chance > 0 && UnityEngine.Random.value < chance) Begin(false);
         }
         public bool Pending { get { return _pending; } }
+        EntityId IPlayerMentalEffects.Player { get { return Entities.Player; } }
+        float IPlayerMentalEffects.Insanity { get { return _sanity != null ? _sanity.Value : 0; } }
+        public bool ProvokesFaction(EntityId player, string faction)
+        { return player == Entities.Player && Active && _eventType == InsanityEventType.Berserk && !PlayerState.Dead && !SaveBus.Busy && string.Equals(faction, "Coyotes", StringComparison.OrdinalIgnoreCase); }
+        public bool TryGetVisuals(EntityId player, out MentalBreakVisuals visuals)
+        {
+            visuals = default(MentalBreakVisuals);
+            if (player != Entities.Player || !Active || PlayerState.Dead) return false;
+            float elapsed = 30 - Remaining; bool delirium = _eventType == InsanityEventType.Delirium;
+            visuals.Player = player; visuals.EventType = _eventType; visuals.Remaining = Remaining; visuals.Elapsed = elapsed;
+            visuals.Fade = Mathf.SmoothStep(0, 1, Mathf.Min(elapsed / 2, Remaining / 2));
+            visuals.InsanityWeight = delirium ? 0 : 1; visuals.RedTint = _eventType == InsanityEventType.Berserk ? .28f : 0;
+            visuals.AlcoholDistortion = _eventType == InsanityEventType.Vertigo;
+            visuals.Doppelganger = _eventType == InsanityEventType.Doppelganger;
+            visuals.SunCount = delirium ? 3 : 0; visuals.SkyFigureCount = delirium ? 24 : 0;
+            visuals.SkyColor = delirium ? Color.HSVToRGB(Mathf.Repeat(.58f + elapsed / 45, 1), .8f, 1) : Color.clear;
+            return true;
+        }
         public bool Active { get { return _breakRemaining > 0; } }
         public float Remaining { get { return _breakRemaining; } }
         public InsanityEventType EventType { get { return _eventType; } }
-        public string EventName { get { return _eventType == InsanityEventType.Vertigo ? "VERTIGO" : "NO MORE DEATH"; } }
+        public string EventName { get { return _eventType == InsanityEventType.Vertigo ? "VERTIGO" : _eventType == InsanityEventType.Berserk ? "BERSERK" : _eventType == InsanityEventType.Delirium ? "DELIRIUM" : _eventType == InsanityEventType.Doppelganger ? "DOPPELGANGER" : "NO MORE DEATH"; } }
         public bool LocksInsanity { get { return Active || _pending; } }
         public bool WeaponsBlocked { get { return Active && _eventType == InsanityEventType.NoMoreDeath; } }
         internal void HoldInsanity()
@@ -313,11 +336,13 @@ namespace WildWasteland.Modules.Survival
         }
         public bool Trigger()
         { if (!GameRefs.InPlay || Active || _pending) return false; Begin(true); return true; }
-        private void Begin(bool reward)
+        public bool Trigger(InsanityEventType type)
+        { if (type < InsanityEventType.Vertigo || type > InsanityEventType.Doppelganger || !GameRefs.InPlay || Active || _pending) return false; Begin(true, type); return true; }
+        private void Begin(bool reward, InsanityEventType? type = null)
         {
             if (_sanity == null) _sanity = FsmVariables.GlobalVariables.FindFsmFloat("Sanity");
             _heldInsanity = reward ? 100 : Mathf.Clamp(_sanity != null ? _sanity.Value : 0, 0, 100);
-            _eventType = (InsanityEventType)UnityEngine.Random.Range(0, 2);
+            _eventType = type ?? (InsanityEventType)UnityEngine.Random.Range(0, (int)InsanityEventType.Doppelganger + 1);
             _rewardBreak = reward; _breakRemaining = 30; _checkRemaining = 300;
             HoldInsanity(); _episode.Start();
             Log.Always(_owner, (reward ? "Mental break started: " : "Random mental break started: ") + EventName + "; 30 gameplay seconds; insanity frozen at " + _heldInsanity + (reward ? "; perk choice after completion." : "; no perk reward."));

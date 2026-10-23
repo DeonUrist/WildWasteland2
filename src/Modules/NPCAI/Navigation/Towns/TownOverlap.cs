@@ -123,7 +123,12 @@ namespace WildWasteland.Modules.NPCAI
                 if (_site.Plan.Lots[lot].IsParking || _site.Plan.Lots[lot].Skipped || _site.Buildings[lot] == null) continue;
                 var building = _site.Buildings[lot];
                 Nav.Structure native;
-                if (building == null || !Native.TryGetValue(building.transform, out native)) return false;
+                if (!Native.TryGetValue(building.transform, out native))
+                {
+                    Nav.Discover(building.transform); native = Nav.StructureFor(building.transform);
+                    if (native == null) return false;
+                    Native[building.transform] = native;
+                }
                 if (!native.Baked)
                 {
                     // Load the matching native template in its existing sliced pipeline, even when

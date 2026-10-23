@@ -91,8 +91,12 @@ namespace WildWasteland.Modules.Perks
                 foreach (var text in GlyphFont.Wrap((perk.Name ?? "").ToUpperInvariant(), 310, 26))
                 { Label(_choices[i], text, 20, titleY, 310, 31, 26, accent); titleY += 31; }
                 float descriptionY = 267;
-                foreach (var text in GlyphFont.Wrap(perk.Hint ?? "", 300, 19))
-                { Label(_choices[i], text, 25, descriptionY, 300, 24, 19, Color.white); descriptionY += 24; }
+                float descriptionSize = 19;
+                var lines = GlyphFont.Wrap(perk.Hint ?? "", 300, descriptionSize);
+                while (lines.Count * (descriptionSize + 5) > 153 && descriptionSize > 12)
+                { descriptionSize--; lines = GlyphFont.Wrap(perk.Hint ?? "", 300, descriptionSize); }
+                foreach (var text in lines)
+                { Label(_choices[i], text, 25, descriptionY, 300, descriptionSize + 5, descriptionSize, Color.white); descriptionY += descriptionSize + 5; }
             }
             Label(area, "Insanity: 0 after a perk   |   35 after Persevere", 360, 816, 1200, 42, 23, Color.white);
         }

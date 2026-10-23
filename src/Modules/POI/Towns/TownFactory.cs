@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.POI
                 return;
             }
             if (site.Buildings[index] != null)
-            { if (staged != null) UnityEngine.Object.Destroy(staged); site.Buildings[index].transform.SetParent(parent, true); site.Buildings[index].SetActive(true); TownPopulation.Configure(site, index, assets, settings); InteriorPopulation.OwnTown(site, index); TownBakeBridge.Discover(site.Buildings[index]); return; }
+            { if (staged != null) UnityEngine.Object.Destroy(staged); site.Buildings[index].transform.SetParent(parent, true); site.Buildings[index].SetActive(true); TownMarkers.Building(site.Buildings[index].transform); TownPopulation.Configure(site, index, assets, settings); InteriorPopulation.OwnTown(site, index); TownBakeBridge.Discover(site.Buildings[index]); return; }
             if (!assets.Buildings.TryGetValue(lot.Prefab, out asset)) throw new InvalidOperationException("Saved town prefab unavailable: " + lot.Prefab);
             var go = staged != null ? staged : UnityEngine.Object.Instantiate(asset.Prefab, staging, false);
             site.Buildings[index] = go;

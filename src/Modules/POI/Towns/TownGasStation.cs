@@ -42,6 +42,7 @@ namespace WildWasteland.Modules.POI
             internal GameObject Root; internal TerrainTile Tile; internal Request Request;
             internal readonly List<PlayMakerFSM> Spawners = new List<PlayMakerFSM>();
             internal int MapId, CompassId; internal string Label;
+            internal ILocationMarkers Locations;
             /// <summary>Returns the live marker scene position.</summary>
             internal Vector3 Position() { return Root == null ? Vector3.zero : Root.transform.position; }
         }
@@ -178,7 +179,9 @@ namespace WildWasteland.Modules.POI
                     root.transform.localScale = Vector3.one * request.Scale;
                     var station = new Station { Key = request.Key, Desert = request.Desert, Root = root, Tile = tile, Request = request };
                     if (request.Desert) Populate(station, assets);
+                    new GameObject("mapIcon").transform.SetParent(root.transform, false);
                     root.SetActive(true);
+                    WorldIndex.QueueRoot(root.transform);
                     Physics.SyncTransforms(); TownBakeBridge.Discover(root);
                     if (dressing != null) dressing.Attach(root.transform);
                     _stations.Add(station);
@@ -274,6 +277,16 @@ namespace WildWasteland.Modules.POI
             foreach (var s in _stations)
             {
                 if (s.Root == null) continue;
+                if (s.Request.Prefab == null)
+                {
+                    var locations = ModApi.Get<ILocationMarkers>();
+                    if (s.Locations != locations)
+                    {
+                        s.Locations = locations;
+                        if (locations != null) { locations.SetIcon(s.Root.transform, "gas_station"); locations.SetLabel(s.Root.transform, s.Desert ? "Gas station" : "Gas station test"); }
+                    }
+                    continue;
+                }
                 Station captured = s;
                 if (_map != null && _map.Markers != MapDetail.Off && !_map.Exists(s.MapId)) s.MapId = _map.Add(MarkerOwner, captured.Position, "gas_station", Color.white, s.Label ?? (s.Desert ? "Gas station" : "Gas station test"));
                 bool near = player != null && (player.transform.position - s.Position()).sqrMagnitude < 400f * 400f;
