@@ -11,11 +11,13 @@ namespace WildWasteland.Modules.Perks
         private readonly float[] _xp = new float[12];
         private readonly string[] _skillHints = new string[12];
         private readonly ConfigEntry<float>[] _xpRates = new ConfigEntry<float>[12];
+        private ConfigEntry<bool> _fastXpGain;
         private readonly NativeSkills _nativeSkills = new NativeSkills();
         private void BindSkills(ModuleConfig cfg)
         {
+            _fastXpGain = cfg.Player("Skills", "Fast XP gain", true, "Multiply configured skill XP rates by 5. Off uses the configured base rates.");
             for (int i = 0; i < _xpRates.Length; i++) if (i != (int)PlayerSkillId.Crafting)
-                _xpRates[i] = cfg.Tool("Skills", Names[i] + (i == (int)PlayerSkillId.Athletics ? " XP per km on foot" : i == (int)PlayerSkillId.Driving ? " XP per km driven" : " XP per action"), i == (int)PlayerSkillId.Athletics ? 200f : i == (int)PlayerSkillId.Driving ? 100f : 10f,
+                _xpRates[i] = cfg.Tool("Skills", Names[i] + (i == (int)PlayerSkillId.Athletics ? " XP per km on foot" : i == (int)PlayerSkillId.Driving ? " XP per km driven" : " XP per action"), i == (int)PlayerSkillId.Athletics ? 200f : i == (int)PlayerSkillId.Driving ? 100f : 25f,
                     "100 XP earns each +1 skill point, up to 100. No exponential progression. Survival: one action per raw item cooked or per 10 raw nutrition cooked in stew. Athletics and Driving: one unit per kilometre.", new AcceptableValueRange<float>(0, 10000));
         }
         private void InitSkills()
@@ -56,7 +58,7 @@ namespace WildWasteland.Modules.Perks
         {
             int i = (int)action.Skill;
             if (!_loaded || _readError != null || !GameRefs.InPlay || i < 0 || i >= _skills.Length || _xpRates[i] == null || _skills[i] == 100 || float.IsNaN(action.Units) || float.IsInfinity(action.Units) || action.Units <= 0) return;
-            float xp = _xp[i] + action.Units * _xpRates[i].Value;
+            float xp = _xp[i] + action.Units * _xpRates[i].Value * (_fastXpGain.Value ? 5f : 1f);
             int gained = Mathf.Min(100 - _skills[i], Mathf.FloorToInt(xp / 100f));
             _skills[i] += gained; _xp[i] = _skills[i] == 100 ? 0 : xp - gained * 100;
             if (gained > 0) AnnounceSkillPerks(i, _skills[i] - gained);

@@ -51,9 +51,12 @@ namespace WildWasteland.Modules.Perks
         { _chancePerPerk = cfg.Tool("Mental break", "Chance per insanity perk (%)", 5f, "Every five minutes of normal gameplay, chance (%) = owned insanity perks multiplied by this value, capped at 100. Random breaks grant no perk. A break lasts 30 gameplay seconds and prevents sleep.", new AcceptableValueRange<float>(0, 100)); BindSkills(cfg); }
         public override void Settings(SettingsShell shell)
         {
+            shell.Custom(this, SettingsShell.Page.Player, "", DrawFastXpGain, 10);
+            shell.Resettable(this, SettingsShell.Page.Player, _fastXpGain);
             shell.Custom(this, SettingsShell.Page.Debug, "Survival", DrawDebug, 420);
             shell.Custom(this, SettingsShell.Page.Developer, "Perks", DrawDeveloper, 420);
         }
+        private void DrawFastXpGain(ToolLayout layout) { SettingsShell.Switch(layout, "Fast XP gain", _fastXpGain); }
         private void DrawDebug(ToolLayout layout)
         {
             _mentalDropdown.Before();

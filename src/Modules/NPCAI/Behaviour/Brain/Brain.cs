@@ -365,6 +365,12 @@ namespace WildWasteland.Modules.NPCAI
             n.Dist = d;
             int kind = Senses.KindOf(n.Owner);           // 0 vanilla / seen target, 1 seen target, 2 going to a ghost, 3 searching at it
             string ast = n.Attack.Fsm.ActiveStateName;
+            if (d <= NpcaiSettings.MaxDistance.Value && (n.Mode != Mode.Cover || !n.CoverFromHide) && VehicleThreat(n) && now >= n.NextVehicleHideCheck)
+            {
+                var shelter = DrivingHide(n, now); Vector3 spot = n.T.position;
+                if (shelter != null || Nav.CoverSpot(n.T.position, tp, 60f, out spot))
+                    StartCover(n, shelter != null ? shelter.transform.position : spot, now, 60f, true, "player in vehicle: holds POI shelter until exit");
+            }
             if (n.Mode != Mode.Cover) CompanionCoverCheck(n, now);
             // (1.1.0) in cover: stays there (a wounded raider does not come out after a ghost), see CoverThink
             if (n.Mode == Mode.Cover) { CoverThink(n, now, ast, kind, tp); return; }

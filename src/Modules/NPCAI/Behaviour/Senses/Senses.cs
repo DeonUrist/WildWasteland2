@@ -340,7 +340,7 @@ namespace WildWasteland.Modules.NPCAI
                 bool seen = best == a.Target || Visible(a, eye, a.Target, a.Target == _player, InStormOf(a.Target));
                 if (seen) { a.UnseenSince = -1f; a.UnseenFor = 0f; a.LastSeen = a.Target.transform.position; a.LastSeenVel = VelocityOf(a.Target); if (a.Target == _player) { FoughtFor(a, _player, now, "fights him"); a.MemTrack = false; } }
                 else { if (a.UnseenSince < 0f) a.UnseenSince = now; a.UnseenFor = now - a.UnseenSince; }
-                if (!seen && a.UnseenFor >= Mathf.Max(0f, NpcaiSettings.LoseSeconds.Value))
+                if (!seen && a.UnseenFor >= Mathf.Max(0f, NpcaiSettings.LoseSeconds.Value) && !(a.Target == _player && Brain.VehicleCover(a.Owner)))
                 {
                     // (crew AI) it fought the player: out of sight he is not dropped while it remembers - it follows his real position (as a
                     // tracker does), out of a cave too; the memory over, the usual loss (ghost where it last had him, guesses). Not a cave-web spider

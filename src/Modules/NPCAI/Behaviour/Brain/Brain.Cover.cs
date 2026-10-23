@@ -16,7 +16,10 @@ namespace WildWasteland.Modules.NPCAI
         private static WildWasteland.Core.WorldWatch _hideWatch;
 
         /// <summary>Registers the WorldIndex watch for objects tagged "Hide" (module start).</summary>
-        internal static void InstallHides(WildWasteland.Core.IModule owner) { _hideWatch = WildWasteland.Core.WorldIndex.Watch(owner, IsHideObject, null, null, false); _nextHides = 0f; }
+        internal static void InstallHides(WildWasteland.Core.IModule owner) { _hideWatch = WildWasteland.Core.WorldIndex.Watch(owner, IsHideObject, HideFound, null, false); _nextHides = 0f; }
+
+        /// <summary>A newly streamed shelter joins the existing cache on the next cover decision.</summary>
+        private static void HideFound(Transform t, string name, Component component) { _nextHides = 0f; }
 
         /// <summary>WorldIndex filter: the node is tagged "Hide" (a cover object of a camp).</summary>
         private static bool IsHideObject(Transform t, string name) { return t.CompareTag("Hide"); }
@@ -66,24 +69,31 @@ namespace WildWasteland.Modules.NPCAI
             StartCover(n, spot, now, UnityEngine.Random.Range(NpcaiSettings.CoverMin.Value, Mathf.Max(NpcaiSettings.CoverMin.Value, NpcaiSettings.CoverMax.Value)), false, "health " + hp.ToString("0") + "/" + n.HpMax.ToString("0") + ", " + what);
         }
 
-        /// <summary>The game's hide against a player in a car: the nearest camp cover object within 60 m (humans with melee only), re-picked once a second.</summary>
+        /// <summary>Human defenders use a POI hide point within 60 m while their player target is seated, regardless of speed or weapon.</summary>
         private static GameObject DrivingHide(Npc n, float now)
         {
-            var agent = Senses.AgentFor(n.Owner);
-            if (n.Ranged || agent == null || !agent.Human || !Senses.PlayerInCar) return null;
+            if (!VehicleThreat(n)) return null;
+            if (n.VehicleHide != null && n.VehicleHide.activeInHierarchy && (n.VehicleHide.transform.position - n.T.position).sqrMagnitude <= 60f * 60f) return n.VehicleHide;
             if (now >= n.NextVehicleHideCheck)
             {
                 n.NextVehicleHideCheck = now + 1f; n.VehicleHide = null;
                 NearestHide(n.T.position, 60f); float best = 60f * 60f;
+                var poi = Nav.StructureRootAt(n.T.position);
                 if (_hides != null) foreach (var h in _hides)
                 {
-                    if (h == null) continue; float d = (h.transform.position - n.T.position).sqrMagnitude; if (d >= best) continue;
-                    var root = h.transform; while (root != null && !root.name.StartsWith("Camp_", StringComparison.Ordinal)) root = root.parent;
-                    if (root != null) { n.VehicleHide = h; best = d; }
+                    if (h == null || !h.activeInHierarchy || poi != null && !h.transform.IsChildOf(poi)) continue;
+                    float d = (h.transform.position - n.T.position).sqrMagnitude; if (d >= best) continue;
+                    n.VehicleHide = h; best = d;
                 }
             }
             return n.VehicleHide != null && (n.VehicleHide.transform.position - n.T.position).sqrMagnitude <= 60f * 60f ? n.VehicleHide : null;
         }
+
+        /// <summary>Only humans fighting the seated player use vehicle sheltering.</summary>
+        private static bool VehicleThreat(Npc n) { return n.Target.Value == Senses.PlayerObj && Senses.PlayerInCar && Senses.AgentFor(n.Owner)?.Human == true; }
+
+        /// <summary>Sheltering keeps the player target without granting a clear shot through the POI.</summary>
+        internal static bool VehicleCover(GameObject owner) { var n = Get(owner); return On && n != null && n.Mode == Mode.Cover && n.CoverFromHide && VehicleThreat(n); }
 
         /// <summary>A human fighting the player with a Dog Companion close by runs to cover away from the dog.</summary>
         private static void CompanionCoverCheck(Npc n, float now)
@@ -128,17 +138,18 @@ namespace WildWasteland.Modules.NPCAI
             // leaves: the stay is over, the target is on top of it, the game's hide ended (a slow target again), or it is searching /
             // vanilla (no target at all). A ghost (lost sight) does not pull a wounded raider out of cover.
             bool dogCover = n.DogCoverThreat != null;
-            bool leave = now >= n.CoverUntil || (!dogCover && kind == 1 && td < 8f)
-                || (n.CoverFromHide && DrivingHide(n, now) == null)
+            bool leave = n.CoverFromHide ? !VehicleThreat(n) : now >= n.CoverUntil || (!dogCover && kind == 1 && td < 8f)
                 || (dogCover && (!n.DogCoverThreat.activeInHierarchy || n.DogCoverThreat.transform.parent != null || (n.DogCoverThreat.transform.position - n.T.position).sqrMagnitude > 36f))
-                || (n.CoverFromHide && ast != "hide" && now - n.CoverSince > 1f) || kind == 3 || (kind == 0 && Senses.On);
+                || kind == 3 || (kind == 0 && Senses.On);
             if (leave)
             {
+                if (n.CoverFromHide) { n.CoverCooldownUntil = now; n.NextVehicleHideCheck = 0f; }
                 if (n.CoverFromHide && ast == "hide") n.Attack.SendEvent("back");
                 if (n.CoverArrived) Move(n, true);
-                SetMode(n, Mode.Chase, WildWasteland.Core.Log.L2 ? (kind == 1 && td < 8f ? "target too close for cover" : now >= n.CoverUntil ? "cover time over" : kind != 1 ? "nothing to hide from" : "the game's hide ended") : "");
+                SetMode(n, Mode.Chase, WildWasteland.Core.Log.L2 ? (n.CoverFromHide ? "vehicle shelter ended" : kind == 1 && td < 8f ? "target too close for cover" : now >= n.CoverUntil ? "cover time over" : kind != 1 ? "nothing to hide from" : "the game's hide ended") : "");
                 return;
             }
+            if (n.CoverFromHide && n.CoverArrived && cd > 2f) { n.CoverArrived = false; Unfreeze(n); Crouch(n, false); Move(n, true); }
             if (n.CoverArrived) return;              // holds there: faces the target (Tick), the game's burst logic + Aim shoot from cover
             if (cd <= 1.5f)
             {
@@ -156,6 +167,7 @@ namespace WildWasteland.Modules.NPCAI
         {
             var n = Get(owner);
             if (n == null || n.Mode == Mode.Off || n.Rb == null) return;
+            if (n.Mode == Mode.Cover && n.CoverFromHide) return;
             if (n.Mode == Mode.Hold || (n.Mode == Mode.Cover && n.CoverArrived))
             {
                 // a shooter that is hit sidesteps 2-3 m (SideStepSpeed m/s for SideStepSeconds), at most every 1.5 s, and kneels more often

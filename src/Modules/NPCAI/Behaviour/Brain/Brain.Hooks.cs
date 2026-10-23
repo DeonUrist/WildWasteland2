@@ -121,7 +121,7 @@ namespace WildWasteland.Modules.NPCAI
         {
             if (_npcs.Count == 0 || !On || ev == null || ev.Name != "hide" || fsm == null || fsm.Name != "Attack" || fsm.ActiveStateName != "trigger") return true;
             var n = Get(fsm.GameObject);
-            return n == null || (Time.time >= n.CoverCooldownUntil && DrivingHide(n, Time.time) != null);
+            return n == null || (!n.Ranged && n.Mode != Mode.Cover && Time.time >= n.CoverCooldownUntil && DrivingHide(n, Time.time) != null);
         }
 
         /// <summary>SendEvent.OnEnter prefix: an NPC holding its position does not run off on Animal_Run, and the Unstuck spin goes to the brain's stuck handling.</summary>

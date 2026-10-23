@@ -183,7 +183,7 @@ namespace WildWasteland.Core
         }
 
         /// <summary>Velocity of the player's Rigidbody (zero when none).</summary>
-        public static Vector3 Velocity { get { Resolve(); return _rb != null ? _rb.velocity : Vector3.zero; } }
+        public static Vector3 Velocity { get { Resolve(); if (_rb == null && _player != null && !InCar) _rb = _player.GetComponent<Rigidbody>(); return _rb != null ? _rb.velocity : Vector3.zero; } }
 
         static int _deadFrame = -1; static bool _dead;
         /// <summary>The game dies below 0.4 health, then spends five seconds in playerDeath (PlayerBody Game.Dead; answered once per frame).</summary>
