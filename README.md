@@ -8,4 +8,4 @@ Disable standalone mods whose features WW2 absorbs, including Apocaplayer/Apocac
 
 Transitioning from WW1 requires fresh saves and settings. Back up the previous installation, configuration and saves first. Updates within WW2 preserve existing settings; install the complete release asset folder.
 
-See [2.0.4 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.4) for the Vista town-road integration, matching NPC ammo drops, verification results and known compatibility limits.
+See [2.0.5 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.5) for the finished perk artwork included in fresh installations. The [2.0.4 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.4) cover the Vista town-road integration, matching NPC ammo drops and known compatibility limits.
