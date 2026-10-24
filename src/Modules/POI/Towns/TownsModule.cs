@@ -39,6 +39,8 @@ namespace WildWasteland.Modules.POI
             internal int Epoch;
             internal List<TownGasStation.Request> GasStation;
             internal List<CustomPoiAssets.SpawnRequest> Authored;
+            internal TileData VistaData;
+            internal List<Vector3> VistaAvoid;
 
         }
         private sealed class Live
@@ -122,7 +124,8 @@ namespace WildWasteland.Modules.POI
             TerrainTile.OnBeforeTilePrepare += Prepare;
             TerrainTile.OnTileFinalized += Finalized; TerrainTile.OnTileApplied += Applied; TerrainTile.OnTileMoved += Moved;
             WorldTiles.OnEdited(Owner,TownTerrainEdited);
-            if (WorldGeneration.Present) Log.Main(null, "[POI] Vistas compatibility: planned town foundations flattened before buildings; no access roads.");
+            if (WorldGeneration.Present) Log.Main(null, "[POI] Vistas compatibility: wait for finished roads before town siting; town connectors use native Vista roads.");
+            Scheduler.Sliced(Owner, "POI.VistaTowns", 500, VistaStep);
             Scheduler.Sliced(Owner, "Build and connect", 700, BuildStep);
             // Behind a loading/generating screen this tick runs construction far beyond the shared frame budget; the predicate is one field read.
             Scheduler.EveryFrame(Owner, "Load construction", LoadBurst).Wants = LoadWanted;
@@ -232,6 +235,16 @@ namespace WildWasteland.Modules.POI
                 var roads = new TownWorldRoads(assets.Roads == null ? null : data.ReadOutletProduct(assets.Roads), data);
                 TownGasStation.Plan(capture.GasStation, data, avoid, assets, capture.Input.Saved, roads, stop);
                 CustomPoiAssets.PlanSpawns(capture.Authored, data, avoid, assets, capture.Input.Saved, roads, stop);
+                if (WorldGeneration.Present)
+                {
+                    if (!data.isDraft)
+                    {
+                        var area = data.area.active;
+                        capture.VistaData = new TileData { area = new Area(area.worldPos, area.worldSize, area.rect, 0), globals = new MapMagic.Core.Globals { height = data.globals.height } };
+                        capture.VistaAvoid = avoid;
+                    }
+                    return;
+                }
                 capture.Plan = TownPlanner.Make(capture.Input, data, data.heights, avoid, roads, stop);
                 if (capture.Plan == null || !capture.Plan.HasTown || (stop != null && stop.stop))
                 { if (capture.Input.Progress != null) capture.Input.Progress.Finish(capture.Plan == null ? "Cancelled" : capture.Plan.Decision == "chance" ? "No town selected for this block" : capture.Plan.Decision); return; }
@@ -262,7 +275,12 @@ namespace WildWasteland.Modules.POI
             try { _dressing.Authored.ApplySpawns(capture.Authored, tile); }
             catch (Exception e) { Log.Warn(null, "[POI] authored POI placement stopped: " + e.Message); }
             if (capture.Input.Error != null) { Log.Warn(null,"[POI] skipped generation: " + capture.Input.Error); return; }
+            if (capture.VistaData != null) { QueueVista(tile, capture); return; }
             if (capture.Plan == null) return;
+            CommitTown(tile, capture);
+        }
+        private void CommitTown(TerrainTile tile, Capture capture)
+        {
             try
             {
                 Remove(tile, true);
@@ -304,14 +322,15 @@ namespace WildWasteland.Modules.POI
             if (WorldGeneration.Present)
             {
                 if (terrain == null) throw new InvalidOperationException("Town foundation terrain is missing.");
-                site.Plan = plan = plan.CopyPaths(); plan.Overlay = null; plan.DressingOnly = null; plan.AccessPath = new Vector3[0]; plan.GradeAccess = false;
+                site.Plan = plan = plan.CopyPaths(); plan.Overlay = null; plan.DressingOnly = null; plan.GradeAccess = false;
                 var center = site.Scene(Vector3.zero); center.y = terrain.SampleHeight(center) + terrain.transform.position.y;
                 plan.WorldCenter = anchor.InverseTransformPoint(center);
                 foreach (var lot in plan.Lots)
                 {
                     var p = lot.LocalPosition; p.y = -lot.Entry.y; lot.LocalPosition = p;
                 }
-                TownWalkGraph.Build(plan, specs, null);
+                var access = plan.AccessPath;
+                TownWalkGraph.Build(plan, specs, null); plan.AccessPath = access;
                 site.GroundPad = TownGroundPad.Prepare(site, terrain);
             }
 
@@ -533,7 +552,7 @@ namespace WildWasteland.Modules.POI
         private bool ReadyForHandoff()
         {
             if (!_running) return true;
-            bool pending = false;
+            bool pending = _vista.Count > 0;
             foreach (var live in _sites) if (live.Tile != null && live.Site.Anchor != null && (!live.Finished || NeedsWalls(live) || !InteriorPopulation.TownReady(live.Site))) { pending = true; break; }
             if (pending && !_waitingForTowns) Log.Main(null, "[POI] Load handoff waiting: restoring town buildings and population before play.");
             if (!pending && _waitingForTowns) Log.Main(null, "[POI] Load handoff ready: town buildings and population restored before play.");
@@ -591,7 +610,7 @@ namespace WildWasteland.Modules.POI
         }
         /// <summary>Releases live sites and derived construction state before a world change.</summary>
         private void ClearSites()
-        { _revision++; ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); foreach(var r in _graphs.Values)Undo(r);_graphs.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
+        { _revision++; ClearVista(); ClearDebug(); if (_dressing != null) _dressing.Clear(); if (_gasStation != null) _gasStation.Clear(true); foreach (var live in _sites) TownFactory.Destroy(live.Site); _sites.Clear(); _captures.Clear();  TownPoiSettings.Clear(); foreach(var r in _graphs.Values)Undo(r);_graphs.Clear(); _next = 0; _waitingForTowns = false; TownLoading.Clear("World changed"); }
         /// <summary>Latches a stage failure so corrupt or unavailable state cannot be silently overwritten.</summary>
         private void Block(string stage, Exception e)
         { _blocked = true; TownLoading.Failed(e.Message); Log.Error(null,"[POI] blocked during " + stage + "; no replacement layout will be invented", e); }

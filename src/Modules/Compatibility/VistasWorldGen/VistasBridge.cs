@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Compatibility
             VistasWorldGen.Init(scope);
             if (!VistasWorldGen.Present) return;
             ModApi.Provide<IWorldGenFacts>(scope, new VistasFacts());
+            ModApi.Provide<IWorldGenRoads>(scope, new VistasRoads(BepInEx.Bootstrap.Chainloader.PluginInfos["apocalypter.worldamp"].Instance.GetType().Assembly));
             ModApi.Provide<IPlaceBanners>(scope, new PlaceBanners());
             VistasEngineHud.Install(scope);
         }

@@ -62,6 +62,7 @@ def main():
     payloads = runtime_payloads(args.runtime_assets or args.dll.parent / "RuntimeAssets")
     payloads["WildWasteland.dll"] = args.dll.read_bytes()
     payloads["icon.png"] = (Path(__file__).resolve().parent.parent / "icon.png").read_bytes()
+    payloads["README.md"] = (Path(__file__).resolve().parent.parent / "README.md").read_bytes()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(args.output, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for relative, data in sorted(payloads.items()):
@@ -75,8 +76,8 @@ def main():
                 raise ValueError("Package verification failed: " + relative)
         assert [p for p in archive.namelist() if p.lower().endswith(".dll")] == ["WildWasteland/WildWasteland.dll"]
     metadata = {
-        "archive": str(args.output), "version": "2.0.3", "entries": len(payloads),
-        "runtime_assets": len(payloads) - 3, "size": args.output.stat().st_size,
+        "archive": str(args.output), "version": "2.0.4", "entries": len(payloads),
+        "runtime_assets": len(payloads) - 4, "size": args.output.stat().st_size,
         "dll_md5": digest(payloads["WildWasteland.dll"], "md5").upper(),
         "sha256": digest(args.output.read_bytes()),
         "assets": {name: digest(data) for name, data in sorted(payloads.items())},

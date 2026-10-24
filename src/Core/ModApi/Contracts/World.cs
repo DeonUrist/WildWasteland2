@@ -158,6 +158,15 @@ namespace WildWasteland.Core
         void Remove(string key);
     }
 
+    /// <summary>Optional main-thread road completion and native connector capability (provider: Compatibility).</summary>
+    public interface IWorldGenRoads
+    {
+        /// <summary>All currently applied main terrains have finished native road painting/grading; generation workers are idle.</summary>
+        bool Ready(GameObject map);
+        /// <summary>Registers a validated world-space connector with the generator's own road network and terrain painter.</summary>
+        bool Connect(string key, Vector3[] worldPath);
+    }
+
     /// <summary>World-generation facts of Vistas World Gen (provider: Compatibility). Null when Vistas is absent.</summary>
     public interface IWorldGenFacts
     {

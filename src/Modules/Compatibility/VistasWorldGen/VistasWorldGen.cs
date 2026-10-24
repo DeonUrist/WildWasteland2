@@ -95,6 +95,8 @@ namespace WildWasteland.Core
                 Hook(Find(weather, "e", typeof(bool)), postfix: "DustAllowed");
                 Hook(Find(weather, "B", typeof(bool), kind), transpiler: "HaboobAllowed");
                 Hook(Find(weather, "A", typeof(void), kind, typeof(float)), transpiler: "WeatherTransition");
+                Hook(Find(assembly.GetType("ApocalpyterWorldAmp.SpawnerTierPatch", true), "Postfix", typeof(void), typeof(HutongGames.PlayMaker.Actions.RandomInt)), prefix: "NoSpawnBonus");
+                Log.Main(owner, "Vistas elevation spawn bonuses disabled; native rolls and WW population budgets retained.");
                 Hook(Find(assembly.GetType("A.q", true), "a", typeof(int), typeof(double[]), typeof(double[]), typeof(int), typeof(bool), typeof(string)), postfix: "RoadCreated");
                 Hook(Find(assembly.GetType("A.S", true), "A", typeof(void), assembly.GetType("A.q", true), typeof(MapMagicObject), typeof(TerrainTile), typeof(Terrain), typeof(TerrainData), assembly.GetType("A.S+A", true), typeof(int), typeof(float)), postfix: "GroundEdited");
                 Hook(Find(assembly.GetType("ApocalpyterWorldAmp.WorldAmpDriver", true), "ClearWorld", typeof(void)), postfix: "ClearRoads");
@@ -173,6 +175,8 @@ namespace WildWasteland.Core
         private static bool OriginalBanner() { var display = ModApi.Get<IPlaceBannerDisplay>(); return display == null || !display.Enabled; }
         /// <summary>Prefix of the mod's scouting: always skipped (WW scouting).</summary>
         private static bool NoScouting() { return false; }
+        /// <summary>Skips only Vista's post-roll population bonus; native spawning and WW's exact counts remain owned by their existing paths.</summary>
+        private static bool NoSpawnBonus() { return false; }
         /// <summary>Prefix of the landmark check: skips the mod's "near" notice path.</summary>
         private static bool NearLandmark(bool __1) { return !__1; }
         /// <summary>Postfix of the mod's dust gate: no dust while WW weather runs (IWeatherRegions provided).</summary>

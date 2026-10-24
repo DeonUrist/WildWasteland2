@@ -35,6 +35,7 @@ namespace WildWasteland.Modules.Loot
         public override void Init()
         {
             Hooks.CreateObjectEnter.Prefix(this, LootSubstitutions.BeforeCreate);
+            Hooks.CreateObjectEnter.Postfix(this, NpcAmmoDrops.AfterCreate);
             try { Tables.Load(Assets.ModuleConfigDir(Id)); }
             catch (System.Exception e) { Log.Warn(this, "loot tables not loaded: " + e.Message); }
         }
@@ -52,12 +53,13 @@ namespace WildWasteland.Modules.Loot
         }
 
         /// <summary>Clears native item and match caches when the scene changes.</summary>
-        public override void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene,UnityEngine.SceneManagement.LoadSceneMode mode) { _questItems.Clear(); }
+        public override void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene,UnityEngine.SceneManagement.LoadSceneMode mode) { _questItems.Clear(); NpcAmmoDrops.Clear(); }
 
         /// <summary>Drops the substitution rules other modules registered (Core removes the hook handler).</summary>
         public override void Shutdown()
         {
             _questItems.Clear();
+            NpcAmmoDrops.Clear();
             LootSubstitutions.Clear();
             Tables.ClearRuntime();
         }

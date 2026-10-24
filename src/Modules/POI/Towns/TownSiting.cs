@@ -22,7 +22,7 @@ namespace WildWasteland.Modules.POI
             float outer = plan.Radius + plan.Feather, border = outer + 16;
             if (area.worldSize.x <= border * 2 || area.worldSize.z <= border * 2) return result;
             // A sparse square grid can miss the entire eligible road corridor.
-            var points = WorldGeneration.Present ? new List<Vector3>() : roads.Sites(outer, input.AccessLength);
+            var points = roads.Sites(outer, input.AccessLength);
             for (int c = 0; c < 64; c++)
                 points.Add(new Vector3(area.worldPos.x + border + (c % 8 + (float)random.NextDouble()) * (area.worldSize.x - border * 2) / 8, 0,
                     area.worldPos.z + border + (c / 8 + (float)random.NextDouble()) * (area.worldSize.z - border * 2) / 8));
@@ -35,10 +35,9 @@ namespace WildWasteland.Modules.POI
                 foreach (var p in avoid) if (new Vector2(point.x - p.x, point.z - p.z).sqrMagnitude < (outer + 40) * (outer + 40)) { occupied = true; break; }
                 if (occupied) continue;
                 Vector3 road; bool hasRoad = roads.Nearest(point, input.AccessLength, out road);
-                if (!hasRoad && !input.EnsureTown && !WorldGeneration.Present) continue;
+                if (!hasRoad && (WorldGeneration.Present || !input.EnsureTown)) continue;
                 float distance = hasRoad ? new Vector2(road.x - point.x, road.z - point.z).magnitude : input.AccessLength;
                 if (hasRoad && distance < outer + (WorldGeneration.Present ? 40 : 3)) continue;
-                if (WorldGeneration.Present) distance = 0;
                 float lo = float.PositiveInfinity, hi = float.NegativeInfinity, grade = 0;
                 // Rank cheaply first. Full-resolution relief/grade is measured only for the shortlist.
                 for (int z = -2; z <= 2; z++) for (int x = -2; x <= 2; x++)
