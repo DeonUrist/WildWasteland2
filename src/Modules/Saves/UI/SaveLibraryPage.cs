@@ -18,7 +18,8 @@ namespace WildWasteland.Modules.Saves
         readonly Dictionary<string, Texture2D> _pictures = new Dictionary<string, Texture2D>();
         readonly Dictionary<string, string[]> _backupLabels = new Dictionary<string, string[]>();
         string _name = "", _world = "", _search = "", _message, _confirmFile, _confirmKind;
-        string _confirmLabel;
+        string _confirmLabel, _saveBlockText;
+        GUIStyle _saveBlockStyle, _saveBlockSource;
         int _editorGeneration = -1;
         bool _saving;
         int _kind, _page, _selected = -1;
@@ -148,6 +149,37 @@ namespace WildWasteland.Modules.Saves
             if (Button(new Rect(990, 920, 170, 48), "NEXT", _page + 1 < pages)) _page++;
         }
         bool CanSave { get { return SaveSystem.LocalReady && !SaveSystem.Busy && !SaveSystem.Requested && SaveSystem.Ready && SaveSystem.RecoveryError == null && !SaveSystem.ReloadRequired; } }
+        /// <summary>Explains the existing world, recovery and name requirements without changing save state.</summary>
+        string SaveBlockReason()
+        {
+            if (!SaveSystem.Installed) return "The save manager is not running.";
+            if (SaveSystem.RecoveryError != null) return SaveSystem.RecoveryError;
+            if (SaveSystem.ReloadRequired) return SaveSystem.ReloadReason ?? "Reload this world before saving again.";
+            if (!SaveSystem.Ready) return "Interrupted-save recovery has not completed.";
+            if (!SaveSystem.LocalWorld) return "No active world is available to save.";
+            if (SaveSystem.Busy || SinglePlayerSaving.Serializing) return "A save is in progress. Please wait.";
+            if (SaveSystem.Requested) return "A save is already queued. Please wait.";
+            if (SaveSystem.Exiting) return "Returning to the title menu. Please wait.";
+            if (SinglePlayerSaving.Loading || !SaveSystem.LocalReady) return "The world is still loading. Please wait.";
+            if (SaveRuntime.Health() < 1) return "Cannot save while the player is dead.";
+            if (_name.Trim().Length == 0) return "Enter a save name."; if (_world.Trim().Length == 0) return "Enter a world name.";
+            foreach (char ch in _name) if (char.IsControl(ch) || ch == '<' || ch == '>') return "Remove control characters and angle brackets from the save name.";
+            foreach (char ch in _world) if (char.IsControl(ch) || ch == '<' || ch == '>') return "Remove control characters and angle brackets from the world name.";
+            if (!SaveRuntime.IsSaveFile(SaveSystem.ActiveFile)) return "The current world's save destination is unavailable.";
+            return null;
+        }
+        /// <summary>Uses the existing button rectangle for small, fitted failure text until saving is available.</summary>
+        void DrawCreateSave()
+        {
+            var rect = new Rect(1224, 712, 572, 54); string reason = SaveBlockReason();
+            if (reason == null) { if (Button(rect, "CREATE NEW SAVE", true, true)) Save(null); return; }
+            if (_saveBlockText != reason || _saveBlockSource != Ledger.Small)
+            {
+                _saveBlockText = reason; _saveBlockSource = Ledger.Small; _saveBlockStyle = new GUIStyle(Ledger.Small) { wordWrap = true };
+                while (_saveBlockStyle.fontSize > 1 && Ledger.TextHeight(reason, _saveBlockStyle, rect.width) > rect.height) _saveBlockStyle.fontSize--;
+            }
+            Ledger.Label(rect, reason, _saveBlockStyle, Ledger.Muted, TextAnchor.MiddleCenter);
+        }
         /// <summary>Draws selected-save actions and current-world save controls.</summary>
         void DrawDetails()
         {
@@ -158,7 +190,7 @@ namespace WildWasteland.Modules.Saves
             {
                 Input(new Rect(1224, 520, 572, 76), "SAVE NAME", "SaveLibrary/Name", ref _name);
                 Input(new Rect(1224, 610, 572, 76), "WORLD NAME", "SaveLibrary/World", ref _world);
-                if (Button(new Rect(1224, 712, 572, 54), "CREATE NEW SAVE", CanSave && _name.Trim().Length > 0 && _world.Trim().Length > 0, true)) Save(null);
+                DrawCreateSave();
                 if (Button(new Rect(1224, 778, 572, 50), "OVERWRITE SELECTED", CanSave && save != null && !save.Automatic && _name.Trim().Length > 0)) Confirm("overwrite", save.File);
             }
             else

@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.Saves
         }
         /// <summary>Prevents later saves when streamed native state could not be preserved.</summary>
         static void Failed(Exception error)
-        { SaveSystem.ReloadRequired = true; SaveSystem.Status = "Location history unavailable; reload before saving: " + error.Message; Log.Error(SavesModule.Instance, SaveSystem.Status, error); }
+        { SaveSystem.Status = "Location history unavailable; reload before saving: " + error.Message; SaveSystem.RequireReload(SaveSystem.Status); Log.Error(SavesModule.Instance, SaveSystem.Status, error); }
         /// <summary>Loads original ES3 records once per active slot and generation.</summary>
         static bool OpenSession()
         {
@@ -215,7 +215,7 @@ namespace WildWasteland.Modules.Saves
                 if (_error != null) throw new IOException(_error);
                 if (!restore) { foreach (var pair in records) { History[pair.Key] = pair.Value; Delta[pair.Key] = pair.Value; } _restoreCache = null; }
             }
-            catch (Exception error) { SaveSystem.ReloadRequired = true; SaveSystem.Status = "Location history could not be preserved. Reload before saving: " + error.Message; Log.Error(SavesModule.Instance, SaveSystem.Status, error); }
+            catch (Exception error) { SaveSystem.Status = "Location history could not be preserved. Reload before saving: " + error.Message; SaveSystem.RequireReload(SaveSystem.Status); Log.Error(SavesModule.Instance, SaveSystem.Status, error); }
             finally { ES3Settings.defaultSettings.path = path; ES3Settings.defaultSettings.location = location; ES3File.cachedFiles.Remove(CaptureFile); _running = _restoring = false; }
         }
         /// <summary>Handles expected new-site history misses and records other native save errors.</summary>

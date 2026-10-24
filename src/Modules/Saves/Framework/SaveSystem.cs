@@ -32,15 +32,17 @@ namespace WildWasteland.Modules.Saves
         }
         internal static ConfigEntry<bool> Autosave, ExitSave, WhileDriving, Screenshots;
         internal static ConfigEntry<int> Interval, Warning, AutoKeep, BackupKeep;
-        internal static string Status = "", RecoveryError;
+        internal static string Status = "", RecoveryError, ReloadReason;
         static bool _reloadRequired;
         static int _failureGeneration = -1, _installedGeneration = -1;
         /// <summary>Retains same-world failures across toggles while rejecting stale latches after an off-module world change.</summary>
         internal static bool ReloadRequired
         {
             get { return _reloadRequired && _failureGeneration == SaveBus.Generation; }
-            set { _reloadRequired = value; _failureGeneration = SaveBus.Generation; }
+            set { _reloadRequired = value; _failureGeneration = SaveBus.Generation; if (!value) ReloadReason = null; }
         }
+        /// <summary>Retains the blocking failure independently of later progress and notification text.</summary>
+        internal static void RequireReload(string reason) { if (!ReloadRequired || ReloadReason == null) ReloadReason = reason; ReloadRequired = true; }
         internal static bool Busy { get { return _transaction != null; } }
         /// <summary>Reports whether the current save request is automatic.</summary>
         internal static bool AutomaticSaving { get { return _automatic; } }
@@ -340,7 +342,7 @@ namespace WildWasteland.Modules.Saves
                 _transaction = null; _requested = false; Schedule();
                 CatalogueVersion++;
                 WorldHistory.Accepted();
-                try { SaveCleanup.Commit(); } catch (Exception cleanup) { SaveSystem.ReloadRequired = true; Log.Error(SavesModule.Instance, "Save committed, but cleanup could not finish; reload before saving", cleanup); }
+                try { SaveCleanup.Commit(); } catch (Exception cleanup) { RequireReload("Save completed, but cleanup failed. Reload before saving: " + cleanup.Message); Log.Error(SavesModule.Instance, "Save committed, but cleanup could not finish; reload before saving", cleanup); }
                 Status = (_automatic ? "Autosave" : "Save") + " completed: " + _name;
                 Log.Main(SavesModule.Instance, Status);
                 try { SaveFiles.Prune(source, BackupKeep.Value); SaveFiles.Prune(target, BackupKeep.Value); if (_automatic) PruneAutosaves(Lineage(target), target); }
@@ -391,7 +393,7 @@ namespace WildWasteland.Modules.Saves
             SaveCleanup.Rollback();
             if (tx != null) try { tx.Rollback(); } catch (Exception recovery) { RecoveryError = "Save recovery required at " + tx.DirectoryPath + ": " + recovery.Message; }
             // A failed write leaves live module state ahead of disk. Require a reload before another world write.
-            if (tx != null) ReloadRequired = true;
+            if (tx != null) RequireReload("Reload before saving again. Save failed: " + error.Message);
             _requested = false; _picture = null; Status = "Save failed: " + error.Message;
             Log.Error(SavesModule.Instance, Status, error); _pendingNotice = Status;
         }
