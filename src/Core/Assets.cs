@@ -5,10 +5,10 @@ namespace WildWasteland.Core
 {
     /// <summary>
     /// File locations. Install layout (AGENTS.md 4):
-    ///   BepInEx\plugins\WildWasteland\WildWasteland.dll
-    ///   BepInEx\plugins\WildWasteland\theme\...            shared UI theme (F7 window, editors)
-    ///   BepInEx\plugins\WildWasteland\&lt;ModuleId&gt;\...       module assets (models, sounds, textures, templates)
-    ///   BepInEx\config\com.denis.apocalypter.wildwasteland.cfg   F6 (player-facing) settings
+    ///   BepInEx\plugins\WildWasteland2\WildWasteland.dll
+    ///   BepInEx\plugins\WildWasteland2\theme\...            shared UI theme (F7 window, editors)
+    ///   BepInEx\plugins\WildWasteland2\&lt;ModuleId&gt;\...       module assets (models, sounds, textures, templates)
+    ///   BepInEx\config\com.denis.apocalypter.wildwasteland2.cfg   F6 (player-facing) settings
     ///   BepInEx\config\WildWasteland\tools.cfg                    F7 (technical) settings
     ///   BepInEx\config\WildWasteland\&lt;ModuleId&gt;\...          module data / sidecars
     /// </summary>
@@ -25,7 +25,7 @@ namespace WildWasteland.Core
             DiskResources.Initialize();
         }
 
-        /// <summary>Asset folder of a module: plugins/WildWasteland/&lt;id&gt;/ (D13: the new module id).</summary>
+        /// <summary>Asset folder of a module: plugins/WildWasteland2/&lt;id&gt;/ (D13: the new module id).</summary>
         public static string ModuleDir(string id) { return Path.Combine(Root ?? ".", id); }
         /// <summary>config/WildWasteland/.</summary>
         public static string ConfigDir { get { return Path.Combine(Paths.ConfigPath, "WildWasteland"); } }

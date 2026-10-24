@@ -86,9 +86,9 @@
   </Target>
   <Target Name="DeployToGame" AfterTargets="Build" DependsOnTargets="StageRuntimeAssetIndex" Condition="'$(Deploy)' == 'true'">
     <!-- Preserve editable files. Release packaging owns fresh installations and deliberate default replacement. -->
-    <Copy SourceFiles="@(Content)" DestinationFiles="@(Content->'$(GameDir)\BepInEx\plugins\WildWasteland\%(RuntimePath)')" Condition="!Exists('$(GameDir)\BepInEx\plugins\WildWasteland\%(Content.RuntimePath)')" />
-    <Copy SourceFiles="$(OutDir)RuntimeAssets\asset-index.tsv" DestinationFolder="$(GameDir)\BepInEx\plugins\WildWasteland" />
-    <Copy SourceFiles="$(OutDir)$(AssemblyName).dll" DestinationFolder="$(GameDir)\BepInEx\plugins\WildWasteland" />
-    <Message Importance="high" Text="Deployed $(AssemblyName).dll to $(GameDir)\BepInEx\plugins\WildWasteland. md5 it and check the Loading line." />
+    <Copy SourceFiles="@(Content)" DestinationFiles="@(Content->'$(GameDir)\BepInEx\plugins\WildWasteland2\%(RuntimePath)')" Condition="!Exists('$(GameDir)\BepInEx\plugins\WildWasteland2\%(Content.RuntimePath)')" />
+    <Copy SourceFiles="$(OutDir)RuntimeAssets\asset-index.tsv" DestinationFolder="$(GameDir)\BepInEx\plugins\WildWasteland2" />
+    <Copy SourceFiles="$(OutDir)$(AssemblyName).dll" DestinationFolder="$(GameDir)\BepInEx\plugins\WildWasteland2" />
+    <Message Importance="high" Text="Deployed $(AssemblyName).dll to $(GameDir)\BepInEx\plugins\WildWasteland2. md5 it and check the Loading line." />
   </Target>
 </Project>

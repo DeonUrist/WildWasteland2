@@ -13,6 +13,8 @@ namespace WildWasteland
     /// The soft dependencies on the standalone mods only force them to load first, so the conflict check (5.8) sees them.
     /// </summary>
     [BepInPlugin(GUID, NAME, VERSION)]
+    [BepInIncompatibility("com.denis.apocalypter.wildwasteland")]
+    [BepInIncompatibility("com.denis.apocalypter.wildwastelandmp")]
     [BepInDependency("com.denis.apocalypter.apocasetter", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.denis.apocalypter.apocaplayer", BepInDependency.DependencyFlags.SoftDependency)]
     [BepInDependency("com.denis.apocalypter.apocaclimber", BepInDependency.DependencyFlags.SoftDependency)]
@@ -41,9 +43,9 @@ namespace WildWasteland
     [BepInDependency("apocalypter.worldamp", BepInDependency.DependencyFlags.SoftDependency)]
     public sealed class Plugin : BaseUnityPlugin
     {
-        public const string GUID = "com.denis.apocalypter.wildwasteland";
-        public const string NAME = "Wild Wasteland";
-        public const string VERSION = "2.0.5";
+        public const string GUID = "com.denis.apocalypter.wildwasteland2";
+        public const string NAME = "Wild Wasteland 2";
+        public const string VERSION = "2.0.6";
 
         public static Plugin Instance;
         public static ConfigFile Main, Settings, Tools;

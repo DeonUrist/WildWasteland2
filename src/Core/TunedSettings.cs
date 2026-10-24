@@ -13,7 +13,7 @@ namespace WildWasteland.Core
         internal static T Default<T>(ConfigFile file, string section, string key, T fallback)
         {
             string name = Path.GetFileName(file.ConfigFilePath);
-            if (name == "com.denis.apocalypter.wildwasteland.cfg") name = "main.cfg";
+            if (name == Plugin.GUID + ".cfg") name = "main.cfg";
             Dictionary<string, string> values;
             if (!Files.TryGetValue(name, out values))
             {

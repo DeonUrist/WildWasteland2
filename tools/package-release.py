@@ -66,17 +66,17 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(args.output, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for relative, data in sorted(payloads.items()):
-            archive.writestr("WildWasteland/" + relative, data)
+            archive.writestr("WildWasteland2/" + relative, data)
     with zipfile.ZipFile(args.output) as archive:
         if archive.testzip() is not None:
             raise ValueError("Archive CRC failure")
         assert len(archive.namelist()) == len(payloads)
         for relative, data in payloads.items():
-            if archive.read("WildWasteland/" + relative) != data:
+            if archive.read("WildWasteland2/" + relative) != data:
                 raise ValueError("Package verification failed: " + relative)
-        assert [p for p in archive.namelist() if p.lower().endswith(".dll")] == ["WildWasteland/WildWasteland.dll"]
+        assert [p for p in archive.namelist() if p.lower().endswith(".dll")] == ["WildWasteland2/WildWasteland.dll"]
     metadata = {
-        "archive": str(args.output), "version": "2.0.5", "entries": len(payloads),
+        "archive": str(args.output), "version": "2.0.6", "entries": len(payloads),
         "runtime_assets": len(payloads) - 4, "size": args.output.stat().st_size,
         "dll_md5": digest(payloads["WildWasteland.dll"], "md5").upper(),
         "sha256": digest(args.output.read_bytes()),

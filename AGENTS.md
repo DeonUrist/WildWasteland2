@@ -168,11 +168,11 @@ The Wild Wasteland 2.0 modular refactor for Apocalypter. Shared steps 1–2 and 
 
 ## 4. Identity
 
-Wild Wasteland 2.0.0 uses the existing GUID and installation root. Work in this repository; preserve the separate WW1 checkout and unrelated local tools. Do not push, tag, publish or change Apocasetter indexes unless explicitly requested.
+From 2.0.6, Denis explicitly authorized the separate Wild Wasteland 2 identity: GUID `com.denis.apocalypter.wildwasteland2`, display name `Wild Wasteland 2`, installation/deploy root `plugins/WildWasteland2`. This supersedes older WW2 references to the shared GUID/deploy root. Keep `WildWasteland.dll`, namespaces, saved types/keys and `config/WildWasteland` intact; the BepInEx facade is now `com.denis.apocalypter.wildwasteland2.cfg`. The index lists WW1/WW2/MP as mutually exclusive alternatives. Work in this repository; preserve the separate WW1 checkout and unrelated local tools. Do not push, tag, publish or change Apocasetter indexes unless explicitly requested.
 
 ## 5. Architecture (WW 2.0)
 
-- One plugin GUID (`com.denis.apocalypter.wildwasteland`), one DLL, one Core runner. `src/Core/Boot/ModuleRegistry.cs` is the composition root. Modules implement `ModuleBase`; Core owns startup, failure cleanup, save/scene dispatch and the scheduler.
+- One plugin GUID (`com.denis.apocalypter.wildwasteland2`), one DLL, one Core runner. `src/Core/Boot/ModuleRegistry.cs` is the composition root. Modules implement `ModuleBase`; Core owns startup, failure cleanup, save/scene dispatch and the scheduler.
 - Module namespaces match their owner folder under `src/Modules/<Id>`. The 15 modules are Debug, Compatibility, Saves, NPCAI, Presentation, Gunplay, HUD, Vehicles, Loot, Patrols, POI, Quests, Survival, Tools and Developer. Core owns optimization; there is no Performance module or separate developer DLL.
 - Cross-module calls use `Core.ModApi` contracts. Events use `Core.ModEvents`, entity ids and stable world coordinates. No Services facade, raw shared ladder state, reverse private partials, or reflection into another WW module. Explicit typed camera interoperability exports support third-party reflection.
 - Presentation owns the common player/humanoid character driver, rigs, camera, traversal, seats, skins and character audio. NPCAI owns decisions/navigation; Gunplay owns weapon simulation; Vehicles owns mechanics; Patrols owns traffic/crew decisions; POI owns places/towns; Loot owns item queries/spawn rules; Compatibility owns third-party detection/hooks.
