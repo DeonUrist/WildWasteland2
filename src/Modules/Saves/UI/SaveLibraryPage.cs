@@ -107,7 +107,7 @@ namespace WildWasteland.Modules.Saves
                 if (Button(new Rect(940, 188, 220, 54), SaveSystem.RecoveryError != null ? "RETRY RECOVERY" : "REFRESH")) { if (SaveSystem.RecoveryError != null) SaveSystem.RecoverFiles(); Refresh(); }
                 if (_kind == 2) DrawBackups(); else DrawSaves();
                 DrawDetails();
-                string status = SaveSystem.RecoveryError ?? (SaveSystem.ReloadRequired ? "The last save failed. Reload before saving again; previous files are retained." : _message);
+                string status = SaveRecovery.HasIssues ? "Saving with issues creates a separate snapshot and retains existing saves/backups. Details are written to LogOutput.log." : _message;
                 Text(new Rect(100, 1004, 1720, 50), status ?? "Autosaves stay separate. Deleting a save keeps a recoverable backup.", true);
             }
             finally { GUI.enabled = enabled; }
@@ -148,14 +148,11 @@ namespace WildWasteland.Modules.Saves
             if (Button(new Rect(100, 920, 170, 48), "PREVIOUS", _page > 0)) _page--; Text(new Rect(305, 920, 650, 48), (_page + 1) + " / " + pages + "    ·    " + _visible.Count + " saves", true);
             if (Button(new Rect(990, 920, 170, 48), "NEXT", _page + 1 < pages)) _page++;
         }
-        bool CanSave { get { return SaveSystem.LocalReady && !SaveSystem.Busy && !SaveSystem.Requested && SaveSystem.Ready && SaveSystem.RecoveryError == null && !SaveSystem.ReloadRequired; } }
+        bool CanSave { get { return SaveSystem.CanSaveNow; } }
         /// <summary>Explains the existing world, recovery and name requirements without changing save state.</summary>
         string SaveBlockReason()
         {
             if (!SaveSystem.Installed) return "The save manager is not running.";
-            if (SaveSystem.RecoveryError != null) return SaveSystem.RecoveryError;
-            if (SaveSystem.ReloadRequired) return SaveSystem.ReloadReason ?? "Reload this world before saving again.";
-            if (!SaveSystem.Ready) return "Interrupted-save recovery has not completed.";
             if (!SaveSystem.LocalWorld) return "No active world is available to save.";
             if (SaveSystem.Busy || SinglePlayerSaving.Serializing) return "A save is in progress. Please wait.";
             if (SaveSystem.Requested) return "A save is already queued. Please wait.";
@@ -172,7 +169,7 @@ namespace WildWasteland.Modules.Saves
         void DrawCreateSave()
         {
             var rect = new Rect(1224, 712, 572, 54); string reason = SaveBlockReason();
-            if (reason == null) { if (Button(rect, "CREATE NEW SAVE", true, true)) Save(null); return; }
+            if (reason == null) { if (Button(rect, SaveRecovery.HasIssues ? "SAVE (ISSUES PRESENT)" : "CREATE NEW SAVE", true, true)) Save(null); return; }
             if (_saveBlockText != reason || _saveBlockSource != Ledger.Small)
             {
                 _saveBlockText = reason; _saveBlockSource = Ledger.Small; _saveBlockStyle = new GUIStyle(Ledger.Small) { wordWrap = true };
@@ -191,7 +188,7 @@ namespace WildWasteland.Modules.Saves
                 Input(new Rect(1224, 520, 572, 76), "SAVE NAME", "SaveLibrary/Name", ref _name);
                 Input(new Rect(1224, 610, 572, 76), "WORLD NAME", "SaveLibrary/World", ref _world);
                 DrawCreateSave();
-                if (Button(new Rect(1224, 778, 572, 50), "OVERWRITE SELECTED", CanSave && save != null && !save.Automatic && _name.Trim().Length > 0)) Confirm("overwrite", save.File);
+                if (Button(new Rect(1224, 778, 572, 50), "OVERWRITE SELECTED", CanSave && !SaveRecovery.HasIssues && save != null && !save.Automatic && _name.Trim().Length > 0)) Confirm("overwrite", save.File);
             }
             else
             {
@@ -262,7 +259,11 @@ namespace WildWasteland.Modules.Saves
             catch (Exception error) { _message = error.Message; }
         }
         /// <summary>Closes the library before requesting a named save on the next frame.</summary>
-        void Save(string overwrite) { string name = _name, world = _world; ToolWindow.CloseThen(() => SaveSystem.Request(name, overwrite, worldName: world)); }
+        void Save(string overwrite)
+        {
+            string name = _name, world = _world;
+            ToolWindow.CloseThen(() => { if (!SaveSystem.Request(name, overwrite, worldName: world)) { Configure(true); ToolWindow.Open(this, true); } });
+        }
         /// <summary>Opens the existing backup directory in the native file explorer.</summary>
         internal static void OpenBackups()
         { try { Directory.CreateDirectory(SaveFiles.BackupRoot); Process.Start(new ProcessStartInfo { FileName = SaveFiles.BackupRoot, UseShellExecute = true }); } catch (Exception error) { SaveSystem.Status = "Cannot open backups folder: " + error.Message; } }

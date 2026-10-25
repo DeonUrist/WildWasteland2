@@ -73,7 +73,7 @@ namespace WildWasteland.Modules.Saves
         }
         /// <summary>Prevents later saves when streamed native state could not be preserved.</summary>
         static void Failed(Exception error)
-        { SaveSystem.Status = "Location history unavailable; reload before saving: " + error.Message; SaveSystem.RequireReload(SaveSystem.Status); Log.Error(SavesModule.Instance, SaveSystem.Status, error); }
+        { SaveSystem.Status = "Location history unavailable; use SAVE (ISSUES PRESENT): " + error.Message; SaveSystem.RequireReload(SaveSystem.Status); SaveRecovery.Issue(SaveSystem.Status + "\n" + error); }
         /// <summary>Loads original ES3 records once per active slot and generation.</summary>
         static bool OpenSession()
         {
@@ -215,7 +215,14 @@ namespace WildWasteland.Modules.Saves
                 if (_error != null) throw new IOException(_error);
                 if (!restore) { foreach (var pair in records) { History[pair.Key] = pair.Value; Delta[pair.Key] = pair.Value; } _restoreCache = null; }
             }
-            catch (Exception error) { SaveSystem.Status = "Location history could not be preserved. Reload before saving: " + error.Message; SaveSystem.RequireReload(SaveSystem.Status); Log.Error(SavesModule.Instance, SaveSystem.Status, error); }
+            catch (Exception error)
+            {
+                // Native ES3File.Save replaces each record only after serialization succeeds; retain the other completed records.
+                ES3File captured;
+                if (!restore && ES3File.cachedFiles.TryGetValue(CaptureFile, out captured))
+                { foreach (var pair in _data(captured)) { History[pair.Key] = pair.Value; Delta[pair.Key] = pair.Value; } _restoreCache = null; }
+                Failed(error);
+            }
             finally { ES3Settings.defaultSettings.path = path; ES3Settings.defaultSettings.location = location; ES3File.cachedFiles.Remove(CaptureFile); _running = _restoring = false; }
         }
         /// <summary>Handles expected new-site history misses and records other native save errors.</summary>
@@ -229,7 +236,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Merges streamed location deltas into the native cache before its transaction stamp.</summary>
         internal static void Merge()
         {
-            if (SaveSystem.ReloadRequired) throw new IOException("Location history requires a reload");
+            if (SaveSystem.ReloadRequired && !SaveSystem.RecoverySaving) throw new IOException("Location history requires a reload");
             ES3File file;
             if (Delta.Count == 0 || !ES3File.cachedFiles.TryGetValue(SaveSystem.ActiveFile, out file)) return;
             var records = _data(file); foreach (var pair in Delta) records[pair.Key] = pair.Value;

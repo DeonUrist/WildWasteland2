@@ -34,7 +34,17 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Relays yields and disposes the original iterator on success, exception or cancellation.</summary>
         static IEnumerator Run(Running running)
         {
-            try { while (running.Routine != null && running.Routine.MoveNext()) yield return running.Routine.Current; }
+            try
+            {
+                while (running.Routine != null)
+                {
+                    bool next;
+                    try { next = running.Routine.MoveNext(); }
+                    catch (Exception error) { SaveRecovery.Failed(error); break; }
+                    if (!next) break;
+                    yield return running.Routine.Current;
+                }
+            }
             finally { Dispose(running); }
         }
         /// <summary>Disposes once; removes tracking first because iterator finally blocks may inspect framework state.</summary>

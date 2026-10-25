@@ -23,14 +23,14 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Opens the actual library only when save/load barriers allow menu work.</summary>
         public bool TryOpen(bool saving)
         {
-            if (!SaveSystem.Installed || SaveSystem.Busy || RecoveryError != null) return false;
+            if (!SaveSystem.Installed || SaveSystem.Busy || SaveSystem.Requested || SinglePlayerSaving.Serializing || SinglePlayerSaving.Loading) return false;
             SaveLibraryPage.Open(saving); return true;
         }
         /// <summary>Loads the actual selected snapshot through normal save admission.</summary>
         public bool TryContinue()
         {
             Refresh();
-            if (!SaveSystem.Installed || !SaveSystem.Ready || SaveSystem.Busy || SaveSystem.Requested || SinglePlayerSaving.Serializing || SinglePlayerSaving.Loading || RecoveryError != null || _latest == null) return false;
+            if (!SaveSystem.Installed || SaveSystem.Busy || SaveSystem.Requested || SinglePlayerSaving.Serializing || SinglePlayerSaving.Loading || _latest == null) return false;
             if (!System.IO.File.Exists(SaveFiles.WorldPath(_latest))) return false;
             if (SaveRuntime.InMainMenu) return SaveRuntime.Launch(_latest);
             if (!SaveSystem.LocalReady) return false;

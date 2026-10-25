@@ -65,7 +65,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Defers autosaving when a typed NPC transition enters combat.</summary>
         static void NpcStateChanged(ref Core.Events.NpcStateChanged change) { if (change.New == NpcMode.Combat) SaveCombat.Activity(); }
         /// <summary>Transfers embedded record failure into the current transaction's failure latch.</summary>
-        static void FailureReported(IModule owner, string message) { SaveSystem.Fail(message); }
+        static void FailureReported(IModule owner, string message) { SaveSystem.ParticipantFailed(owner, message); }
         /// <summary>Extends autosave combat deferral for activity from other modules.</summary>
         static void CombatActivity(ref Core.Events.CombatActivity activity) { SaveCombat.Activity(); }
     }

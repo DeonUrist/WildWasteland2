@@ -91,6 +91,8 @@ namespace WildWasteland.Modules.Saves
         internal static bool Launch(string file)
         {
             if (!InMainMenu || !IsSaveFile(file) || !File.Exists(SaveFiles.WorldPath(file))) return false;
+            // Recover only the selected world; unrelated unresolved journals remain available for support.
+            SaveSystem.RecoverFiles(file); if (!SaveSystem.Ready) return false;
             // Use the native loadgame FSM: it owns scene loading, global restoration and terrain admission.
             var canvas = GameObject.Find("LoadGame_Canvas");
             var node = canvas != null ? canvas.transform.Find("LoadGame/loadgame") : null;

@@ -4,6 +4,7 @@ using Events = WildWasteland.Core.Events;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using BepInEx.Configuration;
 using HutongGames.PlayMaker;
 using UnityEngine;
@@ -26,6 +27,7 @@ namespace WildWasteland.Modules.Saves
         static int _observation, _observationCount;
         static float _elapsed;
         static bool _tracking;
+        static bool _suspended;
         static ArrayList _offlineItems;
         static PlayMakerFSM[] _referenceFsms;
         const string ProtectionKey = "WildWasteland.CleanupProtected";
@@ -41,6 +43,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Starts observations under the Saves scheduler owner.</summary>
         internal static void Install(IModule owner)
         {
+            _suspended = false;
             Scheduler.Interval(owner, "Conservative save cleanup observations", 5f, Tick);
             Scheduler.Sliced(owner, "Save cleanup observation slice", 500, ObservationStep);
         }
@@ -148,7 +151,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Temporarily removes verified unreferenced candidates from native save lists before serialization.</summary>
         internal static void Prepare()
         {
-            Candidates.Clear(); Removed.Clear(); RemovedKeys.Clear(); Registrations.Clear(); if (!Enabled.Value) return;
+            Candidates.Clear(); Removed.Clear(); RemovedKeys.Clear(); Registrations.Clear(); if (!Enabled.Value || _suspended) return;
             var root = GameRefs.NewGOArrayList; if (root == null) return;
             var lists = root.GetComponents<PlayMakerArrayListProxy>();
             _referenceFsms = Resources.FindObjectsOfTypeAll<PlayMakerFSM>();
@@ -182,7 +185,16 @@ namespace WildWasteland.Modules.Saves
         }
         /// <summary>Restores every temporarily removed native save-list registration after failure.</summary>
         internal static void Rollback()
-        { foreach (var pair in Registrations) if (pair.Value != null && !pair.Key.Contains(pair.Value)) pair.Key.Add(pair.Value); Registrations.Clear(); Candidates.Clear(); }
+        {
+            Exception error = null;
+            for (int i = Registrations.Count - 1; i >= 0; i--)
+                try { var pair = Registrations[i]; if (pair.Value != null && !pair.Key.Contains(pair.Value)) pair.Key.Add(pair.Value); Registrations.RemoveAt(i); }
+                catch (Exception failure) { error = error == null ? failure : new AggregateException(error, failure); }
+            if (error != null) throw new IOException("Could not restore all save registrations", error);
+            Candidates.Clear(); RemovedKeys.Clear();
+        }
+        /// <summary>Disables optional removals for this session after a cleanup error, preserving player settings.</summary>
+        internal static void Suspend() { _suspended = true; }
         /// <summary>Destroys verified cleanup candidates only after the save transaction commits.</summary>
         internal static void Commit()
         {

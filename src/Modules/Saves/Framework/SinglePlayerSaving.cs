@@ -61,7 +61,9 @@ namespace WildWasteland.Modules.Saves
         internal static bool Request()
         {
             if (_requested || Serializing || Loading || !SaveSystem.LocalReady) return false;
-            _requested = true; Progress = 0; ProgressText = "Preparing save"; SaveRoutines.Start(Save()); return true;
+            _requested = true; Progress = 0; ProgressText = "Preparing save";
+            try { SaveRoutines.Start(Save()); return true; }
+            catch (Exception error) { _requested = false; SaveSystem.Abort(error); SaveRecovery.Failed(error); return false; }
         }
         /// <summary>Freezes, serializes and publishes a native singleplayer world with unconditional rollback and thaw.</summary>
         static IEnumerator Save()
@@ -124,11 +126,16 @@ namespace WildWasteland.Modules.Saves
                 finally
                 {
                     SaveTerrain.Release(); Serializing = _requested = false;
-                    // A save that began but never finished serializing still pairs BeforeSerialize with a failed AfterSerialize.
-                    if (began && !afterSent && SaveBus.Generation == generation) AfterSerialize(generation, false);
-                    Presentation(Core.Events.SavePresentationPhase.End, 0, null);
-                    if (SaveBus.Generation == generation) Time.timeScale = scale;
-                    if (blocked) ApocasetterBridge.SetInputBlock(false);
+                    try
+                    {
+                        // A save that began but never finished serializing still pairs BeforeSerialize with a failed AfterSerialize.
+                        if (began && !afterSent && SaveBus.Generation == generation) AfterSerialize(generation, false);
+                    }
+                    finally
+                    {
+                        try { Presentation(Core.Events.SavePresentationPhase.End, 0, null); }
+                        finally { try { if (SaveBus.Generation == generation) Time.timeScale = scale; } finally { if (blocked) ApocasetterBridge.SetInputBlock(false); } }
+                    }
                 }
                 if (completed) SaveSystem.Notify(SaveSystem.Status);
             }
@@ -149,8 +156,11 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Validates a chosen snapshot before native loading or a tracked return-to-menu flow.</summary>
         internal static void Load(string file)
         {
-            if (!SaveSystem.Installed || !SaveSystem.Ready || SaveSystem.RecoveryError != null || SaveSystem.Busy || SaveSystem.Requested || Serializing || Loading) return;
+            if (!SaveSystem.Installed || SaveSystem.Busy || SaveSystem.Requested || Serializing || Loading) return;
             if (!SaveRuntime.IsSaveFile(file) || !File.Exists(SaveFiles.WorldPath(file))) return;
+            // Unrelated damaged journals must not prevent loading a newly rescued snapshot.
+            try { SaveFiles.Recover(file); }
+            catch (Exception error) { SaveRecovery.Failed(error); return; }
             if (!SaveRuntime.InMainMenu)
             { if (SaveSystem.LocalReady) SaveRoutines.Start(ReturnAndLoad(file)); return; }
             if (!SaveRuntime.Launch(file)) SaveSystem.Notify("The save could not be loaded. Check the log.");

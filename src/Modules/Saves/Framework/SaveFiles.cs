@@ -172,13 +172,16 @@ namespace WildWasteland.Modules.Saves
             }
         }
         /// <summary>Rolls back interrupted prepared transactions before accepting new writes.</summary>
-        internal static void Recover()
+        internal static void Recover(string slot = null)
         {
-            if (!Directory.Exists(BackupRoot)) return;
-            var journals = Directory.GetFiles(BackupRoot, "undo.bin", SearchOption.AllDirectories); Array.Sort(journals, StringComparer.Ordinal);
+            if (slot != null) WorldPath(slot);
+            string root = slot == null ? BackupRoot : Path.Combine(BackupRoot, slot);
+            if (!Directory.Exists(root)) return;
+            var journals = Directory.GetFiles(root, "undo.bin", SearchOption.AllDirectories); Array.Sort(journals, StringComparer.Ordinal);
             foreach (string journal in journals)
             {
                 string directory = Path.GetDirectoryName(journal);
+                if (slot != null && !string.Equals(Path.GetFileName(Path.GetDirectoryName(directory)), slot, StringComparison.OrdinalIgnoreCase)) continue;
                 if (Marked(Path.Combine(directory, "committed")) || Marked(Path.Combine(directory, "recovered"))) continue;
                 Read(directory).Rollback(); Log.Warn(SavesModule.Instance, "Interrupted save recovered: " + directory);
             }

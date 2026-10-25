@@ -48,6 +48,8 @@ namespace WildWasteland.Modules.Saves
         internal static bool AutomaticSaving { get { return _automatic; } }
         /// <summary>Reports an accepted request waiting for serialization or publication.</summary>
         internal static bool Requested { get { return _requested; } }
+        /// <summary>Manual saves can recover current gameplay while retaining every existing published snapshot.</summary>
+        internal static bool RecoverySaving { get { return _requested && !_automatic; } }
         /// <summary>Reports ownership of an exit-save or return-to-menu flow.</summary>
         internal static bool Exiting { get { return _quitting; } }
         internal static bool Ready;
@@ -139,12 +141,12 @@ namespace WildWasteland.Modules.Saves
             _nextAuto = Mathf.Min(_nextAuto, Time.unscaledTime + Mathf.Min(Mathf.Max(30, Warning.Value), Interval.Value * 60));
         }
         /// <summary>Checks manual-save admission without mutating countdowns or combat state.</summary>
-        internal static bool CanSaveNow { get { return Installed && Ready && LocalReady && !Busy && !_requested && !_quitting && !SinglePlayerSaving.Serializing && RecoveryError == null && !ReloadRequired && _health() >= 1; } }
+        internal static bool CanSaveNow { get { return Installed && LocalReady && !Busy && !_requested && !_quitting && !SinglePlayerSaving.Serializing && !SinglePlayerSaving.Loading && _health() >= 1; } }
         /// <summary>Recovers interrupted transactions before the save provider accepts writes.</summary>
-        internal static void RecoverFiles()
+        internal static void RecoverFiles(string slot = null)
         {
             if (Autosave == null) return;
-            try { SaveFiles.Recover(); Ready = true; RecoveryError = null; }
+            try { SaveFiles.Recover(slot); Ready = true; RecoveryError = null; }
             catch (Exception error) { Ready = false; RecoveryError = "Save recovery needs attention: " + error.Message; Log.Error(SavesModule.Instance, RecoveryError, error); }
         }
         /// <summary>Latches native disk commit errors into the active save transaction.</summary>
@@ -155,13 +157,16 @@ namespace WildWasteland.Modules.Saves
             if (!Installed) return true;
             string file = settings != null ? Path.GetFileName(settings.path) : SaveBus.Slot;
             if (file == null || !SaveRuntime.IsSaveFile(file)) return true;
-            if (RecoveryError != null) return false;
+            if (RecoveryError != null && !(RecoverySaving && Busy && (file == ActiveFile || file == _publishingTarget))) return false;
             if (LocalWorld && file == ActiveFile) ProtectedSlots.Add(file);
             return !ProtectedSlots.Contains(file) || Busy && (file == ActiveFile || file == _publishingTarget);
         }
         /// <summary>Clears stale state when the native save flow crosses a load or new-world boundary.</summary>
         static void StateChanged(string previous, string current)
-        { if (current == "LoadGame" || current == "setSeed") { ReloadRequired = false; _session = null; _pendingNotice = null; } }
+        {
+            if (current == "LoadGame" || current == "setSeed") { ReloadRequired = false; _session = null; _pendingNotice = null; }
+            if (current == "isPlay" && !Busy && !_requested && SaveRuntime.IsSaveFile(ActiveFile)) SaveRecovery.Loaded(ActiveFile);
+        }
         /// <summary>Installs a mandatory module-owned native observer or fails initialization.</summary>
         static void Require(Type type, string method, string prefix)
         { if (!Patches.Patch(_owner, AccessTools.Method(type, method), prefix: AccessTools.Method(typeof(SaveSystem), prefix))) throw new InvalidOperationException("System save hook failed: " + method); }
@@ -179,7 +184,18 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Handles expected new-site history misses and records other native save errors.</summary>
         static bool NativeError(string msg) { if (WorldHistory.NativeError(msg)) return false; Fail("Native save error: " + msg); return true; }
         /// <summary>Records the first failure of an active save transaction.</summary>
-        internal static void Fail(string message) { if (Busy && _error == null) _error = message; }
+        internal static void Fail(string message)
+        { if (Busy) { SaveRecovery.Issue(message); if (_error == null) _error = message; } }
+        /// <summary>Preserves a module's previous record when it cannot supply an updated optional snapshot.</summary>
+        internal static void ParticipantFailed(IModule owner, string message)
+        {
+            if (!Busy) return;
+            string reason = (owner != null ? owner.Id : "Unknown participant") + ": " + message + "\nReported by:\n" + Environment.StackTrace;
+            SaveRecovery.Issue(reason);
+            if (!RecoverySaving || message.StartsWith("Embedded save verification", StringComparison.Ordinal)
+                || owner == null && !message.StartsWith("Towns ", StringComparison.Ordinal)) { if (_error == null) _error = reason; }
+            else { SaveRecovery.RetainFailedKey(message); SaveRecovery.Issue("Participant update unavailable; prior stored records retained where present: " + (owner != null ? owner.Id : "Towns")); }
+        }
         /// <summary>Retains the latest save notice for delivery through the HUD notification API.</summary>
         internal static void Notify(string text) { Status = text; Log.Main(SavesModule.Instance, text); _pendingNotice = text; }
         /// <summary>Delivers a pending notice only when gameplay presentation and a HUD provider are ready.</summary>
@@ -250,17 +266,18 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Validates and queues a single save without bypassing recovery or player-health rules.</summary>
         internal static bool Request(string name, string overwrite = null, bool automatic = false, bool scheduled = false, string worldName = null)
         {
-            if (!Installed || !LocalReady || Busy || _requested || _quitting) return false;
-            if (!Ready || RecoveryError != null || ReloadRequired) { Notify(RecoveryError ?? "Reload a save before saving again after a failed write."); return false; }
+            if (!Installed || !LocalReady || Busy || _requested || _quitting || SinglePlayerSaving.Serializing || SinglePlayerSaving.Loading) return false;
+            if (automatic && (!Ready || RecoveryError != null || ReloadRequired)) { Notify(RecoveryError ?? "Use SAVE (ISSUES PRESENT) to recover current progress."); return false; }
             if (_health() < 1) { Notify("Saving deferred while the player is dead."); return false; }
             if (string.IsNullOrEmpty(name) || name.Trim().Length == 0) { Notify("Enter a save name."); return false; }
             foreach (char ch in name) if (char.IsControl(ch) || ch == '<' || ch == '>') { Notify("Use a save name without control characters or markup."); return false; }
             if (name.Length > 64 || (overwrite != null && !SaveRuntime.IsSaveFile(overwrite))) { Notify("Invalid save name or destination."); return false; }
-            if (worldName != null) { if (worldName.Trim().Length == 0 || worldName.Length > 64) return false; foreach (char ch in worldName) if (char.IsControl(ch) || ch == '<' || ch == '>') return false; }
+            if (worldName != null) { if (worldName.Trim().Length == 0 || worldName.Length > 64) { Notify("Enter a world name of at most 64 characters."); return false; } foreach (char ch in worldName) if (char.IsControl(ch) || ch == '<' || ch == '>') { Notify("Use a world name without control characters or markup."); return false; } }
             if (overwrite != null && Info(overwrite).Automatic) { Notify("Create a manual save instead of overwriting an autosave."); return false; }
             _world = worldName ?? CurrentWorldName;
             _localWorldName = _world; _localGeneration = SaveBus.Generation;
             _automatic = automatic; _scheduled = scheduled; _name = name.Trim(); _destination = overwrite; _requested = true;
+            SaveRecovery.Start();
             if (!(SinglePlayerSaving.Request())) { _requested = false; Notify("The current world's save target is unavailable."); return false; }
             return true;
         }
@@ -277,16 +294,17 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Prepares the complete undo journal before serialization or cleanup can mutate files.</summary>
         internal static void Begin()
         {
-            if (RecoveryError != null || ReloadRequired) throw new IOException(RecoveryError ?? "Reload required after a failed save");
+            if (!RecoverySaving && (RecoveryError != null || ReloadRequired)) throw new IOException(RecoveryError ?? "Reload required after a failed save");
             if (_health() < 1) throw new IOException("Saving deferred: the player died before serialization");
             string file = ActiveFile; SaveFiles.WorldPath(file);
             if (!_requested) { _automatic = true; _name = "Autosave " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); _destination = null; _world = CurrentWorldName; }
             _error = null; _picture = null; _stamp = Guid.NewGuid().ToString("N");
-            _oldKeys = File.Exists(SaveFiles.WorldPath(file)) ? ES3.GetKeys(SaveFiles.Disk(file)) : new string[0];
+            SaveCleanup.Rollback();
+            _oldKeys = SaveRecovery.Capture();
             var tx = new SaveFiles(file, "working save"); tx.Prepare(SaveFiles.Participants(file)); _transaction = tx;
             _kilometres = DistanceTravelled();
             if (Screenshots.Value) CapturePicture();
-            SaveCleanup.Prepare();
+            if (!RecoverySaving || !SaveRecovery.HasIssues) SaveCleanup.Prepare();
         }
         /// <summary>Merges streamed history and marks the native cache for later verification.</summary>
         internal static void Stamp()
@@ -317,7 +335,8 @@ namespace WildWasteland.Modules.Saves
                 if (!keys.Contains(key)) throw new IOException("World save is missing " + key);
             if (stamp != null && ES3.Load<string>(CommitKey, settings) != stamp) throw new IOException("World save did not persist this transaction");
 
-            if (file == ActiveFile) foreach (string key in _oldKeys) if (!keys.Contains(key) && !SaveCleanup.RemovesKey(key)) throw new IOException("Previous save record was lost: " + key);
+            SaveRecovery.VerifyReport(file);
+            if (file == ActiveFile) foreach (string key in _oldKeys) if (key != SaveRecovery.ReportKey && !keys.Contains(key) && !SaveCleanup.RemovesKey(key)) throw new IOException("Previous save record was lost: " + key);
         }
         /// <summary>Flushes, verifies and publishes the save before committing cleanup and retention.</summary>
         internal static bool Complete()
@@ -327,6 +346,10 @@ namespace WildWasteland.Modules.Saves
             try
             {
                 if (_error != null) throw new IOException(_error);
+                if (!RecoverySaving && SaveRecovery.AttemptHasIssues) throw new IOException("Automatic save needs recovery; use SAVE (ISSUES PRESENT)");
+                if (RecoverySaving) SaveRecovery.PreserveMissing();
+                SaveRecovery.WriteReport();
+                if (SaveRecovery.AttemptHasIssues) { _destination = null; target = "WW_save-" + Guid.NewGuid().ToString("N") + ".es3"; }
                 ES3.StoreCachedFile(source); Validate(source, _stamp);
                 if (target == source)
                 {
@@ -337,15 +360,18 @@ namespace WildWasteland.Modules.Saves
                 {
                     PublishSnapshot(source, target);
                     // Autosaving / Save As must not overwrite the loaded save. Keep the fresh in-memory cache.
-                    _transaction.Rollback(false); _transaction.Commit();
+                    try { _transaction.Rollback(false); _transaction.Commit(); }
+                    catch (Exception restore) { Ready = false; RecoveryError = "Save published as " + target + ", but working-slot restoration needs attention at " + _transaction.DirectoryPath + ": " + restore; SaveRecovery.Issue(RecoveryError); }
                 }
                 _transaction = null; _requested = false; Schedule();
                 CatalogueVersion++;
-                WorldHistory.Accepted();
-                try { SaveCleanup.Commit(); } catch (Exception cleanup) { RequireReload("Save completed, but cleanup failed. Reload before saving: " + cleanup.Message); Log.Error(SavesModule.Instance, "Save committed, but cleanup could not finish; reload before saving", cleanup); }
-                Status = (_automatic ? "Autosave" : "Save") + " completed: " + _name;
+                ReloadRequired = false;
+                try { WorldHistory.Accepted(); } catch (Exception history) { SaveRecovery.Issue("Save published; refreshing retained location history failed: " + history); }
+                try { SaveCleanup.Commit(); } catch (Exception cleanup) { SaveRecovery.Issue("Save published; optional cleanup failed and will be suspended: " + cleanup); SaveCleanup.Suspend(); }
+                SaveRecovery.Accepted(target);
+                Status = (_automatic ? "Autosave" : "Save") + " completed: " + _name + (SaveRecovery.AttemptHasIssues ? " (issues present; see LogOutput.log)" : "");
                 Log.Main(SavesModule.Instance, Status);
-                try { SaveFiles.Prune(source, BackupKeep.Value); SaveFiles.Prune(target, BackupKeep.Value); if (_automatic) PruneAutosaves(Lineage(target), target); }
+                try { if (!SaveRecovery.AttemptHasIssues) { SaveFiles.Prune(source, BackupKeep.Value); SaveFiles.Prune(target, BackupKeep.Value); if (_automatic) PruneAutosaves(Lineage(target), target); } }
                 catch (Exception error) { Log.Warn(SavesModule.Instance, "Retention deferred; saves retained: " + error.Message); }
                 return true;
             }
@@ -388,13 +414,23 @@ namespace WildWasteland.Modules.Saves
         internal static void Abort(Exception error)
         {
             var tx = _transaction;
-            if (tx != null) try { SaveBus.CancelSave(); } catch (Exception cancel) { _error = "Native save cancellation failed: " + cancel.Message; }
+            if (tx != null) try { SaveBus.CancelSave(); }
+            catch (Exception cancel)
+            {
+                SaveRecovery.Issue("Native save cancellation callback failed: " + cancel);
+                // CancelSave clears pending writes before invoking subscribers; finish its native state restoration if one throws.
+                try { var registry = GameRefs.NewGOArrayList != null ? FsmUtil.Find(GameRefs.NewGOArrayList, "Save_NewGO_ArrayList") : null; if (registry != null) registry.Fsm.SetState("off"); }
+                catch (Exception registry) { SaveRecovery.Issue("Native registry cancellation failed: " + registry); }
+                try { if (GameRefs.SaveLoadGame != null) GameRefs.SaveLoadGame.Fsm.SetState("isPlay"); }
+                catch (Exception native) { SaveRecovery.Issue("Native save state restoration failed: " + native); }
+            }
             _transaction = null;
-            SaveCleanup.Rollback();
-            if (tx != null) try { tx.Rollback(); } catch (Exception recovery) { RecoveryError = "Save recovery required at " + tx.DirectoryPath + ": " + recovery.Message; }
+            try { SaveCleanup.Rollback(); } catch (Exception cleanup) { SaveRecovery.Issue("Save cleanup restoration failed: " + cleanup); SaveCleanup.Suspend(); }
+            if (tx != null) try { tx.Rollback(false); } catch (Exception recovery) { RecoveryError = "Save recovery required at " + tx.DirectoryPath + ": " + recovery; SaveRecovery.Issue(RecoveryError); }
             // A failed write leaves live module state ahead of disk. Require a reload before another world write.
-            if (tx != null) RequireReload("Reload before saving again. Save failed: " + error.Message);
+            if (tx != null) RequireReload("Save needs recovery; use SAVE (ISSUES PRESENT). Failure: " + error.Message);
             _requested = false; _picture = null; Status = "Save failed: " + error.Message;
+            SaveRecovery.Issue(error.ToString());
             Log.Error(SavesModule.Instance, Status, error); _pendingNotice = Status;
         }
         /// <summary>Backs up all save participants before deleting a selected published snapshot.</summary>
@@ -507,7 +543,7 @@ namespace WildWasteland.Modules.Saves
         /// <summary>Enables native save-menu access in vehicles while the framework is ready.</summary>
         static bool VehicleSaveButton(HutongGames.PlayMaker.Actions.ActivateGameObject action)
         {
-            if (!Ready || action.Fsm == null || action.Fsm.Name != "InCar" || action.Fsm.GameObject != GameRefs.Player) return true;
+            if (!Installed || action.Fsm == null || action.Fsm.Name != "InCar" || action.Fsm.GameObject != GameRefs.Player) return true;
             var target = action.Fsm.GetOwnerDefaultTarget(action.gameObject);
             if (target == null || target.transform.parent == null || target.transform.parent.name != "MainMenu") return true;
             if (target.name != "Save_Game_slots" && target.name != "get out to save") return true;
