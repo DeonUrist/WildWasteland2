@@ -57,9 +57,17 @@ namespace WildWasteland.Modules.NPCAI
             for (var t = f.transform; t != null; t = t.parent) if (NativePoiPopulation.TownBuilding(t)) return;
             Add(f, null);
         }
+        /// <summary>Boss spawners retain native arena entry; their bodyguards keep the interior population rules.</summary>
+        private static bool BossSpawner(PlayMakerFSM f)
+        { return f.name.IndexOf("boss", StringComparison.OrdinalIgnoreCase) >= 0 && f.name.IndexOf("bodyguard", StringComparison.OrdinalIgnoreCase) < 0; }
         /// <summary>Adds a spawner group to its location (town, dressing marker root or the enclosing native structure) and queues it for the arrival pre-spawn.</summary>
         private static void Add(PlayMakerFSM f, PopulationArea town, Transform markerRoot = null)   // refs-ok: REFACTOR-REQUEST B07-9 (POI town types until ITownsApi/IPopulation callers)
         {
+            if (BossSpawner(f))
+            {
+                if (Core.Log.L1) NpcaiRuntime.Main("boss spawn left to native arena trigger: " + f.gameObject.name);
+                return;
+            }
             Transform root = town == null ? f.transform : town.Anchor;
             if (town == null) for (var t = f.transform.parent; t != null; t = t.parent)
                 if (t.name.StartsWith("Building_", StringComparison.Ordinal) || t.name.StartsWith("Camp_", StringComparison.Ordinal)
@@ -107,7 +115,7 @@ namespace WildWasteland.Modules.NPCAI
         }
 
         internal static void Own(PlayMakerFSM f,PopulationArea area,bool suspended,Func<bool> ready)
-        {Add(f,area,area?.Anchor);Groups[f].Dressing=ready;Groups[f].Suspended=suspended;if(suspended)f.enabled=false;}
+        {if(BossSpawner(f))return;Add(f,area,area?.Anchor);Groups[f].Dressing=ready;Groups[f].Suspended=suspended;if(suspended)f.enabled=false;}
         internal static void Forget(PopulationArea area)
         {Location location;if(area==null||!Locations.TryGetValue(area,out location))return;foreach(var group in location.Groups){Groups.Remove(group.Fsm);Pending.Remove(group);if(group.Suspended&&group.Fsm!=null)group.Fsm.enabled=true;}Locations.Remove(area);}
         /// <summary>Integer FSM variable value (0 when missing).</summary>
