@@ -105,7 +105,7 @@ namespace WildWasteland.Modules.Survival
                 {
                     float value; if (float.TryParse(lines[i].Substring(8), NumberStyles.Float, CultureInfo.InvariantCulture, out value)) lines[i] = "Hunger -" + (value * data.Bonus).ToString("0.##", CultureInfo.InvariantCulture);
                 }
-                label.text = new FsmString(string.Join("\n", lines));
+                label.text = new FsmString { Value = string.Join("\n", lines) };
             }
         }
         internal void Load()

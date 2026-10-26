@@ -76,7 +76,7 @@ def main():
                 raise ValueError("Package verification failed: " + relative)
         assert [p for p in archive.namelist() if p.lower().endswith(".dll")] == ["WildWasteland2/WildWasteland.dll"]
     metadata = {
-        "archive": str(args.output), "version": "2.0.9", "entries": len(payloads),
+        "archive": str(args.output), "version": "2.0.10", "entries": len(payloads),
         "runtime_assets": len(payloads) - 4, "size": args.output.stat().st_size,
         "dll_md5": digest(payloads["WildWasteland.dll"], "md5").upper(),
         "sha256": digest(args.output.read_bytes()),

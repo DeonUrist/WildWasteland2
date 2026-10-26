@@ -120,7 +120,7 @@ namespace WildWasteland.Modules.Survival
                     foreach (var state in health.FsmStates) foreach (var action in state.Actions)
                     {
                         var create = action as CreateObject; var corpse = create != null ? create.gameObject.Value : null;
-                        if (corpse != null && corpse.name.IndexOf("_Dead", StringComparison.OrdinalIgnoreCase) >= 0) _corpses.Add(corpse.name);
+                        if (corpse != null && corpse.name.IndexOf("_Dead", StringComparison.OrdinalIgnoreCase) >= 0 && FsmUtil.Find(corpse, "Carcasse") == null) _corpses.Add(corpse.name);
                     }
                 }
                 _prefabs.Clear(); HumanFood.Prepare();
@@ -262,7 +262,7 @@ namespace WildWasteland.Modules.Survival
             if (action.Fsm == null || action.Fsm.Name != "Health" || action.Fsm.ActiveStateName != "spawn" || action.Owner == GameRefs.Player) return;
             var dead = action.storeObject != null ? action.storeObject.Value : null;
             if (dead == null || dead.name.IndexOf("_Dead", StringComparison.OrdinalIgnoreCase) < 0) return;
-            if (Human(action.Owner)) _corpses.Add(Names.Base(dead.name));
+            if (Human(action.Owner) && FsmUtil.Find(dead, "Carcasse") == null) _corpses.Add(Names.Base(dead.name));
             WorldIndex.QueueRoot(dead.transform);
             bool player;
             if (_attackers.TryGetValue(action.Owner, out player) && player)
