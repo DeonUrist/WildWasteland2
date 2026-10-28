@@ -129,7 +129,7 @@ def main():
     source_files = list(dict.fromkeys(p.resolve() for p in inputs(args.game.resolve(), args.include)))
     if not source_files:
         raise ValueError('No Unity asset files found')
-    exports = sorted((args.game / 'BepInEx' / 'plugins' / 'WildWasteland' / 'Tools' / 'LODInput').glob('*.json'))
+    exports = sorted((args.game / 'BepInEx' / 'plugins' / 'WildWasteland2' / 'Tools' / 'LODInput').glob('*.json'))
     dependencies = sorted(p for p in (args.game / 'Apocalypter_Data').rglob('*') if p.is_file() and p.suffix.lower() in ('.resource', '.ress'))
     dependency_roots = {p.parent for p in source_files}
     dependencies += [p for root in dependency_roots for p in root.glob('*') if p.is_file() and p.suffix.lower() in ('.resource', '.ress')]

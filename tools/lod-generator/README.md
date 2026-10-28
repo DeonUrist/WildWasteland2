@@ -16,7 +16,7 @@ For a different game location:
 .\Generate.cmd -GameDir 'D:\SteamLibrary\steamapps\common\Apocalypter' -Install
 ```
 
-The command scans all native Unity asset files and active mod bundles under `BepInEx/plugins`, extracts each unique eligible mesh, and generates two lower-detail variants. It writes its working cache to `work/`, its pack and report to `output/`, and with `-Install` publishes the pack to `BepInEx/plugins/WildWasteland/Core/Optimization/LOD/`. Source assets, DLLs, game configuration and saves are not changed by this tool. Omit `-Install` to generate without installing.
+The command scans all native Unity asset files and active mod bundles under `BepInEx/plugins`, extracts each unique eligible mesh, and generates two lower-detail variants. It writes its working cache to `work/`, its pack and report to `output/`, and with `-Install` publishes the pack to `BepInEx/plugins/WildWasteland2/Core/Optimization/LOD/`. Source assets, DLLs, game configuration and saves are not changed by this tool. Omit `-Install` to generate without installing.
 
 Launch the game yourself. Enable the Performance module, choose a non-Vanilla Performance preset, then enable **Generated mesh LODs** under Developer > Performance > Rendering. The feature is On by default within non-Vanilla presets. Look for `[Performance] RC9 ... generated meshes indexed` in `BepInEx/LogOutput.log`. The Developer stats show matched renderers, unmatched unique meshes, reserved cache bytes, read failures and zoom state. New tuning entries live in `WildWasteland/tools.cfg`; existing values are preserved.
 

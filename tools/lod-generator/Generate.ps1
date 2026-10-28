@@ -34,7 +34,7 @@ try {
     if ($LASTEXITCODE) { throw 'Generation failed; the previous LOD pack has been retained.' }
     if ($Install) {
         if (Get-Process -Name Apocalypter -ErrorAction SilentlyContinue) { throw 'Close Apocalypter before installing the generated pack.' }
-        $plugin = Join-Path $GameDir 'BepInEx/plugins/WildWasteland'
+        $plugin = Join-Path $GameDir 'BepInEx/plugins/WildWasteland2'
         if (-not (Test-Path -LiteralPath (Join-Path $plugin 'WildWasteland.dll'))) { throw 'Wild Wasteland is not active in this game folder.' }
         $disabled = Join-Path $GameDir 'BepInEx/cache/Apocasetter/disabled'
         if (Get-ChildItem -LiteralPath $disabled -Filter manifest.json -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '[\\/]com\.denis\.apocalypter\.wildwasteland[\\/]' }) { throw 'Restore Wild Wasteland through Apocasetter before installing its LOD pack.' }
