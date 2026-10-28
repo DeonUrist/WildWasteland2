@@ -33,7 +33,12 @@ namespace WildWasteland.Core.Optimization
 
         Knob _far;
         /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
-        public override void Bind(ModuleConfig cfg) { _far = NewKnob(cfg, "Far plane", "Far clip plane cap (m); 0 = unchanged.", 6000, 0, 0, 0); }
+        public override void Bind(ModuleConfig cfg) { _far = NewKnob(cfg, "Far plane", "Far clip plane cap (m); 0 = unchanged.", 6000, 0, 0, 0);
+            DistantTerrain.Entry = cfg.Tool("Debug", "Distant terrain", true, "Extend low-resolution terrain and camera visibility to 20 km. Off restores the previous range; allow terrain generation to settle before comparing FPS.");
+            DistantTerrain.Entry.SettingChanged += (s, a) => { Module.Apply(this, true); Module.SettingsChanged(this); };
+        }
+        public static BepInEx.Configuration.ConfigEntry<bool> DistantTerrainEntry { get { return DistantTerrain.Entry; } }
+        public override void OnSceneLoaded() { DistantTerrain.Scene(); }
 
         /// <summary>Captures one camera's original values and whether ES3 can save it on a vehicle.</summary>
         sealed class Rec { public Camera C; public float Orig, Applied; public bool Vehicle, Set; }
@@ -44,6 +49,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)
         {
+            DistantTerrain.Scene();
             SaveGuard.Register(this);
             _job = Scheduler.Interval(Module, "Core.Optimization.FarClip", 1f, Tick);
             Tick();
@@ -52,6 +58,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
+            DistantTerrain.Restore();
             if (_job != null) { _job.Remove(); _job = null; }
             SaveGuard.Unregister(this);
             for (int i = 0; i < _list.Count; i++) Restore(_list[i]);
@@ -65,6 +72,7 @@ namespace WildWasteland.Core.Optimization
         void Tick()
         {
             if (SaveGuard.Reverted) return;
+            DistantTerrain.Tick();
             GameCameras.Refresh();
             var cams = GameCameras.List;
             for (int i = 0; i < cams.Count; i++)
@@ -80,8 +88,9 @@ namespace WildWasteland.Core.Optimization
                 float cur = r.C.farClipPlane;
                 if (r.Set && Mathf.Approximately(cur, r.Applied)) continue;
                 r.Orig = cur;                   // first sight, or someone (SetClippingPlanes FSM) wrote a new value
-                if (far <= 0f || cur <= far) { r.Set = false; continue; }
-                r.C.farClipPlane = far; r.Applied = r.C.farClipPlane; r.Set = true;
+                float target = DistantTerrain.Entry.Value ? Mathf.Max(cur, 20000f) : far > 0f ? Mathf.Min(cur, far) : cur;
+                if (Mathf.Approximately(cur, target)) { r.Set = false; continue; }
+                r.C.farClipPlane = target; r.Applied = r.C.farClipPlane; r.Set = true;
             }
         }
 

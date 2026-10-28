@@ -45,7 +45,7 @@ namespace WildWasteland
     {
         public const string GUID = "com.denis.apocalypter.wildwasteland2";
         public const string NAME = "Wild Wasteland 2";
-        public const string VERSION = "2.0.12";
+        public const string VERSION = "2.0.13";
 
         public static Plugin Instance;
         public static ConfigFile Main, Settings, Tools;

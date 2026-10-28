@@ -205,6 +205,7 @@ namespace WildWasteland.Core.Optimization
         static FeatureMode Wanted(Feature f)
         {
             if (f is GeneratedLods) return FeatureMode.On;
+            if (f is FarClip && DistantTerrain.Entry.Value) return FeatureMode.On;
             if (!_enabled.Value) return FeatureMode.Off;
             if (f.ModeEntry == null) return FeatureMode.Off;
             if (f.UsesPreset && Preset == PerfPreset.Vanilla) return FeatureMode.Off;

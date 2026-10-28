@@ -24,6 +24,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Module switch, preset choice, then the Debug measurements.</summary>
         public override void Draw(ToolLayout l)
         {
+            if (FarClip.DistantTerrainEntry != null) l.Toggle(FarClip.DistantTerrainEntry, "distant terrain");
             var m = OptimizationRuntime.Instance;
             if (m == null) { l.Text("Performance module not loaded."); return; }
             if (OptimizationRuntime.EnabledEntry != null) l.Toggle(OptimizationRuntime.EnabledEntry, "Performance optimizations");
