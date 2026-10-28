@@ -233,6 +233,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>A body-sized capsule passes straight from a to b (shared rule: <see cref="Nav.WaypointClear"/>).</summary>
         internal static bool Clear(Vector3 a, Vector3 b) { return Nav.WaypointClear(a, b); }
         internal bool FieldsStep() { return _ground.FieldsStep(); }
+        internal void AppendView(List<NavigationAuthoringInstance> into) { _ground.AppendView(into); }
         internal void Dispose() { _ground.Dispose(); }
     }
 }

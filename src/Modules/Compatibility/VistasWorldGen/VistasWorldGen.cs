@@ -22,7 +22,7 @@ namespace WildWasteland.Core
     /// place entries and terrain edits (static events for the current consumers, Core TerrainEdited event, WorldTiles Edited channel).
     /// Facts are published as <see cref="IWorldGenFacts"/> by the Compatibility module.
     /// </summary>
-    internal static class VistasWorldGen
+    internal static partial class VistasWorldGen
     {
         /// <summary>Place entered (name, kind or "LANDMARK DISCOVERED"); HUD banners subscribe.</summary>
         internal static event Action<string, string> PlaceEntered;
@@ -49,7 +49,9 @@ namespace WildWasteland.Core
         private static ManualLogSource _logger;
         private static string _assemblyId;
         private static ConfigEntry<float> _bannerHeight;
+        private static ConfigEntry<bool> _roadFurniture, _patrolsEnabled;
         private static IModule _owner;
+        private static readonly List<KeyValuePair<MethodInfo, MethodInfo>> _hooks = new List<KeyValuePair<MethodInfo, MethodInfo>>();
         /// <summary>Last place entered and its kind/caption.</summary>
 
         internal static string CurrentPlace, CurrentPlaceKind;
@@ -68,9 +70,12 @@ namespace WildWasteland.Core
             TerrainEdited += WorldTiles.EditedSource;   // W0B-3: Core WorldTiles "Edited" channel (no subscribers until Wave B)
             var assembly = info.Instance.GetType().Assembly;
             _config = info.Instance.Config; _assemblyId = assembly.ManifestModule.ModuleVersionId.ToString();
+            _config.TryGetEntry<bool>(new ConfigDefinition("Roads", "InterstateFurniture"), out _roadFurniture);
+            _patrolsEnabled = Modules.Compatibility.CompatibilityHost.Patrols.Config?.Enabled;
+            if (_patrolsEnabled != null) _patrolsEnabled.SettingChanged += PatrolsChanged;
             SettingsChanged(null, null); _config.SettingChanged += SettingsChanged;
-            if (info.Metadata.Version.ToString() != "1.0.7")
-                Log.Warn(owner, "Vistas version " + info.Metadata.Version + " differs from the tested 1.0.7; attempting compatibility with this version.");
+            if (info.Metadata.Version.ToString() != "1.0.7" && info.Metadata.Version.ToString() != "1.2.0")
+                Log.Warn(owner, "Vistas version " + info.Metadata.Version + " differs from the supported 1.0.7/1.2.0; attempting compatibility with this version.");
             try
             {
                 _logger = (ManualLogSource)AccessTools.Property(typeof(BaseUnityPlugin), "Logger").GetValue(info.Instance, null);
@@ -82,6 +87,10 @@ namespace WildWasteland.Core
                 ConfigEntry<bool> overlay;
                 if (info.Instance.Config.TryGetEntry<bool>(new ConfigDefinition("Debug", "Overlay"), out overlay)) overlay.Value = false;
                 info.Instance.Config.TryGetEntry<float>(new ConfigDefinition("Regions", "BannerHeight"), out _bannerHeight);
+                Is120 = assembly.GetType(Gate120, false) != null;
+                if (Is120) Install120(assembly);
+                else
+                {
                 var places = assembly.GetType("A.E", true);
                 var place = assembly.GetType("A.c", true);
                 var landmark = assembly.GetType("A.y", true);
@@ -99,6 +108,8 @@ namespace WildWasteland.Core
                 Log.Main(owner, "Vistas elevation spawn bonuses disabled; native rolls and WW population budgets retained.");
                 Hook(Find(assembly.GetType("A.q", true), "a", typeof(int), typeof(double[]), typeof(double[]), typeof(int), typeof(bool), typeof(string)), postfix: "RoadCreated");
                 Hook(Find(assembly.GetType("A.S", true), "A", typeof(void), assembly.GetType("A.q", true), typeof(MapMagicObject), typeof(TerrainTile), typeof(Terrain), typeof(TerrainData), assembly.GetType("A.S+A", true), typeof(int), typeof(float)), postfix: "GroundEdited");
+                }
+                InstallPlayerSurface(assembly);
                 Hook(Find(assembly.GetType("ApocalpyterWorldAmp.WorldAmpDriver", true), "ClearWorld", typeof(void)), postfix: "ClearRoads");
                 Log.Main(owner, "Vistas " + info.Metadata.Version + " compatibility ready: overlay defaults off; WW scouting, HUD banners, WW sandstorms and replacement-road capture; its routine logging shows at Debug level 2.");
             }
@@ -108,10 +119,20 @@ namespace WildWasteland.Core
         internal static void Shutdown()
         {
             if (_config != null) _config.SettingChanged -= SettingsChanged;
+            if (_patrolsEnabled != null) _patrolsEnabled.SettingChanged -= PatrolsChanged;
+            _roadFurniture = _patrolsEnabled = null;
             TerrainEdited -= WorldTiles.EditedSource;
-            Present = false; _config = null; _assembly = null; _logger = null; _assemblyId = null;
+            Clear120();
+            _releaseSurface = null; _surfacePlayerCar = null; _surfacePlayerFrame = -1;
+            Present = false; Is120 = false; _config = null; _assembly = null; _logger = null; _assemblyId = null;
             _bannerHeight = null; _placeName = _placeKind = _landmarkName = null; _owner = null;
             CurrentPlace = CurrentPlaceKind = null; RoadIdentity = ""; ClearRoads();
+        }
+        internal static void RemoveHooks()
+        {
+            // Remove dependent wrappers before the overloaded-field resolver or their transpiler metadata is released.
+            for (int i = _hooks.Count - 1; i >= 0; i--) Patches.UnpatchMethod(_owner, _hooks[i].Key, _hooks[i].Value);
+            _hooks.Clear();
         }
         /// <summary>Prefix of ManualLogSource.Log (every BepInEx log call; one reference compare for other sources): the mod's Info/Debug
         /// lines only at Debug level 2 (README 5.1), its warnings/errors always.</summary>
@@ -120,6 +141,23 @@ namespace WildWasteland.Core
         /// <summary>Prefix of MonoMod ReflectionHelper._ResolveReflection: resolves the mod's type-overloaded field names by field type.</summary>
         private static bool ResolveField(Mono.Cecil.MemberReference __0, ref MemberInfo __result)
         {
+            var method = __0 as Mono.Cecil.MethodReference;
+            if (method != null && _assembly != null && method.DeclaringType != null && method.DeclaringType.FullName == "<Module>")
+            {
+                string methodScope = method.DeclaringType.Scope.Name;
+                if (methodScope != _assembly.GetName().Name && methodScope != _assembly.ManifestModule.Name) return true;
+                MethodInfo definition;
+                if (!_globalMethods120.TryGetValue(method.Name, out definition)) return true;
+                var generic = method as Mono.Cecil.GenericInstanceMethod;
+                if (generic == null) __result = definition;
+                else
+                {
+                    var args = new Type[generic.GenericArguments.Count];
+                    for (int i = 0; i < args.Length; i++) args[i] = MonoMod.Utils.ReflectionHelper.ResolveReflection(generic.GenericArguments[i]);
+                    __result = definition.MakeGenericMethod(args);
+                }
+                return false;
+            }
             var field = __0 as Mono.Cecil.FieldReference;
             if (field == null || _assembly == null || field.DeclaringType == null) return true;
             string scope = field.DeclaringType.Scope.Name;
@@ -138,12 +176,18 @@ namespace WildWasteland.Core
         /// <summary>Rebuilds <see cref="RoadIdentity"/> from the mod's terrain/region/road/tile/seam settings.</summary>
         private static void SettingsChanged(object sender, SettingChangedEventArgs args)
         {
+            if (_roadFurniture != null && _roadFurniture.Value && _patrolsEnabled != null && _patrolsEnabled.Value)
+            {
+                _roadFurniture.Value = false;
+                Log.Main(_owner, "Vistas road furniture disabled while Patrols is enabled: highway patrol clearance requires open lanes.");
+            }
             var values = new List<string>();
             foreach (var entry in _config)
-                if (entry.Key.Section == "Terrain" || entry.Key.Section == "Regions" && (entry.Key.Key == "Enabled" || entry.Key.Key == "Scale" || entry.Key.Key == "Blend" || entry.Key.Key == "ExtraTypes" || entry.Key.Key == "Landmarks") || entry.Key.Section == "Roads" || entry.Key.Section == "Tiles" || entry.Key.Section == "Seams")
+                if (entry.Key.Section == "Terrain" || entry.Key.Section == "Regions" && (entry.Key.Key == "Enabled" || entry.Key.Key == "Scale" || entry.Key.Key == "Blend" || entry.Key.Key == "ExtraTypes" || entry.Key.Key == "Landmarks") || entry.Key.Section == "Roads" || entry.Key.Section == "Tiles" || entry.Key.Section == "Seams" || entry.Key.Section == "Water" || entry.Key.Section == "World")
                     values.Add(entry.Key.Section + ":" + entry.Key.Key + "=" + entry.Value.GetSerializedValue());
             values.Sort(StringComparer.Ordinal); RoadIdentity = _assemblyId + "|" + string.Join("|", values.ToArray());
         }
+        private static void PatrolsChanged(object sender, EventArgs args) { SettingsChanged(null, null); }
         /// <summary>Field by name and exact type (the mod overloads field names by type).</summary>
         private static FieldInfo Field(Type type, string name, Type value)
         {
@@ -166,10 +210,14 @@ namespace WildWasteland.Core
         /// <summary>Patches one target with this class's named prefix/postfix/transpiler; throws when refused.</summary>
         private static void Hook(MethodInfo original, string prefix = null, string postfix = null, string transpiler = null)
         {
+            if (original == null) throw new MissingMethodException("Vistas hook target");
+            string patch = prefix ?? postfix ?? transpiler;
+            _hooks.Add(new KeyValuePair<MethodInfo, MethodInfo>(original, AccessTools.Method(typeof(VistasWorldGen), patch)));
             if (!Patches.Patch(_owner, original, prefix: prefix == null ? null : AccessTools.Method(typeof(VistasWorldGen), prefix),
                 postfix: postfix == null ? null : AccessTools.Method(typeof(VistasWorldGen), postfix),
                 transpiler: transpiler == null ? null : AccessTools.Method(typeof(VistasWorldGen), transpiler)))
                 throw new InvalidOperationException("Cannot patch " + original.DeclaringType.FullName + "." + original.Name);
+            if (prefix != null && transpiler != null) _hooks.Add(new KeyValuePair<MethodInfo, MethodInfo>(original, AccessTools.Method(typeof(VistasWorldGen), transpiler)));
         }
         /// <summary>Prefix of the mod's banner draw: skipped while the WW HUD draws banners.</summary>
         private static bool OriginalBanner() { var display = ModApi.Get<IPlaceBannerDisplay>(); return display == null || !display.Enabled; }

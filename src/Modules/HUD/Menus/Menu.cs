@@ -823,7 +823,7 @@ namespace WildWasteland.Modules.HUD
             if (_tab == "GRAPHICS")
             {
                 const float AW = 300, AH = 50;
-                var apply = CenteredRow(_sub, RX + RW - AW, Y + H - AH - 14, AW, AH, "APPLY DISPLAY", 26, () => _display.Apply());
+                var apply = CenteredRow(_sub, RX + RW - AW, Y + H - AH - 14, AW, AH, "APPLY DISPLAY", 26, () => { _display.Apply(); Back(); });
                 apply.Sticky = true; apply.Refresh();
                 apply.GetComponent<Image>().color = new Color(Gold.r, Gold.g, Gold.b, .15f);
                 Frame(apply.transform, 0, 0, AW, AH, 1.5f, Gold);

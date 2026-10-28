@@ -17,7 +17,6 @@ namespace WildWasteland.Core
         internal static bool MenuModalOpen;
         static int _failed;
         static readonly string[,] Recommended = {
-            { "apocalypter.worldamp", "Vista World Gen", "73" },
             { "com.fived.apocalypter.fallout_nv_radio", "Apocalypter Radio", "74" },
             { "local.apocalypter.chasecamera", "ApocaChaseCam", "44" },
             { "apocalypter.dogcompanion", "Dog Companion", "55" },

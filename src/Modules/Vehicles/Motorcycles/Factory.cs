@@ -80,7 +80,7 @@ namespace WildWasteland.Modules.Vehicles.Motorcycles
             Required(copy, "hinge_wheel_F"); Required(copy, "hinge_wheel_M");
             foreach (var path in new[] { "parts/model/colliders_car", "hinge_wheel_RL", "hinge_wheel_RR",
                 "hinge_bumper_rear", "hinge_roofrack", "hinge_trunk", "hinge_seat_rear", "hitch", "hitch_raycast",
-                "parts/interior_car_light", "parts/toolset_1", "parts/toolset_2" })
+                "parts/interior_car_light" })
                 Disable(Required(copy, path));
             // Duplicate names (fabric, wire, bottom) require enumeration, not Transform.Find.
             var rearNames = new HashSet<string>(new[] { "fabric", "wire", "roof", "bottom", "wheel cover", "springs", "suspension", "body rear" });
@@ -129,6 +129,7 @@ namespace WildWasteland.Modules.Vehicles.Motorcycles
             rb.inertiaTensor = com.inertiaTensor; rb.inertiaTensorRotation = Quaternion.identity;
             rb.isKinematic = false; rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
             MotorcycleIntegration.TrimRearCollision(copy);
+            MotorcycleRack.Prepare(copy);
             copy.AddComponent<MotorcycleRearAccess>();
             copy.AddComponent<MotorcycleBalance>();
         }

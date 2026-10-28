@@ -42,6 +42,7 @@ namespace WildWasteland.Modules.Debug
         internal static readonly List<string> Failures = new List<string>();
         internal static readonly ConcurrentQueue<TraceEvent> Events = new ConcurrentQueue<TraceEvent>();
         private static readonly ConcurrentDictionary<MethodBase, Probe> Map = new ConcurrentDictionary<MethodBase, Probe>();
+        private static readonly Dictionary<string, Probe> VistaFeatures = new Dictionary<string, Probe>(StringComparer.Ordinal);
         private static readonly Queue<MethodInfo> Pending = new Queue<MethodInfo>();
         private static readonly HashSet<MethodBase> Queued = new HashSet<MethodBase>();
         internal static int MainThread, Frame, Dropped;
@@ -64,7 +65,7 @@ namespace WildWasteland.Modules.Debug
         internal static void Initialize()
         {
             MainThread = Thread.CurrentThread.ManagedThreadId;
-            Scopes.Clear(); Probes.Clear(); Failures.Clear(); Map.Clear(); Pending.Clear(); Queued.Clear(); Fault = null;
+            Scopes.Clear(); Probes.Clear(); Failures.Clear(); Map.Clear(); VistaFeatures.Clear(); Pending.Clear(); Queued.Clear(); Fault = null;
             var byName = new Dictionary<string, Scope>(StringComparer.Ordinal);
             Type[] types;
             try { types = typeof(WildWasteland.Core.Scheduler).Assembly.GetTypes(); }
@@ -94,6 +95,7 @@ namespace WildWasteland.Modules.Debug
         private static bool Boundary(MethodInfo method)
         {
             string n = method.Name;
+            if (VistaRun(method)) return true;
             return n.StartsWith("Before", StringComparison.Ordinal) || n.StartsWith("After", StringComparison.Ordinal) || n.StartsWith("On", StringComparison.Ordinal)
                 || n.StartsWith("Build", StringComparison.Ordinal) || n.StartsWith("Load", StringComparison.Ordinal) || n.StartsWith("Save", StringComparison.Ordinal)
                 || n.StartsWith("Draw", StringComparison.Ordinal) || n.StartsWith("Refresh", StringComparison.Ordinal)
@@ -104,7 +106,9 @@ namespace WildWasteland.Modules.Debug
                 || n == "GetAsync" || n == "Init" || n == "Shutdown" || n == "RunPrefix" || n == "RunPostfix" || n == "Start" || n == "Stop"
                 || n == "MoveNext" || n == "Generate" || n == "Apply" || n == "ProcessEvent" || n == "EnterState" || n.StartsWith("SendEvent", StringComparison.Ordinal);
         }
-        /// <summary>Discovers optional managed base-game/FSM/terrain/save candidates only on explicit request.</summary>
+        private static bool VistaRun(MethodBase method)
+        { return method.Name == "Run" && method.DeclaringType.FullName == "ApocalpyterWorldAmp.WorldAmpDriver"; }
+        /// <summary>Discovers optional managed base-game/FSM/terrain/save and Vista candidates only on explicit request.</summary>
         internal static void DiscoverNative()
         {
             if (Scopes.Exists(s => s.Name.StartsWith("Game.", StringComparison.Ordinal))) return;
@@ -112,14 +116,16 @@ namespace WildWasteland.Modules.Debug
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 string name = assembly.GetName().Name;
-                if (name != "Assembly-CSharp" && name != "PlayMaker" && name != "MapMagic" && !name.StartsWith("ES3", StringComparison.Ordinal)) continue;
+                bool vista = name == "ApocalpyterWorldAmp";
+                if (!vista && name != "Assembly-CSharp" && name != "PlayMaker" && name != "MapMagic" && !name.StartsWith("ES3", StringComparison.Ordinal)) continue;
                 Type[] types;
                 try { types = assembly.GetTypes(); } catch (ReflectionTypeLoadException e) { types = e.Types; } catch (Exception e) { Failures.Add(name + ": " + e.Message); continue; }
                 foreach (var type in types)
                 {
                     if (type == null || type.ContainsGenericParameters) continue;
                     string full = type.FullName ?? type.Name;
-                    string group = name == "PlayMaker" || type.Name == "PlayMakerFSM" ? "Game.PlayMaker" : full.IndexOf("MapMagic", StringComparison.Ordinal) >= 0 ? "Game.Terrain" : full.StartsWith("ES3", StringComparison.Ordinal) ? "Game.Save" : full.StartsWith("HutongGames.PlayMaker.Actions.", StringComparison.Ordinal) ? "Game.Actions" : "Game.Scripts";
+                    if (vista && !typeof(UnityEngine.MonoBehaviour).IsAssignableFrom(type)) continue;
+                    string group = vista ? "Mod.Vista" : name == "PlayMaker" || type.Name == "PlayMakerFSM" ? "Game.PlayMaker" : full.IndexOf("MapMagic", StringComparison.Ordinal) >= 0 ? "Game.Terrain" : full.StartsWith("ES3", StringComparison.Ordinal) ? "Game.Save" : full.StartsWith("HutongGames.PlayMaker.Actions.", StringComparison.Ordinal) ? "Game.Actions" : "Game.Scripts";
                     if (name == "PlayMaker" && type.Name != "Fsm" && type.Name != "FsmState" && type.Name != "FsmStateAction") continue;
                     Scope scope; if (!groups.TryGetValue(group, out scope)) { scope = new Scope { Name = group }; groups.Add(group, scope); }
                     try { foreach (var method in type.GetMethods(BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
@@ -151,10 +157,27 @@ namespace WildWasteland.Modules.Debug
             Map[method] = probe;
             try
             {
-                if (!Patches.Patch(DebugModule.Instance, method, prefix: Patches.Method(typeof(Instrumentation), nameof(Begin)), finalizer: Patches.Method(typeof(Instrumentation), nameof(End)))) throw new InvalidOperationException("Core rejected the diagnostic probe; see patch records.");
+                if (!Patches.Patch(DebugModule.Instance, method, prefix: Patches.Method(typeof(Instrumentation), VistaRun(method) ? nameof(BeginVista) : nameof(Begin)), finalizer: Patches.Method(typeof(Instrumentation), nameof(End)))) throw new InvalidOperationException("Core rejected the diagnostic probe; see patch records.");
                 Probes.Add(probe); scope.Patched++;
             }
             catch (Exception e) { Probe ignored; Map.TryRemove(method, out ignored); scope.Failed++; Failures.Add(probe.Name + ": " + e.GetBaseException().Message); }
+        }
+        /// <summary>Separates Vista's two main-thread feature dispatchers by their original feature label.</summary>
+        private static void BeginVista(MethodBase __originalMethod, string __0, out Token __state)
+        {
+            Begin(__originalMethod, out __state);
+            if (__state.Probe == null) return;
+            try
+            {
+                Probe feature;
+                if (!VistaFeatures.TryGetValue(__0, out feature))
+                {
+                    feature = new Probe { Scope = __state.Probe.Scope, Name = "WorldAmpDriver.Run: " + __0 };
+                    VistaFeatures.Add(__0, feature); Probes.Add(feature);
+                }
+                __state.Probe = feature;
+            }
+            catch (Exception e) { Fault = e.GetType().Name + ": " + e.Message; Timing = false; }
         }
         /// <summary>Diagnostic Harmony prefix: returns immediately unless the selected probe is active and timing is enabled.</summary>
         private static void Begin(MethodBase __originalMethod, out Token __state)
@@ -225,10 +248,10 @@ namespace WildWasteland.Modules.Debug
         internal static void Remove()
         {
             Timing = false; Pending.Clear(); Queued.Clear();
-            var prefix = Patches.Method(typeof(Instrumentation), nameof(Begin));
             var finalizer = Patches.Method(typeof(Instrumentation), nameof(End));
             foreach (var pair in Map)
             {
+                var prefix = Patches.Method(typeof(Instrumentation), VistaRun(pair.Key) ? nameof(BeginVista) : nameof(Begin));
                 bool prefixRemoved = Patches.UnpatchMethod(DebugModule.Instance, pair.Key, prefix);
                 bool finalizerRemoved = Patches.UnpatchMethod(DebugModule.Instance, pair.Key, finalizer);
                 if (!prefixRemoved || !finalizerRemoved)
@@ -241,6 +264,8 @@ namespace WildWasteland.Modules.Debug
                 Probes.Remove(pair.Value);
                 if (pair.Value.Scope.Patched > 0) pair.Value.Scope.Patched--;
             }
+            foreach (var feature in VistaFeatures.Values) Probes.Remove(feature);
+            VistaFeatures.Clear();
             foreach (var scope in Scopes) scope.Enabled = false;
             if (Map.Count == 0) Fault = null;
             // In-flight finalizers retain their Probe references safely. New hooks no longer start.

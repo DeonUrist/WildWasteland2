@@ -10,7 +10,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Contributes independent HUD/map rows without Core depending on HUD types.</summary>
         private void CleanSettings(SettingsShell shell)
         {
-            shell.Custom(this, SettingsShell.Page.World, "", NavigationSettings, 40);
+            shell.Custom(this, SettingsShell.Page.World, "", NavigationSettings, 201);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawDirection, 120, 1);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawAmmo, 140, 0);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawHealthNumbers, 140, 1);
@@ -70,7 +70,6 @@ namespace WildWasteland.Modules.HUD
         /// <summary>WORLD tail: fog of war, compass detail and map marker levels.</summary>
         private static void NavigationSettings(ToolLayout l)
         {
-            l.Text("Map and compass world settings");
             SettingsShell.Switch(l, "Fog of war", FogOfWar, "Hides the unvisited sections of the map");
             int patrols = CompassDetail(l, "Patrols on compass", ShowConvoys, AmbiguousPatrols);
             l.Hint(patrols == 0 ? "Patrols are not displayed on compass" : patrols == 1 ? "Patrols are visible on compass without showing their allegiance" : "Patrols are displayed and color coded");

@@ -104,6 +104,7 @@ namespace WildWasteland.Modules.NPCAI
             internal int BuildIndex; internal bool Ready, Queued;
             internal PoiNavData Source;
             internal IPoiNavigationBake Bake;
+            internal Inst Pending;
             internal bool LocalBake, NeedsBake, BakeFailed;
             internal int CheckEdge, CheckSample, CheckLink;
             /// <summary>Scene position of a POI-local point.</summary>
@@ -140,7 +141,7 @@ namespace WildWasteland.Modules.NPCAI
                 {
                     if (data == null) { _inst.Remove(id); continue; }
                     if (inst.Source != data || (inst.RootPos - r.position).sqrMagnitude > .01f) Build(inst, data);
-                    else if (!inst.Ready && !inst.Queued && !inst.BakeFailed && (!inst.NeedsBake || NavigationAuthoringApi.BakerAvailable))
+                    else if ((!inst.Ready || inst.NeedsBake) && !inst.Queued && !inst.BakeFailed && (!inst.NeedsBake || NavigationAuthoringApi.BakerAvailable))
                     { inst.Queued = true; _builds.Enqueue(inst); }
                     continue;
                 }
@@ -149,6 +150,17 @@ namespace WildWasteland.Modules.NPCAI
                 Build(inst, data);
                 _inst[id] = inst;
             }
+            var player = GameRefs.Player;
+            if (player != null && _builds.Count > 1)
+            {
+                var near = At(player.transform.position, false);
+                if (near != null) near = near.Pending ?? near;
+                if (near != null && near.Queued && near != _builds.Peek() && _builds.Contains(near))
+                {
+                    if (Log.L2) Log.Deep(NavRuntime.Owner, "POI navigation: prioritizes " + near.Poi + " at the player; pauses " + _builds.Peek().Poi);
+                    while (_builds.Peek() != near) _builds.Enqueue(_builds.Dequeue());
+                }
+            }
         }
 
         /// <summary>(Re)binds an instance to its data: world bounds now, node positions queued for the sliced build.</summary>
@@ -156,7 +168,7 @@ namespace WildWasteland.Modules.NPCAI
         {
             inst.Ready = false; inst.BuildIndex = 0;
             if (!local) inst.Source = data;
-            inst.LocalBake = local; inst.NeedsBake = inst.BakeFailed = false; inst.Bake = null;
+            inst.LocalBake = local; inst.NeedsBake = inst.BakeFailed = false; inst.Bake = null; inst.Pending = null;
             inst.CheckEdge = inst.CheckSample = inst.CheckLink = 0;
             inst.Data = data; inst.G = GraphOf(data); inst.RootPos = inst.Root.position;
             inst.World = new Vector3[data.Nodes.Count];
@@ -181,9 +193,9 @@ namespace WildWasteland.Modules.NPCAI
             if (_buildFrame != Time.frameCount) { _buildFrame = Time.frameCount; _buildNodes = _buildRays = 0; }
             if (_buildNodes >= 256 || _buildRays >= 64) return false;
             var inst = _builds.Peek(); Inst live;
-            if (inst.Root == null || !inst.Root.gameObject.activeInHierarchy || !_inst.TryGetValue(inst.Id, out live) || live != inst)
+            if (inst.Root == null || !inst.Root.gameObject.activeInHierarchy || !_inst.TryGetValue(inst.Id, out live) || live != inst && live.Pending != inst)
             { _builds.Dequeue(); inst.Queued = false; return _builds.Count > 0; }
-            if (inst.NeedsBake) return RebuildTerrain(inst);
+            if (inst.NeedsBake && inst.Ready) return RebuildTerrain(inst);
             if (!inst.G.Ready) { inst.G.Step(); _buildNodes++; return true; }
             if (inst.BuildIndex < inst.World.Length)
             {
@@ -192,7 +204,7 @@ namespace WildWasteland.Modules.NPCAI
                 if (!inst.LocalBake)
                 {
                     _buildRays++;
-                    if (Nav.TerrainMismatch(inst.World[k], inst.Data.Nodes[k].Terrain)) { inst.NeedsBake = true; return true; }
+                    if (Nav.TerrainMismatch(inst.World[k], inst.Data.Nodes[k].Terrain)) inst.NeedsBake = true;
                 }
                 if (inst.Data.Nodes[k].Terrain)
                 {
@@ -202,8 +214,15 @@ namespace WildWasteland.Modules.NPCAI
             }
             if (inst.BuildIndex >= inst.World.Length)
             {
+                if (!inst.Ready)
+                {
+                    inst.Ready = true;
+                    if (!inst.LocalBake && Log.L2) Log.Deep(NavRuntime.Owner, "POI navigation: " + inst.Poi + " authored graph ready; retained during terrain validation and rebake");
+                }
+                if (inst.NeedsBake) return true;
                 if (!inst.LocalBake && !ValidateTerrainStep(inst)) return true;
-                inst.Ready = true; inst.Queued = false; _builds.Dequeue();
+                inst.Queued = false; _builds.Dequeue();
+                if (live.Pending == inst) { live.Pending = null; _inst[inst.Id] = inst; }
                 if (Log.L2) Log.Deep(NavRuntime.Owner, "POI navigation: " + inst.Poi + (inst.LocalBake ? " instance terrain bake ready" : " shared bake terrain validated") + " at " + inst.RootPos.ToString("F1"));
             }
             return _builds.Count > 0;
@@ -678,7 +697,8 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Floating origin: instance points, boxes, routes and running traversals move by delta.</summary>
         internal static void ShiftCore(Vector3 delta)
         {
-            foreach (var i in _inst.Values)
+            foreach (var entry in _inst.Values)
+            for (var i = entry; i != null; i = i.Pending)
             {
                 if (i.World != null) for (int k = 0; k < (i.Ready ? i.World.Length : i.BuildIndex); k++) i.World[k] += delta;
                 i.Box.center += delta; i.RootPos += delta;

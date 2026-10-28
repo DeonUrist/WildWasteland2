@@ -33,7 +33,7 @@ namespace WildWasteland.Modules.Compatibility
                 ConfigEntry<bool> enabled;
                 if (!info.Instance.Config.TryGetEntry<bool>(new ConfigDefinition("Vehicles", "EngineHeat"), out enabled)) throw new MissingMemberException("Vehicles.EngineHeat");
                 _enabled = enabled;
-                var draw = AccessTools.Method(asm.GetType("a.u", true), "A", Type.EmptyTypes);
+                var draw = AccessTools.Method(asm.GetType(VistasWorldGen.Is120 ? "_G7gAGn3n6Xn0ykZHR6erBr2v8Yu" : "a.u", true), VistasWorldGen.Is120 ? "_y7TsiWDFJIbMXNCOBel5vmUTcrG" : "A", Type.EmptyTypes);
                 if (draw == null || !draw.IsStatic || draw.ReturnType != typeof(void) || !Core.Patches.Patch(owner, draw, prefix: AccessTools.Method(typeof(VistasEngineHud), "Draw"))) throw new MissingMethodException("Engine heat HUD");
                 Log.Main(owner, "World Amp engine warnings use HUD notifications; temperature remains on gauges");
             }

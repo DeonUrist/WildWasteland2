@@ -189,8 +189,18 @@ namespace WildWasteland.Modules.Gunplay
         private static readonly string[] EnemyProfiles = { "Stormtroopers", "Survivors", "Soldiers", "Redshirt" };
         private static void DrawEnemies(ToolLayout l)
         {
+            l.Heading("Enemies");
+            if (!l.Matches("Enemies")) return;
             int current = Array.IndexOf(EnemyProfiles, GunplaySettings.Enemies.Value);
-            int next = l.Choices("Enemies", current, EnemyProfiles);
+            int next = current;
+            var row = l.Next(28); Ledger.RowHighlight(row);
+            Ledger.Label(new Rect(row.x + 22, row.y, row.width * ToolLayout.LabelWidth - 36, row.height), "Enemies", Ledger.Body, !GUI.enabled ? Ledger.Muted : row.Contains(Event.current.mousePosition) ? Ledger.Accent : Ledger.Text);
+            float x = row.x + row.width * ToolLayout.LabelWidth, width = (row.width * (1 - ToolLayout.LabelWidth) - 18) / EnemyProfiles.Length;
+            for (int i = 0; i < EnemyProfiles.Length; i++)
+            {
+                float extra = i == 0 ? 120 : 0;
+                if (Ledger.Choice(new Rect(x + i * (width + 6) - extra, row.y, width + extra, row.height), EnemyProfiles[i], i == current)) next = i;
+            }
             if (next != current) GunplaySettings.Enemies.Value = EnemyProfiles[next];
             l.Hint(next == 0 ? "Enemies have trouble aiming" : next == 1 ? "Enemies know how to use guns" : next == 2 ? "Enemies are deadly killers" : "Enemies barely miss");
         }

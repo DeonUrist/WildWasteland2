@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.NPCAI
             {
                 inst.Bake = NavigationAuthoringApi.CreateBake(inst.Root, inst.Source);
                 Log.Main(NavRuntime.Owner, "POI navigation: terrain mismatch " + inst.Poi + " at " + inst.RootPos.ToString("F1")
-                    + (inst.Bake == null ? "; waiting for Tools baker; using grid navigation" : "; rebaking this instance only"));
+                    + (inst.Bake == null ? "; waiting for Tools baker; keeping authored graph" : "; rebaking this instance only; keeping authored graph"));
                 if (inst.Bake == null) { _builds.Dequeue(); inst.Queued = false; return _builds.Count > 0; }
             }
             if (!NavigationAuthoringApi.BakerAvailable) { inst.Bake = null; _builds.Dequeue(); inst.Queued = false; return _builds.Count > 0; }
@@ -46,11 +46,16 @@ namespace WildWasteland.Modules.NPCAI
             if (inst.Bake.Done)
             {
                 var result = inst.Bake.Result;
-                if (result != null) Build(inst, result, true);
+                if (result != null)
+                {
+                    var pending = new Inst { Root = inst.Root, Poi = inst.Poi, Id = inst.Id, Source = inst.Source };
+                    Build(pending, result, true); inst.Pending = pending;
+                    inst.Bake = null; inst.NeedsBake = false; inst.Queued = false; _builds.Dequeue();
+                }
                 else
                 {
                     inst.Bake = null; inst.BakeFailed = true; _builds.Dequeue(); inst.Queued = false;
-                    Log.Warn(NavRuntime.Owner, "POI navigation: instance terrain bake failed " + inst.Poi + "; using grid navigation");
+                    Log.Warn(NavRuntime.Owner, "POI navigation: instance terrain bake failed " + inst.Poi + "; keeping authored graph");
                 }
             }
             return false;

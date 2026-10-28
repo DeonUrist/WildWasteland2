@@ -1,5 +1,6 @@
 using NWH.VehiclePhysics2;
 using UnityEngine;
+using WildWasteland.Core;
 using WildWasteland.Modules.Vehicles;
 
 namespace WildWasteland.Modules.Vehicles.Motorcycles
@@ -18,6 +19,8 @@ namespace WildWasteland.Modules.Vehicles.Motorcycles
             vehicle = GetComponent<VehicleController>();
             body = GetComponent<Rigidbody>();
         }
+
+        private void Start() { vehicle.steering.maximumSteerAngle = 30f; Log.Main(VehiclesModule.Instance, "Motorcycle handling: native steering range restored; restrictive speed cap removed."); }
 
         /// <summary>Per physics step (module running, controller ready, not kinematic): tyre force height, then a critically damped roll PD toward the steering lean.</summary>
         private void FixedUpdate()

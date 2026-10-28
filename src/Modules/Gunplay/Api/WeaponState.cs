@@ -18,12 +18,13 @@ namespace WildWasteland.Modules.Gunplay
         internal static readonly WeaponState Instance = new WeaponState();
 
         readonly Dictionary<Fsm, string> _calibers = new Dictionary<Fsm, string>();
+        readonly Dictionary<Fsm, FsmBool> _hammers = new Dictionary<Fsm, FsmBool>();
 
         /// <summary>Private: use <see cref="Instance"/>.</summary>
         WeaponState() { }
 
         /// <summary>Drops per-FSM caches (scene change).</summary>
-        internal void Clear() { _calibers.Clear(); }
+        internal void Clear() { _calibers.Clear(); _hammers.Clear(); }
 
         /// <summary>The player holds a weapon (WeaponInHand weaponType set and not "hands").</summary>
         public bool HasWeapon { get { var t = WeaponTransition.CurrentWeaponType; return !string.IsNullOrEmpty(t) && t != "hands"; } }
@@ -76,9 +77,26 @@ namespace WildWasteland.Modules.Gunplay
                 var r = PerGunAmmo.CurrentReload;
                 if (r == null) return false;
                 var attack = FsmUtil.Find(r.gameObject, "Attack");
-                var hammer = attack != null ? attack.FsmVariables.FindFsmBool("hammer") : null;
+                var hammer = HammerOf(attack);
                 return hammer != null && !hammer.Value && AmmoInGun > 0;
             }
+        }
+
+        /// <summary>Only a hammer tested by the native firing logic counts; Folk 17's unused variable does not.</summary>
+        FsmBool HammerOf(PlayMakerFSM attack)
+        {
+            if (attack == null || attack.Fsm == null || !attack.Fsm.Initialized) return null;
+            FsmBool hammer;
+            if (_hammers.TryGetValue(attack.Fsm, out hammer)) return hammer;
+            foreach (var st in attack.FsmStates)
+                foreach (var a in st.Actions)
+                {
+                    var test = a as BoolTest;
+                    if (test != null && test.Enabled && test.boolVariable != null && test.boolVariable.Name == "hammer")
+                    { hammer = test.boolVariable; _hammers[attack.Fsm] = hammer; return hammer; }
+                }
+            _hammers[attack.Fsm] = null;
+            return null;
         }
 
         /// <summary>The drawn gun's Reload FSM is not idle, or the unloader runs.</summary>

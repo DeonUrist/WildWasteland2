@@ -15,6 +15,9 @@ namespace WildWasteland.Modules.NPCAI
             private readonly Dictionary<long, Field> _fields = new Dictionary<long, Field>();
             private readonly List<KeyValuePair<Field, int>> _work = new List<KeyValuePair<Field, int>>();
             private Structure _map;
+            private NavigationAuthoringInstance _view;
+            private int[] _viewNodes;
+            private int _viewCell;
             private Vector3 _anchor;
             private int _cell, _near, _workIndex, _copied, _probed;
             internal bool Ready { get; private set; }
@@ -149,8 +152,45 @@ namespace WildWasteland.Modules.NPCAI
                 if (work.Key.H == null || work.Key.Dist[work.Value] <= work.Key.Settled) _work.RemoveAt(_workIndex); else _workIndex++;
                 return _work.Count > 0;
             }
+            /// <summary>Copies the actual ground cells and legal moves into a cached, display-only graph in bounded batches.</summary>
+            internal void AppendView(List<NavigationAuthoringInstance> into)
+            {
+                if (!Ready || _site.Anchor == null) return;
+                Sync(); int n = _map.FloorY.Length;
+                var box = new Bounds(CellCenter(_map, _map.W / 2, _map.H / 2, _map.RefY), new Vector3(_map.W * _map.Cell, 12, _map.H * _map.Cell));
+                var camera = GameRefs.MainCamera; if (camera == null || (box.center - camera.transform.position).sqrMagnitude > 250f * 250f) return;
+                if (_view == null)
+                {
+                    _view = new NavigationAuthoringInstance { Root = _site.Anchor, Data = new PoiNavData { Poi = _map.Name, Surfaces = _map.CompSize.Length } };
+                    _viewNodes = new int[n];
+                }
+                int end = Mathf.Min(n * 2, _viewCell + 512);
+                while (_viewCell < end)
+                {
+                    int i = _viewCell++ % n, x = i % _map.W, z = i / _map.W;
+                    if (float.IsNaN(_map.FloorY[i])) continue;
+                    if (_viewCell <= n)
+                    {
+                        _viewNodes[i] = _view.Data.Nodes.Count;
+                        var point = CellCenter(_map, x, z, _map.FloorY[i]) + Vector3.up * .08f;
+                        _view.Data.Nodes.Add(new PoiNavNode { Pos = _site.Anchor.InverseTransformPoint(point), Surface = _map.Comp[i] });
+                        continue;
+                    }
+                    for (int k = 0; k < 4; k++)
+                    {
+                        int cx = x + EdgeDx[k], cz = z + EdgeDz[k];
+                        if (cx < 0 || cz < 0 || cx >= _map.W || cz >= _map.H) continue;
+                        int next = cz * _map.W + cx; if (!Move(_map, i, next)) continue;
+                        _view.Data.Edges.Add(_viewNodes[i]); _view.Data.Edges.Add(_viewNodes[next]);
+                    }
+                }
+                if (!_view.Ready && _viewCell == n * 2)
+                { _view.Ready = true; Log.Always(NavRuntime.Owner, "Towns: navigation display ready " + _site.Plan.Key + ": " + _view.Data.Nodes.Count + " walkable cells, " + _view.Data.Edges.Count / 2 + " connections, " + _map.CompSize.Length + " connected areas."); }
+                _view.Box = box;
+                into.Add(_view);
+            }
             public void Dispose()
-            { foreach (var field in _fields.Values) Return(field); _fields.Clear(); _work.Clear(); _buildings.Clear(); _map = null; Ready = false; }
+            { foreach (var field in _fields.Values) Return(field); _fields.Clear(); _work.Clear(); _buildings.Clear(); _view = null; _viewNodes = null; _viewCell = 0; _map = null; Ready = false; }
         }
     }
 }

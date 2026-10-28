@@ -286,7 +286,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Contributes the shout key row to the shared HUD settings page, then the Navigation rows.</summary>
         public override void Settings(SettingsShell shell)
         {
-            shell.Custom(this, SettingsShell.Page.World, "", l => SettingsShell.Switch(l, "Enemy Spawn Randomizer", NpcaiSettings.EnemySpawnRandomizer, "Randomizes enemies at existing POIs within their faction category and leaves 15% of eligible sites empty; affects future spawns only"), 30);
+            shell.Custom(this, SettingsShell.Page.World, "", l => SettingsShell.Switch(l, "Enemy Spawn Randomizer", NpcaiSettings.EnemySpawnRandomizer, "Randomizes enemies at existing POIs within their faction category and leaves 15% of eligible sites empty; affects future spawns only"), 6);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawShoutRow, 210);
             SettingsNavigation(shell);
         }

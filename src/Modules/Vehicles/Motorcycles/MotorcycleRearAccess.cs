@@ -6,8 +6,8 @@ namespace WildWasteland.Modules.Vehicles
     internal sealed class MotorcycleRearAccess : MonoBehaviour
     {
         /// <summary>Re-applies the rear collider trim when the chassis is enabled.</summary>
-        private void OnEnable() { MotorcycleIntegration.TrimRearCollision(gameObject); }
+        private void OnEnable() { MotorcycleIntegration.TrimRearCollision(gameObject); MotorcycleRack.Refresh(gameObject); }
         /// <summary>Re-applies the rear collider trim after Easy Save wrote the loaded values.</summary>
-        private void Start() { MotorcycleIntegration.TrimRearCollision(gameObject); }
+        private void Start() { MotorcycleIntegration.TrimRearCollision(gameObject); MotorcycleRack.Refresh(gameObject); }
     }
 }

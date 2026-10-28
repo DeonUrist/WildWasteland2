@@ -526,6 +526,7 @@ namespace WildWasteland.Modules.POI
         private LoadingProgress.Work? LoadProgress()
         {
             if (!_running || _blocked) return null;
+            if (_vista.Count > 0) return new LoadingProgress.Work(.35f, "Preparing town sites and access roads | " + _vista.Count + " terrain blocks remaining");
             float done = 0, total = 0; int ready = 0, count = 0; string stage = null;
             foreach (var live in _sites)
             {
@@ -544,6 +545,7 @@ namespace WildWasteland.Modules.POI
             }
             if (count == ready) return null;
             float fraction = Mathf.Clamp01(done / Mathf.Max(1, total));
+            if (WorldGeneration.Present) fraction = .35f + .65f * fraction;
             // The shared screen reserves 70–98% of overall loading for module preparation.
             int remaining = Mathf.CeilToInt((.3f - .28f * fraction) * 100);
             return new LoadingProgress.Work(fraction, stage + " | " + ready + "/" + count + " towns ready | " + remaining + "% of load remaining");

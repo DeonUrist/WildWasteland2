@@ -63,6 +63,7 @@ namespace WildWasteland.Modules.NPCAI
                 }
                 into.Add(view.Value);
             }
+            TownNavigationApi.AppendViews(into);
         }
         /// <summary>Loads authored data synchronously only for explicit editor use.</summary>
         public PoiNavData Get(string poi) { return Snapshot(PoiNavStore.Get(poi)); }

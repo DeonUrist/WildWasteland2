@@ -128,7 +128,7 @@ namespace WildWasteland.Modules.Debug
             if (GUILayout.Button("Remove all timing hooks")) { Instrumentation.Remove(); _runtime.Status = "Detailed hooks removed; low-overhead overview remains."; }
             GUILayout.EndHorizontal();
             GUILayout.Label(Measurements.Coverage);
-            if (GUILayout.Button("Discover optional BASE GAME probes (FSM / terrain / save / scripts)")) Instrumentation.DiscoverNative();
+            if (GUILayout.Button("Discover optional BASE GAME + VISTA probes (FSM / terrain / save / scripts)")) Instrumentation.DiscoverNative();
             foreach (var scope in Instrumentation.Scopes)
             {
                 if (!Matches(scope.Name)) continue;

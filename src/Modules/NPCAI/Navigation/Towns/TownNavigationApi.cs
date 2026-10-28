@@ -24,6 +24,7 @@ namespace WildWasteland.Modules.NPCAI
         /// <summary>Starts the sliced catalog generation once.</summary>
         internal void Start(IModule owner){_owner=owner;TownOverlap.Install();_waypoints=Nav.AddWaypointProvider(owner,this,0);Scheduler.Sliced(owner,"Town ground route fields",500,FieldsStep);}
         private bool FieldsStep(){foreach(var e in Sites.Values)if(e.Site.Anchor!=null&&e.Routing!=null&&e.Routing.Route.FieldsStep())return true;return false;}
+        internal static void AppendViews(List<NavigationAuthoringInstance> into){foreach(var e in Sites.Values)if(e.Site.Anchor!=null&&e.Routing!=null)e.Routing.Route.AppendView(into);}
         /// <summary>Returns stop for the current owner state.</summary>
         internal void Stop(){Nav.RemoveWaypointProvider(_waypoints);foreach(var gate in _gates.Values){Nav.RemoveMakeGate(gate.Ready);Nav.RemoveWaypointProvider(gate.Waypoint);}_gates.Clear();foreach(var e in Sites.Values){e.Overlay?.Dispose();e.Routing?.Dispose();}Sites.Clear();TownOverlap.Uninstall();_owner=null;}
         /// <summary>Builds or refreshes the detached live navigation context for the town.</summary>

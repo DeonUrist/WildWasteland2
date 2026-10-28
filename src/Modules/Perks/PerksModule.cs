@@ -53,6 +53,7 @@ namespace WildWasteland.Modules.Perks
         {
             shell.Custom(this, SettingsShell.Page.Player, "", DrawFastXpGain, 10);
             shell.Resettable(this, SettingsShell.Page.Player, _fastXpGain);
+            shell.Custom(this, SettingsShell.Page.World, "", l => l.Heading("Madness System"), 99);
             shell.Row(this, SettingsShell.Page.World, "", _chancePerPerk, null, 100);
             shell.Custom(this, SettingsShell.Page.Debug, "Survival", DrawDebug, 420);
             shell.Custom(this, SettingsShell.Page.Developer, "Perks", DrawDeveloper, 420);

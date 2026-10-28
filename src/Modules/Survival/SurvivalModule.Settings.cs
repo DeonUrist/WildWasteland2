@@ -8,7 +8,7 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Registers storm controls without Core referring to the weather implementation.</summary>
         public override void Settings(SettingsShell shell)
         {
-            shell.Custom(this, SettingsShell.Page.World, "", DrawStormMap, 30);
+            shell.Custom(this, SettingsShell.Page.World, "", DrawStormMap, 202);
             shell.Row(this, SettingsShell.Page.World, "", MadnessCheckTimeout, null, 101);
             shell.Custom(this, SettingsShell.Page.Debug, "Tuning", DrawStormTuning, 410);
         }

@@ -17,6 +17,7 @@ namespace WildWasteland.Modules.Vehicles
         internal static void Hook(IModule owner)
         {
             Hooks.GetPrefab.Resolver(owner, ResolvePrefab);
+            MotorcycleStarter.Hook(owner);
         }
 
         /// <summary>

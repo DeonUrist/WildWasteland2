@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.HUD
         private int _startVehicle, _startLoadout;
         private RectTransform _startOptions;
         private GlyphText _startVehicleText, _startLoadoutText, _startDescription;
-        private static readonly string[] StartDescriptions = { "NOTHING ADDED TO YOUR STARTING GEAR", "SINGLE-SHOT .22 PIPE PISTOL + 30 ROUNDS", "CROSSBOW + 12 BOLTS" };
+        private static readonly string[] StartDescriptions = { "NOTHING ADDED TO YOUR STARTING GEAR", "SINGLE-SHOT .22 PIPE PISTOL + 30 ROUNDS", "SMALL BACKPACK + MACHETE", "FOLK 17 + 30 ROUNDS", "CROSSBOW + 12 BOLTS", "DOUBLE-BARREL SHOTGUN + 12 SHELLS", "AKM TRASH + 30 ROUNDS" };
 
         /// <summary>Keeps the title menu visible beside the new-game choices.</summary>
         private void ShowNewGame()
@@ -42,7 +42,14 @@ namespace WildWasteland.Modules.HUD
         {
             var row = Row(panel, 28, y, 624, 52, value, 28, click, out text);
             Frame(row.transform, 0, 0, 624, 52, 1.5f, BarBorder);
-            T(row.transform, "arrow", 576, 0, 32, 52, 24, TextAnchor.MiddleCenter, Gold, "v");
+            var arrow = R(row.transform, "arrow", 576, 0, 32, 52);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                var stroke = Img(arrow, side < 0 ? "left" : "right", 0, 0, 12, 2, Gold).rectTransform;
+                stroke.pivot = new Vector2(.5f, .5f);
+                stroke.anchoredPosition = new Vector2(16 + side * 4, -26);
+                stroke.localRotation = Quaternion.Euler(0, 0, side * 45);
+            }
         }
 
         /// <summary>Opens a glyph-based dropdown above the remaining panel controls.</summary>

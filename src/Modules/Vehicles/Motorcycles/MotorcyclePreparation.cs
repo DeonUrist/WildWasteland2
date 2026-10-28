@@ -7,6 +7,6 @@ namespace WildWasteland.Modules.Vehicles
     internal sealed class MotorcyclePreparation : IMotorcyclePreparation
     {
         /// <summary>Uses the same native trim and access component as locally built motorcycles.</summary>
-        public void Prepare(GameObject car) { if(car==null)return;MotorcycleIntegration.TrimRearCollision(car);if(car.GetComponent<MotorcycleRearAccess>()==null)car.AddComponent<MotorcycleRearAccess>(); }
+        public void Prepare(GameObject car) { if(car==null)return;MotorcycleIntegration.TrimRearCollision(car);MotorcycleRack.Prepare(car);if(car.GetComponent<MotorcycleRearAccess>()==null)car.AddComponent<MotorcycleRearAccess>(); }
     }
 }
