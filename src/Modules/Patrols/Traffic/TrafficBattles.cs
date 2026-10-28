@@ -110,12 +110,16 @@ namespace WildWasteland.Modules.Patrols
                     }
                     bool lostA=live.Ready&&!LivingBattleCars(live,battle,0)&&!LivingBattleFeet(battle,0);
                     bool lostB=live.Ready&&!LivingBattleCars(live,battle,1)&&!LivingBattleFeet(battle,1);
-                    if(lostA||lostB){ScaleBattleCasualties(battle,live,0,lostA);ScaleBattleCasualties(battle,live,1,lostB);FinishBattle(battle,false);}
+                    if(lostA||lostB){if(PatrolsModule.SimulatedBattles.Value){ScaleBattleCasualties(battle,live,0,lostA);ScaleBattleCasualties(battle,live,1,lostB);}FinishBattle(battle,false);}
                 }
                 if(live!=null&&!live.Building&&distance>PatrolsModule.TrafficUnloadRange.Value)
                 {UnloadBattle(battle,live);live=null;}
                 if(!battle.resolved)
-                {battle.elapsed+=seconds;if(live==null&&!near&&battle.elapsed>=20f)FinishBattle(battle,true);}
+                {
+                    if(!PatrolsModule.SimulatedBattles.Value&&(live==null||!live.Building&&live.Cars.Values.All(c=>c==null)))
+                    {FinishBattle(battle,false);_battleLive.Remove(battle.id);_battles.Remove(battle);continue;}
+                    battle.elapsed+=seconds;if(live==null&&!near&&battle.elapsed>=20f)FinishBattle(battle,true);
+                }
                 else
                 {battle.remaining-=seconds;if(battle.remaining<=0f){if(live!=null&&!live.Building)UnloadBattle(battle,live);if(live==null||!live.Building)_battles.Remove(battle);continue;}}
                 if(near&&(live==null||(!live.Building&&!live.Ready&&Time.time>=live.RetryAt))&&!Convoy.AutosaveSoon(30f))
@@ -127,7 +131,9 @@ namespace WildWasteland.Modules.Patrols
                 var left=_journeys[a];var right=_journeys[b];
                 if(left.merchant||right.merchant||left.foot||right.foot||left.arrived||right.arrived||!string.IsNullOrEmpty(left.battle)||!string.IsNullOrEmpty(right.battle)||!TrafficFactions.Opposed(left.faction,right.faction)
                     ||TrafficLocations.FlatDistance(left.position,right.position)>120f)continue;
-                if((_live.TryGetValue(left.id,out var ll)&&ll.Building)||(_live.TryGetValue(right.id,out var rl)&&rl.Building))continue;
+                _live.TryGetValue(left.id,out var ll);_live.TryGetValue(right.id,out var rl);
+                if(ll?.Building==true||rl?.Building==true)continue;
+                if(!PatrolsModule.SimulatedBattles.Value&&(ll==null||!ll.Cars.Values.Any(c=>c!=null))&&(rl==null||!rl.Cars.Values.Any(c=>c!=null)))continue;
                 BeginBattle(left,right);return;
             }
         }
@@ -203,8 +209,8 @@ namespace WildWasteland.Modules.Patrols
         {
             live.Building=true;
             int countA=battle.resolved?battle.deadA.Count(v=>v):battle.sideA.Length,countB=battle.resolved?battle.deadB.Count(v=>v):battle.sideB.Length;
-            int cap=PatrolsModule.CarSpawnLimit.Value?PatrolsModule.MaxCarsInDoubleEvent.Value:Math.Min(48,countA+countB);
-            var shares=TrafficBattles.Shares(battle.sideA.Length,battle.sideB.Length,Math.Min(cap,countA+countB),PatrolsModule.CarSpawnLimit.Value?PatrolsModule.MaxCarsInEvent.Value:48);
+            int cap=PatrolsModule.CarSpawnLimit.Value?PatrolsModule.EventVehicleLimit.Value:Math.Min(48,countA+countB);
+            var shares=TrafficBattles.Shares(battle.sideA.Length,battle.sideB.Length,Math.Min(cap,countA+countB),PatrolsModule.CarSpawnLimit.Value?PatrolsModule.EventVehicleLimit.Value:48);
             // Transfer encounters into the same proportional cap before constructing missing slots.
             if(!battle.resolved)for(int side=0;side<2;side++)
             {int kept=0;foreach(var key in live.Cars.Keys.Where(k=>k.StartsWith(side+":",StringComparison.Ordinal)).ToArray())

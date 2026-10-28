@@ -372,17 +372,4 @@ namespace WildWasteland.Core
         /// <summary>Reloads the set from disk, dropping live edits.</summary>
         void Revert(string set);
     }
-
-    /// <summary>Developer editors: seat poses (bus driver/passenger, crew, turret spots) owned by Presentation.</summary>
-    public interface ISeatPoseAuthoring
-    {
-        /// <summary>Vehicle/seat keys with stored poses.</summary>
-        void Keys(List<string> into);
-        /// <summary>Stored pose of a seat (local to the seat).</summary>
-        bool TryGetSeatPose(string key, SeatKind kind, out Vector3 localPosition, out Quaternion localRotation);
-        /// <summary>Sets a seat pose live.</summary>
-        void SetSeatPose(string key, SeatKind kind, Vector3 localPosition, Quaternion localRotation);
-        /// <summary>Writes all seat poses to disk.</summary>
-        bool Save();
-    }
 }

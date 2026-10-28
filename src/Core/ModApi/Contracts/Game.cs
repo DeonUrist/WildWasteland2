@@ -6,17 +6,6 @@ using UnityEngine;
 // CameraArbiter) are static classes in src/Core/Game (W0-B), not interfaces. FROZEN after W0.
 namespace WildWasteland.Core
 {
-    /// <summary>Supply-drop / inventory supply queries of Core Fixes InventorySupplies.</summary>
-    public interface IInventorySupplies
-    {
-        /// <summary>Supply prefabs discovered (sliced discovery finished).</summary>
-        bool Ready { get; }
-        /// <summary>Known supply kinds (cleared first).</summary>
-        void Kinds(List<string> into);
-        /// <summary>Count of a supply kind the player carries.</summary>
-        int Carried(string kind);
-    }
-
     /// <summary>Extra inventory slots (Compatibility: Apocapocket) for HUD and Presentation.</summary>
     public interface IInventorySlots
     {

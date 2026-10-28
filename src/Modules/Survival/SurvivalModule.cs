@@ -16,6 +16,7 @@ namespace WildWasteland.Modules.Survival
         internal const string GUID = "com.denis.apocalypter.stewpot";
         internal static string Assets;
         internal static ConfigEntry<bool> AllowStewPotSpilling;
+        internal ConfigEntry<int> MadnessCheckTimeout;
         internal static ConfigEntry<float> Scale, NutritionMultiplier, CookingRate, InsanityBoilRate, SpoilingRate;
         private GameObject _effects;
         private readonly WeatherRuntime _weather = new WeatherRuntime();
@@ -35,6 +36,7 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Binds the Stew Pot tools.cfg entries (model scale, debug switches, cooking/spoiling tuning) in display order.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
+            MadnessCheckTimeout = cfg.Player("Mental break", "Madness check timeout (min)", 15, "Controls how often the game rolls an attempt to make you go mad", new AcceptableValueRange<int>(1, 120));
             _weatherEnabled = cfg.Player("Weather", "Enabled", true, "Enable moving storm presentation and hurricane hazards.");
             _weatherEnabled.SettingChanged += WeatherChanged;
             _weather.SetParent(this);

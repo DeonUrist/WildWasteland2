@@ -46,7 +46,7 @@ namespace WildWasteland.Modules.Gunplay
         internal static bool AimAtBody { get { return NpcAim.Value && NpcAimAtBody.Value; } }
         /// <summary>[NPC aim] toggle x hidden LeadTargets.</summary>
         internal static bool Lead { get { return Enemies.Value != "Stormtroopers" && NpcAim.Value && LeadTargets.Value; } }
-        internal static float EnemyMissChance { get { return Enemies.Value == "Stormtroopers" ? 0.5f : Enemies.Value == "Survivors" ? 0.25f : 0f; } }
+        internal static float EnemyMissChance { get { return Enemies.Value == "Stormtroopers" ? 0.75f : Enemies.Value == "Survivors" ? 0.5f : Enemies.Value == "Soldiers" ? 0.25f : 0f; } }
         /// <summary>Central accuracy source for pellet spread (0..100); future player skills adjust the base value here.</summary>
         internal static float Accuracy(bool player) { return Mathf.Clamp((player ? PlayerAccuracy : NpcAccuracy).Value, 0f, 100f); }
 
@@ -71,8 +71,8 @@ namespace WildWasteland.Modules.Gunplay
             NpcAim = cfg.Player("", "NpcAim", true,
                 "NPC gunmen aim at the centre of your body and lead moving targets (tuning in F7 > Weapons & HUD > NPC aim). Off = the game's own aim point (your head) and no lead. Needs Projectiles.");
             Enemies = cfg.Player("", "Enemies", "Survivors",
-                "Enemy aim: Mercs retain current accuracy; Survivors aim wide on an extra 25% of shots; Stormtroopers aim wide on an extra 50% and never lead moving targets. Includes gunmen, bosses, vehicle crews and mutant orbs. Gun accuracy needs Projectiles.",
-                new AcceptableValueList<string>("Stormtroopers", "Survivors", "Mercs"));
+                "Stormtroopers: Enemies have trouble aiming; Survivors: Enemies know how to use guns; Soldiers: Enemies are deadly killers; Redshirt: Enemies barely miss.",
+                new AcceptableValueList<string>("Redshirt", "Stormtroopers", "Survivors", "Soldiers"));
             IronsightWheelZoom = cfg.Player("", "IronsightWheelZoom", true,
                 "First person: while aiming down sights, scroll up to zoom in smoothly and down to zoom out. Up to 3x additional zoom, including scopes. Leaving sights resets the zoom.");
             ToggleIronsights = cfg.Player("", "ToggleIronsights", false,

@@ -30,6 +30,7 @@ namespace WildWasteland.Modules.HUD
         internal static LayoutFile Layout;
         private HudView _hud;
         private Menu _menu;
+        private NewGameSetup _newGameSetup;
         private LoadingScreen _loadingScreen;
         private MapMarkers _questMap;
         private float _retry;
@@ -81,7 +82,6 @@ namespace WildWasteland.Modules.HUD
         private void InitClean()
         {
             Running = true; _retry = 0; _throttle.Clear();
-            InitCoreTheme();
 
             MessageHook.Clear(); Bindings.Clear(); Menu.BlockCancelFrame = -1;
             var dir = Core.Assets.ModuleConfigDir("HUD");
@@ -98,7 +98,8 @@ namespace WildWasteland.Modules.HUD
             _loadingScreen = new LoadingScreen();
             ModEvents.Subscribe<Core.Events.SavePresentation>(this, SavePresented);
 
-            _menu = new Menu(_loadingScreen);
+            _newGameSetup = new NewGameSetup(this);
+            _menu = new Menu(_loadingScreen, _newGameSetup);
             InitCoreUpdateCheck();
             SaveBus.StateChanged += _loadingScreen.StateChanged;
             Core.ModApi.Provide<IVehicleStatusDisplay>(Core.ModuleHost.Current,this);
@@ -110,11 +111,9 @@ namespace WildWasteland.Modules.HUD
             QuestJournal.Install(this);
             Core.Patches.Patch(this, AccessTools.Method(typeof(UiTextSetText), "OnEnter"), postfix: AccessTools.Method(typeof(MessageHook), "Postfix"));
             Hooks.GetButtonDownUpdate.Prefix(this, CancelHook.Prefix);
-            InitCoreHooks();
             Hooks.EnterState.Postfix(this, _loadingScreen.AfterEnterState);
             InitCoreSceneJob();
             Scheduler.Sliced(this, "Weapon icons", 500, Assets.RenderStep);
-            InitCoreAccentJob();
             Scheduler.Interval(this, "Layout reload", 2f, PollLayout);
             Scheduler.EveryFrame(this, "Inventory window", InventoryStyle.Tick, Phase.LateUpdateLast);
             Scheduler.Interval(this, "Location markers", .5f, LocationMarkers.Tick);
@@ -197,6 +196,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Resolves scene loaded clean for the clean HUD feature.</summary>
         private void SceneLoadedClean(Scene scene, LoadSceneMode mode)
         {
+            if (scene.buildIndex == 0 && _newGameSetup != null) _newGameSetup.Clear();
             _weatherMap.Clear();
             Binoculars.Reset();
             VantageDiscovery.Reset(); VistasBanners.Reset();
@@ -216,6 +216,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Restores native UI, unsubscribes feature handlers and releases owned clean HUD resources.</summary>
         private void ShutdownClean()
         {
+            if (_newGameSetup != null) _newGameSetup.Dispose(); _newGameSetup = null;
 
             _weatherMap.Clear();
             Binoculars.Shutdown();
@@ -237,22 +238,16 @@ namespace WildWasteland.Modules.HUD
 
             if (_loadingScreen != null) { SaveBus.StateChanged -= _loadingScreen.StateChanged; _loadingScreen.Dispose(); _loadingScreen = null; }
             MessageHook.Clear(); Bindings.Clear(); Menu.BlockCancelFrame = -1;
-            ShutdownCoreAssets(); Menu.DisposeAssets(); ShutdownCoreTheme();
+            ShutdownCoreAssets(); Menu.DisposeAssets();
             Api.Compass.Entries.Clear(); Api.Compass.CustomIcons.Clear(); Api.Compass.IconRevision++; _attach = null;
         }
         // ---------------------------------------------------------------- Wave A partial parts (implemented in the target module folders)
-        /// <summary>Core/UI theme: accent theme setting subscription.</summary>
-        partial void InitCoreTheme();
         /// <summary>Core/UI theme + scene index: embedded textures/font preload, scene cache reset.</summary>
         partial void InitCoreAssets();
         /// <summary>Core: the GitHub release check coroutine.</summary>
         partial void InitCoreUpdateCheck();
-        /// <summary>Core/Fixes: PauseCursorFix EnterState postfix.</summary>
-        partial void InitCoreHooks();
         /// <summary>Core scene index: sliced key discovery job.</summary>
         partial void InitCoreSceneJob();
-        /// <summary>Core/UI theme: sliced accent panel recolor job.</summary>
-        partial void InitCoreAccentJob();
         /// <summary>Core scene index: reset on scene load.</summary>
         partial void SceneResetCore();
         /// <summary>Core scene index: reset and key discovery at world ready.</summary>
@@ -261,8 +256,6 @@ namespace WildWasteland.Modules.HUD
         partial void ShutdownCoreUpdateCheck();
         /// <summary>Core: scene index and theme texture teardown.</summary>
         partial void ShutdownCoreAssets();
-        /// <summary>Core/UI theme: glyph font and accent theme teardown.</summary>
-        partial void ShutdownCoreTheme();
         /// <summary>Saves: fog-of-war sidecar read at world ready.</summary>
         partial void WorldReadySaves();
 

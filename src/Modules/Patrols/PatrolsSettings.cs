@@ -56,7 +56,7 @@ namespace WildWasteland.Modules.Patrols
             AiRecoverWindow, AiMaxRecovers, AiWaitSeconds, AiFeelerRange, AiFeelerSpeedFactor, AiFrontOffset, AiMaxSlopeDeg, AiAvoidGain,
             AiIgnoreMassBelow, AiGiveUpDistance;
         // persistent world traffic
-        internal static ConfigEntry<bool> TacticalDriving, FactionBattles, Merchants;
+        internal static ConfigEntry<bool> TacticalDriving, FactionBattles, SimulatedBattles, Merchants;
         internal static ConfigEntry<float> TrafficLoadRange, TrafficUnloadRange,
             TrafficDestinationGrace, TrafficPatrolSpeed, TrafficConvoySpeed, ConvoyGuardRange,
             PatrolMemorySeconds;
@@ -65,10 +65,10 @@ namespace WildWasteland.Modules.Patrols
         internal static ConfigEntry<float> TrafficRoadConnector;
         internal static ConfigEntry<bool> CarSpawnLimit, SimpleConvoyBanditsAI, FootPatrols, ReturnToCar;
         // foot patrols / return to car / awareness handover tuning (tools.cfg, Traffic tuning)
-        internal static ConfigEntry<int> FootMaxActive;
+        internal static ConfigEntry<int> FootMaxActive, CoyoteFootMaxActive;
         internal static ConfigEntry<float> FootSpawnChance, FootCheckSeconds, FootSpeed, FootLoadRange, FootUnloadRange, FootMinSourceDistance, FootMinPoiMetres,
             StrandedIdleSeconds, ReturnTimeoutSeconds, ReturnMaxDistance, DismountMemorySeconds, FootTargetRange;
-        internal static ConfigEntry<int> MaxCarsInEvent, MaxCarsInDoubleEvent, MaxPatrols, MaxConvoys;
+        internal static ConfigEntry<int> EventVehicleLimit, MaxPatrols, MaxCoyotePatrols, MaxConvoys;
         internal static ConfigEntry<int> MaxMerchants; internal static ConfigEntry<float> MerchantSpawnChance, MerchantCheckMinutes;
         internal static ConfigEntry<float> CampTrafficRange;
         internal static ConfigEntry<bool> RealPatrolNames, HideRouteType;
@@ -156,11 +156,14 @@ namespace WildWasteland.Modules.Patrols
         {
             const string sp = "Spawning";
             PatrolSizePercent = cfg.Player(sp, "PatrolSizePercent", 100f, "Size of every patrol / convoy that spawns, for weaker PCs: below 100 the group loses cars at random down to this share (rounded down, never below one car; a convoy keeps all of its trucks)", new AcceptableValueRange<float>(10f, 100f));
-            MaxPatrols = cfg.Player(sp, "Max patrols", 3, "Maximum tracked patrol groups, including arrived and passing Coyote groups; replaces density", new AcceptableValueRange<int>(0, 64));
-            MaxConvoys = cfg.Player(sp, "Max convoys", 1, "Maximum tracked convoy groups, including arrived groups; replaces density", new AcceptableValueRange<int>(0, 64));
+            MaxPatrols = cfg.Player(sp, "Max patrols", 3, "Maximum travelling Scrapyard vehicle patrol groups, including pending routes", new AcceptableValueRange<int>(0, 64));
+            MaxCoyotePatrols = cfg.Player(sp, "Coyotes patrols limit", 2, "Maximum travelling Coyote vehicle patrol groups, independent of Scrapyard patrols", new AcceptableValueRange<int>(0, 64));
+            MaxConvoys = cfg.Player(sp, "Max convoys", 1, "Maximum travelling Scrapyard convoy groups, including pending routes", new AcceptableValueRange<int>(0, 64));
             CarSpawnLimit = cfg.Player(sp, "Car spawn limit", true, "Limit physical encounter cars; pending builds count toward the same budget");
-            MaxCarsInEvent = cfg.Player(sp, "Max cars in event", 5, "Maximum cars in one patrol or convoy; cargo trucks have priority", new AcceptableValueRange<int>(1, 24));
-            MaxCarsInDoubleEvent = cfg.Player(sp, "Max cars in double event", 6, "Combined physical car budget when encounters overlap near the player", new AcceptableValueRange<int>(1, 48));
+            EventVehicleLimit = cfg.Player(sp, "Event vehicle limit", 8, "Shared physical vehicle limit for one encounter or several overlapping encounters, including pending builds", new AcceptableValueRange<int>(1, 48));
+            SimulatedBattles = cfg.Player(sp, "Simulated battles", true, "Opposing traffic groups can fight and suffer casualties while simulated offscreen. Off keeps physical faction combat enabled.");
+            FootMaxActive = cfg.Player(sp, "Scrapyard foot patrols limit", 5, "Maximum generated Scrapyard foot patrol groups; stranded crews also count toward admission", new AcceptableValueRange<int>(0, 32));
+            CoyoteFootMaxActive = cfg.Player(sp, "Coyotes foot patrols limit", 3, "Maximum generated Coyote foot patrol groups; travellers cannot offer quests", new AcceptableValueRange<int>(0, 32));
 
             const string wt = "World traffic";
             TrafficPatrolSpeed = cfg.Player(wt, "PatrolSpeedKmh", 55f, "Simulated/cruising patrol speed", new AcceptableValueRange<float>(10f, 100f));
@@ -211,7 +214,6 @@ namespace WildWasteland.Modules.Patrols
             TrafficDestinationGrace = cfg.Tool(TTraffic, "DestinationGraceSeconds", 180f, "An arrived group waits this long without a nearby player before removal; proximity resets the clock", new AcceptableValueRange<float>(10f, 3600f));
             ConvoyGuardRange = cfg.Tool(TTraffic, "ConvoyGuardRange", 300f, "Escort drivers attack within this range of the convoy; truck drivers keep travelling, m", new AcceptableValueRange<float>(20f, 1000f));
             PatrolMemorySeconds = cfg.Tool(TTraffic, "PatrolMemorySeconds", 20f, "Search last known player position this long after losing sight/sound, then resume the route", new AcceptableValueRange<float>(0f, 120f));
-            FootMaxActive = cfg.Tool(TTraffic, "FootPatrolMaxActive", 2, "Most generated foot patrols at once (crew left without a usable car may add a few more)", new AcceptableValueRange<int>(0, 8));
             FootSpawnChance = cfg.Tool(TTraffic, "FootPatrolSpawnChance", 35f, "Chance (%) per check that a foot patrol leaves a nearby camp", new AcceptableValueRange<float>(0f, 100f));
             FootCheckSeconds = cfg.Tool(TTraffic, "FootPatrolCheckSeconds", 60f, "Seconds between foot patrol spawn checks", new AcceptableValueRange<float>(5f, 1800f));
             FootSpeed = cfg.Tool(TTraffic, "FootPatrolSpeed", 1.3f, "Simulated walking speed of a foot patrol, m/s", new AcceptableValueRange<float>(0.5f, 4f));

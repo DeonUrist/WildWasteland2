@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.Survival
         public override void Settings(SettingsShell shell)
         {
             shell.Custom(this, SettingsShell.Page.World, "", DrawStormMap, 30);
+            shell.Row(this, SettingsShell.Page.World, "", MadnessCheckTimeout, null, 101);
             shell.Custom(this, SettingsShell.Page.Debug, "Tuning", DrawStormTuning, 410);
         }
         /// <summary>Draws the available weather provider's map-area control.</summary>

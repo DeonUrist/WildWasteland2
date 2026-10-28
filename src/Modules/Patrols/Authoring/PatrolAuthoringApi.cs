@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Patrols
     {
         /// <summary>Reads the actual patrol marker faction for a recorded vehicle, with the native default for unowned cars.</summary>
         public string VehicleFaction(GameObject vehicle) { var marker = vehicle == null ? null : vehicle.GetComponent<PatrolMarker>(); return TrafficFactions.Normalize(marker == null ? "Scrapyard" : marker.Faction); }
-        bool IPatrolAuthoring.InPlay { get { return Running && _patrol != null && _patrol.InGame(); } }
+        bool IPatrolAuthoring.InPlay { get { return Running && _patrol != null && GameRefs.InPlay; } }
         /// <summary>Serializes the live authored group and cargo projection into a detached editor workspace.</summary>
         public string ReadData() { return EditorStore.Data.ToJson(); }
         /// <summary>Parses the complete proposed workspace and restores the prior runtime authority if publication fails.</summary>

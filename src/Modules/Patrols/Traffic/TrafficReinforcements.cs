@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Patrols
             if(redirect!=null)source=new TrafficBase{id=redirect.source,apron=redirect.position};
             else
             {
-                if(RoleCount(0)+CallReservations>=PatrolsModule.MaxPatrols.Value||RoleCount(0)+RoleCount(1)+RoleCount(2)+CallReservations>=PatrolsModule.TrafficMaxGroups.Value)
+                if(RoleCount(0,TrafficFactions.Normalize(camp.faction))>=PatrolLimit(camp.faction)||PopulationCount>=PatrolsModule.TrafficMaxGroups.Value)
                 {PatrolsModule.Verbose("Patrol call skipped: "+camp.id+" (population full, no nearby patrol)");return;}
                 var group=Convoy.TrafficGroup(false,camp.faction);if(group==null)return;name=group.Name;
                 var roster=EditorStore.ComposeFull(group,false,()=>UnityEngine.Random.value);if(roster.Count==0||roster.Any(t=>!t.Available))return;
@@ -71,7 +71,7 @@ namespace WildWasteland.Modules.Patrols
                 }
                 else
                 {
-                    if(RoleCount(0)>=PatrolsModule.MaxPatrols.Value||_journeys.Count>=PatrolsModule.TrafficMaxGroups.Value||Cleared(pending.Source.id)
+                    if(RoleCount(0,TrafficFactions.Normalize(camp.faction))>=PatrolLimit(camp.faction)||PopulationCount>=PatrolsModule.TrafficMaxGroups.Value||Cleared(pending.Source.id)
                         ||(!string.IsNullOrEmpty(pending.Source.id)&&TrafficLocations.PlayerAt(pending.Source)))continue;
                     journey=new TrafficJourney{id=Guid.NewGuid().ToString("N"),name=pending.Name,faction=pending.Faction,source=pending.Source.id,vehicles=pending.Vehicles,
                         position=pending.Job.Route[0],speed=PatrolsModule.TrafficPatrolSpeed.Value/3.6f};_journeys.Add(journey);

@@ -71,8 +71,8 @@ namespace WildWasteland.Modules.Patrols
             if (convoy && !list.Any(t => t.IsTruck)) { var fallback = CarTemplate.FallbackTruck.CloneForSpawn();if(TrafficFactions.Normalize(group.Faction)=="Coyotes"){fallback.Faction="Coyotes";fallback.Driver="Bodyguard";fallback.Passenger="";fallback.Turrets=new string[4];} fallback.SpawnLoot = new Dictionary<string, int>(); fallback.SpawnCargoKey = ""; list.Insert(0, fallback); }
             if (convoy) list = list.OrderByDescending(t => t.IsTruck).ToList();
             Shrink(list, convoy, random);
-            if(cap&&PatrolsModule.CarSpawnLimit!=null&&PatrolsModule.CarSpawnLimit.Value&&list.Count>PatrolsModule.MaxCarsInEvent.Value)
-                list.RemoveRange(PatrolsModule.MaxCarsInEvent.Value,list.Count-PatrolsModule.MaxCarsInEvent.Value);
+            if(cap&&PatrolsModule.CarSpawnLimit!=null&&PatrolsModule.CarSpawnLimit.Value&&list.Count>PatrolsModule.EventVehicleLimit.Value)
+                list.RemoveRange(PatrolsModule.EventVehicleLimit.Value,list.Count-PatrolsModule.EventVehicleLimit.Value);
             if (convoy) foreach (var truck in list.Where(t => t.IsTruck)) truck.SpawnCargoOptions = (group.AllowedCargo ?? new List<string>()).ToArray();
             if (convoy && group.UniformCargo)
             {

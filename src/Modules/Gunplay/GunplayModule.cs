@@ -186,13 +186,13 @@ namespace WildWasteland.Modules.Gunplay
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawSettingsRow, 110, 1);
         }
 
-        private static readonly string[] EnemyProfiles = { "Stormtroopers", "Survivors", "Mercs" };
+        private static readonly string[] EnemyProfiles = { "Stormtroopers", "Survivors", "Soldiers", "Redshirt" };
         private static void DrawEnemies(ToolLayout l)
         {
             int current = Array.IndexOf(EnemyProfiles, GunplaySettings.Enemies.Value);
             int next = l.Choices("Enemies", current, EnemyProfiles);
             if (next != current) GunplaySettings.Enemies.Value = EnemyProfiles[next];
-            l.Hint(next == 0 ? "50% extra shots aimed wide; no prediction of moving targets" : next == 1 ? "25% extra shots aimed wide" : "Original enemy accuracy and aim prediction");
+            l.Hint(next == 0 ? "Enemies have trouble aiming" : next == 1 ? "Enemies know how to use guns" : next == 2 ? "Enemies are deadly killers" : "Enemies barely miss");
         }
 
         /// <summary>Draws the "Toggle Ironsights" switch.</summary>

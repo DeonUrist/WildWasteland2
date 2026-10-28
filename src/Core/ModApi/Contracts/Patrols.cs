@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Patrols contracts (core-modapi.md 8): patrol/crew queries, road routing + hint providers, camp status, culling protection,
-// follower vehicles, merchant layouts (Developer). Provider: Patrols. Consumers: Core Optimization, Quests, HUD, POI, Saves,
+// follower vehicles. Provider: Patrols. Consumers: Core Optimization, Quests, HUD, POI, Saves,
 // Developer. Interfaces only. FROZEN after W0.
 namespace WildWasteland.Core
 {
@@ -107,20 +107,5 @@ namespace WildWasteland.Core
         bool Protected(GameObject go);
         /// <summary>Called right before the culler deletes a far object, so the owner can save/release it.</summary>
         void BeforeFarDelete(GameObject go);
-    }
-
-    /// <summary>Developer: merchant item placement layouts.</summary>
-    public interface IMerchantLayouts
-    {
-        /// <summary>Merchant types with layouts.</summary>
-        void Types(List<string> into);
-        /// <summary>Number of slots of a type.</summary>
-        int SlotCount(string merchantType);
-        /// <summary>Slot pose local to the merchant vehicle.</summary>
-        bool TryGetSlot(string merchantType, int slot, out Vector3 localPosition, out Quaternion localRotation);
-        /// <summary>Sets a slot pose live.</summary>
-        void SetSlot(string merchantType, int slot, Vector3 localPosition, Quaternion localRotation);
-        /// <summary>Writes layouts to disk.</summary>
-        bool Save();
     }
 }

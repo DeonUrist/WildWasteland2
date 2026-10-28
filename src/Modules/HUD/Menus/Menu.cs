@@ -54,7 +54,7 @@ namespace WildWasteland.Modules.HUD
         private readonly List<Button> _buttonBuffer = new List<Button>();
         private readonly LoadingScreen _loadingScreen;
         /// <summary>Constructs the title and pause menu and captures its owning resources.</summary>
-        internal Menu(LoadingScreen loadingScreen) { _loadingScreen = loadingScreen; }
+        internal Menu(LoadingScreen loadingScreen, NewGameSetup newGameSetup) { _loadingScreen = loadingScreen; _newGameSetup = newGameSetup; }
         private string _screen = "main";
         private RectTransform _main, _sub, _modal, _status;
         private GlyphText _statusText;
@@ -162,6 +162,7 @@ namespace WildWasteland.Modules.HUD
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 if (_seedEdit) EndSeedEdit(false);
+                else if (_startOptions != null) CloseStartOptions();
                 else if (_modal != null) CloseModal();
                 else if (_screen != "main") Back();
             }
@@ -186,6 +187,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Resolves teardown for the title and pause menu.</summary>
         private void Teardown(bool keepVanilla)
         {
+            CloseStartOptions(); _startVehicleText = _startLoadoutText = _startDescription = null;
             Core.ReplacementGuard.MenuModalOpen = false;
             if (!keepVanilla) { _van = null; _ctx = Ctx.None; }
             RestoreVanilla();
@@ -680,12 +682,11 @@ namespace WildWasteland.Modules.HUD
             _nextFrame.Add(() => _nextFrame.Add(() => Click("MainMenu_Canvas/MainMenu/Quit_To_Menu/Really Quit/Yes_Quit")));
         }
 
-        /// <summary>Starts a new game through the native menu action.</summary>
+        /// <summary>Opens starting choices before the native new-game action.</summary>
         private void NewGame()
         {
             if (_seedEdit) EndSeedEdit(true);
-            ApplySeed();
-            BeginLoad("Canvas_MM/MainMenu/NewGame");
+            ShowNewGame();
         }
 
         // ---------------------------------------------------------------- seed
@@ -758,6 +759,7 @@ namespace WildWasteland.Modules.HUD
         /// <summary>Closes modal for the title and pause menu.</summary>
         private void CloseModal()
         {
+            CloseStartOptions(); _startVehicleText = _startLoadoutText = _startDescription = null;
             if (_modal == null) return;
             UnityEngine.Object.Destroy(_modal.gameObject); _modal = null;
             Core.ReplacementGuard.MenuModalOpen = false;

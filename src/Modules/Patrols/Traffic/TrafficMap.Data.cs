@@ -6,6 +6,14 @@ namespace WildWasteland.Modules.Patrols
     internal sealed partial class WorldTraffic
     {
         private Camera _gameMap;
+        /// <summary>Keeps generated journeys on the playable map, with merchants biased to the player's position.</summary>
+        private Vector3 CrossingPoint(bool merchant)
+        {
+            var player=Core.PlayerState.Transform;var center=player!=null?TrafficSpace.World(player.position):Vector3.zero;
+            if(merchant)return center;
+            var offset=UnityEngine.Random.insideUnitCircle*Mathf.Min(350f,PatrolsModule.TrafficLoadRange.Value*.45f);
+            return center+new Vector3(offset.x,0f,offset.y);
+        }
         /// <summary>Returns the accepted offscreen materialization point for a retained journey.</summary>
         private Vector3 OffscreenTrafficPoint(Vector3 center,Vector3 direction)
         {

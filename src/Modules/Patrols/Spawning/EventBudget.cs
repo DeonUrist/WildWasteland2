@@ -28,16 +28,16 @@ namespace WildWasteland.Modules.Patrols
         internal static int Available(string id)
         {
             if(!PatrolsModule.CarSpawnLimit.Value)return int.MaxValue;
-            int total=0,own=0;bool other=false;var player=Core.PlayerState.Transform;
+            int total=0;var player=Core.PlayerState.Transform;
             foreach(var tag in Cars)
             {
                 if(tag==null||tag.Building)continue;
                 var marker=tag.GetComponent<PatrolMarker>();if(marker!=null&&(marker.PlayerEntered||marker.Exploded))continue;
                 if(player!=null&&(tag.transform.position-player.position).sqrMagnitude>PatrolsModule.TrafficUnloadRange.Value*PatrolsModule.TrafficUnloadRange.Value)continue;
-                total++;if(tag.Event==id)own++;else other=true;
+                total++;
             }
-            foreach(var pair in Pending){total+=pair.Value;if(pair.Key==id)own+=pair.Value;else if(pair.Value>0)other=true;}
-            return Math.Min(Math.Max(0,PatrolsModule.MaxCarsInEvent.Value-own),Math.Max(0,(other?PatrolsModule.MaxCarsInDoubleEvent.Value:PatrolsModule.MaxCarsInEvent.Value)-total));
+            foreach(var pair in Pending)total+=pair.Value;
+            return Math.Max(0,PatrolsModule.EventVehicleLimit.Value-total);
         }
         /// <summary>Checks the current reserve condition for event budget.</summary>
         internal static bool Reserve(string id)

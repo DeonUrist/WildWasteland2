@@ -39,6 +39,7 @@ namespace WildWasteland.Modules.Patrols
             internal bool Convoy, Foot;
             internal TrafficBase[] Sources, Destinations;
             internal Vector3[] Existing;
+            internal Vector3? Via;
         }
         private static readonly ConcurrentQueue<RoadJob> Completed=new ConcurrentQueue<RoadJob>();
         /// <summary>Publishes completed worker geometry after main-thread owner hints, never calling Unity/module providers on a worker.</summary>
@@ -52,9 +53,10 @@ namespace WildWasteland.Modules.Patrols
         /// <summary>Clears retained runtime state at the owning lifecycle boundary.</summary>
         internal static void Reset(){Interlocked.Increment(ref _epoch);_snapshotRoad=_snapshotCamps=_snapshotCount=-1;}
         /// <summary>Checks the current request route condition for road planner.</summary>
-        internal static RoadJob RequestRoute(TrafficBase source,TrafficBase destination,bool convoy,bool foot=false,TrafficBase[] sources=null,TrafficBase[] destinations=null,Vector3[] existing=null)
+        internal static RoadJob RequestRoute(TrafficBase source,TrafficBase destination,bool convoy,bool foot=false,TrafficBase[] sources=null,TrafficBase[] destinations=null,Vector3[] existing=null,Vector3? via=null)
         {
             if(PatrolsModule.TrafficRoadRouting.Value)TrafficRoads.RequestAlong(source.apron,destination.apron);
+            if(via.HasValue&&PatrolsModule.TrafficRoadRouting.Value){TrafficRoads.RequestAlong(source.apron,via.Value);TrafficRoads.RequestAlong(via.Value,destination.apron);}
             if(_snapshotRoad!=TrafficRoads.Revision||_snapshotCamps!=TrafficLocations.Revision||_snapshotCount!=TrafficLocations.Known.Count)
             {
                 _snapshotRoad=TrafficRoads.Revision;_snapshotCamps=TrafficLocations.Revision;_snapshotCount=TrafficLocations.Known.Count;
@@ -63,7 +65,9 @@ namespace WildWasteland.Modules.Patrols
             int seed=unchecked(source.apron.GetHashCode()*397^destination.apron.GetHashCode()^(convoy?73:19));
             var job=new RoadJob{Epoch=_epoch,Revision=_snapshotRoad,Source=source,Destination=destination};
             var size=TrafficRoads.TileSize;float margin=PatrolsModule.TrafficRoadConnector.Value+1600f;
-            var a=source.apron;var b=destination.apron;var bounds=new Rect(Mathf.Min(a.x,b.x)-margin,Mathf.Min(a.z,b.z)-margin,Mathf.Abs(a.x-b.x)+margin*2f,Mathf.Abs(a.z-b.z)+margin*2f);
+            var a=source.apron;var b=destination.apron;var lo=Vector3.Min(a,b);var hi=Vector3.Max(a,b);
+            if(via.HasValue){lo=Vector3.Min(lo,via.Value);hi=Vector3.Max(hi,via.Value);}
+            var bounds=new Rect(lo.x-margin,lo.z-margin,hi.x-lo.x+margin*2f,hi.z-lo.z+margin*2f);
             var nearby=_tiles.Where(t=>sources!=null||destinations!=null||size.x<=0f||bounds.Overlaps(new Rect(t.X*size.x,t.Z*size.z,size.x,size.z))).ToArray();
             var hints=PatrolsModule.TrafficRoadRouting.Value?nearby.Select(t=>t.Hints).ToArray():new Vector3[0][];
             job.Elevation=nearby.Any(t=>t.Elevation!=null&&(foot||t.FinalGround));
@@ -75,7 +79,7 @@ namespace WildWasteland.Modules.Patrols
             Queue.Enqueue(new Request{Job=job,A=a,B=b,Hints=hints,
                 Elevation=nearby.Where(t=>t.Elevation!=null&&(foot||t.FinalGround)).Select(t=>t.Elevation).ToArray(),
                 Blocks=blocks.Where(box => bounds.Overlaps(new Rect(box.min.x, box.min.z, box.size.x, box.size.z))).ToArray(),Influence=PatrolsModule.TrafficRoadConnector.Value,Seed=seed,Lines=lines.ToArray(),Convoy=convoy,Foot=foot,
-                Sources=Alternatives(sources,source),Destinations=Alternatives(destinations,destination),Existing=existing,Quiet=quiet});
+                Sources=Alternatives(sources,source),Destinations=Alternatives(destinations,destination),Existing=existing,Via=via,Quiet=quiet});
             Start();return job;
         }
         /// <summary>Chooses the bounded alternative endpoint set for worker planning.</summary>
@@ -128,11 +132,19 @@ namespace WildWasteland.Modules.Patrols
                             }
                             pairs.Sort((x,y)=>x.Item1.CompareTo(y.Item1));float best=float.PositiveInfinity;
                             var rejections=Core.Log.L2?new Dictionary<string,int>():null;
+                            Vector3? crossing=request.Via.HasValue?Crossing(request.Via.Value,request.Lines,request.Elevation,request.Blocks,request.Convoy):null;
                             for(int i=0;i<Math.Min(6,pairs.Count);i++)
                             {
                                 if(request.Job.Epoch!=Volatile.Read(ref _epoch))break;
                                 var pair=pairs[i];
-                                var route=VehicleRoute.Build(pair.Item2.apron,pair.Item3.apron,request.Lines,request.Elevation,request.Blocks,request.Convoy,out var roads,out float score,rejections);
+                                if(request.Via.HasValue&&!crossing.HasValue)break;
+                                var route=VehicleRoute.Build(pair.Item2.apron,crossing??pair.Item3.apron,request.Lines,request.Elevation,request.Blocks,request.Convoy,out var roads,out float score,rejections);
+                                if(route!=null&&crossing.HasValue)
+                                {
+                                    var tail=VehicleRoute.Build(crossing.Value,pair.Item3.apron,request.Lines,request.Elevation,request.Blocks,request.Convoy,out var tailRoads,out float tailScore,rejections);
+                                    if(tail==null||route.Length+tail.Length-1>20000)continue;
+                                    route=route.Concat(tail.Skip(1)).ToArray();roads=roads.Concat(tailRoads.Skip(1)).ToArray();score+=tailScore;
+                                }
                                 if(route==null||score>=best)continue;
                                 best=score;request.Job.Route=route;request.Job.Roads=roads;request.Job.Source=pair.Item2;request.Job.Destination=pair.Item3;
                             }
@@ -147,6 +159,26 @@ namespace WildWasteland.Modules.Patrols
             }
             finally{Interlocked.Exchange(ref _running,0);if(!Queue.IsEmpty)Start();}
         }
+        /// <summary>Prefers a nearby real road for the crossing, using only certified terrain outside exclusion bounds.</summary>
+        private static Vector3? Crossing(Vector3 center,Vector3[][] lines,ElevationGrid[] grids,Bounds[] blocks,bool convoy)
+        {
+            Vector3? best=null;float distance=350f*350f,limit=convoy?.22f:.30f;
+            foreach(var line in lines)for(int i=1;i<line.Length;i++)
+            {
+                var a=line[i-1];var delta=line[i]-a;delta.y=0f;var offset=center-a;offset.y=0f;
+                var p=a+delta*(delta.sqrMagnitude>.001f?Mathf.Clamp01(Vector3.Dot(offset,delta)/delta.sqrMagnitude):0f);
+                var gap=p-center;gap.y=0f;float d=gap.sqrMagnitude;if(d>=distance||!CrossingAllowed(p,grids,blocks,limit))continue;
+                distance=d;best=p;
+            }
+            if(best.HasValue)return best;
+            if(CrossingAllowed(center,grids,blocks,limit))return center;
+            for(int ring=1;ring<=10;ring++)for(int i=0;i<8;i++)
+            {float angle=i*Mathf.PI/4f;var p=center+new Vector3(Mathf.Cos(angle),0f,Mathf.Sin(angle))*ring*100f;if(CrossingAllowed(p,grids,blocks,limit))return p;}
+            return null;
+        }
+        /// <summary>Admits crossing points only on known, drivable ground outside camps, towns and the starting area.</summary>
+        private static bool CrossingAllowed(Vector3 point,ElevationGrid[] grids,Bounds[] blocks,float limit)
+        {var flat=new Vector3(point.x,0f,point.z);return !blocks.Any(b=>b.Contains(flat))&&ElevationGrid.Sample(grids,point,out _,out float slope)&&slope<=limit;}
         /// <summary>Validates immutable planned routes against numeric exclusion bounds.</summary>
         internal static bool Clear(Vector3[] route,Bounds[] blocks) {return Core.RouteGeometry.Clear(route,blocks);}
     }

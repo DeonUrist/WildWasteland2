@@ -27,7 +27,8 @@ namespace WildWasteland.Modules.Survival
         private readonly List<UiTextSetText> _labelSweep = new List<UiTextSetText>();
         private PlayMakerFSM _spawn;
         private bool _spawnOn, _pending;
-        private float _breakRemaining, _checkRemaining = 300f;
+        private float _breakRemaining, _checkRemaining;
+        private float CheckSeconds { get { return _owner.MadnessCheckTimeout.Value * 60f; } }
         private bool _rewardBreak;
         private InsanityEventType _eventType;
         private float _heldInsanity;
@@ -38,7 +39,7 @@ namespace WildWasteland.Modules.Survival
         private FsmFloat _sanity;
         private PlayMakerFSM _sleep;
         private int _catalog = -1;
-        internal Insanity(SurvivalModule owner) { _owner = owner; _episode = new InsanityEpisode(this, owner); }
+        internal Insanity(SurvivalModule owner) { _owner = owner; _episode = new InsanityEpisode(this, owner); _checkRemaining = CheckSeconds; }
         internal void Init()
         {
             Hooks.EnterState.Prefix(_owner, BeforeState);
@@ -49,10 +50,12 @@ namespace WildWasteland.Modules.Survival
             Hooks.UiTextSetTextEnter.Prefix(_owner, FoodHint);
             ModEvents.Subscribe<Hurt>(_owner, OnHurt);
             SaveBus.StateChanged += StateChanged;
+            _owner.MadnessCheckTimeout.SettingChanged += TimeoutChanged;
             _episode.Init();
             Scheduler.Interval(_owner, "Survival.Insanity references", 1f, Resolve);
             Scheduler.EveryFrame(_owner, "Survival.Mental break", Tick);
         }
+        private void TimeoutChanged(object sender, EventArgs args) { _checkRemaining = CheckSeconds; }
         private void StateChanged(string previous, string now)
         {
             if (now == "setSeed" || now == "Start") { Clear(); _restoreMental = false; }
@@ -73,7 +76,7 @@ namespace WildWasteland.Modules.Survival
                 _breakRemaining = float.Parse(values[1], System.Globalization.CultureInfo.InvariantCulture);
                 _pending = values[2] == "1"; _rewardBreak = values[3] == "1";
                 _checkRemaining = float.Parse(values[4], System.Globalization.CultureInfo.InvariantCulture);
-                if (float.IsNaN(_breakRemaining) || _breakRemaining < 0 || _breakRemaining > 60 || float.IsNaN(_checkRemaining) || _checkRemaining < 0 || _checkRemaining > 300
+                if (float.IsNaN(_breakRemaining) || _breakRemaining < 0 || _breakRemaining > 60 || float.IsNaN(_checkRemaining) || _checkRemaining < 0 || _checkRemaining > 7200
                     || values[2] != "0" && values[2] != "1" || values[3] != "0" && values[3] != "1" || _pending && (!_rewardBreak || _breakRemaining > 0)) throw new FormatException("Invalid mental break state");
                 _breakRemaining = Mathf.Min(30, _breakRemaining);
                 int type = legacy ? UnityEngine.Random.Range(0, 2) : int.Parse(values[5], System.Globalization.CultureInfo.InvariantCulture);
@@ -299,7 +302,7 @@ namespace WildWasteland.Modules.Survival
             if (_sanity != null && _sanity.Value >= 100) { Begin(true); return; }
             _checkRemaining -= Time.deltaTime;
             if (_checkRemaining > 0) return;
-            _checkRemaining = 300f;
+            _checkRemaining = CheckSeconds;
             float chance = ModApi.Get<IPlayerPerkEffects>()?.MentalBreakChance ?? 0;
             if (chance > 0 && UnityEngine.Random.value < chance) Begin(false);
         }
@@ -343,7 +346,7 @@ namespace WildWasteland.Modules.Survival
             if (_sanity == null) _sanity = FsmVariables.GlobalVariables.FindFsmFloat("Sanity");
             _heldInsanity = reward ? 100 : Mathf.Clamp(_sanity != null ? _sanity.Value : 0, 0, 100);
             _eventType = type ?? (InsanityEventType)UnityEngine.Random.Range(0, (int)InsanityEventType.Doppelganger + 1);
-            _rewardBreak = reward; _breakRemaining = 30; _checkRemaining = 300;
+            _rewardBreak = reward; _breakRemaining = 30; _checkRemaining = CheckSeconds;
             HoldInsanity(); _episode.Start();
             Log.Always(_owner, (reward ? "Mental break started: " : "Random mental break started: ") + EventName + "; 30 gameplay seconds; insanity frozen at " + _heldInsanity + (reward ? "; perk choice after completion." : "; no perk reward."));
         }
@@ -379,11 +382,11 @@ namespace WildWasteland.Modules.Survival
             foreach (var pair in _labels) pair.Key.text = pair.Value.Original;
             if (_spawn != null) _spawn.enabled = _spawnOn;
             _attackers.Clear(); _aggressions.Clear(); _pending = false; _sanity = null; _catalog = -1; _spawn = null; _enabled.Clear(); _decay.Clear(); _food.Clear(); _tags.Clear(); _labels.Clear();
-            _breakRemaining = 0; _checkRemaining = 300; _rewardBreak = false;
+            _breakRemaining = 0; _checkRemaining = CheckSeconds; _rewardBreak = false;
             _heldInsanity = 0; _eventType = InsanityEventType.Vertigo;
             _stateError = null;
             _sleep = null;
         }
-        internal void Shutdown() { SaveBus.StateChanged -= StateChanged; Clear(); }
+        internal void Shutdown() { SaveBus.StateChanged -= StateChanged; _owner.MadnessCheckTimeout.SettingChanged -= TimeoutChanged; Clear(); }
     }
 }

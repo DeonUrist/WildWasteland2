@@ -9,11 +9,18 @@ namespace WildWasteland.Modules.Patrols
     internal sealed partial class WorldTraffic
     {
         private sealed class NearbyDeparture
-        {internal int Role;internal string Name,Faction,Type;internal RoadJob Incoming,Outgoing;internal TrafficVehicle[] Vehicles;}
+        {internal int Role;internal string Name,Faction,Type;internal RoadJob Incoming;internal TrafficBase Source,Destination;internal TrafficVehicle[] Vehicles;}
         private readonly List<NearbyDeparture> _nearDepartures=new List<NearbyDeparture>();
         private float _nextMerchant;private PlayMakerFSM _hornFsm;private GameObject _hornCar;private bool _hornOn;
         /// <summary>Returns the current role count used by traffic merchants.</summary>
-        private int RoleCount(int role)=>_journeys.Count(j=>!j.foot&&!j.townParked&&!j.townResident&&(j.merchant?2:j.convoy?1:0)==role)+_nearDepartures.Count(d=>d.Role==role)+_townDepartures.Count(d=>(d.Journey.merchant?2:1)==role&&(!_journeys.Contains(d.Journey)||d.Journey.townResident))+(role==0&&_roamingDeparture!=null?1:0)+(role<2&&_departures.ContainsKey(role==1)?1:0);
+        private int RoleCount(int role,string faction=null)=>_journeys.Count(j=>!j.foot&&!j.townParked&&!j.townResident&&(j.merchant?2:j.convoy?1:0)==role&&(faction==null||TrafficFactions.Normalize(j.faction)==faction))
+            +_nearDepartures.Count(d=>d.Role==role&&(faction==null||TrafficFactions.Normalize(d.Faction)==faction))
+            +_townDepartures.Count(d=>(d.Journey.merchant?2:1)==role&&(!_journeys.Contains(d.Journey)||d.Journey.townResident)&&(faction==null||TrafficFactions.Normalize(d.Journey.faction)==faction))
+            +(role==0?_calls.Values.Count(d=>d.Redirect==null&&(faction==null||TrafficFactions.Normalize(d.Faction)==faction)):0);
+        /// <summary>Counts travelling groups and pending routes without charging parked settlement shops.</summary>
+        private int PopulationCount=>RoleCount(0)+RoleCount(1)+RoleCount(2)+_journeys.Count(j=>j.foot);
+        /// <summary>Returns the independent vehicle-patrol allowance for one faction.</summary>
+        private static int PatrolLimit(string faction)=>TrafficFactions.Normalize(faction)=="Coyotes"?PatrolsModule.MaxCoyotePatrols.Value:PatrolsModule.MaxPatrols.Value;
         /// <summary>Checks the current merchant type in use condition for traffic merchants.</summary>
         internal static bool MerchantTypeInUse(string type)
         {return MerchantHost.All.Any(h=>h!=null&&h.Data!=null&&Find(h.GetComponent<PatrolMarker>()?.TrafficId)?.townResident!=true&&MerchantCatalog.Selected(h.Data.types)==type)||(_instance!=null&&(_instance._journeys.Any(j=>j.merchant&&!j.townResident&&j.vehicles.Any(v=>MerchantCatalog.Selected(v.merchantTypes)==type))||_instance._nearDepartures.Any(d=>d.Role==2&&d.Type==type)||_instance._townDepartures.Any(d=>d.Journey.merchant&&d.Journey.vehicles.Any(v=>MerchantCatalog.Selected(v.merchantTypes)==type))));}
@@ -24,45 +31,48 @@ namespace WildWasteland.Modules.Patrols
         private bool QueueNearby(SpawnGroup group,int role)
         {
             if(role==2&&PatrolsModule.MerchantSpawnChance.Value<=0f){Core.Log.Warn(null,"[Patrols] " + "Route not created: merchant spawn chance is zero.");return false;}
-            int cap=role==2?PatrolsModule.MaxMerchants.Value:role==1?PatrolsModule.MaxConvoys.Value:PatrolsModule.MaxPatrols.Value;
+            string faction=TrafficFactions.Normalize(group.Faction);
+            int cap=role==2?PatrolsModule.MaxMerchants.Value:role==1?PatrolsModule.MaxConvoys.Value:PatrolLimit(faction);
             int manual=role==2?MerchantHost.All.Count(h=>h!=null&&!Owns(h.GetComponent<PatrolMarker>())):0;
-            if(RoleCount(role)+manual>=cap||RoleCount(0)+RoleCount(1)+RoleCount(2)>=PatrolsModule.TrafficMaxGroups.Value){Core.Log.Warn(null,"[Patrols] " + "Route not created: maximum population reached.");return false;}
+            if(RoleCount(role,role==0?faction:null)+manual>=cap||PopulationCount>=PatrolsModule.TrafficMaxGroups.Value){Core.Log.Warn(null,"[Patrols] " + "Route not created: maximum population reached.");return false;}
             var player=Core.PlayerState.Transform;if(player==null)return false;
             var type=MerchantCatalog.Selected(group.MerchantTypes);
             if(role==2&&MerchantTypeInUse(type)){Core.Log.Warn(null,"[Patrols] " + "A "+MerchantCatalog.Label(type)+" merchant already exists.");return false;}
             var roster=role==2?group.Templates.Select(CarTemplate.Find).Where(t=>t!=null&&t.Available&&CrewFactions.Compatible(t,group.Faction)).OrderBy(t=>UnityEngine.Random.value).Take(1).Select(t=>t.CloneForSpawn()).ToList():EditorStore.ComposeFull(group,role==1,()=>UnityEngine.Random.value);
             if(roster.Count==0)return false;
             if(role==2)foreach(var car in roster){MerchantRuntime.Configure(car,group);car.MerchantTravelling=true;car.ReleaseHandbrake=true;}
-            if (TownTravel && role > 0) return QueueTownDeparture(group, role, roster);
+            if(TownTravel&&role>0&&QueueTownDeparture(group,role,roster))return true;
             var center=TrafficSpace.World(player.position);float angle=UnityEngine.Random.Range(0f,Mathf.PI*2f);
-            var direction=new Vector3(Mathf.Cos(angle),0f,Mathf.Sin(angle));var side=Vector3.Cross(direction,Vector3.up)*UnityEngine.Random.Range(-120f,120f);
-            float edge=Mathf.Max(PatrolsModule.TrafficUnloadRange.Value,PatrolsModule.TrafficLoadRange.Value)+250f;
-            if(role==2){direction=UnityEngine.Random.value<.5f?Vector3.forward:Vector3.right;if(UnityEngine.Random.value<.5f)direction=-direction;side=Vector3.Cross(direction,Vector3.up)*UnityEngine.Random.Range(-120f,120f);}
-            var entry=new TrafficBase{apron=center-direction*edge+side};var middle=new TrafficBase{apron=center+side};var exit=new TrafficBase{apron=center+direction*edge+side};
-            if(role==2||(role==0&&TrafficFactions.Normalize(group.Faction)=="Coyotes"))
-            {entry.apron=OffscreenTrafficPoint(middle.apron,-direction);exit.apron=OffscreenTrafficPoint(middle.apron,direction);}
-            _nearDepartures.Add(new NearbyDeparture{Role=role,Name=group.Name,Faction=group.Faction,Type=type,Vehicles=roster.Select(Freeze).ToArray(),Incoming=RoadPlanner.RequestRoute(entry,middle,role!=0),Outgoing=RoadPlanner.RequestRoute(middle,exit,role!=0)});
-            Core.Log.Main(null,"[Patrols] " + "Planning nearby route for "+group.Name);return true;
+            var direction=new Vector3(Mathf.Cos(angle),0f,Mathf.Sin(angle));var via=CrossingPoint(role==2);
+            var entry=new TrafficBase{apron=OffscreenTrafficPoint(via,-direction)};var exit=new TrafficBase{apron=OffscreenTrafficPoint(via,direction)};
+            var bases=TrafficLocations.PatrolBases().Where(b=>TrafficFactions.Normalize(b.faction)==faction).ToArray();
+            var sources=bases.Where(b=>TrafficLocations.BaseLoaded(b.id)&&!TrafficLocations.PlayerAt(b)&&TrafficLocations.FlatDistance(b.apron,center)<=PatrolsModule.CampTrafficRange.Value).ToArray();
+            if(sources.Length>0)entry=sources[UnityEngine.Random.Range(0,sources.Length)];
+            var destinations=bases.Where(b=>b.id!=entry.id&&TrafficLocations.FlatDistance(b.apron,entry.apron)>=300f).ToArray();
+            if(destinations.Length>0)exit=destinations[UnityEngine.Random.Range(0,destinations.Length)];
+            _nearDepartures.Add(new NearbyDeparture{Role=role,Name=group.Name,Faction=group.Faction,Type=type,Source=entry,Destination=exit,Vehicles=roster.Select(Freeze).ToArray(),Incoming=RoadPlanner.RequestRoute(entry,exit,role!=0||roster.Any(t=>t.IsTruck),via:via)});
+            Core.Log.Main(null,"[Patrols] Planning map crossing for "+group.Name+" ("+faction+", "+(role==2?"merchant":role==1?"convoy":"patrol")+"); via "+TrafficLocations.FlatDistance(via,center).ToString("0")+" m from player");return true;
         }
         /// <summary>Advances queued nearby routes for the current traffic merchants.</summary>
         private void PumpNearbyRoutes()
         {
             foreach(var departure in _nearDepartures.ToArray())
             {
-                if(!departure.Incoming.Complete||!departure.Outgoing.Complete)continue;_nearDepartures.Remove(departure);
-                int cap=departure.Role==2?PatrolsModule.MaxMerchants.Value:departure.Role==1?PatrolsModule.MaxConvoys.Value:PatrolsModule.MaxPatrols.Value;
+                if(!departure.Incoming.Complete)continue;_nearDepartures.Remove(departure);
+                int cap=departure.Role==2?PatrolsModule.MaxMerchants.Value:departure.Role==1?PatrolsModule.MaxConvoys.Value:PatrolLimit(departure.Faction);
                 if(departure.Role==2&&PatrolsModule.MerchantSpawnChance.Value<=0f)continue;
-                if(RoleCount(departure.Role)>=cap||_journeys.Count>=PatrolsModule.TrafficMaxGroups.Value)continue;
-                if(departure.Incoming.Route==null||departure.Outgoing.Route==null)continue;
-                var route=departure.Incoming.Route.Concat(departure.Outgoing.Route.Skip(1)).ToArray();
-                _journeys.Add(new TrafficJourney{id=Guid.NewGuid().ToString("N"),name=departure.Name,faction=departure.Faction,source="",destination="",merchant=departure.Role==2,convoy=departure.Role==1,freeRoute=true,
-                    route=route,roadLegs=departure.Incoming.Roads.Concat(departure.Outgoing.Roads.Skip(1)).ToArray(),TerrainRoute=departure.Incoming.Elevation||departure.Outgoing.Elevation,position=route[0],vehicles=departure.Vehicles,speed=(departure.Role==0?PatrolsModule.TrafficPatrolSpeed.Value:PatrolsModule.TrafficConvoySpeed.Value)/3.6f});
+                if(RoleCount(departure.Role,departure.Role==0?TrafficFactions.Normalize(departure.Faction):null)>=cap||PopulationCount>=PatrolsModule.TrafficMaxGroups.Value)continue;
+                if(departure.Incoming.Route==null||!departure.Incoming.Elevation||Cleared(departure.Source.id)||Cleared(departure.Destination.id))
+                {Core.Log.Main(null,"[Patrols] Map crossing deferred for "+departure.Name+": no certified terrain route or cleared endpoint");if(Core.Log.L2)Core.Log.Deep(null,"[Patrols] Crossing rejection: "+(departure.Incoming.Rejections??departure.Incoming.Error??"endpoint cleared"));continue;}
+                var route=departure.Incoming.Route;
+                _journeys.Add(new TrafficJourney{id=Guid.NewGuid().ToString("N"),name=departure.Name,faction=departure.Faction,source=departure.Source.id??"",destination=departure.Destination.id??"",merchant=departure.Role==2,convoy=departure.Role==1,freeRoute=string.IsNullOrEmpty(departure.Source.id),
+                    route=route,roadLegs=departure.Incoming.Roads,TerrainRoute=departure.Incoming.Elevation,position=route[0],vehicles=departure.Vehicles,speed=(departure.Role==0?PatrolsModule.TrafficPatrolSpeed.Value:PatrolsModule.TrafficConvoySpeed.Value)/3.6f});
+                Core.Log.Main(null,"[Patrols] Map crossing ready: "+departure.Name+"; "+route.Length+" waypoints");
             }
         }
         /// <summary>Populates merchants for the current traffic merchants.</summary>
         private void PopulateMerchants()
         {
-            if (TownTravel) return; // Settlement buses provide the persistent fleet and depart after their visits.
             if(_nextMerchant<=0f){NextMerchant();return;}if(Time.time<_nextMerchant)return;
             NextMerchant();
             // WW: F6 [Patrols] Merchants off = the "Max merchants 0" path (no automatic merchant routes; a loaded bus finishes its visit)

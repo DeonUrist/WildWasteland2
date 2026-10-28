@@ -48,11 +48,12 @@ namespace WildWasteland.Modules.Perks
         public override string Id { get { return "Perks"; } }
         public override string DisplayName { get { return "PERKS"; } }
         public override void BindConfig(ModuleConfig cfg)
-        { _chancePerPerk = cfg.Tool("Mental break", "Chance per insanity perk (%)", 5f, "Every five minutes of normal gameplay, chance (%) = owned insanity perks multiplied by this value, capped at 100. Random breaks grant no perk. A break lasts 30 gameplay seconds and prevents sleep.", new AcceptableValueRange<float>(0, 100)); BindSkills(cfg); }
+        { _chancePerPerk = cfg.Tool("Mental break", "Chance per insanity perk (%)", 5f, "Controls the % chance of randomly going mad per each acquired madness perk", new AcceptableValueRange<float>(0, 100)); BindSkills(cfg); }
         public override void Settings(SettingsShell shell)
         {
             shell.Custom(this, SettingsShell.Page.Player, "", DrawFastXpGain, 10);
             shell.Resettable(this, SettingsShell.Page.Player, _fastXpGain);
+            shell.Row(this, SettingsShell.Page.World, "", _chancePerPerk, null, 100);
             shell.Custom(this, SettingsShell.Page.Debug, "Survival", DrawDebug, 420);
             shell.Custom(this, SettingsShell.Page.Developer, "Perks", DrawDeveloper, 420);
         }
@@ -72,7 +73,7 @@ namespace WildWasteland.Modules.Perks
             if (_mentalDropdown.IsOpen) layout.Space(200);
             _mentalDropdown.Draw(); _mentalDropdown.Flush();
         }
-        private void DrawDeveloper(ToolLayout layout) { DrawSkillBoosts(layout); layout.Entry(_chancePerPerk); layout.Hint("100 XP per skill point. Athletics and Driving use XP per kilometre; other entries use XP per action."); for (int i = 0; i < SkillOrder.Length; i++) if (_xpRates[SkillOrder[i]] != null) layout.Entry(_xpRates[SkillOrder[i]]); }
+        private void DrawDeveloper(ToolLayout layout) { DrawSkillBoosts(layout); layout.Hint("100 XP per skill point. Athletics and Driving use XP per kilometre; other entries use XP per action."); for (int i = 0; i < SkillOrder.Length; i++) if (_xpRates[SkillOrder[i]] != null) layout.Entry(_xpRates[SkillOrder[i]]); }
         public override void Init()
         {
             InitSkills();

@@ -177,6 +177,7 @@ namespace WildWasteland.Modules.Patrols
             if (!FootGround(TrafficSpace.Scene(world), out ground)) return;   // retried next tick
             var mob = UnityEngine.Object.Instantiate(prefab, ground + Vector3.up * 0.5f, Quaternion.LookRotation(dir, Vector3.up));
             SimpleBanditBridge.Fight(mob);
+            QuestFollowers.FormerCrew(mob);
             TrafficFactions.Actor(mob, journey.faction);
             mob.SetActive(true);
             var col = mob.GetComponent<Collider>();
@@ -472,15 +473,20 @@ namespace WildWasteland.Modules.Patrols
                 if (Mathf.Abs(world.x - c.center.x) <= c.size.x / 2f + 40f && Mathf.Abs(world.z - c.center.z) <= c.size.z / 2f + 40f) return true;
             return false;
         }
+        /// <summary>Counts retained walkers against their own faction's admission limit.</summary>
+        private int FootCount(string faction)
+        {int count=0;foreach(var journey in _journeys)if(journey.foot&&TrafficFactions.Normalize(journey.faction)==faction)count++;return count;}
+        /// <summary>Returns the configured independent foot-patrol limit.</summary>
+        private static int FootLimit(string faction)=>TrafficFactions.Normalize(faction)=="Coyotes"?PatrolsModule.CoyoteFootMaxActive.Value:PatrolsModule.FootMaxActive.Value;
         /// <summary>Populates foot for the current traffic foot.</summary>
         private void PopulateFoot(Vector3 playerWorld)
         {
             if (!PatrolsModule.FootPatrols.Value) { _footDeparture = null; FootState(1, "off (Game > World > Foot patrols)"); return; }
             if (Core.ModApi.Get<Core.INpcApi>()== null) { _footDeparture = null; FootState(2, "waiting - the NPC module is not running"); return; }
-            int count = 0;
-            for (int i = 0; i < _journeys.Count; i++) if (_journeys[i].foot) count++;
-            if (count >= PatrolsModule.FootMaxActive.Value) { _footDeparture = null; FootState(3, count + " active = FootPatrolMaxActive"); return; }
-            if (_journeys.Count >= PatrolsModule.TrafficMaxGroups.Value) { _footDeparture = null; FootState(4, "world traffic is full (" + _journeys.Count + " groups = MaxGroups)"); return; }
+            int scrapyard=FootCount("Scrapyard"),coyotes=FootCount("Coyotes"),count=scrapyard+coyotes;
+            if (scrapyard>=FootLimit("Scrapyard")&&coyotes>=FootLimit("Coyotes")) { _footDeparture = null; FootState(3, "both faction foot patrol limits reached"); return; }
+            if (_footDeparture!=null&&FootCount(_footDeparture.Faction)>=FootLimit(_footDeparture.Faction))_footDeparture=null;
+            if (PopulationCount >= PatrolsModule.TrafficMaxGroups.Value) { _footDeparture = null; FootState(4, "world traffic is full (" + PopulationCount + " groups = MaxGroups)"); return; }
             if (_footDeparture != null)
             {
                 var pending = _footDeparture;
@@ -521,6 +527,7 @@ namespace WildWasteland.Modules.Patrols
             for (int attempt = 0; attempt < 2 && sources.Count == 0; attempt++)
             {
                 if (attempt == 1) faction = faction == "Coyotes" ? "Scrapyard" : "Coyotes";
+                if(FootCount(faction)>=FootLimit(faction))continue;
                 foreach (var camp in TrafficLocations.Known.Values)
                 { float d = TrafficLocations.FlatDistance(camp.center, playerWorld); if (!camp.cleared && TrafficFactions.Normalize(camp.faction) == faction && TrafficCamps.Loaded(camp.id) && d <= range && d >= minSource) sources.Add(camp); }   // the same camps car patrols leave from, but out of sight: they walk simulated until they come near
             }

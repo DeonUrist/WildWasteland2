@@ -100,8 +100,8 @@ namespace WildWasteland.Modules.Patrols
             RefreshTownTrafficStops();
             if (_journeys.Count >= 120) return false; // Keep headroom inside the existing traffic-save record limit.
             if (_townDepartures.Any(d => d.Journey.merchant == (role == 2))) return false;
-            var destinations = _townStops.Where(s => s.CanTravel && (role != 2 || s.Faction == "Coyotes") && !ParkingBusy(s.Id)).ToList();
-            var sources = _townStops.Where(s => s.CanTravel).ToList();
+            var destinations = _townStops.Where(s => s.CanTravel && s.Faction == TrafficFactions.Normalize(group.Faction) && !ParkingBusy(s.Id)).ToList();
+            var sources = _townStops.Where(s => s.CanTravel && s.Faction == TrafficFactions.Normalize(group.Faction)).ToList();
             var player = Core.PlayerState.Transform; if (player == null || destinations.Count == 0) return false;
             var position = TrafficSpace.World(player.position);
             // Actual settlements are remembered before encounter visibility; no invented offscreen endpoints.
@@ -113,7 +113,7 @@ namespace WildWasteland.Modules.Patrols
                 source = pair.A.Id, destination = pair.B.Id, merchant = role == 2, convoy = role == 1, townBound = true,
                 vehicles = roster.Select(Freeze).ToArray(), speed = PatrolsModule.TrafficConvoySpeed.Value / 3.6f };
             _townDepartures.Add(new TownDeparture { Source = pair.A, Destination = pair.B, Journey = journey,
-                Job = RoadPlanner.RequestRoute(TownGate(pair.A), TownGate(pair.B), true) });
+                Job = RoadPlanner.RequestRoute(TownGate(pair.A), TownGate(pair.B), true, via: CrossingPoint(role == 2)) });
             Core.Log.Main(null,"[Patrols] Town route planning: " + pair.A.Name + " -> " + pair.B.Name);
             return true;
         }
@@ -170,7 +170,7 @@ namespace WildWasteland.Modules.Patrols
                 if (destination == null) continue;
                 var source = new TownTrafficStop { Id = journey.source ?? "", Name = journey.name, Parking = journey.position, Center = journey.position, Heading = journey.Heading };
                 var request = new TownDeparture { Journey = journey, Source = source, Destination = destination, Existing = true,
-                    Job = RoadPlanner.RequestRoute(TownGate(source), TownGate(destination), true) };
+                    Job = RoadPlanner.RequestRoute(TownGate(source), TownGate(destination), true, via: CrossingPoint(journey.merchant)) };
                 _townDepartures.Add(request);
                 break;
             }
@@ -201,7 +201,7 @@ namespace WildWasteland.Modules.Patrols
         private void PopulateTownConvoys()
         {
             if (!TownTravel || RoleCount(1) >= PatrolsModule.MaxConvoys.Value || _journeys.Count(j => !j.townParked && !j.townResident) >= PatrolsModule.TrafficMaxGroups.Value) return;
-            var group = Convoy.TrafficGroup(true); if (group == null) return;
+            var group = Convoy.TrafficGroup(true,"Scrapyard"); if (group == null) return;
             var roster = EditorStore.ComposeFull(group, true, () => UnityEngine.Random.value);
             if (roster.Count > 0 && roster.Any(t => t.IsTruck) && roster.All(t => t.Available)) QueueTownDeparture(group, 1, roster);
         }
@@ -250,7 +250,7 @@ namespace WildWasteland.Modules.Patrols
                 if (source != null && next.Length > 0)
                 {
                     var target = next[UnityEngine.Random.Range(0, next.Length)];
-                    _townDepartures.Add(new TownDeparture { Journey = j, Source = source, Destination = target, Existing = true, Job = RoadPlanner.RequestRoute(TownGate(source), TownGate(target), true) });
+                    _townDepartures.Add(new TownDeparture { Journey = j, Source = source, Destination = target, Existing = true, Job = RoadPlanner.RequestRoute(TownGate(source), TownGate(target), true, via: CrossingPoint(true)) });
                 }
             }
             return false;
