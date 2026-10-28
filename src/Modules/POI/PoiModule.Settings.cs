@@ -6,7 +6,7 @@ namespace WildWasteland.Modules.POI
     public sealed partial class PoiModule
     {
         /// <summary>Registers the existing feature row at its original page position.</summary>
-        public override void Settings(SettingsShell shell) { shell.Custom(this, SettingsShell.Page.World, "", DrawSettingsRow, 200); }
+        public override void Settings(SettingsShell shell) { shell.Custom(this, SettingsShell.Page.World, "", DrawSettingsRow, 200); shell.Row(this, SettingsShell.Page.World, "", _towns.PopulationDensity, null, 7); shell.Resettable(this, SettingsShell.Page.World, _towns.PopulationDensity); }
         /// <summary>Draws the existing feature setting.</summary>
         private void DrawSettingsRow(ToolLayout l) { l.Heading("Map"); SettingsShell.Switch(l, "New POI", Config.Enabled, "Enables new custom POIs added by the mod"); }
     }

@@ -246,6 +246,8 @@ namespace WildWasteland.Modules.Presentation
         private static int _viewFrame = -1;
         private static Vector3 _vPos, _vEye; private static Quaternion _vRot = Quaternion.identity; private static float _vFov = 60f, _gameFov = 60f;
         private static Transform _vCar; private static bool _vCutaway;
+        // ChaseCamera's legacy contract: this type no longer holds direct projection/FOV overrides; CameraArbiter restores them.
+        internal static bool _projSet = false, _fovSet = false;
         private static int _zoomLogs; private static Collider _xhairCol;
         private static string XhairWhat { get { return _xhairCol != null ? _xhairCol.name + " (layer " + _xhairCol.gameObject.layer + ")" : "nothing"; } } private static float _xhairDist;
         /// <summary>Perspective projection of the camera with another field of view.</summary>
@@ -345,11 +347,17 @@ namespace WildWasteland.Modules.Presentation
                 view = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(eye, t.rotation, Vector3.one).inverse;
                 return true;
             }
+            PreCull(cam);
+            view = cam.worldToCameraMatrix;
+            return true;
+        }
+        /// <summary>Retains ChaseCamera's render hook inside the arbiter-owned view contribution.</summary>
+        private static void PreCull(Camera cam)
+        {
             ComputeView(cam);
             ViewFov = _vFov; ViewPos = _vPos; ViewRot = _vRot; HasView = true;
-            view = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(_vPos, _vRot, Vector3.one).inverse;
+            cam.worldToCameraMatrix = Matrix4x4.Scale(new Vector3(1f, 1f, -1f)) * Matrix4x4.TRS(_vPos, _vRot, Vector3.one).inverse;
             if (_vCutaway) OcclusionCutaway.Prepare(cam, _vPos, _vRot, _vCar);
-            return true;
         }
         /// <summary>Contributes the same zoom projection used to place the dynamic crosshair.</summary>
         private static bool WriteProjection(Camera cam, ref Matrix4x4 projection)

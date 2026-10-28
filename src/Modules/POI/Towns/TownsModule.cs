@@ -95,6 +95,7 @@ namespace WildWasteland.Modules.POI
         }
         /// <summary>Binds POI settings before any scene or asset preparation.</summary>
         internal void BindConfig(ModuleConfig cfg) { _settings.Bind(cfg); TownPoiSettings.Configure(_settings); }
+        internal ConfigEntry<string> PopulationDensity { get { return _settings.PopulationDensity; } }
         // Wave A (A6) entry split: lifecycle parts owned by other target modules live in partial files in their folders.
         /// <summary>NPCAI/Navigation part: installs the Nav bridge (TownBakeBridge: Nav.Next waypoints, instance overlays).</summary>
         partial void InitNavigation();

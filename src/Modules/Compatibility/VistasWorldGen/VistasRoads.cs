@@ -22,9 +22,6 @@ namespace WildWasteland.Modules.Compatibility
         private readonly Func<object, double, double, double, double, int, bool> _changed;
         private readonly Func<object, double[], double[], int, bool, string, int> _add;
         private readonly Func<object, double[], double[], int, bool, string, long, int> _add120;
-        private readonly Func<object, int> _groundPending120, _highwayNeeded120, _highwayReady120, _highwaySkipped120;
-        private readonly Func<object, bool> _highways120, _highwaySettled120, _loading120;
-        private readonly Func<bool, bool, int, int, int, bool, bool> _highwayComplete120;
         private readonly Action<object, int> _invalidate;
         private readonly HashSet<string> _connections = new HashSet<string>();
         private object _connectionNetwork;
@@ -56,15 +53,6 @@ namespace WildWasteland.Modules.Compatibility
                 _changed = Access.Call<Func<object, double, double, double, double, int, bool>>(network, "_LJrlIAf2BbOD8BOeKyGEsXWzexr", typeof(double), typeof(double), typeof(double), typeof(double), typeof(int));
                 _add120 = Access.Call<Func<object, double[], double[], int, bool, string, long, int>>(network, "_Ub8zoH3AAR3DGM1SNvZpR6o32Mu", typeof(double[]), typeof(double[]), typeof(int), typeof(bool), typeof(string), typeof(long));
                 _invalidate = Access.Call<Action<object, int>>(network, "_bw69Xys9RjjLiGSCdJlkSiaHWbt", typeof(int));
-                _groundPending120 = Access.Get<int>(ground, "_ue5MKIWXHOPFvljAjBAOEjxTdXI");
-                var highways = assembly.GetType("_n8Ht5REpZOoa7YxQX0gasOpkjWy", true);
-                _highways120 = Access.Get<bool>(highways, "_MMQ8zKGRslvk6pWHCIpYmgR3MlA");
-                _highwayNeeded120 = Read<int>(highways, "_MIqihAeNJVUjnIb3P3g7k2udhwg", typeof(int));
-                _highwayReady120 = Read<int>(highways, "_6INExN3geNXlrgPzwfM3Rqhtydc", typeof(int));
-                _highwaySkipped120 = Read<int>(highways, "_3Z8c26nzUnuxQ4rAU1xGuK07KM8", typeof(int));
-                _highwaySettled120 = Read<bool>(highways, "_LGAEAuKAdjxLs6UklMPCDLGWdnY", typeof(bool));
-                _highwayComplete120 = Access.Call<Func<bool, bool, int, int, int, bool, bool>>(assembly.GetType("_7USHV95Pal5lffSk1UqV1MGgCcH", true), "_ZQ4Ljbv7cXcgUBuECiVMP9yrow7", typeof(bool), typeof(bool), typeof(int), typeof(int), typeof(int), typeof(bool));
-                _loading120 = Read<bool>(assembly.GetType(VistasWorldGen.Gate120, true), "_qPlA3qLGZtIounCYgkXuhx7LuYo", typeof(bool));
                 return;
             }
             var q = assembly.GetType("A.q", true); var s = assembly.GetType("A.S", true); var state = assembly.GetType("A.S+A", true);
@@ -98,11 +86,10 @@ namespace WildWasteland.Modules.Compatibility
         {
             // Compatibility limit: this covers currently loaded terrain. Future streaming, road-setting changes and Vista's
             // separate Add/Off cleanup writer can still affect saved town surroundings; saved town sites are never relocated.
+            if (VistasWorldGen.Is120) return VistasWorldGen.NativeLoadingFinished120;
             var map = root == null ? null : root.GetComponent<MapMagicObject>();
             if (!VistasWorldGen.Present || map == null || map.IsGenerating()) return false;
-            if (_loading120 != null && _loading120(null)) return false;
             if (!_enabled()) return true;
-            if (_groundPending120 != null && _groundPending120(null) != 0) return false;
             if (_spawnTrackEnabled() && _spawnTrackState(null) < 3) return false;
             var network = _network(); var states = _states(null); bool found = false;
             lock (_gate(network))
@@ -119,8 +106,7 @@ namespace WildWasteland.Modules.Compatibility
                     if (_changed(network, x - 20, z - 20, x + data.size.x + 20, z + data.size.z + 20, _revision(state))) return false;
                 }
             }
-            // Use Vista's actual geometry completion rule, including intentionally excluded pieces, without its timeout escape.
-            return found && (_highways120 == null || !_highways120(null) || _highwayComplete120(true, _highwaySettled120(null), _highwayReady120(null), _highwayNeeded120(null), _highwaySkipped120(null), _highwayNeeded120(null) > 0));
+            return found;
         }
 
         public bool Connect(string key, Vector3[] worldPath)

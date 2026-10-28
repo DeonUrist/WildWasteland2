@@ -63,6 +63,9 @@ namespace WildWasteland.Modules.Compatibility
                 var refresh = (Action)Delegate.CreateDelegate(typeof(Action), AccessTools.Method(bridge, "Refresh"));
                 var shutdown = (Action)Delegate.CreateDelegate(typeof(Action), AccessTools.Method(bridge, "Shutdown"));
                 var discover = (Action)Delegate.CreateDelegate(typeof(Action), AccessTools.Method(bridge, "Discover"));
+                var game = ModApi.Get<ICameraModInterop>().ResolveType("Apocaplayer.Game");
+                ChasePlayerState.Weapon = (Func<string>)Delegate.CreateDelegate(typeof(Func<string>), AccessTools.PropertyGetter(game, "DrawnWeapon"));
+                ChasePlayerState.Cam = PlayerState.Camera;
                 if (!Core.Patches.Patch(_owner, AccessTools.Method(bridge, "FindType"), prefix: AccessTools.Method(typeof(ChaseCameraCompat), "BeforeFindType")))
                     throw new InvalidOperationException("Type adapter hook unavailable");
                 _refresh = refresh; _shutdown = shutdown; _discover = discover;
@@ -91,6 +94,7 @@ namespace WildWasteland.Modules.Compatibility
             catch (Exception e) { Log.Warn(_owner, "ChaseCamera shutdown: " + e.Message); }
             _refresh = _shutdown = _discover = null; _attempted = _hostWasRunning = false; _discovery = null; _owner = null;
             Enabled = OcclusionPrototype = OcclusionInVehicle = null; ThirdCarHeight = null;
+            ChasePlayerState.Weapon = null; ChasePlayerState.Cam = null;
         }
     }
 }

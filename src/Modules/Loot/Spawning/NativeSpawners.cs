@@ -48,6 +48,31 @@ namespace WildWasteland.Modules.Loot
             // numberEnd roll. Preserve that authored flow; zero loot can still suspend it.
             if (kind == 2 && name.StartsWith("ItemSpawn_Unique", StringComparison.Ordinal))
             { budget.Kind = 5; return budget; }
+            if (kind == 1 && name == "EnemySpawn_Wild_Attack")
+            {
+                // Native roll 0 means no attack; 1..5 choose a species and its authored fixed count.
+                var trigger = f.Fsm.GetState("trigger"); RandomInt choice = null;
+                if (trigger != null) foreach (var action in trigger.Actions)
+                { var roll = action as RandomInt; if (roll != null && roll.storeResult != null && roll.storeResult.Name == "random") choice = roll; }
+                if (choice == null || NativeValue(f, choice.min) != 0 || NativeValue(f, choice.max) - (choice.inclusiveMax ? 0 : 1) != 5)
+                    throw new InvalidOperationException("Unsupported native wild attack selection: " + name);
+                budget.Counts = new int[6];
+                string[] branches = { "rat", "wildhound", "nightwalker", "scorpion", "zombie" };
+                for (int i = 0; i < branches.Length; i++)
+                {
+                    var state = f.Fsm.GetState(branches[i]); bool found = false;
+                    if (state != null) foreach (var action in state.Actions)
+                    {
+                        var set = action as SetIntValue;
+                        if (set == null || set.intVariable == null || set.intVariable.Name != "numberEnd") continue;
+                        int count = NativeValue(f, set.intValue);
+                        if (count < 0 || count > 100000) throw new InvalidOperationException("Invalid native wild attack count: " + name);
+                        budget.Counts[i + 1] = count; budget.Max = Mathf.Max(budget.Max, count); found = true;
+                    }
+                    if (!found) throw new InvalidOperationException("Native wild attack count missing: " + branches[i]);
+                }
+                return budget;
+            }
             foreach (var state in f.FsmStates) foreach (var action in state.Actions)
             {
                 var roll = action as RandomInt;
@@ -114,6 +139,15 @@ namespace WildWasteland.Modules.Loot
                     for (int i = 0; i < pool.Count; i++) { select.ints[i] = new FsmInt(i); select.weights[i] = new FsmFloat(1); }
                 }
             }
+            if (pool != null && f.gameObject.name == "EnemySpawn_Wild_Attack")
+            {
+                // Town clones use the allocated faction/count, bypassing the native species branches.
+                var item = f.Fsm.GetState("getItem");
+                if (!(item.Actions[0] is SelectRandomInt)) item.Actions = new[] { f.Fsm.GetState("rat").Actions[0], item.Actions[0], item.Actions[1] };
+                foreach (var state in f.FsmStates) if (state.Name == "trigger" || state.Name == "spawn")
+                    foreach (var transition in state.Transitions) if (transition.ToState == "random")
+                    { transition.ToState = item.Name; transition.ToFsmState = item; }
+            }
             Write(f, "numberEnd", count);
             if (!f.enabled) f.enabled = true;
         }
@@ -136,7 +170,7 @@ namespace WildWasteland.Modules.Loot
         internal static void Resume(PlayMakerFSM f)
         {
             if (f == null || !f.enabled || Read(f, "OnOff") > 0 || Read(f, "number") <= 0 || Read(f, "numberEnd") <= Read(f, "number")) return;
-            if (f.ActiveStateName == "wait" || f.ActiveStateName == "trigger") f.Fsm.SetState("getRandom int");
+            if (f.ActiveStateName == "wait" || f.ActiveStateName == "trigger") f.Fsm.SetState(f.gameObject.name == "EnemySpawn_Wild_Attack" ? "getItem" : "getRandom int");
         }
     }
 }

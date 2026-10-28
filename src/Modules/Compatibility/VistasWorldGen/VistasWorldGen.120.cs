@@ -19,10 +19,8 @@ namespace WildWasteland.Core
         private static Func<object, TerrainTile> _jobTile120;
         private static Func<object, Terrain> _jobTerrain120;
         private static Func<object, bool> _gateActive120;
-        private static Func<object, float> _progress120;
+        private static Func<object, float> _progress120, _released120;
         private static Func<object, string> _stage120;
-        private static IWorldGenRoads _roads120;
-        private static bool _waiting120;
         private static readonly Dictionary<string, MethodInfo> _globalMethods120 = new Dictionary<string, MethodInfo>();
 
         private static void Install120(Assembly assembly)
@@ -65,6 +63,7 @@ namespace WildWasteland.Core
             var gate = assembly.GetType(Gate120, true);
             _gateActive120 = Access.Read<bool>(gate.GetField("_qPlA3qLGZtIounCYgkXuhx7LuYo", BindingFlags.Static | BindingFlags.NonPublic));
             _progress120 = Access.Read<float>(gate.GetField("_dOJmTbBVIU0uKs6FFkxBGAtnOCW", BindingFlags.Static | BindingFlags.NonPublic));
+            _released120 = Access.Read<float>(gate.GetField("_niqaoD1KdhtKLscZrW7d7DwjPBW", BindingFlags.Static | BindingFlags.NonPublic));
             _stage120 = Access.Read<string>(gate.GetField("_gGUtICsBER6Wembqa4KFKYvfz9l", BindingFlags.Static | BindingFlags.NonPublic));
             Hook(Find(gate, "_y7TsiWDFJIbMXNCOBel5vmUTcrG", typeof(void)), prefix: "LoadingDraw120");
         }
@@ -72,29 +71,16 @@ namespace WildWasteland.Core
         internal static void Loading120(IWorldGenRoads roads)
         {
             if (!Is120) return;
-            _roads120 = roads;
-            // Child bridge scopes are not ModuleHost entries; the registered Compatibility module owns these gates.
-            LoadingProgress.RegisterHold(CompatibilityModule.Instance, "Vista world", Ready120);
             LoadingProgress.Register(CompatibilityModule.Instance, Progress120);
-            Log.Main(_owner, "Vistas 1.2.0 loading: native generation, committed roads/highways/signs, then WW towns before player control.");
+            Log.Main(_owner, "Vistas 1.2.0 loading: native stage/progress displayed; Vista owns generation completion, then WW towns.");
         }
 
-        private static bool Ready120()
-        {
-            var anchor = Origin.AnchorTransform;
-            bool ready = _gateActive120 != null && !_gateActive120(null) && _roads120 != null && anchor != null && _roads120.Ready(anchor.gameObject);
-            if (!ready && !_waiting120) Log.Main(_owner, "Vista load handoff waiting: generation, road grading and highway signs must finish before play.");
-            if (ready && _waiting120) Log.Main(_owner, "Vista load handoff ready: initial terrain, roads and highway signs complete.");
-            _waiting120 = !ready;
-            return ready;
-        }
+        internal static bool NativeLoadingFinished120 { get { return _released120 != null && !_gateActive120(null) && _released120(null) >= 0f; } }
 
         private static LoadingProgress.Work? Progress120()
         {
-            if (Ready120()) return null;
-            bool active = _gateActive120(null);
-            return new LoadingProgress.Work(.35f * (active ? Mathf.Clamp01(_progress120(null)) : 1f),
-                active ? "Vista: " + _stage120(null) : "Vista: finishing roads, highways and signs");
+            if (!_gateActive120(null)) return null;
+            return new LoadingProgress.Work(.35f * Mathf.Clamp01(_progress120(null)), "Vista: " + _stage120(null));
         }
 
         private static bool LoadingDraw120() { return !LoadingProgress.ScreenVisible; }
@@ -104,10 +90,9 @@ namespace WildWasteland.Core
         {
             if (Is120)
             {
-                LoadingProgress.RemoveHold(CompatibilityModule.Instance, "Vista world");
                 LoadingProgress.Remove(CompatibilityModule.Instance);
             }
-            _jobTile120 = null; _jobTerrain120 = null; _gateActive120 = null; _progress120 = null; _stage120 = null; _roads120 = null; _waiting120 = false;
+            _jobTile120 = null; _jobTerrain120 = null; _gateActive120 = null; _progress120 = _released120 = null; _stage120 = null;
             _globalMethods120.Clear();
         }
     }

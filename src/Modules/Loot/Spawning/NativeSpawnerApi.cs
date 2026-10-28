@@ -11,7 +11,7 @@ namespace WildWasteland.Modules.Loot
         /// <summary>Returns write for the current owner state.</summary>
         public void Write(PlayMakerFSM f, string n, int v) { NativeSpawners.Write(f,n,v); }
         /// <summary>Captures immutable generation inputs or the current native progress.</summary>
-        public NativeSpawnBudget Capture(PlayMakerFSM f) { var b=NativeSpawners.Capture(f); return new NativeSpawnBudget { Min=b.Min, Max=b.Max, Kind=b.Kind }; }
+        public NativeSpawnBudget Capture(PlayMakerFSM f) { var b=NativeSpawners.Capture(f); return new NativeSpawnBudget { Min=b.Min, Max=b.Max, Kind=b.Kind, Counts=b.Counts }; }
         /// <summary>Returns force for the current owner state.</summary>
         public void Force(PlayMakerFSM f, int n, List<GameObject> p) { NativeSpawners.Force(f,n,p); }
         /// <summary>Applies the captured numeric geometry changes to the current terrain instance.</summary>

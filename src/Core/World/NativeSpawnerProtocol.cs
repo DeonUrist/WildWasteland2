@@ -3,7 +3,7 @@ using UnityEngine;
 namespace WildWasteland.Core
 {
     /// <summary>Detached native spawn group count and classification.</summary>
-    public struct NativeSpawnBudget { public int Min, Max, Kind; }
+    public struct NativeSpawnBudget { public int Min, Max, Kind; public int[] Counts; }
     /// <summary>Committed one-shot marker progress.</summary>
     public sealed class NativeSpawnProgress { public int OnOff, Number, NumberEnd; }
     /// <summary>Native weighted selection available to marker authoring and spawning.</summary>

@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.POI
         internal ConfigEntry<float> LoadingBudgetMs;
         internal ConfigEntry<int> DesertGasStationChance;
         internal ConfigEntry<bool> GasStationParking;
+        internal ConfigEntry<string> PopulationDensity;
         internal ConfigFile File;
         /// <summary>Binds the Tools-owned editor/test entries first (keeps the original bind order); implemented in Tools/_fromTowns.</summary>
         partial void BindTools(ConfigFile file);
@@ -53,6 +54,7 @@ namespace WildWasteland.Modules.POI
         internal void Bind(ModuleConfig cfg)
         {
             Bind(cfg.Tools);
+            PopulationDensity = cfg.Player("World", "Population density", "Normal", "Town population: Sparse uses the current percentage of rolled native counts; Normal uses that percentage of maximum native counts; Dense fills every eligible enemy spawner to its native maximum. Reload to apply to unfinished groups; completed groups stay completed.", new AcceptableValueList<string>("Sparse", "Normal", "Dense"));
         }
         /// <summary>Binds a bounded integer generation setting in the module tuning file.</summary>
         private static ConfigEntry<int> Int(ConfigFile f, string k, int d, int min, int max, string desc)

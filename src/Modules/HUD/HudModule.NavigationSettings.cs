@@ -52,7 +52,8 @@ namespace WildWasteland.Modules.HUD
         /// <summary>The optional driving-HUD mode with its external enable value.</summary>
         private static void DrawDriving(ToolLayout l)
         {
-            var driving = ModApi.Get<IDrivingHud>()?.Enabled; if (driving == null) return;
+            var driving = ModApi.Get<IDrivingHud>()?.Enabled;
+            if (driving == null) { l.Text("Gear/RPM/Speed HUD"); l.Hint("Requires ApocaChaseCamera with its Compatibility setting enabled and the driving HUD bridge ready"); return; }
             int mode = !driving.Value ? 0 : DrivingHudOnlyThirdPerson.Value ? 1 : 2;
             int selected = l.Choices("Gear/RPM/Speed HUD", mode, "Off", "3rd person", "On");
             if (selected != mode) { DrivingHudOnlyThirdPerson.Value = selected == 1; driving.Value = selected != 0; }

@@ -9,6 +9,7 @@ namespace WildWasteland.Modules.Loot
     {
         /// <summary>Inclusive numberEnd range of the native roll.</summary>
         internal int Min, Max;
+        internal int[] Counts;
         /// <summary>Group kind (see the type summary).</summary>
         internal int Kind;
     }

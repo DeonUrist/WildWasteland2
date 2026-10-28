@@ -22,13 +22,14 @@ namespace WildWasteland.Modules.POI
         {
             /// <summary>Native numberEnd range and group kind.</summary>
             internal int Min, Max, Kind;
+            internal int[] Counts;
         }
 
         /// <summary>Native budget of a spawner prefab FSM (POI TownAssets catalog build); throws for unsupported groups.</summary>
         internal static NativeBudget Capture(PlayMakerFSM f)
         {
             var b = Spawners.Capture(f);
-            return new NativeBudget { Min = b.Min, Max = b.Max, Kind = b.Kind };
+            return new NativeBudget { Min = b.Min, Max = b.Max, Kind = b.Kind, Counts = b.Counts };
         }
 
         /// <summary>
@@ -54,9 +55,9 @@ namespace WildWasteland.Modules.POI
             Classify(site.Plan);
             int population = Percentage(site.Plan, site.Plan.Rules.PopulationMin, site.Plan.Rules.PopulationMax, "population");
             int loot = Percentage(site.Plan, site.Plan.Rules.LootMin, site.Plan.Rules.LootMax, "loot");
-            site.PopulationCounts = Allocate(site, assets, population, 1);
-            site.LootCounts = Allocate(site, assets, loot, 2);
-            if (Log.L1) Log.Main(null, "town rolls " + site.Plan.Key + ": faction=" + site.Plan.Faction + ", " + site.Plan.Condition + ", population=" + population + "%, loot=" + loot + "%; planned before construction; shared native totals balanced across buildings and spawn groups; completed groups retained.");
+            site.PopulationCounts = Allocate(site, assets, population, 1, settings.PopulationDensity.Value);
+            site.LootCounts = Allocate(site, assets, loot, 2, "Sparse");
+            if (Log.L1) Log.Main(null, "town rolls " + site.Plan.Key + ": faction=" + site.Plan.Faction + ", " + site.Plan.Condition + ", population=" + population + "%, density=" + settings.PopulationDensity.Value + ", loot=" + loot + "%; planned before construction; shared native totals balanced across buildings and spawn groups; completed groups retained.");
         }
 
         /// <summary>
@@ -64,7 +65,7 @@ namespace WildWasteland.Modules.POI
         /// (already spawned) counts first, then one at a time to the lot with the fewest, the group with the fewest, from a seeded
         /// start lot. Finished groups are not eligible.
         /// </summary>
-        private static int[][] Allocate(TownSite site, TownAssets assets, int percent, int kind)
+        private static int[][] Allocate(TownSite site, TownAssets assets, int percent, int kind, string density)
         {
             int lots = site.Plan.LotCount, native = 0, committed = 0;
             var result = new int[lots][]; var eligible = new bool[lots][]; var totals = new int[lots];
@@ -76,14 +77,17 @@ namespace WildWasteland.Modules.POI
                 SpawnerState[] saved = null; if (site.Record != null) site.Record.Spawners.TryGetValue(lot, out saved);
                 for (int n = 0; n < count; n++) if (asset.Budgets[n].Kind == kind)
                 {
-                    var b = asset.Budgets[n]; native += new System.Random(TownPlanner.Hash(site.Plan.Key + "/" + lot + "/native/" + asset.Spawners[n])).Next(b.Min, b.Max + 1);
+                    var b = asset.Budgets[n]; var random = new System.Random(TownPlanner.Hash(site.Plan.Key + "/" + lot + "/native/" + asset.Spawners[n]));
+                    native += density != "Sparse" ? b.Max : b.Counts != null ? b.Counts[random.Next(b.Counts.Length)] : random.Next(b.Min, b.Max + 1);
                     int done = 0, on = 0;
                     if (site.Spawners[lot] != null && site.Spawners[lot][n] != null) { done = Spawners.Read(site.Spawners[lot][n], "number"); on = Spawners.Read(site.Spawners[lot][n], "OnOff"); }
                     else if (saved != null) foreach (var state in saved) if (state.Path == asset.Spawners[n]) { done = state.Number; on = state.OnOff; break; }
                     result[lot][n] = Mathf.Max(0, done); totals[lot] += result[lot][n]; committed += result[lot][n];
+                    if (density == "Dense" && on == 0) result[lot][n] = Mathf.Max(result[lot][n], b.Max);
                     eligible[lot][n] = on == 0;
                 }
             }
+            if (density == "Dense") return result;
             int remaining = Mathf.Max(0, Mathf.RoundToInt(native * percent / 100f) - committed);
             int offset = TownPlanner.Hash(site.Plan.Key + "/balance/" + kind) % lots;
             while (remaining-- > 0)
