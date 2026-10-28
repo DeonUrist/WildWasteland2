@@ -67,7 +67,7 @@ namespace WildWasteland.Modules.Gunplay
                         if (Log.L2) GunplayLog.Deep("Lead: " + owner.name + " leads " + lead.magnitude.ToString("0.00") + " m (target " + v.magnitude.ToString("0.0") + " m/s, flight " + t.ToString("0.00") + " s, skill " + skill.ToString("0.00") + ")");
                     }
                 }
-                aim += jitter;
+                aim = EnemyAim(owner, from, aim, jitter, info.Kind == Kind.Shotgun ? GunplaySettings.ShotgunPelletSpread.Value : 0f);
                 Vector3 dir = aim - from;
                 if (dir.sqrMagnitude < 1e-4f) dir = owner.transform.forward;
                 dir.Normalize();
@@ -126,6 +126,20 @@ namespace WildWasteland.Modules.Gunplay
                 GunplayLog.Error("Tracers", e);
                 return true;
             }
+        }
+
+        /// <summary>Rolls once per shot; a wide shot clears the body and pellet cone while retaining physical collisions.</summary>
+        private static Vector3 EnemyAim(GameObject owner, Vector3 from, Vector3 aim, Vector3 jitter, float pelletSpread)
+        {
+            float chance = GunplaySettings.EnemyMissChance;
+            if (chance <= 0f || UnityEngine.Random.value >= chance) return aim + jitter;
+            Vector3 delta = aim - from;
+            Vector3 side = Vector3.Cross(Vector3.up, delta).normalized;
+            if (side.sqrMagnitude < 0.5f) side = Vector3.right;
+            float clearance = Mathf.Max(1.5f, GunplaySettings.PlayerBodyRadius.Value + GunplaySettings.NpcHitRadius.Value + 0.5f);
+            float width = clearance + delta.magnitude * Mathf.Tan((Mathf.Max(0f, pelletSpread) + UnityEngine.Random.Range(4f, 10f)) * Mathf.Deg2Rad);
+            if (Log.L2) GunplayLog.Deep("Enemy aim: " + owner.name + " fired wide (" + GunplaySettings.Enemies.Value + ")");
+            return aim + side * (UnityEngine.Random.value < 0.5f ? -width : width);
         }
 
 

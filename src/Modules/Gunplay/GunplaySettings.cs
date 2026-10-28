@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.Gunplay
         internal static ConfigEntry<bool> OrbsHitWalls;        // [Gunplay] MonsterProjectilesHitWalls
         internal static ConfigEntry<bool> MeleeOnWheels;
         internal static ConfigEntry<bool> NpcAim;              // gates NpcAimAtBody + LeadTargets
+        internal static ConfigEntry<string> Enemies;
         internal static ConfigEntry<bool> IronsightWheelZoom, ToggleIronsights;
         internal static ConfigEntry<bool> SmoothWeaponSwitch;
         // ---------------- F6 values ----------------
@@ -44,7 +45,8 @@ namespace WildWasteland.Modules.Gunplay
         /// <summary>[NPC aim] toggle x hidden NpcAimAtBody.</summary>
         internal static bool AimAtBody { get { return NpcAim.Value && NpcAimAtBody.Value; } }
         /// <summary>[NPC aim] toggle x hidden LeadTargets.</summary>
-        internal static bool Lead { get { return NpcAim.Value && LeadTargets.Value; } }
+        internal static bool Lead { get { return Enemies.Value != "Stormtroopers" && NpcAim.Value && LeadTargets.Value; } }
+        internal static float EnemyMissChance { get { return Enemies.Value == "Stormtroopers" ? 0.5f : Enemies.Value == "Survivors" ? 0.25f : 0f; } }
         /// <summary>Central accuracy source for pellet spread (0..100); future player skills adjust the base value here.</summary>
         internal static float Accuracy(bool player) { return Mathf.Clamp((player ? PlayerAccuracy : NpcAccuracy).Value, 0f, 100f); }
 
@@ -68,6 +70,9 @@ namespace WildWasteland.Modules.Gunplay
                 "Your melee weapons hit wheels hard (x [Gunplay / Ballistics] WheelDamageMultiplier), also fitted wheels the game's own swing passes through; a wheel brought to 0 pops off (WheelPopOff). Off = the game's own melee damage on wheels (the Patrols module's simpler fitted-wheel melee takes over).");
             NpcAim = cfg.Player("", "NpcAim", true,
                 "NPC gunmen aim at the centre of your body and lead moving targets (tuning in F7 > Weapons & HUD > NPC aim). Off = the game's own aim point (your head) and no lead. Needs Projectiles.");
+            Enemies = cfg.Player("", "Enemies", "Survivors",
+                "Enemy aim: Mercs retain current accuracy; Survivors aim wide on an extra 25% of shots; Stormtroopers aim wide on an extra 50% and never lead moving targets. Includes gunmen, bosses, vehicle crews and mutant orbs. Gun accuracy needs Projectiles.",
+                new AcceptableValueList<string>("Stormtroopers", "Survivors", "Mercs"));
             IronsightWheelZoom = cfg.Player("", "IronsightWheelZoom", true,
                 "First person: while aiming down sights, scroll up to zoom in smoothly and down to zoom out. Up to 3x additional zoom, including scopes. Leaving sights resets the zoom.");
             ToggleIronsights = cfg.Player("", "ToggleIronsights", false,

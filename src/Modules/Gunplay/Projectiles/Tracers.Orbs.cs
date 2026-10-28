@@ -50,7 +50,7 @@ namespace WildWasteland.Modules.Gunplay
         {
             try
             {
-                if (obj == null || !GunplaySettings.TracersEnabled.Value || !GunplaySettings.OrbsHitWalls.Value) return;
+                if (obj == null || (GunplaySettings.EnemyMissChance <= 0f && (!GunplaySettings.TracersEnabled.Value || !GunplaySettings.OrbsHitWalls.Value))) return;
                 var fsm = action.Fsm;
                 if (fsm == null || fsm.Name != "Damage Ranged") return;
                 var owner = fsm.GameObject;
@@ -58,6 +58,21 @@ namespace WildWasteland.Modules.Gunplay
                 if (Info(fsm, owner).IsGun) return;               // guns and crossbows fire Gunplay bullets
                 var rb = obj.GetComponent<Rigidbody>();
                 if (rb == null) return;                           // not something TranslatePosition can move
+                if (GunplaySettings.EnemyMissChance > 0f)
+                {
+                    float distance = 20f;
+                    foreach (var detection in FsmIndex.ByOwner(owner))
+                    {
+                        if (detection.FsmName != "Detection") continue;
+                        var target = detection.FsmVariables.GetFsmGameObject("detectedObj");
+                        if (target != null && target.Value != null) distance = Vector3.Distance(obj.transform.position, target.Value.transform.position);
+                        break;
+                    }
+                    Vector3 from = obj.transform.position, aim = from + obj.transform.forward * Mathf.Max(1f, distance);
+                    Vector3 wide = EnemyAim(owner, from, aim, Vector3.zero, 0f);
+                    if (wide != aim) obj.transform.rotation = Quaternion.LookRotation(wide - from);
+                }
+                if (!GunplaySettings.TracersEnabled.Value || !GunplaySettings.OrbsHitWalls.Value) return;
                 float r = 0f;
                 var sc = obj.GetComponent<SphereCollider>();
                 if (sc != null)

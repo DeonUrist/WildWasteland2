@@ -20,7 +20,7 @@ namespace WildWasteland.Core.UI
         internal static void Register()
         {
             GamePage = new ShellPage("PLAYER", SettingsShell.Page.Player);
-            WorldPage = new ShellPage("WORLD", SettingsShell.Page.World);
+            WorldPage = new ShellPage("GAMEPLAY", SettingsShell.Page.World);
             HudPage = new ShellPage("HUD", SettingsShell.Page.Hud);
             SystemPage = new ShellPage("SYSTEM", SettingsShell.Page.System);
             DebugPage = new ShellPage("Debug", SettingsShell.Page.Debug) { DebugOnly = true };

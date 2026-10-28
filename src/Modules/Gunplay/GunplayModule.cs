@@ -180,7 +180,20 @@ namespace WildWasteland.Modules.Gunplay
         public override IEnumerable<ToolPage> ToolPages() { return GunplayPages.Create(this); }
 
         /// <summary>Settings shell row: "Toggle Ironsights" on the HUD page at its original position.</summary>
-        public override void Settings(SettingsShell shell) { shell.Custom(this, SettingsShell.Page.Hud, "", DrawSettingsRow, 110, 1); }
+        public override void Settings(SettingsShell shell)
+        {
+            shell.Custom(this, SettingsShell.Page.World, "", DrawEnemies, 5);
+            shell.Custom(this, SettingsShell.Page.Hud, "", DrawSettingsRow, 110, 1);
+        }
+
+        private static readonly string[] EnemyProfiles = { "Stormtroopers", "Survivors", "Mercs" };
+        private static void DrawEnemies(ToolLayout l)
+        {
+            int current = Array.IndexOf(EnemyProfiles, GunplaySettings.Enemies.Value);
+            int next = l.Choices("Enemies", current, EnemyProfiles);
+            if (next != current) GunplaySettings.Enemies.Value = EnemyProfiles[next];
+            l.Hint(next == 0 ? "50% extra shots aimed wide; no prediction of moving targets" : next == 1 ? "25% extra shots aimed wide" : "Original enemy accuracy and aim prediction");
+        }
 
         /// <summary>Draws the "Toggle Ironsights" switch.</summary>
         void DrawSettingsRow(ToolLayout l) { SettingsShell.Switch(l, "Toggle Ironsights", GunplaySettings.ToggleIronsights, "Press aim to raise or lower ironsights instead of holding it"); }
