@@ -17,7 +17,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Configuration key for this optimization; independent of its display title.</summary>
         public override string Key { get { return "Generated mesh LODs"; } }
         /// <summary>Player-facing description of this optimization in the performance controls.</summary>
-        public override string Title { get { return "Offline-generated object, vehicle and NPC mesh LODs"; } }
+        public override string Title { get { return "Offline-generated object mesh LODs"; } }
         /// <summary>Performance settings group used for stable feature ordering.</summary>
         public override string Category { get { return Categories.Rendering; } }
         /// <summary>Ordering within the feature category; retains the established hook/settings order.</summary>
@@ -25,9 +25,9 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
         /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
-        public override string Help { get { return "Uses the optional Performance/LOD pack made by tools/lod-generator/Generate.cmd. Always active; Vanilla and Performance off use 2x distance. Zoom and saves restore original meshes. Missing/unsupported meshes stay original."; } }
-        /// <summary>Requests static and skinned renderers from the shared scan for generated mesh bindings.</summary>
-        public ScanTypes Types { get { return ScanTypes.Renderers | ScanTypes.Skinned; } }
+        public override string Help { get { return "Uses the optional Performance/LOD pack made by tools/lod-generator/Generate.cmd. NPCs and vehicles keep their original meshes. Always active; Vanilla and Performance off use 2x distance. Zoom and saves restore original meshes. Missing/unsupported meshes stay original."; } }
+        /// <summary>Requests mesh renderers from the shared scan for generated object mesh bindings.</summary>
+        public ScanTypes Types { get { return ScanTypes.Renderers; } }
 
         Knob _near, _far, _zoomFov, _memory, _distance;
         Job _job, _discovery;
@@ -163,7 +163,9 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Shared scan: accepts eligible mesh filters and handles recognized town wall panels before generated mesh binding.</summary>
         public void OnRenderer(MeshRenderer renderer, ref ScanCtx c)
         {
-            if (c.Asset || c.Player || (c.Root != null && c.Root.name == "ApocaplayerBody")) return;
+            if (c.Asset || c.Player || c.Vehicle || (c.Root != null && c.Root.name == "ApocaplayerBody")) return;
+            for (var t = renderer.transform; t != null; t = t.parent)
+                if (t.gameObject.layer == 8 || t.gameObject.layer == 10 || t.gameObject.layer == 13) return;
             var filter = renderer.GetComponent<MeshFilter>();
             if (filter != null)
             {
@@ -200,10 +202,9 @@ namespace WildWasteland.Core.Optimization
             var binding = new Binding { Renderer = renderer, Filter = filter, Original = original, Entry = entry };
             _objects.Add(binding); _bindings.Add(renderer.GetInstanceID(), binding);
         }
-        /// <summary>Shared scan: attaches an eligible native skinned mesh to its optional generated LOD entry.</summary>
+        /// <summary>Skinned meshes retain their original detail.</summary>
         public void OnSkinned(SkinnedMeshRenderer renderer, ref ScanCtx c)
         {
-            if (!c.Asset && !c.Player && (c.Root == null || c.Root.name != "ApocaplayerBody")) Attach(renderer, null, renderer, renderer.sharedMesh);
         }
 
         /// <summary>Matches a source mesh to its validated pack key and caches one renderer binding without replacing foreign mesh edits.</summary>

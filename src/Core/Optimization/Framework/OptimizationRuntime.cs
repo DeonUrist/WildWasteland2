@@ -84,7 +84,7 @@ namespace WildWasteland.Core.Optimization
             StartRuntime();
         }
 
-        /// <summary>Instantiates the 43 approved features explicitly and retains their category/order/plan-id sorting.</summary>
+        /// <summary>Instantiates the approved features explicitly and retains their category/order/plan-id sorting.</summary>
         void DiscoverFeatures()
         {
             _features.Clear();
@@ -96,9 +96,9 @@ namespace WildWasteland.Core.Optimization
                 new CoyoteBroadcastFeature(), new CullerFeature(), new DataFsmRestartFeature(), new DuplicateRigidbodyFeature(),
                 new HudFsmFeature(), new LightFlickerFeature(), new PlayerCapsuleFeature(), new VehicleReflectionFeature(),
                 new HingePollFeature(), new WaitPollFeature(), new OptionTogglePollFeature(),
-                new AnimatorCulling(), new CameraLayerCulling(), new FarClip(), new CullLods(), new GcSlice(),
+                new AnimatorCulling(), new FarClip(), new CullLods(), new GcSlice(),
                 new GeneratedLods(), new LightPolicy(), new ParticleTuning(), new PostFxExact(), new AntiAliasing(),
-                new SmallCasters(), new SunShadows(), new TerrainDetail(), new TextureQuality(), new CarLodFeature(),
+                new SmallCasters(), new SunShadows(), new TerrainDetail(), new TextureQuality(),
                 new MapMagicBudgetFeature(), new CcdSweepFeature(), new TimePhysicsFeature(), new OriginJumpFeature(),
                 new AzureSunFeature(), new AzureWeatherFeature()
             });
