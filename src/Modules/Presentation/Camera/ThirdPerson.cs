@@ -393,7 +393,7 @@ namespace WildWasteland.Modules.Presentation
         {
             HasCrosshair = false;
             var cam = Core.PlayerState.Camera;
-            if (!CameraSettings.DynamicCrosshair.Value || !On || Peek || cam == null || Core.PlayerState.Dead || Core.PlayerState.Paused) { _dynK = 0f; Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
+            if (!CameraSettings.DynamicCrosshair.Value || !On || Peek || SeatViewActive || cam == null || Core.PlayerState.Dead || Core.PlayerState.Paused) { _dynK = 0f; Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
             // no weapon drawn: centred crosshair once the view has turned back to the aim point (placed with the drawn view until then)
             if (!DynamicWanted && _dynK <= 0f) { Core.ModApi.Get<Core.ICursorPresentation>()?.Restore(); return; }
             var t = cam.transform;

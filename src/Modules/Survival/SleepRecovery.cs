@@ -31,8 +31,8 @@ namespace WildWasteland.Modules.Survival
             foreach (var action in state.Actions)
             {
                 var insanity = action as FloatAdd;
-                if (insanity != null && insanity.floatVariable.Name == "Sanity" && !_nativeInsanity.ContainsKey(insanity))
-                { _nativeInsanity.Add(insanity, insanity.add); insanity.add = -5f; }
+                if (insanity != null && insanity.floatVariable.Name == "Sanity")
+                { if (!_nativeInsanity.ContainsKey(insanity)) _nativeInsanity.Add(insanity, insanity.add); insanity.add = Insanity.MadnessEnabled ? -5f : 0f; }
                 var heal = action as FsmFloatAdd;
                 if (heal == null || heal.variableName.Value != "Health") continue;
                 if (!_nativeHealing.ContainsKey(heal)) { _nativeHealing.Add(heal, heal.add); heal.add = 0f; }

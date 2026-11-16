@@ -22,8 +22,6 @@ namespace WildWasteland.Modules.Vehicles
         internal static ConfigEntry<float> NpcRamDamageMultiplier;
         /// <summary>[Vehicles / Controls] Ignition key: the "Ignition" row on the game's Controls screen.</summary>
         internal static ConfigEntry<bool> IgnitionKey;
-        /// <summary>[Vehicles / Controls] ExitSpeedKmh (tools.cfg): the player may leave a car below this speed.</summary>
-        internal static ConfigEntry<float> ExitSpeedKmh;
         /// <summary>[Vehicles / Suspension] LiftKitCenterOfMass (tools.cfg): lower centre of mass on cars with a lift kit.</summary>
         internal static ConfigEntry<bool> LiftKitCenterOfMass;
         /// <summary>[Keys] Cassette start/stop.</summary>
@@ -51,9 +49,6 @@ namespace WildWasteland.Modules.Vehicles
                 "Damage multiplier when any car hits a creature other than the player, including NPC-driven cars: 4 = four times the game's bumper damage, 1 = vanilla, 0 = no damage", new AcceptableValueRange<float>(0f, 10f));
             IgnitionKey = cfg.Player("Controls", "IgnitionKey", true,
                 "Adds an \"Ignition\" row to the game's Controls screen (default I): each press performs one ignition/start panel click (ignition on, crank, then stop on standard cars).");
-            ExitSpeedKmh = cfg.Tool("Controls", "ExitSpeedKmh", 30f,
-                "You can leave your car below this speed (km/h). The game's own limit is 6 m/s = 21.6 km/h, too low to get out of a car a truck keeps shoving",
-                new AcceptableValueRange<float>(5f, 200f));
             LiftKitCenterOfMass = cfg.Tool("Suspension", "LiftKitCenterOfMass", true,
                 "A raider car with a suspension lift kit carries its centre of mass lower (0.3 m, plus 1.5 x any extra lift of the body), so tall cars on big wheels do not flip in turns (Part Adjustment uses the same rule)");
             CassetteKey = cfg.Hotkey("Cassette start/stop", Key.Z, "Driving: start / stop the cassette player. Starting at zero volume sets 0.5. None = no hotkey.");
@@ -67,7 +62,6 @@ namespace WildWasteland.Modules.Vehicles
         internal static void Rows(IModule owner, SettingsShell shell)
         {
             shell.Row(owner, SettingsShell.Page.Player, "Vehicles", IgnitionKey, "Ignition key on the Controls screen");
-            shell.Row(owner, SettingsShell.Page.Player, "Vehicles", ExitSpeedKmh, "Exit speed (km/h)");
             shell.Custom(owner, SettingsShell.Page.Debug, "Tuning", DrawTuning, 420);
             shell.Resettable(owner, SettingsShell.Page.Player, IgnitionKey);
             shell.Resettable(owner, SettingsShell.Page.Debug, NpcRamDamageMultiplier);

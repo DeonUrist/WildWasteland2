@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.HUD
         private static readonly Texture2D[] PerkGraySources = new Texture2D[46], PerkGrayIcons = new Texture2D[46];
         private static readonly string[] PerkHints = new string[46];
         private static readonly string[] PerkDescriptions = new string[46];
-        private static GlyphText _skillHint, _noPerks;
+        private static GlyphText _skillHint, _noPerks, _insanityPerks;
         private static readonly System.Collections.Generic.List<GlyphText> HintLines = new System.Collections.Generic.List<GlyphText>();
         private static readonly RectTransform[] SkillRows = new RectTransform[12];
         private static readonly GlyphText[] SkillValues = new GlyphText[12];
@@ -45,7 +45,7 @@ namespace WildWasteland.Modules.HUD
                 SkillHints[i] = skill.Hint; ShownSkills[i] = ShownXp[i] = -1;
             }
             Label(_skills, "SKILL PERKS", 214, 534, 710, 30, 22, DialogueWidgets.Gold);
-            Label(_skills, "INSANITY PERKS", 214, 744, 710, 26, 20, new Color(.85f, .16f, .12f, 1));
+            _insanityPerks = Label(_skills, "INSANITY PERKS", 214, 744, 710, 26, 20, new Color(.85f, .16f, .12f, 1));
             for (int i = 0; i < PerkSquares.Length; i++)
             {
                 PerkSquares[i] = Rect(_skills, i == 0 ? "Cannibal perk" : "perk " + i, 214 + (i % 12) * 58, i < 36 ? 568 + (i / 12) * 58 : 776, 54, 54);
@@ -54,9 +54,7 @@ namespace WildWasteland.Modules.HUD
                 var back = Rect(PerkSquares[i], "background", 2, 2, 50, 50).gameObject.AddComponent<UnityEngine.UI.Image>(); back.color = new Color(.06f, .06f, .05f);
                 PerkIcons[i] = Rect(PerkSquares[i], "icon", 4, 4, 46, 46).gameObject.AddComponent<UnityEngine.UI.RawImage>(); PerkIcons[i].raycastTarget = false;
                 if (i < 36) Label(PerkSquares[i], ((i % 4 + 1) * 25).ToString(CultureInfo.InvariantCulture), 25, 36, 25, 15, 12, new Color(.65f, .65f, .65f), TextAnchor.MiddleRight);
-                var perk = source != null ? source.Perk(i) : new PlayerPerk();
-                PerkHints[i] = (perk.Name ?? "").ToUpperInvariant() + "\n\n" + perk.Hint;
-                PerkDescriptions[i] = perk.Hint;
+                PerkDescriptions[i] = null;
             }
             _noPerks = Label(_skills, "PERKS MODULE IS DISABLED", 214, 590, 700, 32, 20, new Color(.55f, .55f, .5f));
             var hintPanel = Panel(_skills, "description", 980, 204, 740, 626, "");
@@ -81,8 +79,7 @@ namespace WildWasteland.Modules.HUD
                 _skillsSource = source;
                 for (int i = 0; i < SkillHints.Length; i++)
                 { var skill = source != null ? source.Skill(i) : new PlayerSkill(); SkillHints[i] = skill.Hint; SkillNames[i].Set((skill.Name ?? "").ToUpperInvariant()); ShownSkills[i] = ShownXp[i] = -1; }
-                for (int i = 0; i < PerkHints.Length; i++)
-                { var perk = source != null ? source.Perk(i) : new PlayerPerk(); PerkHints[i] = (perk.Name ?? "").ToUpperInvariant() + "\n\n" + perk.Hint; }
+                System.Array.Clear(PerkDescriptions, 0, PerkDescriptions.Length);
             }
             string hint = source == null ? "PERKS module is disabled." : "Hover over a skill or perk to see its effect.";
             var camera = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
@@ -95,13 +92,16 @@ namespace WildWasteland.Modules.HUD
                 if (ShownXp[i] != xp) { ShownXp[i] = xp; SkillXp[i].Set(value == 100 ? "MAX" : xp.ToString(CultureInfo.InvariantCulture) + " / 100"); }
                 if (Application.isFocused && RectTransformUtility.RectangleContainsScreenPoint(SkillRows[i], Input.mousePosition, camera)) hint = SkillHints[i] ?? hint;
             }
+            int perkCount = source?.PerkCount ?? 0;
+            bool showInsanityPerks = perkCount > 36;
+            if (_insanityPerks.gameObject.activeSelf != showInsanityPerks) _insanityPerks.gameObject.SetActive(showInsanityPerks);
             int shown = 0;
             for (int i = 0; i < PerkSquares.Length; i++)
             {
-                var perk = source != null ? source.Perk(i) : new PlayerPerk();
-                bool visible = source != null && i < source.PerkCount;
+                bool visible = i < perkCount;
                 if (PerkSquares[i].gameObject.activeSelf != visible) PerkSquares[i].gameObject.SetActive(visible);
                 if (!visible) continue;
+                var perk = source.Perk(i);
                 string description = (perk.Unlocked ? "UNLOCKED\n\n" : "LOCKED\n\n") + perk.Hint;
                 if (PerkDescriptions[i] != description) { PerkDescriptions[i] = description; PerkHints[i] = (perk.Name ?? "").ToUpperInvariant() + "\n\n" + description; }
                 var borderColor = !perk.Unlocked ? new Color(.38f, .38f, .38f, 1) : perk.Insanity ? new Color(.85f, .16f, .12f, 1) : DialogueWidgets.Gold;
@@ -160,7 +160,7 @@ namespace WildWasteland.Modules.HUD
         private static void ClearSkills()
         {
             for (int i = 0; i < PerkGrayIcons.Length; i++) { if (PerkGrayIcons[i] != null) UnityEngine.Object.Destroy(PerkGrayIcons[i]); PerkGrayIcons[i] = PerkGraySources[i] = null; }
-            HintLines.Clear(); _skills = null; _skillHint = _noPerks = null; _skillsSource = null; _shownSkillHint = null; _skillsTab = false;
+            HintLines.Clear(); _skills = null; _skillHint = _noPerks = _insanityPerks = null; _skillsSource = null; _shownSkillHint = null; _skillsTab = false;
         }
     }
 }

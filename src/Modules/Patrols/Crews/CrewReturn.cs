@@ -387,6 +387,11 @@ namespace WildWasteland.Modules.Patrols
             }
             if (health > 0f) { Patrol.SetHealth(seated, health); seated.AddComponent<Patrol.LateHealth>().Value = health; }
             var merchantHealth=seated.GetComponent<MerchantGuardHealth>();if(merchantHealth!=null)merchantHealth.Saved=null;
+            if ((asDriver || m.Role != RoleTurret) && Core.ModEvents.HasListeners<Core.Events.CrewSeated>())
+            {
+                var boarded = new Core.Events.CrewSeated { Vehicle = Core.Entities.Of(car), Npc = Core.Entities.Of(seated), Seat = asDriver ? 0 : 1, Identity = m.Identity };
+                Core.ModEvents.Publish(ref boarded);
+            }
             var body = m.Body;
             if (Core.Log.L1) PatrolsModule.Verbose("Return to car: " + body.name + " is back in " + car.name + (asDriver ? " at the wheel" : m.Role == RoleTurret ? " on turret " + (m.Slot + 1) : " in the passenger seat") + " as " + seated.name);
             Core.ItemSpawner.RemoveTree(body); Object.Destroy(body);

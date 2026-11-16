@@ -39,6 +39,7 @@ namespace WildWasteland.Modules.Survival
         private FsmFloat _sanity;
         private PlayMakerFSM _sleep;
         private int _catalog = -1;
+        internal static bool MadnessEnabled { get { return ModApi.Get<IPlayerPerkEffects>() != null; } }
         internal Insanity(SurvivalModule owner) { _owner = owner; _episode = new InsanityEpisode(this, owner); _checkRemaining = CheckSeconds; }
         internal void Init()
         {
@@ -50,12 +51,21 @@ namespace WildWasteland.Modules.Survival
             Hooks.UiTextSetTextEnter.Prefix(_owner, FoodHint);
             ModEvents.Subscribe<Hurt>(_owner, OnHurt);
             SaveBus.StateChanged += StateChanged;
+            ModApi.Changed += MadnessChanged;
             _owner.MadnessCheckTimeout.SettingChanged += TimeoutChanged;
             _episode.Init();
             Scheduler.Interval(_owner, "Survival.Insanity references", 1f, Resolve);
             Scheduler.EveryFrame(_owner, "Survival.Mental break", Tick);
         }
         private void TimeoutChanged(object sender, EventArgs args) { _checkRemaining = CheckSeconds; }
+        private void MadnessChanged(Type contract)
+        {
+            if (contract != typeof(IPlayerPerkEffects)) return;
+            _episode.ReleaseFreeze(true);
+            if (MadnessEnabled) Resolve();
+            else { HoldInsanity(); Clear(); }
+            Log.Always(_owner, MadnessEnabled ? "Madness system enabled." : "Madness system disabled; insanity reset to 0.");
+        }
         private void StateChanged(string previous, string now)
         {
             if (now == "setSeed" || now == "Start") { Clear(); _restoreMental = false; }
@@ -66,6 +76,7 @@ namespace WildWasteland.Modules.Survival
         {
             if (!_restoreMental) return;
             _restoreMental = false;
+            if (!MadnessEnabled) { HoldInsanity(); return; }
             try
             {
                 var record = MentalState.Read(); if (record == null) return;
@@ -104,13 +115,13 @@ namespace WildWasteland.Modules.Survival
             _sanity = FsmVariables.GlobalVariables.FindFsmFloat("Sanity");
             _sleep = FsmUtil.Find(GameRefs.Player, "Sleep");
             _episode.Resolve();
-            var spawn = FsmUtil.Find(GameRefs.GameManager, "SanityMutantSpawn");
+            var spawn = MadnessEnabled ? FsmUtil.Find(GameRefs.GameManager, "SanityMutantSpawn") : null;
             if (spawn != null)
             {
                 if (_spawn != spawn) { _spawn = spawn; _spawnOn = spawn.enabled; }
                 spawn.enabled = false;
             }
-            var sanity = FsmUtil.Find(GameRefs.GameManager, "Sanity");
+            var sanity = MadnessEnabled ? FsmUtil.Find(GameRefs.GameManager, "Sanity") : null;
             if (sanity != null) foreach (var state in sanity.FsmStates) ConfigureSanity(state);
             if (!PrefabCatalog.Ready) { PrefabCatalog.Warm(); return; }
             if (_catalog != PrefabCatalog.Generation)
@@ -127,7 +138,7 @@ namespace WildWasteland.Modules.Survival
                     }
                 }
                 _prefabs.Clear(); HumanFood.Prepare();
-                Log.Always(_owner, "Human meat/skull templates ready; butcherable human corpse types: " + _corpses.Count + ". Passive insanity decay and insanity monsters disabled.");
+                Log.Always(_owner, "Human meat/skull templates ready; butcherable human corpse types: " + _corpses.Count + ".");
             }
             _sweep.Clear(); foreach (var pair in _attackers) if (pair.Key == null) _sweep.Add(pair.Key);
             foreach (var key in _sweep) { _attackers.Remove(key); _aggressions.Remove(key); }
@@ -166,8 +177,8 @@ namespace WildWasteland.Modules.Survival
         }
         private bool BeforeState(Fsm fsm, FsmState state)
         {
-            if (fsm.Name == "Sanity" && fsm.GameObject != null && fsm.GameObject.name == "__GameManager__") ConfigureSanity(state);
-            else if (fsm.Name == "Food")
+            if (fsm.Name == "Sanity" && MadnessEnabled && fsm.GameObject != null && fsm.GameObject.name == "__GameManager__") ConfigureSanity(state);
+            else if (fsm.Name == "Food" && MadnessEnabled)
             {
                 foreach (var action in state.Actions)
                 {
@@ -200,7 +211,7 @@ namespace WildWasteland.Modules.Survival
         }
         private bool FoodHint(UiTextSetText action)
         {
-            if (action.Fsm == null || action.Fsm.Name != "ItemName" || action.text == null || action.text.Value.IndexOf("Insanity +", StringComparison.Ordinal) < 0) return true;
+            if (action.Fsm == null || action.Fsm.Name != "ItemName" || !MadnessEnabled || action.text == null || action.text.Value.IndexOf("Insanity +", StringComparison.Ordinal) < 0) return true;
             if (FsmUtil.Find(action.Owner, "Food") == null) return true;
             FoodLabel label;
             if (!_labels.TryGetValue(action, out label))
@@ -287,7 +298,7 @@ namespace WildWasteland.Modules.Survival
         private void Tick()
         {
             HoldInsanity();
-            if (!GameRefs.InGame || PlayerState.Dead || _pending || _stateError != null || _sleep != null && _sleep.ActiveStateName != "Awake") return;
+            if (!MadnessEnabled || !GameRefs.InGame || PlayerState.Dead || _pending || _stateError != null || _sleep != null && _sleep.ActiveStateName != "Awake") return;
             if (_breakRemaining > 0)
             {
                 _episode.Tick();
@@ -329,18 +340,19 @@ namespace WildWasteland.Modules.Survival
         public float Remaining { get { return _breakRemaining; } }
         public InsanityEventType EventType { get { return _eventType; } }
         public string EventName { get { return _eventType == InsanityEventType.Vertigo ? "VERTIGO" : _eventType == InsanityEventType.Berserk ? "BERSERK" : _eventType == InsanityEventType.Delirium ? "DELIRIUM" : _eventType == InsanityEventType.Doppelganger ? "DOPPELGANGER" : "NO MORE DEATH"; } }
-        public bool LocksInsanity { get { return Active || _pending; } }
+        public bool LocksInsanity { get { return Active || _pending || !MadnessEnabled; } }
         public bool WeaponsBlocked { get { return Active && _eventType == InsanityEventType.NoMoreDeath; } }
         internal void HoldInsanity()
         {
             if (!LocksInsanity) return;
+            if (_sanity == null && !GameRefs.WorldActive) return;
             if (_sanity == null) _sanity = FsmVariables.GlobalVariables.FindFsmFloat("Sanity");
-            if (_sanity != null) _sanity.Value = _heldInsanity;
+            if (_sanity != null) _sanity.Value = MadnessEnabled ? _heldInsanity : 0;
         }
         public bool Trigger()
-        { if (!GameRefs.InPlay || Active || _pending) return false; Begin(true); return true; }
+        { if (!MadnessEnabled || !GameRefs.InPlay || Active || _pending) return false; Begin(true); return true; }
         public bool Trigger(InsanityEventType type)
-        { if (type < InsanityEventType.Vertigo || type > InsanityEventType.Doppelganger || !GameRefs.InPlay || Active || _pending) return false; Begin(true, type); return true; }
+        { if (!MadnessEnabled || type < InsanityEventType.Vertigo || type > InsanityEventType.Doppelganger || !GameRefs.InPlay || Active || _pending) return false; Begin(true, type); return true; }
         private void Begin(bool reward, InsanityEventType? type = null)
         {
             if (_sanity == null) _sanity = FsmVariables.GlobalVariables.FindFsmFloat("Sanity");
@@ -387,6 +399,6 @@ namespace WildWasteland.Modules.Survival
             _stateError = null;
             _sleep = null;
         }
-        internal void Shutdown() { SaveBus.StateChanged -= StateChanged; _owner.MadnessCheckTimeout.SettingChanged -= TimeoutChanged; Clear(); }
+        internal void Shutdown() { SaveBus.StateChanged -= StateChanged; ModApi.Changed -= MadnessChanged; _owner.MadnessCheckTimeout.SettingChanged -= TimeoutChanged; Clear(); }
     }
 }

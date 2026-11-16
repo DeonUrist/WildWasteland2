@@ -148,7 +148,7 @@ namespace WildWasteland.Modules.Patrols
                 yield return WaitForSave(gen, saveOk);   // the game is saving: spawn after it, never half-built into the save
                 if(!CrewFactions.Compatible(tpl,tpl.Faction)){Core.Log.Warn(null,"[Patrols] " + "Template "+tpl.Name+" has crew from different factions; correct its driver, passenger or turret choices");yield break;}
                 if (!saveOk[0]) { PatrolsModule.Verbose("Build of " + tpl.Name + " dropped: the game loaded or changed scene meanwhile"); yield break; }
-                if(!menu&&tpl.Origin!="POI"&&!EventBudget.Reserve(eventId))yield break;
+                if(!menu&&tpl.Origin!="POI"&&!EventBudget.Reserve(eventId,!string.IsNullOrEmpty(tpl.TrafficId)))yield break;
                 reserved=!menu&&tpl.Origin!="POI";
                 string missing = tpl.MissingPrefab;
                 if (missing.Length > 0) { Core.Log.Warn(null,"[Patrols] " + "Template " + tpl.Name + " unavailable: prefab not loaded: " + missing); yield break; }
@@ -627,27 +627,33 @@ namespace WildWasteland.Modules.Patrols
         // saved by the game) appears beside the car with the passenger's remaining health; the seated copy is destroyed.
         // A fresh instance rather than the seated one because the seat setup rewires its FSM actions (ranged-only, melee off).
         /// <summary>The passenger gets out: a fresh instance of its prefab (fully vanilla AI, registered like a spawned enemy so it is saved by the game) appears beside the car with the passenger's remaining health; the seated copy is destroyed. A fresh instance rather than the seated one because the seat setup rewires its FSM actions (ranged-only, melee off).</summary>
-        internal static void BailOut(GameObject car, GameObject pax, PatrolMarker marker)
+        internal static void BailOut(GameObject car, GameObject pax, PatrolMarker marker, Vector3 rollVelocity = default)
         {
             marker.PassengerLeft();
-            BailOut(car, pax, marker.PassengerPrefab, 0f);
+            BailOut(car, pax, marker.PassengerPrefab, 0f, rollVelocity: rollVelocity);
         }
 
         // Any occupant gets out on the given side (+1 right, -1 left, 0 = the side its seat is on relative to sitPos).
         /// <summary>Publishes the native replacement handoff to typed consumers before end-of-frame destruction.</summary>
-        private static void PublishBailOut(GameObject car,GameObject previous,GameObject actor)
+        private static void PublishBailOut(GameObject car,GameObject previous,GameObject actor,Vector3 rollVelocity)
         {
             if(!Core.ModEvents.HasListeners<Core.Events.CrewBailedOut>())return;
             var rigidbody=car!=null?car.GetComponent<Rigidbody>():null;
-            var ev=new Core.Events.CrewBailedOut { Vehicle=Core.Entities.Of(car),Passenger=Core.Entities.Of(previous),Npc=Core.Entities.Of(actor),Seat=previous!=null&&previous.name.IndexOf("(Driver)",StringComparison.Ordinal)>=0?0:1,Reason=Core.Events.CrewLeaveReason.Combat,WorldPos=Core.Origin.World(actor!=null?actor.transform.position:previous!=null?previous.transform.position:car!=null?car.transform.position:Vector3.zero),Velocity=rigidbody!=null?rigidbody.velocity:Vector3.zero };
+            var ev=new Core.Events.CrewBailedOut { Vehicle=Core.Entities.Of(car),Passenger=Core.Entities.Of(previous),Npc=Core.Entities.Of(actor),Seat=previous!=null&&previous.name.IndexOf("(Driver)",StringComparison.Ordinal)>=0?0:1,Reason=rollVelocity!=Vector3.zero?Core.Events.CrewLeaveReason.Jump:Core.Events.CrewLeaveReason.Combat,WorldPos=Core.Origin.World(actor!=null?actor.transform.position:previous!=null?previous.transform.position:car!=null?car.transform.position:Vector3.zero),Velocity=rollVelocity!=Vector3.zero?rollVelocity:rigidbody!=null?rigidbody.velocity:Vector3.zero };
             Core.ModEvents.Publish(ref ev);
         }
 
-        /// <summary>Replaces the seated actor with its accepted on-foot native representation.</summary>
-        internal static GameObject BailOut(GameObject car, GameObject pax, string prefabName, float side,bool record=true)
+        internal static Func<bool> StepOut(GameObject car, GameObject actor, bool passenger)
         {
-            float health = GetHealth(pax);
-            var prefab = Prefabs.FindAny(prefabName);
+            if (car == null || actor == null) return null;
+            var motion = Core.ModApi.Get<Core.ICrewSeatExit>();
+            if (motion == null) return null;
+            var from = BailOrigin(car, actor, passenger ? 0f : -1f, false, out _);
+            return motion.StepOut(actor, car.transform, car.transform.InverseTransformPoint(from - Vector3.up * 1.5f), passenger);
+        }
+
+        private static Vector3 BailOrigin(GameObject car, GameObject pax, float side, bool advanceFront, out Vector3 facing)
+        {
             var anchor = pax.transform.parent;
             var sit = FindChild(car.transform, "sitPos");
             if (side == 0f)
@@ -656,32 +662,43 @@ namespace WildWasteland.Modules.Patrols
                 if (anchor != null && sit != null) side = Vector3.Dot(anchor.position - sit.position, car.transform.right) >= 0f ? 1f : -1f;
             }
             var from = (anchor != null ? anchor.position : car.transform.position) + car.transform.right * side * VehicleRules.ExitDistance(car.name) + Vector3.up * 1.5f;
-            var facing = Vector3.ProjectOnPlane(car.transform.right * side, Vector3.up);
+            facing = Vector3.ProjectOnPlane(car.transform.right * side, Vector3.up);
             // the Rustliner bus (2.3.8): everybody leaves through the door in the back (hinge_door_parent/hinge_door_L, the rear door), the
             // truck's exit distance behind it - a sideways exit lands them inside the bus
             var rearDoor = Core.Names.Prefab(car.name).Equals("Rustliner", StringComparison.OrdinalIgnoreCase) ? FindChild(car.transform, "hinge_door_parent") : null;
             var frontDoor=CrewReturn.FrontDoor(car);
-            if(frontDoor!=null){var crew=car.GetComponent<Crew>();from=CrewReturn.DoorOutside(car,frontDoor)+Vector3.up*1.5f+(crew!=null?crew.FrontExitOffset():Vector3.zero);facing=car.transform.right;}
+            if(frontDoor!=null){var crew=car.GetComponent<Crew>();from=CrewReturn.DoorOutside(car,frontDoor)+Vector3.up*1.5f+(crew!=null?crew.FrontExitOffset(advanceFront):Vector3.zero);facing=car.transform.right;}
             else if (rearDoor != null)
             {
                 from = rearDoor.position - car.transform.forward * VehicleRules.ExitDistance(car.name) + Vector3.up * 1.5f;
                 facing = Vector3.ProjectOnPlane(-car.transform.forward, Vector3.up);
             }
+            return from;
+        }
+
+        /// <summary>Replaces the seated actor with its accepted on-foot native representation.</summary>
+        internal static GameObject BailOut(GameObject car, GameObject pax, string prefabName, float side,bool record=true,Vector3 rollVelocity=default)
+        {
+            float health = GetHealth(pax);
+            var prefab = Prefabs.FindAny(prefabName);
+            var anchor = pax.transform.parent;
+            bool rolling = rollVelocity != Vector3.zero;
+            var from = BailOrigin(car, pax, side, true, out var facing);
             var pos = from + Vector3.down * 1.2f;
-            var hits = Physics.RaycastAll(from, Vector3.down, 6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            var hits = Physics.RaycastAll(from, Vector3.down, rolling ? 1.5f : 6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             float best = float.MaxValue;
             foreach (var h in hits)
                 if (h.collider != null && !h.collider.transform.IsChildOf(car.transform) && !h.collider.transform.IsChildOf(pax.transform) && h.distance < best)
                 { best = h.distance; pos = h.point; }
             float groundY = pos.y;
-            var rot = Quaternion.LookRotation(facing.sqrMagnitude > 1e-4f ? facing.normalized : car.transform.forward, Vector3.up);
+            var rot = Quaternion.LookRotation(rolling ? rollVelocity : facing.sqrMagnitude > 1e-4f ? facing.normalized : car.transform.forward, Vector3.up);
 
             if (prefab == null)
             {
                 Core.Log.Warn(null,"[Patrols] " + "Bail-out: prefab not found: " + prefabName + "; " + pax.name + " just disappears");
                 UnityEngine.Object.Destroy(pax);
                 if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
-                PublishBailOut(car,pax,null);
+                PublishBailOut(car,pax,null,rollVelocity);
                 return null;
             }
             var mob = UnityEngine.Object.Instantiate(prefab, pos + Vector3.up * 0.5f, rot);
@@ -697,13 +714,22 @@ namespace WildWasteland.Modules.Patrols
             }
             pos = mob.transform.position;
             Core.ItemSpawner.Name(mob, prefab.name); CrewLooks.Transfer(pax, mob); Core.ItemSpawner.AddExisting(mob, false);
-            if (health > 0f) { SetHealth(mob, health); mob.AddComponent<LateHealth>().Value = health; }
+            if (rolling)
+            {
+                float damage = Core.VehicleExitRoll.Damage(rollVelocity);
+                if (health < 0f) health = GetHealth(mob);
+                if (health >= 0f) health = Mathf.Max(0f, health - damage);
+                var body = mob.GetComponent<Rigidbody>();
+                if (body != null && !body.isKinematic) body.velocity += rollVelocity * Core.VehicleExitRoll.Carry;
+                PatrolsModule.Verbose("Vehicle rollout: " + mob.name + " took " + damage.ToString("0.0") + " damage");
+            }
+            if (health > 0f || rolling && health == 0f) { SetHealth(mob, health); mob.AddComponent<LateHealth>().Value = health; }
             UnityEngine.Object.Destroy(pax);
             if (anchor != null && anchor.name == "Apocapatrol.PassengerPos") UnityEngine.Object.Destroy(anchor.gameObject);
             PatrolsModule.Verbose("Bail-out: " + mob.name + " got out of " + car.name + " with " + (health > 0f ? health.ToString("0") : "full") + " health at " + pos);
-            PublishBailOut(car,pax,mob);
+            PublishBailOut(car,pax,mob,rollVelocity);
             // awareness handover + return-to-car membership (pax is destroyed at the end of the frame; its name still tells the seat)
-            if(record)CrewReturn.Dismounted(car, mob, pax.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0 ? CrewReturn.RoleDriver : CrewReturn.RolePassenger, -1,
+            if(record && (!rolling || health != 0f))CrewReturn.Dismounted(car, mob, pax.name.IndexOf("(Driver)", StringComparison.Ordinal) >= 0 ? CrewReturn.RoleDriver : CrewReturn.RolePassenger, -1,
                 CrewLooks.Identity(mob, prefabName), null, null, false);
             return mob;
         }

@@ -36,7 +36,7 @@ namespace WildWasteland.Modules.Survival
         /// <summary>Binds the Stew Pot tools.cfg entries (model scale, debug switches, cooking/spoiling tuning) in display order.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
-            MadnessCheckTimeout = cfg.Player("Mental break", "Madness check timeout (min)", 15, "Controls how often the game rolls an attempt to make you go mad", new AcceptableValueRange<int>(1, 120));
+            MadnessCheckTimeout = cfg.Player("Mental break", "Madness check timeout (min)", 30, "Controls how often the game rolls an attempt to make you go mad", new AcceptableValueRange<int>(1, 120));
             _weatherEnabled = cfg.Player("Weather", "Enabled", true, "Enable moving storm presentation and hurricane hazards.");
             _weatherEnabled.SettingChanged += WeatherChanged;
             _weather.SetParent(this);

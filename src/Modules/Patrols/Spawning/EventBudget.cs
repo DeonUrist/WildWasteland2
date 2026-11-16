@@ -40,8 +40,8 @@ namespace WildWasteland.Modules.Patrols
             return Math.Max(0,PatrolsModule.EventVehicleLimit.Value-total);
         }
         /// <summary>Checks the current reserve condition for event budget.</summary>
-        internal static bool Reserve(string id)
-        {if(Available(id)<=0)return false;Pending.TryGetValue(id,out int n);Pending[id]=n+1;return true;}
+        internal static bool Reserve(string id, bool required)
+        {if(!required&&Available(id)<=0)return false;Pending.TryGetValue(id,out int n);Pending[id]=n+1;return true;}
         /// <summary>Releases the explicit hold so the current owner can proceed.</summary>
         internal static void Release(string id)
         {if(!Pending.TryGetValue(id,out int n))return;if(n<=1)Pending.Remove(id);else Pending[id]=n-1;}

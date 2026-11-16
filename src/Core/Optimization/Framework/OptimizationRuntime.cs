@@ -25,7 +25,8 @@ namespace WildWasteland.Core.Optimization
         public override string DisplayName { get { return "Core optimization"; } }
 
         public static readonly OptimizationRuntime Instance = new OptimizationRuntime();
-        public static PerfPreset Preset { get { return _preset != null ? _preset.Value : PerfPreset.Vanilla; } }
+        internal static bool DeveloperControls { get { return Plugin.EnableDebug?.Value == true && Plugin.DeveloperMode?.Value == true; } }
+        public static PerfPreset Preset { get { return DeveloperControls && _enabled?.Value == true && _preset != null ? _preset.Value : PerfPreset.Vanilla; } }
         static ConfigEntry<PerfPreset> _preset;
         static ConfigEntry<bool> _enabled;
         /// <summary>Shared preset entry used by Core settings and Debug's feature controls.</summary>
@@ -58,25 +59,26 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Binds the optimization master, quality preset and explicit feature entries without legacy migration.</summary>
         public override void BindConfig(ModuleConfig cfg)
         {
-            _enabled = cfg.Player("Preset", "Enabled", true, "Enable Core's base-game optimizations. Generated mesh LODs remain active at 2x distance when off. Changes apply immediately.");
+            _enabled = cfg.Player("Preset", "Enabled", true, "Limit incremental garbage collection time per frame. Generated mesh LODs work in both modes. Experimental controls are available in Developer.");
             cfg.Enabled = _enabled;
             _enabled.SettingChanged += EnabledChanged;
             _preset = cfg.Tool("Preset", "Preset", PerfPreset.Vanilla,
-                "PERFORMANCE (Low), BALANCED, VISUALS (Max), VANILLA (default). Vanilla keeps generated mesh LODs at 2x distance and preserves other original visuals, simulation settings and item cleanup; exact optimizations (no visible change) are not affected. Saved Low/Max values remain compatible.");
-            _preset.SettingChanged += (s, a) => { if (_running) ApplyAll(true); };
+                "Developer preset. Vanilla preserves native visuals and simulation settings unless you turn on an individual override. Saved Low/Max values remain compatible.");
+            _preset.SettingChanged += (s, a) => { if (_running && DeveloperControls && _enabled.Value) ApplyAll(true); };
             DiscoverFeatures();
             foreach (var f in _features)
             {
                 f.Module = this;
                 string sub = f.Category == Categories.PlayMaker ? "PlayMaker" : f.Category == Categories.Content ? "Game logic" : f.Category == Categories.Rendering ? "Rendering" : "World";
-                f.ModeEntry = cfg.Tool(sub, f.Key, f.DefaultMode, f.PlanId + " " + f.Title + ". " + f.Help + (f.SupportsShadow ? " Shadow = vanilla runs, the optimized result is only compared (mismatches shown in Developer)." : ""));
+                f.ModeEntry = cfg.Tool("Developer / " + sub, f.Key, f is GcSlice || f is GeneratedLods ? FeatureMode.On : FeatureMode.Off,
+                    f.PlanId + " " + f.Title + ". " + f.Help + (f.SupportsShadow ? " Shadow = vanilla runs, the optimized result is only compared (mismatches shown in Developer)." : ""));
                 var captured = f;
                 f.ModeEntry.SettingChanged += (s, a) => { if (_running) Apply(captured, true); };
                 try { f.Bind(cfg); } catch (Exception e) { f.LastError = e.Message; Log.Error(OptimizationRuntime.Instance, f.PlanId + " Bind", e); }
             }
         }
 
-        /// <summary>Changes the optimization master without hopping through the module registry.</summary>
+        /// <summary>Refreshes the runtime when the master or Developer visibility changes.</summary>
         void EnabledChanged(object sender, EventArgs args)
         {
             if (!_initialized) return;
@@ -116,6 +118,8 @@ namespace WildWasteland.Core.Optimization
         {
             if (_initialized) return;
             _initialized = true;
+            Plugin.EnableDebug.SettingChanged += EnabledChanged;
+            Plugin.DeveloperMode.SettingChanged += EnabledChanged;
             StartRuntime();
         }
 
@@ -127,7 +131,7 @@ namespace WildWasteland.Core.Optimization
         {
             if (_running) return;
             _running = true; Active = true;
-            if (_enabled.Value) FsmPause.Own(this, FsmPause.CarLod | FsmPause.PollSleep | FsmPause.Stepped | FsmPause.FsmSleep);
+            if (_enabled.Value && DeveloperControls) FsmPause.Own(this, FsmPause.CarLod | FsmPause.PollSleep | FsmPause.Stepped | FsmPause.FsmSleep);
             ProvideApis();
             WorldTiles.OnApplied(this, TileApplied);
             Hooks.CreateObjectEnter.Postfix(this, RenderScan.AfterCreateObject);
@@ -158,7 +162,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Contains one feature's optional hook registration failure so unrelated features still initialize.</summary>
         void SubscribeFeature(Feature feature)
         {
-            if (!_enabled.Value && !(feature is GeneratedLods)) return;
+            if (!_enabled.Value || !DeveloperControls) return;
             try { feature.SubscribeHooks(); }
             catch (Exception ex) { feature.LastError = ex.Message; Log.Error(this, feature.PlanId + " hooks", ex); }
         }
@@ -177,7 +181,10 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Ends the Core optimization lifetime and restores every active feature.</summary>
         public override void Shutdown()
         {
+            if (!_initialized) return;
             _initialized = false;
+            Plugin.EnableDebug.SettingChanged -= EnabledChanged;
+            Plugin.DeveloperMode.SettingChanged -= EnabledChanged;
             StopRuntime();
         }
 
@@ -205,10 +212,11 @@ namespace WildWasteland.Core.Optimization
         static FeatureMode Wanted(Feature f)
         {
             if (f is GeneratedLods) return FeatureMode.On;
-            if (f is FarClip && DistantTerrain.Entry.Value) return FeatureMode.On;
             if (!_enabled.Value) return FeatureMode.Off;
+            if (!DeveloperControls) return f is GcSlice ? FeatureMode.On : FeatureMode.Off;
+            if (f is FarClip && DistantTerrain.Entry.Value) return FeatureMode.On;
             if (f.ModeEntry == null) return FeatureMode.Off;
-            if (f.UsesPreset && Preset == PerfPreset.Vanilla) return FeatureMode.Off;
+            if (!(f is GcSlice) && f.UsesPreset && Preset == PerfPreset.Vanilla) return FeatureMode.Off;
             return f.ModeEntry.Value;
         }
 
@@ -237,7 +245,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Refreshes a running feature after one of its tuning overrides changes.</summary>
         internal void SettingsChanged(Feature f)
         {
-            if (!_running || f.Running == FeatureMode.Off) return;
+            if (!_running || !_enabled.Value || !DeveloperControls || f.Running == FeatureMode.Off) return;
             SafeSettings(f);
         }
 

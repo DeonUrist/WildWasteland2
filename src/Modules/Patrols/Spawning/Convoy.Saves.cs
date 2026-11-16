@@ -5,6 +5,8 @@ namespace WildWasteland.Modules.Patrols
     /// <summary>Defers new materialization around the actual WW autosave transaction rather than a retired standalone plugin.</summary>
     internal partial class Convoy
     {
+        internal static bool SaveInProgress => SaveBus.Busy || ModApi.Get<ISaves>()?.Busy == true;
+
         /// <summary>True during a save or while a positive autosave deadline falls inside the requested spawn-free interval.</summary>
         internal static bool AutosaveSoon(float within)
         {

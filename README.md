@@ -10,6 +10,8 @@ Disable standalone mods whose features WW2 absorbs, including Apocaplayer/Apocac
 
 Transitioning from WW1 requires fresh saves and settings. Back up the previous installation, configuration and saves first. Updates within WW2 preserve existing settings; install the complete release asset folder.
 
+[2.0.14 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.14) cover patrol spawning and crew reactions, the simplified Performance switch, vehicle seat transitions, arachnophobia settings and an independent Madness System switch.
+
 [2.0.13 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.13): distant terrain extends the low-resolution mountain horizon and camera range to 20 km. The default-on checkbox at the top of Performance restores the previous distances when disabled for visibility/FPS comparisons. Nearby terrain detail and object generation ranges remain unchanged. In-game visibility and performance remain Testing.
 
 [2.0.12 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.12): NPCs and vehicles retain their original meshes, without performance per-layer view-distance limits or parked-car simulation LOD. Static-world mesh LODs remain active. Patrol visibility awaits in-game confirmation.

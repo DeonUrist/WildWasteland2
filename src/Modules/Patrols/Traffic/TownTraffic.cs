@@ -202,14 +202,14 @@ namespace WildWasteland.Modules.Patrols
         {
             if (!TownTravel || RoleCount(1) >= PatrolsModule.MaxConvoys.Value || _journeys.Count(j => !j.townParked && !j.townResident) >= PatrolsModule.TrafficMaxGroups.Value) return;
             var group = Convoy.TrafficGroup(true,"Scrapyard"); if (group == null) return;
-            var roster = EditorStore.ComposeFull(group, true, () => UnityEngine.Random.value);
+            var roster = EditorStore.Compose(group, true, () => UnityEngine.Random.value);
             if (roster.Count > 0 && roster.Any(t => t.IsTruck) && roster.All(t => t.Available)) QueueTownDeparture(group, 1, roster);
         }
         /// <summary>Checks the current town visit condition for town traffic.</summary>
         private bool TownVisit(TrafficJourney j, float seconds, Transform player)
         {
             if (!j.townBound || !j.arrived) return false;
-            if (TownPlanning(j.id)) return true;
+            if (!j.townParked && TownPlanning(j.id)) return false;
             bool inArea = SameMapArea(j.position);
             j.unseenSeconds = inArea ? 0f : j.unseenSeconds + seconds;
             if (j.townVisitSeconds <= 0f) j.townVisitSeconds = UnityEngine.Random.Range(600f, 900f);
@@ -221,8 +221,7 @@ namespace WildWasteland.Modules.Patrols
                 if (parked != null && !parked.Building) ParkConvoyCrew(j, parked);
                 if (j.unseenSeconds >= j.townVisitSeconds) { RemoveParkedTown(j); return true; }
                 // Offscreen arrival has a truck/crew record; build it when the city is approached.
-                if (parked == null && TrafficLocations.FlatDistance(j.position, TrafficSpace.World(player.position)) <= PatrolsModule.TrafficLoadRange.Value
-                    && RealCars < PatrolsModule.TrafficMaxRealCars.Value && !Convoy.AutosaveSoon(30f))
+                if (parked == null && !Convoy.SaveInProgress && TrafficLocations.FlatDistance(j.position, TrafficSpace.World(player.position)) <= PatrolsModule.TrafficLoadRange.Value)
                 { var next = new Live(); _live[j.id] = next; StartCoroutine(Materialize(j, next)); }
                 return true;
             }

@@ -100,15 +100,13 @@ namespace WildWasteland.Modules.Patrols
             _footLive.TryGetValue(journey.id, out fl);
             if (fl != null) FootBodies(journey, fl);
             if (!AnyWalker(journey)) { if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + ": everyone died"); Remove(journey); return; }
-            if (!journey.TerrainRoute) { if (fl != null) foreach (var body in fl.Bodies) Unorder(body); return; }
-            if (!journey.arrived && !string.IsNullOrEmpty(journey.destination) && Cleared(journey.destination) && !FootRetarget(journey, fl != null)) return;
+            if (journey.TerrainRoute && !journey.arrived && !string.IsNullOrEmpty(journey.destination) && Cleared(journey.destination) && !FootRetarget(journey, fl != null)) return;
             if (fl == null)
             {
                 if (journey.arrived && !journey.reinforcement) { if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " arrived while simulated; removed"); Remove(journey); return; }
                 if (journey.arrived && (!TrafficLocations.Known.TryGetValue(journey.destination, out var destination) || !TrafficCamps.Loaded(destination.id))) return;
-                journey.Advance(seconds);
-                if (Core.ModApi.Get<Core.INpcApi>() != null && TrafficLocations.FlatDistance(journey.position, playerWorld) <= PatrolsModule.FootLoadRange.Value && !Convoy.AutosaveSoon(30f)
-                    && (!TrafficFactions.PlayerHostile(journey.faction) || TrafficLocations.PatrolSpawnAllowed(journey.position)))
+                if (journey.TerrainRoute) journey.Advance(seconds);
+                if (Core.ModApi.Get<Core.INpcApi>() != null && TrafficLocations.FlatDistance(journey.position, playerWorld) <= PatrolsModule.FootLoadRange.Value && !Convoy.SaveInProgress)
                 {
                     _footLive[journey.id] = new FootLive { NextOrder = Time.time + UnityEngine.Random.Range(0.5f, 1.5f) };
                     if (Core.Log.L1) PatrolsModule.Verbose("Foot patrol " + journey.name + " materializes (" + journey.walkers.Length + " walkers, " + TrafficLocations.FlatDistance(journey.position, playerWorld).ToString("0") + " m away)");
@@ -122,7 +120,7 @@ namespace WildWasteland.Modules.Patrols
                 else FootVirtualize(journey, fl, "NPC module off");
                 return;
             }
-            FootSpawnOne(journey, fl);
+            if (!Convoy.SaveInProgress) FootSpawnOne(journey, fl);
             if (Time.time >= fl.NextOrder)
             {
                 fl.NextOrder += 1f; if (fl.NextOrder < Time.time) fl.NextOrder = Time.time + 1f;
@@ -130,7 +128,7 @@ namespace WildWasteland.Modules.Patrols
                 float unload = Mathf.Max(PatrolsModule.FootUnloadRange.Value, PatrolsModule.FootLoadRange.Value + 80f);
                 bool anyBody = false; for (int i = 0; i < MaxWalkers; i++) if (fl.Bodies[i] != null) { anyBody = true; break; }
                 if ((!anyBody || fl.MinDistance > unload) && TrafficLocations.FlatDistance(journey.position, playerWorld) > unload) { FootVirtualize(journey, fl, "far from the player"); return; }
-                if (journey.arrived && anyBody && TakeoverSpawned(journey, fl) && TrafficLocations.Known.TryGetValue(journey.destination ?? "", out var camp) && !camp.cleared && TrafficCamps.Loaded(camp.id))
+                if (journey.TerrainRoute && journey.arrived && anyBody && TakeoverSpawned(journey, fl) && TrafficLocations.Known.TryGetValue(journey.destination ?? "", out var camp) && !camp.cleared && TrafficCamps.Loaded(camp.id))
                     FootBeginSettle(journey, fl);
             }
         }
@@ -170,9 +168,8 @@ namespace WildWasteland.Modules.Patrols
             var w = journey.walkers[i];
             var prefab = Prefabs.FindAny(w.identity);
             if (prefab == null) { w.dead = true; fl.Spawned[i] = true; Core.Log.Warn(null,"[Patrols] Foot patrol: walker prefab not found: " + w.identity); return; }
-            float progress = RoadPath.Progress(journey.route, journey.leg, journey.position) - i * 2.5f;
-            var dir = FootDirection(journey.route, progress);
-            var world = RoadPath.Point(journey.route, progress) + Vector3.Cross(Vector3.up, dir) * (((i & 1) == 0 ? 1f : -1f) * 0.8f);
+            var dir = journey.Heading;
+            var world = journey.position - dir * (i * 2.5f) + Vector3.Cross(Vector3.up, dir) * (((i & 1) == 0 ? 1f : -1f) * 0.8f);
             Vector3 ground;
             if (!FootGround(TrafficSpace.Scene(world), out ground)) return;   // retried next tick
             var mob = UnityEngine.Object.Instantiate(prefab, ground + Vector3.up * 0.5f, Quaternion.LookRotation(dir, Vector3.up));
@@ -204,12 +201,14 @@ namespace WildWasteland.Modules.Patrols
                 var body = fl.Bodies[i]; if (body == null) continue;
                 float d = Vector3.Distance(body.transform.position, player.position);
                 if (d < fl.MinDistance) fl.MinDistance = d;
+                if (!journey.TerrainRoute) { Unorder(body); continue; }
                 if (d <= 100f) near = true;
                 int state;
                 try { state = api.TravelState(body); } catch (Exception) { state = 3; }
                 fl.State[i] = state;
                 if (state == 3) fl.Fails[i]++; else if (state == 1 || state == 2) fl.Fails[i] = 0;
             }
+            if (!journey.TerrainRoute) { journey.position = TrafficSpace.World(fl.Bodies[leader].transform.position); return; }
             // sticky until the leader walks again (state 1 / 2), so moved walkers do not make the journey jump ahead
             if (fl.State[leader] == 1 || fl.State[leader] == 2) fl.Stuck = false; else if (fl.Fails[leader] >= 4) fl.Stuck = true;
             if (!fl.Stuck) journey.Follow(TrafficSpace.World(fl.Bodies[leader].transform.position), journey.leg >= journey.route.Length - 1 ? 8f : 15f);

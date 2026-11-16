@@ -205,9 +205,9 @@ namespace WildWasteland.Modules.Patrols
             return true;
         }
         /// <summary>Checks the current ground at condition for convoy.</summary>
-        internal static bool GroundAt(Vector3 p, out Vector3 ground, bool truck = false)
+        internal static bool GroundAt(Vector3 p, out Vector3 ground, bool truck = false, bool checkGrade = true)
         {
-            float grade = truck ? .22f : .30f;
+            float grade = checkGrade ? (truck ? .22f : .30f) : float.PositiveInfinity;
             if (!GroundPoint(p, grade, out ground)) return false;
             float reach = truck ? 7f : 5f;
             for (int i = 0; i < 4; i++)

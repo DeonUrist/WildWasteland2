@@ -34,7 +34,7 @@ namespace WildWasteland.Core.Optimization
         Knob _far;
         /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg) { _far = NewKnob(cfg, "Far plane", "Far clip plane cap (m); 0 = unchanged.", 6000, 0, 0, 0);
-            DistantTerrain.Entry = cfg.Tool("Debug", "Distant terrain", true, "Extend low-resolution terrain and camera visibility to 20 km. Off restores the previous range; allow terrain generation to settle before comparing FPS.");
+            DistantTerrain.Entry = cfg.Tool("Developer / Rendering", "Distant terrain", false, "Extend low-resolution terrain and camera visibility to 20 km. Off restores the previous range; allow terrain generation to settle before comparing FPS.");
             DistantTerrain.Entry.SettingChanged += (s, a) => { Module.Apply(this, true); Module.SettingsChanged(this); };
         }
         public static BepInEx.Configuration.ConfigEntry<bool> DistantTerrainEntry { get { return DistantTerrain.Entry; } }

@@ -44,16 +44,24 @@ namespace WildWasteland.Modules.Perks
         private int _mentalChoice = -1;
         private readonly SkillPerkNotice _notice = new SkillPerkNotice();
         private readonly MerchantPerks _merchants = new MerchantPerks();
+        private ConfigEntry<bool> _madnessEnabled;
         private ConfigEntry<float> _chancePerPerk;
         public override string Id { get { return "Perks"; } }
         public override string DisplayName { get { return "PERKS"; } }
         public override void BindConfig(ModuleConfig cfg)
-        { _chancePerPerk = cfg.Tool("Mental break", "Chance per insanity perk (%)", 5f, "Controls the % chance of randomly going mad per each acquired madness perk", new AcceptableValueRange<float>(0, 100)); BindSkills(cfg); }
+        {
+            _madnessEnabled = cfg.Player("Mental break", "Madness system", true, "Enable insanity, mental breaks and madness perks. Skills and skill perks are independent of this switch.");
+            _chancePerPerk = cfg.Tool("Mental break", "Chance per insanity perk (%)", 5f, "Controls the % chance of randomly going mad per each acquired madness perk", new AcceptableValueRange<float>(0, 100)); BindSkills(cfg);
+        }
         public override void Settings(SettingsShell shell)
         {
             shell.Custom(this, SettingsShell.Page.Player, "", DrawFastXpGain, 10);
             shell.Resettable(this, SettingsShell.Page.Player, _fastXpGain);
-            shell.Custom(this, SettingsShell.Page.World, "", l => l.Heading("Madness System"), 99);
+            shell.Custom(this, SettingsShell.Page.World, "", l =>
+            {
+                l.Heading("Madness System");
+                SettingsShell.Switch(l, "Enabled", _madnessEnabled);
+            }, 99);
             shell.Row(this, SettingsShell.Page.World, "", _chancePerPerk, null, 100);
             shell.Custom(this, SettingsShell.Page.Debug, "Survival", DrawDebug, 420);
             shell.Custom(this, SettingsShell.Page.Developer, "Perks", DrawDeveloper, 420);
@@ -63,7 +71,7 @@ namespace WildWasteland.Modules.Perks
         {
             _mentalDropdown.Before();
             var mental = ModApi.Get<IMentalBreak>();
-            if (layout.Button("Mental break", mental != null && GameRefs.InPlay && !mental.Active && !mental.Pending))
+            if (layout.Button("Mental break", _madnessEnabled.Value && mental != null && GameRefs.InPlay && !mental.Active && !mental.Pending))
             { if (_mentalChoice < 0) mental.Trigger(); else mental.Trigger((InsanityEventType)_mentalChoice); }
             layout.Hint("Starts the selected 30-second insanity event with a perk choice afterward. Sleep is blocked during the event.");
             var row = layout.Next();
@@ -87,16 +95,23 @@ namespace WildWasteland.Modules.Perks
             ModEvents.Subscribe<PlayerWokeUp>(this, WokeUp);
             ModEvents.Subscribe<NpcKilled>(this, Killed);
             SaveBus.StateChanged += StateChanged;
+            _madnessEnabled.SettingChanged += MadnessChanged;
             _mental.Init(this); _notice.Init(this); _merchants.Init(this);
             Scheduler.Interval(this, "Perks.Player state", .25f, ResolveWorld);
         }
         private void ResolveWorld()
         { if (GameRefs.InPlay && _readError == null && (!_loaded || _generation != SaveBus.Generation || _slot != SaveBus.Slot)) OnWorldReady(); }
-        public override void ProvideApis() { ModApi.Provide<IPlayerPerks>(this, this); ModApi.Provide<IPlayerPerkEffects>(this, this); ModApi.Provide<IPlayerSkills>(this, this); ModApi.Provide<ISkillMerchantChoices>(this,_merchants); }
+        public override void ProvideApis() { ModApi.Provide<IPlayerPerks>(this, this); ModApi.Provide<IPlayerSkills>(this, this); ModApi.Provide<ISkillMerchantChoices>(this,_merchants); MadnessChanged(null, EventArgs.Empty); }
+        private void MadnessChanged(object sender, EventArgs args)
+        {
+            _choicesReady = false; _lastKill = float.NegativeInfinity;
+            if (_madnessEnabled.Value) ModApi.Provide<IPlayerPerkEffects>(this, this);
+            else { _mental.Clear(); ModApi.Withdraw<IPlayerPerkEffects>(this); }
+        }
         public int SkillCount { get { return Names.Length; } }
         public PlayerSkill Skill(int index)
         { int skill = SkillOrder[index]; return new PlayerSkill { Id = Names[skill], Name = Names[skill], Hint = _skillHints[skill] ?? Hints[skill], Value = _skills[skill], Xp = _xp[skill] }; }
-        public int PerkCount { get { return PerkRoster.Ids.Length + SkillPerkRoster.All.Length; } }
+        public int PerkCount { get { return SkillPerkRoster.All.Length + (_madnessEnabled.Value ? PerkRoster.Ids.Length : 0); } }
         public PlayerPerk Perk(int index)
         {
             if (index < 0 || index >= PerkCount) throw new ArgumentOutOfRangeException("index");
@@ -112,7 +127,7 @@ namespace WildWasteland.Modules.Perks
             if (!Own(index)) hint = "Requires reaching 100 insanity, completing the mental break and choosing this perk when offered.\n\n" + hint;
             return new PlayerPerk { Id = PerkRoster.Ids[index], Name = PerkRoster.Names[index], Hint = hint, Unlocked = Own(index), Insanity = true, Icon = _icons[index] };
         }
-        private bool Own(int index) { return _loaded && (_unlocked & (1 << index)) != 0; }
+        private bool Own(int index) { return _madnessEnabled.Value && _loaded && (_unlocked & (1 << index)) != 0; }
         public bool Has(string id)
         {
             for (int i = 0; i < PerkRoster.Ids.Length; i++) if (id == PerkRoster.Ids[i]) return Own(i);
@@ -121,7 +136,7 @@ namespace WildWasteland.Modules.Perks
         }
         public void PrepareInsanityChoices()
         {
-            if (_choicesReady || !_loaded) return;
+            if (!_madnessEnabled.Value || _choicesReady || !_loaded) return;
             int count = 0;
             for (int i = 0; i < PerkRoster.Ids.Length; i++) if (!Own(i)) _candidates[count++] = i;
             if (count == 0) for (int i = 0; i < PerkRoster.Ids.Length; i++) _candidates[count++] = i;
@@ -136,6 +151,7 @@ namespace WildWasteland.Modules.Perks
         }
         public PlayerPerk InsanityChoice(int index)
         {
+            if (!_madnessEnabled.Value) return default(PlayerPerk);
             PrepareInsanityChoices();
             if (index == 3) return new PlayerPerk { Id = "Persevere", Name = "Persevere", Hint = Has("StrongMind") ? "No perk. Hunger, thirst and fatigue +50 (capped). Insanity 35." : "No perk. Hunger 100, thirst 100, fatigue 80. Insanity 35.", Icon = _persevereIcon };
             var choice = Perk(SkillPerkRoster.All.Length + _choices[index]);
@@ -187,7 +203,7 @@ namespace WildWasteland.Modules.Perks
         { _rouletteHint = PerkRoster.Hints[4] + (_roulette != WeaponKind.Other ? "\n\nCurrent type: " + _roulette + " (1.5x damage)." : "\n\nSleep to choose your first weapon type."); }
         private void Killed(ref NpcKilled action)
         {
-            if (action.Killer != Entities.Player || action.Tag == "Herbivore") return;
+            if (!_madnessEnabled.Value || action.Killer != Entities.Player || action.Tag == "Herbivore") return;
             float now = Time.time;
             if (Own(2) && now - _lastKill <= 5f) { Heal(5); if (Log.L1) Log.Main(this, "Bloodbath: consecutive kill +5 health."); }
             _lastKill = now;
@@ -251,6 +267,6 @@ namespace WildWasteland.Modules.Perks
             for (int i = 0; i < _xp.Length; i++) record.Append('\n').Append(_xp[i].ToString("R", CultureInfo.InvariantCulture));
             State.Write(this, slot, record.ToString());
         }
-        public override void Shutdown() { SaveBus.StateChanged -= StateChanged; _nativeSkills.Clear(); _mental.Clear(); _mentalDropdown.Close(); _notice.Clear(); _merchants.Clear(); Array.Clear(_icons, 0, _icons.Length); Array.Clear(_skillIcons, 0, _skillIcons.Length); _persevereIcon = null; }
+        public override void Shutdown() { SaveBus.StateChanged -= StateChanged; _madnessEnabled.SettingChanged -= MadnessChanged; _nativeSkills.Clear(); _mental.Clear(); _mentalDropdown.Close(); _notice.Clear(); _merchants.Clear(); Array.Clear(_icons, 0, _icons.Length); Array.Clear(_skillIcons, 0, _skillIcons.Length); _persevereIcon = null; }
     }
 }

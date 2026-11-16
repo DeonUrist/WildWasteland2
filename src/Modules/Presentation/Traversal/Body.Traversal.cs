@@ -133,7 +133,7 @@ namespace WildWasteland.Modules.Presentation
 
         // two-bone IK: bend b so a..c spans the target distance (in the existing bend plane), then aim a at the target
         /// <summary>Two-bone IK: bends b so a..c spans the target distance in the existing bend plane, then aims a at the target.</summary>
-        private static void TwoBone(Transform a, Transform b, Transform c, Vector3 target)
+        internal static void TwoBone(Transform a, Transform b, Transform c, Vector3 target)
         {
             Vector3 pa = a.position, pb = b.position, pc = c.position;
             float ab = (pb - pa).magnitude, bc = (pc - pb).magnitude;

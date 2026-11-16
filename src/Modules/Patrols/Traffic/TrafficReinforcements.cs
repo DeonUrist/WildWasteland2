@@ -41,7 +41,7 @@ namespace WildWasteland.Modules.Patrols
                 if(RoleCount(0,TrafficFactions.Normalize(camp.faction))>=PatrolLimit(camp.faction)||PopulationCount>=PatrolsModule.TrafficMaxGroups.Value)
                 {PatrolsModule.Verbose("Patrol call skipped: "+camp.id+" (population full, no nearby patrol)");return;}
                 var group=Convoy.TrafficGroup(false,camp.faction);if(group==null)return;name=group.Name;
-                var roster=EditorStore.ComposeFull(group,false,()=>UnityEngine.Random.value);if(roster.Count==0||roster.Any(t=>!t.Available))return;
+                var roster=EditorStore.Compose(group,false,()=>UnityEngine.Random.value);if(roster.Count==0||roster.Any(t=>!t.Available))return;
                 vehicles=roster.Select(Freeze).ToArray();
                 var nearby=TrafficLocations.Known.Values.Where(c=>c.id!=camp.id&&!c.cleared&&c.faction==camp.faction&&!TrafficLocations.PlayerAt(c)
                     &&TrafficCamps.Loaded(c.id)&&TrafficLocations.FlatDistance(c.apron,camp.apron)>=300f

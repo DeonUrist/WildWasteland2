@@ -31,6 +31,8 @@ namespace WildWasteland.Modules.Patrols
         private float _deadFor;               // seconds since the driver died
         private bool _paxDecided, _paxBails;  // the surviving passenger's decision (rolled once)
         private bool _doorOpened; private float _doorWait;   // the door is opened before the passenger gets out / throws the driver out
+        private Func<bool> _passengerStepOut, _townStepOut;
+        private GameObject _townStepActor;
         private const float DoorSeconds = 0.6f;              // time for a car door to swing open before anyone goes through it
         private float _nextIgnore;            // periodic re-apply of occupant-vs-car collision ignores
         private Patrol.CorpseEject _eject;           // the dead driver being thrown out; the passenger climbs over once it is Done
@@ -73,7 +75,11 @@ namespace WildWasteland.Modules.Patrols
             // One occupant per traffic tick; each native transfer is synchronous and saveable.
             // Leave the driver until last, so a save during dismount still has a consistent seat state.
             var pax = marker.Passenger;
-            if (pax != null && Patrol.GetHealth(pax) > 0f) { Patrol.BailOut(_car, pax, marker); return; }
+            if (pax != null && Patrol.GetHealth(pax) > 0f)
+            {
+                if (!TownStepOutPending(pax, true)) Patrol.BailOut(_car, pax, marker);
+                return;
+            }
             for (int i = 0; i < marker.Riders.Length; i++)
             {
                 var rider = marker.Riders[i]; if (rider == null || Patrol.GetHealth(rider) <= 0f) continue;
@@ -85,11 +91,21 @@ namespace WildWasteland.Modules.Patrols
             }
             if (_driver != null && DriverAlive())
             {
+                if (TownStepOutPending(_driver, false)) return;
                 var driver = _driver; _driver = null; _health = null; _healthVar = null;
                 marker.DriverBailed = true; marker.DriverLeft();
                 Patrol.BailOut(_car, driver, marker.DriverPrefab, -1f);
             }
             _dead = _done = _vacated = true; _driving = false; SeatLocked(false);
+        }
+        private bool TownStepOutPending(GameObject actor, bool passenger)
+        {
+            if (_townStepActor != actor)
+            {
+                _townStepActor = actor;
+                _townStepOut = Patrol.StepOut(_car, actor, passenger);
+            }
+            return _townStepOut?.Invoke() == true;
         }
         internal bool TownCrewSeated
         {
@@ -123,6 +139,7 @@ namespace WildWasteland.Modules.Patrols
             if (_ctl != null && _ctl.Taken) _ctl.Release();
             _dead = _stuck = _done = _driving = _promoting = _paxDecided = _paxBails = _doorOpened = _vacated = _outOfFuel = false;
             _rolling = _deadFor = _doorWait = _dryFor = 0f; _eject = null; _revived = false;
+            _passengerStepOut = _townStepOut = null; _townStepActor = null;
             _delayOverride = PatrolsModule.TakeoverSeconds;
         }
         // the new driver could not be seated: an empty car again
@@ -506,7 +523,7 @@ namespace WildWasteland.Modules.Patrols
             {
                 _paxDecided = true;
                 _paxBails = !EventBudget.IsConvoy(_car)&&UnityEngine.Random.Range(0f, 100f) < PatrolsModule.BailChance.Value;
-                PatrolsModule.Verbose("Crew: passenger " + pax.name + " will " + (_paxBails ? "bail out" : "take the wheel") + " once the car stops ("
+                PatrolsModule.Verbose("Crew: passenger " + pax.name + " will " + (_paxBails ? "bail out" : "take the wheel") + " ("
                     + PatrolsModule.BailChance.Value + " % bail roll)");
             }
             if (_promoting)
@@ -535,10 +552,17 @@ namespace WildWasteland.Modules.Patrols
                 var front=CrewReturn.FrontDoor(_car);if(_paxBails&&front!=null)seat=front.position;
                 if (Patrol.OpenDoorAt(_car, seat)) { _doorWait = Time.time + DoorSeconds; return true; }
             }
-            if (Time.time < _doorWait) return true;
+            if (Time.time < _doorWait && (!_paxBails || VehicleRules.MovingBailVelocity(_car, _rb) == Vector3.zero)) return true;
             if (_paxBails)
             {
-                Patrol.BailOut(_car, pax, marker);
+                var rollVelocity = VehicleRules.MovingBailVelocity(_car, _rb);
+                if (rollVelocity == Vector3.zero)
+                {
+                    if (_passengerStepOut == null) _passengerStepOut = Patrol.StepOut(_car, pax, true);
+                    if (_passengerStepOut?.Invoke() == true) return true;
+                }
+                _passengerStepOut = null;
+                Patrol.BailOut(_car, pax, marker, rollVelocity);
                 if (!playerIn) Vacated("passenger bailed out");
                 return true;
             }
@@ -571,6 +595,7 @@ namespace WildWasteland.Modules.Patrols
         private bool ExitCrew(bool stuck)
         {
             var marker = Marker;
+            var rollVelocity = VehicleRules.MovingBailVelocity(_car, _rb);
             _poiApproach = false;
             CombatExit=!stuck;
             _frontExitIndex=0;
@@ -584,13 +609,13 @@ namespace WildWasteland.Modules.Patrols
             SeatLocked(false);
             var pax = marker != null ? marker.Passenger : null;
             bool paxGoes = pax != null && PassengerAlive(marker, pax), driverGoes = _driver != null && DriverAlive();
-            if(marker!=null&&driverGoes)marker.DriverBailed=true;
             // both doors open first; the crew gets out once they have swung open
             bool opened = false;
             var front=CrewReturn.FrontDoor(_car);
             if(front!=null)opened=Patrol.OpenDoorAt(_car,front.position);
             else{if (paxGoes) opened |= Patrol.OpenDoorAt(_car, pax.transform.position);if (driverGoes) opened |= Patrol.OpenDoorAt(_car, Patrol.DriverSeatPos(_car));}
-            StartCoroutine(BailAfter(opened ? DoorSeconds : 0f, marker, paxGoes ? pax : null, driverGoes ? _driver : null,!stuck));
+            StartCoroutine(BailAfter(opened && rollVelocity == Vector3.zero ? DoorSeconds : 0f, marker,
+                paxGoes ? pax : null, driverGoes ? _driver : null, rollVelocity, !stuck));
             _driver = null; _health = null;
             _dead = true; _done = true; _driving = false;    // Phase = Released: saved as an empty car
             if(stuck)Vacated("crew bailed out");else _vacated=true;
@@ -598,15 +623,24 @@ namespace WildWasteland.Modules.Patrols
         }
 
         /// <summary>Checks the current bail after condition for crew.</summary>
-        private IEnumerator BailAfter(float wait, PatrolMarker marker, GameObject pax, GameObject driver,bool combat=false)
+        private IEnumerator BailAfter(float wait, PatrolMarker marker, GameObject pax, GameObject driver,Vector3 rollVelocity,bool combat=false)
         {
             if (wait > 0f) yield return new WaitForSeconds(wait);
             if (_car == null) yield break;
-            if (pax != null) Patrol.BailOut(_car, pax, marker);
-            if (driver != null)
+            if (rollVelocity == Vector3.zero)
             {
-                if (marker != null) marker.DriverLeft();
-                Patrol.BailOut(_car, driver, marker != null ? marker.DriverPrefab : driver.name.Replace("(Driver)", ""), -1f);
+                driver = driver != null && Patrol.GetHealth(driver) != 0f ? driver : null;
+                var passengerStep = Patrol.StepOut(_car, pax, true);
+                var driverStep = Patrol.StepOut(_car, driver, false);
+                while (_car != null && (passengerStep?.Invoke() == true || driverStep?.Invoke() == true)) yield return null;
+                if (_car == null) yield break;
+            }
+            if (pax != null && PassengerAlive(marker, pax)) Patrol.BailOut(_car, pax, marker, rollVelocity);
+            if (driver != null && Patrol.GetHealth(driver) != 0f)
+            {
+                if (marker != null) { marker.DriverBailed = true; marker.DriverLeft(); }
+                Patrol.BailOut(_car, driver, marker != null ? marker.DriverPrefab : driver.name.Replace("(Driver)", ""), -1f,
+                    rollVelocity: rollVelocity);
             }
             if(combat&&marker!=null)for(int i=0;i<marker.Riders.Length;i++){var r=marker.Riders[i];var g=r!=null?r.GetComponent<RiderGuard>():null;if(g!=null)g.CombatDismount();}
         }

@@ -25,7 +25,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Whether Vanilla disables this feature because it changes presentation or simulation.</summary>
         public override bool UsesPreset { get { return true; } }
         /// <summary>Explains the behavior and limits of this optimization in the settings UI.</summary>
-        public override string Help { get { return "Uses the optional Performance/LOD pack made by tools/lod-generator/Generate.cmd. NPCs and vehicles keep their original meshes. Always active; Vanilla and Performance off use 2x distance. Zoom and saves restore original meshes. Missing/unsupported meshes stay original."; } }
+        public override string Help { get { return "Uses the optional generated mesh pack. NPCs and vehicles keep their original meshes. Both modes use 2x transition distances outside Developer. Zoom and saves restore original meshes. Missing or unsupported meshes stay original."; } }
         /// <summary>Requests mesh renderers from the shared scan for generated object mesh bindings.</summary>
         public ScanTypes Types { get { return ScanTypes.Renderers; } }
 
@@ -80,8 +80,8 @@ namespace WildWasteland.Core.Optimization
             _memory = NewKnob(cfg, "Cache MB", "Maximum generated payload bytes reserved for the current scene; two worker reads at most. GPU overhead is additional.", 128, 256, 384, 256);
         }
 
-        /// <summary>Uses Vanilla tuning while Performance is off, retaining the selected preset for re-enabling.</summary>
-        float Value(Knob knob) { return OptimizationRuntime.EnabledEntry.Value ? knob.Value : knob.Vanilla; }
+        /// <summary>Uses the standard mesh distances in both modes outside Developer.</summary>
+        float Value(Knob knob) { return OptimizationRuntime.DeveloperControls && OptimizationRuntime.EnabledEntry.Value ? knob.Value : knob.Vanilla; }
 
         /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode)

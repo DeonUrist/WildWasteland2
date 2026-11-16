@@ -13,8 +13,8 @@ namespace WildWasteland.Modules.Patrols
         internal bool BusDefence;
         internal bool FullyStuck { get { return _fullyStuck||_outOfFuel||Marker!=null&&Marker.StuckBails>0; } }
         /// <summary>Returns the next separated front-door dismount offset.</summary>
-        internal Vector3 FrontExitOffset()
-        { int n=_frontExitIndex++%9;return transform.forward*(n%3==1?0.8f:n%3==2?-0.8f:0f)+transform.right*(n/3*0.8f); }
+        internal Vector3 FrontExitOffset(bool advance = true)
+        { int n=_frontExitIndex%9;if(advance)_frontExitIndex++;return transform.forward*(n%3==1?0.8f:n%3==2?-0.8f:0f)+transform.right*(n/3*0.8f); }
         internal GameObject CombatEnemy { get { return _combatEnemy!=null&&_combatEnemy.activeInHierarchy&&(_enemyHealth==null||_enemyHealth.Value>0f)?_combatEnemy:null; } }
         internal bool CombatPursuit { get { return _resumeChase&&CombatEnemy!=null&&Regroup==null; } }
 
@@ -47,7 +47,9 @@ namespace WildWasteland.Modules.Patrols
             var enemy=CombatEnemy;
             if(enemy!=null&&Core.PlayerState.Transform!=null&&enemy==Core.PlayerState.Transform.gameObject&&!_partRetaliation&&PatrolPoi.Ignored(_car)){_combatEnemy=null;_resumeChase=false;return false;}
             if(enemy==null){_resumeChase=false;return false;}
-            if(Regroup!=null||_done||!slow||Time.time-_slowSince<1f||Time.time-_attackedAt>4f||PlayerInside())return false;
+            bool movingBail = !slow && VehicleRules.MovingBailVelocity(_car, _rb) != Vector3.zero
+                && (DriverAlive() || PassengerAlive(Marker, Marker.Passenger));
+            if(Regroup!=null||_done||(!movingBail&&(!slow||Time.time-_slowSince<1f))||Time.time-_attackedAt>4f||PlayerInside())return false;
             if((enemy.transform.position-transform.position).sqrMagnitude>2500f&&!FullyStuck)return false;
             bool answer=false,close=false,alive=false;
             for(int i=-2;i<Marker.Riders.Length;i++)

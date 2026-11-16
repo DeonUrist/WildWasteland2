@@ -183,7 +183,15 @@ namespace WildWasteland.Modules.NPCAI
             var player = Senses.PlayerObj;
             if (!on || player == null)
             {
-                if (_nests.Count > 0 && !on) { foreach (var n in _nests) Free(n, true); _nests.Clear(); }
+                if (!on && _nests.Count > 0)
+                {
+                    foreach (var n in _nests)
+                    {
+                        Free(n, true);
+                        foreach (var a in n.Spiders) if (a != null && a.Owner != null && !_pending.Contains(a)) _pending.Add(a);
+                    }
+                    _nests.Clear();
+                }
                 return;
             }
             Vector3 pp = player.transform.position;

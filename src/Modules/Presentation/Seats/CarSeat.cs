@@ -50,6 +50,7 @@ namespace WildWasteland.Modules.Presentation
 
         /// <summary>The PlayerModel_Sit of the car the player sits in, or null.</summary>
         public static Transform Seat { get { return _seat; } }
+        internal static Vector3 HipsPosition() => _src[0].TransformPoint(Pairs[0].Off) - _seat.root.up * CarSeatSettings.SeatDrop.Value;
         private static Transform _failedCar; private static float _failedRetry;
         /// <summary>Logs once per car why no seat was found.</summary>
         private static void Fail(Transform car, string why)

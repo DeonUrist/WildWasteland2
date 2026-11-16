@@ -15,6 +15,7 @@ namespace WildWasteland.Modules.Debug
         static bool _tuning;
         static readonly string[] _modes2 = { "Off", "On" };
         static readonly string[] _modes3 = { "Off", "On", "Shadow" };
+        static readonly string[] _presets = { "Vanilla", "Performance", "Balanced", "Visuals" };
 
         /// <summary>Developer page section: every optimization's mode, stats, errors, shadow mismatches and tuning overrides.</summary>
         internal static void DrawDeveloper(ToolLayout l)
@@ -22,16 +23,24 @@ namespace WildWasteland.Modules.Debug
             var m = OptimizationRuntime.Instance;
             if (m == null) { l.Text("Core optimization runtime is unavailable."); return; }
             bool running = m.Running;
-            l.Text("Individual optimization modes, feature statistics and tuning overrides. Shadow keeps the original game code running and compares the optimized result. Presets and overall measurements are on the Performance tab.");
+            l.Text("Experimental settings apply while Performance and Developer mode are on. Features marked * require a preset other than Vanilla. Shadow compares results while the game code still runs.");
+            var preset = OptimizationRuntime.PresetEntry;
+            if (preset != null) preset.Value = (PerfPreset)l.Choices("Preset", (int)preset.Value, _presets);
+            if (FarClip.DistantTerrainEntry != null) l.Toggle(FarClip.DistantTerrainEntry, "Distant terrain");
             string cat = null;
             foreach (var f in m.Features)
             {
                 if (f.Category != cat) { cat = f.Category; l.Heading(cat); }
                 var labels = f.SupportsShadow ? _modes3 : _modes2;
                 int cur = (int)f.ModeEntry.Value; if (cur >= labels.Length) cur = 1;
-                string state = f.Running == FeatureMode.Off ? (f.ModeEntry.Value != FeatureMode.Off && running && f.UsesPreset && OptimizationRuntime.Preset == PerfPreset.Vanilla ? "  (Vanilla preset)" : "") : "";
-                int next = l.Choices(f.PlanId + "  " + f.Title + (f.UsesPreset ? " *" : ""), cur, labels);
-                if (next != cur) f.ModeEntry.Value = (FeatureMode)next;
+                bool needsPreset = f.UsesPreset && !(f is GcSlice);
+                string state = f.Running == FeatureMode.Off && cur != 0 && running && needsPreset && OptimizationRuntime.Preset == PerfPreset.Vanilla ? "  (Vanilla preset)" : "";
+                if (f is GeneratedLods) l.Value(f.Title, "Always on");
+                else
+                {
+                    int next = l.Choices(f.PlanId + "  " + f.Title + (needsPreset ? " *" : ""), cur, labels);
+                    if (next != cur) f.ModeEntry.Value = (FeatureMode)next;
+                }
                 if (!string.IsNullOrEmpty(f.Help) || state.Length > 0) l.Text(f.Help + state);
                 if (f.LastError != null) l.Text("Error: " + f.LastError, Ledger.Danger);
                 if (f.Mismatches > 0) l.Text("Shadow mismatches: " + f.Mismatches + " (see log)", Ledger.Danger);

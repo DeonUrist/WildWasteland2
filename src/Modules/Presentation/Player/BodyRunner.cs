@@ -137,10 +137,12 @@ namespace WildWasteland.Modules.Presentation
                 if (!Crawling.Active) _body.EndCrawl();
                 if (PlayerState.Dead)
                 {
+                    _body.ResetSeatMotion();
                     _body.LateDead(_lastVelocity, _lastCar);
                     ThirdPerson.CarShift = false;
                     return;
                 }
+                _body.FinishStepOut();
                 bool inCar = PlayerState.InCar;
                 bool fpCam = Game.FirstPersonCameraOn;
                 ThirdPerson.CarShift = false;
@@ -152,6 +154,7 @@ namespace WildWasteland.Modules.Presentation
                     bool seated = replace && CarSeat.Attach(PlayerState.Player.transform);   // (2.2.7) the game's driver: no seat search every frame
                     if (!seated || !replace)
                     {
+                        _body.StepSeatMotion(PlayerState.CarRoot, false, false);
                         // no seat to copy (or the player wants the game's driver): no body in the car
                         if (!replace) CarSeat.Detach();
                         _body.SetVisible(false, false);
@@ -161,7 +164,8 @@ namespace WildWasteland.Modules.Presentation
                     {
                         bool firstPerson = fpCam && (!ThirdPerson.On || ThirdPerson.Peek);   // binoculars: first person
                         _body.LateCar(PlayerState.Player.transform, firstPerson);
-                        if (firstPerson) _body.ShiftFirstPerson(PlayerState.Player.transform.rotation, CarSeatSettings.CarViewBase + new Vector3(CarSeatSettings.FpCarCamX.Value, CarSeatSettings.FpCarCamY.Value, CarSeatSettings.FpCarCamZ.Value));
+                        _body.StepSeatMotion(PlayerState.CarRoot, true, true);
+                        if (firstPerson && !_body.SeatMotionActive) _body.ShiftFirstPerson(PlayerState.Player.transform.rotation, CarSeatSettings.CarViewBase + new Vector3(CarSeatSettings.FpCarCamX.Value, CarSeatSettings.FpCarCamY.Value, CarSeatSettings.FpCarCamZ.Value));
                         _body.SetMesh(firstPerson, true, Game.DrawnWeapon != "");
                         _body.SetVisible(!firstPerson || CharacterSettings.BodyInCar, firstPerson && CharacterSettings.BodyInCar);
                         ThirdPerson.CarShift = firstPerson && CharacterSettings.BodyInCar && CarSeatSettings.CarCameraForward.Value != 0f;
@@ -175,7 +179,10 @@ namespace WildWasteland.Modules.Presentation
                     CarSeat.Detach();
                     bool third = ThirdPerson.On && !ThirdPerson.Peek;   // binoculars raised: drawn as in first person
                     _body.LateFoot(third ? Body.View.ThirdPerson : Body.View.FirstPerson, Time.deltaTime);
-                    if (!third && PlayerState.PlayerCamera != null)
+                    if (!PlayerState.InVehicleTransition)
+                        _body.StepSeatMotion(null, false, CharacterSettings.ReplaceDriver.Value && !ModAPI.PlayerTraversalActive && !Crawling.Active);
+                    third |= _body.SeatMotionNativeThird;
+                    if (!third && !_body.SeatMotionActive && PlayerState.PlayerCamera != null)
                         _body.ShiftFirstPerson(Quaternion.Euler(0f, PlayerState.PlayerCamera.eulerAngles.y, 0f), new Vector3(CharacterSettings.FpCamX.Value, CharacterSettings.FpCamY.Value, CharacterSettings.FpCamZ.Value));
                     _jumpHeadPlayerPosition = PlayerState.Player.transform.position;
                     _jumpHeadReady = true;

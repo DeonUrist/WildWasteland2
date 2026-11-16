@@ -14,7 +14,7 @@ namespace WildWasteland.Modules.NPCAI
     {
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
         internal static ConfigEntry<bool> AimEnabled;
-        internal static ConfigEntry<bool> EnemySpawnRandomizer;
+        internal static ConfigEntry<bool> EnemySpawnRandomizer, ReplaceSpiders, ReplaceScorpions;
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
         internal static ConfigEntry<float> AimTimeScale, FacingTolerance, EngagePercent, ReloadSeconds, SingleShotReload, RoundSeconds;
         /// <summary>Config entries (see the bind descriptions in <see cref="Bind"/>).</summary>
@@ -114,6 +114,8 @@ namespace WildWasteland.Modules.NPCAI
         {
             EnemySpawnRandomizer = cfg.Player("World", "Enemy Spawn Randomizer", false,
                 "Randomizes enemies within their faction category at existing POIs and leaves 15% of eligible sites empty. Off preserves native enemy selections. Applies to future spawns only.");
+            ReplaceSpiders = cfg.Player("Arachnophobia", "Replace spiders", false, "Spawn rats in place of large and small spiders. Applies to future spawns.");
+            ReplaceScorpions = cfg.Player("Arachnophobia", "Replace scorpions", false, "Spawn rats in place of large and small scorpions. Applies to future spawns.");
             _cfg = cfg;
             SensesEnabled = V(null, "EnableNpcDetection", true,
                 "NPCs see (field of view, light, flashlight), hear gunshots, shouts, engines and explosions, remember where you were and search. Off = the game's own sensors.");

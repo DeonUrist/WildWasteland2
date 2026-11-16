@@ -62,7 +62,7 @@ namespace WildWasteland.Modules.Presentation
 
         // the vehicle the seat belongs to is a motorcycle body (Motorcycle = the true bike, Halfbreed)
         /// <summary>True when the seat belongs to a motorcycle body (Motorcycle, Halfbreed).</summary>
-        private static bool IsBike(Transform anchor)
+        internal static bool IsBike(Transform anchor)
         {
             var root = anchor != null ? anchor.root : null;
             if (root == null) return false;

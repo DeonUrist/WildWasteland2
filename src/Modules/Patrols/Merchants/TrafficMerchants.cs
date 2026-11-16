@@ -38,7 +38,7 @@ namespace WildWasteland.Modules.Patrols
             var player=Core.PlayerState.Transform;if(player==null)return false;
             var type=MerchantCatalog.Selected(group.MerchantTypes);
             if(role==2&&MerchantTypeInUse(type)){Core.Log.Warn(null,"[Patrols] " + "A "+MerchantCatalog.Label(type)+" merchant already exists.");return false;}
-            var roster=role==2?group.Templates.Select(CarTemplate.Find).Where(t=>t!=null&&t.Available&&CrewFactions.Compatible(t,group.Faction)).OrderBy(t=>UnityEngine.Random.value).Take(1).Select(t=>t.CloneForSpawn()).ToList():EditorStore.ComposeFull(group,role==1,()=>UnityEngine.Random.value);
+            var roster=role==2?group.Templates.Select(CarTemplate.Find).Where(t=>t!=null&&t.Available&&CrewFactions.Compatible(t,group.Faction)).OrderBy(t=>UnityEngine.Random.value).Take(1).Select(t=>t.CloneForSpawn()).ToList():EditorStore.Compose(group,role==1,()=>UnityEngine.Random.value);
             if(roster.Count==0)return false;
             if(role==2)foreach(var car in roster){MerchantRuntime.Configure(car,group);car.MerchantTravelling=true;car.ReleaseHandbrake=true;}
             if(TownTravel&&role>0&&QueueTownDeparture(group,role,roster))return true;

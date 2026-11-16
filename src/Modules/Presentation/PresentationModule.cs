@@ -123,11 +123,14 @@ namespace WildWasteland.Modules.Presentation
             ModEvents.Subscribe<Core.Events.WeaponSwitchPhase>(this, WeaponPoseService.OnSwitchPhase);
             ModEvents.Subscribe<Core.Events.AdsChanged>(this, WeaponPoseService.OnAdsChanged);
             ModEvents.Subscribe<Core.Events.CharacterAction>(this, _characters.OnCharacterAction);
+            ModEvents.Subscribe<Core.Events.CrewSeated>(this, CrewSeatMotions.OnSeated);
+            ModEvents.Subscribe<Core.Events.CrewBailedOut>(this, CrewSeatMotions.OnBailedOut);
             Scheduler.EveryFrame(this, "Presentation.WeaponLoweringRestore", WeaponPoseService.Restore, Phase.EarlyUpdate);
             Scheduler.EveryFrame(this, "Presentation.BodyUpdate", BodyRunner.Tick, Phase.Update);
             Scheduler.EveryFrame(this, "Presentation.BodyLate", BodyRunner.LateTick, Phase.LateUpdate);
             Scheduler.EveryFrame(this, "Presentation.Characters", BodyRunner.ModApiTick, Phase.LateUpdate);
             Scheduler.EveryFrame(this, "Presentation.VisualOffsets", _characters.LateTick, Phase.LateUpdate);
+            Scheduler.EveryFrame(this, "Presentation.CrewSeatMotions", CrewSeatMotions.LateTick, Phase.LateUpdateLast);
             Scheduler.EveryFrame(this, "Presentation.WeaponLowering", WeaponPoseService.Pose, Phase.LateUpdateLast);
         }
 
@@ -162,6 +165,7 @@ namespace WildWasteland.Modules.Presentation
             ShutdownStep("Women of Wasteland", WomenFeature.Shutdown);
             ShutdownWorld();
             ShutdownStep("rider visuals", RiderVisuals.Clear);
+            ShutdownStep("crew seat motions", CrewSeatMotions.Clear);
             ShutdownStep("animal effects", AnimalVisuals.Clear);
             ShutdownStep("voice audio", NpcVoice.Clear);
             ShutdownStep("reload audio", ReloadSounds.Clear);
@@ -192,6 +196,7 @@ namespace WildWasteland.Modules.Presentation
             _perkRecovery.Clear();
             ZombieAnimations.Clear();
             RiderVisuals.Clear(); AnimalVisuals.Clear(); NpcVoice.Clear(); CanineVisuals.OnSceneLoaded();
+            CrewSeatMotions.Clear();
             BodyRunner.OnSceneLoaded();
             ModAPI.OnSceneLoaded();
             _animation.Clear();
@@ -212,7 +217,7 @@ namespace WildWasteland.Modules.Presentation
         public override void OnSaveEnd(string slot) { SaveEndWorld(slot); }
 
         /// <summary>Native load started.</summary>
-        public override void OnLoadBegin(string slot) { LoadBeginWorld(slot); }
+        public override void OnLoadBegin(string slot) { CrewSeatMotions.Clear(); BodyRunner.PlayerBody?.ResetSeatMotion(); LoadBeginWorld(slot); }
 
         /// <summary>Floating-origin shift (delta = old - new offset).</summary>
         public override void OnOriginShift(Vector3 delta) { OriginShiftWorld(delta); }
@@ -231,6 +236,7 @@ namespace WildWasteland.Modules.Presentation
             ModApi.Provide<IBusPassengerAuthoring>(this,new BusPassengerAuthoring());
             ModApi.Provide<IVehicleVisuals>(this,new VehicleVisuals());
             ModApi.Provide<ICrewSeats>(this,new CrewSeats());
+            ModApi.Provide<ICrewSeatExit>(this,new CrewSeatMotions());
             ModApi.Provide<IFollowerSeatPresentation>(this,new FollowerSeatPresentation());
             ModApi.Provide<ICrewAppearance>(this,new CrewAppearance());
             ModApi.Provide<IAnimationApi>(this, _animation);

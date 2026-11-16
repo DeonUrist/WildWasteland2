@@ -76,6 +76,7 @@ namespace WildWasteland.Modules.NPCAI
             Bosses.Install(this);
             Brain.InstallHides(this);                      // "Hide" cover objects from a WorldIndex watch (no 10 s tag scan)                        // Health / ID FSM tracking for the follower and walker code (ex Quests QuestWorld)                          // human boss health: FsmIndex "BossUI" tracking (ex Guns entry)
             InteriorPopulation.Install(this);              // interior / native-POI population rules (ex Towns entry): hooks + jobs
+            Hooks.CreateObjectEnter.Prefix(this, Arachnophobia.BeforeCreate); // after the native POI enemy randomizer chooses a prefab
 
             // the old NPCAI.Runner, in its order (load-bearing: Brain/Idle body hand-over, DogAnimations restore in Update / sample in LateUpdate)
             Scheduler.EveryFrame(this, "NPCAI.Senses", Senses.Tick);
@@ -287,8 +288,17 @@ namespace WildWasteland.Modules.NPCAI
         public override void Settings(SettingsShell shell)
         {
             shell.Custom(this, SettingsShell.Page.World, "", l => SettingsShell.Switch(l, "Enemy Spawn Randomizer", NpcaiSettings.EnemySpawnRandomizer, "Randomizes enemies at existing POIs within their faction category and leaves 15% of eligible sites empty; affects future spawns only"), 6);
+            shell.Custom(this, SettingsShell.Page.World, "", DrawArachnophobia, 8);
             shell.Custom(this, SettingsShell.Page.Hud, "", DrawShoutRow, 210);
             SettingsNavigation(shell);
+        }
+
+        static void DrawArachnophobia(ToolLayout l)
+        {
+            l.Heading("Arachnophobia");
+            SettingsShell.Switch(l, "Replace spiders", NpcaiSettings.ReplaceSpiders);
+            SettingsShell.Switch(l, "Replace scorpions", NpcaiSettings.ReplaceScorpions);
+            SettingsShell.Switch(l, "Spider webs", NpcaiSettings.NestsEnabled, "Spawn spider webs in lairs with spiders.");
         }
 
         /// <summary>Draws the shout key + modifier row.</summary>

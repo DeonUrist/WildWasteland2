@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Scripting;
 using WildWasteland.Core;
@@ -31,7 +32,7 @@ namespace WildWasteland.Core.Optimization
         /// <summary>Binds the feature-specific tuning entries and their preset defaults.</summary>
         public override void Bind(ModuleConfig cfg) { _ms = NewKnob(cfg, "Slice (ms)", "Incremental GC time slice per frame.", 1f, 1.5f, 2f, 3f); }
 
-        ulong _orig; bool _set;
+        ulong _orig, _applied; bool _set;
 
         /// <summary>Activates this feature's replacement paths and resources for the selected mode.</summary>
         protected override void OnEnable(FeatureMode mode) { Apply(); }
@@ -42,15 +43,18 @@ namespace WildWasteland.Core.Optimization
         void Apply()
         {
             if (!GarbageCollector.isIncremental) return;
-            if (!_set) { _orig = GarbageCollector.incrementalTimeSliceNanoseconds; _set = true; }
-            float ms = Mathf.Clamp(_ms.Value, 0.25f, 10f);
-            GarbageCollector.incrementalTimeSliceNanoseconds = (ulong)(ms * 1000000f);
+            ulong current = GarbageCollector.incrementalTimeSliceNanoseconds;
+            if (!_set || current != _applied) _orig = current;
+            float ms = OptimizationRuntime.DeveloperControls ? Mathf.Clamp(_ms.Value, 0.25f, 10f) : 2f;
+            _applied = Math.Min(_orig, (ulong)(ms * 1000000f));
+            if (current != _applied) GarbageCollector.incrementalTimeSliceNanoseconds = _applied;
+            _set = _orig != _applied;
         }
 
         /// <summary>Stops this feature and restores the native values and resources it changed.</summary>
         protected override void OnDisable()
         {
-            if (_set) GarbageCollector.incrementalTimeSliceNanoseconds = _orig;
+            if (_set && GarbageCollector.incrementalTimeSliceNanoseconds == _applied) GarbageCollector.incrementalTimeSliceNanoseconds = _orig;
             _set = false;
         }
 

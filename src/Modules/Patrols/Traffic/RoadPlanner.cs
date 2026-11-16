@@ -116,6 +116,12 @@ namespace WildWasteland.Modules.Patrols
                         else if(request.Existing!=null)
                         {
                             request.Job.Route=VehicleRoute.Revalidate(request.Existing,request.Lines,request.Elevation,request.Blocks,request.Convoy,out var roads);
+                            if(request.Job.Route==null&&request.Job.Elevation)
+                            {
+                                var reasons = Core.Log.L2 ? new Dictionary<string,int>() : null;
+                                request.Job.Route=VehicleRoute.Build(request.A,request.B,request.Lines,request.Elevation,request.Blocks,request.Convoy,out roads,out _,reasons);
+                                if(request.Job.Route==null&&reasons!=null)request.Job.Rejections=string.Join("; ",reasons.Select(r=>r.Key+"="+r.Value));
+                            }
                             request.Job.Roads=roads;
                         }
                         else

@@ -37,7 +37,7 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>The drawn view: the third-person view of the last render, else the game camera.</summary>
         public bool TryGetPlayerView(out Vector3 position, out Quaternion rotation, out float fov)
         {
-            if (ThirdPerson.On && ThirdPerson.HasView && !ThirdPerson.Peek)
+            if (ThirdPerson.HasView && (ThirdPerson.SeatViewActive || ThirdPerson.On && !ThirdPerson.Peek))
             { position = ThirdPerson.ViewPos; rotation = ThirdPerson.ViewRot; fov = ThirdPerson.ViewFov; return true; }
             var cam = Core.PlayerState.Camera;
             if (cam == null) { position = Vector3.zero; rotation = Quaternion.identity; fov = 60f; return false; }

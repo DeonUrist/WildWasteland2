@@ -15,7 +15,7 @@ namespace WildWasteland.Modules.Survival
         private readonly DeliriumEpisode _delirium;
         private readonly MentalCameraVolumes _cameraVolumes;
         private readonly DoppelgangerEpisode _doppelganger;
-        private PlayMakerFSM _alcohol, _add, _remove, _switcher, _handler;
+        private PlayMakerFSM _alcohol, _add, _remove, _headAdd, _switcher, _handler;
         private PlayMakerFSM _sanityEffect;
         private FloatRemap _visualRemap;
         private SetProperty _visualWrite;
@@ -23,6 +23,7 @@ namespace WildWasteland.Modules.Survival
         private bool _visualEnabled;
         private Transform _weaponsParent;
         private bool _frozen, _addEnabled, _removeEnabled, _vertigo, _alcoholEnabled, _holstering, _paused;
+        private bool _headAddEnabled;
         private string _alcoholState;
         private FsmFloat _weight;
         private float _oldWeight, _nextSound;
@@ -68,8 +69,18 @@ namespace WildWasteland.Modules.Survival
             _state.HoldInsanity();
             if (_state.LocksInsanity)
             {
-                if (!_frozen && _add != null && _remove != null) { _addEnabled = _add.enabled; _removeEnabled = _remove.enabled; _frozen = true; }
+                if (!_frozen && _add != null && _remove != null)
+                {
+                    _addEnabled = _add.enabled; _removeEnabled = _remove.enabled; _frozen = true;
+                    if (!Insanity.MadnessEnabled)
+                    {
+                        _headAdd = FsmUtil.Find(_add.transform.Find("head")?.gameObject, "SanityAdd");
+                        if (_headAdd != null) { _headAddEnabled = _headAdd.enabled; DiscardBuffer(_headAdd, "SanityAdd"); }
+                        DiscardBuffer(_add, "SanityAdd"); DiscardBuffer(_remove, "SanityRemove");
+                    }
+                }
                 if (_frozen) { if (_add != null) _add.enabled = false; if (_remove != null) _remove.enabled = false; }
+                if (_headAdd != null) _headAdd.enabled = false;
             }
             if (_state.Active && !PlayerState.Dead)
             {
@@ -167,14 +178,16 @@ namespace WildWasteland.Modules.Survival
         }
         private bool BeforeBuffer(FsmFloatAdd action)
         {
-            if (!_state.LocksInsanity || action.fsmName.Value != "SanityAdd" && action.fsmName.Value != "SanityRemove" || action.Fsm.GetOwnerDefaultTarget(action.gameObject) != GameRefs.Player) return true;
+            if (!_state.LocksInsanity || action.fsmName.Value != "SanityAdd" && action.fsmName.Value != "SanityRemove" || !OwnsBuffer(action.Fsm.GetOwnerDefaultTarget(action.gameObject))) return true;
             action.Finish(); return false;
         }
         private bool BeforeBufferSet(SetFsmFloat action)
         {
-            if (!_state.LocksInsanity || action.fsmName.Value != "SanityAdd" && action.fsmName.Value != "SanityRemove" || action.Fsm.GetOwnerDefaultTarget(action.gameObject) != GameRefs.Player) return true;
+            if (!_state.LocksInsanity || action.fsmName.Value != "SanityAdd" && action.fsmName.Value != "SanityRemove" || !OwnsBuffer(action.Fsm.GetOwnerDefaultTarget(action.gameObject))) return true;
             action.Finish(); return false;
         }
+        private bool OwnsBuffer(GameObject target)
+        { return target != null && (target == GameRefs.Player || _headAdd != null && target == _headAdd.gameObject); }
         private bool PrepareSound()
         {
             if (!GameRefs.WorldActive || !PrefabCatalog.Ready) return false;
@@ -247,13 +260,20 @@ namespace WildWasteland.Modules.Survival
         internal void ReleaseFreeze(bool discardBuffers)
         {
             if (!_frozen) return;
+            if (_headAdd != null)
+            {
+                if (discardBuffers) DiscardBuffer(_headAdd, "SanityAdd");
+                _headAdd.enabled = _headAddEnabled;
+            }
+            _headAdd = null;
             if (discardBuffers)
             {
-                if (_add != null) { _add.FsmVariables.GetFsmFloat("SanityAdd").Value = 0; _add.Fsm.SetState("off"); }
-                if (_remove != null) { _remove.FsmVariables.GetFsmFloat("SanityRemove").Value = 0; _remove.Fsm.SetState("off"); }
+                DiscardBuffer(_add, "SanityAdd"); DiscardBuffer(_remove, "SanityRemove");
             }
             if (_add != null) _add.enabled = _addEnabled; if (_remove != null) _remove.enabled = _removeEnabled; _frozen = false;
         }
+        private static void DiscardBuffer(PlayMakerFSM fsm, string name)
+        { if (fsm != null) { fsm.FsmVariables.GetFsmFloat(name).Value = 0; if (fsm.Fsm.Initialized) fsm.Fsm.SetState("off"); } }
         internal void Clear()
         {
             End(); ReleaseFreeze(false);

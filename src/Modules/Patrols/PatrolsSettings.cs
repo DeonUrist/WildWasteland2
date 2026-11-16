@@ -159,8 +159,8 @@ namespace WildWasteland.Modules.Patrols
             MaxPatrols = cfg.Player(sp, "Max patrols", 3, "Maximum travelling Scrapyard vehicle patrol groups, including pending routes", new AcceptableValueRange<int>(0, 64));
             MaxCoyotePatrols = cfg.Player(sp, "Coyotes patrols limit", 2, "Maximum travelling Coyote vehicle patrol groups, independent of Scrapyard patrols", new AcceptableValueRange<int>(0, 64));
             MaxConvoys = cfg.Player(sp, "Max convoys", 1, "Maximum travelling Scrapyard convoy groups, including pending routes", new AcceptableValueRange<int>(0, 64));
-            CarSpawnLimit = cfg.Player(sp, "Car spawn limit", true, "Limit physical encounter cars; pending builds count toward the same budget");
-            EventVehicleLimit = cfg.Player(sp, "Event vehicle limit", 8, "Shared physical vehicle limit for one encounter or several overlapping encounters, including pending builds", new AcceptableValueRange<int>(1, 48));
+            CarSpawnLimit = cfg.Player(sp, "Car spawn limit", true, "Apply the vehicle limit when forming a new patrol or convoy");
+            EventVehicleLimit = cfg.Player(sp, "Event vehicle limit", 8, "Maximum vehicles assigned to each new patrol or convoy. Existing patrols keep their assigned vehicles.", new AcceptableValueRange<int>(1, 48));
             SimulatedBattles = cfg.Player(sp, "Simulated battles", true, "Opposing traffic groups can fight and suffer casualties while simulated offscreen. Off keeps physical faction combat enabled.");
             FootMaxActive = cfg.Player(sp, "Scrapyard foot patrols limit", 5, "Maximum generated Scrapyard foot patrol groups; stranded crews also count toward admission", new AcceptableValueRange<int>(0, 32));
             CoyoteFootMaxActive = cfg.Player(sp, "Coyotes foot patrols limit", 3, "Maximum generated Coyote foot patrol groups; travellers cannot offer quests", new AcceptableValueRange<int>(0, 32));
@@ -208,7 +208,7 @@ namespace WildWasteland.Modules.Patrols
             TrafficRoadRouting = cfg.Tool(TTraffic, "FollowRoads", true, "Influence sparse patrol waypoints with cached road hints; missing hints use a cached snake route");
             TrafficRoadConnector = cfg.Tool(TTraffic, "MaxRoadConnectorMetres", 350f, "Maximum distance a coarse waypoint is attracted toward a cached road hint, m", new AcceptableValueRange<float>(25f, 1000f));
             TrafficMaxGroups = cfg.Tool(TTraffic, "MaxGroups", 24, "Maximum simulated plus real groups", new AcceptableValueRange<int>(1, 128));
-            TrafficMaxRealCars = cfg.Tool(TTraffic, "MaxRealCars", 24, "Budget for nearby physical traffic cars; pending builds reserve slots", new AcceptableValueRange<int>(1, 100));
+            TrafficMaxRealCars = cfg.Tool(TTraffic, "MaxRealCars", 24, "Nearby vehicle budget for materializing simulated battles", new AcceptableValueRange<int>(1, 100));
             TrafficLoadRange = cfg.Tool(TTraffic, "LoadRange", 750f, "Load traffic within this distance of the player, m", new AcceptableValueRange<float>(100f, 2000f));
             TrafficUnloadRange = cfg.Tool(TTraffic, "UnloadRange", 1000f, "Unload only once every group member is this far away; always at least LoadRange + 100 m", new AcceptableValueRange<float>(200f, 4000f));
             TrafficDestinationGrace = cfg.Tool(TTraffic, "DestinationGraceSeconds", 180f, "An arrived group waits this long without a nearby player before removal; proximity resets the clock", new AcceptableValueRange<float>(10f, 3600f));

@@ -269,6 +269,7 @@ namespace WildWasteland.Modules.Presentation
         /// <summary>Destroys the body: crawl/traversal ended, ragdoll, graphs and objects removed.</summary>
         public void Destroy()
         {
+            ResetSeatMotion();
             EndCrawl();
             EndTraversal();
             if (_ragdoll != null) { _ragdoll.Destroy(); _ragdoll = null; }
