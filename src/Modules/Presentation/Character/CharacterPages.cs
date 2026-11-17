@@ -43,6 +43,7 @@ namespace WildWasteland.Modules.Presentation
             if (next != arms) { CharacterSettings.FirstPersonArmsOnlyOnFoot.Value = next == 1; CharacterSettings.EmptyHandArms.Value = next != 0; }
             SettingsShell.Switch(l, "Climbing", TraversalSettings.ClimbingOn);
             SettingsShell.Switch(l, "Third Person Camera", CameraSettings.ThirdPersonOnFoot);
+            SettingsShell.Switch(l, "1st person car entry animations", CharacterSettings.FirstPersonCarEntryAnimations);
             SettingsShell.Switch(l, "Occlusion", CameraSettings.OcclusionPrototype);   // third person on foot only; in cars it stays off
             l.Text("Full Body shows your body in first person. Use the game's Change Camera key for third person.");
             if (!ModuleHost.IsRunning(PresentationModule.Instance)) l.Text("Enable Presentation in Modules to use these player settings.");

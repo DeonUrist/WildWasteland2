@@ -14,6 +14,10 @@ namespace WildWasteland.Modules.Presentation
         internal bool SeatMotionNativeThird => SeatMotionActive && _motionNativeThird;
         internal Transform SeatMotionVehicle => _motionHost;
         private Transform _motionHost;
+        private Vector3 _stepOutPosition;
+
+        private static bool SeatAnimationsAllowed(bool nativeThird) => CharacterSettings.FirstPersonCarEntryAnimations.Value
+            || nativeThird || ThirdPerson.On && !ThirdPerson.Peek;
 
         internal bool TrySeatEye(out Vector3 eye, out Quaternion rotation)
         {
@@ -23,6 +27,22 @@ namespace WildWasteland.Modules.Presentation
             rotation = head.rotation;
             eye = head.position + rotation * new Vector3(0f, .075f, .08f);
             return true;
+        }
+
+        internal bool TrySeatViewTarget(out Vector3 target, out Quaternion facing, out float progress)
+        {
+            var camera = PlayerState.PlayerCamera;
+            progress = Mathf.SmoothStep(0f, 1f, _seatMotion.ViewProgress);
+            facing = PlayerState.Transform.rotation;
+            target = CharacterSettings.BodyInCar ? ThirdPerson.CarShiftEye(camera) : camera.position;
+            if (_stepOut != null)
+            {
+                // Native InCar raises PCameraPos from .25 m to .75 m on return to OnFoot.
+                facing = _exitFacing;
+                var offset = PlayerState.Transform.InverseTransformVector(camera.position - PlayerState.Transform.position) + Vector3.up * .5f;
+                target = _stepOutPosition + facing * offset;
+            }
+            return _stepOut != null || _motionEntering;
         }
 
         internal void StepSeatMotion(Transform car, bool seated, bool animate)
@@ -36,7 +56,7 @@ namespace WildWasteland.Modules.Presentation
                 StopSeatMotion();
                 _motionEntering = car != null;
                 var host = _motionEntering ? car : _motionCar;
-                if (_motionEntering && _motionReady && animate && !Pose.IsBike(host))
+                if (_motionEntering && _motionReady && animate && SeatAnimationsAllowed(_previousNativeThird) && !Pose.IsBike(host))
                 {
                     _seatMotion = SeatMotion.Start(_animator, true, false, false, _graph);
                     _motionHost = host;
@@ -58,13 +78,26 @@ namespace WildWasteland.Modules.Presentation
             if (_seatMotion == null) return;
             try
             {
-                if (!animate || !StepSeatClip(normal))
+                if (!animate || !SeatAnimationsAllowed(_motionNativeThird) || !StepSeatClip(normal))
                 {
+                    if (_seatMotion.Finished && _motionEntering && _stepOut == null && seated) ThirdPerson.FinishSeatPan(false);
                     CompleteStepOut(true);
                     StopSeatMotion();
                     _rollVelocity = Vector3.zero;
                 }
-                else { ThirdPerson.SeatView(true); _wheelPoseFrame = -1; ShowProp(false); CapturePose(null); }
+                else
+                {
+                    ThirdPerson.SeatView(true);
+                    if (ThirdPerson.TrySeatPan(this, out var eye, out var rotation))
+                    {
+                        var head = Bones["mixamorig:Head"];
+                        var yaw = Quaternion.Euler(0f, rotation.eulerAngles.y, 0f);
+                        Root.transform.RotateAround(head.position, Vector3.up, Mathf.DeltaAngle(Root.transform.eulerAngles.y, yaw.eulerAngles.y));
+                        head.rotation = rotation;
+                        Root.transform.position += eye - head.position - Vector3.up * .075f - yaw * Vector3.forward * CharacterSettings.BodyBack.Value;
+                    }
+                    _wheelPoseFrame = -1; ShowProp(false); CapturePose(null);
+                }
             }
             catch (System.Exception e)
             {
@@ -80,8 +113,9 @@ namespace WildWasteland.Modules.Presentation
             if (_stepOut != null)
             {
                 if (_exitPoint == null || _motionHost == null) return false;
+                _stepOutPosition = StepOutPosition(_exitPoint);
                 return _seatMotion.Step(_motionHost.TransformPoint(_motionStart),
-                    StepOutPosition(_exitPoint) + Vector3.up * _standingHipOffset, SeatMotion.Facing(_motionHost, Vector3.zero), false);
+                    _stepOutPosition + Vector3.up * _standingHipOffset, SeatMotion.Facing(_motionHost, Vector3.zero), false);
             }
             if (!_motionEntering) return _seatMotion.Step(Origin.Scene(_motionStart), target, _exitFacing);
             if (_motionCar == null) return false;

@@ -27,6 +27,7 @@ namespace WildWasteland.Modules.Presentation
         private Vector3 _first, _last;
         private float _elapsed;
         internal bool Finished => _elapsed >= _duration;
+        internal float ViewProgress { get; private set; }
 
         private SeatMotion(Animator animator, Transform hips, AnimationClip clip, float rate)
         {
@@ -130,6 +131,7 @@ namespace WildWasteland.Modules.Presentation
         {
             if (_animator == null || !_animator.gameObject.activeInHierarchy || !_graph.IsValid() || _elapsed >= _duration) return false;
             float phase = _elapsed / _duration;
+            ViewProgress = Mathf.Clamp01(_elapsed / Mathf.Max(.001f, _duration - _rate * BlendSeconds));
             float blend = blendOut ? Mathf.Clamp01((_duration - _elapsed) / (_rate * BlendSeconds)) : 1f;
             if (blend < 1f) CaptureRotations();
             var hips = Sample(_elapsed);

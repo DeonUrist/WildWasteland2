@@ -10,6 +10,8 @@ Disable standalone mods whose features WW2 absorbs, including Apocaplayer/Apocac
 
 Transitioning from WW1 requires fresh saves and settings. Back up the previous installation, configuration and saves first. Updates within WW2 preserve existing settings; install the complete release asset folder.
 
+[2.0.15 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.15) cover smooth first-person car entry and exit, an outward-facing exit with the body turning together with the camera, and the new **1st person car entry animations** On/Off setting under **F3 → Player**. The setting defaults to On. High-speed exits deal damage with either setting. Denis confirmed the camera transitions in game.
+
 [2.0.14 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.14) cover patrol spawning and crew reactions, the simplified Performance switch, vehicle seat transitions, arachnophobia settings and an independent Madness System switch.
 
 [2.0.13 release notes](https://github.com/DeonUrist/WildWasteland2/releases/tag/v2.0.13): distant terrain extends the low-resolution mountain horizon and camera range to 20 km. The default-on checkbox at the top of Performance restores the previous distances when disabled for visibility/FPS comparisons. Nearby terrain detail and object generation ranges remain unchanged. In-game visibility and performance remain Testing.

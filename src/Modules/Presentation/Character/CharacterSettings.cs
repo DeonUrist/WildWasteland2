@@ -21,6 +21,7 @@ namespace WildWasteland.Modules.Presentation
         // ------------------------------------------------------------------ settings.cfg [Presentation]: the player's body
         internal static ConfigEntry<CharacterChoice> Character;
         internal static ConfigEntry<bool> BodyFirstPerson, FullBodyOnlyOnFoot, EmptyHandArms, FirstPersonArmsOnlyOnFoot, FemaleArms, ReplaceDriver, EquipmentOnBody, PainSounds, FirstPersonSwayOn, SmoothAimDownSights;
+        internal static ConfigEntry<bool> FirstPersonCarEntryAnimations;
 
         // ------------------------------------------------------------------ tools.cfg [Presentation / First person|Animation|Animation (fallback clips)|Model]
         internal static ConfigEntry<bool> FootIK, WalkToStop;
@@ -86,6 +87,7 @@ namespace WildWasteland.Modules.Presentation
             FirstPersonArmsOnlyOnFoot = cfg.Player("", "FirstPersonArmsOnlyOnFoot", false, "First Person Arms: show the empty-handed arms only on foot, hiding the hands on the wheel while driving.");
             FemaleArms = cfg.Player("", "FirstPersonArmSkin", true, "The game's first-person arms and kick leg wear your character's skin (Female; Male keeps the game's own).");
             ReplaceDriver = cfg.Player("", "ReplaceDriver", true, "Your character replaces the game's man in the driver's seat (posed from the seat, guns and throws from the seat) and on the TAB screen picture.");
+            FirstPersonCarEntryAnimations = cfg.Player("", "FirstPersonCarEntryAnimations", true, "Play car entry and exit animations in first person, including the roll when jumping out at speed. High-speed exits still deal damage with this setting off.");
             EquipmentOnBody = cfg.Player("", "EquipmentOnBody", true, "Show the carried equipment on the body: backpack, long guns on the back, sidearms, blades, binoculars, flashlight (with its glow).");
             PainSounds = cfg.Player("", "FemalePainSounds", true, "Female character: four female hurt sounds and a female death sound.");
             FirstPersonSwayOn = cfg.Player("", "SmoothWeaponSway", true, "First person: frame-rate independent weapon / item sway (the game's own sway stutters with uneven frame times).");

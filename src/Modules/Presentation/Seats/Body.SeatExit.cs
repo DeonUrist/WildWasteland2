@@ -18,6 +18,9 @@ namespace WildWasteland.Modules.Presentation
 
         internal static bool BeforeSeatExit(SendEvent action)
         {
+            if (action.Fsm.Name == "DriveUse" && action.Fsm == PlayerState.DriveUse?.Fsm
+                && action.State.Name == "enter" && action.sendEvent?.Name == "Activate" && action.eventTarget != null)
+                ThirdPerson.CaptureSeatView(action.Fsm.GetOwnerDefaultTarget(action.eventTarget.gameObject)?.transform.parent);
             if (action.Fsm.Name != "DriveUse" || action.State.Name != "exit" || action.sendEvent?.Name != "Deactivate"
                 || action.Fsm != PlayerState.DriveUse?.Fsm || !PlayerState.InCar) return true;
             return BodyRunner.PlayerBody?.PrepareSeatExit(action) != false;
@@ -33,7 +36,7 @@ namespace WildWasteland.Modules.Presentation
             if (CrewSeatMotions.BlockMovement(action.Fsm.GameObject)) return false;
             var body = BodyRunner.PlayerBody;
             return body == null || body._rollVelocity == Vector3.zero
-                || action.Fsm.GameObject != PlayerState.Player || PlayerState.Dead;
+                || action.Fsm.GameObject != PlayerState.Player || PlayerState.Dead || !SeatAnimationsAllowed(body._rollNativeThird);
         }
 
         private bool PrepareSeatExit(SendEvent action)
@@ -46,24 +49,30 @@ namespace WildWasteland.Modules.Presentation
                 || action.Fsm.GetOwnerDefaultTarget(action.eventTarget.gameObject) != trigger.gameObject) return true;
             var rb = PlayerState.CarRigidbody;
             var velocity = rb != null ? Vector3.ProjectOnPlane(rb.velocity, Vector3.up) : Vector3.zero;
+            bool nativeThird = !Game.FirstPersonCameraOn;
             if (VehicleExitRoll.Required(velocity))
             {
                 _rollVelocity = velocity;
                 _rollCar = car;
                 _rollStarted = false;
-                _rollNativeThird = !Game.FirstPersonCameraOn;
+                _rollNativeThird = nativeThird;
                 return true;
             }
 
+            if (!SeatAnimationsAllowed(nativeThird)) return true;
             var exitPoint = trigger.Find("exitPos");
             if (exitPoint == null) return true;
+            ThirdPerson.CaptureSeatView(car);
             StopSeatMotion();
             _seatMotion = SeatMotion.Start(_animator, false, false, false, _graph);
             if (_seatMotion == null) return true;
             _motionCar = _motionHost = car;
-            _motionNativeThird = !Game.FirstPersonCameraOn;
+            _motionNativeThird = nativeThird;
             _motionStart = car.InverseTransformPoint(CarSeat.HipsPosition());
             _exitPoint = exitPoint;
+            var outward = Vector3.Cross(Vector3.up, SeatMotion.Facing(car, Vector3.zero) * Vector3.forward);
+            _exitFacing = Quaternion.LookRotation(outward
+                * (car.InverseTransformPoint(exitPoint.position).x < car.InverseTransformPoint(PlayerState.Transform.position).x ? -1f : 1f));
             _stepOut = action;
             return false;
         }
@@ -80,7 +89,11 @@ namespace WildWasteland.Modules.Presentation
                 if (!exit || point == null || PlayerState.CarRoot != _motionCar) { action.Fsm.SetState("inCar"); return; }
                 var destination = StepOutPosition(point);
                 action.Fsm.Event(action.eventTarget, action.sendEvent);
-                if (!PlayerState.InCar && PlayerState.Player.TryGetComponent<Rigidbody>(out var body)) body.position = destination;
+                if (!PlayerState.InCar && PlayerState.Player.TryGetComponent<Rigidbody>(out var body))
+                {
+                    body.position = destination;
+                    ThirdPerson.FinishSeatPan(true);
+                }
             }
             action.Finish();
         }
@@ -104,14 +117,16 @@ namespace WildWasteland.Modules.Presentation
             var player = PlayerState.Player;
             var body = player.GetComponent<Rigidbody>();
             if (body == null || body.isKinematic) { _rollVelocity = Vector3.zero; return false; }
+            bool animate = SeatAnimationsAllowed(_rollNativeThird);
             if (!_rollStarted)
             {
-                body.velocity += _rollVelocity * VehicleExitRoll.Carry;
+                if (animate) body.velocity += _rollVelocity * VehicleExitRoll.Carry;
                 _launchFixedTime = Time.fixedTime;
                 _rollStarted = true;
                 DamageFromRoll(player, VehicleExitRoll.Damage(_rollVelocity));
-                return false;
+                if (animate) return false;
             }
+            if (!animate) { _rollVelocity = Vector3.zero; return false; }
             return Time.fixedTime > _launchFixedTime && body.velocity.y <= .5f
                 && FindExitGround(player.transform.position, PlayerState.StandingHeight * .5f + .04f, _rollCar, player.transform, out _);
         }
